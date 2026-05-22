@@ -11,6 +11,7 @@ import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 
 type OrderData = {
   id: string;
@@ -48,6 +49,8 @@ const STEPS = [
 
 const STATUS_ORDER = STEPS.map((s) => s.key);
 
+const TERMINAL_STATUSES = new Set(["delivered", "rejected", "cancelled"]);
+
 function formatTime(iso: string | null) {
   if (!iso) return null;
   return new Date(iso).toLocaleTimeString("en-GB", {
@@ -76,39 +79,37 @@ export function OrderStatusTracker({
   const hapticFired = useRef(false);
 
   useEffect(() => {
-    let es: EventSource | null = null;
+    let cancelled = false;
+    let pollId: ReturnType<typeof setInterval> | null = null;
 
-    async function loadInitial() {
+    async function fetchOrder() {
       const res = await fetch(
         `/api/orders/${orderId}?sessionToken=${encodeURIComponent(sessionToken)}`
       );
-      if (res.ok) {
-        const json = await res.json();
-        setOrder(json.data);
-      }
-      setLoading(false);
+      if (!res.ok || cancelled) return null;
+      const json = await res.json();
+      return json.data as OrderData;
     }
 
-    loadInitial();
-
-    es = new EventSource(
-      `/api/orders/${orderId}/stream?sessionToken=${encodeURIComponent(sessionToken)}`
-    );
-
-    es.onmessage = (event) => {
-      try {
-        setOrder(JSON.parse(event.data));
-      } catch {
-        /* ignore */
+    async function refresh() {
+      const data = await fetchOrder();
+      if (!data || cancelled) return;
+      setOrder(data);
+      if (TERMINAL_STATUSES.has(data.status) && pollId) {
+        clearInterval(pollId);
+        pollId = null;
       }
-    };
+    }
 
-    es.onerror = () => {
-      es?.close();
-    };
+    refresh().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+
+    pollId = setInterval(refresh, REALTIME_FALLBACK_POLL_MS);
 
     return () => {
-      es?.close();
+      cancelled = true;
+      if (pollId) clearInterval(pollId);
     };
   }, [orderId, sessionToken]);
 

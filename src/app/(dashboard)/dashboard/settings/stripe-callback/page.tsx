@@ -63,30 +63,32 @@ function StripeCallbackContent() {
       {status === "loading" && (
         <>
           <Loader2 className="size-10 animate-spin text-orange-500" />
-          <p className="mt-4 text-sm text-zinc-400">Proveravamo Stripe nalog…</p>
+          <p className="mt-4 text-sm text-zinc-400">Verifying Stripe account…</p>
         </>
       )}
       {status === "done" && (
         <>
           <CheckCircle2 className="size-12 text-green-400" />
           <p className="mt-4 text-xl font-semibold text-zinc-50">
-            {onboarded ? "Uspešno ste se povezali!" : "Stripe setup sačuvan"}
+            {onboarded ? "Successfully connected!" : "Stripe setup saved"}
           </p>
           <p className="mt-2 max-w-sm text-sm text-zinc-400">
             {onboarded
-              ? "Kartična plaćanja su aktivna. Novac ide na vaš bankovni račun."
-              : "Završite preostale korake u Stripe-u kada budete spremni."}
+              ? "Card payments are active. Payouts go to your bank account."
+              : "Finish any remaining steps in Stripe when you're ready."}
           </p>
-          <p className="mt-6 text-xs text-zinc-600">Prozor se zatvara…</p>
+          <p className="mt-6 text-xs text-zinc-600">Closing window…</p>
         </>
       )}
       {status === "error" && (
         <>
           <XCircle className="size-12 text-red-400" />
           <p className="mt-4 text-lg font-semibold text-zinc-50">
-            Povezivanje nije uspelo
+            Connection failed
           </p>
-          <p className="mt-2 text-sm text-zinc-400">Zatvorite prozor i pokušajte ponovo.</p>
+          <p className="mt-2 text-sm text-zinc-400">
+            Close this window and try again.
+          </p>
         </>
       )}
     </div>

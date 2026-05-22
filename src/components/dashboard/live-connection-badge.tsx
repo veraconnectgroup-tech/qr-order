@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 import type { RealtimeMode } from "@/hooks/use-postgres-realtime";
 
 const labels: Record<RealtimeMode, string> = {
-  connecting: "Povezivanje…",
-  live: "Uživo",
-  polling: "Osvežavanje",
+  connecting: "Connecting…",
+  live: "Live",
+  polling: "Refreshing",
 };
 
 export function LiveConnectionBadge({ mode }: { mode: RealtimeMode }) {
@@ -23,10 +23,10 @@ export function LiveConnectionBadge({ mode }: { mode: RealtimeMode }) {
       )}
       title={
         mode === "live"
-          ? "Nove porudžbine stižu odmah (Supabase Realtime)"
+          ? "New orders appear instantly (Supabase Realtime)"
           : mode === "polling"
-            ? "Realtime nije aktivan — osvežavanje na nekoliko sekundi"
-            : "Uspostavlja se Realtime veza…"
+            ? "Realtime unavailable — refreshing every few seconds"
+            : "Connecting to Realtime…"
       }
     >
       <span

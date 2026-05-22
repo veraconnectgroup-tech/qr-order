@@ -5,22 +5,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { platformFeeDescription } from "@/lib/constants";
+import { platformFeeDescriptionEn } from "@/lib/constants";
 
 const POPUP_FEATURES = "popup=yes,width=520,height=720,left=100,top=24";
 
 function friendlyStripeError(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes("signed up for connect") || lower.includes("connect")) {
-    return "Plaćanja karticom trenutno nisu aktivirana na platformi. Kontaktirajte podršku.";
+    return "Card payments are not enabled on the platform yet. Please contact support.";
   }
   if (lower.includes("platform-profile") || lower.includes("managing losses")) {
-    return "Podešavanje plaćanja na platformi još nije završeno. Kontaktirajte podršku.";
+    return "Payment setup is not complete yet. Please contact support.";
   }
   if (lower.includes("stripe_secret_key") || lower.includes("not configured")) {
-    return "Plaćanja karticom trenutno nisu dostupna. Kontaktirajte podršku.";
+    return "Card payments are temporarily unavailable. Please contact support.";
   }
-  return "Povezivanje nije uspelo. Pokušajte ponovo ili kontaktirajte podršku.";
+  return "Connection failed. Please try again or contact support.";
 }
 
 type StripeConnectMessage =
@@ -29,7 +29,7 @@ type StripeConnectMessage =
 
 export function DashboardStripeConnect({
   connected,
-  accountId,
+  accountId: _accountId,
   platformReady,
   currency = "EUR",
 }: {
@@ -57,13 +57,13 @@ export function DashboardStripeConnect({
     (onboarded: boolean, stripe?: string) => {
       if (onboarded) {
         setShowSuccess(true);
-        toast.success("Uspešno ste se povezali sa Stripe-om!", {
-          description: "Kartična plaćanja su sada aktivna.",
+        toast.success("Stripe connected", {
+          description: "Card payments are now enabled.",
         });
       } else if (stripe === "refresh") {
-        toast.message("Nastavite Stripe setup kada budete spremni.");
+        toast.message("Continue Stripe setup when you're ready.");
       } else {
-        toast.message("Stripe setup sačuvan. Završite preostale korake u Stripe-u.");
+        toast.message("Stripe setup saved. Finish any remaining steps in Stripe.");
       }
       router.refresh();
     },
@@ -87,7 +87,7 @@ export function DashboardStripeConnect({
         clearPopupPoll();
         setLoading(false);
         popupRef.current = null;
-        toast.error("Stripe povezivanje nije uspelo. Pokušajte ponovo.");
+        toast.error("Stripe connection failed. Please try again.");
       }
     }
 
@@ -177,14 +177,14 @@ export function DashboardStripeConnect({
   }
 
   const busy = loading || syncing;
-  const feeLabel = platformFeeDescription(currency);
+  const feeLabel = platformFeeDescriptionEn(currency);
   const isConnected = connected || showSuccess;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="text-lg font-semibold text-zinc-50">Plaćanja</h2>
+      <h2 className="text-lg font-semibold text-zinc-50">Payments</h2>
       <p className="mt-1 text-sm text-zinc-500">
-        Povežite Stripe nalog restorana — novac ide vama na banku
+        Connect your restaurant&apos;s Stripe account — payouts go to your bank
       </p>
 
       {isConnected && (
@@ -192,10 +192,10 @@ export function DashboardStripeConnect({
           <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-green-400" />
           <div>
             <p className="text-sm font-medium text-green-300">
-              Uspešno ste se povezali sa Stripe-om
+              Stripe connected
             </p>
             <p className="mt-0.5 text-xs text-green-200/70">
-              Gosti mogu platiti karticom. Isplate idu na vaš bankovni račun.
+              Guests can pay by card. Payouts go to your bank account.
             </p>
           </div>
         </div>
@@ -209,7 +209,7 @@ export function DashboardStripeConnect({
             onClick={handleConnect}
             disabled={busy}
           >
-            {busy ? "Učitavanje…" : "Upravljaj Stripe nalogom"}
+            {busy ? "Loading…" : "Manage Stripe account"}
             <ExternalLink className="ml-2 size-4" />
           </Button>
         </div>
@@ -217,18 +217,18 @@ export function DashboardStripeConnect({
         <div className="mt-4 space-y-3">
           {!isConnected && !platformReady && (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-              Kartična plaćanja trenutno nisu dostupna. Kontaktirajte podršku
-              QR Order platforme.
+              Card payments are temporarily unavailable. Please contact QR Order
+              support.
             </p>
           )}
           {!isConnected && platformReady && (
             <>
               <p className="text-sm text-zinc-400">
-                Povežite nalog da gosti mogu platiti karticom. Novac ide direktno
-                na vaš bankovni račun.
+                Connect your account so guests can pay by card. Funds go directly
+                to your bank.
               </p>
               <ul className="space-y-1 text-xs text-zinc-500">
-                <li>Provizija platforme: {feeLabel}</li>
+                <li>Platform fee: {feeLabel}</li>
                 <li>Visa, Mastercard, Apple Pay, Google Pay</li>
               </ul>
             </>
@@ -238,7 +238,7 @@ export function DashboardStripeConnect({
             onClick={handleConnect}
             disabled={busy || !platformReady}
           >
-            {busy ? "Otvaranje prozora…" : "Poveži Stripe →"}
+            {busy ? "Opening Stripe…" : "Connect Stripe →"}
           </Button>
         </div>
       )}
