@@ -126,3 +126,4 @@ pnpm build            # Production build
 pnpm lint             # ESLint
 pnpm db:types:remote  # Tipovi iz cloud Supabase projekta
 ```
+# qr-order
