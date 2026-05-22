@@ -1,0 +1,48 @@
+import { notFound } from "next/navigation";
+import { createServerClient } from "@/lib/supabase/server";
+import { CartView } from "@/components/guest/cart-view";
+
+export default async function CartPage({
+  params,
+}: {
+  params: Promise<{ slug: string; token: string }>;
+}) {
+  const { slug, token } = await params;
+  const supabase = await createServerClient();
+
+  const { data: orgData } = await supabase
+    .from("organizations")
+    .select("name, default_tax_percent, currency")
+    .eq("slug", slug)
+    .single();
+
+  if (!orgData) notFound();
+
+  const org = orgData as {
+    name: string;
+    default_tax_percent: number;
+    currency: string;
+  };
+
+  const { data: tableData } = await supabase
+    .from("tables")
+    .select("name")
+    .eq("qr_token", token)
+    .eq("is_active", true)
+    .single();
+
+  if (!tableData) notFound();
+
+  const table = tableData as { name: string };
+
+  return (
+    <CartView
+      slug={slug}
+      token={token}
+      orgName={org.name}
+      tableName={table.name}
+      taxPercent={Number(org.default_tax_percent)}
+      currency={org.currency}
+    />
+  );
+}

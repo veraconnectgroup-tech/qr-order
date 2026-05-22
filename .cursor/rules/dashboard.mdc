@@ -1,0 +1,47 @@
+---
+description: Restaurant dashboard UI — orders kanban, kitchen, tables, waiter calls, history
+globs: src/app/(dashboard)/**/*,src/components/dashboard/**/*
+alwaysApply: false
+---
+
+# QR Order — Dashboard Build Spec
+
+Dark zinc theme (`bg-zinc-950`), orange accent. Sidebar 260px + TopBar h-16.
+
+## Routes
+- `/dashboard/orders` — Live kanban (NEW → PREPARING → READY → DELIVERED)
+- `/dashboard/kitchen` — Full-screen KDS (no sidebar)
+- `/dashboard/tables` — Zone grid + QR panel
+- `/dashboard/waiter-calls` — Real-time call queue
+- `/dashboard/history` — Stats + order table
+- `/dashboard/menu` → `/admin/menu`
+- `/dashboard/settings` → `/admin/settings`
+
+## Status mapping
+| Column | DB status |
+|--------|-----------|
+| NEW | `pending` |
+| PREPARING | `accepted`, `preparing` |
+| READY | `ready` |
+| DELIVERED | `delivered` |
+
+## Realtime
+Subscribe to `orders` and `waiter_calls` filtered by `location_id`.
+
+## Sound
+Web Audio + `/sounds/*.mp3` fallback. Persist toggle in `localStorage` key `qr-order-sound`.
+
+See full prompt in project docs for card designs, drag-and-drop (@dnd-kit), and mobile bottom nav.
+
+---
+
+## SEED DATA ADDITIONS — Test orders for kanban
+
+Run `supabase/seed-test-orders.sql` in Supabase SQL Editor after `cloud-setup.sql`.
+
+Creates 3 orders for Skyline Lounge today:
+- **#047** — `pending` (New column) — Table 8, 4 items + Extra shot modifier
+- **#048** — `preparing` (Preparing column) — Table 1
+- **#049** — `ready` (Ready column) — VIP 1
+
+Refresh `/dashboard/orders` to see cards in each column.

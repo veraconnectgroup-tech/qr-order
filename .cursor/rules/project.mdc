@@ -1,0 +1,44 @@
+---
+description: QR Ordering & Payment Platform — project conventions and architecture
+globs:
+alwaysApply: true
+---
+
+# QR Order — Project Rules
+
+## Product
+
+Fast ordering & payment for hospitality venues (NOT a digital menu). Guests scan QR → order → pay. Staff use dashboard. Owners use admin.
+
+## Stack
+
+Next.js App Router + TypeScript + Tailwind 4 + shadcn/ui + Supabase + Stripe Connect + Zustand + pnpm
+
+## Design
+
+Follow the enterprise design spec exactly:
+- **Guest app**: Dark luxury theme (`guest-theme`), orange accent `#f97316`, Inter font
+- **Dashboard**: Light theme, large readable text, color-coded order status
+- **Admin**: Light theme, blue accent `#2563eb`
+- **Kitchen**: Dark high-contrast, very large text
+- No spinners (skeleton loaders only), 200ms animations, min 48px touch targets
+
+## Conventions
+
+- Price snapshots in `order_items` at order time — never reference live prices
+- Daily order numbers via `get_next_order_number()` PostgreSQL function
+- QR URLs use `qr_token`, not table ID
+- Guest orders/sessions created via API routes with service role
+- Stripe Connect account stored on `organizations`, not locations
+- Amounts as DECIMAL in DB, cents only for Stripe API
+
+## Route Groups
+
+- `(guest)/[slug]/[token]` — menu, cart, checkout, order tracking
+- `(dashboard)/dashboard/*` — staff: orders, kitchen, tables, waiter calls, history
+- `(admin)/admin/*` — owner/manager: menu CRUD, tables/QR, staff, analytics, Stripe
+- `(auth)` — login, signup, callback
+
+## Build Order
+
+Phase 1 (setup) → Admin (test data) → Guest → Payments → Dashboard/Realtime → KDS → Analytics

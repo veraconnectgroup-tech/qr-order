@@ -1,0 +1,270 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
+import { Download, Plus, QrCode } from "lucide-react";
+import { createTable, createZone } from "@/lib/admin/actions";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Table, Zone } from "@/types";
+
+function QrPreview({
+  table,
+  orgSlug,
+  orgName,
+}: {
+  table: Table;
+  orgSlug: string;
+  orgName: string;
+}) {
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const scanUrl = `${appUrl}/${orgSlug}/${table.qr_token}`;
+
+  useEffect(() => {
+    QRCode.toDataURL(scanUrl, {
+      width: 280,
+      margin: 2,
+      color: { dark: "#000000", light: "#ffffff" },
+      errorCorrectionLevel: "H",
+    }).then(setQrUrl);
+  }, [scanUrl]);
+
+  function downloadPng() {
+    if (!qrUrl) return;
+    const a = document.createElement("a");
+    a.href = qrUrl;
+    a.download = `qr-${table.name.replace(/\s+/g, "-").toLowerCase()}.png`;
+    a.click();
+  }
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>QR kod — {table.name}</DialogTitle>
+      </DialogHeader>
+      <div className="flex flex-col items-center gap-4 py-4">
+        {qrUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={qrUrl} alt={`QR kod za ${table.name}`} className="rounded-lg" />
+        ) : (
+          <div className="size-[280px] animate-pulse rounded-lg bg-neutral-100" />
+        )}
+        <p className="text-lg font-bold">{table.name}</p>
+        <p className="text-sm text-neutral-500">{orgName}</p>
+        <p className="break-all text-center text-xs text-neutral-400">{scanUrl}</p>
+        <Button onClick={downloadPng} disabled={!qrUrl}>
+          <Download className="mr-2 size-4" />
+          Preuzmi PNG
+        </Button>
+      </div>
+    </DialogContent>
+  );
+}
+
+export function TablesManager({
+  tables,
+  zones,
+  orgSlug,
+  orgName,
+}: {
+  tables: Table[];
+  zones: Zone[];
+  orgSlug: string;
+  orgName: string;
+}) {
+  const [tableOpen, setTableOpen] = useState(false);
+  const [zoneOpen, setZoneOpen] = useState(false);
+  const [qrTable, setQrTable] = useState<Table | null>(null);
+  const [zoneId, setZoneId] = useState("");
+
+  const grouped = zones.map((zone) => ({
+    zone,
+    tables: tables.filter((t) => t.zone_id === zone.id),
+  }));
+
+  const ungrouped = tables.filter((t) => !t.zone_id);
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Stolovi</h1>
+        <div className="flex gap-2">
+          <Dialog open={zoneOpen} onOpenChange={setZoneOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="mr-2 size-4" />
+                Zona
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova zona</DialogTitle>
+              </DialogHeader>
+              <form
+                action={async (fd) => {
+                  await createZone(fd);
+                  setZoneOpen(false);
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <Label htmlFor="zone-name">Naziv zone</Label>
+                  <Input id="zone-name" name="name" required className="mt-1" />
+                </div>
+                <Button type="submit" className="w-full">
+                  Sačuvaj
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={tableOpen} onOpenChange={setTableOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 size-4" />
+                Dodaj sto
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Novi sto</DialogTitle>
+              </DialogHeader>
+              <form
+                action={async (fd) => {
+                  if (zoneId) fd.set("zone_id", zoneId);
+                  await createTable(fd);
+                  setTableOpen(false);
+                  setZoneId("");
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <Label htmlFor="table-name">Naziv</Label>
+                  <Input id="table-name" name="name" required className="mt-1" />
+                </div>
+                <div>
+                  <Label htmlFor="seats">Broj mesta</Label>
+                  <Input
+                    id="seats"
+                    name="seats"
+                    type="number"
+                    defaultValue={4}
+                    min={1}
+                    className="mt-1"
+                  />
+                </div>
+                {zones.length > 0 && (
+                  <div>
+                    <Label>Zona</Label>
+                    <Select value={zoneId} onValueChange={setZoneId}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Izaberi zonu" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {zones.map((z) => (
+                          <SelectItem key={z.id} value={z.id}>
+                            {z.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <Button type="submit" className="w-full">
+                  Sačuvaj
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <Dialog open={!!qrTable} onOpenChange={(o) => !o && setQrTable(null)}>
+        {qrTable && (
+          <QrPreview table={qrTable} orgSlug={orgSlug} orgName={orgName} />
+        )}
+      </Dialog>
+
+      {!tables.length ? (
+        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
+          <p className="text-neutral-600">Nema stolova.</p>
+          <p className="mt-1 text-sm text-neutral-400">
+            Dodaj zone i stolove, pa generiši QR kodove.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {grouped.map(({ zone, tables: zoneTables }) => (
+            <section key={zone.id}>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+                {zone.name} ({zoneTables.length})
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {zoneTables.map((table) => (
+                  <TableCard
+                    key={table.id}
+                    table={table}
+                    onShowQr={() => setQrTable(table)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {ungrouped.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+                Bez zone
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {ungrouped.map((table) => (
+                  <TableCard
+                    key={table.id}
+                    table={table}
+                    onShowQr={() => setQrTable(table)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableCard({
+  table,
+  onShowQr,
+}: {
+  table: Table;
+  onShowQr: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+      <p className="font-semibold">{table.name}</p>
+      <p className="text-sm text-neutral-500">{table.seats} mesta</p>
+      <div className="mt-3 flex gap-2">
+        <Button variant="outline" size="sm" onClick={onShowQr}>
+          <QrCode className="mr-1 size-4" />
+          QR
+        </Button>
+      </div>
+    </div>
+  );
+}
