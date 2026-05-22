@@ -36,6 +36,7 @@ CREATE TABLE locations (
   timezone TEXT DEFAULT 'Europe/Berlin',
   operating_hours JSONB DEFAULT '{}',
   is_active BOOLEAN DEFAULT true,
+  accepting_orders BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -314,7 +315,7 @@ CREATE POLICY "public_read_organizations" ON organizations
   FOR SELECT USING (true);
 
 CREATE POLICY "public_read_locations" ON locations
-  FOR SELECT USING (is_active = true);
+  FOR SELECT USING (true);
 
 CREATE POLICY "public_read_zones" ON zones
   FOR SELECT USING (is_active = true);

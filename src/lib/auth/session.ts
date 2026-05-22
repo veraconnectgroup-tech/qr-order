@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Staff } from "@/types";
 
 export async function getSession() {
@@ -55,12 +56,12 @@ export async function requireAdmin() {
 export async function getStaffLocationId(staff: Staff) {
   if (staff.location_id) return staff.location_id;
 
-  const supabase = await createServerClient();
-  const { data } = await supabase
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("locations")
     .select("id")
     .eq("org_id", staff.org_id)
-    .eq("is_active", true)
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 

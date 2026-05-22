@@ -19,7 +19,7 @@ export type ValidatedTableSession = {
   location: {
     id: string;
     org_id: string;
-    is_active: boolean;
+    accepting_orders: boolean;
   };
   org: {
     id: string;
@@ -50,7 +50,7 @@ export async function validateTableSession(
 
   const { data: location } = await admin
     .from("locations")
-    .select("id, org_id, is_active")
+    .select("id, org_id, accepting_orders")
     .eq("id", tableRow.location_id)
     .single();
 
@@ -60,7 +60,7 @@ export async function validateTableSession(
 
   const locationRow = location as ValidatedTableSession["location"];
 
-  if (!locationRow.is_active) {
+  if (!locationRow.accepting_orders) {
     return { error: "Ordering is temporarily paused.", status: 403 };
   }
 

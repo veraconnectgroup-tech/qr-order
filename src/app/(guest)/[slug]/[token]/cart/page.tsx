@@ -26,7 +26,7 @@ export default async function CartPage({
 
   const { data: tableData } = await supabase
     .from("tables")
-    .select("name, location:locations!inner(is_active)")
+    .select("name, location:locations!inner(accepting_orders)")
     .eq("qr_token", token)
     .eq("is_active", true)
     .single();
@@ -35,7 +35,7 @@ export default async function CartPage({
 
   const table = tableData as unknown as {
     name: string;
-    location: { is_active: boolean };
+    location: { accepting_orders: boolean };
   };
 
   return (
@@ -46,7 +46,7 @@ export default async function CartPage({
       tableName={table.name}
       taxPercent={Number(org.default_tax_percent)}
       currency={org.currency}
-      orderingEnabled={table.location.is_active}
+      orderingEnabled={table.location.accepting_orders}
     />
   );
 }

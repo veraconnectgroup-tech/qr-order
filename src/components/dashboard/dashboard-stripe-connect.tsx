@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,20 +13,70 @@ export function DashboardStripeConnect({
   connected: boolean;
   accountId: string | null;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    const stripeParam = searchParams.get("stripe");
+    if (stripeParam !== "complete" && stripeParam !== "refresh") return;
+
+    let cancelled = false;
+
+    async function syncAfterReturn() {
+      setSyncing(true);
+      try {
+        const res = await fetch("/api/stripe/connect");
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error ?? "Could not verify Stripe status");
+        }
+
+        if (json.data?.onboarded) {
+          toast.success("Stripe connected — card payments are enabled.");
+        } else if (stripeParam === "refresh") {
+          toast.message("Continue Stripe setup when you're ready.");
+        } else {
+          toast.message("Stripe setup saved. Finish any remaining steps in Stripe.");
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Stripe sync failed");
+      } finally {
+        if (!cancelled) {
+          setSyncing(false);
+          router.replace("/dashboard/settings");
+          router.refresh();
+        }
+      }
+    }
+
+    syncAfterReturn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router]);
 
   async function handleConnect() {
     setLoading(true);
     try {
       const res = await fetch("/api/stripe/connect", { method: "POST" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Connection failed");
+      if (!res.ok) {
+        throw new Error(json.error ?? "Stripe connection failed");
+      }
+      if (!json.data?.url) {
+        throw new Error("Stripe did not return an onboarding link.");
+      }
       window.location.href = json.data.url;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Connection failed");
       setLoading(false);
     }
   }
+
+  const busy = loading || syncing;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
@@ -46,9 +97,9 @@ export function DashboardStripeConnect({
             variant="outline"
             className="border-zinc-700 bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
             onClick={handleConnect}
-            disabled={loading}
+            disabled={busy}
           >
-            {loading ? "Loading…" : "Manage Stripe account"}
+            {busy ? "Loading…" : "Manage Stripe account"}
             <ExternalLink className="ml-2 size-4" />
           </Button>
         </div>
@@ -63,9 +114,9 @@ export function DashboardStripeConnect({
           <Button
             className="bg-orange-500 hover:bg-orange-600"
             onClick={handleConnect}
-            disabled={loading}
+            disabled={busy}
           >
-            {loading ? "Loading…" : "Connect Stripe →"}
+            {busy ? "Loading…" : "Connect Stripe →"}
           </Button>
         </div>
       )}

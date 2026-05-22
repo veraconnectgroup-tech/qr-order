@@ -33,6 +33,7 @@ CREATE TABLE locations (
   timezone TEXT DEFAULT 'Europe/Berlin',
   operating_hours JSONB DEFAULT '{}',
   is_active BOOLEAN DEFAULT true,
+  accepting_orders BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

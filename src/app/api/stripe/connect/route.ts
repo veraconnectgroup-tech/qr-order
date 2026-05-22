@@ -1,16 +1,80 @@
 import { NextResponse } from "next/server";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createConnectAccountLink } from "@/lib/stripe/connect";
+import {
+  assertStripeConnectConfig,
+  createConnectAccountLink,
+  stripeConnectErrorMessage,
+  syncStripeConnectStatus,
+} from "@/lib/stripe/connect";
+
+async function requireConnectStaff() {
+  const staff = await getCurrentStaff();
+  if (!staff || !["owner", "manager"].includes(staff.role)) {
+    return null;
+  }
+  return staff;
+}
+
+export async function GET() {
+  try {
+    const staff = await requireConnectStaff();
+    if (!staff) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    assertStripeConnectConfig();
+
+    const admin = createAdminClient();
+    const { data: org } = await admin
+      .from("organizations")
+      .select("id, stripe_account_id, stripe_onboarded")
+      .eq("id", staff.org_id)
+      .single();
+
+    const orgRow = org as {
+      id: string;
+      stripe_account_id: string | null;
+      stripe_onboarded: boolean;
+    } | null;
+
+    if (!orgRow?.stripe_account_id) {
+      return NextResponse.json({
+        data: { onboarded: false, hasAccount: false },
+      });
+    }
+
+    const { onboarded } = await syncStripeConnectStatus(
+      orgRow.id,
+      orgRow.stripe_account_id
+    );
+
+    return NextResponse.json({
+      data: {
+        onboarded,
+        hasAccount: true,
+        accountId: orgRow.stripe_account_id,
+      },
+    });
+  } catch (error) {
+    console.error("Stripe connect sync error:", error);
+    return NextResponse.json(
+      { error: stripeConnectErrorMessage(error) },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST() {
   try {
-    const staff = await getCurrentStaff();
-    if (!staff || !["owner", "manager"].includes(staff.role)) {
-      return NextResponse.json({ error: "Neautorizovano." }, { status: 401 });
+    const staff = await requireConnectStaff();
+    if (!staff) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
-    const admin = createAdminClient();
 
+    assertStripeConnectConfig();
+
+    const admin = createAdminClient();
     const { data: org } = await admin
       .from("organizations")
       .select("id, email, stripe_account_id")
@@ -18,7 +82,7 @@ export async function POST() {
       .single();
 
     if (!org) {
-      return NextResponse.json({ error: "Organizacija nije pronađena." }, { status: 404 });
+      return NextResponse.json({ error: "Organization not found." }, { status: 404 });
     }
 
     const orgRow = org as {
@@ -27,34 +91,26 @@ export async function POST() {
       stripe_account_id: string | null;
     };
 
-    if (orgRow.stripe_account_id) {
-      const { getStripe } = await import("@/lib/stripe/client");
-      const stripe = getStripe();
-      const accountLink = await stripe.accountLinks.create({
-        account: orgRow.stripe_account_id,
-        refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?stripe=refresh`,
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?stripe=complete`,
-        type: "account_onboarding",
-      });
-      return NextResponse.json({ data: { url: accountLink.url } });
-    }
-
     const { accountId, url } = await createConnectAccountLink(
       orgRow.id,
-      orgRow.email
+      orgRow.email,
+      orgRow.stripe_account_id
     );
 
-    await admin
-      .from("organizations")
-      .update({ stripe_account_id: accountId })
-      .eq("id", orgRow.id);
+    if (accountId !== orgRow.stripe_account_id) {
+      await admin
+        .from("organizations")
+        .update({
+          stripe_account_id: accountId,
+          stripe_onboarded: false,
+        })
+        .eq("id", orgRow.id);
+    }
 
     return NextResponse.json({ data: { url } });
   } catch (error) {
     console.error("Stripe connect error:", error);
-    return NextResponse.json(
-      { error: "Stripe povezivanje nije uspelo." },
-      { status: 500 }
-    );
+    const message = stripeConnectErrorMessage(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

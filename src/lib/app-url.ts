@@ -78,6 +78,11 @@ export function getAppBaseUrl(clientOrigin?: string | null): string {
   return getGuestAppBaseUrl(clientOrigin);
 }
 
+/** Server-side app URL for Stripe redirects, emails, webhooks. */
+export function getServerAppUrl(): string {
+  return getGuestAppBaseUrl(null);
+}
+
 export function guestTableUrl(
   orgSlug: string,
   qrToken: string,

@@ -18,7 +18,7 @@ export default async function SettingsPage() {
     locationId
       ? admin
           .from("locations")
-          .select("name, address, city, is_active")
+          .select("name, address, city, is_active, accepting_orders")
           .eq("id", locationId)
           .single()
       : Promise.resolve({ data: null }),
@@ -59,6 +59,7 @@ export default async function SettingsPage() {
           address: string | null;
           city: string | null;
           is_active: boolean;
+          accepting_orders: boolean;
         } | null
       }
       staffName={staff.name}

@@ -62,7 +62,11 @@ export async function setLocationOrderingActive(active: boolean) {
   const admin = createAdminClient();
   const { error } = await admin
     .from("locations")
-    .update({ is_active: active, updated_at: new Date().toISOString() })
+    .update({
+      accepting_orders: active,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", locationId);
 
   if (error) return { error: error.message };

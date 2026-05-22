@@ -36,6 +36,7 @@ type Tables = {
     timezone: string;
     operating_hours: Json;
     is_active: boolean;
+    accepting_orders: boolean;
     created_at: string;
     updated_at: string;
   };

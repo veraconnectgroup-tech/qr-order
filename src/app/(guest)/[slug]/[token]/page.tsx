@@ -60,7 +60,7 @@ export default async function GuestMenuPage({
       location:locations!inner(
         id,
         name,
-        is_active,
+        accepting_orders,
         organization:organizations!inner(
           id,
           name,
@@ -91,7 +91,7 @@ export default async function GuestMenuPage({
       location: {
       id: string;
       name: string;
-      is_active: boolean;
+      accepting_orders: boolean;
       organization: {
         id: string;
         name: string;
@@ -157,7 +157,7 @@ export default async function GuestMenuPage({
       currency={org.currency}
       locationId={table.location_id}
       tableId={table.id}
-      orderingEnabled={table.location.is_active}
+      orderingEnabled={table.location.accepting_orders}
     />
   );
 }

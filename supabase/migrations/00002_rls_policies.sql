@@ -38,7 +38,7 @@ CREATE POLICY "public_read_organizations" ON organizations
   FOR SELECT USING (true);
 
 CREATE POLICY "public_read_locations" ON locations
-  FOR SELECT USING (is_active = true);
+  FOR SELECT USING (true);
 
 CREATE POLICY "public_read_zones" ON zones
   FOR SELECT USING (is_active = true);

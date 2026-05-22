@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Copy, LogOut, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { logoutAction } from "@/lib/auth/actions";
@@ -29,6 +29,7 @@ type LocationInfo = {
   address: string | null;
   city: string | null;
   is_active: boolean;
+  accepting_orders: boolean;
 };
 
 export function SettingsBoard({
@@ -50,7 +51,7 @@ export function SettingsBoard({
   const appUrl = useAppBaseUrl();
   const [saving, setSaving] = useState(false);
   const [orderingActive, setOrderingActive] = useState(
-    location?.is_active ?? true
+    location?.accepting_orders ?? true
   );
   const [togglingOrders, setTogglingOrders] = useState(false);
   const guestMenuUrl = guestTableUrl(org.slug, "demo-table-8", appUrl);
@@ -238,10 +239,18 @@ export function SettingsBoard({
       )}
 
       {canEdit && (
-        <DashboardStripeConnect
-          connected={org.stripe_onboarded}
-          accountId={org.stripe_account_id}
-        />
+        <Suspense
+          fallback={
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-500">
+              Loading payments…
+            </div>
+          }
+        >
+          <DashboardStripeConnect
+            connected={org.stripe_onboarded}
+            accountId={org.stripe_account_id}
+          />
+        </Suspense>
       )}
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
