@@ -66,8 +66,8 @@ export function SettingsBoard({
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+    <div className="mx-auto max-w-3xl space-y-4 px-0 sm:space-y-6">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-50">Restaurant</h2>
         {canEdit ? (
           <form action={handleSave} className="mt-4 space-y-4">
@@ -168,7 +168,7 @@ export function SettingsBoard({
         )}
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-50">Guest menu link</h2>
         <p className="mt-1 text-sm text-zinc-500">
           Share or test the QR guest experience
@@ -195,7 +195,7 @@ export function SettingsBoard({
         />
       )}
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-50">
@@ -210,7 +210,7 @@ export function SettingsBoard({
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-50">Your account</h2>
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">

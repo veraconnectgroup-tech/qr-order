@@ -534,16 +534,51 @@ export function MenuEditor() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[520px] gap-0 overflow-hidden rounded-xl border border-zinc-800">
-        <Skeleton className="h-full w-[280px] rounded-none bg-zinc-900" />
+      <div className="flex min-h-[420px] flex-col gap-0 overflow-hidden rounded-xl border border-zinc-800 md:min-h-[520px] md:flex-row">
+        <Skeleton className="h-24 rounded-none bg-zinc-900 md:h-full md:w-[280px]" />
         <Skeleton className="h-full flex-1 rounded-none bg-zinc-950" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] overflow-hidden rounded-xl border border-zinc-800">
-      <aside className="flex w-[280px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="flex min-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 md:min-h-[calc(100vh-10rem)] md:flex-row">
+      {/* Mobile category pills */}
+      <div className="border-b border-zinc-800 bg-zinc-900/50 p-3 md:hidden">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-200">Categories</h2>
+          <button
+            type="button"
+            onClick={() => {
+              setNewCategoryName("");
+              setCategoryDialogOpen(true);
+            }}
+            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
+            aria-label="Add category"
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => setSelectedCategoryId(category.id)}
+              className={cn(
+                "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium",
+                category.id === selectedCategoryId
+                  ? "bg-orange-500 text-white"
+                  : "bg-zinc-800 text-zinc-400"
+              )}
+            >
+              {category.name} ({category.productCount})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <aside className="hidden w-[280px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900/50 p-4 md:flex">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-zinc-200">Categories</h2>
           <button
@@ -590,12 +625,12 @@ export function MenuEditor() {
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-50">
+        <div className="flex flex-col gap-3 border-b border-zinc-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-zinc-50 sm:text-lg">
               {selectedCategory?.name ?? "Select a category"}
             </h2>
-            <p className="text-sm text-zinc-500">
+            <p className="text-xs text-zinc-500 sm:text-sm">
               {categoryProducts.length} product
               {categoryProducts.length !== 1 ? "s" : ""}
               {selectedCategory && !selectedCategory.is_active && (
@@ -610,14 +645,14 @@ export function MenuEditor() {
               setEditingProduct(null);
               setProductDialogOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 sm:w-auto"
           >
             <Plus className="size-4" />
             Add Product
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
           {!selectedCategoryId ? (
             <p className="py-12 text-center text-zinc-600">
               Create a category to start adding products.
@@ -627,7 +662,7 @@ export function MenuEditor() {
               No products in this category yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {categoryProducts.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -688,7 +723,7 @@ export function MenuEditor() {
           if (!open) setEditingProduct(null);
         }}
       >
-        <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+        <DialogContent className="max-h-[92vh] overflow-y-auto border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-zinc-50">
               {editingProduct ? "Edit Product" : "New Product"}

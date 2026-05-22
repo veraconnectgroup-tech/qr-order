@@ -71,7 +71,7 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-[300px] flex-1 flex-col rounded-xl bg-zinc-900/30 p-3",
+        "flex min-w-0 flex-1 flex-col rounded-xl bg-zinc-900/30 p-3 md:min-w-[300px]",
         "border-t-2",
         column.border,
         isOver && "ring-2 ring-orange-500/40"
@@ -149,6 +149,8 @@ export function OrderBoard() {
   const [rejectTarget, setRejectTarget] = useState<OrderWithDetails | null>(
     null
   );
+  const [mobileColumn, setMobileColumn] =
+    useState<OrderColumnDef["id"]>("new");
   const prevPendingRef = useRef(0);
 
   const sensors = useSensors(
@@ -339,6 +341,37 @@ export function OrderBoard() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
+  function renderOrderCard(order: OrderWithDetails, draggable = true) {
+    const handlers = {
+      busy: busyId === order.id,
+      onAccept: () => patchOrder(order.id, "accepted"),
+      onReject: () => setRejectTarget(order),
+      onStartPreparing: () => patchOrder(order.id, "preparing"),
+      onMarkReady: () => patchOrder(order.id, "ready"),
+      onMarkDelivered: () => patchOrder(order.id, "delivered"),
+    };
+
+    if (draggable) {
+      return (
+        <DraggableOrderCard
+          key={order.id}
+          order={order}
+          currency={currency}
+          {...handlers}
+        />
+      );
+    }
+
+    return (
+      <OrderCard
+        key={order.id}
+        order={order}
+        currency={currency}
+        {...handlers}
+      />
+    );
+  }
+
   if (error && !loading) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6 text-center">
@@ -356,13 +389,62 @@ export function OrderBoard() {
 
   return (
     <div>
+      {/* Mobile: column tabs + vertical list */}
+      <div className="md:hidden">
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {ORDER_COLUMNS.map((column) => {
+            const count = orders.filter((o) =>
+              column.statuses.includes(o.status)
+            ).length;
+            const active = mobileColumn === column.id;
+            return (
+              <button
+                key={column.id}
+                type="button"
+                onClick={() => setMobileColumn(column.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                  active
+                    ? "bg-orange-500 text-white"
+                    : "bg-zinc-800 text-zinc-400"
+                )}
+              >
+                {column.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-3">
+          {loading ? (
+            <ColumnSkeleton />
+          ) : (
+            (() => {
+              const column = ORDER_COLUMNS.find((c) => c.id === mobileColumn)!;
+              const colOrders = sortColumn(
+                orders.filter((o) => column.statuses.includes(o.status))
+              );
+              if (colOrders.length === 0) {
+                return (
+                  <p className="py-12 text-center text-sm text-zinc-500">
+                    No orders
+                  </p>
+                );
+              }
+              return colOrders.map((order) => renderOrderCard(order, false));
+            })()
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: kanban */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="hidden gap-4 overflow-x-auto pb-2 md:flex">
           {ORDER_COLUMNS.map((column) => {
             const colOrders = sortColumn(
               orders.filter((o) => column.statuses.includes(o.status))
@@ -393,23 +475,7 @@ export function OrderBoard() {
                     </p>
                   ) : (
                     <AnimatePresence mode="popLayout">
-                      {colOrders.map((order) => (
-                        <DraggableOrderCard
-                          key={order.id}
-                          order={order}
-                          currency={currency}
-                          busy={busyId === order.id}
-                          onAccept={() => patchOrder(order.id, "accepted")}
-                          onReject={() => setRejectTarget(order)}
-                          onStartPreparing={() =>
-                            patchOrder(order.id, "preparing")
-                          }
-                          onMarkReady={() => patchOrder(order.id, "ready")}
-                          onMarkDelivered={() =>
-                            patchOrder(order.id, "delivered")
-                          }
-                        />
-                      ))}
+                      {colOrders.map((order) => renderOrderCard(order))}
                     </AnimatePresence>
                   )}
                 </div>

@@ -355,8 +355,8 @@ ${qrItems
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-4 border-b border-zinc-800 pb-2">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex gap-3 overflow-x-auto border-b border-zinc-800 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-4 sm:overflow-visible">
           <button
             type="button"
             onClick={() => setActiveZone("all")}
@@ -386,13 +386,14 @@ ${qrItems
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={downloadAllQrCodes}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700"
+            className="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-700 sm:px-4 sm:text-sm"
           >
-            Download All QR Codes
+            <span className="hidden sm:inline">Download All QR Codes</span>
+            <span className="sm:hidden">All QR</span>
           </button>
           <button
             type="button"
@@ -400,7 +401,7 @@ ${qrItems
               setNewTable({ name: "", zoneId: zones[0]?.id ?? "", seats: 4 });
               setAddOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 sm:gap-2 sm:px-4 sm:text-sm"
           >
             <Plus className="size-4" />
             Add Table
@@ -408,7 +409,7 @@ ${qrItems
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
         {filtered.map((table) => {
           const status = tableStatus(table);
           return (
@@ -417,13 +418,13 @@ ${qrItems
               type="button"
               onClick={() => setSelected(table)}
               className={cn(
-                "cursor-pointer rounded-xl border bg-zinc-900 p-5 text-center transition hover:border-zinc-600",
+                "cursor-pointer rounded-xl border bg-zinc-900 p-3 text-center transition hover:border-zinc-600 sm:p-5",
                 status === "attention" && "animate-pulse border-red-500",
                 status === "occupied" && "border-green-500/50",
                 status === "available" && "border-zinc-800"
               )}
             >
-              <p className="font-mono text-xl font-bold text-zinc-50">
+              <p className="font-mono text-base font-bold text-zinc-50 sm:text-xl">
                 {table.name}
               </p>
               <p className="mt-1 text-sm text-zinc-500">{table.seats} seats</p>
@@ -468,11 +469,11 @@ ${qrItems
               onClick={() => setSelected(null)}
             />
             <motion.aside
-              initial={{ x: 400 }}
-              animate={{ x: 0 }}
-              exit={{ x: 400 }}
+              initial={{ y: "100%", x: 0 }}
+              animate={{ y: 0, x: 0 }}
+              exit={{ y: "100%", x: 0 }}
               transition={{ type: "spring", stiffness: 380, damping: 36 }}
-              className="fixed right-0 top-0 z-50 flex h-full w-[400px] flex-col overflow-y-auto border-l border-zinc-800 bg-zinc-900 p-6 text-zinc-50"
+              className="fixed inset-x-0 bottom-0 top-auto z-50 flex max-h-[92vh] w-full flex-col overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-900 p-4 text-zinc-50 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(100%,400px)] sm:rounded-none sm:border-l sm:border-t-0 sm:p-6"
             >
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-2xl font-bold uppercase tracking-wide">

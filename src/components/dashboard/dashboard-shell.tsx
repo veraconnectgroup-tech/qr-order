@@ -20,18 +20,22 @@ export function DashboardShell({
   if (isKitchen) {
     return (
       <DashboardProvider value={context}>
-        <div className="min-h-screen bg-zinc-950 text-zinc-50">{children}</div>
+        <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-50">
+          {children}
+        </div>
       </DashboardProvider>
     );
   }
 
   return (
     <DashboardProvider value={context}>
-      <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
+      <div className="flex min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-50">
         <DashboardSidebar />
-        <div className="flex min-h-screen flex-1 flex-col pb-16 md:pb-0">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
           <DashboardTopBar />
-          <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+          <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 md:p-6">
+            {children}
+          </main>
         </div>
         <DashboardMobileNav />
       </div>

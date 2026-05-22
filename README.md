@@ -30,11 +30,19 @@ pnpm install
 
 ### 3. Pokreni bazu (SQL Editor)
 
+**Prvi put (prazan Supabase projekat):**
+
 1. U Supabase Dashboard → **SQL Editor** → **New query**
 2. Otvori fajl `supabase/cloud-setup.sql` iz ovog projekta
 3. Kopiraj **ceo** sadržaj → **Run**
 
-To kreira tabele, RLS politike, realtime i demo podatke (Skyline Lounge).
+**Već imaš bazu** (greška `relation "organizations" already exists`):
+
+Ne pokreći ponovo `cloud-setup.sql`. Umesto toga pokreni samo:
+
+`supabase/incremental-updates.sql`
+
+To dodaje storage za slike proizvoda, audit log i ostale nove stvari — bez brisanja postojećih tabela.
 
 ### 4. Uključi Realtime (ako već nije)
 

@@ -23,7 +23,7 @@ export function DashboardMobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 border-t border-zinc-800 bg-zinc-950 md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 border-t border-zinc-800 bg-zinc-950 pb-[env(safe-area-inset-bottom,0px)] md:hidden">
       {tabs.map(({ href, label, icon: Icon }) => {
         const active = pathname.startsWith(href);
 

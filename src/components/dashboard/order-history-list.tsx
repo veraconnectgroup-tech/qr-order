@@ -340,7 +340,7 @@ export function OrderHistoryList() {
         </button>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[
           {
             label: "Revenue",
@@ -392,10 +392,10 @@ export function OrderHistoryList() {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-zinc-800 bg-zinc-900 p-6"
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6"
           >
             <p className="mb-1 text-sm text-zinc-400">{card.label}</p>
-            <p className="font-mono text-3xl font-bold text-white">
+            <p className="font-mono text-2xl font-bold text-white sm:text-3xl">
               {card.value}
               {card.sub}
             </p>
@@ -439,7 +439,86 @@ export function OrderHistoryList() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {paginated.length === 0 ? (
+          <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 py-12 text-center text-zinc-500">
+            No orders in this period
+          </p>
+        ) : (
+          paginated.map((order) => {
+            const itemCount =
+              order.order_items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
+            const isExpanded = expandedId === order.id;
+
+            return (
+              <div
+                key={order.id}
+                className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedId(isExpanded ? null : order.id)
+                  }
+                  className="flex w-full items-start justify-between gap-3 p-4 text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono font-semibold text-zinc-50">
+                      {formatOrderNumber(order.order_number)}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {order.tables?.name ?? "—"} · {itemCount} items
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusBadge status={order.status} />
+                      <PaymentCell
+                        status={order.payment_status}
+                        orderStatus={order.status}
+                      />
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono font-semibold text-zinc-200">
+                      {formatPrice(Number(order.total), currency)}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {new Date(order.created_at).toLocaleTimeString("de-DE", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    {isExpanded ? (
+                      <ChevronUp className="ml-auto mt-2 size-4 text-zinc-500" />
+                    ) : (
+                      <ChevronDown className="ml-auto mt-2 size-4 text-zinc-500" />
+                    )}
+                  </div>
+                </button>
+                {isExpanded && (
+                  <ul className="space-y-2 border-t border-zinc-800 px-4 py-3">
+                    {order.order_items?.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex justify-between gap-3 text-sm text-zinc-300"
+                      >
+                        <span className="min-w-0">
+                          {item.quantity}× {item.product_name}
+                        </span>
+                        <span className="shrink-0 font-mono text-zinc-400">
+                          {formatPrice(Number(item.total), currency)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-zinc-800/50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400">
