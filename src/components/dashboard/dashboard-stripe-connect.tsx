@@ -11,16 +11,41 @@ const POPUP_FEATURES = "popup=yes,width=520,height=720,left=100,top=24";
 
 function friendlyStripeError(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes("signed up for connect") || lower.includes("connect")) {
-    return "Card payments are not enabled on the platform yet. Please contact support.";
+
+  if (lower.includes("signed up for connect")) {
+    return "Stripe Connect is not enabled on the QR Order platform account yet. Contact hello@qrorder.app to enable card payments.";
   }
   if (lower.includes("platform-profile") || lower.includes("managing losses")) {
-    return "Payment setup is not complete yet. Please contact support.";
+    return "Stripe Connect platform setup is incomplete. Contact hello@qrorder.app.";
   }
-  if (lower.includes("stripe_secret_key") || lower.includes("not configured")) {
-    return "Card payments are temporarily unavailable. Please contact support.";
+  if (
+    lower.includes("stripe_secret_key") ||
+    lower.includes("not configured") ||
+    lower.includes("app url is not configured")
+  ) {
+    return "Card payments are temporarily unavailable. Please try again later.";
   }
-  return "Connection failed. Please try again or contact support.";
+  if (lower.includes("invalid api key")) {
+    return "Payment configuration error. Contact hello@qrorder.app.";
+  }
+  if (
+    lower.includes("test mode") ||
+    lower.includes("live mode") ||
+    lower.includes("similar object exists in test mode")
+  ) {
+    return "Stripe test/live mode mismatch. Contact hello@qrorder.app.";
+  }
+
+  // Show short Stripe messages as-is; hide env noise and long dumps.
+  if (
+    message.length <= 160 &&
+    !message.includes("STRIPE_") &&
+    !lower.includes("environment variable")
+  ) {
+    return message;
+  }
+
+  return "Stripe connection failed. Please try again or contact hello@qrorder.app.";
 }
 
 type StripeConnectMessage =
@@ -217,8 +242,8 @@ export function DashboardStripeConnect({
         <div className="mt-4 space-y-3">
           {!isConnected && !platformReady && (
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-              Card payments are temporarily unavailable. Please contact QR Order
-              support.
+              Online payments are not available yet. Please contact
+              hello@qrorder.app.
             </p>
           )}
           {!isConnected && platformReady && (
