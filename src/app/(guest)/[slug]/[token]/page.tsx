@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { MenuView } from "@/components/guest/menu-view";
+import {
+  getDemoGuestMenuProps,
+  isDemoGuestRoute,
+} from "@/lib/demo-guest";
 import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
 
 type RawProduct = {
@@ -28,7 +32,17 @@ export default async function GuestMenuPage({
   params: Promise<{ slug: string; token: string }>;
 }) {
   const { slug, token } = await params;
-  const supabase = await createServerClient();
+  const isDemo = isDemoGuestRoute(slug, token);
+
+  let supabase;
+  try {
+    supabase = await createServerClient();
+  } catch {
+    if (isDemo) {
+      return <MenuView {...getDemoGuestMenuProps(slug, token)} />;
+    }
+    notFound();
+  }
 
   const { data: tableData } = await supabase
     .from("tables")
@@ -56,7 +70,12 @@ export default async function GuestMenuPage({
     .eq("is_active", true)
     .single();
 
-  if (!tableData) notFound();
+  if (!tableData) {
+    if (isDemo) {
+      return <MenuView {...getDemoGuestMenuProps(slug, token)} />;
+    }
+    notFound();
+  }
 
   const table = tableData as unknown as {
     id: string;

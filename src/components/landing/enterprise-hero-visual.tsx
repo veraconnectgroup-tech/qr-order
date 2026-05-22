@@ -9,6 +9,7 @@ import {
   HeroSlideIn,
 } from "@/components/landing/hero-motion";
 import { GuestMenuContent } from "@/components/landing/showcase-content";
+import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
 import {
   ShowcasePhone,
   ShowcaseStage,
@@ -66,7 +67,9 @@ export function EnterpriseHeroVisual() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
         <ShowcasePhone hideLabel className="max-w-[260px]">
-          <GuestMenuContent variant="hero" />
+          <ScaledPhonePreview designHeight={560}>
+            <GuestMenuContent variant="hero" />
+          </ScaledPhonePreview>
         </ShowcasePhone>
       </motion.div>
 
@@ -89,13 +92,15 @@ export function EnterpriseHeroVisual() {
 
         <HeroFloat
           delay={0.32}
-          className="absolute bottom-[2%] left-[-1%] z-30 w-[31%] min-w-[150px] max-w-[210px] lg:max-w-[220px]"
+          className="absolute bottom-[2%] left-[-1%] z-30 w-[36%] min-w-[170px] max-w-[240px]"
         >
           <ShowcasePhone
             hideLabel
             className="max-w-none shadow-[0_20px_56px_rgba(0,0,0,0.7)]"
           >
-            <GuestMenuContent variant="hero" />
+            <ScaledPhonePreview designHeight={560}>
+              <GuestMenuContent variant="hero" />
+            </ScaledPhonePreview>
           </ShowcasePhone>
         </HeroFloat>
 

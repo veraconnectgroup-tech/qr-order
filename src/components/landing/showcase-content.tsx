@@ -45,12 +45,105 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
   );
   const pillCategories = DEMO_MENU_CATEGORIES.map(({ id, name }) => ({ id, name }));
   const isHero = variant === "hero";
+  const heroProducts = DEMO_MENU_CATEGORIES.find(
+    (c) => c.id === activeCategory
+  )?.products.slice(0, 2);
+
+  if (isHero) {
+    return (
+      <div className="pointer-events-none relative flex h-[560px] w-[300px] flex-col bg-[#09090b]">
+        <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/95 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
+              S
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold leading-tight text-zinc-100">
+                Skyline Lounge
+              </p>
+              <p className="truncate text-[10px] text-zinc-500">Rooftop · Hamburg</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+              Table 8
+            </span>
+          </div>
+        </header>
+
+        <div className="flex shrink-0 gap-1.5 overflow-hidden px-3 py-2">
+          {pillCategories.map((cat) => (
+            <span
+              key={cat.id}
+              className={cn(
+                "shrink-0 rounded-full px-3 py-1 text-[11px] font-medium",
+                activeCategory === cat.id
+                  ? "bg-orange-500 text-white"
+                  : "bg-zinc-800 text-zinc-400"
+              )}
+            >
+              {cat.name}
+            </span>
+          ))}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-hidden px-3 pb-[52px]">
+          <p className="mb-2 text-[11px] font-semibold text-zinc-300">
+            Cocktails{" "}
+            <span className="font-normal text-zinc-500">({heroProducts?.length ?? 0})</span>
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {heroProducts?.map((product) => (
+              <article
+                key={product.id}
+                className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
+              >
+                <div className="relative flex h-[72px] items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+                  <span className="text-xl font-bold text-zinc-700">
+                    {product.name.charAt(0)}
+                  </span>
+                  {product.prep_time_minutes != null && product.prep_time_minutes > 0 && (
+                    <span className="absolute right-1 top-1 rounded-full bg-zinc-950/80 px-1 py-0.5 text-[8px] text-zinc-400">
+                      {product.prep_time_minutes}m
+                    </span>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="truncate text-[11px] font-medium leading-tight text-zinc-100">
+                    {product.name}
+                  </p>
+                  <div className="mt-1.5 flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-orange-500">
+                      {formatPrice(Number(product.price), DEMO_CURRENCY)}
+                    </span>
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
+                      <span className="text-sm leading-none">+</span>
+                    </span>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 bg-orange-500 px-3 py-2.5 text-white">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="font-medium">
+              {CART_COUNT} {CART_COUNT === 1 ? "item" : "items"}
+            </span>
+            <span className="font-semibold">Cart →</span>
+            <span className="font-bold tabular-nums">
+              {formatPrice(CART_TOTAL, DEMO_CURRENCY)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className={cn(
         "pointer-events-none relative flex flex-col bg-[#09090b]",
-        isHero ? "h-[380px]" : "h-[min(520px,72dvh)] sm:h-[580px]"
+        "h-[min(520px,72dvh)] sm:h-[580px]"
       )}
     >
       <GuestHeader
@@ -68,13 +161,7 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
           "flex-1 overflow-hidden px-2 pb-14 pt-1 sm:px-3",
           "[&_article_div:first-child]:h-[80px] sm:[&_article_div:first-child]:h-[96px]",
           "[&_h2]:text-sm [&_h3]:text-[11px] [&_img]:hidden",
-          "[&_.grid]:grid-cols-2 [&_.grid]:gap-2",
-          isHero && [
-            "h-[280px]",
-            "[&_article_div:first-child]:h-[58px]",
-            "[&_h2]:mb-2 [&_h2]:text-[11px]",
-            "[&_section]:mt-0",
-          ]
+          "[&_.grid]:grid-cols-2 [&_.grid]:gap-2"
         )}
       >
         <MenuGrid
