@@ -78,13 +78,16 @@ export async function POST(req: NextRequest) {
 
     const { data: orgData } = await admin
       .from("organizations")
-      .select("stripe_account_id, platform_fee_percent, currency, stripe_onboarded")
+      .select(
+        "stripe_account_id, platform_fee_percent, platform_fee_fixed, currency, stripe_onboarded"
+      )
       .eq("id", (location as { org_id: string }).org_id)
       .single();
 
     const org = orgData as {
       stripe_account_id: string | null;
       platform_fee_percent: number;
+      platform_fee_fixed: number;
       currency: string;
       stripe_onboarded: boolean;
     } | null;
@@ -107,10 +110,10 @@ export async function POST(req: NextRequest) {
         orderRow.stripe_payment_intent_id
       );
       const amountCents = Math.round(Number(orderRow.total) * 100);
-      const platformFee = calcPlatformFee(
-        Number(orderRow.total),
-        Number(org.platform_fee_percent)
-      );
+      const platformFee = calcPlatformFee(Number(orderRow.total), {
+        feePercent: org.platform_fee_percent,
+        feeFixed: org.platform_fee_fixed,
+      });
 
       if (existing.amount !== amountCents) {
         await stripe.paymentIntents.update(orderRow.stripe_payment_intent_id, {
@@ -129,10 +132,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const platformFee = calcPlatformFee(
-      Number(orderRow.total),
-      Number(org.platform_fee_percent)
-    );
+    const platformFee = calcPlatformFee(Number(orderRow.total), {
+      feePercent: org.platform_fee_percent,
+      feeFixed: org.platform_fee_fixed,
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(Number(orderRow.total) * 100),

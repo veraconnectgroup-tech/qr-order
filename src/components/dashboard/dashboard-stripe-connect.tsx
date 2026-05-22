@@ -5,15 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { platformFeeDescription } from "@/lib/constants";
 
 export function DashboardStripeConnect({
   connected,
   accountId,
   platformReady,
+  currency = "EUR",
 }: {
   connected: boolean;
   accountId: string | null;
   platformReady: boolean;
+  currency?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -79,6 +82,7 @@ export function DashboardStripeConnect({
   }
 
   const busy = loading || syncing;
+  const feeLabel = platformFeeDescription(currency);
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
@@ -120,12 +124,11 @@ export function DashboardStripeConnect({
           {platformReady && (
             <p className="text-xs text-zinc-500">
               Connect your restaurant&apos;s Stripe account to accept guest card
-              payments. Payouts go to your bank; the platform keeps a 2% fee per
-              transaction.
+              payments. Payouts go to your bank; platform fee: {feeLabel}.
             </p>
           )}
           <ul className="space-y-1 text-xs text-zinc-500">
-            <li>2% platform fee per transaction</li>
+            <li>{feeLabel}</li>
             <li>Payouts to your bank account</li>
             <li>Visa, Mastercard, Apple Pay, Google Pay</li>
           </ul>

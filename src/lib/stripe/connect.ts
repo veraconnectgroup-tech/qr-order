@@ -1,5 +1,10 @@
 import Stripe from "stripe";
 import { getServerAppUrl } from "@/lib/app-url";
+import {
+  PLATFORM_FEE_FIXED_EUR,
+  PLATFORM_FEE_SMALL_ORDER_EUR,
+  PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR,
+} from "@/lib/constants";
 import { getStripe } from "./client";
 
 function connectUrls(appUrl: string) {
@@ -123,6 +128,31 @@ export async function createConnectAccountLink(
   return { accountId, url };
 }
 
-export function calcPlatformFee(total: number, feePercent: number) {
-  return Math.round(total * (feePercent / 100) * 100);
+export function calcPlatformFee(
+  totalEur: number,
+  options: {
+    feePercent?: number | null;
+    feeFixed?: number | null;
+  } = {}
+): number {
+  const totalCents = Math.round(totalEur * 100);
+  if (totalCents <= 0) return 0;
+
+  const feePercent = Number(options.feePercent ?? 0);
+  const feeFixed = Number(options.feeFixed ?? PLATFORM_FEE_FIXED_EUR);
+
+  let feeCents: number;
+
+  if (feePercent > 0) {
+    feeCents = Math.round(totalEur * (feePercent / 100) * 100);
+  } else {
+    const fixedEur =
+      totalEur < PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR
+        ? PLATFORM_FEE_SMALL_ORDER_EUR
+        : feeFixed;
+    feeCents = Math.round(fixedEur * 100);
+  }
+
+  // Stripe requires application_fee < payment amount.
+  return Math.min(feeCents, Math.max(0, totalCents - 1));
 }

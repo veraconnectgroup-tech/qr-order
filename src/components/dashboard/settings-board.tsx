@@ -252,6 +252,7 @@ export function SettingsBoard({
             connected={org.stripe_onboarded}
             accountId={org.stripe_account_id}
             platformReady={stripePlatformReady}
+            currency={org.currency}
           />
         </Suspense>
       )}

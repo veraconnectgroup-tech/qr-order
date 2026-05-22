@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { platformFeeDescription } from "@/lib/constants";
 
 export function StripeConnectButton({
   connected,
@@ -58,7 +59,7 @@ export function StripeConnectButton({
             Povežite Stripe nalog da biste primali uplate od gostiju.
           </p>
           <ul className="mt-3 space-y-1 text-xs text-neutral-500">
-            <li>Provizija platforme: 2% po transakciji</li>
+            <li>Provizija platforme: {platformFeeDescription()}</li>
             <li>Isplate direktno na vaš bankovni račun</li>
             <li>Visa, Mastercard, Apple Pay, Google Pay</li>
           </ul>

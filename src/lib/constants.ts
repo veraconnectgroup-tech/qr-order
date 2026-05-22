@@ -31,3 +31,13 @@ export const WAITER_CALL_COOLDOWN_SECONDS = 60;
 
 /** Fallback poll when Supabase Realtime is unavailable. */
 export const DASHBOARD_POLL_INTERVAL_MS = 15_000;
+
+/** Platform fee on card payments (Connect application_fee). */
+export const PLATFORM_FEE_FIXED_EUR = 0.4;
+export const PLATFORM_FEE_SMALL_ORDER_EUR = 0.2;
+export const PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR = 10;
+
+export function platformFeeDescription(currency = "EUR") {
+  const sym = currency === "EUR" ? "€" : currency + " ";
+  return `${sym}${PLATFORM_FEE_FIXED_EUR.toFixed(2)} per card payment (${sym}${PLATFORM_FEE_SMALL_ORDER_EUR.toFixed(2)} under ${sym}${PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR})`;
+}

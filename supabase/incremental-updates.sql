@@ -188,5 +188,4 @@ ALTER TABLE organizations
   ALTER COLUMN platform_fee_percent SET DEFAULT 0.00;
 
 UPDATE organizations
-SET platform_fee_fixed = 0.40, platform_fee_percent = 0
-WHERE platform_fee_percent > 0;
+SET platform_fee_fixed = 0.40, platform_fee_percent = 0;

@@ -17,6 +17,7 @@ type Tables = {
     stripe_account_id: string | null;
     stripe_onboarded: boolean;
     platform_fee_percent: number;
+    platform_fee_fixed: number;
     currency: string;
     default_tax_percent: number;
     email: string | null;
