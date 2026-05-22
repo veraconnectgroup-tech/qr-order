@@ -45,49 +45,70 @@ export const DEMO_TAX_PERCENT = 19;
 
 export const DEMO_MENU_CATEGORIES: MenuCategory[] = [
   {
-    id: "cat-cocktails",
+    id: "e0000000-0000-4000-8000-000000000001",
     name: "Cocktails",
     products: [
       demoProduct(
-        "p1",
-        "cat-cocktails",
+        "f0000000-0000-4000-8000-000000000001",
+        "e0000000-0000-4000-8000-000000000001",
         "Aperol Spritz",
         9.5,
         "Prosecco, Aperol, soda",
         5
       ),
       demoProduct(
-        "p2",
-        "cat-cocktails",
+        "f0000000-0000-4000-8000-000000000002",
+        "e0000000-0000-4000-8000-000000000001",
         "Negroni",
         12,
         "Gin, Campari, vermouth",
         5
       ),
       demoProduct(
-        "p3",
-        "cat-cocktails",
+        "f0000000-0000-4000-8000-000000000003",
+        "e0000000-0000-4000-8000-000000000001",
         "Espresso Martini",
         13,
         "Vodka, Kahlúa, espresso",
         6
       ),
-      demoProduct("p4", "cat-cocktails", "Hugo Spritz", 10, "Elderflower, mint", 4),
+      demoProduct(
+        "f0000000-0000-4000-8000-000000000004",
+        "e0000000-0000-4000-8000-000000000001",
+        "Hugo Spritz",
+        10,
+        "Elderflower, mint",
+        4
+      ),
     ],
   },
   {
-    id: "cat-food",
+    id: "e0000000-0000-4000-8000-000000000006",
     name: "Food",
     products: [
-      demoProduct("p5", "cat-food", "Truffle Fries", 8.5, "Parmesan, truffle oil", 12),
-      demoProduct("p6", "cat-food", "Nachos", 11, "Guacamole, jalapeños", 10),
+      demoProduct(
+        "f0000000-0000-4000-8000-000000000019",
+        "e0000000-0000-4000-8000-000000000006",
+        "Truffle Fries",
+        8.5,
+        "Parmesan, truffle oil",
+        12
+      ),
+      demoProduct(
+        "f0000000-0000-4000-8000-000000000020",
+        "e0000000-0000-4000-8000-000000000006",
+        "Nachos",
+        11,
+        "Guacamole, jalapeños",
+        10
+      ),
     ],
   },
 ];
 
 export const DEMO_CART_ITEMS: CartItem[] = [
   {
-    productId: "p1",
+    productId: "f0000000-0000-4000-8000-000000000001",
     productName: "Aperol Spritz",
     unitPrice: 9.5,
     quantity: 2,
@@ -96,12 +117,18 @@ export const DEMO_CART_ITEMS: CartItem[] = [
     itemTotal: 19,
   },
   {
-    productId: "p3",
+    productId: "f0000000-0000-4000-8000-000000000003",
     productName: "Espresso Martini",
     unitPrice: 13,
     quantity: 1,
     notes: "",
-    modifiers: [{ modifierId: "m1", modifierName: "Extra shot", price: 1.5 }],
+    modifiers: [
+      {
+        modifierId: "ab000000-0000-4000-8000-000000000001",
+        modifierName: "Extra shot",
+        price: 1.5,
+      },
+    ],
     itemTotal: 14.5,
   },
 ];

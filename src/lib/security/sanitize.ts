@@ -1,7 +1,5 @@
-import DOMPurify from "isomorphic-dompurify";
+const TAG_RE = /<[^>]*>/g;
 
 export function sanitizeText(input: string, maxLength = 1000): string {
-  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] })
-    .trim()
-    .slice(0, maxLength);
+  return input.replace(TAG_RE, "").trim().slice(0, maxLength);
 }

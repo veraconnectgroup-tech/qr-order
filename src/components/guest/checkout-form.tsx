@@ -16,6 +16,7 @@ import { useCart, type CartItem } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { CheckoutTrustBadges } from "@/components/guest/checkout-trust-badges";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
+import { readJsonResponse } from "@/lib/api/read-json-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,9 +129,18 @@ function DemoCheckoutForm({
           items,
         }),
       });
-      const json = await res.json();
+      const parsed = await readJsonResponse<{ error?: string; data?: { orderId: string } }>(
+        res
+      );
+      if (!parsed.ok) {
+        throw new Error(parsed.error);
+      }
+      const json = parsed.data;
       if (!res.ok) {
         throw new Error(json.error ?? "Order could not be placed.");
+      }
+      if (!json.data?.orderId) {
+        throw new Error("Order could not be placed.");
       }
       clearCart();
       hapticSuccess();
@@ -309,12 +319,22 @@ export function CheckoutForm({
         }),
       });
 
-      const orderJson = await orderRes.json();
+      const orderParsed = await readJsonResponse<{
+        error?: string;
+        data?: { orderId: string };
+      }>(orderRes);
+      if (!orderParsed.ok) {
+        throw new Error(orderParsed.error);
+      }
+      const orderJson = orderParsed.data;
       if (!orderRes.ok) {
         throw new Error(orderJson.error ?? "Porudžbina nije kreirana.");
       }
 
-      const oid = orderJson.data.orderId;
+      const oid = orderJson.data?.orderId;
+      if (!oid) {
+        throw new Error("Porudžbina nije kreirana.");
+      }
       setOrderId(oid);
 
       const payRes = await fetch("/api/payments/create-intent", {
@@ -323,9 +343,20 @@ export function CheckoutForm({
         body: JSON.stringify({ orderId: oid, sessionToken }),
       });
 
-      const payJson = await payRes.json();
+      const payParsed = await readJsonResponse<{
+        error?: string;
+        data?: { clientSecret: string; stripeAccountId: string };
+      }>(payRes);
+      if (!payParsed.ok) {
+        throw new Error(payParsed.error);
+      }
+      const payJson = payParsed.data;
       if (!payRes.ok) {
         throw new Error(payJson.error ?? "Plaćanje nije pokrenuto.");
+      }
+
+      if (!payJson.data?.clientSecret || !payJson.data?.stripeAccountId) {
+        throw new Error("Plaćanje nije pokrenuto.");
       }
 
       setClientSecret(payJson.data.clientSecret);
