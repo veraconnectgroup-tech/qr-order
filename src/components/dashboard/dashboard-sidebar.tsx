@@ -14,12 +14,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
+import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
 const navItems = [
-  { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid },
+  { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid, alertKey: "orders" as const },
   { href: "/dashboard/kitchen", label: "Prep Display", icon: ChefHat },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
-  { href: "/dashboard/waiter-calls", label: "Waiter Calls", icon: Bell },
+  { href: "/dashboard/waiter-calls", label: "Waiter Calls", icon: Bell, alertKey: "calls" as const },
   { href: "/dashboard/history", label: "History", icon: BarChart3 },
   { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/dashboard/staff", label: "Staff", icon: Users },
@@ -29,6 +31,7 @@ const navItems = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { orgName, staffName, staffRole } = useDashboard();
+  const { pendingOrders, pendingWaiterCalls } = useDashboardAlerts();
 
   return (
     <aside className="hidden w-[260px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 md:flex">
@@ -41,8 +44,14 @@ export function DashboardSidebar() {
       </div>
 
       <nav className="flex-1 space-y-0.5 p-3">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, alertKey }) => {
           const active = pathname.startsWith(href);
+          const badgeCount =
+            alertKey === "orders"
+              ? pendingOrders
+              : alertKey === "calls"
+                ? pendingWaiterCalls
+                : 0;
 
           return (
             <Link
@@ -55,8 +64,20 @@ export function DashboardSidebar() {
                   : "border-l-2 border-transparent text-zinc-400 hover:bg-zinc-900 hover:text-white"
               )}
             >
-              <Icon className="size-4 shrink-0" />
-              {label}
+              <span className="relative shrink-0">
+                <Icon className="size-4" />
+                {badgeCount > 0 && (
+                  <span className="absolute -right-2 -top-2">
+                    <NavNotificationBadge count={badgeCount} />
+                  </span>
+                )}
+              </span>
+              <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                <span className="truncate">{label}</span>
+                {badgeCount > 0 && (
+                  <NavNotificationBadge count={badgeCount} className="md:hidden" />
+                )}
+              </span>
             </Link>
           );
         })}

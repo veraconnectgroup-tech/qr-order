@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
@@ -9,7 +9,6 @@ import {
   useRealtimeWaiterCalls,
   type WaiterCallWithTable,
 } from "@/hooks/use-realtime-waiter-calls";
-import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -136,8 +135,6 @@ function HandledCallCard({
 export function WaiterCallsBoard() {
   const { locationId, staffName } = useDashboard();
   const { calls, loading } = useRealtimeWaiterCalls(locationId);
-  const { play } = useSoundAlert();
-  const prevPendingRef = useRef(0);
   const [tick, setTick] = useState(0);
 
   const staffFirstName = staffName.split(" ")[0] ?? staffName;
@@ -164,13 +161,6 @@ export function WaiterCallsBoard() {
         }),
     [calls]
   );
-
-  useEffect(() => {
-    if (pending.length > prevPendingRef.current && !loading) {
-      play("waiter-call");
-    }
-    prevPendingRef.current = pending.length;
-  }, [pending.length, loading, play]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 30_000);

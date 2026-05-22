@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -27,7 +27,7 @@ import {
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
-import { useSoundAlert } from "@/hooks/use-sound-alert";
+import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { cn } from "@/lib/utils";
 import type { OrderStatus, OrderWithDetails } from "@/types";
 
@@ -150,7 +150,6 @@ export function OrderBoard() {
     hasMenuItems,
     staffRole,
   } = useDashboard();
-  const { play } = useSoundAlert();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +160,6 @@ export function OrderBoard() {
   );
   const [mobileColumn, setMobileColumn] =
     useState<OrderColumnDef["id"]>("new");
-  const prevPendingRef = useRef(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -213,15 +211,6 @@ export function OrderBoard() {
     filter: `location_id=eq.${locationId}`,
     onChange: fetchOrders,
   });
-
-  useEffect(() => {
-    const pending = orders.filter((o) => o.status === "pending").length;
-    if (pending > prevPendingRef.current && !loading) {
-      play("new-order");
-      toast.info("New order received");
-    }
-    prevPendingRef.current = pending;
-  }, [orders, loading, play]);
 
   const patchOrder = useCallback(
     async (
@@ -347,6 +336,7 @@ export function OrderBoard() {
 
   return (
     <div>
+      <SoundEnableBanner />
       <div className="mb-3 flex items-center justify-end">
         <LiveConnectionBadge mode={realtimeMode} />
       </div>

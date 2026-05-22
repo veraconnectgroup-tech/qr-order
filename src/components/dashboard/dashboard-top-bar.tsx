@@ -7,12 +7,15 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { DashboardMobileMenu } from "@/components/dashboard/dashboard-mobile-menu";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
+import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
+import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
 export function DashboardTopBar() {
   const pathname = usePathname();
   const { title } = getDashboardPageMeta(pathname);
   const { currency } = useDashboard();
   const { todayOrderCount, todayRevenue } = useDashboardStats();
+  const { pendingOrders } = useDashboardAlerts();
   const isOrdersPage = pathname.startsWith("/dashboard/orders");
 
   return (
@@ -22,6 +25,9 @@ export function DashboardTopBar() {
         <h1 className="truncate text-base font-bold text-zinc-50 md:text-xl">
           {title}
         </h1>
+        {pendingOrders > 0 && (
+          <NavNotificationBadge count={pendingOrders} className="hidden sm:inline-flex" />
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-2 md:gap-3">
@@ -50,7 +56,7 @@ export function DashboardTopBar() {
             </span>
           </div>
         )}
-        {isOrdersPage && <SoundToggle />}
+        <SoundToggle />
       </div>
     </header>
   );

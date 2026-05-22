@@ -180,15 +180,17 @@ export function OrderStatusTracker({
       <section className="pb-5 text-center">
         {isRejected ? (
           <XCircle className="mx-auto size-14 text-red-500" />
-        ) : isPaid && order.status === "delivered" ? (
-          <CheckCircle2 className="mx-auto size-14 text-green-500" />
         ) : (
           <motion.div
-            animate={statusPulse ? { scale: [1, 1.05, 1] } : { scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="mx-auto flex size-14 items-center justify-center rounded-full bg-orange-500/15"
+            initial={{ scale: 0 }}
+            animate={{ scale: statusPulse ? [1, 1.06, 1] : 1 }}
+            transition={
+              statusPulse
+                ? { duration: 0.5 }
+                : { type: "spring", damping: 15, stiffness: 200 }
+            }
           >
-            <span className="size-3 rounded-full bg-orange-500 pulse-dot" />
+            <CheckCircle2 className="mx-auto size-16 text-green-500" />
           </motion.div>
         )}
         <h1 className="text-heading mt-4 text-zinc-50">{headline}</h1>

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 const STORAGE_KEY = "qr-order-sound";
 
@@ -57,7 +64,25 @@ function playWaiterCallSound() {
   }
 }
 
-export function useSoundAlert() {
+function playNewOrderSound() {
+  playBeep(880, 220, 0.18);
+  setTimeout(() => playBeep(1100, 280, 0.16), 240);
+}
+
+type SoundAlertContextValue = {
+  enabled: boolean;
+  enable: () => void;
+  toggle: () => void;
+  play: (sound: "new-order" | "waiter-call" | "kitchen-order") => void;
+};
+
+const SoundAlertContext = createContext<SoundAlertContextValue | null>(null);
+
+export function SoundAlertProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [enabled, setEnabled] = useState(false);
   const enabledRef = useRef(false);
 
@@ -86,7 +111,7 @@ export function useSoundAlert() {
 
       const audio = new Audio(`/sounds/${sound}.mp3`);
       audio.play().catch(() => {
-        if (sound === "new-order") playBeep(880, 200);
+        if (sound === "new-order") playNewOrderSound();
         else if (sound === "kitchen-order") {
           playBeep(660, 180);
           setTimeout(() => playBeep(880, 220), 200);
@@ -97,5 +122,17 @@ export function useSoundAlert() {
     []
   );
 
-  return { enabled, enable, toggle, play };
+  return (
+    <SoundAlertContext.Provider value={{ enabled, enable, toggle, play }}>
+      {children}
+    </SoundAlertContext.Provider>
+  );
+}
+
+export function useSoundAlert() {
+  const ctx = useContext(SoundAlertContext);
+  if (!ctx) {
+    throw new Error("useSoundAlert must be used within SoundAlertProvider");
+  }
+  return ctx;
 }
