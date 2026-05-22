@@ -3,6 +3,8 @@ import { LoginForm } from "@/components/auth/login-form";
 
 const ERROR_MESSAGES: Record<string, string> = {
   auth: "Authentication failed. Please try again.",
+  config:
+    "Server configuration is incomplete. Contact support or check environment variables.",
   no_access:
     "Your account is signed in but has no staff access. Contact your administrator or sign up a new venue.",
 };
