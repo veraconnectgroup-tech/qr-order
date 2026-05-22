@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAppBaseUrl } from "@/lib/app-url";
+import { getGuestAppBaseUrl } from "@/lib/app-url";
 
 export function useAppBaseUrl() {
   const [origin, setOrigin] = useState<string | null>(null);
@@ -10,5 +10,5 @@ export function useAppBaseUrl() {
     setOrigin(window.location.origin);
   }, []);
 
-  return getAppBaseUrl(origin);
+  return getGuestAppBaseUrl(origin);
 }

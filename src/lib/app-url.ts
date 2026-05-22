@@ -1,26 +1,81 @@
-/**
- * Public base URL for guest links (QR codes, menu URLs, emails).
- * Client: uses current origin so QR codes match the deployed site.
- * Server: NEXT_PUBLIC_APP_URL → VERCEL_URL → localhost.
- */
-export function getAppBaseUrl(clientOrigin?: string | null): string {
-  if (clientOrigin?.startsWith("http")) {
-    return clientOrigin.replace(/\/$/, "");
-  }
+function normalizeUrl(url: string) {
+  return url.replace(/\/$/, "");
+}
 
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (configured && !configured.includes("localhost")) {
-    return configured;
+function withHttps(hostOrUrl: string) {
+  if (hostOrUrl.startsWith("http")) return normalizeUrl(hostOrUrl);
+  return `https://${normalizeUrl(hostOrUrl)}`;
+}
+
+/** Preview deployments require Vercel login — never encode them in guest QR codes. */
+export function isPreviewDeploymentHost(host: string) {
+  const lower = host.toLowerCase();
+  if (lower.includes("-git-")) return true;
+  if (lower.includes("---")) return true;
+  return false;
+}
+
+export function isUnsafeGuestBaseUrl(url: string) {
+  try {
+    const { hostname } = new URL(url);
+    if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+    return isPreviewDeploymentHost(hostname);
+  } catch {
+    return true;
+  }
+}
+
+function configuredAppUrl() {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!configured || configured.includes("localhost")) return null;
+  return withHttps(configured);
+}
+
+function vercelProductionUrl() {
+  const host =
+    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL?.trim() ??
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (!host) return null;
+  return withHttps(host);
+}
+
+/**
+ * Base URL for guest links (QR codes, menu URLs).
+ * Always prefers the public production domain so guests never hit preview auth.
+ */
+export function getGuestAppBaseUrl(clientOrigin?: string | null): string {
+  const configured = configuredAppUrl();
+  if (configured) return configured;
+
+  const production = vercelProductionUrl();
+  if (production) return production;
+
+  const origin = clientOrigin?.trim();
+  if (origin?.startsWith("http")) {
+    try {
+      const { hostname } = new URL(origin);
+      if (!isPreviewDeploymentHost(hostname) && hostname !== "localhost") {
+        return normalizeUrl(origin);
+      }
+    } catch {
+      // fall through
+    }
   }
 
   const vercel = process.env.VERCEL_URL?.replace(/\/$/, "");
   if (vercel) {
-    return vercel.startsWith("http") ? vercel : `https://${vercel}`;
+    return vercel.startsWith("http") ? normalizeUrl(vercel) : `https://${vercel}`;
   }
 
-  if (configured) return configured;
+  const local = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (local) return local;
 
   return "http://localhost:3000";
+}
+
+/** General app URL (emails, redirects). Falls back to current origin when safe. */
+export function getAppBaseUrl(clientOrigin?: string | null): string {
+  return getGuestAppBaseUrl(clientOrigin);
 }
 
 export function guestTableUrl(
@@ -28,5 +83,5 @@ export function guestTableUrl(
   qrToken: string,
   clientOrigin?: string | null
 ) {
-  return `${getAppBaseUrl(clientOrigin)}/${orgSlug}/${qrToken}`;
+  return `${getGuestAppBaseUrl(clientOrigin)}/${orgSlug}/${qrToken}`;
 }

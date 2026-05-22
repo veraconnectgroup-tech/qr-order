@@ -53,7 +53,7 @@ export function SettingsBoard({
     location?.is_active ?? true
   );
   const [togglingOrders, setTogglingOrders] = useState(false);
-  const guestMenuUrl = `${appUrl}/${org.slug}/demo-table-8`;
+  const guestMenuUrl = guestTableUrl(org.slug, "demo-table-8", appUrl);
 
   async function handleSave(formData: FormData) {
     setSaving(true);

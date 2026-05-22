@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useAppBaseUrl } from "@/hooks/use-app-base-url";
-import { guestTableUrl } from "@/lib/app-url";
+import { guestTableUrl, isUnsafeGuestBaseUrl } from "@/lib/app-url";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
 import {
   Dialog,
@@ -63,18 +63,11 @@ function startOfTodayIso() {
   return d.toISOString();
 }
 
-function displayHostUrl(appUrl: string, orgSlug: string, token: string) {
-  try {
-    const host = new URL(appUrl).host;
-    return `${host}/${orgSlug}/${token}`;
-  } catch {
-    return guestTableUrl(orgSlug, token, appUrl);
-  }
-}
 
 export function TablesBoard() {
   const { locationId, orgSlug, orgName, currency } = useDashboard();
   const appUrl = useAppBaseUrl();
+  const guestUrlUnsafe = isUnsafeGuestBaseUrl(appUrl);
   const waiterCallsResult = useRealtimeWaiterCalls(locationId);
   const waiterCalls = waiterCallsResult.calls;
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -627,6 +620,13 @@ ${qrItems
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   QR Code
                 </p>
+                {guestUrlUnsafe && (
+                  <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    QR links must use your production domain. Set{" "}
+                    <code className="font-mono">NEXT_PUBLIC_APP_URL</code> on
+                    Vercel, redeploy, then download QR codes again.
+                  </p>
+                )}
                 <div className="flex flex-col items-center gap-3">
                   {qrUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -639,7 +639,10 @@ ${qrItems
                     <Skeleton className="size-[200px] rounded-lg bg-zinc-800" />
                   )}
                   <p className="break-all text-center text-xs text-zinc-500">
-                    {displayHostUrl(appUrl, orgSlug, selected.qr_token)}
+                    {guestTableUrl(orgSlug, selected.qr_token, appUrl).replace(
+                      /^https?:\/\//,
+                      ""
+                    )}
                   </p>
                   <div className="flex w-full gap-2">
                     <button
