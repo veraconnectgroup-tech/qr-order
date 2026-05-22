@@ -26,7 +26,7 @@ export function PaymentMethodSelector({
   return (
     <div className="space-y-2">
       <h2 className="text-caption uppercase tracking-wide text-zinc-500">
-        Način plaćanja
+        Payment method
       </h2>
       <div className="space-y-2">
         {methods.map((method) => {

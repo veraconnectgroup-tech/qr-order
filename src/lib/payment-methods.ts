@@ -11,23 +11,23 @@ export const PAYMENT_METHOD_OPTIONS: Record<PaymentMethod, PaymentMethodOption> 
     at_bar: {
       id: "at_bar",
       title: "Bar",
-      description: "Poruči odmah, plati na šanku",
+      description: "Order now, pay at the bar when ready",
     },
     card_at_table: {
       id: "card_at_table",
-      title: "Kartica",
-      description: "Konobar donosi terminal za karticu do stola",
+      title: "Card",
+      description: "Staff brings a card terminal to your table",
     },
     online: {
       id: "online",
-      title: "Online plaćanje",
-      description: "Apple Pay, Google Pay ili kartica — Stripe checkout",
+      title: "Pay online",
+      description: "Apple Pay, Google Pay, or card — secure Stripe checkout",
     },
   };
 
 export function paymentMethodLabel(method: PaymentMethod | string | null) {
   if (method === "at_bar") return "Bar";
-  if (method === "card_at_table") return "Kartica";
+  if (method === "card_at_table") return "Card";
   return "Online";
 }
 
@@ -37,10 +37,10 @@ export function guestPaymentInstruction(
 ) {
   if (paymentStatus === "paid") return null;
   if (method === "at_bar") {
-    return "Plati na šanku kad budeš spreman. Porudžbina je već kod tima.";
+    return "Pay at the bar when you're ready. Your order is already with the team.";
   }
   if (method === "card_at_table") {
-    return "Konobar će doneti terminal za karticu do tvog stola.";
+    return "A staff member will bring a card terminal to your table.";
   }
   return null;
 }

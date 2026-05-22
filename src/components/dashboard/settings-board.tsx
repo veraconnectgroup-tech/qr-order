@@ -116,7 +116,7 @@ export function SettingsBoard({
     };
 
     if (!next.online && !next.atBar && !next.cardAtTable) {
-      toast.error("Bar, kartica ili online — bar jedna opcija mora biti uključena.");
+      toast.error("At least one payment method must stay enabled.");
       return;
     }
 
@@ -136,7 +136,7 @@ export function SettingsBoard({
     setPaymentOnline(next.online);
     setPaymentAtBar(next.atBar);
     setPaymentCardAtTable(next.cardAtTable);
-    toast.success("Načini plaćanja su sačuvani");
+    toast.success("Payment methods updated");
   }
 
   return (
@@ -308,16 +308,16 @@ export function SettingsBoard({
 
       {canEdit && location && (
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-zinc-50">Načini plaćanja</h2>
+          <h2 className="text-lg font-semibold text-zinc-50">Payment methods</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Uključi opcije koje gost vidi na checkout-u
+            Choose which options guests see at checkout
           </p>
           <div className="mt-4 divide-y divide-zinc-800 rounded-lg border border-zinc-800">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <p className="text-sm font-medium text-zinc-200">Bar</p>
                 <p className="text-xs text-zinc-500">
-                  Gost poručuje odmah, plaća na šanku
+                  Guest orders now and pays at the bar later
                 </p>
               </div>
               <Switch
@@ -330,9 +330,9 @@ export function SettingsBoard({
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <p className="text-sm font-medium text-zinc-200">Kartica</p>
+                <p className="text-sm font-medium text-zinc-200">Card</p>
                 <p className="text-xs text-zinc-500">
-                  Plaćanje karticom — konobar donosi terminal do stola
+                  Card payment — staff brings a terminal to the table
                 </p>
               </div>
               <Switch
@@ -345,12 +345,10 @@ export function SettingsBoard({
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <p className="text-sm font-medium text-zinc-200">
-                  Online plaćanje
-                </p>
+                <p className="text-sm font-medium text-zinc-200">Pay online</p>
                 <p className="text-xs text-zinc-500">
-                  Apple Pay, Google Pay i kartica preko Stripe-a
-                  {!org.stripe_onboarded && " — prvo poveži Stripe ispod"}
+                  Apple Pay, Google Pay, and cards via Stripe
+                  {!org.stripe_onboarded && " — connect Stripe below first"}
                 </p>
               </div>
               <Switch
