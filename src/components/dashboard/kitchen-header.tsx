@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
+import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import type { RealtimeMode } from "@/hooks/use-postgres-realtime";
 import type { OrderWithDetails } from "@/types";
 
 function LiveClock() {
@@ -39,7 +41,13 @@ function avgElapsedMinutes(orders: OrderWithDetails[]) {
   return Math.round(total / orders.length / 60_000);
 }
 
-export function KitchenHeader({ orders }: { orders: OrderWithDetails[] }) {
+export function KitchenHeader({
+  orders,
+  realtimeMode,
+}: {
+  orders: OrderWithDetails[];
+  realtimeMode?: RealtimeMode;
+}) {
   const { orgName } = useDashboard();
 
   const preparingCount = useMemo(
@@ -55,6 +63,7 @@ export function KitchenHeader({ orders }: { orders: OrderWithDetails[] }) {
         <p className="truncate text-sm font-semibold text-zinc-300">{orgName}</p>
         <LiveClock />
         <div className="flex items-center gap-2">
+          {realtimeMode && <LiveConnectionBadge mode={realtimeMode} />}
           <SoundToggle />
           <Link
             href="/dashboard/orders"

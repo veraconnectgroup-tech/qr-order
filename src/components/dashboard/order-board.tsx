@@ -16,7 +16,7 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { DASHBOARD_POLL_INTERVAL_MS } from "@/lib/constants";
+import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import {
   getOrderColumnId,
@@ -26,6 +26,7 @@ import {
 } from "@/components/dashboard/order-card";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { cn } from "@/lib/utils";
 import type { OrderStatus, OrderWithDetails } from "@/types";
@@ -201,37 +202,17 @@ export function OrderBoard() {
       if (!cancelled) setLoading(false);
     })();
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`orders-realtime:${locationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `location_id=eq.${locationId}`,
-        },
-        () => {
-          if (!cancelled) fetchOrders();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED" && !cancelled) {
-          fetchOrders();
-        }
-      });
-
-    const pollId = setInterval(() => {
-      if (!cancelled) fetchOrders();
-    }, DASHBOARD_POLL_INTERVAL_MS);
-
     return () => {
       cancelled = true;
-      clearInterval(pollId);
-      supabase.removeChannel(channel);
     };
-  }, [locationId, fetchOrders]);
+  }, [fetchOrders]);
+
+  const realtimeMode = usePostgresRealtime({
+    channelName: `orders-realtime:${locationId}`,
+    table: "orders",
+    filter: `location_id=eq.${locationId}`,
+    onChange: fetchOrders,
+  });
 
   useEffect(() => {
     const pending = orders.filter((o) => o.status === "pending").length;
@@ -366,6 +347,9 @@ export function OrderBoard() {
 
   return (
     <div>
+      <div className="mb-3 flex items-center justify-end">
+        <LiveConnectionBadge mode={realtimeMode} />
+      </div>
       <SetupChecklist
         stripeOnboarded={stripeOnboarded}
         hasTables={hasTables}

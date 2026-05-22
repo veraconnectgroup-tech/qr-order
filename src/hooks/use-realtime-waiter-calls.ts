@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { DASHBOARD_POLL_INTERVAL_MS } from "@/lib/constants";
+import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import type { WaiterCall } from "@/types";
 
 export type WaiterCallWithTable = WaiterCall & {
@@ -47,63 +47,50 @@ export function useRealtimeWaiterCalls(locationId: string) {
   const [calls, setCalls] = useState<WaiterCallWithTable[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchCalls = useCallback(async () => {
     const supabase = createClient();
 
-    const fetchCalls = async () => {
-      const { data: active } = await supabase
-        .from("waiter_calls")
-        .select("*")
-        .eq("location_id", locationId)
-        .in("status", ["pending", "acknowledged"])
-        .order("created_at", { ascending: false });
+    const { data: active } = await supabase
+      .from("waiter_calls")
+      .select("*")
+      .eq("location_id", locationId)
+      .in("status", ["pending", "acknowledged"])
+      .order("created_at", { ascending: false });
 
-      const { data: resolved } = await supabase
-        .from("waiter_calls")
-        .select("*")
-        .eq("location_id", locationId)
-        .eq("status", "resolved")
-        .gte("created_at", startOfTodayIso())
-        .order("created_at", { ascending: false });
+    const { data: resolved } = await supabase
+      .from("waiter_calls")
+      .select("*")
+      .eq("location_id", locationId)
+      .eq("status", "resolved")
+      .gte("created_at", startOfTodayIso())
+      .order("created_at", { ascending: false });
 
-      const merged = [
-        ...((active as WaiterCall[]) ?? []),
-        ...((resolved as WaiterCall[]) ?? []),
-      ];
+    const merged = [
+      ...((active as WaiterCall[]) ?? []),
+      ...((resolved as WaiterCall[]) ?? []),
+    ];
 
-      setCalls(await enrichCalls(merged, locationId));
-      setLoading(false);
-    };
-
-    fetchCalls();
-
-    const channel = supabase
-      .channel(`waiter-calls:${locationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "waiter_calls",
-          filter: `location_id=eq.${locationId}`,
-        },
-        () => {
-          fetchCalls();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          fetchCalls();
-        }
-      });
-
-    const pollId = setInterval(fetchCalls, DASHBOARD_POLL_INTERVAL_MS);
-
-    return () => {
-      clearInterval(pollId);
-      supabase.removeChannel(channel);
-    };
+    setCalls(await enrichCalls(merged, locationId));
+    setLoading(false);
   }, [locationId]);
 
-  return { calls, loading };
+  useEffect(() => {
+    if (!locationId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    fetchCalls();
+  }, [locationId, fetchCalls]);
+
+  const realtimeMode = usePostgresRealtime({
+    channelName: `waiter-calls:${locationId}`,
+    table: "waiter_calls",
+    filter: `location_id=eq.${locationId}`,
+    onChange: fetchCalls,
+    enabled: Boolean(locationId),
+  });
+
+  return { calls, loading, realtimeMode };
 }

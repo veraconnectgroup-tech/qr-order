@@ -29,8 +29,14 @@ export const ORDER_RATE_LIMIT_SECONDS = 60;
 
 export const WAITER_CALL_COOLDOWN_SECONDS = 60;
 
-/** Fallback poll when Supabase Realtime is unavailable. */
-export const DASHBOARD_POLL_INTERVAL_MS = 15_000;
+/** Fast poll when Supabase Realtime is unavailable. */
+export const REALTIME_FALLBACK_POLL_MS = 3_000;
+
+/** Safety poll while Realtime is connected (missed events). */
+export const REALTIME_BACKUP_POLL_MS = 45_000;
+
+/** @deprecated Use REALTIME_FALLBACK_POLL_MS */
+export const DASHBOARD_POLL_INTERVAL_MS = REALTIME_FALLBACK_POLL_MS;
 
 /** Platform fee on card payments (Connect application_fee). */
 export const PLATFORM_FEE_FIXED_EUR = 0.4;

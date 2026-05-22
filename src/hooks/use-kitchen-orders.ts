@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { DASHBOARD_POLL_INTERVAL_MS } from "@/lib/constants";
+import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import type { OrderWithDetails } from "@/types";
 
 const ORDER_SELECT =
@@ -47,46 +47,17 @@ export function useKitchenOrders(locationId: string) {
       return;
     }
 
-    let cancelled = false;
-    const supabase = createClient();
-
-    async function load() {
-      setLoading(true);
-      await fetchOrders();
-    }
-
-    load();
-
-    const channel = supabase
-      .channel(`kitchen-orders:${locationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `location_id=eq.${locationId}`,
-        },
-        () => {
-          if (!cancelled) fetchOrders();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED" && !cancelled) {
-          fetchOrders();
-        }
-      });
-
-    const pollId = setInterval(() => {
-      if (!cancelled) fetchOrders();
-    }, DASHBOARD_POLL_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(pollId);
-      supabase.removeChannel(channel);
-    };
+    setLoading(true);
+    fetchOrders();
   }, [locationId, fetchOrders]);
 
-  return { orders, loading, error, refetch: fetchOrders };
+  const realtimeMode = usePostgresRealtime({
+    channelName: `kitchen-orders:${locationId}`,
+    table: "orders",
+    filter: `location_id=eq.${locationId}`,
+    onChange: fetchOrders,
+    enabled: Boolean(locationId),
+  });
+
+  return { orders, loading, error, refetch: fetchOrders, realtimeMode };
 }

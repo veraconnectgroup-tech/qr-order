@@ -9,6 +9,20 @@ import { platformFeeDescription } from "@/lib/constants";
 
 const POPUP_FEATURES = "popup=yes,width=520,height=720,left=100,top=24";
 
+function friendlyStripeError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("signed up for connect") || lower.includes("connect")) {
+    return "Plaćanja karticom trenutno nisu aktivirana na platformi. Kontaktirajte podršku.";
+  }
+  if (lower.includes("platform-profile") || lower.includes("managing losses")) {
+    return "Podešavanje plaćanja na platformi još nije završeno. Kontaktirajte podršku.";
+  }
+  if (lower.includes("stripe_secret_key") || lower.includes("not configured")) {
+    return "Plaćanja karticom trenutno nisu dostupna. Kontaktirajte podršku.";
+  }
+  return "Povezivanje nije uspelo. Pokušajte ponovo ili kontaktirajte podršku.";
+}
+
 type StripeConnectMessage =
   | { type: "STRIPE_CONNECT_DONE"; onboarded: boolean; stripe?: string }
   | { type: "STRIPE_CONNECT_ERROR" };
@@ -101,7 +115,11 @@ export function DashboardStripeConnect({
         }
       } catch (e) {
         if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : "Stripe sync failed");
+          toast.error(
+            friendlyStripeError(
+              e instanceof Error ? e.message : "Stripe sync failed"
+            )
+          );
         }
       } finally {
         if (!cancelled) {
@@ -152,7 +170,8 @@ export function DashboardStripeConnect({
 
       window.location.href = json.data.url;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Connection failed");
+      const raw = e instanceof Error ? e.message : "Connection failed";
+      toast.error(friendlyStripeError(raw));
       setLoading(false);
     }
   }
@@ -184,11 +203,6 @@ export function DashboardStripeConnect({
 
       {connected ? (
         <div className="mt-4 space-y-3">
-          {accountId && (
-            <p className="font-mono text-xs text-zinc-600">
-              Nalog: {accountId.slice(0, 20)}…
-            </p>
-          )}
           <Button
             variant="outline"
             className="border-zinc-700 bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
@@ -201,42 +215,30 @@ export function DashboardStripeConnect({
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          {!isConnected && (
-            <p className="text-sm text-amber-400">Plaćanje nije konfigurisano</p>
-          )}
-          {!platformReady && (
-            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              Platforma mora prvo da podesi Stripe Connect. Admin: dodajte{" "}
-              <code className="font-mono">STRIPE_SECRET_KEY</code> na Vercel i
-              aktivirajte Connect na{" "}
-              <a
-                href="https://dashboard.stripe.com/connect"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                dashboard.stripe.com/connect
-              </a>
-              .
+          {!isConnected && !platformReady && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+              Kartična plaćanja trenutno nisu dostupna. Kontaktirajte podršku
+              QR Order platforme.
             </p>
           )}
-          {platformReady && !isConnected && (
-            <p className="text-xs text-zinc-500">
-              Kliknite dugme — otvori se Stripe prozor gde unosite podatke
-              restorana i bankovni račun. Provizija platforme: {feeLabel}.
-            </p>
+          {!isConnected && platformReady && (
+            <>
+              <p className="text-sm text-zinc-400">
+                Povežite nalog da gosti mogu platiti karticom. Novac ide direktno
+                na vaš bankovni račun.
+              </p>
+              <ul className="space-y-1 text-xs text-zinc-500">
+                <li>Provizija platforme: {feeLabel}</li>
+                <li>Visa, Mastercard, Apple Pay, Google Pay</li>
+              </ul>
+            </>
           )}
-          <ul className="space-y-1 text-xs text-zinc-500">
-            <li>{feeLabel}</li>
-            <li>Isplate direktno na vaš bankovni račun</li>
-            <li>Visa, Mastercard, Apple Pay, Google Pay</li>
-          </ul>
           <Button
             className="bg-orange-500 hover:bg-orange-600"
             onClick={handleConnect}
             disabled={busy || !platformReady}
           >
-            {busy ? "Otvaranje Stripe prozora…" : "Poveži Stripe →"}
+            {busy ? "Otvaranje prozora…" : "Poveži Stripe →"}
           </Button>
         </div>
       )}

@@ -168,7 +168,8 @@ export function KitchenCard({
 
 export function KitchenBoard() {
   const { locationId } = useDashboard();
-  const { orders, loading, error, refetch } = useKitchenOrders(locationId);
+  const { orders, loading, error, refetch, realtimeMode } =
+    useKitchenOrders(locationId);
   const { play } = useSoundAlert();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
@@ -225,7 +226,7 @@ export function KitchenBoard() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <KitchenHeader orders={orders} />
+      <KitchenHeader orders={orders} realtimeMode={realtimeMode} />
 
       {error && (
         <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-center text-sm text-red-400">
