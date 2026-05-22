@@ -1,15 +1,38 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  let res = NextResponse.next({
-    request: req,
-  });
+function getSupabaseEnv() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return { url, key };
+}
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+function isProtectedPath(path: string) {
+  return (
+    path.startsWith("/dashboard") ||
+    path.startsWith("/admin") ||
+    path.startsWith("/api/dashboard")
+  );
+}
+
+export async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  const env = getSupabaseEnv();
+
+  if (!env) {
+    if (isProtectedPath(path)) {
+      const login = new URL("/login", req.url);
+      login.searchParams.set("error", "config");
+      return NextResponse.redirect(login);
+    }
+    return NextResponse.next();
+  }
+
+  let res = NextResponse.next({ request: req });
+
+  try {
+    const supabase = createServerClient(env.url, env.key, {
       cookies: {
         getAll() {
           return req.cookies.getAll();
@@ -24,53 +47,60 @@ export async function middleware(req: NextRequest) {
           });
         },
       },
-    }
-  );
+    });
 
-  // Refresh session — required for auth cookies to persist on Vercel
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const path = req.nextUrl.pathname;
+    if (path.startsWith("/dashboard") || path.startsWith("/admin")) {
+      if (!user) {
+        return NextResponse.redirect(new URL("/login", req.url));
+      }
 
-  if (path.startsWith("/dashboard") || path.startsWith("/admin")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+      const { data: staff } = await supabase
+        .from("staff")
+        .select("role, org_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
 
-    const { data: staff } = await supabase
-      .from("staff")
-      .select("role, org_id")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
+      if (!staff) {
+        return NextResponse.redirect(
+          new URL("/login?error=no_access", req.url)
+        );
+      }
 
-    if (!staff) {
-      return NextResponse.redirect(
-        new URL("/login?error=no_access", req.url)
-      );
-    }
-
-    if (path.startsWith("/admin")) {
-      const role = (staff as { role: string }).role;
-      if (!["owner", "manager"].includes(role)) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+      if (path.startsWith("/admin")) {
+        const role = (staff as { role: string }).role;
+        if (!["owner", "manager"].includes(role)) {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
       }
     }
-  }
 
-  if (path.startsWith("/api/dashboard")) {
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (path.startsWith("/api/dashboard")) {
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
-  }
 
-  return res;
+    return res;
+  } catch {
+    if (isProtectedPath(path)) {
+      return NextResponse.redirect(new URL("/login?error=auth", req.url));
+    }
+    return NextResponse.next();
+  }
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/api/dashboard/:path*",
+    "/login",
+    "/signup",
+    "/auth/callback",
   ],
 };
