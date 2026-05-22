@@ -48,7 +48,7 @@ export function ProductCard({
   return (
     <article
       role="button"
-      tabIndex={unavailable ? -1 : 0}
+      tabIndex={-1}
       onClick={openDetail}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {

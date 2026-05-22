@@ -53,6 +53,11 @@ export function MenuView({
   const [returnGlow, setReturnGlow] = useState(false);
   const restoredScroll = useRef(false);
 
+  const openProductDetail = useCallback((product: ProductWithModifiers) => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    setDetailProduct(product);
+  }, []);
+
   const setCartSession = useCart((s) => s.setSession);
   const itemCount = useCart((s) => s.itemCount());
   const setGuestSession = useGuestSession((s) => s.setSession);
@@ -202,7 +207,7 @@ export function MenuView({
                         key={product.id}
                         product={product}
                         currency={currency}
-                        onOpenDetail={() => setDetailProduct(product)}
+                        onOpenDetail={() => openProductDetail(product)}
                       />
                     ))}
                   </div>
@@ -212,7 +217,7 @@ export function MenuView({
               <MenuGrid
                 categories={categories}
                 currency={currency}
-                onOpenDetail={setDetailProduct}
+                onOpenDetail={openProductDetail}
               />
             )}
 
