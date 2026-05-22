@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { useAppBaseUrl } from "@/hooks/use-app-base-url";
+import { guestTableUrl } from "@/lib/app-url";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
 import {
   Dialog,
@@ -66,12 +68,13 @@ function displayHostUrl(appUrl: string, orgSlug: string, token: string) {
     const host = new URL(appUrl).host;
     return `${host}/${orgSlug}/${token}`;
   } catch {
-    return `${appUrl}/${orgSlug}/${token}`;
+    return guestTableUrl(orgSlug, token, appUrl);
   }
 }
 
 export function TablesBoard() {
   const { locationId, orgSlug, orgName, currency } = useDashboard();
+  const appUrl = useAppBaseUrl();
   const waiterCallsResult = useRealtimeWaiterCalls(locationId);
   const waiterCalls = waiterCallsResult.calls;
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -206,14 +209,12 @@ export function TablesBoard() {
     return tables.filter((t) => t.zone_id === activeZone);
   }, [tables, activeZone]);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
   useEffect(() => {
     if (!selected) {
       setQrUrl(null);
       return;
     }
-    const url = `${appUrl}/${orgSlug}/${selected.qr_token}`;
+    const url = guestTableUrl(orgSlug, selected.qr_token, appUrl);
     QRCode.toDataURL(url, { width: 200, margin: 2 }).then(setQrUrl);
   }, [selected, appUrl, orgSlug]);
 
@@ -344,7 +345,7 @@ export function TablesBoard() {
   async function downloadAllQrCodes() {
     const qrItems = await Promise.all(
       tables.map(async (table) => {
-        const url = `${appUrl}/${orgSlug}/${table.qr_token}`;
+        const url = guestTableUrl(orgSlug, table.qr_token, appUrl);
         const dataUrl = await QRCode.toDataURL(url, { width: 160, margin: 1 });
         return { name: table.name, zone: table.zone?.name ?? "—", dataUrl, url };
       })

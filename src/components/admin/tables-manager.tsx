@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Download, Plus, QrCode } from "lucide-react";
 import { createTable, createZone } from "@/lib/admin/actions";
+import { useAppBaseUrl } from "@/hooks/use-app-base-url";
+import { guestTableUrl } from "@/lib/app-url";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,8 +35,8 @@ function QrPreview({
   orgName: string;
 }) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const scanUrl = `${appUrl}/${orgSlug}/${table.qr_token}`;
+  const appUrl = useAppBaseUrl();
+  const scanUrl = guestTableUrl(orgSlug, table.qr_token, appUrl);
 
   useEffect(() => {
     QRCode.toDataURL(scanUrl, {

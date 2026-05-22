@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { logoutAction } from "@/lib/auth/actions";
 import { updateOrganizationSettings, setLocationOrderingActive } from "@/lib/dashboard/settings-actions";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
+import { useAppBaseUrl } from "@/hooks/use-app-base-url";
+import { guestTableUrl } from "@/lib/app-url";
 import { DashboardStripeConnect } from "@/components/dashboard/dashboard-stripe-connect";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -45,13 +47,12 @@ export function SettingsBoard({
   canEdit: boolean;
 }) {
   const { enabled, toggle } = useSoundAlert();
+  const appUrl = useAppBaseUrl();
   const [saving, setSaving] = useState(false);
   const [orderingActive, setOrderingActive] = useState(
     location?.is_active ?? true
   );
   const [togglingOrders, setTogglingOrders] = useState(false);
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const guestMenuUrl = `${appUrl}/${org.slug}/demo-table-8`;
 
   async function handleSave(formData: FormData) {
