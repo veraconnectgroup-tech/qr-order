@@ -17,6 +17,7 @@ import { useSoundAlert } from "@/hooks/use-sound-alert";
 type DashboardAlertsContextValue = {
   pendingOrders: number;
   pendingWaiterCalls: number;
+  refreshAlerts: () => Promise<void>;
 };
 
 const DashboardAlertsContext =
@@ -108,9 +109,26 @@ export function DashboardAlertsProvider({
     prevPendingCalls.current = pendingWaiterCalls;
   }, [pendingWaiterCalls, play, ready]);
 
+  useEffect(() => {
+    function onFocus() {
+      refreshCounts();
+    }
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refreshCounts();
+    });
+    return () => {
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refreshCounts]);
+
   return (
     <DashboardAlertsContext.Provider
-      value={{ pendingOrders, pendingWaiterCalls }}
+      value={{
+        pendingOrders,
+        pendingWaiterCalls,
+        refreshAlerts: refreshCounts,
+      }}
     >
       {children}
     </DashboardAlertsContext.Provider>

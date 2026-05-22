@@ -10,6 +10,7 @@ import {
   type WaiterCallWithTable,
 } from "@/hooks/use-realtime-waiter-calls";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -134,6 +135,7 @@ function HandledCallCard({
 
 export function WaiterCallsBoard() {
   const { locationId, staffName } = useDashboard();
+  const { refreshAlerts } = useDashboardAlerts();
   const { calls, loading } = useRealtimeWaiterCalls(locationId);
   const [tick, setTick] = useState(0);
 
@@ -192,7 +194,9 @@ export function WaiterCallsBoard() {
 
     if (error) {
       toast.error(error.message);
+      return;
     }
+    await refreshAlerts();
   }
 
   if (loading) {

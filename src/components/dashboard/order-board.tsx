@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import {
   getOrderColumnId,
   ORDER_COLUMNS,
@@ -150,6 +151,7 @@ export function OrderBoard() {
     hasMenuItems,
     staffRole,
   } = useDashboard();
+  const { refreshAlerts } = useDashboardAlerts();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,6 +240,7 @@ export function OrderBoard() {
           throw new Error(json.error ?? "Update failed");
         }
         await fetchOrders();
+        await refreshAlerts();
       } catch (e) {
         setOrders(snapshot);
         toast.error(e instanceof Error ? e.message : "Update failed", {
@@ -250,7 +253,7 @@ export function OrderBoard() {
         setBusyId(null);
       }
     },
-    [fetchOrders]
+    [fetchOrders, refreshAlerts]
   );
 
   function handleDragStart(event: DragStartEvent) {
