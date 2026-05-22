@@ -26,5 +26,6 @@ export function getDemoGuestMenuProps(slug: string, token: string) {
     currency: DEMO_CURRENCY,
     locationId: "demo-location",
     tableId: "demo-table",
+    orderingEnabled: true,
   };
 }

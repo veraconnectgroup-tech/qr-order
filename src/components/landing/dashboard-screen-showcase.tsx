@@ -247,7 +247,7 @@ const SCREEN_META: Record<
   { title: string; showExport?: boolean; designHeight: number }
 > = {
   orders: { title: "Live Orders", designHeight: 640 },
-  kitchen: { title: "Kitchen Display", designHeight: 640 },
+  kitchen: { title: "Prep Display", designHeight: 640 },
   tables: { title: "Tables", designHeight: 620 },
   "waiter-calls": { title: "Waiter Calls", designHeight: 560 },
   history: { title: "History", showExport: true, designHeight: 660 },

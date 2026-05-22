@@ -13,10 +13,12 @@ export function MenuGrid({
   categories,
   currency,
   onOpenDetail,
+  orderingDisabled = false,
 }: {
   categories: MenuCategory[];
   currency: string;
   onOpenDetail: (product: ProductWithModifiers) => void;
+  orderingDisabled?: boolean;
 }) {
   if (!categories.length) {
     return (
@@ -49,6 +51,7 @@ export function MenuGrid({
                 key={product.id}
                 product={product}
                 currency={currency}
+                orderingDisabled={orderingDisabled}
                 onOpenDetail={() => onOpenDetail(product)}
               />
             ))}

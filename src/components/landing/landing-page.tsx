@@ -94,9 +94,9 @@ const features = [
     reverse: true,
   },
   {
-    title: "Kitchen Display",
+    title: "Prep Display",
     description:
-      "Orders land on the kitchen tablet the moment they're accepted. Color-coded timers and large tap targets for busy prep stations.",
+      "Food and drinks land on one prep tablet the moment they're accepted. Color-coded timers and large tap targets for busy stations.",
     visual: <KitchenShowcase />,
     device: "tablet" as const,
     reverse: false,
@@ -215,7 +215,7 @@ export function LandingPage() {
               </HeroItem>
               <HeroItem>
                 <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-zinc-400 lg:mx-0 lg:text-lg">
-                  QR Order connects guest menus, staff dashboards, kitchen
+                  QR Order connects guest menus, staff dashboards, prep
                   displays, and Stripe payments on one secure platform — built
                   for restaurants, bars, and multi-location venues.
                 </p>

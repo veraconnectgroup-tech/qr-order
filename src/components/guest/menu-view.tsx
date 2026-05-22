@@ -29,6 +29,7 @@ export function MenuView({
   currency,
   locationId,
   tableId,
+  orderingEnabled = true,
 }: {
   slug: string;
   token: string;
@@ -42,6 +43,7 @@ export function MenuView({
   currency: string;
   locationId: string;
   tableId: string;
+  orderingEnabled?: boolean;
 }) {
   const router = useRouter();
   const scrollKey = `menu-scroll-${slug}-${token}`;
@@ -171,6 +173,13 @@ export function MenuView({
             tableName={tableName}
           />
 
+          {!orderingEnabled && (
+            <div className="mx-4 mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              Ordering is paused. Browse the menu or call staff — new orders will
+              open again soon.
+            </div>
+          )}
+
           <div className="sticky top-[57px] z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
             <div className="px-4 py-3">
               <div className="relative">
@@ -207,6 +216,7 @@ export function MenuView({
                         key={product.id}
                         product={product}
                         currency={currency}
+                        orderingDisabled={!orderingEnabled}
                         onOpenDetail={() => openProductDetail(product)}
                       />
                     ))}
@@ -217,6 +227,7 @@ export function MenuView({
               <MenuGrid
                 categories={categories}
                 currency={currency}
+                orderingDisabled={!orderingEnabled}
                 onOpenDetail={openProductDetail}
               />
             )}
@@ -237,6 +248,7 @@ export function MenuView({
           <ProductDetailSheet
             product={detailProduct}
             currency={currency}
+            orderingDisabled={!orderingEnabled}
             open={!!detailProduct}
             onOpenChange={(o) => !o && setDetailProduct(null)}
           />

@@ -289,7 +289,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       .eq("order_id", pendingRow.id);
 
     if (clearError) {
-      return { error: "Porudžbina nije ažurirana.", status: 500 };
+      return { error: "Order could not be updated.", status: 500 };
     }
 
     const saveError = await saveOrderItems(pendingRow.id);
@@ -312,7 +312,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       .single();
 
     if (updateError || !updatedOrder) {
-      return { error: "Porudžbina nije ažurirana.", status: 500 };
+      return { error: "Order could not be updated.", status: 500 };
     }
 
     const merged = updatedOrder as {
@@ -350,7 +350,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   );
 
   if (numError || orderNumber == null) {
-    return { error: "Broj porudžbine nije generisan.", status: 500 };
+    return { error: "Order number could not be generated.", status: 500 };
   }
 
   const prepMinutes = 8;
@@ -378,7 +378,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     .single();
 
   if (orderError || !order) {
-    return { error: "Porudžbina nije kreirana.", status: 500 };
+    return { error: "Order could not be created.", status: 500 };
   }
 
   const orderRow = order as {

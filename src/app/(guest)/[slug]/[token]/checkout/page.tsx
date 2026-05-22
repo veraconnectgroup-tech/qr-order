@@ -32,7 +32,7 @@ export default async function CheckoutPage({
         <Link href={`/${slug}/${token}/cart`} className="text-zinc-400">
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="text-heading text-zinc-50">Plaćanje</h1>
+        <h1 className="text-heading text-zinc-50">Payment</h1>
       </header>
 
       <CheckoutForm

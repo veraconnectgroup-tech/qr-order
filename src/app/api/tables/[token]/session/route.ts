@@ -18,7 +18,7 @@ export async function POST(
     const parsed = schema.safeParse({ tableToken: token, ...body });
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Neispravan zahtev." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
 
     const ip = getClientIp(req);
@@ -40,7 +40,7 @@ export async function POST(
 
     if (!table) {
       return NextResponse.json(
-        { error: "Sto nije pronađen." },
+        { error: "Table not found." },
         { status: 404 }
       );
     }
@@ -94,7 +94,7 @@ export async function POST(
 
     if (error || !session) {
       return NextResponse.json(
-        { error: "Sesija nije kreirana." },
+        { error: "Session could not be created." },
         { status: 500 }
       );
     }
@@ -113,7 +113,7 @@ export async function POST(
   } catch (error) {
     console.error("Session API error:", error);
     return NextResponse.json(
-      { error: "Interna greška servera." },
+      { error: "Internal server error." },
       { status: 500 }
     );
   }

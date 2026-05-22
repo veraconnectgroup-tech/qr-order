@@ -9,6 +9,7 @@ import {
   sumOrderRevenue,
 } from "@/lib/orders/revenue";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
@@ -403,6 +404,8 @@ export function OrderHistoryList() {
           </div>
         ))}
       </div>
+
+      <AnalyticsCharts orders={filtered} range={range} currency={currency} />
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {filters.map((f) => (

@@ -61,7 +61,7 @@ export async function validateTableSession(
   const locationRow = location as ValidatedTableSession["location"];
 
   if (!locationRow.is_active) {
-    return { error: "Restaurant is currently closed", status: 403 };
+    return { error: "Ordering is temporarily paused.", status: 403 };
   }
 
   const { data: org } = await admin

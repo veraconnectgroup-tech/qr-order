@@ -178,6 +178,7 @@ function demoOrder(
         ? minutesAgo(createdMinutesAgo - 3)
         : null,
     delivered_at: status === "delivered" ? minutesAgo(1) : null,
+    receipt_sent_at: null,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

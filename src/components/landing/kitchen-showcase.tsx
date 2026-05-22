@@ -10,15 +10,15 @@ export function KitchenShowcase() {
   return (
     <ShowcaseTablet
       url="dashboard.qrorder.app/kitchen"
-      label="Staff tablet — kitchen display"
-      shortLabel="Staff — kitchen"
+      label="Staff tablet — prep display"
+      shortLabel="Staff — prep"
     >
       <div className="pointer-events-none select-none">
         <div className="border-b border-zinc-800 bg-zinc-950 px-3 py-3 sm:px-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-zinc-300">Skyline Lounge</p>
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 sm:text-xs sm:tracking-[0.2em]">
-              Kitchen
+              Prep Display
             </p>
             <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 sm:px-2.5 sm:text-xs">
               ● Live

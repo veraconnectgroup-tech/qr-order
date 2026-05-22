@@ -21,6 +21,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+async function saveGuestEmail(sessionToken: string, guestEmail: string) {
+  if (!guestEmail) return;
+  await fetch("/api/sessions/guest-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionToken, guestEmail }),
+  });
+}
+
 const appearance = {
   theme: "night" as const,
   variables: {
@@ -115,11 +124,13 @@ function DemoCheckoutForm({
   const clearCart = useCart((s) => s.clearCart);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState("");
 
   async function placeOrder() {
     setProcessing(true);
     setError(null);
     try {
+      await saveGuestEmail(sessionToken, guestEmail);
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,6 +138,7 @@ function DemoCheckoutForm({
           sessionToken,
           tableToken: token,
           items,
+          guestEmail: guestEmail || undefined,
         }),
       });
       const parsed = await readJsonResponse<{ error?: string; data?: { orderId: string } }>(
@@ -166,6 +178,19 @@ function DemoCheckoutForm({
         Demo mode — Stripe is not connected. Place the order and staff will handle
         payment at the table.
       </div>
+      <div>
+        <Label htmlFor="demo-email" className="text-zinc-400">
+          Email (optional, for receipt)
+        </Label>
+        <Input
+          id="demo-email"
+          type="email"
+          placeholder="you@example.com"
+          className="mt-1 border-zinc-700 bg-zinc-950 text-zinc-100"
+          value={guestEmail}
+          onChange={(e) => setGuestEmail(e.target.value)}
+        />
+      </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <Button
         type="button"
@@ -185,6 +210,8 @@ function PaymentForm({
   orderId,
   total,
   currency,
+  sessionToken,
+  guestEmail,
   onEmailChange,
 }: {
   slug: string;
@@ -192,6 +219,8 @@ function PaymentForm({
   orderId: string;
   total: number;
   currency: string;
+  sessionToken: string;
+  guestEmail: string;
   onEmailChange: (email: string) => void;
 }) {
   const stripe = useStripe();
@@ -208,6 +237,8 @@ function PaymentForm({
     setProcessing(true);
     setError(null);
 
+    await saveGuestEmail(sessionToken, guestEmail);
+
     const { error: submitError } = await stripe.confirmPayment({
       elements,
       confirmParams: {
@@ -217,7 +248,7 @@ function PaymentForm({
     });
 
     if (submitError) {
-      setError(submitError.message ?? "Plaćanje nije uspelo.");
+      setError(submitError.message ?? "Payment failed.");
       setProcessing(false);
       return;
     }
@@ -235,13 +266,14 @@ function PaymentForm({
 
       <div>
         <Label htmlFor="email" className="text-zinc-400">
-          Email (opciono, za račun)
+          Email (optional, for receipt)
         </Label>
         <Input
           id="email"
           type="email"
-          placeholder="email@primer.com"
+          placeholder="you@example.com"
           className="mt-1 border-zinc-700 bg-zinc-950 text-zinc-100"
+          value={guestEmail}
           onChange={(e) => onEmailChange(e.target.value)}
         />
       </div>
@@ -328,12 +360,12 @@ export function CheckoutForm({
       }
       const orderJson = orderParsed.data;
       if (!orderRes.ok) {
-        throw new Error(orderJson.error ?? "Porudžbina nije kreirana.");
+        throw new Error(orderJson.error ?? "Order could not be placed.");
       }
 
       const oid = orderJson.data?.orderId;
       if (!oid) {
-        throw new Error("Porudžbina nije kreirana.");
+        throw new Error("Order could not be placed.");
       }
       setOrderId(oid);
 
@@ -352,17 +384,17 @@ export function CheckoutForm({
       }
       const payJson = payParsed.data;
       if (!payRes.ok) {
-        throw new Error(payJson.error ?? "Plaćanje nije pokrenuto.");
+        throw new Error(payJson.error ?? "Payment could not be started.");
       }
 
       if (!payJson.data?.clientSecret || !payJson.data?.stripeAccountId) {
-        throw new Error("Plaćanje nije pokrenuto.");
+        throw new Error("Payment could not be started.");
       }
 
       setClientSecret(payJson.data.clientSecret);
       setStripeAccountId(payJson.data.stripeAccountId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Greška pri učitavanju.");
+      setError(e instanceof Error ? e.message : "Could not load checkout.");
     } finally {
       setLoading(false);
     }
@@ -406,7 +438,7 @@ export function CheckoutForm({
           className="mt-4 border-zinc-700"
           onClick={() => router.push(`/${slug}/${token}/cart`)}
         >
-          Nazad u korpu
+          Back to cart
         </Button>
       </div>
     );
@@ -444,6 +476,8 @@ export function CheckoutForm({
             orderId={orderId}
             total={total}
             currency={currency}
+            sessionToken={sessionToken!}
+            guestEmail={guestEmail}
             onEmailChange={setGuestEmail}
           />
         </Elements>

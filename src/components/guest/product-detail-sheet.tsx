@@ -22,11 +22,13 @@ export function ProductDetailSheet({
   currency,
   open,
   onOpenChange,
+  orderingDisabled = false,
 }: {
   product: ProductWithModifiers | null;
   currency: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  orderingDisabled?: boolean;
 }) {
   const addItem = useCart((s) => s.addItem);
   const [quantity, setQuantity] = useState(1);
@@ -194,8 +196,12 @@ export function ProductDetailSheet({
           <QuantitySelector value={quantity} onChange={setQuantity} />
 
           <AddToCartButton
-            label={`Add to Cart · ${formatPrice(lineTotal, currency)}`}
-            disabled={missingRequired}
+            label={
+              orderingDisabled
+                ? "Ordering paused"
+                : `Add to Cart · ${formatPrice(lineTotal, currency)}`
+            }
+            disabled={missingRequired || orderingDisabled}
             onAdd={handleAdd}
           />
           {missingRequired && (

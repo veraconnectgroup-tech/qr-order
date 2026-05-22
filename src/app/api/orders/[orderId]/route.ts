@@ -4,6 +4,7 @@ import { sanitizeText } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { processRefund } from "@/lib/stripe/refund";
+import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
 
 export async function GET(
   req: NextRequest,
@@ -13,7 +14,7 @@ export async function GET(
   const sessionToken = req.nextUrl.searchParams.get("sessionToken");
 
   if (!sessionToken) {
-    return NextResponse.json({ error: "Neautorizovano." }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const admin = createAdminClient();
@@ -25,7 +26,7 @@ export async function GET(
     .single();
 
   if (!order) {
-    return NextResponse.json({ error: "Nije pronađeno." }, { status: 404 });
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
   const orderBase = order as unknown as {
@@ -56,7 +57,7 @@ export async function GET(
   };
 
   if (!orderBase.session_id) {
-    return NextResponse.json({ error: "Neautorizovano." }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const { data: session } = await admin
@@ -66,7 +67,7 @@ export async function GET(
     .single();
 
   if (!session || (session as { session_token: string }).session_token !== sessionToken) {
-    return NextResponse.json({ error: "Neautorizovano." }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   return NextResponse.json({ data: orderBase });
@@ -159,14 +160,14 @@ export async function PATCH(
   const access = await verifyStaffOrderAccess(orderId);
 
   if (!access) {
-    return NextResponse.json({ error: "Neautorizovano." }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const body = await req.json();
   const parsed = statusSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Neispravan status." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid status." }, { status: 400 });
   }
 
   const { status, rejectionReason } = parsed.data;
@@ -219,6 +220,12 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (status === "delivered") {
+    maybeSendOrderReceipt(orderId).catch((err) =>
+      console.error("Receipt email failed:", err)
+    );
   }
 
   return NextResponse.json({ data: { ok: true } });

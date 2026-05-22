@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
@@ -107,4 +108,8 @@ async function verifyAndMarkPaid(
       stripe_payment_intent_id: pi.id,
     })
     .eq("id", order.id);
+
+  maybeSendOrderReceipt(order.id).catch((err) =>
+    console.error("Receipt email failed:", err)
+  );
 }

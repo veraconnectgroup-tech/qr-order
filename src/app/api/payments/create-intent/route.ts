@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     if (!order) {
       return NextResponse.json(
-        { error: "Porudžbina nije pronađena." },
+        { error: "Order not found." },
         { status: 404 }
       );
     }
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!location) {
-      return NextResponse.json({ error: "Lokacija nije pronađena." }, { status: 404 });
+      return NextResponse.json({ error: "Location not found." }, { status: 404 });
     }
 
     const { data: orgData } = await admin
@@ -91,13 +91,13 @@ export async function POST(req: NextRequest) {
 
     if (!org?.stripe_onboarded || !org.stripe_account_id) {
       return NextResponse.json(
-        { error: "Plaćanje nije konfigurisano za ovaj lokal." },
+        { error: "Payments are not configured for this venue." },
         { status: 400 }
       );
     }
 
     if (orderRow.payment_status === "paid") {
-      return NextResponse.json({ error: "Već plaćeno." }, { status: 400 });
+      return NextResponse.json({ error: "Already paid." }, { status: 400 });
     }
 
     const stripe = getStripe();
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Payment intent error:", error);
     return NextResponse.json(
-      { error: "Plaćanje nije moglo biti pokrenuto." },
+      { error: "Payment could not be started." },
       { status: 500 }
     );
   }

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { id: "orders", label: "Orders", icon: LayoutGrid },
-  { id: "kitchen", label: "Kitchen", icon: ChefHat },
+  { id: "kitchen", label: "Prep Display", icon: ChefHat },
   { id: "tables", label: "Tables", icon: Grid3X3 },
   { id: "waiter-calls", label: "Waiter Calls", icon: Bell },
   { id: "history", label: "History", icon: BarChart3 },

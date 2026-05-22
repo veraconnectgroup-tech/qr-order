@@ -147,6 +147,8 @@ export function OrderStatusTracker({
   }
 
   const isRejected = order.status === "rejected";
+  const isDelivered = order.status === "delivered";
+  const canAddMore = !isRejected && !isDelivered;
   const currentIdx = STATUS_ORDER.indexOf(order.status);
 
   return (
@@ -295,15 +297,22 @@ export function OrderStatusTracker({
             tableName={order.tables?.name ?? "Table"}
           />
         )}
-        <Button
-          asChild
-          variant="outline"
-          className="border-zinc-700 text-zinc-200"
-        >
-          <Link href={`/${slug}/${token}`}>
-            {isRejected ? "Order again" : "Order more"}
-          </Link>
-        </Button>
+        {canAddMore && (
+          <Button
+            asChild
+            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
+          >
+            <Link href={`/${slug}/${token}`}>Add more items</Link>
+          </Button>
+        )}
+        {isRejected && (
+          <Button
+            asChild
+            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
+          >
+            <Link href={`/${slug}/${token}`}>Order again</Link>
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth/session";
+import { getStaffLocationId, requireAdmin, requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const orgSettingsSchema = z.object({
@@ -46,4 +46,27 @@ export async function updateOrganizationSettings(formData: FormData) {
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+export async function setLocationOrderingActive(active: boolean) {
+  const staff = await requireStaff();
+  if (!["owner", "manager"].includes(staff.role)) {
+    return { error: "Not allowed." };
+  }
+
+  const locationId = await getStaffLocationId(staff);
+  if (!locationId) {
+    return { error: "No location assigned." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("locations")
+    .update({ is_active: active, updated_at: new Date().toISOString() })
+    .eq("id", locationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/settings");
+  return { success: true, active };
 }

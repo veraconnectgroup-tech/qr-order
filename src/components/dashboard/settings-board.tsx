@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Copy, LogOut, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { logoutAction } from "@/lib/auth/actions";
-import { updateOrganizationSettings } from "@/lib/dashboard/settings-actions";
+import { updateOrganizationSettings, setLocationOrderingActive } from "@/lib/dashboard/settings-actions";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { DashboardStripeConnect } from "@/components/dashboard/dashboard-stripe-connect";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +26,7 @@ type LocationInfo = {
   name: string;
   address: string | null;
   city: string | null;
+  is_active: boolean;
 };
 
 export function SettingsBoard({
@@ -45,6 +46,10 @@ export function SettingsBoard({
 }) {
   const { enabled, toggle } = useSoundAlert();
   const [saving, setSaving] = useState(false);
+  const [orderingActive, setOrderingActive] = useState(
+    location?.is_active ?? true
+  );
+  const [togglingOrders, setTogglingOrders] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const guestMenuUrl = `${appUrl}/${org.slug}/demo-table-8`;
@@ -63,6 +68,18 @@ export function SettingsBoard({
   function copyGuestUrl() {
     navigator.clipboard.writeText(guestMenuUrl);
     toast.success("Guest menu URL copied");
+  }
+
+  async function handleOrderingToggle(checked: boolean) {
+    setTogglingOrders(true);
+    const result = await setLocationOrderingActive(checked);
+    setTogglingOrders(false);
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+    setOrderingActive(checked);
+    toast.success(checked ? "Guest ordering is open" : "Guest ordering paused");
   }
 
   return (
@@ -187,6 +204,37 @@ export function SettingsBoard({
           </button>
         </div>
       </section>
+
+      {canEdit && location && (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-50">
+                Guest ordering
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Pause new orders during breaks or when the kitchen is closed.
+                Waiter calls still work.
+              </p>
+              <p className="mt-2 text-xs text-zinc-600">
+                Status:{" "}
+                <span
+                  className={
+                    orderingActive ? "text-emerald-400" : "text-amber-400"
+                  }
+                >
+                  {orderingActive ? "Accepting orders" : "Paused"}
+                </span>
+              </p>
+            </div>
+            <Switch
+              checked={orderingActive}
+              disabled={togglingOrders}
+              onCheckedChange={handleOrderingToggle}
+            />
+          </div>
+        </section>
+      )}
 
       {canEdit && (
         <DashboardStripeConnect

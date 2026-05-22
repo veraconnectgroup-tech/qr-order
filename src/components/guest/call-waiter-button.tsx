@@ -93,6 +93,8 @@ export function CallWaiterButton({
         <SheetContent
           side="bottom"
           className="rounded-t-2xl border-zinc-800 bg-zinc-900 text-zinc-50"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-zinc-700" />
           {!confirmed ? (

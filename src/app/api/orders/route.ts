@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Create order error:", error);
     return NextResponse.json(
-      { error: "Porudžbina nije mogla biti kreirana. Pokušajte ponovo." },
+      { error: "Order could not be created. Please try again." },
       { status: 500 }
     );
   }

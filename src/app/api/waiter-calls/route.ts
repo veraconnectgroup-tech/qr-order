@@ -62,12 +62,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      return NextResponse.json({ error: "Poziv nije kreiran." }, { status: 500 });
+      return NextResponse.json({ error: "Waiter call could not be created." }, { status: 500 });
     }
 
     return NextResponse.json({ data: { ok: true } });
   } catch (error) {
     console.error("Waiter call error:", error);
-    return NextResponse.json({ error: "Interna greška." }, { status: 500 });
+    return NextResponse.json({ error: "Internal error." }, { status: 500 });
   }
 }

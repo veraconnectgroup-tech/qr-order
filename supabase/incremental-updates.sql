@@ -1,6 +1,8 @@
 -- Run this ONLY if cloud-setup.sql was already applied.
 -- Safe to re-run: uses IF NOT EXISTS / ON CONFLICT / DROP POLICY IF EXISTS.
 
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS receipt_sent_at TIMESTAMPTZ;
+
 -- ===== Security audit (migration 00004) =====
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_id TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_reason TEXT;

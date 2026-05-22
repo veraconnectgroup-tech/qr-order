@@ -12,14 +12,16 @@ export function ProductCard({
   product,
   currency,
   onOpenDetail,
+  orderingDisabled = false,
 }: {
   product: ProductWithModifiers;
   currency: string;
   onOpenDetail: () => void;
+  orderingDisabled?: boolean;
 }) {
   const addItem = useCart((s) => s.addItem);
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
-  const unavailable = !product.is_available;
+  const unavailable = !product.is_available || orderingDisabled;
 
   function openDetail() {
     if (unavailable) return;
@@ -101,7 +103,9 @@ export function ProductCard({
             {formatPrice(Number(product.price), currency)}
           </span>
           {unavailable ? (
-            <span className="text-xs font-medium text-zinc-500">Unavailable</span>
+            <span className="text-xs font-medium text-zinc-500">
+              {orderingDisabled ? "Paused" : "Unavailable"}
+            </span>
           ) : (
             <button
               type="button"

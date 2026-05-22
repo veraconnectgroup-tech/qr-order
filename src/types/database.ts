@@ -150,6 +150,7 @@ type Tables = {
     preparing_at: string | null;
     ready_at: string | null;
     delivered_at: string | null;
+    receipt_sent_at: string | null;
     created_at: string;
     updated_at: string;
   };
