@@ -39,6 +39,7 @@ export function SettingsBoard({
   staffRole,
   staffEmail,
   canEdit,
+  stripePlatformReady,
 }: {
   org: OrgSettings;
   location: LocationInfo | null;
@@ -46,6 +47,7 @@ export function SettingsBoard({
   staffRole: string;
   staffEmail: string | null;
   canEdit: boolean;
+  stripePlatformReady: boolean;
 }) {
   const { enabled, toggle } = useSoundAlert();
   const appUrl = useAppBaseUrl();
@@ -249,6 +251,7 @@ export function SettingsBoard({
           <DashboardStripeConnect
             connected={org.stripe_onboarded}
             accountId={org.stripe_account_id}
+            platformReady={stripePlatformReady}
           />
         </Suspense>
       )}

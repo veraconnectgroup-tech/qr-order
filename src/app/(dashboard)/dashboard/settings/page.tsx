@@ -1,5 +1,6 @@
 import { getStaffLocationId, requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isStripePlatformConfigured } from "@/lib/stripe/connect";
 import { SettingsBoard } from "@/components/dashboard/settings-board";
 
 export default async function SettingsPage() {
@@ -66,6 +67,7 @@ export default async function SettingsPage() {
       staffRole={staff.role}
       staffEmail={staff.email}
       canEdit={canEdit}
+      stripePlatformReady={isStripePlatformConfigured()}
     />
   );
 }

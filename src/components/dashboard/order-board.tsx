@@ -16,6 +16,7 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { DASHBOARD_POLL_INTERVAL_MS } from "@/lib/constants";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import {
   getOrderColumnId,
@@ -203,55 +204,23 @@ export function OrderBoard() {
           table: "orders",
           filter: `location_id=eq.${locationId}`,
         },
-        async (payload) => {
-          if (payload.eventType === "INSERT") {
-            const { data } = await supabase
-              .from("orders")
-              .select(ORDER_SELECT)
-              .eq("id", (payload.new as { id: string }).id)
-              .single();
-
-            if (data) {
-              const order = data as unknown as OrderWithDetails;
-              const created = new Date(order.created_at);
-              if (created >= new Date(startOfTodayIso())) {
-                setOrders((prev) => {
-                  if (prev.some((o) => o.id === order.id)) return prev;
-                  return [order, ...prev];
-                });
-              }
-            }
-            return;
-          }
-
-          if (payload.eventType === "UPDATE") {
-            const row = payload.new as { id: string; status: string };
-            if (["rejected", "cancelled"].includes(row.status)) {
-              setOrders((prev) => prev.filter((o) => o.id !== row.id));
-              return;
-            }
-
-            const { data } = await supabase
-              .from("orders")
-              .select(ORDER_SELECT)
-              .eq("id", row.id)
-              .single();
-
-            if (data) {
-              const order = data as unknown as OrderWithDetails;
-              setOrders((prev) => {
-                const exists = prev.some((o) => o.id === order.id);
-                if (!exists) return [order, ...prev];
-                return prev.map((o) => (o.id === order.id ? order : o));
-              });
-            }
-          }
+        () => {
+          if (!cancelled) fetchOrders();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" && !cancelled) {
+          fetchOrders();
+        }
+      });
+
+    const pollId = setInterval(() => {
+      if (!cancelled) fetchOrders();
+    }, DASHBOARD_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      clearInterval(pollId);
       supabase.removeChannel(channel);
     };
   }, [locationId, fetchOrders]);

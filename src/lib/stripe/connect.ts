@@ -37,6 +37,13 @@ export function assertStripeConnectConfig() {
   return appUrl;
 }
 
+export function isStripePlatformConfigured() {
+  return Boolean(
+    process.env.STRIPE_SECRET_KEY?.trim() &&
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim()
+  );
+}
+
 export async function syncStripeConnectStatus(
   orgId: string,
   accountId: string

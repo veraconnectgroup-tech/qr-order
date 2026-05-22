@@ -28,3 +28,6 @@ export const SESSION_MAX_AGE_HOURS = 4;
 export const ORDER_RATE_LIMIT_SECONDS = 60;
 
 export const WAITER_CALL_COOLDOWN_SECONDS = 60;
+
+/** Fallback poll when Supabase Realtime is unavailable. */
+export const DASHBOARD_POLL_INTERVAL_MS = 15_000;

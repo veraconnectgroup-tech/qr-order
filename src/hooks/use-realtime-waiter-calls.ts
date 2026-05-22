@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { DASHBOARD_POLL_INTERVAL_MS } from "@/lib/constants";
 import type { WaiterCall } from "@/types";
 
 export type WaiterCallWithTable = WaiterCall & {
@@ -90,9 +91,16 @@ export function useRealtimeWaiterCalls(locationId: string) {
           fetchCalls();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          fetchCalls();
+        }
+      });
+
+    const pollId = setInterval(fetchCalls, DASHBOARD_POLL_INTERVAL_MS);
 
     return () => {
+      clearInterval(pollId);
       supabase.removeChannel(channel);
     };
   }, [locationId]);

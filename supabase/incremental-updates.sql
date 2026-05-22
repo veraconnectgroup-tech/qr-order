@@ -154,3 +154,39 @@ CREATE POLICY "Staff read own org invites" ON staff_invites
 DROP POLICY IF EXISTS "Service role manages staff invites" ON staff_invites;
 CREATE POLICY "Service role manages staff invites" ON staff_invites
   FOR ALL USING (false);
+
+-- ===== Realtime for live dashboard (migration 00003) =====
+ALTER TABLE orders REPLICA IDENTITY FULL;
+ALTER TABLE waiter_calls REPLICA IDENTITY FULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'orders'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'waiter_calls'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE waiter_calls;
+  END IF;
+END $$;
+
+-- ===== Fixed platform fee per order (migration 00010) =====
+ALTER TABLE organizations
+  ADD COLUMN IF NOT EXISTS platform_fee_fixed DECIMAL(10,2) NOT NULL DEFAULT 0.40;
+
+ALTER TABLE organizations
+  ALTER COLUMN platform_fee_percent SET DEFAULT 0.00;
+
+UPDATE organizations
+SET platform_fee_fixed = 0.40, platform_fee_percent = 0
+WHERE platform_fee_percent > 0;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { DASHBOARD_POLL_INTERVAL_MS } from "@/lib/constants";
 import type { OrderWithDetails } from "@/types";
 
 const ORDER_SELECT =
@@ -78,7 +79,7 @@ export function useKitchenOrders(locationId: string) {
 
     const pollId = setInterval(() => {
       if (!cancelled) fetchOrders();
-    }, 60_000);
+    }, DASHBOARD_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;

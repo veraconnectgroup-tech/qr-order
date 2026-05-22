@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 export function DashboardStripeConnect({
   connected,
   accountId,
+  platformReady,
 }: {
   connected: boolean;
   accountId: string | null;
+  platformReady: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -106,6 +108,22 @@ export function DashboardStripeConnect({
       ) : (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-amber-400">Payments not configured</p>
+          {!platformReady && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Card payments are not enabled on this deployment yet. The platform
+              admin must add{" "}
+              <code className="font-mono">STRIPE_SECRET_KEY</code> and{" "}
+              <code className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
+              on Vercel, enable Stripe Connect, then redeploy.
+            </p>
+          )}
+          {platformReady && (
+            <p className="text-xs text-zinc-500">
+              Connect your restaurant&apos;s Stripe account to accept guest card
+              payments. Payouts go to your bank; the platform keeps a 2% fee per
+              transaction.
+            </p>
+          )}
           <ul className="space-y-1 text-xs text-zinc-500">
             <li>2% platform fee per transaction</li>
             <li>Payouts to your bank account</li>
@@ -114,7 +132,7 @@ export function DashboardStripeConnect({
           <Button
             className="bg-orange-500 hover:bg-orange-600"
             onClick={handleConnect}
-            disabled={busy}
+            disabled={busy || !platformReady}
           >
             {busy ? "Loading…" : "Connect Stripe →"}
           </Button>
