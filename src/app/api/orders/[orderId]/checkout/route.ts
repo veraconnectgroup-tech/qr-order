@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import type { PaymentMethod } from "@/lib/constants";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
-import { getAvailablePaymentMethods } from "@/lib/payment-methods";
+import {
+  getAvailablePaymentMethods,
+  type SelectablePaymentMethod,
+} from "@/lib/payment-methods";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
@@ -102,7 +104,7 @@ export async function POST(
     }
 
     const methods = await loadPaymentOptions(orderRow.location_id);
-    if (!methods?.includes(paymentMethod as PaymentMethod)) {
+    if (!methods?.includes(paymentMethod as SelectablePaymentMethod)) {
       return NextResponse.json(
         { error: "This payment method is not available." },
         { status: 400 }

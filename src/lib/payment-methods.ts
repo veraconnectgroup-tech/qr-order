@@ -49,14 +49,16 @@ export function guestPaymentInstruction(
   return null;
 }
 
+export type SelectablePaymentMethod = Exclude<PaymentMethod, "unset">;
+
 export function getAvailablePaymentMethods(input: {
   stripeOnboarded: boolean;
   stripePublishableKey: boolean;
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
-}): PaymentMethod[] {
-  const methods: PaymentMethod[] = [];
+}): SelectablePaymentMethod[] {
+  const methods: SelectablePaymentMethod[] = [];
 
   if (
     input.stripeOnboarded &&

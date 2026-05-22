@@ -5,6 +5,7 @@ import type { PaymentMethod } from "@/lib/constants";
 import {
   PAYMENT_METHOD_OPTIONS,
   type PaymentMethodOption,
+  type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +20,9 @@ export function PaymentMethodSelector({
   value,
   onChange,
 }: {
-  methods: Exclude<PaymentMethod, "unset">[];
+  methods: SelectablePaymentMethod[];
   value: PaymentMethod | null;
-  onChange: (method: Exclude<PaymentMethod, "unset">) => void;
+  onChange: (method: SelectablePaymentMethod) => void;
 }) {
   return (
     <div className="space-y-2">

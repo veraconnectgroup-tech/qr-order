@@ -11,9 +11,11 @@ import {
 import { Lock, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
-import type { PaymentMethod } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
-import { getAvailablePaymentMethods } from "@/lib/payment-methods";
+import {
+  getAvailablePaymentMethods,
+  type SelectablePaymentMethod,
+} from "@/lib/payment-methods";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { Button } from "@/components/ui/button";
@@ -114,9 +116,9 @@ export function OrderBillPanel({
   onPaid: () => void;
 }) {
   const [bill, setBill] = useState<SessionBill | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<
-    Exclude<PaymentMethod, "unset"> | null
-  >(null);
+  const [paymentMethod, setPaymentMethod] = useState<SelectablePaymentMethod | null>(
+    null
+  );
   const [processing, setProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
@@ -130,7 +132,7 @@ export function OrderBillPanel({
         paymentOnlineEnabled,
         paymentAtBarEnabled,
         paymentCardAtTableEnabled,
-      }).filter((m) => m !== "unset"),
+      }),
     [
       stripeOnboarded,
       paymentOnlineEnabled,
