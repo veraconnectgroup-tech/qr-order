@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ORDER_RATE_LIMIT_SECONDS, type PaymentMethod } from "@/lib/constants";
+import { type PaymentMethod } from "@/lib/constants";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import {
   MAX_ITEMS_PER_ORDER,
@@ -102,10 +102,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     return { error: itemsError, status: 400 };
   }
 
-  const recentCutoff = new Date(
-    Date.now() - ORDER_RATE_LIMIT_SECONDS * 1000
-  ).toISOString();
-
   const { data: pendingOrder } = await admin
     .from("orders")
     .select("id, subtotal, tax_percent, payment_status, stripe_payment_intent_id")
@@ -123,23 +119,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     payment_status: string;
     stripe_payment_intent_id: string | null;
   } | null;
-
-  if (!pendingRow) {
-    const { data: recentOrder } = await admin
-      .from("orders")
-      .select("id")
-      .eq("session_id", sessionRow.id)
-      .gte("created_at", recentCutoff)
-      .limit(1)
-      .maybeSingle();
-
-    if (recentOrder) {
-      return {
-        error: "Please wait before placing another order.",
-        status: 429,
-      };
-    }
-  }
 
   const productIds = [...new Set(input.items.map((i) => i.productId))];
   const modifierIds = [

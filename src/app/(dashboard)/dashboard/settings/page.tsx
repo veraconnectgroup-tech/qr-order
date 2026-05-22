@@ -21,7 +21,7 @@ export default async function SettingsPage() {
       ? admin
           .from("locations")
           .select(
-            "name, address, city, is_active, accepting_orders, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+            "name, address, city, is_active, accepting_orders, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled, in_person_payment_location"
           )
           .eq("id", locationId)
           .single()
@@ -76,6 +76,7 @@ export default async function SettingsPage() {
           payment_online_enabled: boolean;
           payment_at_bar_enabled: boolean;
           payment_card_at_table_enabled: boolean;
+          in_person_payment_location: "bar" | "counter" | "table";
         } | null
       }
       staffName={staff.name}

@@ -11,7 +11,18 @@ import { useAppBaseUrl } from "@/hooks/use-app-base-url";
 import { guestTableUrl } from "@/lib/app-url";
 import { DashboardStripeConnect } from "@/components/dashboard/dashboard-stripe-connect";
 import { Switch } from "@/components/ui/switch";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+const IN_PERSON_LOCATION_OPTIONS: Array<{
+  id: InPersonPaymentLocation;
+  label: string;
+  hint: string;
+}> = [
+  { id: "bar", label: "At the bar", hint: "Guests pay at the bar" },
+  { id: "counter", label: "At the counter", hint: "Guests pay at the counter" },
+  { id: "table", label: "At the table", hint: "Staff collects payment at the table" },
+];
 
 type OrgSettings = {
   name: string;
@@ -34,6 +45,7 @@ type LocationInfo = {
   payment_online_enabled: boolean;
   payment_at_bar_enabled: boolean;
   payment_card_at_table_enabled: boolean;
+  in_person_payment_location: InPersonPaymentLocation;
 };
 
 export function SettingsBoard({
@@ -70,6 +82,9 @@ export function SettingsBoard({
   );
   const [paymentCardAtTable, setPaymentCardAtTable] = useState(
     location?.payment_card_at_table_enabled ?? true
+  );
+  const [inPersonLocation, setInPersonLocation] = useState<InPersonPaymentLocation>(
+    location?.in_person_payment_location ?? "bar"
   );
   const [savingPayments, setSavingPayments] = useState(false);
   const guestMenuUrl = sampleTableToken
@@ -109,12 +124,32 @@ export function SettingsBoard({
     key: "online" | "atBar" | "cardAtTable",
     checked: boolean
   ) {
-    const next = {
+    await savePaymentSettings({
       online: key === "online" ? checked : paymentOnline,
       atBar: key === "atBar" ? checked : paymentAtBar,
       cardAtTable: key === "cardAtTable" ? checked : paymentCardAtTable,
-    };
+      location: inPersonLocation,
+    });
+  }
 
+  async function handleInPersonLocationChange(
+    nextLocation: InPersonPaymentLocation
+  ) {
+    setInPersonLocation(nextLocation);
+    await savePaymentSettings({
+      online: paymentOnline,
+      atBar: paymentAtBar,
+      cardAtTable: paymentCardAtTable,
+      location: nextLocation,
+    });
+  }
+
+  async function savePaymentSettings(next: {
+    online: boolean;
+    atBar: boolean;
+    cardAtTable: boolean;
+    location: InPersonPaymentLocation;
+  }) {
     if (!next.online && !next.atBar && !next.cardAtTable) {
       toast.error("At least one payment method must stay enabled.");
       return;
@@ -125,6 +160,7 @@ export function SettingsBoard({
       paymentOnlineEnabled: next.online,
       paymentAtBarEnabled: next.atBar,
       paymentCardAtTableEnabled: next.cardAtTable,
+      inPersonPaymentLocation: next.location,
     });
     setSavingPayments(false);
 
@@ -136,6 +172,7 @@ export function SettingsBoard({
     setPaymentOnline(next.online);
     setPaymentAtBar(next.atBar);
     setPaymentCardAtTable(next.cardAtTable);
+    setInPersonLocation(next.location);
     toast.success("Payment methods updated");
   }
 
@@ -313,20 +350,55 @@ export function SettingsBoard({
             Choose which options guests see at checkout
           </p>
           <div className="mt-4 divide-y divide-zinc-800 rounded-lg border border-zinc-800">
-            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium text-zinc-200">Bar</p>
-                <p className="text-xs text-zinc-500">
-                  Guest orders now and pays at the bar later
-                </p>
+            <div className="px-4 py-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-zinc-200">Pay in person</p>
+                  <p className="text-xs text-zinc-500">
+                    Guest orders now and pays later on site
+                  </p>
+                </div>
+                <Switch
+                  checked={paymentAtBar}
+                  disabled={savingPayments}
+                  onCheckedChange={(checked) =>
+                    handlePaymentMethodChange("atBar", checked)
+                  }
+                />
               </div>
-              <Switch
-                checked={paymentAtBar}
-                disabled={savingPayments}
-                onCheckedChange={(checked) =>
-                  handlePaymentMethodChange("atBar", checked)
-                }
-              />
+              {paymentAtBar && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-zinc-400">
+                    Where do guests pay?
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {IN_PERSON_LOCATION_OPTIONS.map((option) => {
+                      const selected = inPersonLocation === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={savingPayments}
+                          onClick={() => handleInPersonLocationChange(option.id)}
+                          className={cn(
+                            "rounded-lg border px-3 py-2.5 text-left transition",
+                            selected
+                              ? "border-orange-500 bg-orange-500/10"
+                              : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                          )}
+                        >
+                          <span className="block text-sm font-medium text-zinc-200">
+                            {option.label}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-zinc-500">
+                            {option.hint}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>

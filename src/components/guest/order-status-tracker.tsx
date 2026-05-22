@@ -16,7 +16,9 @@ import { OrderBillPanel } from "@/components/guest/order-bill-panel";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import { guestPaymentInstruction } from "@/lib/payment-methods";
 
 type OrderData = {
   id: string;
@@ -78,6 +80,7 @@ export function OrderStatusTracker({
   paymentOnlineEnabled,
   paymentAtBarEnabled,
   paymentCardAtTableEnabled,
+  inPersonPaymentLocation,
 }: {
   slug: string;
   token: string;
@@ -88,6 +91,7 @@ export function OrderStatusTracker({
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
+  inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +177,11 @@ export function OrderStatusTracker({
   const canAddMore = !isClosed;
   const stepIdx = orderStatusStepIndex(order.status);
   const headline = orderStatusHeadline(order.status, order.payment_status);
+  const paymentHint = guestPaymentInstruction(
+    order.payment_method,
+    order.payment_status,
+    inPersonPaymentLocation
+  );
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
@@ -205,6 +214,9 @@ export function OrderStatusTracker({
                 </p>
               )}
           </>
+        )}
+        {paymentHint && (
+          <p className="mt-3 text-sm text-zinc-400">{paymentHint}</p>
         )}
         {isRejected && order.rejection_reason && (
           <p className="mt-2 text-sm text-zinc-400">{order.rejection_reason}</p>
@@ -348,6 +360,7 @@ export function OrderStatusTracker({
             paymentOnlineEnabled={paymentOnlineEnabled}
             paymentAtBarEnabled={paymentAtBarEnabled}
             paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+            inPersonPaymentLocation={inPersonPaymentLocation}
             isPaid={isPaid}
             onPaid={() => {
               refreshOrder().then((data) => {

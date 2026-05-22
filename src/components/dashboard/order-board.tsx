@@ -95,6 +95,7 @@ function DraggableOrderCard({
   onStartPreparing,
   onMarkReady,
   onMarkDelivered,
+  inPersonPaymentLocation,
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -104,6 +105,7 @@ function DraggableOrderCard({
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onMarkDelivered: () => void;
+  inPersonPaymentLocation: "bar" | "counter" | "table";
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: order.id,
@@ -124,6 +126,7 @@ function DraggableOrderCard({
         onMarkReady={onMarkReady}
         onMarkDelivered={onMarkDelivered}
         dragHandleProps={{ ...attributes, ...listeners }}
+        inPersonPaymentLocation={inPersonPaymentLocation}
       />
     </div>
   );
@@ -150,6 +153,7 @@ export function OrderBoard() {
     hasTables,
     hasMenuItems,
     staffRole,
+    inPersonPaymentLocation,
   } = useDashboard();
   const { refreshAlerts } = useDashboardAlerts();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
@@ -307,6 +311,7 @@ export function OrderBoard() {
           key={order.id}
           order={order}
           currency={currency}
+          inPersonPaymentLocation={inPersonPaymentLocation}
           {...handlers}
         />
       );
@@ -317,6 +322,7 @@ export function OrderBoard() {
         key={order.id}
         order={order}
         currency={currency}
+        inPersonPaymentLocation={inPersonPaymentLocation}
         {...handlers}
       />
     );
@@ -451,6 +457,7 @@ export function OrderBoard() {
                 order={activeOrder}
                 currency={currency}
                 busy={false}
+                inPersonPaymentLocation={inPersonPaymentLocation}
                 onAccept={() => {}}
                 onReject={() => {}}
                 onStartPreparing={() => {}}

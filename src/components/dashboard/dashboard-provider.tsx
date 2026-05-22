@@ -15,6 +15,7 @@ export type DashboardContextValue = {
   stripeOnboarded: boolean;
   hasTables: boolean;
   hasMenuItems: boolean;
+  inPersonPaymentLocation: "bar" | "counter" | "table";
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);

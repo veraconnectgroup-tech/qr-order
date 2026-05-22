@@ -11,11 +11,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "QR Order — Scan, Order, Pay",
+    default: "QR Order — Hospitality ordering platform",
     template: "%s | QR Order",
   },
   description:
-    "QR-based ordering and payment for hospitality venues. No app install, no registration.",
+    "Enterprise-grade QR ordering, live operations, and payments for restaurants, bars, and multi-location venues.",
   manifest: "/manifest.webmanifest",
 };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { OrderStatusTracker } from "@/components/guest/order-status-tracker";
 
@@ -12,6 +13,7 @@ export function OrderPageClient({
   paymentOnlineEnabled,
   paymentAtBarEnabled,
   paymentCardAtTableEnabled,
+  inPersonPaymentLocation,
 }: {
   slug: string;
   token: string;
@@ -21,6 +23,7 @@ export function OrderPageClient({
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
+  inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
   const sessionToken = useGuestSession((s) => s.sessionToken);
 
@@ -43,6 +46,7 @@ export function OrderPageClient({
       paymentOnlineEnabled={paymentOnlineEnabled}
       paymentAtBarEnabled={paymentAtBarEnabled}
       paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+      inPersonPaymentLocation={inPersonPaymentLocation}
     />
   );
 }

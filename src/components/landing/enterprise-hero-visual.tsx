@@ -27,7 +27,7 @@ function HeroLiveOrderCard() {
     <div className="overflow-hidden rounded-xl border border-zinc-800/90 bg-zinc-950/95 shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-sm">
       <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
         <motion.span
-          className="size-2 rounded-full bg-orange-500"
+          className="size-2 rounded-full bg-emerald-500/80"
           animate={reduce ? undefined : { opacity: [1, 0.35, 1] }}
           transition={
             reduce
@@ -49,9 +49,9 @@ function HeroLiveOrderCard() {
         <p className="mt-0.5 text-[10px] text-zinc-500">
           {itemCount} items · {formatPrice(order.total, DEMO_CURRENCY)}
         </p>
-        <p className="mt-2 text-[10px] font-medium text-orange-400">
+        <span className="mt-2 text-[10px] font-medium text-zinc-400">
           Preparing · ~8 min
-        </p>
+        </span>
       </div>
     </div>
   );
@@ -61,7 +61,7 @@ function HeroPhoneStack() {
   return (
     <div className="relative mx-auto w-full max-w-[280px]">
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-        <div className="absolute left-1/2 top-1/2 size-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500/[0.08] blur-[120px]" />
+        <div className="absolute left-1/2 top-1/2 size-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/[0.04] blur-[120px]" />
       </div>
       <ShowcasePhone hideLabel className="max-w-none">
         <ScaledPhonePreview designHeight={560}>
@@ -95,7 +95,7 @@ export function EnterpriseHeroVisual() {
 
       <ShowcaseStage className="hidden md:block lg:max-w-[840px]">
         <HeroGlow className="left-[18%] top-[24%] size-[300px]" />
-        <HeroGlow className="right-[8%] bottom-[18%] size-[220px] bg-orange-400/[0.05]" />
+        <HeroGlow className="right-[8%] bottom-[18%] size-[220px] bg-white/[0.03]" />
 
         <HeroSlideIn
           from="right"

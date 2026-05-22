@@ -11,6 +11,7 @@ import {
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { unpaidPaymentHint } from "@/lib/payment-methods";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -189,9 +190,13 @@ function StatusBadge({ status }: { status: string }) {
 function PaymentCell({
   status,
   orderStatus,
+  paymentMethod,
+  inPersonPaymentLocation,
 }: {
   status: string;
   orderStatus: string;
+  paymentMethod?: string | null;
+  inPersonPaymentLocation: "bar" | "counter" | "table";
 }) {
   if (status === "paid") {
     return <span className="text-green-400">Paid ✓</span>;
@@ -200,7 +205,11 @@ function PaymentCell({
     return <span className="text-red-400">Refund</span>;
   }
   if (status === "pending" && orderStatus === "delivered") {
-    return <span className="text-zinc-400">Pay at counter</span>;
+    return (
+      <span className="text-zinc-400">
+        {unpaidPaymentHint(paymentMethod ?? "at_bar", inPersonPaymentLocation)}
+      </span>
+    );
   }
   return <span className="text-yellow-400">Pending</span>;
 }
@@ -236,7 +245,7 @@ function exportCsv(orders: OrderWithDetails[]) {
 }
 
 export function OrderHistoryList() {
-  const { locationId, currency } = useDashboard();
+  const { locationId, currency, inPersonPaymentLocation } = useDashboard();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<DateFilter>("today");
@@ -478,6 +487,10 @@ export function OrderHistoryList() {
                       <PaymentCell
                         status={order.payment_status}
                         orderStatus={order.status}
+                        paymentMethod={
+                          (order as { payment_method?: string }).payment_method
+                        }
+                        inPersonPaymentLocation={inPersonPaymentLocation}
                       />
                     </div>
                   </div>
@@ -577,6 +590,10 @@ export function OrderHistoryList() {
                         <PaymentCell
                           status={order.payment_status}
                           orderStatus={order.status}
+                          paymentMethod={
+                            (order as { payment_method?: string }).payment_method
+                          }
+                          inPersonPaymentLocation={inPersonPaymentLocation}
                         />
                       </td>
                       <td className="px-4 py-3 text-zinc-500">

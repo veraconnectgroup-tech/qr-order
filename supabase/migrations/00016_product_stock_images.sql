@@ -1,5 +1,5 @@
--- Demo product photos + allergens (Skyline Lounge)
--- Image URLs verified against images.unsplash.com (see src/lib/product-stock-images.ts)
+-- Fix broken/outdated demo product photos (run on existing Supabase projects)
+-- Same URLs as 00005_product_images.sql / src/lib/product-stock-images.ts
 
 UPDATE products SET
   image_url = 'https://images.unsplash.com/photo-1595475207225-428b62bda831?w=600&q=80',
@@ -72,23 +72,19 @@ UPDATE products SET
 WHERE id = 'f0000000-0000-4000-8000-000000000014';
 
 UPDATE products SET
-  image_url = 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=600&q=80',
-  allergens = NULL
+  image_url = 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=600&q=80'
 WHERE id = 'f0000000-0000-4000-8000-000000000015';
 
 UPDATE products SET
-  image_url = 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&q=80',
-  allergens = NULL
+  image_url = 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&q=80'
 WHERE id = 'f0000000-0000-4000-8000-000000000016';
 
 UPDATE products SET
-  image_url = 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80',
-  allergens = NULL
+  image_url = 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80'
 WHERE id = 'f0000000-0000-4000-8000-000000000017';
 
 UPDATE products SET
-  image_url = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80',
-  allergens = NULL
+  image_url = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80'
 WHERE id = 'f0000000-0000-4000-8000-000000000018';
 
 UPDATE products SET

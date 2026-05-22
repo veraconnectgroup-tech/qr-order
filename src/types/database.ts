@@ -41,6 +41,7 @@ type Tables = {
     payment_online_enabled: boolean;
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
+    in_person_payment_location: "bar" | "counter" | "table";
     created_at: string;
     updated_at: string;
   };

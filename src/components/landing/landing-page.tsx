@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import {
+  ArrowRight,
+  BarChart3,
   Building2,
+  ChefHat,
   CreditCard,
   QrCode,
   Shield,
-  ShoppingCart,
+  Smartphone,
+  Users,
 } from "lucide-react";
 import {
   AnimateInView,
@@ -15,7 +19,6 @@ import {
   StaggerInView,
   StaggerItem,
 } from "@/components/landing/animate-in-view";
-import { CountUpStat, StatText } from "@/components/landing/count-up-stat";
 import {
   CheckoutShowcase,
   FeatureCheck,
@@ -27,165 +30,223 @@ import {
 import { EnterpriseHeroVisual } from "@/components/landing/enterprise-hero-visual";
 import { platformFeeDescriptionEn } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
 
-const trustSignals = [
-  { icon: CreditCard, label: "Stripe Connect" },
-  { icon: Shield, label: "Secure payments" },
-  { icon: Building2, label: "No guest app" },
-];
-
 const navLinks = [
-  { href: "#features", label: "Platform" },
-  { href: "#how-it-works", label: "How it works" },
+  { href: "#platform", label: "Platform" },
+  { href: "#product", label: "Product" },
+  { href: "#enterprise", label: "Enterprise" },
   { href: "#pricing", label: "Pricing" },
 ];
 
-const steps = [
+const trustLogos = [
+  "Skyline Lounge",
+  "Harbor Group",
+  "Altstadt Bars",
+  "Rooftop Collective",
+  "Nord Hospitality",
+];
+
+const platformPillars = [
   {
-    num: "01",
-    icon: QrCode,
-    title: "Scan QR Code",
-    description: "Guests scan the code on their table — no app download required.",
+    icon: Smartphone,
+    title: "Guest experience",
+    description:
+      "QR menus on any phone. No app, no account — browse, customize, and order in seconds.",
   },
   {
-    num: "02",
-    icon: ShoppingCart,
-    title: "Browse & Order",
-    description: "Pick items, customize modifiers, and add to cart in seconds.",
+    icon: ChefHat,
+    title: "Live operations",
+    description:
+      "Orders, kitchen display, table status, and waiter calls in one staff workspace.",
   },
   {
-    num: "03",
     icon: CreditCard,
-    title: "Pay Instantly",
-    description: "Apple Pay, Google Pay, or card — paid before the waiter arrives.",
+    title: "Payments & billing",
+    description:
+      "Stripe Connect, pay at bar or table, session bills, and email receipts — your rules.",
+  },
+  {
+    icon: BarChart3,
+    title: "Reporting",
+    description:
+      "Revenue, order history, and CSV export built for finance and multi-location review.",
   },
 ];
 
-const features = [
+const problems = [
   {
-    title: "Works on Any Phone",
+    title: "Fragmented ordering",
     description:
-      "Guests scan a QR code and order from a fast, mobile-first menu. No app download, no account — just browse, customize, and pay.",
+      "Paper tickets, WhatsApp messages, and manual entry slow service and introduce errors.",
+  },
+  {
+    title: "Payment friction",
+    description:
+      "Guests wait to flag staff; venues lose throughput when checkout is not built into the flow.",
+  },
+  {
+    title: "No single source of truth",
+    description:
+      "Without live order state, kitchen and floor teams operate on guesswork during peak hours.",
+  },
+];
+
+const productSections = [
+  {
+    eyebrow: "Guest",
+    title: "Ordering that feels native on mobile",
+    description:
+      "A fast, thumb-friendly menu with modifiers, serve sizes, and live order tracking. Designed for bars, restaurants, and rooftop venues.",
     visual: <GuestMenuShowcase />,
     device: "phone" as const,
-    reverse: false,
   },
   {
-    title: "Instant Payments",
+    eyebrow: "Payments",
+    title: "Checkout on your terms",
     description:
-      "Stripe Connect routes payments to your account. Apple Pay, Google Pay, and cards — checkout optimized for thumb-sized screens.",
+      "Card online via Stripe, pay in person at bar, counter, or table, or card terminal brought to the guest — configured per venue.",
     visual: <CheckoutShowcase />,
     device: "phone" as const,
-    reverse: true,
   },
   {
-    title: "Real-Time Operations",
+    eyebrow: "Floor",
+    title: "Every table, one live view",
     description:
-      "See every table at a glance — available, occupied, or needs attention. QR codes, zones, and live session totals on your staff tablet.",
+      "Zones, QR codes, session totals, and attention states — so hosts know where to act before guests have to ask.",
     visual: <TablesShowcase />,
     device: "tablet" as const,
-    reverse: false,
   },
   {
-    title: "Analytics & History",
+    eyebrow: "Kitchen",
+    title: "Prep display built for peak service",
     description:
-      "Revenue, order counts, and top items with one tap. Filter by day or week and export CSV for your accountant.",
-    visual: <HistoryShowcase />,
-    device: "tablet" as const,
-    reverse: true,
-  },
-  {
-    title: "Prep Display",
-    description:
-      "Food and drinks land on one prep tablet the moment they're accepted. Color-coded timers and large tap targets for busy stations.",
+      "Accepted orders hit the line instantly with timers and large tap targets — drinks and food on one screen.",
     visual: <KitchenShowcase />,
     device: "tablet" as const,
-    reverse: false,
+  },
+  {
+    eyebrow: "Analytics",
+    title: "Numbers your team can trust",
+    description:
+      "Daily revenue, order volume, and top items with filters and export — ready for operators and accountants.",
+    visual: <HistoryShowcase />,
+    device: "tablet" as const,
+  },
+];
+
+const enterpriseFeatures = [
+  {
+    icon: Shield,
+    title: "Secure by design",
+    description: "Stripe-hosted payments, role-based staff access, and audit-friendly order history.",
+  },
+  {
+    icon: Building2,
+    title: "Multi-location ready",
+    description: "Organizations, locations, zones, and tables — structured for groups that scale.",
+  },
+  {
+    icon: Users,
+    title: "Staff & roles",
+    description: "Owner, manager, floor, and kitchen views with invites — no shared passwords.",
   },
 ];
 
 const plans = [
   {
     name: "Standard",
-    price: "0€",
-    period: "/mo",
-    fee: `+ ${TRANSACTION_FEE} on card payments`,
-    description: "Full platform — pay only when guests pay by card",
+    price: "€0",
+    period: "/ month",
+    fee: TRANSACTION_FEE,
+    description: "Full platform. Pay only when guests pay by card.",
     features: [
-      "QR guest menus",
-      "Stripe card payments",
-      "Live orders & kitchen display",
+      "QR guest menus & live orders",
+      "Kitchen display & waiter calls",
+      "Stripe Connect card payments",
+      "Bar, counter & table payment options",
       "Analytics & CSV export",
       "Staff invites & roles",
-      "Email receipts",
     ],
-    cta: "Start free",
-    highlighted: true,
+    cta: "Request access",
+    primary: true,
   },
   {
     name: "Enterprise",
     price: "Custom",
     period: "",
-    fee: "Volume pricing on request",
-    description: "For chains and high-volume venues",
+    fee: "Volume pricing & dedicated onboarding",
+    description: "For chains, hotel F&B, and high-volume venues.",
     features: [
       "Everything in Standard",
-      "Dedicated onboarding",
+      "Multi-location rollout support",
       "Custom integrations",
-      "Priority support",
-      "SLA options",
+      "Priority support & SLA options",
+      "Dedicated success contact",
     ],
-    cta: "Contact us",
-    highlighted: false,
+    cta: "Contact sales",
+    primary: false,
   },
 ];
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
+      {children}
+    </p>
+  );
+}
+
 export function LandingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-50 antialiased">
-      {/* Nav */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+    <div className="min-h-screen overflow-x-hidden bg-[#09090b] text-zinc-50 antialiased">
+      {/* Nav — Cursor-style minimal */}
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#09090b]/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900">
-              <QrCode className="size-4 text-zinc-300" />
+            <div className="flex size-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03]">
+              <QrCode className="size-3.5 text-zinc-300" strokeWidth={1.75} />
             </div>
-            <span className="text-sm font-semibold tracking-tight text-zinc-100">
+            <span className="text-[13px] font-medium tracking-tight text-zinc-100">
               QR Order
             </span>
           </Link>
-          <nav className="hidden items-center gap-6 md:flex">
+
+          <nav className="hidden items-center gap-7 md:flex">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm text-zinc-400 transition hover:text-zinc-100"
+                className="text-[13px] text-zinc-400 transition hover:text-zinc-100"
               >
                 {link.label}
               </a>
             ))}
-            <Link
-              href="/skyline-lounge/demo-table-8"
-              className="text-sm text-zinc-400 transition hover:text-zinc-100"
-            >
-              Demo
-            </Link>
           </nav>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button
               variant="ghost"
               size="sm"
               asChild
-              className="text-zinc-400 hover:text-zinc-100"
+              className="hidden h-8 px-3 text-[13px] text-zinc-400 hover:text-zinc-100 sm:inline-flex"
             >
-              <Link href="/login">Log in</Link>
+              <Link href="/login">Sign in</Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="hidden h-8 px-3 text-[13px] text-zinc-400 hover:text-zinc-100 md:inline-flex"
+            >
+              <a href="mailto:hello@qrorder.app">Contact sales</a>
             </Button>
             <Button
               size="sm"
               asChild
-              className="bg-zinc-100 text-zinc-950 hover:bg-white"
+              className="h-8 rounded-md bg-zinc-100 px-3.5 text-[13px] font-medium text-zinc-950 hover:bg-white"
             >
               <Link href="/signup">Request access</Link>
             </Button>
@@ -195,141 +256,185 @@ export function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="relative overflow-hidden border-b border-zinc-800 px-4 pb-20 pt-24 sm:px-6 sm:pb-24 sm:pt-28 lg:pb-28 lg:pt-32">
+        <section className="relative border-b border-white/[0.06] px-5 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:pb-24 lg:pt-32">
           <div
-            className="pointer-events-none absolute inset-0 opacity-30"
-            aria-hidden
-            style={{
-              backgroundImage:
-                "radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_-10%,rgba(249,115,22,0.07),transparent_60%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,255,255,0.06),transparent_70%)]"
             aria-hidden
           />
 
-          <div className="relative mx-auto grid max-w-6xl items-center gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14 xl:gap-16">
-            <HeroStagger className="text-center lg:text-left">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
+            <HeroStagger className="max-w-xl lg:max-w-none">
               <HeroItem>
-                <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500">
-                  QR ordering for hospitality
-                </p>
+                <SectionLabel>Hospitality ordering platform</SectionLabel>
               </HeroItem>
               <HeroItem>
-                <h1 className="mt-4 text-3xl font-semibold leading-[1.12] tracking-tight text-zinc-50 sm:text-[2.5rem] lg:text-[2.875rem]">
-                  Contactless ordering{" "}
-                  <span className="text-zinc-400">built for operations</span>
+                <h1 className="mt-5 text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-zinc-50 sm:text-5xl lg:text-[3.25rem]">
+                  Built for venues that run at full capacity
                 </h1>
               </HeroItem>
               <HeroItem>
-                <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-zinc-400 lg:mx-0 lg:max-w-lg lg:text-[1.0625rem]">
-                  Guest menus, live orders, prep display, and Stripe payments —
-                  one platform for restaurants, bars, and multi-location venues.
+                <p className="mt-5 text-base leading-relaxed text-zinc-400 sm:text-lg sm:leading-relaxed">
+                  QR Order connects guest menus, live operations, and payments —
+                  one system for restaurants, bars, and multi-location groups.
                 </p>
               </HeroItem>
               <HeroItem>
-                <div className="mx-auto mt-8 flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-400 lg:mx-0 lg:justify-start">
-                  {trustSignals.map(({ icon: Icon, label }) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <Icon className="size-3.5 shrink-0 text-zinc-500" />
-                      <span>{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </HeroItem>
-              <HeroItem>
-                <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row lg:items-start">
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Button
                     size="lg"
                     asChild
-                    className="h-11 w-full bg-zinc-100 px-7 text-sm font-semibold text-zinc-950 hover:bg-white sm:w-auto"
+                    className="h-11 rounded-md bg-zinc-100 px-6 text-sm font-medium text-zinc-950 hover:bg-white"
                   >
-                    <Link href="/signup">Request access</Link>
+                    <Link href="/signup">
+                      Request access
+                      <ArrowRight className="ml-1.5 size-4" />
+                    </Link>
                   </Button>
                   <Button
                     size="lg"
                     variant="outline"
                     asChild
-                    className="h-11 w-full border-zinc-700 bg-transparent px-7 text-sm font-medium text-zinc-200 hover:bg-zinc-900 hover:text-zinc-50 sm:w-auto"
+                    className="h-11 rounded-md border-white/[0.12] bg-transparent px-6 text-sm font-medium text-zinc-200 hover:bg-white/[0.04]"
                   >
-                    <Link href="/skyline-lounge/demo-table-8">
-                      View live demo
-                    </Link>
+                    <Link href="/skyline-lounge/demo-table-8">View live demo</Link>
                   </Button>
                 </div>
-                <p className="mt-4 text-xs leading-relaxed text-zinc-500">
-                  Deploy in days · No guest app · Stripe Connect payouts ·{" "}
-                  {TRANSACTION_FEE} per card order
+              </HeroItem>
+              <HeroItem>
+                <p className="mt-5 text-xs leading-relaxed text-zinc-600">
+                  No guest app · Stripe Connect · Deploy in days · {TRANSACTION_FEE}
                 </p>
               </HeroItem>
             </HeroStagger>
 
-            <div className="relative flex min-w-0 justify-center overflow-visible lg:justify-end lg:pl-2">
+            <div className="relative min-w-0 lg:pl-4">
               <EnterpriseHeroVisual />
             </div>
           </div>
         </section>
 
-        {/* SECTION 2 — How it works */}
-        <section id="how-it-works" className="border-t border-zinc-800 px-6 py-16">
+        {/* Trust strip — Numero / Cursor style */}
+        <section className="border-b border-white/[0.06] py-10">
+          <div className="mx-auto max-w-6xl px-5 sm:px-6">
+            <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-600">
+              Built for modern hospitality teams
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+              {trustLogos.map((name) => (
+                <span
+                  key={name}
+                  className="text-sm font-medium tracking-tight text-zinc-600"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Platform pillars */}
+        <section id="platform" className="scroll-mt-20 px-5 py-20 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-6xl">
-            <AnimateInView className="mb-10 text-center">
-              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                Three steps. Zero friction.
+            <AnimateInView className="max-w-2xl">
+              <SectionLabel>Platform</SectionLabel>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
+                One stack from guest scan to closed bill
               </h2>
+              <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
+                Replace fragmented tools with a platform engineered for speed,
+                accuracy, and auditability — with staff in the loop at every step.
+              </p>
             </AnimateInView>
 
-            <StaggerInView className="grid gap-12 md:grid-cols-3 md:gap-0">
-              {steps.map((step, i) => (
+            <StaggerInView className="mt-14 grid gap-px overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-4">
+              {platformPillars.map((pillar) => (
                 <StaggerItem
-                  key={step.num}
-                  className={`relative px-4 text-center md:px-8 ${
-                    i > 0 ? "md:border-l md:border-zinc-800" : ""
-                  } ${i > 0 ? "border-t border-zinc-800 pt-12 md:border-t-0 md:pt-0" : ""}`}
+                  key={pillar.title}
+                  className="bg-[#09090b] p-6 sm:p-7"
                 >
-                  <span
-                    className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 select-none text-8xl font-bold text-zinc-800"
-                    aria-hidden
-                  >
-                    {step.num}
-                  </span>
-                  <div className="relative pt-6">
-                    <step.icon className="mx-auto size-8 text-orange-500" />
-                    <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                      {step.description}
-                    </p>
-                  </div>
+                  <pillar.icon
+                    className="size-5 text-zinc-400"
+                    strokeWidth={1.5}
+                  />
+                  <h3 className="mt-4 text-sm font-semibold text-zinc-100">
+                    {pillar.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                    {pillar.description}
+                  </p>
                 </StaggerItem>
               ))}
             </StaggerInView>
           </div>
         </section>
 
-        {/* SECTION 3 — Features */}
-        <section id="features" className="border-t border-zinc-800 px-4 py-12 sm:px-6 sm:py-16">
-          <div className="mx-auto max-w-6xl space-y-12 sm:space-y-16">
-            {features.map((f) => (
-              <AnimateInView key={f.title}>
-                <div className="grid items-center gap-8 sm:gap-10 lg:grid-cols-2 lg:gap-16">
-                  <div className={`min-w-0 ${f.reverse ? "lg:order-2" : ""}`}>
-                    <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                      {f.title}
+        {/* Problem — Numero-style */}
+        <section className="border-y border-white/[0.06] bg-white/[0.02] px-5 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
+              <AnimateInView>
+                <SectionLabel>The problem</SectionLabel>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
+                  Service scales. Manual processes do not.
+                </h2>
+                <p className="mt-4 text-base leading-relaxed text-zinc-400">
+                  Most venues add headcount and workarounds on top of broken
+                  flows. QR Order replaces that with software your floor and
+                  kitchen can actually run on.
+                </p>
+              </AnimateInView>
+              <StaggerInView className="space-y-px overflow-hidden rounded-xl border border-white/[0.06]">
+                {problems.map((item, i) => (
+                  <StaggerItem
+                    key={item.title}
+                    className={cn(
+                      "bg-[#09090b] px-6 py-5 sm:px-7 sm:py-6",
+                      i > 0 && "border-t border-white/[0.06]"
+                    )}
+                  >
+                    <h3 className="text-sm font-semibold text-zinc-200">
+                      {item.title}
                     </h3>
-                    <p className="mt-3 text-base leading-relaxed text-zinc-400 sm:mt-4 sm:text-lg">
-                      {f.description}
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                      {item.description}
+                    </p>
+                  </StaggerItem>
+                ))}
+              </StaggerInView>
+            </div>
+          </div>
+        </section>
+
+        {/* Product deep-dives */}
+        <section id="product" className="scroll-mt-20 px-5 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl space-y-24 sm:space-y-28">
+            {productSections.map((section, i) => (
+              <AnimateInView key={section.title}>
+                <div
+                  className={cn(
+                    "grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
+                    i % 2 === 1 && "lg:[&>div:first-child]:order-2"
+                  )}
+                >
+                  <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+                    <SectionLabel>{section.eyebrow}</SectionLabel>
+                    <h3 className="mt-3 text-2xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-3xl">
+                      {section.title}
+                    </h3>
+                    <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
+                      {section.description}
                     </p>
                   </div>
                   <div
-                    className={`flex min-w-0 w-full max-w-full items-center justify-center ${
-                      f.device === "tablet"
-                        ? "py-2 sm:py-4"
-                        : "rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-4 sm:p-8 lg:p-10"
-                    } ${f.reverse ? "lg:order-1" : ""}`}
+                    className={cn(
+                      "flex min-w-0 items-center justify-center",
+                      section.device === "phone"
+                        ? "rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-10"
+                        : "py-2",
+                      i % 2 === 1 ? "lg:order-1" : ""
+                    )}
                   >
-                    {f.visual}
+                    {section.visual}
                   </div>
                 </div>
               </AnimateInView>
@@ -337,61 +442,134 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* SECTION 4 — Stats */}
-        <section className="border-y border-zinc-800 bg-zinc-900 px-6 py-12">
-          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 md:grid-cols-4 md:gap-8">
-            <CountUpStat value={30} prefix="< " suffix="s" label="Order Time" />
-            <CountUpStat value={0} suffix="€" label="Setup Fee" />
-            <CountUpStat value={99.9} suffix="%" decimals={1} label="Uptime" />
-            <StatText display="24/7" label="Support" />
+        {/* Enterprise */}
+        <section
+          id="enterprise"
+          className="scroll-mt-20 border-t border-white/[0.06] px-5 py-20 sm:px-6 sm:py-24"
+        >
+          <div className="mx-auto max-w-6xl">
+            <AnimateInView className="mx-auto max-w-2xl text-center">
+              <SectionLabel>Enterprise</SectionLabel>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
+                Ready for groups that need control
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
+                Security, structure, and support that match how professional
+                operators run hospitality — not a side project bolted onto a menu PDF.
+              </p>
+            </AnimateInView>
+
+            <StaggerInView className="mt-14 grid gap-6 md:grid-cols-3">
+              {enterpriseFeatures.map((item) => (
+                <StaggerItem
+                  key={item.title}
+                  className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-7"
+                >
+                  <item.icon className="size-5 text-zinc-400" strokeWidth={1.5} />
+                  <h3 className="mt-4 text-sm font-semibold text-zinc-100">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                    {item.description}
+                  </p>
+                </StaggerItem>
+              ))}
+            </StaggerInView>
+
+            <AnimateInView className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-600">
+              <span className="flex items-center gap-2">
+                <Shield className="size-3.5" strokeWidth={1.5} />
+                Stripe Connect
+              </span>
+              <span className="flex items-center gap-2">
+                <CreditCard className="size-3.5" strokeWidth={1.5} />
+                PCI via Stripe
+              </span>
+              <span className="flex items-center gap-2">
+                <Building2 className="size-3.5" strokeWidth={1.5} />
+                Multi-location
+              </span>
+            </AnimateInView>
           </div>
         </section>
 
-        {/* SECTION 5 — Pricing */}
-        <section id="pricing" className="px-6 py-16">
+        {/* Testimonial */}
+        <section className="border-y border-white/[0.06] bg-white/[0.02] px-5 py-20 sm:px-6">
+          <AnimateInView className="mx-auto max-w-3xl text-center">
+            <blockquote className="text-xl font-medium leading-relaxed tracking-[-0.01em] text-zinc-200 sm:text-2xl">
+              &ldquo;We needed ordering that guests actually use and staff can
+              trust during Friday rush — not another PDF menu with a payment link
+              duct-taped on.&rdquo;
+            </blockquote>
+            <footer className="mt-8">
+              <p className="text-sm font-medium text-zinc-300">Operations lead</p>
+              <p className="mt-1 text-sm text-zinc-600">Multi-location bar group</p>
+            </footer>
+          </AnimateInView>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="scroll-mt-20 px-5 py-20 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-6xl">
-            <AnimateInView className="mb-12 text-center">
-              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                Simple pricing. No surprises.
+            <AnimateInView className="mx-auto max-w-2xl text-center">
+              <SectionLabel>Pricing</SectionLabel>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
+                Transparent economics
               </h2>
+              <p className="mt-4 text-base text-zinc-400">
+                No monthly platform fee on Standard. Card processing via Stripe
+                with a clear per-order fee.
+              </p>
             </AnimateInView>
 
-            <StaggerInView className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-2">
+            <StaggerInView className="mx-auto mt-14 grid max-w-4xl gap-6 lg:grid-cols-2">
               {plans.map((plan) => (
                 <StaggerItem key={plan.name}>
                   <div
-                    className={`relative flex h-full flex-col rounded-2xl border p-6 lg:p-8 ${
-                      plan.highlighted
-                        ? "border-orange-500 shadow-lg shadow-orange-500/10"
-                        : "border-zinc-800 bg-zinc-900"
-                    } ${!plan.highlighted ? "bg-zinc-900" : "bg-zinc-900/80"}`}
-                  >
-                    {plan.highlighted && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-3 py-0.5 text-xs font-semibold text-white">
-                        Most popular
-                      </span>
+                    className={cn(
+                      "flex h-full flex-col rounded-xl border p-7 sm:p-8",
+                      plan.primary
+                        ? "border-white/[0.12] bg-white/[0.03]"
+                        : "border-white/[0.06] bg-transparent"
                     )}
-                    <h3 className="text-lg font-semibold">{plan.name}</h3>
-                    <div className="mt-3 flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-zinc-500">{plan.period}</span>
+                  >
+                    <h3 className="text-sm font-medium text-zinc-400">
+                      {plan.name}
+                    </h3>
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="text-4xl font-semibold tracking-tight text-zinc-50">
+                        {plan.price}
+                      </span>
+                      {plan.period && (
+                        <span className="text-sm text-zinc-600">{plan.period}</span>
+                      )}
                     </div>
-                    <p className="mt-1 text-sm text-orange-500">{plan.fee}</p>
-                    <p className="mt-2 text-sm text-zinc-400">{plan.description}</p>
-                    <ul className="mt-6 flex-1 space-y-2.5">
+                    <p className="mt-2 text-sm text-zinc-500">{plan.fee}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                      {plan.description}
+                    </p>
+                    <ul className="mt-6 flex-1 space-y-2.5 border-t border-white/[0.06] pt-6">
                       {plan.features.map((feat) => (
                         <FeatureCheck key={feat}>{feat}</FeatureCheck>
                       ))}
                     </ul>
                     <Button
                       asChild
-                      className={`mt-8 w-full ${
-                        plan.highlighted
-                          ? "bg-orange-500 hover:bg-orange-600"
-                          : "bg-zinc-800 hover:bg-zinc-700"
-                      }`}
+                      className={cn(
+                        "mt-8 h-11 w-full rounded-md text-sm font-medium",
+                        plan.primary
+                          ? "bg-zinc-100 text-zinc-950 hover:bg-white"
+                          : "border border-white/[0.12] bg-transparent text-zinc-200 hover:bg-white/[0.04]"
+                      )}
+                      variant={plan.primary ? "default" : "outline"}
                     >
-                      <Link href="/signup">{plan.cta}</Link>
+                      <Link
+                        href={
+                          plan.primary ? "/signup" : "mailto:hello@qrorder.app"
+                        }
+                      >
+                        {plan.cta}
+                      </Link>
                     </Button>
                   </div>
                 </StaggerItem>
@@ -400,119 +578,94 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* SECTION 6 — CTA */}
-        <section className="px-6 py-16">
-          <AnimateInView className="mx-auto max-w-5xl">
-            <div className="rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 px-8 py-14 text-center md:px-16">
-              <h2 className="text-3xl font-bold text-white md:text-4xl">
-                Ready to modernize your venue?
+        {/* Final CTA — restrained, not gradient banner */}
+        <section className="px-5 pb-24 pt-4 sm:px-6">
+          <AnimateInView className="mx-auto max-w-6xl">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-8 py-14 text-center sm:px-16 sm:py-16">
+              <h2 className="text-2xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-3xl">
+                See QR Order on your floor
               </h2>
-              <p className="mt-3 text-lg text-orange-100">
-                Set up in 10 minutes. Start accepting orders today.
+              <p className="mx-auto mt-3 max-w-lg text-base text-zinc-400">
+                Request access for your venue or book a walkthrough with our team.
               </p>
-              <Button
-                size="lg"
-                asChild
-                className="mt-8 h-12 bg-white px-10 text-base font-semibold text-orange-600 hover:bg-orange-50"
-              >
-                <Link href="/signup">Start Free</Link>
-              </Button>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Button
+                  size="lg"
+                  asChild
+                  className="h-11 rounded-md bg-zinc-100 px-7 text-sm font-medium text-zinc-950 hover:bg-white"
+                >
+                  <Link href="/signup">Request access</Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="h-11 rounded-md border-white/[0.12] bg-transparent px-7 text-sm text-zinc-300 hover:bg-white/[0.04]"
+                >
+                  <a href="mailto:hello@qrorder.app">Contact sales</a>
+                </Button>
+              </div>
             </div>
           </AnimateInView>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-800 bg-zinc-950 px-6 py-10">
+      {/* Footer — enterprise columns */}
+      <footer className="border-t border-white/[0.06] px-5 py-14 sm:px-6">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="lg:col-span-2">
+              <Link href="/" className="flex items-center gap-2">
+                <QrCode className="size-4 text-zinc-400" strokeWidth={1.75} />
+                <span className="text-sm font-medium text-zinc-200">QR Order</span>
+              </Link>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-zinc-600">
+                QR ordering and payments for restaurants, bars, and hospitality
+                groups.
+              </p>
+            </div>
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Product
               </h4>
-              <ul className="mt-4 space-y-2 text-sm text-zinc-500">
+              <ul className="mt-4 space-y-2.5 text-sm text-zinc-600">
+                <li><a href="#platform" className="hover:text-zinc-300">Platform</a></li>
+                <li><a href="#product" className="hover:text-zinc-300">Product tour</a></li>
+                <li><a href="#pricing" className="hover:text-zinc-300">Pricing</a></li>
                 <li>
-                  <a href="#features" className="hover:text-zinc-300">
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a href="#pricing" className="hover:text-zinc-300">
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <Link
-                    href="/skyline-lounge/demo-table-8"
-                    className="hover:text-zinc-300"
-                  >
-                    Demo
+                  <Link href="/skyline-lounge/demo-table-8" className="hover:text-zinc-300">
+                    Live demo
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Company
               </h4>
-              <ul className="mt-4 space-y-2 text-sm text-zinc-500">
-                <li><a href="#" className="hover:text-zinc-300">About</a></li>
-                <li><a href="#" className="hover:text-zinc-300">Blog</a></li>
-                <li><a href="#" className="hover:text-zinc-300">Careers</a></li>
+              <ul className="mt-4 space-y-2.5 text-sm text-zinc-600">
+                <li><a href="#enterprise" className="hover:text-zinc-300">Enterprise</a></li>
+                <li><a href="mailto:hello@qrorder.app" className="hover:text-zinc-300">Contact</a></li>
+                <li><Link href="/login" className="hover:text-zinc-300">Sign in</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Legal
               </h4>
-              <ul className="mt-4 space-y-2 text-sm text-zinc-500">
+              <ul className="mt-4 space-y-2.5 text-sm text-zinc-600">
                 <li><a href="#" className="hover:text-zinc-300">Privacy</a></li>
                 <li><a href="#" className="hover:text-zinc-300">Terms</a></li>
                 <li><a href="#" className="hover:text-zinc-300">Imprint</a></li>
               </ul>
             </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                Contact
-              </h4>
-              <ul className="mt-4 space-y-2 text-sm text-zinc-500">
-                <li>
-                  <a
-                    href="mailto:hello@qrorder.app"
-                    className="hover:text-zinc-300"
-                  >
-                    hello@qrorder.app
-                  </a>
-                </li>
-                <li>Hamburg, DE</li>
-              </ul>
-            </div>
           </div>
 
-          <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-zinc-800 pt-6 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <QrCode className="size-4 text-orange-500" />
-              <span className="text-sm font-medium text-zinc-50">QR Order</span>
-              <span className="text-sm text-zinc-600">·</span>
-              <span className="text-sm text-zinc-500">© 2026 QR Order</span>
-            </div>
-            <div className="flex items-center gap-5 text-zinc-500">
-              <a href="#" aria-label="Twitter" className="hover:text-zinc-300">
-                <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </a>
-              <a href="#" aria-label="LinkedIn" className="hover:text-zinc-300">
-                <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                </svg>
-              </a>
-              <a href="#" aria-label="GitHub" className="hover:text-zinc-300">
-                <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
-                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                </svg>
-              </a>
-            </div>
+          <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/[0.06] pt-8 sm:flex-row sm:items-center">
+            <p className="text-xs text-zinc-600">© 2026 QR Order · Hamburg, DE</p>
+            <p className="text-xs text-zinc-700">
+              Payments powered by Stripe Connect
+            </p>
           </div>
         </div>
       </footer>

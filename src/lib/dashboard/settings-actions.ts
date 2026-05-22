@@ -79,6 +79,7 @@ export async function updateLocationPaymentMethods(input: {
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
+  inPersonPaymentLocation?: "bar" | "counter" | "table";
 }) {
   const staff = await requireStaff();
   if (!["owner", "manager"].includes(staff.role)) {
@@ -105,6 +106,9 @@ export async function updateLocationPaymentMethods(input: {
       payment_online_enabled: input.paymentOnlineEnabled,
       payment_at_bar_enabled: input.paymentAtBarEnabled,
       payment_card_at_table_enabled: input.paymentCardAtTableEnabled,
+      ...(input.inPersonPaymentLocation
+        ? { in_person_payment_location: input.inPersonPaymentLocation }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", locationId);

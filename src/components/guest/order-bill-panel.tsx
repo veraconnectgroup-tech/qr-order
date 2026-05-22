@@ -12,8 +12,10 @@ import { Lock, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import {
   getAvailablePaymentMethods,
+  inPersonPaymentConfirmToast,
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
@@ -102,6 +104,7 @@ export function OrderBillPanel({
   paymentOnlineEnabled,
   paymentAtBarEnabled,
   paymentCardAtTableEnabled,
+  inPersonPaymentLocation = "bar",
   isPaid,
   onPaid,
 }: {
@@ -112,6 +115,7 @@ export function OrderBillPanel({
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
+  inPersonPaymentLocation?: InPersonPaymentLocation;
   isPaid: boolean;
   onPaid: () => void;
 }) {
@@ -203,7 +207,7 @@ export function OrderBillPanel({
       hapticSuccess();
       toast.success(
         paymentMethod === "at_bar"
-          ? "Pay at the bar when ready"
+          ? inPersonPaymentConfirmToast(inPersonPaymentLocation)
           : "Staff will bring a card terminal"
       );
       onPaid();
@@ -282,6 +286,7 @@ export function OrderBillPanel({
               methods={availableMethods}
               value={paymentMethod}
               onChange={setPaymentMethod}
+              inPersonPaymentLocation={inPersonPaymentLocation}
             />
           </div>
           {error && <p className="mt-3 text-sm text-red-400">{error}</p>}

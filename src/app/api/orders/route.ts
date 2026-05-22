@@ -15,25 +15,10 @@ export async function POST(req: NextRequest) {
     }
 
     const ip = getClientIp(req);
-    const tableKey = `order:table:${parsed.data.tableToken}`;
-    const sessionKey = `order:session:${parsed.data.sessionToken}`;
     const ipKey = `order:ip:${ip}`;
 
-    if (!checkRateLimit(sessionKey, 5, 10 * 60 * 1000)) {
-      return NextResponse.json(
-        { error: "Too many orders from this table" },
-        { status: 429 }
-      );
-    }
-
-    if (!checkRateLimit(tableKey, 5, 10 * 60 * 1000)) {
-      return NextResponse.json(
-        { error: "Too many orders from this table" },
-        { status: 429 }
-      );
-    }
-
-    if (!checkRateLimit(ipKey, 20, 60 * 60 * 1000)) {
+    // Light abuse guard only — guests may place many orders per session.
+    if (!checkRateLimit(ipKey, 120, 60 * 60 * 1000)) {
       return NextResponse.json({ error: "Too many orders" }, { status: 429 });
     }
 

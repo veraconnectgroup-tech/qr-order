@@ -2,9 +2,9 @@
 
 import { Banknote, CreditCard, Smartphone } from "lucide-react";
 import type { PaymentMethod } from "@/lib/constants";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import {
-  PAYMENT_METHOD_OPTIONS,
-  type PaymentMethodOption,
+  getPaymentMethodOption,
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { cn } from "@/lib/utils";
@@ -19,10 +19,12 @@ export function PaymentMethodSelector({
   methods,
   value,
   onChange,
+  inPersonPaymentLocation = "bar",
 }: {
   methods: SelectablePaymentMethod[];
   value: PaymentMethod | null;
   onChange: (method: SelectablePaymentMethod) => void;
+  inPersonPaymentLocation?: InPersonPaymentLocation;
 }) {
   return (
     <div className="space-y-2">
@@ -31,7 +33,7 @@ export function PaymentMethodSelector({
       </h2>
       <div className="space-y-2">
         {methods.map((method) => {
-          const option: PaymentMethodOption = PAYMENT_METHOD_OPTIONS[method];
+          const option = getPaymentMethodOption(method, inPersonPaymentLocation);
           const Icon = ICONS[method];
           const selected = value === method;
 

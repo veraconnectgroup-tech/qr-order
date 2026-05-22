@@ -228,8 +228,8 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
 
 export function FeatureCheck({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2 text-sm text-zinc-300">
-      <Check className="mt-0.5 size-4 shrink-0 text-orange-500" />
+    <li className="flex items-start gap-2 text-sm text-zinc-400">
+      <Check className="mt-0.5 size-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
       {children}
     </li>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
@@ -107,6 +108,7 @@ export function OrderCard({
   onMarkDelivered,
   dragHandleProps,
   interactive = true,
+  inPersonPaymentLocation = "bar",
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -118,6 +120,7 @@ export function OrderCard({
   onMarkDelivered: () => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   interactive?: boolean;
+  inPersonPaymentLocation?: InPersonPaymentLocation;
 }) {
   const columnId = getOrderColumnId(order.status);
   const tableName = order.tables?.name ?? "—";
@@ -125,7 +128,8 @@ export function OrderCard({
     ?.name;
   const paid = order.payment_status === "paid";
   const paymentLabel = paymentMethodLabel(
-    (order as { payment_method?: string }).payment_method ?? "online"
+    (order as { payment_method?: string }).payment_method ?? "online",
+    inPersonPaymentLocation
   );
 
   return (
