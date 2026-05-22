@@ -8,6 +8,7 @@ export type MenuCategory = {
   id: string;
   name: string;
   name_en?: string | null;
+  menu_section?: string | null;
   products: ProductWithModifiers[];
 };
 

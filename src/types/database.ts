@@ -73,6 +73,7 @@ type Tables = {
     available_from: string | null;
     available_until: string | null;
     available_days: number[];
+    menu_section: string;
     created_at: string;
   };
   products: {

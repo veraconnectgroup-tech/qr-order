@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
@@ -17,6 +17,7 @@ import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
 import { MenuGrid, type MenuCategory } from "@/components/guest/menu-grid";
 import { productMatchesSearch } from "@/lib/i18n/menu-locale";
+import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
 
 export function MenuView({
@@ -155,6 +156,16 @@ export function MenuView({
   }, [router]);
 
   const allProducts = categories.flatMap((c) => c.products);
+  const menuSectionByProductId = useMemo(() => {
+    const map = new Map<string, MenuSection>();
+    for (const category of categories) {
+      const section = inferMenuSection(category);
+      for (const product of category.products) {
+        map.set(product.id, section);
+      }
+    }
+    return map;
+  }, [categories]);
   const searchQuery = search.trim();
   const filtered = searchQuery
     ? allProducts.filter((p) => productMatchesSearch(p, searchQuery))
@@ -249,6 +260,11 @@ export function MenuView({
             product={detailProduct}
             currency={currency}
             orderingDisabled={!orderingEnabled}
+            menuSection={
+              detailProduct
+                ? menuSectionByProductId.get(detailProduct.id) ?? "food"
+                : "food"
+            }
             open={!!detailProduct}
             onOpenChange={(o) => !o && setDetailProduct(null)}
           />

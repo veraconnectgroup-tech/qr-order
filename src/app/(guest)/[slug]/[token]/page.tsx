@@ -30,6 +30,7 @@ type RawCategory = {
   id: string;
   name: string;
   name_en: string | null;
+  menu_section?: string | null;
   sort_order: number;
   products?: RawProduct[];
 };
@@ -121,6 +122,7 @@ export default async function GuestMenuPage({
       id: cat.id,
       name: cat.name,
       name_en: cat.name_en,
+      menu_section: cat.menu_section ?? null,
       products: (cat.products ?? [])
         .sort((a, b) => a.sort_order - b.sort_order)
         .map(

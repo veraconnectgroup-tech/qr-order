@@ -230,7 +230,7 @@ export function CartView({
             asChild
             className="mt-3 h-12 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
           >
-            <Link href={`/${slug}/${token}/checkout`}>Send order →</Link>
+            <Link href={`/${slug}/${token}/checkout`}>Place order →</Link>
           </Button>
         ) : (
           <Button disabled className="mt-3 h-12 w-full rounded-xl text-base font-bold">

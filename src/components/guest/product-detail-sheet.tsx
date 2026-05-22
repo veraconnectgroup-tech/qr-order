@@ -21,6 +21,7 @@ import {
   isValidServeSize,
   productHasServeSize,
 } from "@/lib/serve-size";
+import type { MenuSection } from "@/lib/menu-section";
 import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
 
 export function ProductDetailSheet({
@@ -29,12 +30,14 @@ export function ProductDetailSheet({
   open,
   onOpenChange,
   orderingDisabled = false,
+  menuSection = "food",
 }: {
   product: ProductWithModifiers | null;
   currency: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderingDisabled?: boolean;
+  menuSection?: MenuSection;
 }) {
   const addItem = useCart((s) => s.addItem);
   const { tName, tDescription, locale } = useMenuLocale();
@@ -106,6 +109,7 @@ export function ProductDetailSheet({
       quantity,
       notes,
       serveSize,
+      menuSection,
       modifiers: selectedModifiers,
     });
     toastAddedToCart(displayName, lineTotal, currency);

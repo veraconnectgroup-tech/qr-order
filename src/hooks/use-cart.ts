@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { MenuSection } from "@/lib/menu-section";
 
 export interface CartItem {
   productId: string;
@@ -8,6 +9,7 @@ export interface CartItem {
   quantity: number;
   notes: string;
   serveSize?: string | null;
+  menuSection?: MenuSection;
   modifiers: Array<{
     modifierId: string;
     modifierName: string;

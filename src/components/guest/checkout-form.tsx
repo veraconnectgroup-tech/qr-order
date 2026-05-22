@@ -8,6 +8,8 @@ import { useCart, type CartItem } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { readJsonResponse } from "@/lib/api/read-json-response";
+import { orderPlacedMessage } from "@/lib/menu-section";
+import type { MenuSection } from "@/lib/menu-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -142,7 +144,11 @@ export function CheckoutForm({
 
       orderPlacedRef.current = true;
       hapticSuccess();
-      toast.success("Order sent to kitchen!");
+      toast.success(
+        orderPlacedMessage(
+          items.map((item) => item.menuSection ?? ("food" as MenuSection))
+        )
+      );
       router.replace(`/${slug}/${token}/order/${json.data.orderId}`);
       clearCart();
     } catch (e) {
@@ -196,7 +202,7 @@ export function CheckoutForm({
         onClick={handlePlaceOrder}
         className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
       >
-        {processing ? "Sending order…" : "Send order to kitchen"}
+        {processing ? "Placing order…" : "Place order"}
       </Button>
     </div>
   );

@@ -38,6 +38,11 @@ import {
   DEFAULT_SERVE_SIZE_PRESETS,
   parseServeSizePresets,
 } from "@/lib/serve-size";
+import {
+  MENU_SECTION_LABELS,
+  MENU_SECTIONS,
+  type MenuSection,
+} from "@/lib/menu-section";
 import type { Category, Product } from "@/types";
 
 type CategoryRow = Category & { productCount: number };
@@ -433,6 +438,8 @@ export function MenuEditor() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
+  const [newCategorySection, setNewCategorySection] =
+    useState<MenuSection>("food");
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
@@ -525,6 +532,7 @@ export function MenuEditor() {
       location_id: locationId,
       name: newCategoryName.trim(),
       name_en: newCategoryNameEn.trim() || null,
+      menu_section: newCategorySection,
       sort_order: categories.length,
       is_active: true,
     });
@@ -537,6 +545,7 @@ export function MenuEditor() {
     setCategoryDialogOpen(false);
     setNewCategoryName("");
     setNewCategoryNameEn("");
+    setNewCategorySection("food");
     load();
   }
 
@@ -812,6 +821,22 @@ export function MenuEditor() {
               placeholder="Cocktails"
               className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
             />
+          </label>
+          <label className="block space-y-1.5 pb-2">
+            <span className="text-sm text-zinc-400">Section</span>
+            <select
+              value={newCategorySection}
+              onChange={(e) =>
+                setNewCategorySection(e.target.value as MenuSection)
+              }
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+            >
+              {MENU_SECTIONS.map((section) => (
+                <option key={section} value={section}>
+                  {MENU_SECTION_LABELS[section]}
+                </option>
+              ))}
+            </select>
           </label>
           <DialogFooter className="border-zinc-800 bg-transparent">
             <button
