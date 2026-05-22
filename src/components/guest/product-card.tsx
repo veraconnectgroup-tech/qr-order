@@ -21,6 +21,11 @@ export function ProductCard({
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
   const unavailable = !product.is_available;
 
+  function openDetail() {
+    if (unavailable) return;
+    onOpenDetail();
+  }
+
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
     if (unavailable) return;
@@ -42,9 +47,21 @@ export function ProductCard({
 
   return (
     <article
+      role="button"
+      tabIndex={unavailable ? -1 : 0}
+      onClick={openDetail}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openDetail();
+        }
+      }}
+      aria-label={`View ${product.name}`}
       className={cn(
-        "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900",
-        unavailable && "pointer-events-none opacity-40"
+        "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition",
+        unavailable
+          ? "pointer-events-none opacity-40"
+          : "cursor-pointer hover:border-zinc-700 active:scale-[0.98]"
       )}
     >
       <div className="relative h-[120px] bg-gradient-to-br from-zinc-800 to-zinc-900 sm:h-[160px]">
@@ -75,7 +92,7 @@ export function ProductCard({
           {product.name}
         </h3>
         {product.description && (
-          <p className="mt-0.5 truncate text-xs text-zinc-500">
+          <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
             {product.description}
           </p>
         )}

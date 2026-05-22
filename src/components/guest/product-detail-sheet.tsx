@@ -5,6 +5,7 @@ import { toastAddedToCart } from "@/lib/cart-toast";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { AddToCartButton } from "@/components/guest/add-to-cart-button";
+import { ProductIngredients } from "@/components/guest/product-ingredients";
 import { QuantitySelector } from "@/components/guest/quantity-selector";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -102,23 +103,40 @@ export function ProductDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[85vh] overflow-y-auto rounded-t-2xl border-zinc-800 bg-zinc-900 text-zinc-50"
+        className="max-h-[90vh] overflow-y-auto rounded-t-2xl border-zinc-800 bg-zinc-900 p-0 text-zinc-50"
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-zinc-700" />
-        <SheetHeader className="text-left">
-          <SheetTitle className="flex items-baseline justify-between gap-4 text-zinc-50">
-            <span>{product.name}</span>
-            <span className="text-price shrink-0 text-orange-500">
-              {formatPrice(Number(product.price), currency)}
-            </span>
-          </SheetTitle>
-        </SheetHeader>
+        <div className="mx-auto mb-2 mt-3 h-1 w-10 rounded-full bg-zinc-700" />
 
-        {product.description && (
-          <p className="mt-2 text-body text-zinc-400">{product.description}</p>
-        )}
+        {product.image_url ? (
+          <div className="relative h-48 w-full sm:h-56">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="size-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
+          </div>
+        ) : null}
 
-        <div className="mt-6 space-y-6">
+        <div className="px-5 pb-8 pt-4">
+          <SheetHeader className="text-left">
+            <SheetTitle className="flex items-baseline justify-between gap-4 pr-8 text-zinc-50">
+              <span>{product.name}</span>
+              <span className="text-price shrink-0 text-orange-500">
+                {formatPrice(Number(product.price), currency)}
+              </span>
+            </SheetTitle>
+          </SheetHeader>
+
+          <ProductIngredients
+            description={product.description}
+            allergens={product.allergens}
+            tags={product.tags}
+            className="mt-4"
+          />
+
+          <div className="mt-6 space-y-6">
           {groups.map((group) => (
             <div key={group.id}>
               <div className="mb-3 flex items-center gap-2">
@@ -183,6 +201,7 @@ export function ProductDetailSheet({
               Select all required options
             </p>
           )}
+        </div>
         </div>
       </SheetContent>
     </Sheet>

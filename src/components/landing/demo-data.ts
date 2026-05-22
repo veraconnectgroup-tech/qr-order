@@ -1,4 +1,5 @@
 import type { MenuCategory } from "@/components/guest/menu-grid";
+import { getDemoProductMedia } from "@/lib/demo-product-media";
 import type { CartItem } from "@/hooks/use-cart";
 import type { OrderWithDetails, ProductWithModifiers } from "@/types";
 
@@ -16,6 +17,8 @@ function demoProduct(
   description?: string,
   prepTime?: number
 ): ProductWithModifiers {
+  const media = getDemoProductMedia(name);
+
   return {
     id,
     location_id: "demo-location",
@@ -25,11 +28,11 @@ function demoProduct(
     description: description ?? null,
     description_en: null,
     price,
-    image_url: null,
+    image_url: media?.imageUrl ?? null,
     is_available: true,
     sort_order: 0,
     prep_time_minutes: prepTime ?? null,
-    allergens: null,
+    allergens: media?.allergens ?? null,
     tags: null,
     created_at: minutesAgo(60),
     updated_at: minutesAgo(60),

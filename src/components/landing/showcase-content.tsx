@@ -96,10 +96,21 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
                 key={product.id}
                 className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
               >
-                <div className="relative flex h-[72px] items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                  <span className="text-xl font-bold text-zinc-700">
-                    {product.name.charAt(0)}
-                  </span>
+                <div className="relative h-[72px] overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-900">
+                  {product.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.image_url}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center">
+                      <span className="text-xl font-bold text-zinc-700">
+                        {product.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                   {product.prep_time_minutes != null && product.prep_time_minutes > 0 && (
                     <span className="absolute right-1 top-1 rounded-full bg-zinc-950/80 px-1 py-0.5 text-[8px] text-zinc-400">
                       {product.prep_time_minutes}m
@@ -160,7 +171,7 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
         className={cn(
           "flex-1 overflow-hidden px-2 pb-14 pt-1 sm:px-3",
           "[&_article_div:first-child]:h-[80px] sm:[&_article_div:first-child]:h-[96px]",
-          "[&_h2]:text-sm [&_h3]:text-[11px] [&_img]:hidden",
+          "[&_h2]:text-sm [&_h3]:text-[11px]",
           "[&_.grid]:grid-cols-2 [&_.grid]:gap-2"
         )}
       >

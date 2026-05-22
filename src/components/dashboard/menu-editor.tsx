@@ -33,6 +33,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { ProductImageUpload } from "@/components/dashboard/product-image-upload";
 import type { Category, Product } from "@/types";
 
 type CategoryRow = Category & { productCount: number };
@@ -198,18 +199,22 @@ function SortableCategoryItem({
 function ProductForm({
   initial,
   currency,
+  orgId,
   onSubmit,
   onCancel,
   saving,
 }: {
   initial?: Partial<Product>;
   currency: string;
+  orgId: string;
   onSubmit: (values: {
     name: string;
     description: string;
     price: number;
     prep_time_minutes: number | null;
     is_available: boolean;
+    image_url: string | null;
+    allergens: string[] | null;
   }) => void;
   onCancel: () => void;
   saving: boolean;
@@ -225,9 +230,22 @@ function ProductForm({
       : ""
   );
   const [isAvailable, setIsAvailable] = useState(initial?.is_available ?? true);
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initial?.image_url ?? null
+  );
+  const [allergensText, setAllergensText] = useState(
+    initial?.allergens?.join(", ") ?? ""
+  );
 
   return (
     <div className="space-y-4 py-2">
+      <ProductImageUpload
+        orgId={orgId}
+        value={imageUrl}
+        onChange={setImageUrl}
+        disabled={saving}
+      />
+
       <label className="block space-y-1.5">
         <span className="text-sm text-zinc-400">Name</span>
         <input
@@ -237,11 +255,23 @@ function ProductForm({
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Description</span>
+        <span className="text-sm text-zinc-400">
+          Ingredients (comma-separated)
+        </span>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
+          placeholder="Prosecco, Aperol, soda, orange slice"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+        />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm text-zinc-400">Allergens (comma-separated)</span>
+        <input
+          value={allergensText}
+          onChange={(e) => setAllergensText(e.target.value)}
+          placeholder="gluten, dairy, sulfites"
           className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
         />
       </label>
@@ -288,6 +318,13 @@ function ProductForm({
               price: Number(price),
               prep_time_minutes: prepTime ? Number(prepTime) : null,
               is_available: isAvailable,
+              image_url: imageUrl,
+              allergens: allergensText.trim()
+                ? allergensText
+                    .split(",")
+                    .map((a) => a.trim())
+                    .filter(Boolean)
+                : null,
             })
           }
           className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
@@ -300,7 +337,7 @@ function ProductForm({
 }
 
 export function MenuEditor() {
-  const { locationId, currency } = useDashboard();
+  const { locationId, orgId, currency } = useDashboard();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -437,6 +474,8 @@ export function MenuEditor() {
     price: number;
     prep_time_minutes: number | null;
     is_available: boolean;
+    image_url: string | null;
+    allergens: string[] | null;
   }) {
     if (!selectedCategoryId) return;
     setSaving(true);
@@ -659,6 +698,7 @@ export function MenuEditor() {
             key={editingProduct?.id ?? "new"}
             initial={editingProduct ?? undefined}
             currency={currency}
+            orgId={orgId}
             saving={saving}
             onCancel={() => {
               setProductDialogOpen(false);

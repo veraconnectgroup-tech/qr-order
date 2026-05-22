@@ -16,6 +16,8 @@ type RawProduct = {
   is_available: boolean;
   sort_order: number;
   prep_time_minutes: number | null;
+  allergens: string[] | null;
+  tags: string[] | null;
   modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
 };
 
@@ -120,8 +122,8 @@ export default async function GuestMenuPage({
             name_en: null,
             description_en: null,
             prep_time_minutes: p.prep_time_minutes,
-            allergens: null,
-            tags: null,
+            allergens: p.allergens,
+            tags: p.tags,
             created_at: "",
             updated_at: "",
             modifier_groups: (p.modifier_groups ?? [])
