@@ -194,44 +194,53 @@ export function LandingPage() {
       </header>
 
       <main>
-        {/* Hero — enterprise */}
-        <section className="border-b border-zinc-800 px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 md:pb-24 md:pt-32">
-          <div className="mx-auto grid max-w-6xl items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
+        {/* Hero */}
+        <section className="relative overflow-hidden border-b border-zinc-800 px-4 pb-20 pt-24 sm:px-6 sm:pb-24 sm:pt-28 lg:pb-28 lg:pt-32">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30"
+            aria-hidden
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_-10%,rgba(249,115,22,0.07),transparent_60%)]"
+            aria-hidden
+          />
+
+          <div className="relative mx-auto grid max-w-6xl items-center gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14 xl:gap-16">
             <HeroStagger className="text-center lg:text-left">
               <HeroItem>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
-                  Hospitality ordering platform
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500">
+                  QR ordering for hospitality
                 </p>
               </HeroItem>
               <HeroItem>
-                <h1 className="mt-4 text-3xl font-semibold leading-[1.15] tracking-tight text-zinc-50 sm:text-4xl lg:text-[2.75rem]">
-                  Contactless ordering your operations team can rely on
+                <h1 className="mt-4 text-3xl font-semibold leading-[1.12] tracking-tight text-zinc-50 sm:text-[2.5rem] lg:text-[2.875rem]">
+                  Contactless ordering{" "}
+                  <span className="text-zinc-400">built for operations</span>
                 </h1>
               </HeroItem>
               <HeroItem>
-                <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-zinc-400 lg:mx-0 lg:text-lg">
-                  QR Order connects guest menus, staff dashboards, prep
-                  displays, and Stripe payments on one secure platform — built
-                  for restaurants, bars, and multi-location venues.
+                <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-zinc-400 lg:mx-0 lg:max-w-lg lg:text-[1.0625rem]">
+                  Guest menus, live orders, prep display, and Stripe payments —
+                  one platform for restaurants, bars, and multi-location venues.
                 </p>
               </HeroItem>
               <HeroItem>
-                <ul className="mx-auto mt-8 flex max-w-md flex-col gap-3 text-left lg:mx-0">
+                <div className="mx-auto mt-8 flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-400 lg:mx-0 lg:justify-start">
                   {trustSignals.map(({ icon: Icon, label }) => (
-                    <li
-                      key={label}
-                      className="flex items-center gap-3 text-sm text-zinc-300"
-                    >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900">
-                        <Icon className="size-4 text-zinc-400" />
-                      </span>
-                      {label}
-                    </li>
+                    <div key={label} className="flex items-center gap-2">
+                      <Icon className="size-3.5 shrink-0 text-zinc-500" />
+                      <span>{label}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </HeroItem>
               <HeroItem>
-                <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row lg:items-start">
+                <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row lg:items-start">
                   <Button
                     size="lg"
                     asChild
@@ -250,14 +259,14 @@ export function LandingPage() {
                     </Link>
                   </Button>
                 </div>
-                <p className="mt-5 text-xs leading-relaxed text-zinc-500">
-                  Deploy in days. No guest app. Payments routed to your Stripe
-                  account. Platform fee: {TRANSACTION_FEE} per card order.
+                <p className="mt-4 text-xs leading-relaxed text-zinc-500">
+                  Deploy in days · No guest app · Stripe Connect payouts ·{" "}
+                  {TRANSACTION_FEE} per card order
                 </p>
               </HeroItem>
             </HeroStagger>
 
-            <div className="flex min-w-0 justify-center lg:order-2 lg:justify-end lg:pl-4">
+            <div className="relative flex min-w-0 justify-center overflow-visible lg:justify-end lg:pl-2">
               <EnterpriseHeroVisual />
             </div>
           </div>

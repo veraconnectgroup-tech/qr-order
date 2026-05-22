@@ -69,8 +69,8 @@ export function ShowcaseStage({
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-[min(100%,720px)]",
-        "aspect-[5/4] min-h-[340px] sm:aspect-[16/11] sm:min-h-[400px] lg:min-h-[440px]",
+        "relative mx-auto w-full max-w-[min(100%,720px)] overflow-visible",
+        "aspect-[5/4] min-h-[340px] sm:aspect-[16/11] sm:min-h-[400px] lg:min-h-[460px]",
         className
       )}
     >

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
+import { paymentMethodLabel } from "@/lib/payment-methods";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -123,6 +124,9 @@ export function OrderCard({
   const zoneName = (order.tables as { zone?: { name: string } | null })?.zone
     ?.name;
   const paid = order.payment_status === "paid";
+  const paymentLabel = paymentMethodLabel(
+    (order as { payment_method?: string }).payment_method ?? "online"
+  );
 
   return (
     <motion.article
@@ -187,9 +191,13 @@ export function OrderCard({
         <span className="font-mono text-base font-semibold text-orange-500">
           {formatPrice(Number(order.total), currency)}
         </span>
-        {paid && (
+        {paid ? (
           <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-400">
             Paid ✓
+          </span>
+        ) : (
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
+            {paymentLabel}
           </span>
         )}
       </div>

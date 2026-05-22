@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ORDER_RATE_LIMIT_SECONDS } from "@/lib/constants";
+import { ORDER_RATE_LIMIT_SECONDS, type PaymentMethod } from "@/lib/constants";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import {
   MAX_ITEMS_PER_ORDER,
@@ -33,9 +33,28 @@ export const createOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1).max(MAX_ITEMS_PER_ORDER),
   notes: z.string().max(1000).optional(),
   guestEmail: z.string().email().optional().or(z.literal("")),
+  paymentMethod: z
+    .enum(["online", "at_bar", "card_at_table"])
+    .default("online"),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
+function isPaymentMethodAllowed(
+  method: PaymentMethod,
+  location: {
+    payment_online_enabled: boolean;
+    payment_at_bar_enabled: boolean;
+    payment_card_at_table_enabled: boolean;
+  },
+  org: { stripe_onboarded: boolean }
+) {
+  if (method === "online") {
+    return org.stripe_onboarded && location.payment_online_enabled;
+  }
+  if (method === "at_bar") return location.payment_at_bar_enabled;
+  return location.payment_card_at_table_enabled;
+}
 
 export async function createOrderFromCart(input: CreateOrderInput) {
   const admin = createAdminClient();
@@ -50,9 +69,20 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     return { error: sessionResult.error, status: sessionResult.status };
   }
 
-  const { table: tableRow, session: sessionRow, org: orgRow } = sessionResult.data;
+  const { table: tableRow, session: sessionRow, org: orgRow, location: locationRow } =
+    sessionResult.data;
   const taxPercent = Number(orgRow.default_tax_percent ?? 19);
   const currency = orgRow.currency ?? "EUR";
+
+  if (
+    !isPaymentMethodAllowed(
+      input.paymentMethod,
+      locationRow,
+      orgRow
+    )
+  ) {
+    return { error: "This payment method is not available.", status: 400 };
+  }
 
   const itemsError = validateOrderItems(
     input.items.map((i) => ({
@@ -305,6 +335,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         tax_amount: taxAmount,
         total,
         payment_status: "pending",
+        payment_method: input.paymentMethod,
         stripe_payment_intent_id: null,
       })
       .eq("id", pendingRow.id)
@@ -373,6 +404,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       estimated_prep_minutes: prepMinutes,
       status: "pending",
       payment_status: "pending",
+      payment_method: input.paymentMethod,
     })
     .select("id, order_number, total, tax_percent")
     .single();

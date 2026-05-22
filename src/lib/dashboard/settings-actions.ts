@@ -74,3 +74,43 @@ export async function setLocationOrderingActive(active: boolean) {
   revalidatePath("/dashboard/settings");
   return { success: true, active };
 }
+
+export async function updateLocationPaymentMethods(input: {
+  paymentOnlineEnabled: boolean;
+  paymentAtBarEnabled: boolean;
+  paymentCardAtTableEnabled: boolean;
+}) {
+  const staff = await requireStaff();
+  if (!["owner", "manager"].includes(staff.role)) {
+    return { error: "Not allowed." };
+  }
+
+  if (
+    !input.paymentOnlineEnabled &&
+    !input.paymentAtBarEnabled &&
+    !input.paymentCardAtTableEnabled
+  ) {
+    return { error: "At least one payment method must stay enabled." };
+  }
+
+  const locationId = await getStaffLocationId(staff);
+  if (!locationId) {
+    return { error: "No location assigned." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("locations")
+    .update({
+      payment_online_enabled: input.paymentOnlineEnabled,
+      payment_at_bar_enabled: input.paymentAtBarEnabled,
+      payment_card_at_table_enabled: input.paymentCardAtTableEnabled,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", locationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/settings");
+  return { success: true };
+}

@@ -165,6 +165,7 @@ function demoOrder(
     total,
     stripe_payment_intent_id: null,
     payment_status: paymentStatus,
+    payment_method: paymentStatus === "paid" ? "online" : "at_bar",
     notes: null,
     rejection_reason: null,
     estimated_prep_minutes: null,

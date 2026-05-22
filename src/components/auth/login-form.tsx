@@ -73,9 +73,9 @@ export function LoginForm() {
       <Button
         type="submit"
         disabled={pending}
-        className="w-full bg-orange-500 hover:bg-orange-600"
+        className="w-full bg-zinc-100 font-semibold text-zinc-950 hover:bg-white"
       >
-        {pending ? "Signing in..." : "Sign In"}
+        {pending ? "Signing in..." : "Sign in"}
       </Button>
       <p className="text-center text-sm text-zinc-500">
         No account?{" "}

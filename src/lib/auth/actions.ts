@@ -33,7 +33,7 @@ export async function loginAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: "Neispravni podaci za prijavu." };
+    return { error: "Invalid sign-in details." };
   }
 
   const supabase = await createServerClient();
@@ -55,7 +55,7 @@ export async function signupAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: "Popunite sva polja ispravno." };
+    return { error: "Please fill in all fields correctly." };
   }
 
   const { restaurantName, email, password } = parsed.data;
@@ -82,7 +82,7 @@ export async function signupAction(formData: FormData) {
   });
 
   if (authError || !authData.user) {
-    return { error: authError?.message ?? "Registracija nije uspela." };
+    return { error: authError?.message ?? "Registration failed." };
   }
 
   const { data: org, error: orgError } = await admin
@@ -96,7 +96,7 @@ export async function signupAction(formData: FormData) {
     .single();
 
   if (orgError || !org) {
-    return { error: "Kreiranje restorana nije uspelo." };
+    return { error: "Could not create your organization." };
   }
 
   const { data: location, error: locError } = await admin
@@ -110,7 +110,7 @@ export async function signupAction(formData: FormData) {
     .single();
 
   if (locError || !location) {
-    return { error: "Kreiranje lokacije nije uspelo." };
+    return { error: "Could not create your location." };
   }
 
   const { error: staffError } = await admin.from("staff").insert({
@@ -122,11 +122,11 @@ export async function signupAction(formData: FormData) {
   });
 
   if (staffError) {
-    return { error: "Kreiranje naloga osoblja nije uspelo." };
+    return { error: "Could not create your staff profile." };
   }
 
-  revalidatePath("/admin");
-  redirect("/admin");
+  revalidatePath("/", "layout");
+  redirect("/dashboard/orders");
 }
 
 export async function logoutAction() {

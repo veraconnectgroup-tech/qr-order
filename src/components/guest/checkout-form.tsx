@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -13,9 +13,12 @@ import { Lock } from "lucide-react";
 import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
+import type { PaymentMethod } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
+import { getAvailablePaymentMethods } from "@/lib/payment-methods";
 import { CheckoutTrustBadges } from "@/components/guest/checkout-trust-badges";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
+import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,111 +98,6 @@ function OrderSummary({
           <span>{formatPrice(total, currency)}</span>
         </div>
       </div>
-    </div>
-  );
-}
-
-function DemoCheckoutForm({
-  slug,
-  token,
-  taxPercent,
-  currency,
-  items,
-  sessionToken,
-  subtotal,
-  taxAmount,
-  total,
-}: {
-  slug: string;
-  token: string;
-  taxPercent: number;
-  currency: string;
-  items: CartItem[];
-  sessionToken: string;
-  subtotal: number;
-  taxAmount: number;
-  total: number;
-}) {
-  const router = useRouter();
-  const clearCart = useCart((s) => s.clearCart);
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [guestEmail, setGuestEmail] = useState("");
-
-  async function placeOrder() {
-    setProcessing(true);
-    setError(null);
-    try {
-      await saveGuestEmail(sessionToken, guestEmail);
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionToken,
-          tableToken: token,
-          items,
-          guestEmail: guestEmail || undefined,
-        }),
-      });
-      const parsed = await readJsonResponse<{ error?: string; data?: { orderId: string } }>(
-        res
-      );
-      if (!parsed.ok) {
-        throw new Error(parsed.error);
-      }
-      const json = parsed.data;
-      if (!res.ok) {
-        throw new Error(json.error ?? "Order could not be placed.");
-      }
-      if (!json.data?.orderId) {
-        throw new Error("Order could not be placed.");
-      }
-      clearCart();
-      hapticSuccess();
-      toast.success("Order sent!");
-      router.push(`/${slug}/${token}/order/${json.data.orderId}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-      setProcessing(false);
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <OrderSummary
-        items={items}
-        subtotal={subtotal}
-        taxPercent={taxPercent}
-        taxAmount={taxAmount}
-        total={total}
-        currency={currency}
-      />
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200/90">
-        Demo mode — Stripe is not connected. Place the order and staff will handle
-        payment at the table.
-      </div>
-      <div>
-        <Label htmlFor="demo-email" className="text-zinc-400">
-          Email (optional, for receipt)
-        </Label>
-        <Input
-          id="demo-email"
-          type="email"
-          placeholder="you@example.com"
-          className="mt-1 border-zinc-700 bg-zinc-950 text-zinc-100"
-          value={guestEmail}
-          onChange={(e) => setGuestEmail(e.target.value)}
-        />
-      </div>
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      <Button
-        type="button"
-        disabled={processing}
-        onClick={placeOrder}
-        className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
-      >
-        {processing ? "Sending order…" : "Place order"}
-      </Button>
     </div>
   );
 }
@@ -305,42 +203,77 @@ export function CheckoutForm({
   taxPercent,
   currency,
   stripeOnboarded,
+  paymentOnlineEnabled,
+  paymentAtBarEnabled,
+  paymentCardAtTableEnabled,
 }: {
   slug: string;
   token: string;
   taxPercent: number;
   currency: string;
   stripeOnboarded: boolean;
+  paymentOnlineEnabled: boolean;
+  paymentAtBarEnabled: boolean;
+  paymentCardAtTableEnabled: boolean;
 }) {
   const items = useCart((s) => s.items);
   const sessionToken = useCart((s) => s.sessionToken);
   const subtotal = useCart((s) => s.subtotal());
   const taxAmount = useCart((s) => s.taxAmount(taxPercent));
   const total = useCart((s) => s.total(taxPercent));
+  const clearCart = useCart((s) => s.clearCart);
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
+  const stripePublishableKey = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+  const availableMethods = useMemo(
+    () =>
+      getAvailablePaymentMethods({
+        stripeOnboarded,
+        stripePublishableKey,
+        paymentOnlineEnabled,
+        paymentAtBarEnabled,
+        paymentCardAtTableEnabled,
+      }).sort((a, b) => {
+        const order = { at_bar: 0, card_at_table: 1, online: 2 };
+        return order[a] - order[b];
+      }),
+    [
+      stripeOnboarded,
+      stripePublishableKey,
+      paymentOnlineEnabled,
+      paymentAtBarEnabled,
+      paymentCardAtTableEnabled,
+    ]
+  );
+
+  const [ready, setReady] = useState(false);
+  const [step, setStep] = useState<"choose" | "online">("choose");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState("");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
-  const [guestEmail, setGuestEmail] = useState("");
-  const stripeEnabled =
-    stripeOnboarded && !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-  const initCheckout = useCallback(async () => {
+  useEffect(() => {
     if (!items.length || !sessionToken) {
       router.replace(`/${slug}/${token}/cart`);
       return;
     }
+    setReady(true);
+  }, [items.length, sessionToken, slug, token, router]);
 
-    if (!stripeEnabled) {
-      setLoading(false);
-      return;
+  useEffect(() => {
+    if (availableMethods.length === 1) {
+      setPaymentMethod(availableMethods[0]!);
     }
+  }, [availableMethods]);
 
-    try {
-      const orderRes = await fetch("/api/orders", {
+  const placeOrder = useCallback(
+    async (method: PaymentMethod) => {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -348,64 +281,90 @@ export function CheckoutForm({
           tableToken: token,
           items,
           guestEmail: guestEmail || undefined,
+          paymentMethod: method,
         }),
       });
 
-      const orderParsed = await readJsonResponse<{
+      const parsed = await readJsonResponse<{
         error?: string;
         data?: { orderId: string };
-      }>(orderRes);
-      if (!orderParsed.ok) {
-        throw new Error(orderParsed.error);
-      }
-      const orderJson = orderParsed.data;
-      if (!orderRes.ok) {
-        throw new Error(orderJson.error ?? "Order could not be placed.");
+      }>(res);
+
+      if (!parsed.ok) {
+        throw new Error(parsed.error);
       }
 
-      const oid = orderJson.data?.orderId;
+      const json = parsed.data;
+      if (!res.ok) {
+        throw new Error(json.error ?? "Order could not be placed.");
+      }
+
+      const oid = json.data?.orderId;
       if (!oid) {
         throw new Error("Order could not be placed.");
       }
-      setOrderId(oid);
 
-      const payRes = await fetch("/api/payments/create-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: oid, sessionToken }),
-      });
+      return oid;
+    },
+    [guestEmail, items, sessionToken, token]
+  );
 
-      const payParsed = await readJsonResponse<{
-        error?: string;
-        data?: { clientSecret: string; stripeAccountId: string };
-      }>(payRes);
-      if (!payParsed.ok) {
-        throw new Error(payParsed.error);
+  async function handleContinue() {
+    if (!paymentMethod || !sessionToken) return;
+
+    setProcessing(true);
+    setError(null);
+
+    try {
+      await saveGuestEmail(sessionToken, guestEmail);
+
+      if (paymentMethod === "online") {
+        const oid = await placeOrder("online");
+
+        const payRes = await fetch("/api/payments/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: oid, sessionToken }),
+        });
+
+        const payParsed = await readJsonResponse<{
+          error?: string;
+          data?: { clientSecret: string; stripeAccountId: string };
+        }>(payRes);
+
+        if (!payParsed.ok) {
+          throw new Error(payParsed.error);
+        }
+
+        const payJson = payParsed.data;
+        if (!payRes.ok) {
+          throw new Error(payJson.error ?? "Payment could not be started.");
+        }
+
+        if (!payJson.data?.clientSecret || !payJson.data?.stripeAccountId) {
+          throw new Error("Payment could not be started.");
+        }
+
+        setOrderId(oid);
+        setClientSecret(payJson.data.clientSecret);
+        setStripeAccountId(payJson.data.stripeAccountId);
+        setStep("online");
+        setProcessing(false);
+        return;
       }
-      const payJson = payParsed.data;
-      if (!payRes.ok) {
-        throw new Error(payJson.error ?? "Payment could not be started.");
-      }
 
-      if (!payJson.data?.clientSecret || !payJson.data?.stripeAccountId) {
-        throw new Error("Payment could not be started.");
-      }
-
-      setClientSecret(payJson.data.clientSecret);
-      setStripeAccountId(payJson.data.stripeAccountId);
+      const oid = await placeOrder(paymentMethod);
+      clearCart();
+      hapticSuccess();
+      toast.success("Order sent!");
+      router.push(`/${slug}/${token}/order/${oid}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load checkout.");
-    } finally {
-      setLoading(false);
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+      setProcessing(false);
     }
-  }, [items, sessionToken, slug, token, stripeEnabled, router, guestEmail]);
+  }
 
-  useEffect(() => {
-    initCheckout();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (loading) {
+  if (!ready) {
     return (
       <div className="py-6">
         <CheckoutSkeleton />
@@ -413,63 +372,23 @@ export function CheckoutForm({
     );
   }
 
-  if (!stripeEnabled) {
-    return (
-      <DemoCheckoutForm
-        slug={slug}
-        token={token}
-        taxPercent={taxPercent}
-        currency={currency}
-        items={items}
-        sessionToken={sessionToken!}
-        subtotal={subtotal}
-        taxAmount={taxAmount}
-        total={total}
-      />
+  if (step === "online" && clientSecret && stripeAccountId && orderId) {
+    const stripePromise = loadStripe(
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      { stripeAccount: stripeAccountId }
     );
-  }
 
-  if (error) {
     return (
-      <div className="rounded-xl bg-zinc-900 p-6 text-center">
-        <p className="text-body text-red-400">{error}</p>
-        <Button
-          variant="outline"
-          className="mt-4 border-zinc-700"
-          onClick={() => router.push(`/${slug}/${token}/cart`)}
-        >
-          Back to cart
-        </Button>
-      </div>
-    );
-  }
-
-  if (!clientSecret || !stripeAccountId || !orderId) return null;
-
-  const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-    { stripeAccount: stripeAccountId }
-  );
-
-  return (
-    <div className="space-y-6">
-      <OrderSummary
-        items={items}
-        subtotal={subtotal}
-        taxPercent={taxPercent}
-        taxAmount={taxAmount}
-        total={total}
-        currency={currency}
-      />
-
-      <div>
-        <h2 className="text-caption mb-4 uppercase tracking-wide text-zinc-500">
-          Payment
-        </h2>
-        <Elements
-          stripe={stripePromise}
-          options={{ clientSecret, appearance }}
-        >
+      <div className="space-y-6">
+        <OrderSummary
+          items={items}
+          subtotal={subtotal}
+          taxPercent={taxPercent}
+          taxAmount={taxAmount}
+          total={total}
+          currency={currency}
+        />
+        <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
           <PaymentForm
             slug={slug}
             token={token}
@@ -482,6 +401,58 @@ export function CheckoutForm({
           />
         </Elements>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <OrderSummary
+        items={items}
+        subtotal={subtotal}
+        taxPercent={taxPercent}
+        taxAmount={taxAmount}
+        total={total}
+        currency={currency}
+      />
+
+      <PaymentMethodSelector
+        methods={availableMethods}
+        value={paymentMethod}
+        onChange={setPaymentMethod}
+      />
+
+      <div>
+        <Label htmlFor="checkout-email" className="text-zinc-400">
+          Email (optional, for receipt)
+        </Label>
+        <Input
+          id="checkout-email"
+          type="email"
+          placeholder="you@example.com"
+          className="mt-1 border-zinc-700 bg-zinc-950 text-zinc-100"
+          value={guestEmail}
+          onChange={(e) => setGuestEmail(e.target.value)}
+        />
+      </div>
+
+      {error && (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )}
+
+      <Button
+        type="button"
+        disabled={!paymentMethod || processing}
+        onClick={handleContinue}
+        className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
+      >
+        {processing
+          ? "Processing..."
+          : paymentMethod === "online"
+            ? "Continue to payment"
+            : "Place order"}
+      </Button>
     </div>
   );
 }

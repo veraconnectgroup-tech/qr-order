@@ -36,7 +36,7 @@ function HeroLiveOrderCard() {
           }
         />
         <span className="text-[11px] font-semibold text-zinc-200">
-          New order
+          Live order
         </span>
         <span className="ml-auto font-mono text-[10px] text-zinc-500">
           #{order.order_number}
@@ -47,10 +47,34 @@ function HeroLiveOrderCard() {
           {order.tables?.name ?? "Table 8"}
         </p>
         <p className="mt-0.5 text-[10px] text-zinc-500">
-          {itemCount} items ·{" "}
-          {formatPrice(order.total, DEMO_CURRENCY)}
+          {itemCount} items · {formatPrice(order.total, DEMO_CURRENCY)}
+        </p>
+        <p className="mt-2 text-[10px] font-medium text-orange-400">
+          Preparing · ~8 min
         </p>
       </div>
+    </div>
+  );
+}
+
+function HeroPhoneStack() {
+  return (
+    <div className="relative mx-auto w-full max-w-[280px]">
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+        <div className="absolute left-1/2 top-1/2 size-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500/[0.08] blur-[120px]" />
+      </div>
+      <ShowcasePhone hideLabel className="max-w-none">
+        <ScaledPhonePreview designHeight={560}>
+          <GuestMenuContent variant="hero" />
+        </ScaledPhonePreview>
+      </ShowcasePhone>
+      <HeroSlideIn
+        from="bottom"
+        delay={0.35}
+        className="absolute -bottom-3 left-1/2 z-10 w-[88%] -translate-x-1/2"
+      >
+        <HeroLiveOrderCard />
+      </HeroSlideIn>
     </div>
   );
 }
@@ -61,38 +85,34 @@ export function EnterpriseHeroVisual() {
   return (
     <>
       <motion.div
-        className="flex justify-center md:hidden"
+        className="flex justify-center pb-6 md:hidden"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <ShowcasePhone hideLabel className="max-w-[260px]">
-          <ScaledPhonePreview designHeight={560}>
-            <GuestMenuContent variant="hero" />
-          </ScaledPhonePreview>
-        </ShowcasePhone>
+        <HeroPhoneStack />
       </motion.div>
 
       <ShowcaseStage className="hidden md:block lg:max-w-[840px]">
-        <HeroGlow className="left-[20%] top-[30%] size-[280px]" />
-        <HeroGlow className="right-[10%] bottom-[20%] size-[200px] bg-orange-400/[0.04]" />
+        <HeroGlow className="left-[18%] top-[24%] size-[300px]" />
+        <HeroGlow className="right-[8%] bottom-[18%] size-[220px] bg-orange-400/[0.05]" />
 
         <HeroSlideIn
           from="right"
           delay={0.08}
-          className="absolute right-[-3%] top-[0] z-10 w-[86%] lg:w-[84%]"
+          className="absolute right-[-2%] top-0 z-10 w-[88%] lg:w-[86%]"
         >
           <ShowcaseWindow
-            url="app.qr-order.com/tables"
+            url="app.qr-order.com/orders"
             className="shadow-[0_28px_90px_-20px_rgba(0,0,0,0.85)]"
           >
-            <DashboardScreenShowcase screen="tables" variant="hero" />
+            <DashboardScreenShowcase screen="orders" variant="hero" />
           </ShowcaseWindow>
         </HeroSlideIn>
 
         <HeroFloat
           delay={0.32}
-          className="absolute bottom-[2%] left-[-1%] z-30 w-[36%] min-w-[170px] max-w-[240px]"
+          className="absolute bottom-[4%] left-[-2%] z-30 w-[34%] min-w-[168px] max-w-[228px]"
         >
           <ShowcasePhone
             hideLabel
@@ -107,7 +127,7 @@ export function EnterpriseHeroVisual() {
         <HeroSlideIn
           from="bottom"
           delay={0.52}
-          className="absolute bottom-[12%] right-[1%] z-20 w-[42%] max-w-[220px]"
+          className="absolute bottom-[10%] right-[2%] z-20 w-[40%] max-w-[210px]"
         >
           <HeroLiveOrderCard />
         </HeroSlideIn>
@@ -115,7 +135,7 @@ export function EnterpriseHeroVisual() {
         {!reduce && (
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-0 rounded-2xl border border-zinc-800/20"
+            className="pointer-events-none absolute inset-0 z-0 rounded-2xl border border-zinc-800/25"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 1 }}

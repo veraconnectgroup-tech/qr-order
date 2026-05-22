@@ -8,6 +8,7 @@ import {
   DEMO_ZONES,
   type DemoTable,
 } from "@/components/landing/demo-data";
+import { OrdersBoardContent } from "@/components/landing/showcase-content";
 import {
   ScaledDashboardPreview,
 } from "@/components/landing/scaled-dashboard-preview";
@@ -281,6 +282,9 @@ export function DashboardScreenShowcase({
         showExport={meta.showExport && !isHero}
         compact={isHero}
       >
+        {screen === "orders" && (
+          <OrdersBoardContent variant={isHero ? "hero" : "feature"} />
+        )}
         {screen === "tables" && <TablesShowcaseContent compact={isHero} />}
         {screen === "history" && <HistoryShowcaseContent />}
       </ShowcaseDashboardShell>

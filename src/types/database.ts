@@ -38,6 +38,9 @@ type Tables = {
     operating_hours: Json;
     is_active: boolean;
     accepting_orders: boolean;
+    payment_online_enabled: boolean;
+    payment_at_bar_enabled: boolean;
+    payment_card_at_table_enabled: boolean;
     created_at: string;
     updated_at: string;
   };
@@ -145,6 +148,7 @@ type Tables = {
       | "refunded"
       | "partial_refund"
       | "failed";
+    payment_method: "online" | "at_bar" | "card_at_table";
     notes: string | null;
     rejection_reason: string | null;
     estimated_prep_minutes: number | null;

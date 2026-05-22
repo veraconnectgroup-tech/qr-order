@@ -84,6 +84,7 @@ type StaffAccess = {
     location_id: string;
     status: string;
     payment_status: string;
+    payment_method: string;
     stripe_payment_intent_id: string | null;
     total: number;
     created_at: string;
@@ -110,7 +111,7 @@ async function verifyStaffOrderAccess(
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, location_id, status, payment_status, stripe_payment_intent_id, total, created_at"
+      "id, location_id, status, payment_status, payment_method, stripe_payment_intent_id, total, created_at"
     )
     .eq("id", orderId)
     .single();
@@ -188,6 +189,14 @@ export async function PATCH(
   if (status === "preparing") updates.preparing_at = now;
   if (status === "ready") updates.ready_at = now;
   if (status === "delivered") updates.delivered_at = now;
+
+  if (
+    status === "delivered" &&
+    access.order.payment_status === "pending" &&
+    access.order.payment_method !== "online"
+  ) {
+    updates.payment_status = "paid";
+  }
 
   if (status === "rejected") {
     updates.rejection_reason = rejectionReason

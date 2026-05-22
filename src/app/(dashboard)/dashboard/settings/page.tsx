@@ -20,7 +20,9 @@ export default async function SettingsPage() {
     locationId
       ? admin
           .from("locations")
-          .select("name, address, city, is_active, accepting_orders")
+          .select(
+            "name, address, city, is_active, accepting_orders, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+          )
           .eq("id", locationId)
           .single()
       : Promise.resolve({ data: null }),
@@ -71,6 +73,9 @@ export default async function SettingsPage() {
           city: string | null;
           is_active: boolean;
           accepting_orders: boolean;
+          payment_online_enabled: boolean;
+          payment_at_bar_enabled: boolean;
+          payment_card_at_table_enabled: boolean;
         } | null
       }
       staffName={staff.name}

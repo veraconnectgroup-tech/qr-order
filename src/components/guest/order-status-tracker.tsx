@@ -12,12 +12,14 @@ import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import { guestPaymentInstruction } from "@/lib/payment-methods";
 
 type OrderData = {
   id: string;
   order_number: number;
   status: string;
   payment_status: string;
+  payment_method: string;
   subtotal: number;
   tax_amount: number;
   tax_percent: number;
@@ -151,6 +153,10 @@ export function OrderStatusTracker({
   const isDelivered = order.status === "delivered";
   const canAddMore = !isRejected && !isDelivered;
   const currentIdx = STATUS_ORDER.indexOf(order.status);
+  const paymentNote = guestPaymentInstruction(
+    order.payment_method,
+    order.payment_status
+  );
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
@@ -174,6 +180,11 @@ export function OrderStatusTracker({
               : "Order placed!"}
         </h1>
         {!isRejected && <AnimatedOrderNumber orderNumber={order.order_number} />}
+        {paymentNote && (
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-400">
+            {paymentNote}
+          </p>
+        )}
         {isRejected && order.rejection_reason && (
           <p className="mt-2 text-body text-zinc-400">{order.rejection_reason}</p>
         )}

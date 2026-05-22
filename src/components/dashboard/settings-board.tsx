@@ -5,7 +5,7 @@ import { Suspense, useState } from "react";
 import { Copy, LogOut, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { logoutAction } from "@/lib/auth/actions";
-import { updateOrganizationSettings, setLocationOrderingActive } from "@/lib/dashboard/settings-actions";
+import { updateOrganizationSettings, setLocationOrderingActive, updateLocationPaymentMethods } from "@/lib/dashboard/settings-actions";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useAppBaseUrl } from "@/hooks/use-app-base-url";
 import { guestTableUrl } from "@/lib/app-url";
@@ -31,6 +31,9 @@ type LocationInfo = {
   city: string | null;
   is_active: boolean;
   accepting_orders: boolean;
+  payment_online_enabled: boolean;
+  payment_at_bar_enabled: boolean;
+  payment_card_at_table_enabled: boolean;
 };
 
 export function SettingsBoard({
@@ -59,6 +62,16 @@ export function SettingsBoard({
     location?.accepting_orders ?? true
   );
   const [togglingOrders, setTogglingOrders] = useState(false);
+  const [paymentOnline, setPaymentOnline] = useState(
+    location?.payment_online_enabled ?? true
+  );
+  const [paymentAtBar, setPaymentAtBar] = useState(
+    location?.payment_at_bar_enabled ?? true
+  );
+  const [paymentCardAtTable, setPaymentCardAtTable] = useState(
+    location?.payment_card_at_table_enabled ?? true
+  );
+  const [savingPayments, setSavingPayments] = useState(false);
   const guestMenuUrl = sampleTableToken
     ? guestTableUrl(org.slug, sampleTableToken, appUrl)
     : null;
@@ -90,6 +103,40 @@ export function SettingsBoard({
     }
     setOrderingActive(checked);
     toast.success(checked ? "Guest ordering is open" : "Guest ordering paused");
+  }
+
+  async function handlePaymentMethodChange(
+    key: "online" | "atBar" | "cardAtTable",
+    checked: boolean
+  ) {
+    const next = {
+      online: key === "online" ? checked : paymentOnline,
+      atBar: key === "atBar" ? checked : paymentAtBar,
+      cardAtTable: key === "cardAtTable" ? checked : paymentCardAtTable,
+    };
+
+    if (!next.online && !next.atBar && !next.cardAtTable) {
+      toast.error("Bar, kartica ili online — bar jedna opcija mora biti uključena.");
+      return;
+    }
+
+    setSavingPayments(true);
+    const result = await updateLocationPaymentMethods({
+      paymentOnlineEnabled: next.online,
+      paymentAtBarEnabled: next.atBar,
+      paymentCardAtTableEnabled: next.cardAtTable,
+    });
+    setSavingPayments(false);
+
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    setPaymentOnline(next.online);
+    setPaymentAtBar(next.atBar);
+    setPaymentCardAtTable(next.cardAtTable);
+    toast.success("Načini plaćanja su sačuvani");
   }
 
   return (
@@ -255,6 +302,65 @@ export function SettingsBoard({
               disabled={togglingOrders}
               onCheckedChange={handleOrderingToggle}
             />
+          </div>
+        </section>
+      )}
+
+      {canEdit && location && (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-zinc-50">Načini plaćanja</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Uključi opcije koje gost vidi na checkout-u
+          </p>
+          <div className="mt-4 divide-y divide-zinc-800 rounded-lg border border-zinc-800">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">Bar</p>
+                <p className="text-xs text-zinc-500">
+                  Gost poručuje odmah, plaća na šanku
+                </p>
+              </div>
+              <Switch
+                checked={paymentAtBar}
+                disabled={savingPayments}
+                onCheckedChange={(checked) =>
+                  handlePaymentMethodChange("atBar", checked)
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">Kartica</p>
+                <p className="text-xs text-zinc-500">
+                  Plaćanje karticom — konobar donosi terminal do stola
+                </p>
+              </div>
+              <Switch
+                checked={paymentCardAtTable}
+                disabled={savingPayments}
+                onCheckedChange={(checked) =>
+                  handlePaymentMethodChange("cardAtTable", checked)
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">
+                  Online plaćanje
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Apple Pay, Google Pay i kartica preko Stripe-a
+                  {!org.stripe_onboarded && " — prvo poveži Stripe ispod"}
+                </p>
+              </div>
+              <Switch
+                checked={paymentOnline}
+                disabled={savingPayments || !org.stripe_onboarded}
+                onCheckedChange={(checked) =>
+                  handlePaymentMethodChange("online", checked)
+                }
+              />
+            </div>
           </div>
         </section>
       )}

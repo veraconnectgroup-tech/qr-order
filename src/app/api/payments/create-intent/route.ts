@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { data: order } = await admin
       .from("orders")
       .select(
-        "id, total, payment_status, stripe_payment_intent_id, location_id, status"
+        "id, total, payment_status, payment_method, stripe_payment_intent_id, location_id, status"
       )
       .eq("id", orderId)
       .single();
@@ -54,10 +54,18 @@ export async function POST(req: NextRequest) {
       id: string;
       total: number;
       payment_status: string;
+      payment_method: string;
       stripe_payment_intent_id: string | null;
       location_id: string;
       status: string;
     };
+
+    if (orderRow.payment_method !== "online") {
+      return NextResponse.json(
+        { error: "This order uses an in-venue payment method." },
+        { status: 400 }
+      );
+    }
 
     if (orderRow.status === "rejected" || orderRow.status === "cancelled") {
       return NextResponse.json(
