@@ -196,8 +196,8 @@ export function KitchenBoard() {
       play("kitchen-order");
       toast.info(
         newAccepted.length === 1
-          ? "New order in kitchen"
-          : `${newAccepted.length} new orders in kitchen`
+          ? "New order"
+          : `${newAccepted.length} new orders`
       );
     }
 

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid },
-  { href: "/dashboard/kitchen", label: "Kitchen", icon: ChefHat },
+  { href: "/dashboard/kitchen", label: "Prep", icon: ChefHat },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
   { href: "/dashboard/waiter-calls", label: "Calls", icon: Bell },
   { href: "/dashboard/history", label: "History", icon: BarChart3 },

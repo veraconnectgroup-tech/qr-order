@@ -16,7 +16,7 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 
 const navItems = [
   { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid },
-  { href: "/dashboard/kitchen", label: "Kitchen", icon: ChefHat },
+  { href: "/dashboard/kitchen", label: "Prep Display", icon: ChefHat },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
   { href: "/dashboard/waiter-calls", label: "Waiter Calls", icon: Bell },
   { href: "/dashboard/history", label: "History", icon: BarChart3 },

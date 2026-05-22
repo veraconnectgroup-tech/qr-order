@@ -61,7 +61,7 @@ export function KitchenHeader({ orders }: { orders: OrderWithDetails[] }) {
             className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-100"
           >
             <ArrowLeft className="size-4" />
-            Exit Kitchen
+            Exit Prep
           </Link>
         </div>
       </header>

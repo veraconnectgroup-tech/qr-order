@@ -7,8 +7,8 @@ export const DASHBOARD_PAGES: Record<
     subtitle: "Real-time kanban board",
   },
   "/dashboard/kitchen": {
-    title: "Kitchen Display",
-    subtitle: "Prep queue",
+    title: "Prep Display",
+    subtitle: "Food & drinks on one ticket",
   },
   "/dashboard/tables": {
     title: "Tables",

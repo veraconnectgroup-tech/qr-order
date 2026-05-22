@@ -106,6 +106,19 @@ export async function POST(req: NextRequest) {
       const existing = await stripe.paymentIntents.retrieve(
         orderRow.stripe_payment_intent_id
       );
+      const amountCents = Math.round(Number(orderRow.total) * 100);
+      const platformFee = calcPlatformFee(
+        Number(orderRow.total),
+        Number(org.platform_fee_percent)
+      );
+
+      if (existing.amount !== amountCents) {
+        await stripe.paymentIntents.update(orderRow.stripe_payment_intent_id, {
+          amount: amountCents,
+          application_fee_amount: platformFee,
+        });
+      }
+
       if (existing.client_secret) {
         return NextResponse.json({
           data: {

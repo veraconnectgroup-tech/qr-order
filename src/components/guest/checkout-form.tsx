@@ -144,7 +144,7 @@ function DemoCheckoutForm({
       }
       clearCart();
       hapticSuccess();
-      toast.success("Order sent to the kitchen!");
+      toast.success("Order sent!");
       router.push(`/${slug}/${token}/order/${json.data.orderId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");

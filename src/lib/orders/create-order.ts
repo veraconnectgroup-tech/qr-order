@@ -69,19 +69,39 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     Date.now() - ORDER_RATE_LIMIT_SECONDS * 1000
   ).toISOString();
 
-  const { data: recentOrder } = await admin
+  const { data: pendingOrder } = await admin
     .from("orders")
-    .select("id")
+    .select("id, subtotal, tax_percent, payment_status, stripe_payment_intent_id")
     .eq("session_id", sessionRow.id)
-    .gte("created_at", recentCutoff)
+    .eq("status", "pending")
+    .in("payment_status", ["pending", "processing"])
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (recentOrder) {
-    return {
-      error: "Please wait before placing another order.",
-      status: 429,
-    };
+  const pendingRow = pendingOrder as {
+    id: string;
+    subtotal: number;
+    tax_percent: number;
+    payment_status: string;
+    stripe_payment_intent_id: string | null;
+  } | null;
+
+  if (!pendingRow) {
+    const { data: recentOrder } = await admin
+      .from("orders")
+      .select("id")
+      .eq("session_id", sessionRow.id)
+      .gte("created_at", recentCutoff)
+      .limit(1)
+      .maybeSingle();
+
+    if (recentOrder) {
+      return {
+        error: "Please wait before placing another order.",
+        status: 429,
+      };
+    }
   }
 
   const productIds = [...new Set(input.items.map((i) => i.productId))];
@@ -216,6 +236,114 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     return { error: totalError, status: 400 };
   }
 
+  async function saveOrderItems(orderId: string) {
+    for (const item of validatedItems) {
+      const unitWithMods =
+        item.unitPrice + item.modifiers.reduce((s, m) => s + m.price, 0);
+
+      const { data: orderItem, error: itemError } = await admin
+        .from("order_items")
+        .insert({
+          order_id: orderId,
+          product_id: item.productId,
+          product_name: item.productName,
+          quantity: item.quantity,
+          unit_price: unitWithMods,
+          notes: item.notes || null,
+          total: item.itemTotal,
+        })
+        .select("id")
+        .single();
+
+      if (itemError || !orderItem) {
+        return { error: "Order items could not be saved." as const };
+      }
+
+      const oi = orderItem as { id: string };
+
+      if (item.modifiers.length) {
+        const { error: modError } = await admin
+          .from("order_item_modifiers")
+          .insert(
+            item.modifiers.map((m) => ({
+              order_item_id: oi.id,
+              modifier_id: m.modifierId,
+              modifier_name: m.modifierName,
+              price: m.price,
+            }))
+          );
+
+        if (modError) {
+          return { error: "Order modifiers could not be saved." as const };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  if (pendingRow) {
+    const { error: clearError } = await admin
+      .from("order_items")
+      .delete()
+      .eq("order_id", pendingRow.id);
+
+    if (clearError) {
+      return { error: "Porudžbina nije ažurirana.", status: 500 };
+    }
+
+    const saveError = await saveOrderItems(pendingRow.id);
+    if (saveError) {
+      return { error: saveError.error, status: 500 };
+    }
+
+    const { data: updatedOrder, error: updateError } = await admin
+      .from("orders")
+      .update({
+        subtotal,
+        tax_percent: taxPercent,
+        tax_amount: taxAmount,
+        total,
+        payment_status: "pending",
+        stripe_payment_intent_id: null,
+      })
+      .eq("id", pendingRow.id)
+      .select("id, order_number, total, tax_percent")
+      .single();
+
+    if (updateError || !updatedOrder) {
+      return { error: "Porudžbina nije ažurirana.", status: 500 };
+    }
+
+    const merged = updatedOrder as {
+      id: string;
+      order_number: number;
+      total: number;
+      tax_percent: number;
+    };
+
+    if (input.guestEmail) {
+      await admin
+        .from("table_sessions")
+        .update({ guest_email: input.guestEmail })
+        .eq("id", sessionRow.id);
+    }
+
+    return {
+      data: {
+        orderId: merged.id,
+        orderNumber: merged.order_number,
+        total: merged.total,
+        taxPercent: merged.tax_percent,
+        tableName: tableRow.name,
+        currency,
+        orgId: orgRow.id,
+        locationId: tableRow.location_id,
+        merged: true,
+      },
+    };
+  }
+
   const { data: orderNumber, error: numError } = await admin.rpc(
     "get_next_order_number",
     { p_location_id: tableRow.location_id }
@@ -260,47 +388,10 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     tax_percent: number;
   };
 
-  for (const item of validatedItems) {
-    const unitWithMods =
-      item.unitPrice +
-      item.modifiers.reduce((s, m) => s + m.price, 0);
-
-    const { data: orderItem, error: itemError } = await admin
-      .from("order_items")
-      .insert({
-        order_id: orderRow.id,
-        product_id: item.productId,
-        product_name: item.productName,
-        quantity: item.quantity,
-        unit_price: unitWithMods,
-        notes: item.notes || null,
-        total: item.itemTotal,
-      })
-      .select("id")
-      .single();
-
-    if (itemError || !orderItem) {
-      await admin.from("orders").delete().eq("id", orderRow.id);
-      return { error: "Order items could not be saved.", status: 500 };
-    }
-
-    const oi = orderItem as { id: string };
-
-    if (item.modifiers.length) {
-      const { error: modError } = await admin.from("order_item_modifiers").insert(
-        item.modifiers.map((m) => ({
-          order_item_id: oi.id,
-          modifier_id: m.modifierId,
-          modifier_name: m.modifierName,
-          price: m.price,
-        }))
-      );
-
-      if (modError) {
-        await admin.from("orders").delete().eq("id", orderRow.id);
-        return { error: "Order modifiers could not be saved.", status: 500 };
-      }
-    }
+  const saveError = await saveOrderItems(orderRow.id);
+  if (saveError) {
+    await admin.from("orders").delete().eq("id", orderRow.id);
+    return { error: saveError.error, status: 500 };
   }
 
   if (input.guestEmail) {
