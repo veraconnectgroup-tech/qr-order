@@ -25,12 +25,15 @@ import {
   TablesShowcase,
 } from "@/components/landing/product-showcases";
 import { EnterpriseHeroVisual } from "@/components/landing/enterprise-hero-visual";
+import { platformFeeDescriptionEn } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+
+const TRANSACTION_FEE = platformFeeDescriptionEn();
 
 const trustSignals = [
   { icon: CreditCard, label: "Stripe Connect" },
   { icon: Shield, label: "Secure payments" },
-  { icon: Building2, label: "Multi-location" },
+  { icon: Building2, label: "No guest app" },
 ];
 
 const navLinks = [
@@ -105,44 +108,36 @@ const features = [
 
 const plans = [
   {
-    name: "Starter",
+    name: "Standard",
     price: "0€",
     period: "/mo",
-    fee: "+ 1.5% per order",
-    description: "Perfect for trying it out",
-    features: ["QR menus", "Online payments", "Basic dashboard"],
-    cta: "Start free",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "49€",
-    period: "/mo",
-    fee: "+ 1% per order",
-    description: "For busy venues",
+    fee: `+ ${TRANSACTION_FEE} on card payments`,
+    description: "Full platform — pay only when guests pay by card",
     features: [
-      "Everything in Starter",
-      "Kitchen display",
-      "Analytics",
-      "Priority support",
+      "QR guest menus",
+      "Stripe card payments",
+      "Live orders & kitchen display",
+      "Analytics & CSV export",
+      "Staff invites & roles",
+      "Email receipts",
     ],
-    cta: "Get started",
+    cta: "Start free",
     highlighted: true,
   },
   {
     name: "Enterprise",
-    price: "99€",
-    period: "/mo",
-    fee: "+ 0.5% per order",
-    description: "For multi-location chains",
+    price: "Custom",
+    period: "",
+    fee: "Volume pricing on request",
+    description: "For chains and high-volume venues",
     features: [
-      "Everything in Pro",
-      "Multi-location",
-      "Custom branding",
-      "API access",
-      "Dedicated support",
+      "Everything in Standard",
+      "Dedicated onboarding",
+      "Custom integrations",
+      "Priority support",
+      "SLA options",
     ],
-    cta: "Contact sales",
+    cta: "Contact us",
     highlighted: false,
   },
 ];
@@ -257,7 +252,7 @@ export function LandingPage() {
                 </div>
                 <p className="mt-5 text-xs leading-relaxed text-zinc-500">
                   Deploy in days. No guest app. Payments routed to your Stripe
-                  account. EU-ready infrastructure.
+                  account. Platform fee: {TRANSACTION_FEE} per card order.
                 </p>
               </HeroItem>
             </HeroStagger>
@@ -352,7 +347,7 @@ export function LandingPage() {
               </h2>
             </AnimateInView>
 
-            <StaggerInView className="grid gap-6 lg:grid-cols-3">
+            <StaggerInView className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-2">
               {plans.map((plan) => (
                 <StaggerItem key={plan.name}>
                   <div

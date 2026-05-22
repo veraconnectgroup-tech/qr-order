@@ -37,7 +37,22 @@ export const PLATFORM_FEE_FIXED_EUR = 0.4;
 export const PLATFORM_FEE_SMALL_ORDER_EUR = 0.2;
 export const PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR = 10;
 
-export function platformFeeDescription(currency = "EUR") {
+function platformFeeParts(currency = "EUR") {
   const sym = currency === "EUR" ? "€" : currency + " ";
-  return `${sym}${PLATFORM_FEE_FIXED_EUR.toFixed(2)} per card payment (${sym}${PLATFORM_FEE_SMALL_ORDER_EUR.toFixed(2)} under ${sym}${PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR})`;
+  return {
+    sym,
+    small: `${sym}${PLATFORM_FEE_SMALL_ORDER_EUR.toFixed(2)}`,
+    large: `${sym}${PLATFORM_FEE_FIXED_EUR.toFixed(2)}`,
+    threshold: `${sym}${PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR}`,
+  };
+}
+
+export function platformFeeDescription(currency = "EUR") {
+  const { small, large, threshold } = platformFeeParts(currency);
+  return `${small} po porudžbini ispod ${threshold}, ${large} po porudžbini od ${threshold} naviše`;
+}
+
+export function platformFeeDescriptionEn(currency = "EUR") {
+  const { small, large, threshold } = platformFeeParts(currency);
+  return `${small} per order under ${threshold}, ${large} per order from ${threshold} upward`;
 }

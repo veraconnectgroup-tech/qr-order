@@ -25,6 +25,7 @@ import {
   type OrderColumnDef,
 } from "@/components/dashboard/order-card";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { cn } from "@/lib/utils";
 import type { OrderStatus, OrderWithDetails } from "@/types";
@@ -140,7 +141,14 @@ function ColumnSkeleton() {
 }
 
 export function OrderBoard() {
-  const { locationId, currency } = useDashboard();
+  const {
+    locationId,
+    currency,
+    stripeOnboarded,
+    hasTables,
+    hasMenuItems,
+    staffRole,
+  } = useDashboard();
   const { play } = useSoundAlert();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -358,6 +366,12 @@ export function OrderBoard() {
 
   return (
     <div>
+      <SetupChecklist
+        stripeOnboarded={stripeOnboarded}
+        hasTables={hasTables}
+        hasMenuItems={hasMenuItems}
+        canEdit={["owner", "manager"].includes(staffRole)}
+      />
       {/* Mobile: column tabs + vertical list */}
       <div className="md:hidden">
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

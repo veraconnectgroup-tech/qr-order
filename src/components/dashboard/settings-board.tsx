@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { Copy, LogOut, Volume2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export function SettingsBoard({
   staffEmail,
   canEdit,
   stripePlatformReady,
+  sampleTableToken,
 }: {
   org: OrgSettings;
   location: LocationInfo | null;
@@ -48,6 +50,7 @@ export function SettingsBoard({
   staffEmail: string | null;
   canEdit: boolean;
   stripePlatformReady: boolean;
+  sampleTableToken: string | null;
 }) {
   const { enabled, toggle } = useSoundAlert();
   const appUrl = useAppBaseUrl();
@@ -56,7 +59,9 @@ export function SettingsBoard({
     location?.accepting_orders ?? true
   );
   const [togglingOrders, setTogglingOrders] = useState(false);
-  const guestMenuUrl = guestTableUrl(org.slug, "demo-table-8", appUrl);
+  const guestMenuUrl = sampleTableToken
+    ? guestTableUrl(org.slug, sampleTableToken, appUrl)
+    : null;
 
   async function handleSave(formData: FormData) {
     setSaving(true);
@@ -70,6 +75,7 @@ export function SettingsBoard({
   }
 
   function copyGuestUrl() {
+    if (!guestMenuUrl) return;
     navigator.clipboard.writeText(guestMenuUrl);
     toast.success("Guest menu URL copied");
   }
@@ -192,21 +198,34 @@ export function SettingsBoard({
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-50">Guest menu link</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Share or test the QR guest experience
+          Share or test the QR guest experience for one of your tables
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <code className="flex-1 break-all rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-400">
-            {guestMenuUrl.replace(/^https?:\/\//, "")}
-          </code>
-          <button
-            type="button"
-            onClick={copyGuestUrl}
-            className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
-          >
-            <Copy className="size-4" />
-            Copy
-          </button>
-        </div>
+        {guestMenuUrl ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <code className="flex-1 break-all rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-400">
+              {guestMenuUrl.replace(/^https?:\/\//, "")}
+            </code>
+            <button
+              type="button"
+              onClick={copyGuestUrl}
+              className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+            >
+              <Copy className="size-4" />
+              Copy
+            </button>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-zinc-400">
+            Add a table on the{" "}
+            <Link
+              href="/dashboard/tables"
+              className="text-orange-400 hover:underline"
+            >
+              Tables
+            </Link>{" "}
+            page to get your guest menu URL and QR codes.
+          </p>
+        )}
       </section>
 
       {canEdit && location && (

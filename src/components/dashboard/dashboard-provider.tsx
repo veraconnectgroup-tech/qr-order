@@ -12,6 +12,9 @@ export type DashboardContextValue = {
   staffRole: string;
   staffEmail: string | null;
   todayRevenue: number;
+  stripeOnboarded: boolean;
+  hasTables: boolean;
+  hasMenuItems: boolean;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);

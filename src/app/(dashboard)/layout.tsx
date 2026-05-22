@@ -38,13 +38,22 @@ export default async function DashboardLayout({
   }
 
   const admin = createAdminClient();
-  const [{ data: org }, todayRevenue] = await Promise.all([
+  const [{ data: org }, todayRevenue, { count: tableCount }, { count: productCount }] =
+    await Promise.all([
     admin
       .from("organizations")
-      .select("id, name, slug, currency")
+      .select("id, name, slug, currency, stripe_onboarded")
       .eq("id", staff.org_id)
       .single(),
     getTodayRevenue(locationId),
+    admin
+      .from("tables")
+      .select("id", { count: "exact", head: true })
+      .eq("location_id", locationId),
+    admin
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("location_id", locationId),
   ]);
 
   const orgRow = org as {
@@ -52,6 +61,7 @@ export default async function DashboardLayout({
     name: string;
     slug: string;
     currency: string;
+    stripe_onboarded: boolean;
   } | null;
 
   return (
@@ -66,6 +76,9 @@ export default async function DashboardLayout({
         staffRole: staff.role,
         staffEmail: staff.email,
         todayRevenue,
+        stripeOnboarded: orgRow?.stripe_onboarded ?? false,
+        hasTables: (tableCount ?? 0) > 0,
+        hasMenuItems: (productCount ?? 0) > 0,
       }}
     >
       {children}

@@ -8,7 +8,8 @@ export default async function SettingsPage() {
   const locationId = await getStaffLocationId(staff);
   const admin = createAdminClient();
 
-  const [{ data: org }, { data: location }] = await Promise.all([
+  const [{ data: org }, { data: location }, { data: sampleTable }] =
+    await Promise.all([
     admin
       .from("organizations")
       .select(
@@ -22,6 +23,15 @@ export default async function SettingsPage() {
           .select("name, address, city, is_active, accepting_orders")
           .eq("id", locationId)
           .single()
+      : Promise.resolve({ data: null }),
+    locationId
+      ? admin
+          .from("tables")
+          .select("token")
+          .eq("location_id", locationId)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -68,6 +78,9 @@ export default async function SettingsPage() {
       staffEmail={staff.email}
       canEdit={canEdit}
       stripePlatformReady={isStripePlatformConfigured()}
+      sampleTableToken={
+        (sampleTable as { token: string } | null)?.token ?? null
+      }
     />
   );
 }
