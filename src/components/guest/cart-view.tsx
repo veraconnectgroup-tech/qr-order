@@ -1,13 +1,92 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { formatPrice } from "@/lib/format";
 import { formatServeSize } from "@/lib/serve-size";
 import { QuantitySelector } from "@/components/guest/quantity-selector";
 import { Button } from "@/components/ui/button";
+
+function EmptyCartState({ slug, token }: { slug: string; token: string }) {
+  const sessionToken = useGuestSession((s) => s.sessionToken);
+  const [activeOrder, setActiveOrder] = useState<{
+    id: string;
+    order_number: number;
+    status: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    let cancelled = false;
+
+    fetch(
+      `/api/sessions/bill?sessionToken=${encodeURIComponent(sessionToken)}&tableToken=${encodeURIComponent(token)}`
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled || !json?.data?.orders?.length) return;
+        const open = json.data.orders.filter(
+          (o: { status: string }) =>
+            o.status !== "rejected" && o.status !== "cancelled"
+        );
+        if (open.length) setActiveOrder(open[open.length - 1]);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken, token]);
+
+  return (
+    <div className="min-h-dvh px-4 pb-safe pt-4">
+      <header className="mb-6 flex items-center gap-3">
+        <Link
+          href={`/${slug}/${token}`}
+          className="touch-target inline-flex items-center text-zinc-400"
+        >
+          ← Back
+        </Link>
+        <h1 className="text-heading text-zinc-50">Your order</h1>
+      </header>
+      <div className="py-16 text-center sm:py-20">
+        {activeOrder ? (
+          <>
+            <p className="text-heading text-zinc-50">No items in cart</p>
+            <p className="mt-2 text-body text-zinc-400">
+              You already sent order #{activeOrder.order_number} to the kitchen.
+            </p>
+            <Button
+              asChild
+              className="mt-6 h-12 bg-orange-500 hover:bg-orange-600"
+            >
+              <Link href={`/${slug}/${token}/order/${activeOrder.id}`}>
+                Track order status
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-heading text-zinc-50">Your cart is empty</p>
+            <p className="mt-2 text-body text-zinc-400">
+              Browse the menu and add something delicious
+            </p>
+            <Button
+              asChild
+              className="mt-6 h-12 bg-orange-500 hover:bg-orange-600"
+            >
+              <Link href={`/${slug}/${token}`}>View menu</Link>
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function CartView({
   slug,
@@ -34,28 +113,7 @@ export function CartView({
   const total = useCart((s) => s.total(taxPercent));
 
   if (!items.length) {
-    return (
-      <div className="min-h-dvh px-4 pb-safe pt-4">
-        <header className="mb-6 flex items-center gap-3">
-          <Link
-            href={`/${slug}/${token}`}
-            className="touch-target inline-flex items-center text-zinc-400"
-          >
-            ← Back
-          </Link>
-          <h1 className="text-heading text-zinc-50">Your order</h1>
-        </header>
-        <div className="py-16 text-center sm:py-20">
-          <p className="text-heading text-zinc-50">Your cart is empty</p>
-          <p className="mt-2 text-body text-zinc-400">
-            Browse the menu and add something delicious
-          </p>
-          <Button asChild className="mt-6 h-12 bg-orange-500 hover:bg-orange-600">
-            <Link href={`/${slug}/${token}`}>View menu</Link>
-          </Button>
-        </div>
-      </div>
-    );
+    return <EmptyCartState slug={slug} token={token} />;
   }
 
   return (

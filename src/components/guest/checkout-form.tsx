@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
@@ -89,6 +89,7 @@ export function CheckoutForm({
   const total = useCart((s) => s.total(taxPercent));
   const clearCart = useCart((s) => s.clearCart);
   const router = useRouter();
+  const orderPlacedRef = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -96,6 +97,7 @@ export function CheckoutForm({
   const [guestEmail, setGuestEmail] = useState("");
 
   useEffect(() => {
+    if (orderPlacedRef.current) return;
     if (!items.length || !sessionToken) {
       router.replace(`/${slug}/${token}/cart`);
       return;
@@ -137,10 +139,11 @@ export function CheckoutForm({
         throw new Error(json.error ?? "Order could not be placed.");
       }
 
-      clearCart();
+      orderPlacedRef.current = true;
       hapticSuccess();
       toast.success("Order sent to kitchen!");
-      router.push(`/${slug}/${token}/order/${json.data.orderId}`);
+      router.replace(`/${slug}/${token}/order/${json.data.orderId}`);
+      clearCart();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       setProcessing(false);
