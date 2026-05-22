@@ -30,12 +30,6 @@ type TableRow = Table & {
   hasWaiterCall: boolean;
 };
 
-type ZoneTab = {
-  id: string;
-  name: string;
-  count: number;
-};
-
 function formatDuration(since: string) {
   const ms = Date.now() - new Date(since).getTime();
   const totalMinutes = Math.floor(ms / 60000);
@@ -87,8 +81,10 @@ export function TablesBoard() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [zonesOpen, setZonesOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newTable, setNewTable] = useState({ name: "", zoneId: "", seats: 4 });
+  const [newZoneName, setNewZoneName] = useState("");
 
   const pendingCallTableIds = useMemo(
     () =>
@@ -188,24 +184,22 @@ export function TablesBoard() {
   }, [load]);
 
   const zoneTabs = useMemo(() => {
-    const map = new Map<string, ZoneTab>();
+    const countByZone = new Map<string, number>();
     for (const table of tables) {
-      if (!table.zone) continue;
-      const existing = map.get(table.zone.id);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        map.set(table.zone.id, {
-          id: table.zone.id,
-          name: table.zone.name,
-          count: 1,
-        });
-      }
+      if (!table.zone_id) continue;
+      countByZone.set(
+        table.zone_id,
+        (countByZone.get(table.zone_id) ?? 0) + 1
+      );
     }
-    return Array.from(map.values()).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-  }, [tables]);
+    return zones
+      .map((zone) => ({
+        id: zone.id,
+        name: zone.name,
+        count: countByZone.get(zone.id) ?? 0,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [zones, tables]);
 
   const filtered = useMemo(() => {
     if (activeZone === "all") return tables;
@@ -258,6 +252,68 @@ export function TablesBoard() {
     toast.success("Table session closed");
     setSelected(null);
     load();
+  }
+
+  async function addZone() {
+    const name = newZoneName.trim();
+    if (!name) {
+      toast.error("Enter a zone name");
+      return;
+    }
+    setSaving(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("zones")
+      .insert({
+        location_id: locationId,
+        name,
+        sort_order: zones.length,
+        is_active: true,
+      })
+      .select("id, name")
+      .single();
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Zone "${name}" added`);
+    setNewZoneName("");
+    if (data) {
+      const row = data as { id: string; name: string };
+      setNewTable((t) => ({ ...t, zoneId: row.id }));
+      setActiveZone(row.id);
+    }
+    load();
+  }
+
+  async function removeZone(zoneId: string) {
+    const tableCount = tables.filter((t) => t.zone_id === zoneId).length;
+    if (tableCount > 0) {
+      toast.error("Move or remove tables in this zone first");
+      return;
+    }
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("zones").delete().eq("id", zoneId);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Zone removed");
+    if (activeZone === zoneId) setActiveZone("all");
+    load();
+  }
+
+  function openAddTable() {
+    if (zones.length === 0) {
+      toast.message("Create a zone first (e.g. Terrace, Bar, Zone 1)");
+      setZonesOpen(true);
+      return;
+    }
+    setNewTable({ name: "", zoneId: zones[0]?.id ?? "", seats: 4 });
+    setAddOpen(true);
   }
 
   async function addTable() {
@@ -389,6 +445,17 @@ ${qrItems
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={() => {
+              setNewZoneName("");
+              setZonesOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800 sm:gap-2 sm:px-4 sm:text-sm"
+          >
+            <Plus className="size-4" />
+            Zones
+          </button>
+          <button
+            type="button"
             onClick={downloadAllQrCodes}
             className="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-700 sm:px-4 sm:text-sm"
           >
@@ -397,10 +464,7 @@ ${qrItems
           </button>
           <button
             type="button"
-            onClick={() => {
-              setNewTable({ name: "", zoneId: zones[0]?.id ?? "", seats: 4 });
-              setAddOpen(true);
-            }}
+            onClick={openAddTable}
             className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 sm:gap-2 sm:px-4 sm:text-sm"
           >
             <Plus className="size-4" />
@@ -408,6 +472,22 @@ ${qrItems
           </button>
         </div>
       </div>
+
+      {zones.length === 0 && (
+        <div className="mb-6 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-4 py-8 text-center">
+          <p className="font-medium text-zinc-200">No zones yet</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Add areas like Terrace, Bar, or Zone 1–5, then assign tables to each zone.
+          </p>
+          <button
+            type="button"
+            onClick={() => setZonesOpen(true)}
+            className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Add your first zone
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
         {filtered.map((table) => {
@@ -620,19 +700,35 @@ ${qrItems
             </label>
             <label className="block space-y-1.5">
               <span className="text-sm text-zinc-400">Zone</span>
-              <select
-                value={newTable.zoneId}
-                onChange={(e) =>
-                  setNewTable((t) => ({ ...t, zoneId: e.target.value }))
-                }
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
-              >
-                {zones.map((zone) => (
-                  <option key={zone.id} value={zone.id}>
-                    {zone.name}
-                  </option>
-                ))}
-              </select>
+              {zones.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-zinc-700 px-3 py-2 text-sm text-zinc-500">
+                  No zones —{" "}
+                  <button
+                    type="button"
+                    className="text-orange-400 underline"
+                    onClick={() => {
+                      setAddOpen(false);
+                      setZonesOpen(true);
+                    }}
+                  >
+                    add a zone first
+                  </button>
+                </p>
+              ) : (
+                <select
+                  value={newTable.zoneId}
+                  onChange={(e) =>
+                    setNewTable((t) => ({ ...t, zoneId: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                >
+                  {zones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
             <label className="block space-y-1.5">
               <span className="text-sm text-zinc-400">Seats</span>
@@ -662,11 +758,95 @@ ${qrItems
             </button>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || zones.length === 0}
               onClick={addTable}
               className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Add Table"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={zonesOpen} onOpenChange={setZonesOpen}>
+        <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-50">Zones</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-500">
+            Name each area of your venue — e.g. Terrace, Bar, Main Hall, Zone 1.
+          </p>
+
+          <div className="flex gap-2 py-3">
+            <input
+              value={newZoneName}
+              onChange={(e) => setNewZoneName(e.target.value)}
+              placeholder="Terrace"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addZone();
+                }
+              }}
+              className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+            />
+            <button
+              type="button"
+              disabled={saving || !newZoneName.trim()}
+              onClick={addZone}
+              className="shrink-0 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+
+          {zones.length > 0 ? (
+            <ul className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-zinc-800 p-2">
+              {zones.map((zone) => {
+                const count = tables.filter((t) => t.zone_id === zone.id).length;
+                return (
+                  <li
+                    key={zone.id}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-zinc-950 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-zinc-100">
+                        {zone.name}
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        {count} {count === 1 ? "table" : "tables"}
+                      </p>
+                    </div>
+                    {count === 0 && (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => removeZone(zone.id)}
+                        className="shrink-0 text-xs text-red-400 hover:text-red-300"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="py-4 text-center text-sm text-zinc-600">
+              No zones yet — add one above.
+            </p>
+          )}
+
+          <DialogFooter className="border-zinc-800 bg-transparent">
+            <button
+              type="button"
+              onClick={() => {
+                setZonesOpen(false);
+                if (zones.length > 0) openAddTable();
+              }}
+              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
+            >
+              {zones.length > 0 ? "Add table to zone" : "Close"}
             </button>
           </DialogFooter>
         </DialogContent>
