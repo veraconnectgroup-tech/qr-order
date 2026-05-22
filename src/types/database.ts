@@ -90,6 +90,9 @@ type Tables = {
     prep_time_minutes: number | null;
     allergens: string[] | null;
     tags: string[] | null;
+    requires_serve_size: boolean;
+    serve_size_presets: string[] | null;
+    allow_custom_serve_size: boolean;
     created_at: string;
     updated_at: string;
   };
@@ -148,7 +151,7 @@ type Tables = {
       | "refunded"
       | "partial_refund"
       | "failed";
-    payment_method: "online" | "at_bar" | "card_at_table";
+    payment_method: "online" | "at_bar" | "card_at_table" | "unset";
     notes: string | null;
     rejection_reason: string | null;
     estimated_prep_minutes: number | null;

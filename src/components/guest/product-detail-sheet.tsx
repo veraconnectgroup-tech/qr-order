@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { AddToCartButton } from "@/components/guest/add-to-cart-button";
 import { ProductIngredients } from "@/components/guest/product-ingredients";
 import { QuantitySelector } from "@/components/guest/quantity-selector";
+import { ServeSizeSelector } from "@/components/guest/serve-size-selector";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
@@ -16,6 +17,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  isValidServeSize,
+  productHasServeSize,
+} from "@/lib/serve-size";
 import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
 
 export function ProductDetailSheet({
@@ -35,9 +40,12 @@ export function ProductDetailSheet({
   const { tName, tDescription, locale } = useMenuLocale();
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [serveSize, setServeSize] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, string[]>>({});
 
   const groups = product?.modifier_groups ?? [];
+  const showServeSize = product ? productHasServeSize(product) : false;
+  const servePresets = product?.serve_size_presets ?? [];
 
   const selectedModifiers = useMemo(() => {
     const result: Array<{ modifierId: string; modifierName: string; price: number }> = [];
@@ -68,6 +76,8 @@ export function ProductDetailSheet({
   const missingRequired = groups.some(
     (g) => g.is_required && (selected[g.id]?.length ?? 0) < Math.max(1, g.min_select)
   );
+  const missingServeSize =
+    showServeSize && (!serveSize || !isValidServeSize(serveSize));
 
   function toggleModifier(group: ModifierGroup, modifier: Modifier) {
     setSelected((prev) => {
@@ -87,7 +97,7 @@ export function ProductDetailSheet({
   }
 
   function handleAdd() {
-    if (!product || missingRequired) return;
+    if (!product || missingRequired || missingServeSize) return;
     const displayName = tName(product);
     addItem({
       productId: product.id,
@@ -95,11 +105,13 @@ export function ProductDetailSheet({
       unitPrice: Number(product.price),
       quantity,
       notes,
+      serveSize,
       modifiers: selectedModifiers,
     });
     toastAddedToCart(displayName, lineTotal, currency);
     setQuantity(1);
     setNotes("");
+    setServeSize(null);
     setSelected({});
     onOpenChange(false);
   }
@@ -149,6 +161,25 @@ export function ProductDetailSheet({
           />
 
           <div className="mt-6 space-y-6">
+          {showServeSize && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                  Serve size
+                </h4>
+                <span className="rounded bg-orange-500/12 px-2 py-0.5 text-caption text-orange-500">
+                  Required
+                </span>
+              </div>
+              <ServeSizeSelector
+                presets={servePresets}
+                allowCustom={product.allow_custom_serve_size}
+                value={serveSize}
+                onChange={setServeSize}
+              />
+            </div>
+          )}
+
           {groups.map((group) => (
             <div key={group.id}>
               <div className="mb-3 flex items-center gap-2">
@@ -215,12 +246,14 @@ export function ProductDetailSheet({
                 ? "Ordering paused"
                 : `Add to Cart · ${formatPrice(lineTotal, currency)}`
             }
-            disabled={missingRequired || orderingDisabled}
+            disabled={missingRequired || missingServeSize || orderingDisabled}
             onAdd={handleAdd}
           />
-          {missingRequired && (
+          {(missingRequired || missingServeSize) && (
             <p className="text-center text-caption text-zinc-500">
-              Select all required options
+              {missingServeSize
+                ? "Select or enter a serve size"
+                : "Select all required options"}
             </p>
           )}
         </div>

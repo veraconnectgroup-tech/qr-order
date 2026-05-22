@@ -34,6 +34,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ProductImageUpload } from "@/components/dashboard/product-image-upload";
+import {
+  DEFAULT_SERVE_SIZE_PRESETS,
+  parseServeSizePresets,
+} from "@/lib/serve-size";
 import type { Category, Product } from "@/types";
 
 type CategoryRow = Category & { productCount: number };
@@ -217,6 +221,9 @@ function ProductForm({
     is_available: boolean;
     image_url: string | null;
     allergens: string[] | null;
+    requires_serve_size: boolean;
+    serve_size_presets: string[] | null;
+    allow_custom_serve_size: boolean;
   }) => void;
   onCancel: () => void;
   saving: boolean;
@@ -241,6 +248,16 @@ function ProductForm({
   );
   const [allergensText, setAllergensText] = useState(
     initial?.allergens?.join(", ") ?? ""
+  );
+  const [requiresServeSize, setRequiresServeSize] = useState(
+    initial?.requires_serve_size ?? false
+  );
+  const [serveSizePresetsText, setServeSizePresetsText] = useState(
+    initial?.serve_size_presets?.join(", ") ??
+      DEFAULT_SERVE_SIZE_PRESETS.join(", ")
+  );
+  const [allowCustomServeSize, setAllowCustomServeSize] = useState(
+    initial?.allow_custom_serve_size ?? true
   );
 
   return (
@@ -327,6 +344,39 @@ function ProductForm({
         <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
         Available on guest menu
       </label>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
+        <label className="flex items-center gap-2 text-sm text-zinc-300">
+          <Switch
+            checked={requiresServeSize}
+            onCheckedChange={setRequiresServeSize}
+          />
+          Ask for serve size (drinks)
+        </label>
+        {requiresServeSize && (
+          <>
+            <label className="block space-y-1.5">
+              <span className="text-sm text-zinc-400">
+                Preset sizes in liters (comma-separated)
+              </span>
+              <input
+                value={serveSizePresetsText}
+                onChange={(e) => setServeSizePresetsText(e.target.value)}
+                placeholder="0.2, 0.3, 0.5"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300">
+              <Switch
+                checked={allowCustomServeSize}
+                onCheckedChange={setAllowCustomServeSize}
+              />
+              Allow custom size entry
+            </label>
+          </>
+        )}
+      </div>
+
       <DialogFooter className="border-zinc-800 bg-transparent pt-2">
         <button
           type="button"
@@ -354,6 +404,11 @@ function ProductForm({
                     .map((a) => a.trim())
                     .filter(Boolean)
                 : null,
+              requires_serve_size: requiresServeSize,
+              serve_size_presets: requiresServeSize
+                ? parseServeSizePresets(serveSizePresetsText)
+                : null,
+              allow_custom_serve_size: allowCustomServeSize,
             })
           }
           className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
@@ -510,6 +565,9 @@ export function MenuEditor() {
     is_available: boolean;
     image_url: string | null;
     allergens: string[] | null;
+    requires_serve_size: boolean;
+    serve_size_presets: string[] | null;
+    allow_custom_serve_size: boolean;
   }) {
     if (!selectedCategoryId) return;
     setSaving(true);
@@ -524,6 +582,9 @@ export function MenuEditor() {
       is_available: values.is_available,
       image_url: values.image_url,
       allergens: values.allergens,
+      requires_serve_size: values.requires_serve_size,
+      serve_size_presets: values.serve_size_presets,
+      allow_custom_serve_size: values.allow_custom_serve_size,
     };
 
     if (editingProduct) {

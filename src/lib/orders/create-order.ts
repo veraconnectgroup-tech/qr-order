@@ -9,6 +9,7 @@ import {
   validateOrderTotal,
 } from "@/lib/security/order-limits";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { serveSizeOrderNote } from "@/lib/serve-size";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const cartItemSchema = z.object({
@@ -17,6 +18,7 @@ const cartItemSchema = z.object({
   unitPrice: z.number().positive(),
   quantity: z.number().int().min(1).max(MAX_QUANTITY_PER_ITEM),
   notes: z.string().max(500).default(""),
+  serveSize: z.string().max(20).optional(),
   modifiers: z.array(
     z.object({
       modifierId: z.string().uuid(),
@@ -34,8 +36,8 @@ export const createOrderSchema = z.object({
   notes: z.string().max(1000).optional(),
   guestEmail: z.string().email().optional().or(z.literal("")),
   paymentMethod: z
-    .enum(["online", "at_bar", "card_at_table"])
-    .default("online"),
+    .enum(["unset", "online", "at_bar", "card_at_table"])
+    .default("unset"),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
@@ -49,6 +51,7 @@ function isPaymentMethodAllowed(
   },
   org: { stripe_onboarded: boolean }
 ) {
+  if (method === "unset") return true;
   if (method === "online") {
     return org.stripe_onboarded && location.payment_online_enabled;
   }
@@ -247,9 +250,14 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       Number(product.price) + mods.reduce((s, m) => s + m.price, 0);
     const itemTotal = unitWithMods * item.quantity;
 
+    const serveNote = serveSizeOrderNote(item.serveSize);
+    const combinedNotes = [serveNote, sanitizeText(item.notes, 500)]
+      .filter(Boolean)
+      .join(" · ");
+
     return {
       ...item,
-      notes: sanitizeText(item.notes, 500),
+      notes: combinedNotes,
       productName: product.name,
       modifiers: mods,
       unitPrice: Number(product.price),

@@ -28,6 +28,7 @@ export const PAYMENT_METHOD_OPTIONS: Record<PaymentMethod, PaymentMethodOption> 
 export function paymentMethodLabel(method: PaymentMethod | string | null) {
   if (method === "at_bar") return "Bar";
   if (method === "card_at_table") return "Card";
+  if (method === "unset") return "Unpaid";
   return "Online";
 }
 
@@ -36,6 +37,7 @@ export function guestPaymentInstruction(
   paymentStatus: string
 ) {
   if (paymentStatus === "paid") return null;
+  if (method === "unset") return null;
   if (method === "at_bar") {
     return "Pay at the bar when you're ready. Your order is already with the team.";
   }

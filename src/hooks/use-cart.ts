@@ -7,6 +7,7 @@ export interface CartItem {
   unitPrice: number;
   quantity: number;
   notes: string;
+  serveSize?: string | null;
   modifiers: Array<{
     modifierId: string;
     modifierName: string;

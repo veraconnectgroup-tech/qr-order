@@ -229,3 +229,9 @@ ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_method_check;
 ALTER TABLE orders
   ADD CONSTRAINT orders_payment_method_check
   CHECK (payment_method IN ('online', 'at_bar', 'card_at_table'));
+
+-- ===== Product serve sizes (migration 00013) =====
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS requires_serve_size BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS serve_size_presets TEXT[],
+  ADD COLUMN IF NOT EXISTS allow_custom_serve_size BOOLEAN NOT NULL DEFAULT true;

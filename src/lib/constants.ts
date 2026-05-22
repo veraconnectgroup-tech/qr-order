@@ -63,5 +63,5 @@ export function platformFeeDescriptionEn(currency = "EUR") {
   return `${small} per order under ${threshold}, ${large} per order from ${threshold} upward`;
 }
 
-export const PAYMENT_METHODS = ["online", "at_bar", "card_at_table"] as const;
+export const PAYMENT_METHODS = ["unset", "online", "at_bar", "card_at_table"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];

@@ -20,6 +20,9 @@ type RawProduct = {
   prep_time_minutes: number | null;
   allergens: string[] | null;
   tags: string[] | null;
+  requires_serve_size?: boolean;
+  serve_size_presets?: string[] | null;
+  allow_custom_serve_size?: boolean;
   modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
 };
 
@@ -128,6 +131,9 @@ export default async function GuestMenuPage({
             prep_time_minutes: p.prep_time_minutes,
             allergens: p.allergens,
             tags: p.tags,
+            requires_serve_size: p.requires_serve_size ?? false,
+            serve_size_presets: p.serve_size_presets ?? null,
+            allow_custom_serve_size: p.allow_custom_serve_size ?? true,
             created_at: "",
             updated_at: "",
             modifier_groups: (p.modifier_groups ?? [])

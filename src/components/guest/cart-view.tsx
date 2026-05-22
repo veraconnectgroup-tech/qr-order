@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
+import { formatServeSize } from "@/lib/serve-size";
 import { QuantitySelector } from "@/components/guest/quantity-selector";
 import { Button } from "@/components/ui/button";
 
@@ -105,6 +106,11 @@ export function CartView({
                   {item.modifiers.length > 0 && (
                     <p className="text-caption mt-1 text-zinc-400">
                       {item.modifiers.map((m) => m.modifierName).join(", ")}
+                    </p>
+                  )}
+                  {item.serveSize && (
+                    <p className="text-caption mt-1 text-zinc-400">
+                      Serve: {formatServeSize(item.serveSize)}
                     </p>
                   )}
                   {item.notes && (
