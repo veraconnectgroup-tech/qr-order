@@ -8,11 +8,19 @@ export function OrderPageClient({
   token,
   orderId,
   currency,
+  stripeOnboarded,
+  paymentOnlineEnabled,
+  paymentAtBarEnabled,
+  paymentCardAtTableEnabled,
 }: {
   slug: string;
   token: string;
   orderId: string;
   currency: string;
+  stripeOnboarded: boolean;
+  paymentOnlineEnabled: boolean;
+  paymentAtBarEnabled: boolean;
+  paymentCardAtTableEnabled: boolean;
 }) {
   const sessionToken = useGuestSession((s) => s.sessionToken);
 
@@ -31,6 +39,10 @@ export function OrderPageClient({
       orderId={orderId}
       sessionToken={sessionToken}
       currency={currency}
+      stripeOnboarded={stripeOnboarded}
+      paymentOnlineEnabled={paymentOnlineEnabled}
+      paymentAtBarEnabled={paymentAtBarEnabled}
+      paymentCardAtTableEnabled={paymentCardAtTableEnabled}
     />
   );
 }

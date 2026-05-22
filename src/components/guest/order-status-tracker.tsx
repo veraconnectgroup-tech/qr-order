@@ -1,18 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, XCircle } from "lucide-react";
 import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
+import {
+  orderStatusHeadline,
+  orderStatusStepIndex,
+} from "@/lib/orders/order-status-display";
 import { AnimatedOrderNumber } from "@/components/guest/animated-order-number";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
+import { OrderBillPanel } from "@/components/guest/order-bill-panel";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
-import { guestPaymentInstruction } from "@/lib/payment-methods";
 
 type OrderData = {
   id: string;
@@ -49,9 +53,7 @@ const STEPS = [
   { key: "delivered", label: "Delivered", field: "delivered_at" as const },
 ];
 
-const STATUS_ORDER = STEPS.map((s) => s.key);
-
-const TERMINAL_STATUSES = new Set(["delivered", "rejected", "cancelled"]);
+const CLOSED_STATUSES = new Set(["rejected", "cancelled"]);
 
 function formatTime(iso: string | null) {
   if (!iso) return null;
@@ -61,43 +63,57 @@ function formatTime(iso: string | null) {
   });
 }
 
+function shouldStopPolling(order: OrderData) {
+  if (CLOSED_STATUSES.has(order.status)) return true;
+  return order.payment_status === "paid" && order.status === "delivered";
+}
+
 export function OrderStatusTracker({
   slug,
   token,
   orderId,
   sessionToken,
   currency,
+  stripeOnboarded,
+  paymentOnlineEnabled,
+  paymentAtBarEnabled,
+  paymentCardAtTableEnabled,
 }: {
   slug: string;
   token: string;
   orderId: string;
   sessionToken: string;
   currency: string;
+  stripeOnboarded: boolean;
+  paymentOnlineEnabled: boolean;
+  paymentAtBarEnabled: boolean;
+  paymentCardAtTableEnabled: boolean;
 }) {
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [itemsOpen, setItemsOpen] = useState(false);
   const prevStatus = useRef<string | null>(null);
   const [statusPulse, setStatusPulse] = useState(false);
   const hapticFired = useRef(false);
+
+  const refreshOrder = useCallback(async () => {
+    const res = await fetch(
+      `/api/orders/${orderId}?sessionToken=${encodeURIComponent(sessionToken)}`
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data as OrderData;
+  }, [orderId, sessionToken]);
 
   useEffect(() => {
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
 
-    async function fetchOrder() {
-      const res = await fetch(
-        `/api/orders/${orderId}?sessionToken=${encodeURIComponent(sessionToken)}`
-      );
-      if (!res.ok || cancelled) return null;
-      const json = await res.json();
-      return json.data as OrderData;
-    }
-
     async function refresh() {
-      const data = await fetchOrder();
+      const data = await refreshOrder();
       if (!data || cancelled) return;
       setOrder(data);
-      if (TERMINAL_STATUSES.has(data.status) && pollId) {
+      if (shouldStopPolling(data) && pollId) {
         clearInterval(pollId);
         pollId = null;
       }
@@ -113,7 +129,7 @@ export function OrderStatusTracker({
       cancelled = true;
       if (pollId) clearInterval(pollId);
     };
-  }, [orderId, sessionToken]);
+  }, [refreshOrder]);
 
   useEffect(() => {
     if (!order) return;
@@ -134,9 +150,10 @@ export function OrderStatusTracker({
   if (loading) {
     return (
       <div className="space-y-4 px-4 py-6">
-        <Skeleton className="mx-auto size-16 rounded-full bg-zinc-800" />
-        <Skeleton className="mx-auto h-14 w-32 bg-zinc-800" />
-        <Skeleton className="h-40 w-full bg-zinc-800" />
+        <Skeleton className="mx-auto h-8 w-48 bg-zinc-800" />
+        <Skeleton className="mx-auto h-12 w-24 bg-zinc-800" />
+        <Skeleton className="h-52 w-full rounded-xl bg-zinc-800" />
+        <Skeleton className="h-40 w-full rounded-xl bg-zinc-800" />
       </div>
     );
   }
@@ -150,54 +167,57 @@ export function OrderStatusTracker({
   }
 
   const isRejected = order.status === "rejected";
-  const isDelivered = order.status === "delivered";
-  const canAddMore = !isRejected && !isDelivered;
-  const currentIdx = STATUS_ORDER.indexOf(order.status);
-  const paymentNote = guestPaymentInstruction(
-    order.payment_method,
-    order.payment_status
-  );
+  const isCancelled = order.status === "cancelled";
+  const isClosed = isRejected || isCancelled;
+  const isPaid = order.payment_status === "paid";
+  const canAddMore = !isClosed;
+  const stepIdx = orderStatusStepIndex(order.status);
+  const headline = orderStatusHeadline(order.status, order.payment_status);
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
-      <div className="py-5 text-center sm:py-8">
+      {/* Status hero */}
+      <section className="pb-5 text-center">
         {isRejected ? (
-          <XCircle className="mx-auto size-16 text-red-500" />
+          <XCircle className="mx-auto size-14 text-red-500" />
+        ) : isPaid && order.status === "delivered" ? (
+          <CheckCircle2 className="mx-auto size-14 text-green-500" />
         ) : (
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", damping: 15 }}
+            animate={statusPulse ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="mx-auto flex size-14 items-center justify-center rounded-full bg-orange-500/15"
           >
-            <CheckCircle2 className="mx-auto size-16 text-green-500" />
+            <span className="size-3 rounded-full bg-orange-500 pulse-dot" />
           </motion.div>
         )}
-        <h1 className="text-display mt-4 text-zinc-50">
-          {isRejected
-            ? "Order rejected"
-            : order.payment_status === "paid"
-              ? "Payment successful!"
-              : "Order placed!"}
-        </h1>
-        {!isRejected && <AnimatedOrderNumber orderNumber={order.order_number} />}
-        {paymentNote && (
-          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-400">
-            {paymentNote}
-          </p>
+        <h1 className="text-heading mt-4 text-zinc-50">{headline}</h1>
+        {!isClosed && (
+          <>
+            <AnimatedOrderNumber orderNumber={order.order_number} />
+            {order.estimated_prep_minutes != null &&
+              stepIdx >= 0 &&
+              stepIdx < 4 && (
+                <p className="mt-2 text-sm text-zinc-400">
+                  ~{order.estimated_prep_minutes} min estimated
+                </p>
+              )}
+          </>
         )}
         {isRejected && order.rejection_reason && (
-          <p className="mt-2 text-body text-zinc-400">{order.rejection_reason}</p>
+          <p className="mt-2 text-sm text-zinc-400">{order.rejection_reason}</p>
         )}
-      </div>
+      </section>
 
-      {!isRejected && (
-        <div className="mb-8 rounded-xl bg-zinc-900 p-5">
-          <h2 className="text-caption mb-4 uppercase tracking-wide text-zinc-500">
-            Order status
+      {/* Live status timeline */}
+      {!isClosed && (
+        <section className="mb-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4">
+          <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
+            Live status
           </h2>
           <div className="space-y-0">
             {STEPS.map((step, idx) => {
-              const done = currentIdx > idx;
+              const done = stepIdx > idx;
               const current = order.status === step.key;
               const time = formatTime(order[step.field]);
               const label =
@@ -216,13 +236,7 @@ export function OrderStatusTracker({
                     />
                   )}
                   <div className="flex flex-col items-center">
-                    <motion.div
-                      animate={
-                        current && statusPulse
-                          ? { scale: [1, 1.03, 1] }
-                          : { scale: 1 }
-                      }
-                      transition={{ duration: 0.6 }}
+                    <div
                       className={`size-3 rounded-full ${
                         done
                           ? "bg-green-500"
@@ -233,23 +247,28 @@ export function OrderStatusTracker({
                     />
                     {idx < STEPS.length - 1 && (
                       <div
-                        className={`my-1 min-h-6 w-0.5 flex-1 ${
-                          done ? "bg-green-500" : "border-l border-dashed border-zinc-700"
+                        className={`my-1 min-h-5 w-0.5 flex-1 ${
+                          done
+                            ? "bg-green-500"
+                            : "border-l border-dashed border-zinc-700"
                         }`}
                       />
                     )}
                   </div>
-                  <div className="pb-4">
+                  <div className="pb-3">
                     <p
                       className={`text-sm font-medium ${
                         current
-                          ? "text-orange-500"
+                          ? "text-orange-400"
                           : done
                             ? "text-zinc-200"
                             : "text-zinc-600"
                       }`}
                     >
-                      <TypewriterText text={label} active={current && statusPulse} />
+                      <TypewriterText
+                        text={label}
+                        active={current && statusPulse}
+                      />
                     </p>
                     {time && (
                       <p className="text-micro text-zinc-500">{time}</p>
@@ -259,51 +278,87 @@ export function OrderStatusTracker({
               );
             })}
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="rounded-xl bg-zinc-900 p-5">
-        <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
-          Your order
-        </h2>
-        {order.order_items.map((item, i) => (
-          <div key={i} className="border-b border-zinc-800 py-2 last:border-0">
-            <div className="flex justify-between text-sm text-zinc-200">
-              <span>
-                {item.quantity}× {item.product_name}
-              </span>
-              <span className="tabular-nums">
-                {formatPrice(Number(item.total), currency)}
-              </span>
-            </div>
-          </div>
-        ))}
-        <div className="mt-3 space-y-1 border-t border-zinc-800 pt-3 text-sm">
-          <div className="flex justify-between text-zinc-400">
-            <span>Subtotal</span>
-            <span className="tabular-nums">
-              {formatPrice(Number(order.subtotal), currency)}
-            </span>
-          </div>
-          {Number(order.tax_amount) > 0 && (
-            <div className="flex justify-between text-zinc-400">
-              <span>Tax ({Number(order.tax_percent)}%)</span>
-              <span className="tabular-nums">
-                {formatPrice(Number(order.tax_amount), currency)}
-              </span>
-            </div>
-          )}
-          <div className="flex justify-between pt-1 font-bold text-zinc-50">
-            <span>Total</span>
-            <span className="tabular-nums">
+      {/* Collapsible order items */}
+      <section className="mb-5 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
+        <button
+          type="button"
+          onClick={() => setItemsOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-left"
+        >
+          <div>
+            <p className="text-sm font-medium text-zinc-200">This order</p>
+            <p className="text-xs text-zinc-500">
+              {order.order_items.length} item
+              {order.order_items.length === 1 ? "" : "s"} ·{" "}
               {formatPrice(Number(order.total), currency)}
-            </span>
+            </p>
           </div>
-        </div>
-      </div>
+          <ChevronDown
+            className={`size-4 text-zinc-500 transition-transform ${
+              itemsOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {itemsOpen && (
+          <div className="border-t border-zinc-800 px-4 pb-4 pt-2">
+            {order.order_items.map((item, i) => (
+              <div
+                key={i}
+                className="flex justify-between py-2 text-sm text-zinc-300"
+              >
+                <span>
+                  {item.quantity}× {item.product_name}
+                </span>
+                <span className="tabular-nums">
+                  {formatPrice(Number(item.total), currency)}
+                </span>
+              </div>
+            ))}
+            <div className="mt-2 space-y-1 border-t border-zinc-800 pt-2 text-sm">
+              <div className="flex justify-between text-zinc-500">
+                <span>Subtotal</span>
+                <span>{formatPrice(Number(order.subtotal), currency)}</span>
+              </div>
+              {Number(order.tax_amount) > 0 && (
+                <div className="flex justify-between text-zinc-500">
+                  <span>Tax ({Number(order.tax_percent)}%)</span>
+                  <span>
+                    {formatPrice(Number(order.tax_amount), currency)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
 
-      <div className="mt-6 flex flex-col gap-3">
-        {!isRejected && (
+      {/* Bill + payment — only when order is still active */}
+      {!isClosed && (
+        <section className="mb-6">
+          <OrderBillPanel
+            token={token}
+            sessionToken={sessionToken}
+            currency={currency}
+            stripeOnboarded={stripeOnboarded}
+            paymentOnlineEnabled={paymentOnlineEnabled}
+            paymentAtBarEnabled={paymentAtBarEnabled}
+            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+            isPaid={isPaid}
+            onPaid={() => {
+              refreshOrder().then((data) => {
+                if (data) setOrder(data);
+              });
+            }}
+          />
+        </section>
+      )}
+
+      {/* Actions */}
+      <section className="flex flex-col gap-3">
+        {!isClosed && (
           <CallWaiterButton
             token={token}
             tableName={order.tables?.name ?? "Table"}
@@ -312,7 +367,8 @@ export function OrderStatusTracker({
         {canAddMore && (
           <Button
             asChild
-            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600 sm:h-14"
+            variant="outline"
+            className="h-12 w-full rounded-xl border-zinc-700 bg-transparent text-base font-semibold text-zinc-200 hover:bg-zinc-900"
           >
             <Link href={`/${slug}/${token}`}>Add more items</Link>
           </Button>
@@ -320,12 +376,12 @@ export function OrderStatusTracker({
         {isRejected && (
           <Button
             asChild
-            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600 sm:h-14"
+            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
           >
             <Link href={`/${slug}/${token}`}>Order again</Link>
           </Button>
         )}
-      </div>
+      </section>
     </div>
   );
 }

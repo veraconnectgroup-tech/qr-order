@@ -19,9 +19,9 @@ export function PaymentMethodSelector({
   value,
   onChange,
 }: {
-  methods: PaymentMethod[];
+  methods: Exclude<PaymentMethod, "unset">[];
   value: PaymentMethod | null;
-  onChange: (method: PaymentMethod) => void;
+  onChange: (method: Exclude<PaymentMethod, "unset">) => void;
 }) {
   return (
     <div className="space-y-2">

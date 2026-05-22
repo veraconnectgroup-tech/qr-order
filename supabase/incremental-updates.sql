@@ -235,3 +235,19 @@ ALTER TABLE products
   ADD COLUMN IF NOT EXISTS requires_serve_size BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS serve_size_presets TEXT[],
   ADD COLUMN IF NOT EXISTS allow_custom_serve_size BOOLEAN NOT NULL DEFAULT true;
+
+-- ===== Defer payment method (migration 00014) =====
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_payment_method_check;
+
+ALTER TABLE orders
+  ALTER COLUMN payment_method SET DEFAULT 'unset';
+
+UPDATE orders
+SET payment_method = 'unset'
+WHERE payment_method = 'online'
+  AND payment_status = 'pending'
+  AND stripe_payment_intent_id IS NULL;
+
+ALTER TABLE orders
+  ADD CONSTRAINT orders_payment_method_check
+  CHECK (payment_method IN ('unset', 'online', 'at_bar', 'card_at_table'));

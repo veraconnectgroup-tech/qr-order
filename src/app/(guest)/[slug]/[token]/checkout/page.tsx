@@ -12,46 +12,18 @@ export default async function CheckoutPage({
   const { slug, token } = await params;
   const supabase = await createServerClient();
 
-  const { data: tableData } = await supabase
-    .from("tables")
-    .select(
-      `
-      location:locations!inner(
-        payment_online_enabled,
-        payment_at_bar_enabled,
-        payment_card_at_table_enabled,
-        organization:organizations!inner(
-          slug,
-          default_tax_percent,
-          currency,
-          stripe_onboarded
-        )
-      )
-    `
-    )
-    .eq("qr_token", token)
-    .eq("is_active", true)
+  const { data: orgData } = await supabase
+    .from("organizations")
+    .select("default_tax_percent, currency")
+    .eq("slug", slug)
     .single();
 
-  if (!tableData) notFound();
+  if (!orgData) notFound();
 
-  const row = tableData as unknown as {
-    location: {
-      payment_online_enabled: boolean;
-      payment_at_bar_enabled: boolean;
-      payment_card_at_table_enabled: boolean;
-      organization: {
-        slug: string;
-        default_tax_percent: number;
-        currency: string;
-        stripe_onboarded: boolean;
-      };
-    };
+  const org = orgData as {
+    default_tax_percent: number;
+    currency: string;
   };
-
-  if (row.location.organization.slug !== slug) notFound();
-
-  const org = row.location.organization;
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
@@ -62,7 +34,7 @@ export default async function CheckoutPage({
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="text-heading text-zinc-50">Checkout</h1>
+        <h1 className="text-heading text-zinc-50">Confirm order</h1>
       </header>
 
       <CheckoutForm
@@ -70,12 +42,6 @@ export default async function CheckoutPage({
         token={token}
         taxPercent={Number(org.default_tax_percent)}
         currency={org.currency}
-        stripeOnboarded={org.stripe_onboarded}
-        paymentOnlineEnabled={row.location.payment_online_enabled ?? true}
-        paymentAtBarEnabled={row.location.payment_at_bar_enabled ?? true}
-        paymentCardAtTableEnabled={
-          row.location.payment_card_at_table_enabled ?? true
-        }
       />
     </div>
   );

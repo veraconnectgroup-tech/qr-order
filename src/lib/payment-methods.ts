@@ -6,8 +6,10 @@ export type PaymentMethodOption = {
   description: string;
 };
 
-export const PAYMENT_METHOD_OPTIONS: Record<PaymentMethod, PaymentMethodOption> =
-  {
+export const PAYMENT_METHOD_OPTIONS: Record<
+  Exclude<PaymentMethod, "unset">,
+  PaymentMethodOption
+> = {
     at_bar: {
       id: "at_bar",
       title: "Bar",

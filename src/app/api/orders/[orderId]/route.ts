@@ -190,11 +190,12 @@ export async function PATCH(
   if (status === "ready") updates.ready_at = now;
   if (status === "delivered") updates.delivered_at = now;
 
-  if (
-    status === "delivered" &&
-    access.order.payment_status === "pending" &&
-    access.order.payment_method !== "online"
-  ) {
+    if (
+      status === "delivered" &&
+      access.order.payment_status === "pending" &&
+      access.order.payment_method !== "online" &&
+      access.order.payment_method !== "unset"
+    ) {
     updates.payment_status = "paid";
   }
 

@@ -8,6 +8,12 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;
+
+      if (pi.metadata.order_ids) {
+        await verifyAndMarkSessionPaid(admin, pi);
+        break;
+      }
+
       const orderId = pi.metadata.order_id;
 
       const { data: order } = await admin
@@ -81,6 +87,52 @@ type OrderRow = {
   payment_status: string;
   stripe_payment_intent_id: string | null;
 };
+
+async function verifyAndMarkSessionPaid(
+  admin: ReturnType<typeof createAdminClient>,
+  pi: Stripe.PaymentIntent
+) {
+  const orderIds = pi.metadata.order_ids?.split(",").filter(Boolean) ?? [];
+  if (orderIds.length === 0) return;
+
+  const { data: orders } = await admin
+    .from("orders")
+    .select("id, total, payment_status")
+    .in("id", orderIds);
+
+  const rows = (orders as OrderRow[]) ?? [];
+  if (rows.length === 0) return;
+
+  const expectedCents = rows.reduce(
+    (sum, o) => sum + Math.round(Number(o.total) * 100),
+    0
+  );
+
+  if (expectedCents !== pi.amount) {
+    console.error("FRAUD ALERT: Session amount mismatch", {
+      orderIds,
+      expected: expectedCents / 100,
+      got: pi.amount / 100,
+      paymentIntentId: pi.id,
+    });
+    return;
+  }
+
+  for (const order of rows) {
+    if (order.payment_status === "paid") continue;
+    await admin
+      .from("orders")
+      .update({
+        payment_status: "paid",
+        stripe_payment_intent_id: pi.id,
+      })
+      .eq("id", order.id);
+
+    maybeSendOrderReceipt(order.id).catch((err) =>
+      console.error("Receipt email failed:", err)
+    );
+  }
+}
 
 async function verifyAndMarkPaid(
   admin: ReturnType<typeof createAdminClient>,
