@@ -19,7 +19,7 @@ export function OrderPageClient({
   if (!sessionToken) {
     return (
       <div className="px-4 py-20 text-center text-zinc-400">
-        Sesija nije pronađena. Skenirajte QR kod ponovo.
+        Session not found. Please scan the QR code again.
       </div>
     );
   }

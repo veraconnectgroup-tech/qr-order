@@ -264,9 +264,27 @@ export function OrderStatusTracker({
             </div>
           </div>
         ))}
-        <div className="mt-3 flex justify-between font-bold text-zinc-50">
-          <span>Total</span>
-          <span>{formatPrice(Number(order.total), currency)}</span>
+        <div className="mt-3 space-y-1 border-t border-zinc-800 pt-3 text-sm">
+          <div className="flex justify-between text-zinc-400">
+            <span>Subtotal</span>
+            <span className="tabular-nums">
+              {formatPrice(Number(order.subtotal), currency)}
+            </span>
+          </div>
+          {Number(order.tax_amount) > 0 && (
+            <div className="flex justify-between text-zinc-400">
+              <span>Tax ({Number(order.tax_percent)}%)</span>
+              <span className="tabular-nums">
+                {formatPrice(Number(order.tax_amount), currency)}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between pt-1 font-bold text-zinc-50">
+            <span>Total</span>
+            <span className="tabular-nums">
+              {formatPrice(Number(order.total), currency)}
+            </span>
+          </div>
         </div>
       </div>
 

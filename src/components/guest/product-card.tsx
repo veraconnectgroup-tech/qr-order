@@ -1,11 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick } from "@/lib/haptics";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { ProductWithModifiers } from "@/types";
 
 export function ProductCard({
@@ -19,15 +19,16 @@ export function ProductCard({
 }) {
   const addItem = useCart((s) => s.addItem);
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
+  const unavailable = !product.is_available;
 
-  function handleAdd(e?: React.MouseEvent) {
-    e?.stopPropagation();
+  function handleAdd(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (unavailable) return;
     if (hasModifiers) {
       onOpenDetail();
       return;
     }
     hapticClick();
-    const lineTotal = Number(product.price);
     addItem({
       productId: product.id,
       productName: product.name,
@@ -36,17 +37,17 @@ export function ProductCard({
       notes: "",
       modifiers: [],
     });
-    toastAddedToCart(product.name, lineTotal, currency);
+    toastAddedToCart(product.name, Number(product.price), currency);
   }
 
   return (
-    <motion.article
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      onClick={() => handleAdd()}
-      className="cursor-pointer overflow-hidden rounded-[10px] bg-zinc-900 shadow-sm active:shadow-none"
+    <article
+      className={cn(
+        "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900",
+        unavailable && "pointer-events-none opacity-40"
+      )}
     >
-      <div className="relative flex aspect-square items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+      <div className="relative h-[120px] bg-gradient-to-br from-zinc-800 to-zinc-900 sm:h-[160px]">
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -55,33 +56,47 @@ export function ProductCard({
             className="size-full object-cover"
           />
         ) : (
-          <span className="text-3xl font-bold text-zinc-600">
-            {product.name.charAt(0)}
+          <div className="flex size-full items-center justify-center">
+            <span className="text-3xl font-bold text-zinc-700">
+              {product.name.charAt(0)}
+            </span>
+          </div>
+        )}
+        {product.prep_time_minutes != null && product.prep_time_minutes > 0 && (
+          <span className="absolute right-2 top-2 flex items-center gap-0.5 rounded-full bg-zinc-950/80 px-1.5 py-0.5 text-[10px] text-zinc-300 backdrop-blur-sm">
+            <Clock className="size-2.5" />
+            {product.prep_time_minutes} min
           </span>
         )}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-zinc-900/80 to-transparent" />
       </div>
+
       <div className="p-3">
-        <h3 className="text-title line-clamp-2 text-zinc-50">{product.name}</h3>
+        <h3 className="truncate text-sm font-medium text-zinc-100">
+          {product.name}
+        </h3>
         {product.description && (
-          <p className="text-caption mt-1 line-clamp-2 text-zinc-400">
+          <p className="mt-0.5 truncate text-xs text-zinc-500">
             {product.description}
           </p>
         )}
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-price text-orange-500">
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-orange-500">
             {formatPrice(Number(product.price), currency)}
           </span>
-          <button
-            type="button"
-            onClick={(e) => handleAdd(e)}
-            className="flex size-9 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm shadow-orange-500/30 transition-transform hover:scale-105 active:scale-95"
-            aria-label={`Add ${product.name}`}
-          >
-            <Plus className="size-4" />
-          </button>
+          {unavailable ? (
+            <span className="text-xs font-medium text-zinc-500">Unavailable</span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600 active:scale-95"
+              aria-label={`Add ${product.name}`}
+            >
+              <Plus className="size-4" />
+            </button>
+          )}
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }

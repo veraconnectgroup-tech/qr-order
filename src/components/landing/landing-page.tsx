@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import {
+  Building2,
   CreditCard,
   QrCode,
+  Shield,
   ShoppingCart,
 } from "lucide-react";
 import {
@@ -15,19 +17,27 @@ import {
 } from "@/components/landing/animate-in-view";
 import { CountUpStat, StatText } from "@/components/landing/count-up-stat";
 import {
-  DashboardOrderVisual,
+  CheckoutShowcase,
   FeatureCheck,
-  KitchenVisual,
-  PaymentsVisual,
-  PhoneMenuVisual,
-} from "@/components/landing/feature-visuals";
+  GuestMenuShowcase,
+  HistoryShowcase,
+  KitchenShowcase,
+  TablesShowcase,
+} from "@/components/landing/product-showcases";
+import { EnterpriseHeroVisual } from "@/components/landing/enterprise-hero-visual";
 import { Button } from "@/components/ui/button";
 
-const dotGridStyle = {
-  backgroundImage:
-    "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
-  backgroundSize: "24px 24px",
-};
+const trustSignals = [
+  { icon: CreditCard, label: "Stripe Connect" },
+  { icon: Shield, label: "Secure payments" },
+  { icon: Building2, label: "Multi-location" },
+];
+
+const navLinks = [
+  { href: "#features", label: "Platform" },
+  { href: "#how-it-works", label: "How it works" },
+  { href: "#pricing", label: "Pricing" },
+];
 
 const steps = [
   {
@@ -52,32 +62,44 @@ const steps = [
 
 const features = [
   {
-    title: "Real-Time Dashboard",
+    title: "Works on Any Phone",
     description:
-      "Every order flows instantly to your staff dashboard. Accept, prepare, and deliver — all in one live view.",
-    visual: <DashboardOrderVisual />,
+      "Guests scan a QR code and order from a fast, mobile-first menu. No app download, no account — just browse, customize, and pay.",
+    visual: <GuestMenuShowcase />,
+    device: "phone" as const,
     reverse: false,
   },
   {
     title: "Instant Payments",
     description:
-      "Stripe Connect handles payments directly to your account. Apple Pay, Google Pay, and cards out of the box.",
-    visual: <PaymentsVisual />,
+      "Stripe Connect routes payments to your account. Apple Pay, Google Pay, and cards — checkout optimized for thumb-sized screens.",
+    visual: <CheckoutShowcase />,
+    device: "phone" as const,
+    reverse: true,
+  },
+  {
+    title: "Real-Time Operations",
+    description:
+      "See every table at a glance — available, occupied, or needs attention. QR codes, zones, and live session totals on your staff tablet.",
+    visual: <TablesShowcase />,
+    device: "tablet" as const,
+    reverse: false,
+  },
+  {
+    title: "Analytics & History",
+    description:
+      "Revenue, order counts, and top items with one tap. Filter by day or week and export CSV for your accountant.",
+    visual: <HistoryShowcase />,
+    device: "tablet" as const,
     reverse: true,
   },
   {
     title: "Kitchen Display",
     description:
-      "Orders appear on your kitchen screen the moment they're accepted. Color-coded timers keep prep on track.",
-    visual: <KitchenVisual />,
+      "Orders land on the kitchen tablet the moment they're accepted. Color-coded timers and large tap targets for busy prep stations.",
+    visual: <KitchenShowcase />,
+    device: "tablet" as const,
     reverse: false,
-  },
-  {
-    title: "Works on Any Phone",
-    description:
-      "A fast, mobile-first menu that works on any device. No install, no account — just scan and order.",
-    visual: <PhoneMenuVisual />,
-    reverse: true,
   },
 ];
 
@@ -127,82 +149,121 @@ const plans = [
 
 export function LandingPage() {
   return (
-    <div
-      className="min-h-screen bg-zinc-950 text-zinc-50 antialiased"
-      style={dotGridStyle}
-    >
+    <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-50 antialiased">
       {/* Nav */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <QrCode className="size-5 text-orange-500" />
-            <span className="font-semibold tracking-tight">QR Order</span>
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900">
+              <QrCode className="size-4 text-zinc-300" />
+            </div>
+            <span className="text-sm font-semibold tracking-tight text-zinc-100">
+              QR Order
+            </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <nav className="hidden items-center gap-6 md:flex">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm text-zinc-400 transition hover:text-zinc-100"
+              >
+                {link.label}
+              </a>
+            ))}
+            <Link
+              href="/skyline-lounge/demo-table-8"
+              className="text-sm text-zinc-400 transition hover:text-zinc-100"
+            >
+              Demo
+            </Link>
+          </nav>
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               asChild
-              className="text-zinc-400 hover:text-zinc-50"
+              className="text-zinc-400 hover:text-zinc-100"
             >
               <Link href="/login">Log in</Link>
             </Button>
-            <Button size="sm" asChild className="bg-orange-500 hover:bg-orange-600">
-              <Link href="/signup">Get Started</Link>
+            <Button
+              size="sm"
+              asChild
+              className="bg-zinc-100 text-zinc-950 hover:bg-white"
+            >
+              <Link href="/signup">Request access</Link>
             </Button>
           </div>
         </div>
       </header>
 
       <main>
-        {/* SECTION 1 — Hero */}
-        <section className="relative min-h-[90vh] overflow-hidden px-6 pb-12 pt-16">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.05),transparent_70%)]" />
-          <div className="relative mx-auto flex min-h-[calc(90vh-4rem)] max-w-6xl flex-col items-center justify-center gap-10 pt-8 md:flex-row md:items-center md:gap-12 md:pt-0 lg:gap-16">
-            <HeroStagger className="w-full text-center md:w-1/2 md:text-left">
+        {/* Hero — enterprise */}
+        <section className="border-b border-zinc-800 px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 md:pb-24 md:pt-32">
+          <div className="mx-auto grid max-w-6xl items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
+            <HeroStagger className="text-center lg:text-left">
               <HeroItem>
-                <span className="inline-block rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-500">
-                  Now in Beta · Hamburg
-                </span>
-              </HeroItem>
-              <HeroItem>
-                <h1 className="mt-6 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
-                  Your guests order from their phone.
-                </h1>
-              </HeroItem>
-              <HeroItem>
-                <p className="mt-5 text-lg text-zinc-400 sm:text-xl">
-                  No app. No waiter. No waiting.
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+                  Hospitality ordering platform
                 </p>
               </HeroItem>
               <HeroItem>
-                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row md:items-start md:justify-start">
+                <h1 className="mt-4 text-3xl font-semibold leading-[1.15] tracking-tight text-zinc-50 sm:text-4xl lg:text-[2.75rem]">
+                  Contactless ordering your operations team can rely on
+                </h1>
+              </HeroItem>
+              <HeroItem>
+                <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-zinc-400 lg:mx-0 lg:text-lg">
+                  QR Order connects guest menus, staff dashboards, kitchen
+                  displays, and Stripe payments on one secure platform — built
+                  for restaurants, bars, and multi-location venues.
+                </p>
+              </HeroItem>
+              <HeroItem>
+                <ul className="mx-auto mt-8 flex max-w-md flex-col gap-3 text-left lg:mx-0">
+                  {trustSignals.map(({ icon: Icon, label }) => (
+                    <li
+                      key={label}
+                      className="flex items-center gap-3 text-sm text-zinc-300"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900">
+                        <Icon className="size-4 text-zinc-400" />
+                      </span>
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              </HeroItem>
+              <HeroItem>
+                <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row lg:items-start">
                   <Button
                     size="lg"
                     asChild
-                    className="h-12 bg-orange-500 px-8 text-base font-semibold hover:bg-orange-600"
+                    className="h-11 w-full bg-zinc-100 px-7 text-sm font-semibold text-zinc-950 hover:bg-white sm:w-auto"
                   >
-                    <Link href="/signup">Get Started Free</Link>
+                    <Link href="/signup">Request access</Link>
                   </Button>
                   <Button
                     size="lg"
-                    variant="ghost"
+                    variant="outline"
                     asChild
-                    className="h-12 px-8 text-base text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50"
+                    className="h-11 w-full border-zinc-700 bg-transparent px-7 text-sm font-medium text-zinc-200 hover:bg-zinc-900 hover:text-zinc-50 sm:w-auto"
                   >
-                    <a href="#how-it-works">See How It Works</a>
+                    <Link href="/skyline-lounge/demo-table-8">
+                      View live demo
+                    </Link>
                   </Button>
                 </div>
+                <p className="mt-5 text-xs leading-relaxed text-zinc-500">
+                  Deploy in days. No guest app. Payments routed to your Stripe
+                  account. EU-ready infrastructure.
+                </p>
               </HeroItem>
             </HeroStagger>
 
-            <div className="flex w-full shrink-0 items-center justify-center md:w-1/2 md:justify-end">
-              <div className="relative [perspective:1000px]">
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500/10 blur-3xl" />
-                <div className="relative shadow-2xl shadow-orange-500/10 md:[transform:rotateY(-5deg)_rotateX(2deg)]">
-                  <PhoneMenuVisual className="h-[520px] w-[260px] shadow-none md:h-[640px] md:w-[320px]" />
-                </div>
-              </div>
+            <div className="flex min-w-0 justify-center lg:order-2 lg:justify-end lg:pl-4">
+              <EnterpriseHeroVisual />
             </div>
           </div>
         </section>
@@ -244,21 +305,25 @@ export function LandingPage() {
         </section>
 
         {/* SECTION 3 — Features */}
-        <section id="features" className="border-t border-zinc-800 px-6 py-16">
-          <div className="mx-auto max-w-6xl space-y-16">
+        <section id="features" className="border-t border-zinc-800 px-4 py-12 sm:px-6 sm:py-16">
+          <div className="mx-auto max-w-6xl space-y-12 sm:space-y-16">
             {features.map((f) => (
               <AnimateInView key={f.title}>
-                <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-                  <div className={f.reverse ? "lg:order-2" : ""}>
-                    <h3 className="text-3xl font-bold tracking-tight">{f.title}</h3>
-                    <p className="mt-4 text-lg leading-relaxed text-zinc-400">
+                <div className="grid items-center gap-8 sm:gap-10 lg:grid-cols-2 lg:gap-16">
+                  <div className={`min-w-0 ${f.reverse ? "lg:order-2" : ""}`}>
+                    <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                      {f.title}
+                    </h3>
+                    <p className="mt-3 text-base leading-relaxed text-zinc-400 sm:mt-4 sm:text-lg">
                       {f.description}
                     </p>
                   </div>
                   <div
-                    className={`flex items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 lg:p-8 ${
-                      f.reverse ? "lg:order-1" : ""
-                    }`}
+                    className={`flex min-w-0 w-full max-w-full items-center justify-center ${
+                      f.device === "tablet"
+                        ? "py-2 sm:py-4"
+                        : "rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-4 sm:p-8 lg:p-10"
+                    } ${f.reverse ? "lg:order-1" : ""}`}
                   >
                     {f.visual}
                   </div>

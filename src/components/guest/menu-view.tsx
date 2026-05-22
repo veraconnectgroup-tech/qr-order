@@ -14,7 +14,6 @@ import { OfflineIndicator } from "@/components/guest/offline-indicator";
 import { ProductCard } from "@/components/guest/product-card";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
-import { Input } from "@/components/ui/input";
 import type { ProductWithModifiers } from "@/types";
 
 export function MenuView({
@@ -47,7 +46,6 @@ export function MenuView({
   const router = useRouter();
   const scrollKey = `menu-scroll-${slug}-${token}`;
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [detailProduct, setDetailProduct] = useState<ProductWithModifiers | null>(
     null
@@ -64,28 +62,29 @@ export function MenuView({
     : locationName;
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
     async function initSession() {
-      const res = await fetch(`/api/tables/${token}/session`, {
-        method: "POST",
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      const { sessionId, sessionToken, tableName: tn, locationId: lid } =
-        json.data;
-      setGuestSession({
-        sessionId,
-        sessionToken,
-        tableId,
-        tableName: tn,
-        locationId: lid,
-        restaurantSlug: slug,
-      });
-      setCartSession(slug, token, tn, sessionToken);
+      try {
+        const res = await fetch(`/api/tables/${token}/session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const { sessionId, sessionToken, tableName: tn, locationId: lid } =
+          json.data;
+        setGuestSession({
+          sessionId,
+          sessionToken,
+          tableId,
+          tableName: tn,
+          locationId: lid,
+          restaurantSlug: slug,
+        });
+        setCartSession(slug, token, tn, sessionToken);
+      } catch {
+        // Session init failed silently; checkout will prompt refresh
+      }
     }
     initSession();
   }, [token, slug, tableId, setCartSession, setGuestSession]);
@@ -110,7 +109,7 @@ export function MenuView({
   }, [scrollKey]);
 
   useEffect(() => {
-    if (debouncedSearch || !categories.length) return;
+    if (search.trim() || !categories.length) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -121,7 +120,7 @@ export function MenuView({
           setActiveCategory(visible[0].target.id.replace("cat-", ""));
         }
       },
-      { rootMargin: "-120px 0px -55% 0px", threshold: 0 }
+      { rootMargin: "-100px 0px -55% 0px", threshold: 0 }
     );
 
     categories.forEach((cat) => {
@@ -130,13 +129,13 @@ export function MenuView({
     });
 
     return () => observer.disconnect();
-  }, [categories, debouncedSearch]);
+  }, [categories, search]);
 
   const scrollToCategory = useCallback((catId: string) => {
     setActiveCategory(catId);
     const el = document.getElementById(`cat-${catId}`);
     if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - 80;
+      const top = el.getBoundingClientRect().top + window.scrollY - 100;
       window.scrollTo({ top, behavior: "smooth" });
     }
   }, []);
@@ -146,11 +145,12 @@ export function MenuView({
   }, [router]);
 
   const allProducts = categories.flatMap((c) => c.products);
-  const filtered = debouncedSearch.trim()
+  const searchQuery = search.trim();
+  const filtered = searchQuery
     ? allProducts.filter(
         (p) =>
-          p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-          p.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.description?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : null;
 
@@ -158,7 +158,7 @@ export function MenuView({
     <>
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
-        <div className="min-h-screen pb-24">
+        <div className="min-h-screen pb-28">
           <GuestHeader
             orgName={orgName}
             logoUrl={logoUrl}
@@ -166,15 +166,16 @@ export function MenuView({
             tableName={tableName}
           />
 
-          <div className="sticky top-[73px] z-30 border-b border-zinc-800/50 bg-[#09090b]/90 backdrop-blur-md">
+          <div className="sticky top-[57px] z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
             <div className="px-4 py-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-                <Input
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+                <input
+                  type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search menu..."
-                  className="border-zinc-800 bg-zinc-900 pl-9 text-zinc-100 placeholder:text-zinc-500"
+                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-2.5 pl-10 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700"
                 />
               </div>
             </div>
@@ -192,10 +193,10 @@ export function MenuView({
               <div>
                 {filtered.length === 0 ? (
                   <p className="py-12 text-center text-zinc-400">
-                    No results for &quot;{debouncedSearch}&quot;
+                    No results for &quot;{searchQuery}&quot;
                   </p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                     {filtered.map((product) => (
                       <ProductCard
                         key={product.id}

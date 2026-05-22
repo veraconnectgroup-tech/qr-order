@@ -11,6 +11,7 @@ type RawProduct = {
   image_url: string | null;
   is_available: boolean;
   sort_order: number;
+  prep_time_minutes: number | null;
   modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
 };
 
@@ -91,7 +92,6 @@ export default async function GuestMenuPage({
       id: cat.id,
       name: cat.name,
       products: (cat.products ?? [])
-        .filter((p) => p.is_available)
         .sort((a, b) => a.sort_order - b.sort_order)
         .map(
           (p): ProductWithModifiers => ({
@@ -100,7 +100,7 @@ export default async function GuestMenuPage({
             category_id: cat.id,
             name_en: null,
             description_en: null,
-            prep_time_minutes: null,
+            prep_time_minutes: p.prep_time_minutes,
             allergens: null,
             tags: null,
             created_at: "",

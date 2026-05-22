@@ -48,8 +48,8 @@ export function CallWaiterButton({
 
   async function handleCall() {
     if (!sessionToken) {
-      toast.error("Sesija nije aktivna", {
-        description: "Osvežite stranicu i pokušajte ponovo.",
+      toast.error("Session not active", {
+        description: "Refresh the page and try again.",
       });
       return;
     }
@@ -68,7 +68,7 @@ export function CallWaiterButton({
       setConfirmed(true);
       startCooldown();
     } catch {
-      toast.error("Poziv nije poslat", { description: "Pokušaj ponovo." });
+      toast.error("Could not call waiter", { description: "Please try again." });
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export function CallWaiterButton({
         disabled={cooldown > 0}
       >
         <BellRing className="mr-2 size-4" />
-        {cooldown > 0 ? `Ponovo za ${cooldown}s` : "Pozovi konobara"}
+        {cooldown > 0 ? `Wait ${cooldown}s` : "Call waiter"}
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
@@ -98,10 +98,10 @@ export function CallWaiterButton({
           {!confirmed ? (
             <>
               <SheetHeader>
-                <SheetTitle className="text-zinc-50">Pozvati konobara?</SheetTitle>
+                <SheetTitle className="text-zinc-50">Call waiter?</SheetTitle>
               </SheetHeader>
               <p className="mt-2 text-body text-zinc-400">
-                Konobar će biti obavešten da dođe do {tableName}.
+                Staff will be notified to come to {tableName}.
               </p>
               <div className="mt-6 flex gap-3">
                 <Button
@@ -109,30 +109,30 @@ export function CallWaiterButton({
                   disabled={loading}
                   className="flex-1 bg-orange-500 hover:bg-orange-600"
                 >
-                  {loading ? "Slanje..." : "Pozovi konobara"}
+                  {loading ? "Sending..." : "Call waiter"}
                 </Button>
                 <Button
                   variant="outline"
                   className="flex-1 border-zinc-700"
                   onClick={() => setOpen(false)}
                 >
-                  Otkaži
+                  Cancel
                 </Button>
               </div>
             </>
           ) : (
             <>
               <SheetHeader>
-                <SheetTitle className="text-zinc-50">Konobar obavešten ✓</SheetTitle>
+                <SheetTitle className="text-zinc-50">Waiter notified ✓</SheetTitle>
               </SheetHeader>
               <p className="mt-2 text-body text-zinc-400">
-                Neko će uskoro biti kod vas.
+                Someone will be with you shortly.
               </p>
               <Button
                 className="mt-6 w-full bg-orange-500 hover:bg-orange-600"
                 onClick={() => setOpen(false)}
               >
-                U redu
+                OK
               </Button>
             </>
           )}

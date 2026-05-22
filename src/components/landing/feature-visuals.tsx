@@ -192,22 +192,31 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
           COCKTAILS
         </p>
 
-        <div className="mt-2 grid flex-1 grid-cols-2 gap-2">
+        <div className="mt-2 grid flex-1 grid-cols-2 gap-2 content-start">
           {PHONE_PRODUCTS.map((p) => (
             <div
               key={p.name}
-              className="flex flex-col overflow-hidden rounded-lg bg-zinc-900"
+              className="flex flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
             >
               <div
-                className={`aspect-square bg-gradient-to-br ${p.gradient}`}
-              />
+                className={`flex h-16 items-center justify-center bg-gradient-to-br ${p.gradient}`}
+              >
+                <span className="text-xl font-bold text-white/20">
+                  {p.name.charAt(0)}
+                </span>
+              </div>
               <div className="p-2">
                 <p className="truncate text-[10px] font-medium text-zinc-200">
                   {p.name}
                 </p>
-                <span className="mt-0.5 inline-block rounded bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-bold text-orange-500">
-                  {p.price}
-                </span>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-orange-500">
+                    {p.price}
+                  </span>
+                  <span className="flex size-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+                    +
+                  </span>
+                </div>
               </div>
             </div>
           ))}

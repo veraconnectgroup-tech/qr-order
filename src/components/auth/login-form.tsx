@@ -1,22 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { loginAction } from "@/lib/auth/actions";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
-  const [state, action, pending] = useActionState(
-    async (_prev: { error?: string } | null, formData: FormData) => {
-      return (await loginAction(formData)) ?? null;
-    },
-    null
-  );
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setPending(true);
+
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement)
+      .value;
+
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setError("Invalid email or password.");
+      setPending(false);
+      return;
+    }
+
+    router.refresh();
+    router.push("/dashboard/orders");
+  }
 
   return (
-    <form action={action} className="mt-8 space-y-4">
+    <form onSubmit={handleSubmit} className="mt-8 space-y-4">
       <div>
         <Label htmlFor="email" className="text-zinc-400">
           Email
@@ -27,6 +51,7 @@ export function LoginForm() {
           type="email"
           placeholder="you@restaurant.com"
           required
+          autoComplete="email"
           className="mt-1 border-zinc-800 bg-zinc-900 text-zinc-100 placeholder:text-zinc-600 focus-visible:border-orange-500 focus-visible:ring-orange-500/20"
         />
       </div>
@@ -40,12 +65,11 @@ export function LoginForm() {
           type="password"
           required
           minLength={6}
+          autoComplete="current-password"
           className="mt-1 border-zinc-800 bg-zinc-900 text-zinc-100 focus-visible:border-orange-500 focus-visible:ring-orange-500/20"
         />
       </div>
-      {state?.error && (
-        <p className="text-sm text-orange-400">{state.error}</p>
-      )}
+      {error && <p className="text-sm text-orange-400">{error}</p>}
       <Button
         type="submit"
         disabled={pending}

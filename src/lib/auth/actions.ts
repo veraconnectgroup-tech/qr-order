@@ -43,6 +43,7 @@ export async function loginAction(formData: FormData) {
     return { error: "Invalid email or password." };
   }
 
+  revalidatePath("/", "layout");
   redirect("/dashboard/orders");
 }
 

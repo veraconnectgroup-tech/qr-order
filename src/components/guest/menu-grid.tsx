@@ -21,8 +21,8 @@ export function MenuGrid({
   if (!categories.length) {
     return (
       <div className="py-20 text-center">
-        <p className="text-heading text-zinc-50">Menu updating</p>
-        <p className="mt-2 text-body text-zinc-400">
+        <p className="text-lg font-semibold text-zinc-50">Menu updating</p>
+        <p className="mt-2 text-sm text-zinc-400">
           Please ask staff for assistance.
         </p>
       </div>
@@ -30,20 +30,20 @@ export function MenuGrid({
   }
 
   return (
-    <div className="space-y-8">
-      {categories.map((category) => (
+    <div>
+      {categories.map((category, index) => (
         <section
           key={category.id}
           id={`cat-${category.id}`}
-          className="scroll-mt-24"
+          className={`scroll-mt-36 ${index > 0 ? "mt-6" : ""}`}
         >
-          <h2 className="sticky top-[140px] z-20 -mx-4 mb-4 border-b border-zinc-800/50 bg-zinc-950/80 px-4 py-2 text-heading text-zinc-50 backdrop-blur-lg">
+          <h2 className="mb-3 text-lg font-semibold text-zinc-100">
             {category.name}{" "}
-            <span className="text-sm font-normal text-zinc-500">
+            <span className="font-normal text-zinc-500">
               ({category.products.length})
             </span>
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             {category.products.map((product) => (
               <ProductCard
                 key={product.id}

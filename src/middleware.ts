@@ -27,6 +27,7 @@ export async function middleware(req: NextRequest) {
     }
   );
 
+  // Refresh session — required for auth cookies to persist on Vercel
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -69,5 +70,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/api/dashboard/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

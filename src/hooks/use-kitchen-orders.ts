@@ -10,32 +10,54 @@ const ORDER_SELECT =
 export function useKitchenOrders(locationId: string) {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const locationRef = useRef(locationId);
 
   const fetchOrders = useCallback(async () => {
+    if (!locationId) return;
+
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error: fetchError } = await supabase
       .from("orders")
       .select(ORDER_SELECT)
       .eq("location_id", locationId)
       .in("status", ["accepted", "preparing"])
-      .order("preparing_at", { ascending: true, nullsFirst: false });
+      .order("created_at", { ascending: true });
 
-    setOrders(sortKitchenOrders((data as unknown as OrderWithDetails[]) ?? []));
+    if (fetchError) {
+      console.error("Kitchen orders fetch failed:", fetchError.message);
+      setError(fetchError.message);
+      setLoading(false);
+      return;
+    }
+
+    setError(null);
+    setOrders((data as unknown as OrderWithDetails[]) ?? []);
     setLoading(false);
   }, [locationId]);
 
   useEffect(() => {
-    let cancelled = false;
+    locationRef.current = locationId;
+  }, [locationId]);
 
-    (async () => {
+  useEffect(() => {
+    if (!locationId) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const supabase = createClient();
+
+    async function load() {
       setLoading(true);
       await fetchOrders();
-      if (cancelled) return;
-    })();
+    }
 
-    const supabase = createClient();
+    load();
+
     const channel = supabase
-      .channel(`kitchen-realtime:${locationId}`)
+      .channel(`kitchen-orders:${locationId}`)
       .on(
         "postgres_changes",
         {
@@ -44,68 +66,26 @@ export function useKitchenOrders(locationId: string) {
           table: "orders",
           filter: `location_id=eq.${locationId}`,
         },
-        async (payload) => {
-          if (payload.eventType === "UPDATE") {
-            const row = payload.new as { id: string; status: string };
-            if (row.status !== "preparing" && row.status !== "accepted") {
-              setOrders((prev) => prev.filter((o) => o.id !== row.id));
-              return;
-            }
-
-            const { data } = await supabase
-              .from("orders")
-              .select(ORDER_SELECT)
-              .eq("id", row.id)
-              .single();
-
-            if (data) {
-              const order = data as unknown as OrderWithDetails;
-              setOrders((prev) => {
-                const exists = prev.some((o) => o.id === order.id);
-                const next = exists
-                  ? prev.map((o) => (o.id === order.id ? order : o))
-                  : [...prev, order];
-                return sortKitchenOrders(next);
-              });
-            }
-            return;
-          }
-
-          if (payload.eventType === "INSERT") {
-            const row = payload.new as { id: string; status: string };
-            if (row.status !== "preparing" && row.status !== "accepted") return;
-
-            const { data } = await supabase
-              .from("orders")
-              .select(ORDER_SELECT)
-              .eq("id", row.id)
-              .single();
-
-            if (data) {
-              const order = data as unknown as OrderWithDetails;
-              setOrders((prev) => {
-                if (prev.some((o) => o.id === order.id)) return prev;
-                return sortKitchenOrders([...prev, order]);
-              });
-            }
-          }
+        () => {
+          if (!cancelled) fetchOrders();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" && !cancelled) {
+          fetchOrders();
+        }
+      });
+
+    const pollId = setInterval(() => {
+      if (!cancelled) fetchOrders();
+    }, 60_000);
 
     return () => {
       cancelled = true;
+      clearInterval(pollId);
       supabase.removeChannel(channel);
     };
   }, [locationId, fetchOrders]);
 
-  return { orders, loading, refetch: fetchOrders };
-}
-
-function sortKitchenOrders(orders: OrderWithDetails[]) {
-  return [...orders].sort((a, b) => {
-    const aTime = a.preparing_at ?? a.accepted_at ?? a.created_at;
-    const bTime = b.preparing_at ?? b.accepted_at ?? b.created_at;
-    return new Date(aTime).getTime() - new Date(bTime).getTime();
-  });
+  return { orders, loading, error, refetch: fetchOrders };
 }

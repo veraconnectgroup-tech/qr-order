@@ -6,8 +6,8 @@ export function toastAddedToCart(
   lineTotal: number,
   currency: string
 ) {
-  toast.success(`${productName} · ${formatPrice(lineTotal, currency)}`, {
-    description: "Added to cart",
+  toast.success("Added to cart", {
+    description: `${productName} · ${formatPrice(lineTotal, currency)}`,
     duration: 3000,
     classNames: {
       toast:

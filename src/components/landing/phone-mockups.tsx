@@ -468,28 +468,28 @@ export function HeroPhoneMockup() {
             </p>
           </div>
           <div className="flex-1 px-3.5 pb-14">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {menuProducts.map((item) => (
                 <div
                   key={item.name}
-                  className="overflow-hidden rounded-[10px] bg-zinc-900"
+                  className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
                 >
                   <div
-                    className={`relative aspect-square overflow-hidden bg-gradient-to-br ${item.gradient}`}
+                    className={`flex h-12 items-center justify-center bg-gradient-to-br ${item.gradient}`}
                   >
-                    <span className="absolute bottom-2 left-2 text-xl font-bold text-white/20">
+                    <span className="text-lg font-bold text-white/25">
                       {item.name.charAt(0)}
                     </span>
                   </div>
-                  <div className="p-2">
-                    <p className="text-[9px] font-semibold text-zinc-50">
+                  <div className="p-1.5">
+                    <p className="truncate text-[8px] font-medium text-zinc-100">
                       {item.name}
                     </p>
-                    <div className="mt-1.5 flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-orange-500">
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-[8px] font-semibold text-orange-500">
                         {item.price}
                       </span>
-                      <span className="flex size-[18px] items-center justify-center rounded-full bg-orange-500 text-[11px] font-bold text-white">
+                      <span className="flex size-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
                         +
                       </span>
                     </div>
