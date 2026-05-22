@@ -10,7 +10,9 @@ import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
 type RawProduct = {
   id: string;
   name: string;
+  name_en: string | null;
   description: string | null;
+  description_en: string | null;
   price: number;
   image_url: string | null;
   is_available: boolean;
@@ -24,6 +26,7 @@ type RawProduct = {
 type RawCategory = {
   id: string;
   name: string;
+  name_en: string | null;
   sort_order: number;
   products?: RawProduct[];
 };
@@ -114,6 +117,7 @@ export default async function GuestMenuPage({
     .map((cat) => ({
       id: cat.id,
       name: cat.name,
+      name_en: cat.name_en,
       products: (cat.products ?? [])
         .sort((a, b) => a.sort_order - b.sort_order)
         .map(
@@ -121,8 +125,6 @@ export default async function GuestMenuPage({
             ...p,
             location_id: table.location_id,
             category_id: cat.id,
-            name_en: null,
-            description_en: null,
             prep_time_minutes: p.prep_time_minutes,
             allergens: p.allergens,
             tags: p.tags,

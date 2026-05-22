@@ -9,11 +9,14 @@ import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { CartSummaryBar } from "@/components/guest/cart-summary-bar";
 import { CategoryPills } from "@/components/guest/category-pills";
 import { GuestHeader } from "@/components/guest/guest-header";
-import { MenuGrid, type MenuCategory } from "@/components/guest/menu-grid";
+import { MenuLanguageToggle } from "@/components/guest/menu-language-toggle";
+import { MenuLocaleProvider } from "@/components/guest/menu-locale-provider";
 import { OfflineIndicator } from "@/components/guest/offline-indicator";
 import { ProductCard } from "@/components/guest/product-card";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
+import { MenuGrid, type MenuCategory } from "@/components/guest/menu-grid";
+import { productMatchesSearch } from "@/lib/i18n/menu-locale";
 import type { ProductWithModifiers } from "@/types";
 
 export function MenuView({
@@ -154,23 +157,20 @@ export function MenuView({
   const allProducts = categories.flatMap((c) => c.products);
   const searchQuery = search.trim();
   const filtered = searchQuery
-    ? allProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? allProducts.filter((p) => productMatchesSearch(p, searchQuery))
     : null;
 
   return (
-    <>
+    <MenuLocaleProvider slug={slug} token={token}>
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
-        <div className="min-h-screen pb-28">
+        <div className="min-h-dvh pb-cart-offset">
           <GuestHeader
             orgName={orgName}
             logoUrl={logoUrl}
             subtitle={subtitle}
             tableName={tableName}
+            trailing={<MenuLanguageToggle />}
           />
 
           {!orderingEnabled && (
@@ -180,16 +180,16 @@ export function MenuView({
             </div>
           )}
 
-          <div className="sticky top-[57px] z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
-            <div className="px-4 py-3">
+          <div className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
+            <div className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500 sm:left-4" />
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search menu..."
-                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-2.5 pl-10 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700"
+                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-3 pl-10 pr-4 text-base text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700 sm:py-2.5 sm:text-sm"
                 />
               </div>
             </div>
@@ -202,7 +202,7 @@ export function MenuView({
             )}
           </div>
 
-          <main className="px-4 py-6">
+          <main className="px-3 py-4 sm:px-4 sm:py-6">
             {filtered ? (
               <div>
                 {filtered.length === 0 ? (
@@ -254,6 +254,6 @@ export function MenuView({
           />
         </div>
       </PullToRefresh>
-    </>
+    </MenuLocaleProvider>
   );
 }

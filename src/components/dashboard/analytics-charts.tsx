@@ -75,9 +75,9 @@ export function AnalyticsCharts({
   }
 
   return (
-    <div className="mb-8 grid gap-4 lg:grid-cols-2">
+    <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-2">
       <ChartCard title="Revenue by day">
-        <div className="h-56">
+        <div className="h-44 sm:h-56">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dailyChart}>
               <CartesianGrid stroke="#27272a" vertical={false} />
@@ -108,7 +108,7 @@ export function AnalyticsCharts({
       </ChartCard>
 
       <ChartCard title="Top items">
-        <div className="h-56">
+        <div className="h-44 sm:h-56">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={topItems} layout="vertical" margin={{ left: 8 }}>
               <CartesianGrid stroke="#27272a" horizontal={false} />
@@ -132,7 +132,7 @@ export function AnalyticsCharts({
       </ChartCard>
 
       <ChartCard title="Orders by hour">
-        <div className="h-56 lg:col-span-2">
+        <div className="h-44 lg:col-span-2 sm:h-56">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={hourly}>
               <CartesianGrid stroke="#27272a" vertical={false} />

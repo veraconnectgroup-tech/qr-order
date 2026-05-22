@@ -1,11 +1,13 @@
 "use client";
 
 import { ProductCard } from "@/components/guest/product-card";
+import { useMenuLocale } from "@/components/guest/menu-locale-provider";
 import type { ProductWithModifiers } from "@/types";
 
 export type MenuCategory = {
   id: string;
   name: string;
+  name_en?: string | null;
   products: ProductWithModifiers[];
 };
 
@@ -20,6 +22,7 @@ export function MenuGrid({
   onOpenDetail: (product: ProductWithModifiers) => void;
   orderingDisabled?: boolean;
 }) {
+  const { tName } = useMenuLocale();
   if (!categories.length) {
     return (
       <div className="py-20 text-center">
@@ -40,7 +43,7 @@ export function MenuGrid({
           className={`scroll-mt-36 ${index > 0 ? "mt-6" : ""}`}
         >
           <h2 className="mb-3 text-lg font-semibold text-zinc-100">
-            {category.name}{" "}
+            {tName(category)}{" "}
             <span className="font-normal text-zinc-500">
               ({category.products.length})
             </span>

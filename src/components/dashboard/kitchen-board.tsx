@@ -139,7 +139,7 @@ export function KitchenCard({
             type="button"
             disabled={busy}
             onClick={onStartPreparing}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50 touch-manipulation"
           >
             Start Preparing
           </button>
@@ -148,7 +148,7 @@ export function KitchenCard({
             type="button"
             disabled={busy}
             onClick={onMarkReady}
-            className="rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50 touch-manipulation"
           >
             Ready
           </button>
@@ -157,7 +157,7 @@ export function KitchenCard({
           type="button"
           disabled={busy}
           onClick={onReject}
-          className="text-xs text-red-400 transition hover:text-red-300 disabled:opacity-50"
+          className="min-h-11 px-3 text-sm text-red-400 transition hover:text-red-300 disabled:opacity-50 touch-manipulation"
         >
           Reject
         </button>

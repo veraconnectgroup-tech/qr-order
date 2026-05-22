@@ -26,6 +26,10 @@ export const DASHBOARD_PAGES: Record<
     title: "Menu",
     subtitle: "Categories & products",
   },
+  "/dashboard/staff": {
+    title: "Staff",
+    subtitle: "Team & invites",
+  },
   "/dashboard/settings": {
     title: "Settings",
     subtitle: "Restaurant configuration",

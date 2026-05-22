@@ -152,8 +152,8 @@ export function OrderStatusTracker({
   const currentIdx = STATUS_ORDER.indexOf(order.status);
 
   return (
-    <div className="min-h-screen px-4 py-6">
-      <div className="py-8 text-center">
+    <div className="min-h-dvh px-4 pb-safe pt-4">
+      <div className="py-5 text-center sm:py-8">
         {isRejected ? (
           <XCircle className="mx-auto size-16 text-red-500" />
         ) : (
@@ -300,7 +300,7 @@ export function OrderStatusTracker({
         {canAddMore && (
           <Button
             asChild
-            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
+            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600 sm:h-14"
           >
             <Link href={`/${slug}/${token}`}>Add more items</Link>
           </Button>
@@ -308,7 +308,7 @@ export function OrderStatusTracker({
         {isRejected && (
           <Button
             asChild
-            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
+            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600 sm:h-14"
           >
             <Link href={`/${slug}/${token}`}>Order again</Link>
           </Button>

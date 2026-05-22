@@ -27,9 +27,12 @@ export default async function CheckoutPage({
   };
 
   return (
-    <div className="min-h-screen px-4 py-6">
-      <header className="mb-6 flex items-center gap-3">
-        <Link href={`/${slug}/${token}/cart`} className="text-zinc-400">
+    <div className="min-h-dvh px-4 pb-safe pt-4">
+      <header className="mb-4 flex items-center gap-3 sm:mb-6">
+        <Link
+          href={`/${slug}/${token}/cart`}
+          className="touch-target inline-flex items-center text-zinc-400"
+        >
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="text-heading text-zinc-50">Payment</h1>

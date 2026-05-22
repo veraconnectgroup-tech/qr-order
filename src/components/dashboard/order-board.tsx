@@ -403,7 +403,7 @@ export function OrderBoard() {
                 type="button"
                 onClick={() => setMobileColumn(column.id)}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                  "shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition touch-manipulation sm:px-3 sm:py-1.5",
                   active
                     ? "bg-orange-500 text-white"
                     : "bg-zinc-800 text-zinc-400"

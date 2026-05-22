@@ -330,11 +330,11 @@ export function OrderHistoryList() {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:justify-end">
         <button
           type="button"
           onClick={() => exportCsv(filtered)}
-          className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700 touch-manipulation"
         >
           <Download className="size-4" />
           Export CSV

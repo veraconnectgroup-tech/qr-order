@@ -209,7 +209,9 @@ function ProductForm({
   orgId: string;
   onSubmit: (values: {
     name: string;
+    name_en: string;
     description: string;
+    description_en: string;
     price: number;
     prep_time_minutes: number | null;
     is_available: boolean;
@@ -220,7 +222,11 @@ function ProductForm({
   saving: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
+  const [nameEn, setNameEn] = useState(initial?.name_en ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [descriptionEn, setDescriptionEn] = useState(
+    initial?.description_en ?? ""
+  );
   const [price, setPrice] = useState(
     initial?.price != null ? String(initial.price) : ""
   );
@@ -255,6 +261,15 @@ function ProductForm({
         />
       </label>
       <label className="block space-y-1.5">
+        <span className="text-sm text-zinc-400">Name (English, optional)</span>
+        <input
+          value={nameEn}
+          onChange={(e) => setNameEn(e.target.value)}
+          placeholder="Aperol Spritz"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+        />
+      </label>
+      <label className="block space-y-1.5">
         <span className="text-sm text-zinc-400">
           Ingredients (comma-separated)
         </span>
@@ -262,6 +277,18 @@ function ProductForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
+          placeholder="Prosecco, Aperol, soda, orange slice"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+        />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm text-zinc-400">
+          Ingredients in English (optional)
+        </span>
+        <textarea
+          value={descriptionEn}
+          onChange={(e) => setDescriptionEn(e.target.value)}
+          rows={2}
           placeholder="Prosecco, Aperol, soda, orange slice"
           className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
         />
@@ -314,7 +341,9 @@ function ProductForm({
           onClick={() =>
             onSubmit({
               name: name.trim(),
+              name_en: nameEn.trim(),
               description: description.trim(),
+              description_en: descriptionEn.trim(),
               price: Number(price),
               prep_time_minutes: prepTime ? Number(prepTime) : null,
               is_available: isAvailable,
@@ -348,6 +377,7 @@ export function MenuEditor() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
@@ -439,6 +469,7 @@ export function MenuEditor() {
     const { error } = await supabase.from("categories").insert({
       location_id: locationId,
       name: newCategoryName.trim(),
+      name_en: newCategoryNameEn.trim() || null,
       sort_order: categories.length,
       is_active: true,
     });
@@ -450,6 +481,7 @@ export function MenuEditor() {
     toast.success("Category added");
     setCategoryDialogOpen(false);
     setNewCategoryName("");
+    setNewCategoryNameEn("");
     load();
   }
 
@@ -470,7 +502,9 @@ export function MenuEditor() {
 
   async function saveProduct(values: {
     name: string;
+    name_en: string;
     description: string;
+    description_en: string;
     price: number;
     prep_time_minutes: number | null;
     is_available: boolean;
@@ -480,12 +514,23 @@ export function MenuEditor() {
     if (!selectedCategoryId) return;
     setSaving(true);
     const supabase = createClient();
+    const payload = {
+      name: values.name,
+      name_en: values.name_en || null,
+      description: values.description || null,
+      description_en: values.description_en || null,
+      price: values.price,
+      prep_time_minutes: values.prep_time_minutes,
+      is_available: values.is_available,
+      image_url: values.image_url,
+      allergens: values.allergens,
+    };
 
     if (editingProduct) {
       const { error } = await supabase
         .from("products")
         .update({
-          ...values,
+          ...payload,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingProduct.id);
@@ -499,7 +544,7 @@ export function MenuEditor() {
       const { error } = await supabase.from("products").insert({
         location_id: locationId,
         category_id: selectedCategoryId,
-        ...values,
+        ...payload,
         sort_order: categoryProducts.length,
       });
       setSaving(false);
@@ -542,7 +587,7 @@ export function MenuEditor() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-11rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 md:min-h-[calc(100vh-10rem)] md:flex-row">
+    <div className="flex min-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 md:min-h-[calc(100dvh-10rem)] md:flex-row">
       {/* Mobile category pills */}
       <div className="border-b border-zinc-800 bg-zinc-900/50 p-3 md:hidden">
         <div className="mb-2 flex items-center justify-between">
@@ -551,6 +596,7 @@ export function MenuEditor() {
             type="button"
             onClick={() => {
               setNewCategoryName("");
+              setNewCategoryNameEn("");
               setCategoryDialogOpen(true);
             }}
             className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
@@ -585,6 +631,7 @@ export function MenuEditor() {
             type="button"
             onClick={() => {
               setNewCategoryName("");
+              setNewCategoryNameEn("");
               setCategoryDialogOpen(true);
             }}
             className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
@@ -692,6 +739,15 @@ export function MenuEditor() {
             <input
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Cocktails"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+            />
+          </label>
+          <label className="block space-y-1.5 pb-2">
+            <span className="text-sm text-zinc-400">Name (English, optional)</span>
+            <input
+              value={newCategoryNameEn}
+              onChange={(e) => setNewCategoryNameEn(e.target.value)}
               placeholder="Cocktails"
               className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
             />

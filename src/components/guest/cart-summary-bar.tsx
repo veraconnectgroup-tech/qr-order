@@ -46,19 +46,19 @@ export function CartSummaryBar({
               ? { y: { duration: 0.3 } }
               : { type: "spring", damping: 28, stiffness: 320 }
           }
-          className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-orange-500 p-4 text-white shadow-2xl ${
+          className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-orange-500 px-4 pt-3 pb-safe text-white shadow-2xl touch-manipulation ${
             glowOnMount ? "shadow-orange-500/40" : ""
           }`}
         >
           <Link
             href={`/${slug}/${token}/cart`}
-            className="flex items-center justify-between"
+            className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1"
           >
             <span className="text-sm font-medium">
               {itemCount} {itemCount === 1 ? "item" : "items"}
             </span>
-            <span className="text-sm font-semibold">View Cart</span>
-            <span className="text-sm font-bold tabular-nums">
+            <span className="text-sm font-semibold">View cart</span>
+            <span className="text-right text-sm font-bold tabular-nums">
               {formatPrice(total, currency)}
             </span>
           </Link>

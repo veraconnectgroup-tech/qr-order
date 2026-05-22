@@ -1,14 +1,18 @@
 "use client";
 
+import { useMenuLocale } from "@/components/guest/menu-locale-provider";
+
 export function CategoryPills({
   categories,
   activeCategory,
   onSelect,
 }: {
-  categories: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; name_en?: string | null }>;
   activeCategory: string;
   onSelect: (categoryId: string) => void;
 }) {
+  const { tName } = useMenuLocale();
+
   if (categories.length <= 1) return null;
 
   return (
@@ -24,7 +28,7 @@ export function CategoryPills({
               : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
           }`}
         >
-          {cat.name}
+          {tName(cat)}
         </button>
       ))}
     </div>

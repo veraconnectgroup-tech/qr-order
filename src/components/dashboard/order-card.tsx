@@ -200,7 +200,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive}
             onClick={onReject}
-            className="flex-1 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-400 transition hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-zinc-800 px-3 py-3 text-sm text-zinc-400 transition hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
           >
             Reject
           </button>
@@ -208,7 +208,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive}
             onClick={onAccept}
-            className="flex-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-orange-500 px-3 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 touch-manipulation sm:py-2"
           >
             Accept ►
           </button>
@@ -220,7 +220,7 @@ export function OrderCard({
           type="button"
           disabled={busy || !interactive}
           onClick={onStartPreparing}
-          className="mt-3 w-full rounded-lg bg-yellow-600 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-500 disabled:opacity-50"
+          className="mt-3 w-full rounded-lg bg-yellow-600 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-500 disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Start Preparing
         </button>
@@ -231,7 +231,7 @@ export function OrderCard({
           type="button"
           disabled={busy || !interactive}
           onClick={onMarkReady}
-          className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
+          className="mt-3 w-full rounded-lg bg-green-600 py-3 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Mark Ready
         </button>
@@ -242,7 +242,7 @@ export function OrderCard({
           type="button"
           disabled={busy || !interactive}
           onClick={onMarkDelivered}
-          className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+          className="mt-3 w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Mark Delivered
         </button>

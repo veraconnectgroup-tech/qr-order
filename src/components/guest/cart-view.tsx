@@ -34,19 +34,22 @@ export function CartView({
 
   if (!items.length) {
     return (
-      <div className="min-h-screen px-4 py-6">
+      <div className="min-h-dvh px-4 pb-safe pt-4">
         <header className="mb-6 flex items-center gap-3">
-          <Link href={`/${slug}/${token}`} className="text-zinc-400">
+          <Link
+            href={`/${slug}/${token}`}
+            className="touch-target inline-flex items-center text-zinc-400"
+          >
             ← Back
           </Link>
           <h1 className="text-heading text-zinc-50">Your order</h1>
         </header>
-        <div className="py-20 text-center">
+        <div className="py-16 text-center sm:py-20">
           <p className="text-heading text-zinc-50">Your cart is empty</p>
           <p className="mt-2 text-body text-zinc-400">
             Browse the menu and add something delicious
           </p>
-          <Button asChild className="mt-6 bg-orange-500 hover:bg-orange-600">
+          <Button asChild className="mt-6 h-12 bg-orange-500 hover:bg-orange-600">
             <Link href={`/${slug}/${token}`}>View menu</Link>
           </Button>
         </div>
@@ -55,118 +58,122 @@ export function CartView({
   }
 
   return (
-    <div className="min-h-screen px-4 py-6">
-      <header className="mb-6 flex items-center gap-3">
-        <Link href={`/${slug}/${token}`} className="text-zinc-400">
-          ← Back
-        </Link>
-        <h1 className="text-heading text-zinc-50">Your order</h1>
-      </header>
-
-      <p className="text-caption mb-6 text-zinc-500">
-        {tableName} · {orgName}
-      </p>
-
-      {!orderingEnabled && (
-        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Ordering is paused right now. You can review your cart, but checkout is
-          unavailable until staff reopens ordering.
-        </div>
-      )}
-
-      <motion.div
-        className="space-y-3"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: { transition: { staggerChildren: 0.06 } },
-        }}
-      >
-        {items.map((item, index) => (
-          <motion.div
-            key={`${item.productId}-${index}`}
-            layout
-            variants={{
-              hidden: { opacity: 0, y: 12 },
-              visible: { opacity: 1, y: 0 },
-            }}
-            className="rounded-xl bg-zinc-900 p-4"
+    <>
+      <div className="min-h-dvh px-4 pb-checkout-offset pt-4">
+        <header className="mb-4 flex items-center gap-3">
+          <Link
+            href={`/${slug}/${token}`}
+            className="touch-target inline-flex items-center text-zinc-400"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <p className="text-title text-zinc-50">{item.productName}</p>
-                {item.modifiers.length > 0 && (
-                  <p className="text-caption mt-1 text-zinc-400">
-                    {item.modifiers.map((m) => m.modifierName).join(", ")}
-                  </p>
-                )}
-                {item.notes && (
-                  <p className="text-caption mt-1 italic text-zinc-500">
-                    {item.notes}
-                  </p>
-                )}
+            ← Back
+          </Link>
+          <h1 className="text-heading text-zinc-50">Your order</h1>
+        </header>
+
+        <p className="text-caption mb-4 text-zinc-500">
+          {tableName} · {orgName}
+        </p>
+
+        {!orderingEnabled && (
+          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Ordering is paused right now. You can review your cart, but checkout is
+            unavailable until staff reopens ordering.
+          </div>
+        )}
+
+        <motion.div
+          className="space-y-3"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: { transition: { staggerChildren: 0.06 } },
+          }}
+        >
+          {items.map((item, index) => (
+            <motion.div
+              key={`${item.productId}-${index}`}
+              layout
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: { opacity: 1, y: 0 },
+              }}
+              className="rounded-xl bg-zinc-900 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-title text-zinc-50">{item.productName}</p>
+                  {item.modifiers.length > 0 && (
+                    <p className="text-caption mt-1 text-zinc-400">
+                      {item.modifiers.map((m) => m.modifierName).join(", ")}
+                    </p>
+                  )}
+                  {item.notes && (
+                    <p className="text-caption mt-1 italic text-zinc-500">
+                      {item.notes}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeItem(index)}
+                  className="touch-target inline-flex shrink-0 items-center justify-center text-zinc-500 hover:text-red-400"
+                  aria-label="Remove item"
+                >
+                  <Trash2 className="size-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => removeItem(index)}
-                className="text-zinc-500 hover:text-red-400"
-                aria-label="Remove item"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <QuantitySelector
-                value={item.quantity}
-                onChange={(q) => updateQuantity(index, q)}
-              />
-              <span className="text-price text-zinc-50">
-                {formatPrice(item.itemTotal, currency)}
-              </span>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <QuantitySelector
+                  value={item.quantity}
+                  onChange={(q) => updateQuantity(index, q)}
+                />
+                <span className="text-price shrink-0 text-zinc-50">
+                  {formatPrice(item.itemTotal, currency)}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
 
-      <Link
-        href={`/${slug}/${token}`}
-        className="mt-4 block rounded-xl border border-dashed border-zinc-700 p-4 text-center text-sm text-orange-500"
-      >
-        + Add more items
-      </Link>
-
-      <div className="mt-6 rounded-xl bg-zinc-900 p-4">
-        <div className="flex justify-between text-sm text-zinc-400">
-          <span>Subtotal</span>
-          <span className="tabular-nums">{formatPrice(subtotal, currency)}</span>
-        </div>
-        <div className="mt-2 flex justify-between text-sm text-zinc-400">
-          <span>Tax ({taxPercent}%)</span>
-          <span className="tabular-nums">{formatPrice(taxAmount, currency)}</span>
-        </div>
-        <div className="mt-3 flex justify-between border-t border-zinc-800 pt-3">
-          <span className="font-semibold text-zinc-50">Total</span>
-          <span className="text-lg font-bold tabular-nums text-zinc-50">
-            {formatPrice(total, currency)}
-          </span>
-        </div>
+        <Link
+          href={`/${slug}/${token}`}
+          className="mt-4 block rounded-xl border border-dashed border-zinc-700 p-4 text-center text-sm font-medium text-orange-500 touch-manipulation active:bg-zinc-900/50"
+        >
+          + Add more items
+        </Link>
       </div>
 
-      {orderingEnabled ? (
-        <Button
-          asChild
-          className="mt-6 h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
-        >
-          <Link href={`/${slug}/${token}/checkout`}>Continue to payment →</Link>
-        </Button>
-      ) : (
-        <Button
-          disabled
-          className="mt-6 h-14 w-full rounded-xl text-base font-bold"
-        >
-          Checkout unavailable
-        </Button>
-      )}
-    </div>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800 bg-zinc-950/95 px-4 pt-3 pb-safe backdrop-blur-sm">
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between text-zinc-400">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatPrice(subtotal, currency)}</span>
+          </div>
+          <div className="flex justify-between text-zinc-400">
+            <span>Tax ({taxPercent}%)</span>
+            <span className="tabular-nums">{formatPrice(taxAmount, currency)}</span>
+          </div>
+          <div className="flex justify-between border-t border-zinc-800 pt-2 font-semibold text-zinc-50">
+            <span>Total</span>
+            <span className="text-lg font-bold tabular-nums">
+              {formatPrice(total, currency)}
+            </span>
+          </div>
+        </div>
+
+        {orderingEnabled ? (
+          <Button
+            asChild
+            className="mt-3 h-12 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
+          >
+            <Link href={`/${slug}/${token}/checkout`}>Continue to payment →</Link>
+          </Button>
+        ) : (
+          <Button disabled className="mt-3 h-12 w-full rounded-xl text-base font-bold">
+            Checkout unavailable
+          </Button>
+        )}
+      </div>
+    </>
   );
 }

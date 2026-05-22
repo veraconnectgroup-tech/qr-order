@@ -9,6 +9,7 @@ import {
   Grid3X3,
   LayoutGrid,
   Settings,
+  Users,
   UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/dashboard/waiter-calls", label: "Waiter Calls", icon: Bell },
   { href: "/dashboard/history", label: "History", icon: BarChart3 },
   { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
+  { href: "/dashboard/staff", label: "Staff", icon: Users },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMenuLocale } from "@/components/guest/menu-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
@@ -31,6 +32,7 @@ export function ProductDetailSheet({
   orderingDisabled?: boolean;
 }) {
   const addItem = useCart((s) => s.addItem);
+  const { tName, tDescription, locale } = useMenuLocale();
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [selected, setSelected] = useState<Record<string, string[]>>({});
@@ -44,16 +46,18 @@ export function ProductDetailSheet({
       for (const modId of ids) {
         const mod = group.modifiers.find((m) => m.id === modId);
         if (mod) {
+          const modName =
+            locale === "en" && mod.name_en?.trim() ? mod.name_en.trim() : mod.name;
           result.push({
             modifierId: mod.id,
-            modifierName: mod.name,
+            modifierName: modName,
             price: Number(mod.price),
           });
         }
       }
     }
     return result;
-  }, [groups, selected]);
+  }, [groups, selected, locale]);
 
   const lineTotal = useMemo(() => {
     if (!product) return 0;
@@ -84,15 +88,16 @@ export function ProductDetailSheet({
 
   function handleAdd() {
     if (!product || missingRequired) return;
+    const displayName = tName(product);
     addItem({
       productId: product.id,
-      productName: product.name,
+      productName: displayName,
       unitPrice: Number(product.price),
       quantity,
       notes,
       modifiers: selectedModifiers,
     });
-    toastAddedToCart(product.name, lineTotal, currency);
+    toastAddedToCart(displayName, lineTotal, currency);
     setQuantity(1);
     setNotes("");
     setSelected({});
@@ -100,6 +105,9 @@ export function ProductDetailSheet({
   }
 
   if (!product) return null;
+
+  const displayName = tName(product);
+  const displayDescription = tDescription(product);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -116,7 +124,7 @@ export function ProductDetailSheet({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={product.image_url}
-              alt={product.name}
+              alt={displayName}
               className="size-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
@@ -126,7 +134,7 @@ export function ProductDetailSheet({
         <div className="px-5 pb-8 pt-4">
           <SheetHeader className="text-left">
             <SheetTitle className="flex items-baseline justify-between gap-4 pr-8 text-zinc-50">
-              <span>{product.name}</span>
+              <span>{displayName}</span>
               <span className="text-price shrink-0 text-orange-500">
                 {formatPrice(Number(product.price), currency)}
               </span>
@@ -134,7 +142,7 @@ export function ProductDetailSheet({
           </SheetHeader>
 
           <ProductIngredients
-            description={product.description}
+            description={displayDescription}
             allergens={product.allergens}
             tags={product.tags}
             className="mt-4"
@@ -145,7 +153,9 @@ export function ProductDetailSheet({
             <div key={group.id}>
               <div className="mb-3 flex items-center gap-2">
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                  {group.name}
+                  {locale === "en" && group.name_en?.trim()
+                    ? group.name_en.trim()
+                    : group.name}
                 </h4>
                 {group.is_required && (
                   <span className="rounded bg-orange-500/12 px-2 py-0.5 text-caption text-orange-500">
@@ -166,7 +176,11 @@ export function ProductDetailSheet({
                           checked={checked}
                           onCheckedChange={() => toggleModifier(group, modifier)}
                         />
-                        <span className="text-sm text-zinc-100">{modifier.name}</span>
+                        <span className="text-sm text-zinc-100">
+                          {locale === "en" && modifier.name_en?.trim()
+                            ? modifier.name_en.trim()
+                            : modifier.name}
+                        </span>
                       </div>
                       <span className="text-sm tabular-nums text-zinc-400">
                         {Number(modifier.price) > 0

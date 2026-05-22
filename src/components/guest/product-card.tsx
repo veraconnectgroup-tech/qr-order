@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock, Plus } from "lucide-react";
+import { useMenuLocale } from "@/components/guest/menu-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick } from "@/lib/haptics";
 import { useCart } from "@/hooks/use-cart";
@@ -20,6 +21,9 @@ export function ProductCard({
   orderingDisabled?: boolean;
 }) {
   const addItem = useCart((s) => s.addItem);
+  const { tName, tDescription } = useMenuLocale();
+  const displayName = tName(product);
+  const displayDescription = tDescription(product);
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
   const unavailable = !product.is_available || orderingDisabled;
 
@@ -38,13 +42,13 @@ export function ProductCard({
     hapticClick();
     addItem({
       productId: product.id,
-      productName: product.name,
+      productName: displayName,
       unitPrice: Number(product.price),
       quantity: 1,
       notes: "",
       modifiers: [],
     });
-    toastAddedToCart(product.name, Number(product.price), currency);
+    toastAddedToCart(displayName, Number(product.price), currency);
   }
 
   return (
@@ -58,7 +62,7 @@ export function ProductCard({
           openDetail();
         }
       }}
-      aria-label={`View ${product.name}`}
+      aria-label={`View ${displayName}`}
       className={cn(
         "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition",
         unavailable
@@ -71,13 +75,13 @@ export function ProductCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.image_url}
-            alt={product.name}
+            alt={displayName}
             className="size-full object-cover"
           />
         ) : (
           <div className="flex size-full items-center justify-center">
             <span className="text-3xl font-bold text-zinc-700">
-              {product.name.charAt(0)}
+              {displayName.charAt(0)}
             </span>
           </div>
         )}
@@ -91,11 +95,11 @@ export function ProductCard({
 
       <div className="p-3">
         <h3 className="truncate text-sm font-medium text-zinc-100">
-          {product.name}
+          {displayName}
         </h3>
-        {product.description && (
+        {displayDescription && (
           <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
-            {product.description}
+            {displayDescription}
           </p>
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
@@ -110,7 +114,7 @@ export function ProductCard({
             <button
               type="button"
               onClick={handleAdd}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600 active:scale-95"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600 active:scale-95 touch-manipulation sm:size-8"
               aria-label={`Add ${product.name}`}
             >
               <Plus className="size-4" />
