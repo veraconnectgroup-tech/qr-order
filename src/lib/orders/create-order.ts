@@ -17,8 +17,12 @@ const cartItemSchema = z.object({
   productName: z.string().min(1).max(200),
   unitPrice: z.number().positive(),
   quantity: z.number().int().min(1).max(MAX_QUANTITY_PER_ITEM),
-  notes: z.string().max(500).default(""),
-  serveSize: z.string().max(20).optional(),
+  notes: z
+    .string()
+    .max(500)
+    .nullish()
+    .transform((v) => v ?? ""),
+  serveSize: z.string().max(20).nullish(),
   modifiers: z.array(
     z.object({
       modifierId: z.string().uuid(),

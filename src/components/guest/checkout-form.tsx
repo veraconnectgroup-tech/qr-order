@@ -127,6 +127,7 @@ export function CheckoutForm({
 
       const parsed = await readJsonResponse<{
         error?: string;
+        details?: unknown;
         data?: { orderId: string };
       }>(res);
 
