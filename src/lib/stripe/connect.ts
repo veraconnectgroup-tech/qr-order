@@ -10,8 +10,8 @@ import { getStripe } from "./client";
 function connectUrls(appUrl: string) {
   const base = appUrl.replace(/\/$/, "");
   return {
-    refresh: `${base}/dashboard/settings?stripe=refresh`,
-    return: `${base}/dashboard/settings?stripe=complete`,
+    refresh: `${base}/dashboard/settings/stripe-callback?stripe=refresh`,
+    return: `${base}/dashboard/settings/stripe-callback?stripe=complete`,
   };
 }
 
