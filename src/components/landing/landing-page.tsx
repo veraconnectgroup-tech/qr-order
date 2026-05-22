@@ -28,25 +28,24 @@ import {
   TablesShowcase,
 } from "@/components/landing/product-showcases";
 import { EnterpriseHeroVisual } from "@/components/landing/enterprise-hero-visual";
+import { LandingFaq } from "@/components/landing/landing-faq";
+import { LandingIntegrations } from "@/components/landing/landing-integrations";
+import { LandingMetrics } from "@/components/landing/landing-metrics";
+import { LandingNav } from "@/components/landing/landing-nav";
+import { LandingWorkflow } from "@/components/landing/landing-workflow";
+import { LogoMarquee } from "@/components/landing/logo-marquee";
 import { platformFeeDescriptionEn } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
 
-const navLinks = [
-  { href: "#platform", label: "Platform" },
-  { href: "#product", label: "Product" },
-  { href: "#enterprise", label: "Enterprise" },
-  { href: "#pricing", label: "Pricing" },
-];
-
-const trustLogos = [
-  "Skyline Lounge",
-  "Harbor Group",
-  "Altstadt Bars",
-  "Rooftop Collective",
-  "Nord Hospitality",
+const productAnchors = [
+  { id: "product-guest", label: "Guest" },
+  { id: "product-payments", label: "Payments" },
+  { id: "product-floor", label: "Floor" },
+  { id: "product-kitchen", label: "Kitchen" },
+  { id: "product-analytics", label: "Analytics" },
 ];
 
 const platformPillars = [
@@ -96,6 +95,7 @@ const problems = [
 
 const productSections = [
   {
+    id: "product-guest",
     eyebrow: "Guest",
     title: "Ordering that feels native on mobile",
     description:
@@ -104,6 +104,7 @@ const productSections = [
     device: "phone" as const,
   },
   {
+    id: "product-payments",
     eyebrow: "Payments",
     title: "Checkout on your terms",
     description:
@@ -112,6 +113,7 @@ const productSections = [
     device: "phone" as const,
   },
   {
+    id: "product-floor",
     eyebrow: "Floor",
     title: "Every table, one live view",
     description:
@@ -120,6 +122,7 @@ const productSections = [
     device: "tablet" as const,
   },
   {
+    id: "product-kitchen",
     eyebrow: "Kitchen",
     title: "Prep display built for peak service",
     description:
@@ -128,6 +131,7 @@ const productSections = [
     device: "tablet" as const,
   },
   {
+    id: "product-analytics",
     eyebrow: "Analytics",
     title: "Numbers your team can trust",
     description:
@@ -202,63 +206,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#09090b] text-zinc-50 antialiased">
-      {/* Nav — Cursor-style minimal */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#09090b]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex size-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03]">
-              <QrCode className="size-3.5 text-zinc-300" strokeWidth={1.75} />
-            </div>
-            <span className="text-[13px] font-medium tracking-tight text-zinc-100">
-              QR Order
-            </span>
-          </Link>
-
-          <nav className="hidden items-center gap-7 md:flex">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-[13px] text-zinc-400 transition hover:text-zinc-100"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild
-              className="hidden h-8 px-3 text-[13px] text-zinc-400 hover:text-zinc-100 sm:inline-flex"
-            >
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild
-              className="hidden h-8 px-3 text-[13px] text-zinc-400 hover:text-zinc-100 md:inline-flex"
-            >
-              <a href="mailto:hello@qrorder.app">Contact sales</a>
-            </Button>
-            <Button
-              size="sm"
-              asChild
-              className="h-8 rounded-md bg-zinc-100 px-3.5 text-[13px] font-medium text-zinc-950 hover:bg-white"
-            >
-              <Link href="/signup">Request access</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <LandingNav />
 
       <main>
         {/* Hero */}
         <section className="relative border-b border-white/[0.06] px-5 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:pb-24 lg:pt-32">
+          <div className="landing-grid pointer-events-none absolute inset-0 opacity-70" aria-hidden />
           <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,255,255,0.06),transparent_70%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_50%_-15%,rgba(255,255,255,0.07),transparent_68%)]"
             aria-hidden
           />
 
@@ -268,8 +223,8 @@ export function LandingPage() {
                 <SectionLabel>Hospitality ordering platform</SectionLabel>
               </HeroItem>
               <HeroItem>
-                <h1 className="mt-5 text-[2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-zinc-50 sm:text-5xl lg:text-[3.25rem]">
-                  Built for venues that run at full capacity
+                <h1 className="font-display mt-5 text-[2rem] font-semibold leading-[1.06] tracking-[-0.035em] text-zinc-50 sm:text-5xl lg:text-[3.35rem]">
+                  The operating system for modern venues
                 </h1>
               </HeroItem>
               <HeroItem>
@@ -313,31 +268,16 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Trust strip — Numero / Cursor style */}
-        <section className="border-b border-white/[0.06] py-10">
-          <div className="mx-auto max-w-6xl px-5 sm:px-6">
-            <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-600">
-              Built for modern hospitality teams
-            </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-              {trustLogos.map((name) => (
-                <span
-                  key={name}
-                  className="text-sm font-medium tracking-tight text-zinc-600"
-                >
-                  {name}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
+        <LogoMarquee />
+
+        <LandingWorkflow />
 
         {/* Platform pillars */}
         <section id="platform" className="scroll-mt-20 px-5 py-20 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-6xl">
             <AnimateInView className="max-w-2xl">
               <SectionLabel>Platform</SectionLabel>
-              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
+              <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
                 One stack from guest scan to closed bill
               </h2>
               <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
@@ -374,7 +314,7 @@ export function LandingPage() {
             <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
               <AnimateInView>
                 <SectionLabel>The problem</SectionLabel>
-                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
+                <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
                   Service scales. Manual processes do not.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-zinc-400">
@@ -407,18 +347,43 @@ export function LandingPage() {
 
         {/* Product deep-dives */}
         <section id="product" className="scroll-mt-20 px-5 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-6xl space-y-24 sm:space-y-28">
+          <div className="mx-auto max-w-6xl">
+            <AnimateInView className="max-w-2xl">
+              <SectionLabel>Product tour</SectionLabel>
+              <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
+                See every surface your team runs on
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
+                Guest phone, staff tablet, and back-office — designed as one
+                product, not three tools stitched together.
+              </p>
+            </AnimateInView>
+
+            <div className="mt-8 flex flex-wrap gap-2">
+              {productAnchors.map((anchor) => (
+                <a
+                  key={anchor.id}
+                  href={`#${anchor.id}`}
+                  className="rounded-full border border-white/[0.08] bg-white/[0.02] px-3.5 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-white/[0.14] hover:text-zinc-200"
+                >
+                  {anchor.label}
+                </a>
+              ))}
+            </div>
+
+            <div className="mt-16 space-y-24 sm:space-y-28">
             {productSections.map((section, i) => (
               <AnimateInView key={section.title}>
                 <div
+                  id={section.id}
                   className={cn(
-                    "grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
+                    "scroll-mt-28 grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
                     i % 2 === 1 && "lg:[&>div:first-child]:order-2"
                   )}
                 >
                   <div className={i % 2 === 1 ? "lg:order-2" : ""}>
                     <SectionLabel>{section.eyebrow}</SectionLabel>
-                    <h3 className="mt-3 text-2xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-3xl">
+                    <h3 className="font-display mt-3 text-2xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-3xl">
                       {section.title}
                     </h3>
                     <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
@@ -439,8 +404,11 @@ export function LandingPage() {
                 </div>
               </AnimateInView>
             ))}
+            </div>
           </div>
         </section>
+
+        <LandingMetrics />
 
         {/* Enterprise */}
         <section
@@ -450,7 +418,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <AnimateInView className="mx-auto max-w-2xl text-center">
               <SectionLabel>Enterprise</SectionLabel>
-              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
+              <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
                 Ready for groups that need control
               </h2>
               <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
@@ -496,7 +464,7 @@ export function LandingPage() {
         {/* Testimonial */}
         <section className="border-y border-white/[0.06] bg-white/[0.02] px-5 py-20 sm:px-6">
           <AnimateInView className="mx-auto max-w-3xl text-center">
-            <blockquote className="text-xl font-medium leading-relaxed tracking-[-0.01em] text-zinc-200 sm:text-2xl">
+            <blockquote className="font-display text-xl font-medium leading-relaxed tracking-[-0.01em] text-zinc-200 sm:text-2xl">
               &ldquo;We needed ordering that guests actually use and staff can
               trust during Friday rush — not another PDF menu with a payment link
               duct-taped on.&rdquo;
@@ -513,7 +481,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <AnimateInView className="mx-auto max-w-2xl text-center">
               <SectionLabel>Pricing</SectionLabel>
-              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
+              <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
                 Transparent economics
               </h2>
               <p className="mt-4 text-base text-zinc-400">
@@ -578,11 +546,15 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Final CTA — restrained, not gradient banner */}
+        <LandingIntegrations />
+
+        <LandingFaq />
+
+        {/* Final CTA */}
         <section className="px-5 pb-24 pt-4 sm:px-6">
           <AnimateInView className="mx-auto max-w-6xl">
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-8 py-14 text-center sm:px-16 sm:py-16">
-              <h2 className="text-2xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-3xl">
+              <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-3xl">
                 See QR Order on your floor
               </h2>
               <p className="mx-auto mt-3 max-w-lg text-base text-zinc-400">
@@ -646,6 +618,7 @@ export function LandingPage() {
               <ul className="mt-4 space-y-2.5 text-sm text-zinc-600">
                 <li><a href="#enterprise" className="hover:text-zinc-300">Enterprise</a></li>
                 <li><a href="mailto:hello@qrorder.app" className="hover:text-zinc-300">Contact</a></li>
+                <li><a href="#faq" className="hover:text-zinc-300">FAQ</a></li>
                 <li><Link href="/login" className="hover:text-zinc-300">Sign in</Link></li>
               </ul>
             </div>

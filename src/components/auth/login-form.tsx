@@ -52,7 +52,7 @@ export function LoginForm() {
           placeholder="you@restaurant.com"
           required
           autoComplete="email"
-          className="mt-1 border-zinc-800 bg-zinc-900 text-zinc-100 placeholder:text-zinc-600 focus-visible:border-orange-500 focus-visible:ring-orange-500/20"
+          className="mt-1.5 border-white/[0.1] bg-[#09090b] text-zinc-100 placeholder:text-zinc-600 focus-visible:border-white/25 focus-visible:ring-white/10"
         />
       </div>
       <div>
@@ -66,10 +66,14 @@ export function LoginForm() {
           required
           minLength={6}
           autoComplete="current-password"
-          className="mt-1 border-zinc-800 bg-zinc-900 text-zinc-100 focus-visible:border-orange-500 focus-visible:ring-orange-500/20"
+          className="mt-1.5 border-white/[0.1] bg-[#09090b] text-zinc-100 focus-visible:border-white/25 focus-visible:ring-white/10"
         />
       </div>
-      {error && <p className="text-sm text-orange-400">{error}</p>}
+      {error && (
+        <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )}
       <Button
         type="submit"
         disabled={pending}
@@ -79,7 +83,7 @@ export function LoginForm() {
       </Button>
       <p className="text-center text-sm text-zinc-500">
         No account?{" "}
-        <Link href="/signup" className="font-medium text-orange-500 hover:underline">
+        <Link href="/signup" className="font-medium text-zinc-300 hover:text-zinc-100 hover:underline">
           Sign up
         </Link>
       </p>

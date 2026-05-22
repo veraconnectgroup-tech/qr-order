@@ -18,16 +18,16 @@ export function ShowcaseWindow({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-zinc-800/90 bg-zinc-950",
-        "shadow-[0_20px_70px_-16px_rgba(0,0,0,0.75)]",
+        "overflow-hidden rounded-xl border border-white/[0.08] bg-[#09090b]",
+        "shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]",
         className
       )}
     >
-      <div className="flex items-center gap-2.5 border-b border-zinc-800 bg-zinc-900/90 px-3 py-2">
+      <div className="flex items-center gap-2.5 border-b border-white/[0.06] bg-white/[0.02] px-3 py-2">
         <div className="flex shrink-0 gap-1.5">
-          <div className="size-2.5 rounded-full bg-zinc-600" />
-          <div className="size-2.5 rounded-full bg-zinc-600" />
-          <div className="size-2.5 rounded-full bg-zinc-600" />
+          <div className="size-2.5 rounded-full bg-zinc-700/80" />
+          <div className="size-2.5 rounded-full bg-zinc-700/80" />
+          <div className="size-2.5 rounded-full bg-zinc-700/80" />
         </div>
         {barLabel && (
           <div className="min-w-0 flex-1 truncate rounded-md bg-zinc-950/90 px-2.5 py-0.5 text-center text-[10px] text-zinc-500">
