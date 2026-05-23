@@ -5,8 +5,12 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
-import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
-import { AiProactiveBanner } from "@/components/guest/ai-proactive-banner";
+import { AiCartPairingBanner } from "@/components/guest/ai-cart-pairing-banner";
+import { AiConciergeIntro } from "@/components/guest/ai-concierge-intro";
+import { AiConciergeSheet } from "@/components/guest/ai-concierge-sheet";
+import { AiMenuLoading } from "@/components/guest/ai-menu-loading";
+import { AiRecommendedSection } from "@/components/guest/ai-recommended-section";
+import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { CartSummaryBar } from "@/components/guest/cart-summary-bar";
 import { CategoryPills } from "@/components/guest/category-pills";
@@ -30,6 +34,21 @@ import {
 } from "@/lib/menu/schedule";
 import { productMatchesSearch } from "@/lib/i18n/menu-locale";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
+import {
+  allergenIdsFromSheetSelections,
+  apiPreferencesFromSheet,
+  buildDrinkPairingPrompt,
+  buildSmartMenuPrompt,
+  type AiSheetSelections,
+} from "@/lib/ai/guest-sheet-preferences";
+import {
+  readAiSessionId,
+  trackAiConversion,
+  writeAiSessionId,
+} from "@/lib/ai/guest-session-storage";
+import type { AllergenId } from "@/lib/allergens";
+import { toastAddedToCart } from "@/lib/cart-toast";
+import { hapticClick } from "@/lib/haptics";
 import type { ProductWithModifiers } from "@/types";
 
 export function MenuView({
@@ -69,7 +88,7 @@ export function MenuView({
   acceptingOrders?: boolean;
   aiConciergeEnabled?: boolean;
 }) {
-  const { tUI, tName } = useAppLocale();
+  const { tUI, tName, menuLocale, isEnglish } = useAppLocale();
   const router = useRouter();
   const scrollKey = `menu-scroll-${slug}-${token}`;
   const canPlaceOrders = orderingEnabled && acceptingOrders;
@@ -80,6 +99,19 @@ export function MenuView({
     null
   );
   const [returnGlow, setReturnGlow] = useState(false);
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiActive, setAiActive] = useState(false);
+  const [showRecommendedSection, setShowRecommendedSection] = useState(true);
+  const [aiRecommendations, setAiRecommendations] = useState<
+    ProductRecommendation[]
+  >([]);
+  const [guestAllergies, setGuestAllergies] = useState<string[]>([]);
+  const [guestMood, setGuestMood] = useState("");
+  const [aiSessionId, setAiSessionId] = useState<string | null>(null);
+  const [pairingRecommendation, setPairingRecommendation] =
+    useState<ProductRecommendation | null>(null);
+  const preAiExcludedRef = useRef<Set<AllergenId> | null>(null);
   const restoredScroll = useRef(false);
 
   const openProductDetail = useCallback((product: ProductWithModifiers) => {
@@ -88,17 +120,14 @@ export function MenuView({
   }, []);
 
   const setCartSession = useCart((s) => s.setSession);
+  const addItem = useCart((s) => s.addItem);
+  const cartItems = useCart((s) => s.items);
   const itemCount = useCart((s) => s.itemCount());
   const setGuestSession = useGuestSession((s) => s.setSession);
   const sessionToken = useGuestSession((s) => s.sessionToken);
-  const { orders: guestOrders } = useGuestTableOrders(
-    token,
-    sessionToken,
-    aiConciergeEnabled && Boolean(sessionToken)
-  );
 
   const allergenStorageKey = allergenFilterStorageKey(slug, token);
-  const { excluded, toggle, clear, count: allergenFilterCount } =
+  const { excluded, toggle, clear, replaceExcluded, count: allergenFilterCount } =
     useAllergenExclusions(allergenStorageKey);
 
   useEffect(() => {
@@ -278,6 +307,273 @@ export function MenuView({
     ? allProducts.filter((p) => productMatchesSearch(p, searchQuery))
     : null;
 
+  const language = isEnglish ? "en" : menuLocale;
+
+  const productById = useMemo(() => {
+    const map = new Map<string, ProductWithModifiers>();
+    for (const category of categories) {
+      for (const product of category.products) {
+        map.set(product.id, product);
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const menuSectionByProductIdAll = useMemo(() => {
+    const map = new Map<string, MenuSection>();
+    for (const category of categories) {
+      const section = inferMenuSection(category);
+      for (const product of category.products) {
+        map.set(product.id, section);
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const aiReasonByProductId = useMemo(() => {
+    if (!aiActive) return undefined;
+    const map = new Map<string, string>();
+    for (const rec of aiRecommendations) {
+      if (rec.reason) map.set(rec.productId, rec.reason);
+    }
+    return map;
+  }, [aiActive, aiRecommendations]);
+
+  const hasDrinkInCart = useMemo(
+    () => cartItems.some((item) => item.menuSection === "drinks"),
+    [cartItems]
+  );
+
+  const resetAiRecommendations = useCallback(() => {
+    setAiRecommendations([]);
+    setAiActive(false);
+    setShowRecommendedSection(true);
+    setGuestAllergies([]);
+    setGuestMood("");
+    setPairingRecommendation(null);
+    if (preAiExcludedRef.current) {
+      replaceExcluded([...preAiExcludedRef.current]);
+      preAiExcludedRef.current = null;
+    }
+  }, [replaceExcluded]);
+
+  useEffect(() => {
+    return () => {
+      if (preAiExcludedRef.current) {
+        replaceExcluded([...preAiExcludedRef.current]);
+      }
+    };
+  }, [replaceExcluded]);
+
+  useEffect(() => {
+    if (hasDrinkInCart) setPairingRecommendation(null);
+  }, [hasDrinkInCart]);
+
+  const fetchDrinkPairing = useCallback(
+    async (dishName: string) => {
+      if (!sessionToken || hasDrinkInCart) return;
+
+      const sessionId =
+        aiSessionId ?? readAiSessionId(locationId, sessionToken) ?? undefined;
+
+      try {
+        const res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locationId,
+            tableId,
+            sessionToken,
+            message: buildDrinkPairingPrompt(dishName),
+            language,
+            sessionId,
+            preferences: { allergies: guestAllergies, mood: guestMood },
+            includeOrderContext: false,
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok) return;
+
+        const rec = (json.data as { recommendations?: ProductRecommendation[] })
+          .recommendations?.[0];
+        if (rec) setPairingRecommendation(rec);
+      } catch {
+        // non-blocking pairing
+      }
+    },
+    [
+      sessionToken,
+      hasDrinkInCart,
+      aiSessionId,
+      locationId,
+      tableId,
+      language,
+      guestAllergies,
+      guestMood,
+    ]
+  );
+
+  const handleAddAiRecommendation = useCallback(
+    (rec: ProductRecommendation) => {
+      const product = productById.get(rec.productId);
+      const section = menuSectionByProductIdAll.get(rec.productId) ?? "food";
+
+      addItem({
+        productId: rec.productId,
+        productName: rec.name,
+        unitPrice: rec.price,
+        quantity: 1,
+        notes: "",
+        menuSection: section,
+        productTaxRate: product?.tax_rate ?? null,
+        modifiers: [],
+      });
+
+      const sid =
+        aiSessionId ??
+        (sessionToken ? readAiSessionId(locationId, sessionToken) : null);
+      if (sid && sessionToken) {
+        void trackAiConversion({
+          sessionId: sid,
+          productId: rec.productId,
+          locationId,
+          tableId,
+          sessionToken,
+        });
+      }
+
+      if (section !== "drinks" && !hasDrinkInCart) {
+        void fetchDrinkPairing(rec.name);
+      }
+    },
+    [
+      productById,
+      menuSectionByProductIdAll,
+      addItem,
+      aiSessionId,
+      sessionToken,
+      locationId,
+      tableId,
+      hasDrinkInCart,
+      fetchDrinkPairing,
+    ]
+  );
+
+  const handleAddPairing = useCallback(() => {
+    if (!pairingRecommendation) return;
+
+    const rec = pairingRecommendation;
+    const product = productById.get(rec.productId);
+    const section = menuSectionByProductIdAll.get(rec.productId) ?? "drinks";
+
+    hapticClick();
+    addItem({
+      productId: rec.productId,
+      productName: rec.name,
+      unitPrice: rec.price,
+      quantity: 1,
+      notes: "",
+      menuSection: section,
+      productTaxRate: product?.tax_rate ?? null,
+      modifiers: [],
+    });
+    toastAddedToCart(rec.name, rec.price, currency);
+    setPairingRecommendation(null);
+
+    const sid =
+      aiSessionId ??
+      (sessionToken ? readAiSessionId(locationId, sessionToken) : null);
+    if (sid && sessionToken) {
+      void trackAiConversion({
+        sessionId: sid,
+        productId: rec.productId,
+        locationId,
+        tableId,
+        sessionToken,
+      });
+    }
+  }, [
+    pairingRecommendation,
+    productById,
+    menuSectionByProductIdAll,
+    addItem,
+    currency,
+    aiSessionId,
+    sessionToken,
+    locationId,
+    tableId,
+  ]);
+
+  const handleAiSheetComplete = useCallback(
+    async (selections: AiSheetSelections) => {
+      if (!sessionToken) return;
+
+      const prefs = apiPreferencesFromSheet(selections);
+      setGuestAllergies(prefs.allergies);
+      setGuestMood(prefs.mood);
+
+      const allergenIds = allergenIdsFromSheetSelections(selections.allergies);
+      if (allergenIds.length > 0) {
+        if (!preAiExcludedRef.current) {
+          preAiExcludedRef.current = new Set(excluded);
+        }
+        replaceExcluded(allergenIds);
+      }
+
+      setAiLoading(true);
+
+      const sessionId =
+        readAiSessionId(locationId, sessionToken) ?? undefined;
+
+      try {
+        const res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locationId,
+            tableId,
+            sessionToken,
+            message: buildSmartMenuPrompt(selections),
+            language,
+            sessionId,
+            preferences: prefs,
+            includeOrderContext: true,
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok) return;
+
+        const data = json.data as {
+          recommendations: ProductRecommendation[];
+          sessionId: string;
+        };
+
+        if (data.sessionId) {
+          writeAiSessionId(locationId, sessionToken, data.sessionId);
+          setAiSessionId(data.sessionId);
+        }
+
+        setAiRecommendations(data.recommendations);
+        setAiActive(true);
+        setShowRecommendedSection(true);
+      } catch {
+        // AI unavailable — menu stays unchanged
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [
+      sessionToken,
+      excluded,
+      replaceExcluded,
+      locationId,
+      tableId,
+      language,
+    ]
+  );
+
   return (
     <>
       <OfflineIndicator />
@@ -303,6 +599,10 @@ export function MenuView({
             </div>
           )}
 
+          {aiConciergeEnabled && !aiActive && !aiLoading && (
+            <AiConciergeIntro onOpen={() => setAiSheetOpen(true)} />
+          )}
+
           <div className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
             <div className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="relative">
@@ -318,21 +618,6 @@ export function MenuView({
             </div>
             {!filtered && (
               <>
-                {aiConciergeEnabled && (
-                  <AiProactiveBanner
-                    slug={slug}
-                    token={token}
-                    locationId={locationId}
-                    tableId={tableId}
-                    sessionToken={sessionToken}
-                    currency={currency}
-                    orders={guestOrders}
-                    aiConciergeEnabled={aiConciergeEnabled}
-                    categories={categories}
-                    orderingDisabled={!canPlaceOrders}
-                    onOpenProduct={openProductDetail}
-                  />
-                )}
                 <CategoryPills
                   categories={filteredCategories}
                   activeCategory={activeCategory}
@@ -346,6 +631,22 @@ export function MenuView({
               </>
             )}
           </div>
+
+          {aiLoading && <AiMenuLoading />}
+
+          {!filtered &&
+            aiActive &&
+            showRecommendedSection &&
+            aiRecommendations.length > 0 && (
+              <AiRecommendedSection
+                recommendations={aiRecommendations}
+                currency={currency}
+                orderingDisabled={!canPlaceOrders}
+                onAdd={handleAddAiRecommendation}
+                onDismiss={() => setShowRecommendedSection(false)}
+                onReset={resetAiRecommendations}
+              />
+            )}
 
           <main className="px-3 py-4 sm:px-4 sm:py-6">
             {hiddenByAllergenCount > 0 && (
@@ -371,6 +672,7 @@ export function MenuView({
                         }
                         orderingDisabled={!canPlaceOrders}
                         onOpenDetail={() => openProductDetail(product)}
+                        aiReason={aiReasonByProductId?.get(product.id) ?? null}
                       />
                     ))}
                   </div>
@@ -383,6 +685,7 @@ export function MenuView({
                 currency={currency}
                 orderingDisabled={!canPlaceOrders}
                 onOpenDetail={openProductDetail}
+                aiReasonByProductId={aiReasonByProductId}
               />
             )}
 
@@ -392,13 +695,24 @@ export function MenuView({
           </main>
 
           {orderingEnabled && (
-            <CartSummaryBar
-              slug={slug}
-              token={token}
-              taxPercent={taxPercent}
-              currency={currency}
-              glowOnMount={returnGlow}
-            />
+            <>
+              {pairingRecommendation && !hasDrinkInCart && (
+                <AiCartPairingBanner
+                  recommendation={pairingRecommendation}
+                  currency={currency}
+                  orderingDisabled={!canPlaceOrders}
+                  onAdd={handleAddPairing}
+                  onDismiss={() => setPairingRecommendation(null)}
+                />
+              )}
+              <CartSummaryBar
+                slug={slug}
+                token={token}
+                taxPercent={taxPercent}
+                currency={currency}
+                glowOnMount={returnGlow}
+              />
+            </>
           )}
 
           <ProductDetailSheet
@@ -413,6 +727,14 @@ export function MenuView({
             open={!!detailProduct}
             onOpenChange={(o) => !o && setDetailProduct(null)}
           />
+
+          {aiConciergeEnabled && (
+            <AiConciergeSheet
+              open={aiSheetOpen}
+              onOpenChange={setAiSheetOpen}
+              onComplete={handleAiSheetComplete}
+            />
+          )}
         </div>
       </PullToRefresh>
     </>

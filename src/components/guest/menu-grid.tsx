@@ -25,12 +25,14 @@ export function MenuGrid({
   currency,
   onOpenDetail,
   orderingDisabled = false,
+  aiReasonByProductId,
 }: {
   categories: MenuCategory[];
   unavailableCategories?: MenuCategory[];
   currency: string;
   onOpenDetail: (product: ProductWithModifiers) => void;
   orderingDisabled?: boolean;
+  aiReasonByProductId?: Map<string, string>;
 }) {
   const { tName, tUI } = useAppLocale();
   if (!categories.length && !unavailableCategories.length) {
@@ -69,6 +71,7 @@ export function MenuGrid({
                 menuSection={inferMenuSection(category)}
                 orderingDisabled={orderingDisabled}
                 onOpenDetail={() => onOpenDetail(product)}
+                aiReason={aiReasonByProductId?.get(product.id) ?? null}
               />
             ))}
           </div>

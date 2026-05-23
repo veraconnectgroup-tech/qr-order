@@ -17,12 +17,14 @@ export function ProductCard({
   menuSection = "food",
   onOpenDetail,
   orderingDisabled = false,
+  aiReason,
 }: {
   product: ProductWithModifiers;
   currency: string;
   menuSection?: MenuSection;
   onOpenDetail: () => void;
   orderingDisabled?: boolean;
+  aiReason?: string | null;
 }) {
   const addItem = useCart((s) => s.addItem);
   const { tName, tDescription, tUI } = useAppLocale();
@@ -117,6 +119,9 @@ export function ProductCard({
           <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
             {displayDescription}
           </p>
+        )}
+        {aiReason && (
+          <p className="mt-1 text-xs italic text-orange-400">{aiReason}</p>
         )}
         <AllergenBadges allergens={product.allergens} className="mt-2" />
         <div className="mt-2 flex items-center justify-between gap-2">

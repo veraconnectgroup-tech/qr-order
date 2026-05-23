@@ -7,6 +7,7 @@ import {
   updateLocationMenuLocale,
   updateLocationOrderingEnabled,
 } from "@/lib/admin/location-language-actions";
+import { updateLocationAiConciergeEnabled } from "@/lib/admin/ai-actions";
 import { MENU_LOCALES } from "@/lib/i18n/locale-config";
 import { LOCALE_LABELS, type MenuLocale } from "@/lib/i18n/translations";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,14 @@ export function LocationSettings({
   menuLocale: initialMenuLocale,
   googleReviewUrl: initialGoogleReviewUrl,
   orderingEnabled: initialOrderingEnabled,
+  aiConciergeEnabled: initialAiConciergeEnabled,
   canEdit,
 }: {
   locationName: string;
   menuLocale: MenuLocale;
   googleReviewUrl: string | null;
   orderingEnabled: boolean;
+  aiConciergeEnabled: boolean;
   canEdit: boolean;
 }) {
   const [menuLocale, setMenuLocale] = useState<MenuLocale>(initialMenuLocale);
@@ -39,15 +42,20 @@ export function LocationSettings({
     initialGoogleReviewUrl ?? ""
   );
   const [orderingEnabled, setOrderingEnabled] = useState(initialOrderingEnabled);
+  const [aiConciergeEnabled, setAiConciergeEnabled] = useState(
+    initialAiConciergeEnabled
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
 
-    const [localeResult, reviewResult, orderingResult] = await Promise.all([
+    const [localeResult, reviewResult, orderingResult, aiResult] =
+      await Promise.all([
       updateLocationMenuLocale(menuLocale),
       updateLocationGoogleReviewUrl(googleReviewUrl),
       updateLocationOrderingEnabled(orderingEnabled),
+      updateLocationAiConciergeEnabled(aiConciergeEnabled),
     ]);
 
     setSaving(false);
@@ -62,6 +70,10 @@ export function LocationSettings({
     }
     if (orderingResult?.error) {
       toast.error(orderingResult.error);
+      return;
+    }
+    if (aiResult?.error) {
+      toast.error(aiResult.error);
       return;
     }
 
@@ -87,6 +99,21 @@ export function LocationSettings({
           id="online-ordering"
           checked={orderingEnabled}
           onCheckedChange={setOrderingEnabled}
+          disabled={!canEdit}
+        />
+      </div>
+
+      <div className="mt-5 flex items-start justify-between gap-4 rounded-lg border border-neutral-200 p-4">
+        <div className="space-y-1">
+          <Label htmlFor="ai-concierge">AI Concierge aktivieren</Label>
+          <p className="text-xs text-neutral-500">
+            Gäste erhalten KI-Empfehlungen im Menü
+          </p>
+        </div>
+        <Switch
+          id="ai-concierge"
+          checked={aiConciergeEnabled}
+          onCheckedChange={setAiConciergeEnabled}
           disabled={!canEdit}
         />
       </div>

@@ -48,7 +48,14 @@ export function useAllergenExclusions(storageKey: string) {
     persist(new Set());
   }, [persist]);
 
-  return { excluded, toggle, clear, hydrated, count: excluded.size };
+  const replaceExcluded = useCallback(
+    (ids: AllergenId[]) => {
+      persist(new Set(ids));
+    },
+    [persist]
+  );
+
+  return { excluded, toggle, clear, replaceExcluded, hydrated, count: excluded.size };
 }
 
 function allergenLabel(

@@ -11,11 +11,16 @@ import {
   type ProactiveTriggerKind,
 } from "@/lib/ai/proactive-triggers";
 import type { AiChatRecommendation } from "@/lib/ai/parse-response";
+import {
+  readAiSessionId,
+  trackAiConversion,
+  writeAiSessionId,
+} from "@/lib/ai/guest-session-storage";
+import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
+import { useCart } from "@/hooks/use-cart";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
-import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
-import { useCart } from "@/hooks/use-cart";
 import type { ProductWithModifiers } from "@/types";
 
 type BannerState =
@@ -34,8 +39,6 @@ const STORAGE = {
   dessert: (sessionToken: string) => `ai-proactive-dessert-${sessionToken}`,
   welcome: (sessionToken: string, visitTs: string) =>
     `ai-proactive-welcome-${sessionToken}-${visitTs}`,
-  aiSession: (locationId: string, sessionToken: string) =>
-    `ai-concierge-session-${locationId}-${sessionToken}`,
   lastVisit: (slug: string, token: string) => `ai-menu-visit-${slug}-${token}`,
 };
 
@@ -50,29 +53,6 @@ function readFlag(key: string) {
 function writeFlag(key: string) {
   try {
     localStorage.setItem(key, "1");
-  } catch {
-    // ignore
-  }
-}
-
-function readAiSessionId(locationId: string, sessionToken: string) {
-  try {
-    return localStorage.getItem(STORAGE.aiSession(locationId, sessionToken));
-  } catch {
-    return null;
-  }
-}
-
-function writeAiSessionId(
-  locationId: string,
-  sessionToken: string,
-  sessionId: string
-) {
-  try {
-    localStorage.setItem(
-      STORAGE.aiSession(locationId, sessionToken),
-      sessionId
-    );
   } catch {
     // ignore
   }
@@ -180,8 +160,20 @@ export function AiProactiveBanner({
           product?.tax_rate != null ? Number(product.tax_rate) : null,
         modifiers: [],
       });
-      toastAddedToCart(rec.name, rec.price, currency);
-    },
+    toastAddedToCart(rec.name, rec.price, currency);
+
+    const storedSessionId =
+      sessionToken && readAiSessionId(locationId, sessionToken);
+    if (storedSessionId && sessionToken) {
+      void trackAiConversion({
+        sessionId: storedSessionId,
+        productId: rec.productId,
+        locationId,
+        tableId,
+        sessionToken,
+      });
+    }
+  },
     [
       addItem,
       currency,
@@ -408,6 +400,16 @@ export function AiProactiveBanner({
                     ? () => onOpenProduct(product)
                     : undefined
                 }
+                conversionContext={
+                  sessionToken && readAiSessionId(locationId, sessionToken)
+                    ? {
+                        sessionId: readAiSessionId(locationId, sessionToken)!,
+                        locationId,
+                        tableId,
+                        sessionToken,
+                      }
+                    : undefined
+                }
                 className="w-64 shrink-0"
               />
             );
@@ -451,6 +453,16 @@ export function AiProactiveBanner({
               onOpenDetail={
                 hasModifiers && onOpenProduct && product
                   ? () => onOpenProduct(product)
+                  : undefined
+              }
+              conversionContext={
+                sessionToken && readAiSessionId(locationId, sessionToken)
+                  ? {
+                      sessionId: readAiSessionId(locationId, sessionToken)!,
+                      locationId,
+                      tableId,
+                      sessionToken,
+                    }
                   : undefined
               }
               className="w-64 shrink-0"

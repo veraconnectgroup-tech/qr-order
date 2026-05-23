@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
 import type { MenuSection } from "@/lib/menu-section";
 import { useCart } from "@/hooks/use-cart";
+import { trackAiConversion } from "@/lib/ai/guest-session-storage";
 import { cn } from "@/lib/utils";
 
 export type ProductRecommendation = {
@@ -26,6 +27,7 @@ export function ProductRecommendationCard({
   orderingDisabled = false,
   onOpenDetail,
   className,
+  conversionContext,
 }: {
   recommendation: ProductRecommendation;
   currency: string;
@@ -34,6 +36,13 @@ export function ProductRecommendationCard({
   orderingDisabled?: boolean;
   onOpenDetail?: () => void;
   className?: string;
+  aiSessionId?: string | null;
+  conversionContext?: {
+    sessionId: string;
+    locationId: string;
+    tableId: string;
+    sessionToken: string;
+  };
 }) {
   const { tUI } = useAppLocale();
   const addItem = useCart((s) => s.addItem);
@@ -60,6 +69,13 @@ export function ProductRecommendationCard({
     });
     toastAddedToCart(recommendation.name, recommendation.price, currency);
     setAdded(true);
+
+    if (conversionContext?.sessionId) {
+      void trackAiConversion({
+        ...conversionContext,
+        productId: recommendation.productId,
+      });
+    }
   }
 
   return (

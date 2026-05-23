@@ -110,13 +110,13 @@ export default async function AdminSettingsPage() {
               menuLocale={menuLocale}
               googleReviewUrl={locationRow.google_review_url}
               orderingEnabled={locationRow.ordering_enabled}
+              aiConciergeEnabled={locationRow.ai_concierge_enabled}
               canEdit
             />
 
             <Suspense fallback={null}>
               <AiConciergeSettings
                 locationName={locationRow.name}
-                aiConciergeEnabled={locationRow.ai_concierge_enabled}
                 creditsBalance={creditsRow?.balance ?? 0}
                 creditsLifetimeUsed={creditsRow?.lifetime_used ?? 0}
                 packages={creditPackages}
