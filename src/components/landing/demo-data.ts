@@ -260,6 +260,8 @@ function demoOrder(
     delivered_at: status === "delivered" ? minutesAgo(1) : null,
     receipt_sent_at: null,
     is_takeaway: false,
+    tse_signature: null,
+    tse_data: null,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

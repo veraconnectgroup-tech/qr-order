@@ -525,3 +525,7 @@ ALTER TABLE order_items ADD COLUMN IF NOT EXISTS tax_rate DECIMAL(4,2) NOT NULL 
 UPDATE order_items
 SET tax_rate = 19.00
 WHERE tax_rate IS NULL;
+
+-- ===== Fiskaly Cloud TSE (migration 00022) =====
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tse_signature TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tse_data JSONB;

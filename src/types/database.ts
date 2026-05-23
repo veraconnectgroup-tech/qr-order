@@ -165,6 +165,8 @@ type Tables = {
     delivered_at: string | null;
     receipt_sent_at: string | null;
     is_takeaway: boolean;
+    tse_signature: string | null;
+    tse_data: Json | null;
     created_at: string;
     updated_at: string;
   };

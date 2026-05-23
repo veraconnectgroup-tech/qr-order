@@ -20,6 +20,7 @@ import type { InPersonPaymentLocation } from "@/lib/constants";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { guestPaymentInstruction } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
+import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
 
 type OrderData = {
   id: string;
@@ -38,6 +39,15 @@ type OrderData = {
   preparing_at: string | null;
   ready_at: string | null;
   delivered_at: string | null;
+  tse_signature?: string | null;
+  tse_data?: {
+    tss_serial?: string;
+    signature_counter?: number;
+    signature?: string;
+    start_time?: number;
+    end_time?: number;
+    qr_code_data?: string;
+  } | null;
   order_items: Array<{
     product_name: string;
     quantity: number;
@@ -360,6 +370,10 @@ export function OrderStatusTracker({
                 </>
               )}
             </div>
+            <TseReceiptBadge
+              tseSignature={order.tse_signature ?? null}
+              tseData={order.tse_data ?? null}
+            />
           </div>
         )}
       </section>
