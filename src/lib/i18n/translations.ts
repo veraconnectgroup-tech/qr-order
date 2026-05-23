@@ -93,7 +93,17 @@ const de: TranslationMap = {
   "common.ok": "OK",
   "common.remove": "Entfernen",
 
+  "a11y.skipToContent": "Zum Inhalt springen",
+  "a11y.decrease": "Menge verringern",
+  "a11y.increase": "Menge erhöhen",
+  "a11y.language": "Sprache",
+  "a11y.backToCart": "Zurück zum Warenkorb",
+  "a11y.cartSummary": "{count} Artikel, Gesamt {total}",
+  "a11y.productCard": "{name}, {price}",
+
   "offline.reconnecting": "Offline. Verbindung wird wiederhergestellt…",
+  "offline.banner": "Du bist offline",
+  "offline.orderQueued": "Bestellung wird gesendet, sobald du wieder online bist",
   "offline.connected": "Wieder verbunden",
   "refresh.pull": "Ziehen zum Aktualisieren",
   "refresh.release": "Loslassen zum Aktualisieren",
@@ -125,6 +135,7 @@ const de: TranslationMap = {
   "checkout.pay": "Bezahlen {amount}",
   "checkout.notes": "Besondere Wünsche",
   "checkout.email": "E-Mail (optional, für Beleg)",
+  "checkout.emailHint": "Wir senden dir deinen Beleg",
   "checkout.emailPlaceholder": "du@beispiel.de",
   "checkout.orderSummary": "Bestellübersicht",
   "checkout.subtotal": "Zwischensumme",
@@ -135,7 +146,9 @@ const de: TranslationMap = {
   "checkout.takeaway": "Außer Haus / Takeaway",
   "checkout.takeawayHint": "Reduzierter 7% MwSt-Satz für berechtigte Speisen",
   "checkout.placeOrder": "Bestellung aufgeben",
+  "checkout.placeOrderWithTotal": "Bestellung · {amount}",
   "checkout.placingOrder": "Bestellung wird aufgegeben…",
+  "checkout.placingOrderWithTotal": "Bestellung · {amount}",
 
   "order.status.pending": "Eingegangen",
   "order.status.accepted": "Angenommen",
@@ -149,6 +162,9 @@ const de: TranslationMap = {
   "order.estimatedMin": "~{minutes} Min. geschätzt",
   "order.addMore": "Weitere Artikel hinzufügen",
   "order.orderAgain": "Erneut bestellen",
+  "order.placedTitle": "Bestellung aufgegeben!",
+  "order.reorderAdded": "Artikel wurden in den Warenkorb gelegt",
+  "order.reorderSkipped": "{name} ist nicht mehr verfügbar und wurde übersprungen",
   "order.subtotal": "Zwischensumme",
   "order.headline.rejected": "Bestellung abgelehnt",
   "order.headline.cancelled": "Bestellung storniert",
@@ -332,6 +348,10 @@ const de: TranslationMap = {
   "error.generic": "Etwas ist schiefgelaufen.",
   "error.orderFailed": "Bestellung konnte nicht aufgegeben werden.",
   "error.paymentFailed": "Zahlung fehlgeschlagen.",
+  "error.cardDeclined": "Karte abgelehnt. Bitte versuche es erneut.",
+  "error.cardDeclinedPayAtBar": "Karte abgelehnt. Andere Karte oder an der Bar bezahlen.",
+  "error.cardNotCharged": "Karte wurde nicht belastet. Bitte erneut versuchen.",
+  "error.networkRetry": "Verbindungsproblem. Erneuter Versuch…",
 };
 
 const en: TranslationMap = {
@@ -342,7 +362,17 @@ const en: TranslationMap = {
   "common.ok": "OK",
   "common.remove": "Remove",
 
+  "a11y.skipToContent": "Skip to content",
+  "a11y.decrease": "Decrease",
+  "a11y.increase": "Increase",
+  "a11y.language": "Language",
+  "a11y.backToCart": "Back to cart",
+  "a11y.cartSummary": "{count} items, total {total}",
+  "a11y.productCard": "{name}, {price}",
+
   "offline.reconnecting": "Offline. Reconnecting…",
+  "offline.banner": "You're offline",
+  "offline.orderQueued": "Order will send when you're back online",
   "offline.connected": "Connected",
   "refresh.pull": "Pull to refresh",
   "refresh.release": "Release to refresh",
@@ -374,6 +404,7 @@ const en: TranslationMap = {
   "checkout.pay": "Pay {amount}",
   "checkout.notes": "Special instructions",
   "checkout.email": "Email (optional, for receipt)",
+  "checkout.emailHint": "We'll send your receipt",
   "checkout.emailPlaceholder": "you@example.com",
   "checkout.orderSummary": "Order summary",
   "checkout.subtotal": "Subtotal",
@@ -384,7 +415,9 @@ const en: TranslationMap = {
   "checkout.takeaway": "Takeaway",
   "checkout.takeawayHint": "Reduced 7% VAT applies to eligible food items",
   "checkout.placeOrder": "Place order",
+  "checkout.placeOrderWithTotal": "Place order · {amount}",
   "checkout.placingOrder": "Placing order…",
+  "checkout.placingOrderWithTotal": "Placing order · {amount}",
 
   "order.status.pending": "Received",
   "order.status.accepted": "Accepted",
@@ -398,6 +431,9 @@ const en: TranslationMap = {
   "order.estimatedMin": "~{minutes} min estimated",
   "order.addMore": "Add more items",
   "order.orderAgain": "Order again",
+  "order.placedTitle": "Order placed!",
+  "order.reorderAdded": "Items added to your cart",
+  "order.reorderSkipped": "{name} is no longer available and was skipped",
   "order.subtotal": "Subtotal",
   "order.headline.rejected": "Order rejected",
   "order.headline.cancelled": "Order cancelled",
@@ -581,6 +617,10 @@ const en: TranslationMap = {
   "error.generic": "Something went wrong.",
   "error.orderFailed": "Order could not be placed.",
   "error.paymentFailed": "Payment failed.",
+  "error.cardDeclined": "Card declined. Please try again.",
+  "error.cardDeclinedPayAtBar": "Card declined. Try a different card or pay at bar.",
+  "error.cardNotCharged": "Card was not charged. Try again.",
+  "error.networkRetry": "Connection issue. Retrying…",
 };
 
 const sr: TranslationMap = {

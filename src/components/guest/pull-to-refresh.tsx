@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 
 const THRESHOLD = 80;
@@ -16,6 +16,7 @@ export function PullToRefresh({
   children: ReactNode;
 }) {
   const { tUI } = useAppLocale();
+  const reduceMotion = useReducedMotion();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(0);
@@ -53,12 +54,14 @@ export function PullToRefresh({
     >
       <motion.div
         className="pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-col items-center justify-end overflow-hidden"
-        animate={{ height: refreshing ? 56 : pull > 0 ? pull : 0 }}
+        animate={{
+          height: reduceMotion ? 0 : refreshing ? 56 : pull > 0 ? pull : 0,
+        }}
       >
         <div className="flex items-center gap-2 pb-2 text-xs text-zinc-500">
           <div
             className={`flex size-8 items-center justify-center rounded-full bg-orange-500/10 text-sm font-bold text-orange-500 ${
-              refreshing ? "animate-spin" : ""
+              refreshing && !reduceMotion ? "animate-spin" : ""
             }`}
           >
             {orgInitial}

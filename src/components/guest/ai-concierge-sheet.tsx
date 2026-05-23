@@ -58,7 +58,7 @@ export function AiConciergeSheet({
       >
         <SheetHeader className="px-0 pt-2">
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-zinc-700" />
-          <SheetTitle className="text-left text-base font-semibold text-zinc-100">
+          <SheetTitle className="text-start text-base font-semibold text-zinc-100">
             Haben Sie Allergien?
           </SheetTitle>
         </SheetHeader>

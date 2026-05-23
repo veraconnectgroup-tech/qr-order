@@ -71,7 +71,7 @@ export function PaymentMethodSelector({
               type="button"
               onClick={() => onChange(method)}
               className={cn(
-                "flex w-full items-start gap-3 rounded-xl border p-4 text-left transition",
+                "flex w-full items-start gap-3 rounded-xl border p-4 text-start transition",
                 selected
                   ? "border-orange-500 bg-orange-500/10"
                   : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 
 export function TypewriterText({
   text,
@@ -13,10 +14,11 @@ export function TypewriterText({
   speedMs?: number;
   className?: string;
 }) {
-  const [shown, setShown] = useState(active ? "" : text);
+  const reduceMotion = useReducedMotion();
+  const [shown, setShown] = useState(active && !reduceMotion ? "" : text);
 
   useEffect(() => {
-    if (!active) {
+    if (!active || reduceMotion) {
       setShown(text);
       return;
     }
@@ -28,7 +30,7 @@ export function TypewriterText({
       if (i >= text.length) clearInterval(id);
     }, speedMs);
     return () => clearInterval(id);
-  }, [text, active, speedMs]);
+  }, [text, active, speedMs, reduceMotion]);
 
   return <span className={className}>{shown}</span>;
 }

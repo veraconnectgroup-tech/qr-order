@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Plus, Sparkles, X } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
@@ -25,15 +25,16 @@ export function AiRecommendedSection({
   onReset: () => void;
 }) {
   const { tUI } = useAppLocale();
+  const reduceMotion = useReducedMotion();
 
   if (!recommendations.length) return null;
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.2 }}
+      exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
+      transition={{ duration: reduceMotion ? 0 : 0.2 }}
       className="border-b border-zinc-800 px-3 py-4 sm:px-4"
     >
       <div className="mb-3 flex items-center justify-between gap-2">

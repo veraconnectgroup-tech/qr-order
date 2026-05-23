@@ -22,10 +22,20 @@ export function dismissDashboardBanner(): void {
 }
 
 export function isGuestPromptDismissed(): boolean {
-  if (typeof sessionStorage === "undefined") return false;
-  return sessionStorage.getItem(GUEST_DISMISS_KEY) === "1";
+  if (typeof localStorage === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(GUEST_DISMISS_KEY);
+    if (!raw) return false;
+    const { at } = JSON.parse(raw) as { at: number };
+    return Date.now() - at < DISMISS_MS;
+  } catch {
+    return false;
+  }
 }
 
 export function dismissGuestPrompt(): void {
-  sessionStorage.setItem(GUEST_DISMISS_KEY, "1");
+  localStorage.setItem(
+    GUEST_DISMISS_KEY,
+    JSON.stringify({ at: Date.now() })
+  );
 }

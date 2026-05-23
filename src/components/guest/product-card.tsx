@@ -71,7 +71,10 @@ export function ProductCard({
           openDetail();
         }
       }}
-      aria-label={`View ${displayName}`}
+      aria-label={tUI("a11y.productCard", {
+        name: displayName,
+        price: formatPrice(Number(product.price), currency),
+      })}
       className={cn(
         "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition",
         outOfStock && "bg-zinc-900/60 opacity-70",
@@ -99,12 +102,12 @@ export function ProductCard({
           </div>
         )}
         {outOfStock && (
-          <span className="absolute left-2 top-2 rounded-full bg-zinc-950/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+          <span className="absolute start-2 top-2 rounded-full bg-zinc-950/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
             {tUI("menu.currentlyUnavailable")}
           </span>
         )}
         {product.prep_time_minutes != null && product.prep_time_minutes > 0 && (
-          <span className="absolute right-2 top-2 flex items-center gap-0.5 rounded-full bg-zinc-950/80 px-1.5 py-0.5 text-[10px] text-zinc-300 backdrop-blur-sm">
+          <span className="absolute end-2 top-2 flex items-center gap-0.5 rounded-full bg-zinc-950/80 px-1.5 py-0.5 text-[10px] text-zinc-300 backdrop-blur-sm">
             <Clock className="size-2.5" />
             {product.prep_time_minutes} min
           </span>

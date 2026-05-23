@@ -151,8 +151,8 @@ export function ProductDetailSheet({
         ) : null}
 
         <div className="px-5 pb-8 pt-4">
-          <SheetHeader className="text-left">
-            <SheetTitle className="flex items-baseline justify-between gap-4 pr-8 text-zinc-50">
+          <SheetHeader className="text-start">
+            <SheetTitle className="flex items-baseline justify-between gap-4 pe-8 text-zinc-50">
               <span>{displayName}</span>
               <span className="text-price shrink-0 text-orange-500">
                 {formatPrice(Number(product.price), currency)}

@@ -5,7 +5,7 @@ import { LOCALE_SHORT } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
 export function LanguageToggle({ compact = false }: { compact?: boolean }) {
-  const { menuLocale, isEnglish, setIsEnglish } = useAppLocale();
+  const { menuLocale, isEnglish, setIsEnglish, tUI } = useAppLocale();
   const primaryShort = LOCALE_SHORT[menuLocale];
 
   return (
@@ -15,7 +15,7 @@ export function LanguageToggle({ compact = false }: { compact?: boolean }) {
         compact ? "text-xs" : "text-sm"
       )}
       role="group"
-      aria-label="Language"
+      aria-label={tUI("a11y.language")}
     >
       <button
         type="button"

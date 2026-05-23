@@ -19,8 +19,9 @@ export function GuestCheckoutHeader({
       <Link
         href={`/${slug}/${token}/cart`}
         className="touch-target inline-flex items-center text-zinc-400"
+        aria-label={tUI("a11y.backToCart")}
       >
-        <ArrowLeft className="size-5" />
+        <ArrowLeft className="size-5 rtl:rotate-180" />
       </Link>
       <h1 className="min-w-0 flex-1 text-heading text-zinc-50">
         {tUI("checkout.title")}

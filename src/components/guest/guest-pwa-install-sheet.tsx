@@ -14,10 +14,9 @@ import {
   dismissGuestPrompt,
   isGuestPromptDismissed,
 } from "@/lib/pwa/dismiss";
+import { shouldShowGuestInstallPrompt } from "@/lib/pwa/install-timing";
 import { isStandaloneMode } from "@/lib/pwa/device";
 import { useInstallPrompt } from "@/lib/pwa/use-install-prompt";
-
-const GUEST_PROMPT_DELAY_MS = 2 * 60 * 1000;
 
 export function GuestPwaInstallSheet() {
   const { canInstall, promptInstall, isInstalled, isIos } = useInstallPrompt();
@@ -25,16 +24,10 @@ export function GuestPwaInstallSheet() {
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
-    if (isInstalled || isGuestPromptDismissed()) return;
+    if (isInstalled || isGuestPromptDismissed() || isStandaloneMode()) return;
+    if (!shouldShowGuestInstallPrompt()) return;
     if (!canInstall && !isIos) return;
-
-    const timer = window.setTimeout(() => {
-      if (!isGuestPromptDismissed() && !isStandaloneMode()) {
-        setOpen(true);
-      }
-    }, GUEST_PROMPT_DELAY_MS);
-
-    return () => window.clearTimeout(timer);
+    setOpen(true);
   }, [canInstall, isInstalled, isIos]);
 
   function handleDismiss() {
@@ -63,7 +56,7 @@ export function GuestPwaInstallSheet() {
         showCloseButton={false}
         className="guest-theme rounded-t-2xl border-zinc-800 bg-zinc-900 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
       >
-        <SheetHeader className="text-left">
+        <SheetHeader className="text-start">
           <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-orange-500/15">
             <Smartphone className="size-5 text-orange-400" />
           </div>
@@ -72,7 +65,7 @@ export function GuestPwaInstallSheet() {
           </SheetTitle>
           <SheetDescription className="text-zinc-400">
             {isIos
-              ? "Tap Share ⬆️ → Add to Home Screen for quicker menu access."
+              ? "Tap Share, then Add to Home Screen for quicker menu access."
               : "Install the app for faster ordering without the browser bar."}
           </SheetDescription>
         </SheetHeader>
@@ -100,7 +93,7 @@ export function GuestPwaInstallSheet() {
               onClick={handleInstall}
               className="h-12 flex-1 rounded-xl bg-orange-500 font-semibold hover:bg-orange-600"
             >
-              <Download className="mr-2 size-4" />
+              <Download className="me-2 size-4" />
               {installing ? "…" : "Install"}
             </Button>
           )}

@@ -23,6 +23,11 @@ import {
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
 import { TipSelector } from "@/components/guest/tip-selector";
 import { readJsonResponse } from "@/lib/api/read-json-response";
+import { fetchWithRetry } from "@/lib/payment/fetch-with-retry";
+import {
+  getBillApiErrorMessage,
+  getStripeConfirmErrorMessage,
+} from "@/lib/payment/stripe-errors";
 import { Button } from "@/components/ui/button";
 
 type SplitProgress = {
@@ -57,11 +62,13 @@ function StripePayForm({
   currency,
   onSuccess,
   tUI,
+  paymentAtBarEnabled,
 }: {
   total: number;
   currency: string;
   onSuccess: () => void;
   tUI: ReturnType<typeof useAppLocale>["tUI"];
+  paymentAtBarEnabled: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -74,13 +81,27 @@ function StripePayForm({
     setProcessing(true);
     setError(null);
 
-    const { error: submitError } = await stripe.confirmPayment({
+    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
     });
 
     if (submitError) {
-      setError(submitError.message ?? tUI("error.paymentFailed"));
+      setError(
+        getStripeConfirmErrorMessage(submitError, tUI, {
+          paymentAtBarEnabled,
+        })
+      );
+      setProcessing(false);
+      return;
+    }
+
+    if (
+      paymentIntent &&
+      (paymentIntent.status === "requires_action" ||
+        paymentIntent.status === "processing")
+    ) {
+      setError(tUI("bill.processing"));
       setProcessing(false);
       return;
     }
@@ -222,7 +243,7 @@ export function OrderBillPanel({
 
     try {
       if (paymentMethod === "online") {
-        const res = await fetch("/api/sessions/bill", {
+        const res = await fetchWithRetry("/api/sessions/bill", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -244,7 +265,9 @@ export function OrderBillPanel({
           throw new Error(parsed.error);
         }
         if (!res.ok || !parsed.data.data?.clientSecret) {
-          throw new Error(parsed.data.error ?? tUI("error.paymentFailed"));
+          throw new Error(
+            getBillApiErrorMessage(res.status, parsed.data.error, tUI)
+          );
         }
         setChargeTotal(parsed.data.data.chargeTotal ?? bill.chargeTotal);
         setClientSecret(parsed.data.data.clientSecret);
@@ -253,7 +276,7 @@ export function OrderBillPanel({
         return;
       }
 
-      const res = await fetch("/api/sessions/bill", {
+      const res = await fetchWithRetry("/api/sessions/bill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -267,6 +290,9 @@ export function OrderBillPanel({
       if (!parsed.ok) {
         throw new Error(parsed.error);
       }
+      if (!res.ok) {
+        throw new Error(getBillApiErrorMessage(res.status, parsed.data.error, tUI));
+      }
 
       hapticSuccess();
       toast.success(
@@ -277,7 +303,11 @@ export function OrderBillPanel({
       onPaid();
       loadBill();
     } catch (e) {
-      setError(e instanceof Error ? e.message : tUI("error.generic"));
+      if (e instanceof TypeError) {
+        setError(tUI("error.networkRetry"));
+      } else {
+        setError(e instanceof Error ? e.message : tUI("error.generic"));
+      }
     } finally {
       setProcessing(false);
     }
@@ -439,6 +469,7 @@ export function OrderBillPanel({
             total={payTotal}
             currency={currency}
             tUI={tUI}
+            paymentAtBarEnabled={paymentAtBarEnabled}
             onSuccess={() => {
               setClientSecret(null);
               setChargeTotal(null);

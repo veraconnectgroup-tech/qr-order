@@ -441,7 +441,7 @@ export function SplitBillView({
                   type="button"
                   disabled={paid || !split.clientSecret}
                   onClick={() => setActiveSplitId(split.id)}
-                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-start transition ${
                     activeSplit?.id === split.id
                       ? "border-orange-500 bg-orange-500/10"
                       : "border-zinc-800 bg-zinc-900"

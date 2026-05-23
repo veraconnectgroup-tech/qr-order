@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { CheckCircle2, ChevronDown, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { useCart } from "@/hooks/use-cart";
 import {
   inPersonPaymentKeys,
   orderStatusHeadlineKey,
@@ -18,6 +21,7 @@ import { AnimatedOrderNumber } from "@/components/guest/animated-order-number";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { LanguageSelector } from "@/components/guest/language-selector";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
+import { OrderPlacedOverlay } from "@/components/guest/order-placed-overlay";
 import { FeedbackPrompt } from "@/components/guest/feedback-prompt";
 import { GoogleReviewPrompt } from "@/components/guest/google-review-prompt";
 import { TypewriterText } from "@/components/guest/typewriter-text";
@@ -114,9 +118,17 @@ export function OrderStatusTracker({
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
   const { tUI } = useAppLocale();
+  const reduceMotion = useReducedMotion();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const addItem = useCart((s) => s.addItem);
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const [showPlacedOverlay, setShowPlacedOverlay] = useState(
+    () => searchParams.get("placed") === "1"
+  );
   const prevStatus = useRef<string | null>(null);
   const [statusPulse, setStatusPulse] = useState(false);
   const hapticFired = useRef(false);
@@ -223,12 +235,45 @@ export function OrderStatusTracker({
   const isRejected = order.status === "rejected";
   const isCancelled = order.status === "cancelled";
   const isClosed = isRejected || isCancelled;
+  const isCompleted = order.status === "delivered";
   const isPaid = order.payment_status === "paid";
   const canAddMore = !isClosed;
   const stepIdx = orderStatusStepIndex(order.status);
   const headline = tUI(
     orderStatusHeadlineKey(order.status, order.payment_status)
   );
+
+  async function handleReorder() {
+    setReordering(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionToken, tableToken: token }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data) {
+        throw new Error(json.error ?? tUI("error.generic"));
+      }
+
+      for (const name of json.data.skipped ?? []) {
+        toast.error(tUI("order.reorderSkipped", { name }));
+      }
+
+      for (const item of json.data.cartItems ?? []) {
+        addItem(item);
+      }
+
+      if ((json.data.cartItems ?? []).length > 0) {
+        toast.success(tUI("order.reorderAdded"));
+        router.push(`/${slug}/${token}/cart`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tUI("error.generic"));
+    } finally {
+      setReordering(false);
+    }
+  }
 
   let paymentHint: string | null = null;
   if (order.payment_status !== "paid" && order.payment_method !== "unset") {
@@ -243,21 +288,34 @@ export function OrderStatusTracker({
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
+      {showPlacedOverlay && (
+        <OrderPlacedOverlay
+          orderNumber={order.order_number}
+          onComplete={() => {
+            setShowPlacedOverlay(false);
+            router.replace(`/${slug}/${token}/order/${orderId}`, {
+              scroll: false,
+            });
+          }}
+        />
+      )}
       <div className="mb-3 flex justify-end">
         <LanguageSelector compact />
       </div>
       {/* Status hero */}
-      <section className="pb-5 text-center">
+      <section className="pb-5 text-center" aria-live="polite" aria-atomic="true">
         {isRejected ? (
           <XCircle className="mx-auto size-14 text-red-500" />
         ) : (
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: statusPulse ? [1, 1.06, 1] : 1 }}
+            initial={reduceMotion ? false : { scale: 0 }}
+            animate={{ scale: statusPulse && !reduceMotion ? [1, 1.06, 1] : 1 }}
             transition={
-              statusPulse
-                ? { duration: 0.5 }
-                : { type: "spring", damping: 15, stiffness: 200 }
+              reduceMotion
+                ? { duration: 0 }
+                : statusPulse
+                  ? { duration: 0.5 }
+                  : { type: "spring", damping: 15, stiffness: 200 }
             }
           >
             <CheckCircle2 className="mx-auto size-16 text-green-500" />
@@ -305,12 +363,12 @@ export function OrderStatusTracker({
 
               return (
                 <div key={step.key} className="relative flex gap-3">
-                  {current && statusPulse && (
+                  {current && statusPulse && !reduceMotion && (
                     <motion.div
                       initial={{ opacity: 0.4, scale: 0.8 }}
                       animate={{ opacity: 0, scale: 1.8 }}
                       transition={{ duration: 0.6 }}
-                      className="absolute left-0 top-0 size-3 rounded-full bg-orange-500/30"
+                      className="absolute start-0 top-0 size-3 rounded-full bg-orange-500/30"
                     />
                   )}
                   <div className="flex flex-col items-center">
@@ -328,7 +386,7 @@ export function OrderStatusTracker({
                         className={`my-1 min-h-5 w-0.5 flex-1 ${
                           done
                             ? "bg-green-500"
-                            : "border-l border-dashed border-zinc-700"
+                            : "border-s border-dashed border-zinc-700"
                         }`}
                       />
                     )}
@@ -364,7 +422,7 @@ export function OrderStatusTracker({
         <button
           type="button"
           onClick={() => setItemsOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3 text-left"
+          className="flex w-full items-center justify-between px-4 py-3 text-start"
         >
           <div>
             <p className="text-sm font-medium text-zinc-200">{tUI("order.thisOrder")}</p>
@@ -486,6 +544,16 @@ export function OrderStatusTracker({
             className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
           >
             <Link href={`/${slug}/${token}`}>{tUI("order.orderAgain")}</Link>
+          </Button>
+        )}
+        {isCompleted && (
+          <Button
+            type="button"
+            disabled={reordering}
+            onClick={handleReorder}
+            className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600 disabled:animate-pulse"
+          >
+            {tUI("order.orderAgain")}
           </Button>
         )}
       </section>

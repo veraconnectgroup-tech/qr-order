@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 
 export function OfflineIndicator() {
   const { tUI } = useAppLocale();
+  const reduceMotion = useReducedMotion();
   const isOnline = useOnlineStatus();
   const [showReconnected, setShowReconnected] = useState(false);
   const [wasOffline, setWasOffline] = useState(false);
@@ -30,10 +31,10 @@ export function OfflineIndicator() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ y: -48, opacity: 0 }}
+          initial={reduceMotion ? false : { y: -48, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -48, opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          exit={reduceMotion ? undefined : { y: -48, opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.25 }}
           className={`fixed inset-x-0 top-0 z-[60] border-b py-2 text-center text-sm ${
             showReconnected
               ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
@@ -43,7 +44,7 @@ export function OfflineIndicator() {
           {showReconnected ? (
             tUI("offline.connected")
           ) : (
-            <span>{tUI("offline.reconnecting")}</span>
+            <span>{tUI("offline.banner")}</span>
           )}
         </motion.div>
       )}

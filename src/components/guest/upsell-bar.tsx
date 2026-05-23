@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
@@ -22,6 +22,7 @@ export function UpsellBar({
   variant?: "cart" | "checkout";
 }) {
   const { tUI, tName } = useAppLocale();
+  const reduceMotion = useReducedMotion();
   const items = useCart((s) => s.items);
   const cartBump = useCart((s) => s.cartBump);
   const addItem = useCart((s) => s.addItem);
@@ -88,10 +89,10 @@ export function UpsellBar({
       {suggestions.length > 0 && (
         <motion.section
           key={productIds}
-          initial={{ opacity: 0, y: 16 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
-          transition={{ duration: 0.2 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: 8 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
           className="mb-4"
         >
           <h2 className="mb-2 text-sm font-semibold text-zinc-200">{title}</h2>
@@ -142,7 +143,7 @@ export function UpsellBar({
                         onClick={() => handleAdd(suggestion)}
                         className="h-8 rounded-lg bg-orange-500 px-3 text-xs font-semibold hover:bg-orange-600"
                       >
-                        <Plus className="mr-1 size-3.5" />
+                        <Plus className="me-1 size-3.5" />
                         {tUI("upsell.add")}
                       </Button>
                     </div>

@@ -8,6 +8,14 @@ export const ar: TranslationMap = {
   "common.ok": "موافق",
   "common.remove": "إزالة",
 
+  "a11y.skipToContent": "انتقل إلى المحتوى",
+  "a11y.decrease": "تقليل",
+  "a11y.increase": "زيادة",
+  "a11y.language": "اللغة",
+  "a11y.backToCart": "العودة إلى السلة",
+  "a11y.cartSummary": "{count} عناصر، الإجمالي {total}",
+  "a11y.productCard": "{name}، {price}",
+
   "cart.title": "طلبك",
   "cart.empty": "سلة التسوق فارغة",
   "cart.emptyHint": "تصفّح القائمة وأضف شيئًا لذيذًا",

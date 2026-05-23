@@ -12,6 +12,7 @@ import { LanguageSplash } from "@/components/guest/language-splash";
 import {
   persistGuestLangChoice,
   readGuestLangChoice,
+  getLocaleDir,
 } from "@/lib/i18n/locale-config";
 import {
   localizedDescription,
@@ -73,6 +74,13 @@ export function AppLocaleProvider({
     },
     [locationId, menuLocale]
   );
+
+  useEffect(() => {
+    const dir = getLocaleDir(menuLocale, isEnglish);
+    const lang = isEnglish ? "en" : menuLocale;
+    document.documentElement.dir = dir;
+    document.documentElement.lang = lang;
+  }, [menuLocale, isEnglish]);
 
   const value = useMemo(
     () => ({

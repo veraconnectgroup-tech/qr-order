@@ -1,6 +1,7 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { hapticLight } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +14,8 @@ export function QuantitySelector({
   onChange: (v: number) => void;
   min?: number;
 }) {
+  const { tUI } = useAppLocale();
+
   return (
     <div className="flex items-center justify-center gap-4">
       <Button
@@ -25,7 +28,7 @@ export function QuantitySelector({
           onChange(Math.max(min, value - 1));
         }}
         disabled={value <= min}
-        aria-label="Decrease quantity"
+        aria-label={tUI("a11y.decrease")}
       >
         <Minus className="size-4" />
       </Button>
@@ -39,7 +42,7 @@ export function QuantitySelector({
           hapticLight();
           onChange(value + 1);
         }}
-        aria-label="Increase quantity"
+        aria-label={tUI("a11y.increase")}
       >
         <Plus className="size-4" />
       </Button>

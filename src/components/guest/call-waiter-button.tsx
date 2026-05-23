@@ -89,7 +89,7 @@ export function CallWaiterButton({
         }}
         disabled={cooldown > 0}
       >
-        <BellRing className="mr-2 size-4" />
+        <BellRing className="me-2 size-4" />
         {cooldown > 0
           ? tUI("waiter.waitSeconds", { seconds: cooldown })
           : tUI("waiter.call")}

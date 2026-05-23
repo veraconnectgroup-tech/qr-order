@@ -1,16 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
 }
 
 export function AnimatedOrderNumber({ orderNumber }: { orderNumber: number }) {
-  const [display, setDisplay] = useState(0);
+  const reduceMotion = useReducedMotion();
+  const [display, setDisplay] = useState(reduceMotion ? orderNumber : 0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      setDisplay(orderNumber);
+      return;
+    }
+
     const duration = 1200;
     const start = performance.now();
     let frame: number;
@@ -23,13 +29,13 @@ export function AnimatedOrderNumber({ orderNumber }: { orderNumber: number }) {
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [orderNumber]);
+  }, [orderNumber, reduceMotion]);
 
   return (
     <motion.p
-      initial={{ y: 20, opacity: 0 }}
+      initial={reduceMotion ? false : { y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", damping: 12 }}
+      transition={reduceMotion ? { duration: 0 } : { type: "spring", damping: 12 }}
       className="font-mono text-6xl font-bold text-orange-500"
     >
       #{String(display).padStart(3, "0")}

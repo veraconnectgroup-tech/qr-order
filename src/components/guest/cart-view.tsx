@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { LanguageSelector } from "@/components/guest/language-selector";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { formatPrice } from "@/lib/format";
@@ -115,13 +116,16 @@ export function CartView({
   acceptingOrders?: boolean;
 }) {
   const { tUI } = useAppLocale();
+  const reduceMotion = useReducedMotion();
   const items = useCart((s) => s.items);
   const removeItem = useCart((s) => s.removeItem);
   const updateQuantity = useCart((s) => s.updateQuantity);
   const subtotal = useCart((s) => s.subtotal());
   const taxAmount = useCart((s) => s.taxAmount(false, taxPercent));
   const total = useCart((s) => s.total(false, taxPercent));
+  const isOnline = useOnlineStatus();
   const canPlaceOrders = orderingEnabled && acceptingOrders;
+  const canCheckout = canPlaceOrders && isOnline;
 
   if (!items.length) {
     return <EmptyCartState slug={slug} token={token} />;
@@ -151,22 +155,36 @@ export function CartView({
           </div>
         )}
 
+        {!isOnline && (
+          <div className="mb-4 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-300">
+            {tUI("offline.banner")}
+          </div>
+        )}
+
         <motion.div
           className="space-y-3"
-          initial="hidden"
+          initial={reduceMotion ? false : "hidden"}
           animate="visible"
-          variants={{
-            visible: { transition: { staggerChildren: 0.06 } },
-          }}
+          variants={
+            reduceMotion
+              ? undefined
+              : {
+                  visible: { transition: { staggerChildren: 0.06 } },
+                }
+          }
         >
           {items.map((item, index) => (
             <motion.div
               key={`${item.productId}-${index}`}
-              layout
-              variants={{
-                hidden: { opacity: 0, y: 12 },
-                visible: { opacity: 1, y: 0 },
-              }}
+              layout={!reduceMotion}
+              variants={
+                reduceMotion
+                  ? undefined
+                  : {
+                      hidden: { opacity: 0, y: 12 },
+                      visible: { opacity: 1, y: 0 },
+                    }
+              }
               className="rounded-xl bg-zinc-900 p-4"
             >
               <div className="flex items-start justify-between gap-3">
@@ -239,7 +257,7 @@ export function CartView({
           </div>
         </div>
 
-        {canPlaceOrders ? (
+        {canCheckout ? (
           <Button
             asChild
             className="mt-3 h-12 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
@@ -248,7 +266,7 @@ export function CartView({
           </Button>
         ) : (
           <Button disabled className="mt-3 h-12 w-full rounded-xl text-base font-bold">
-            {tUI("cart.checkoutUnavailable")}
+            {!isOnline ? tUI("offline.banner") : tUI("cart.checkoutUnavailable")}
           </Button>
         )}
       </div>

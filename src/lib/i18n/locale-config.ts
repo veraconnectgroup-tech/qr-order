@@ -1,5 +1,27 @@
 import type { Locale, MenuLocale } from "@/lib/i18n/translations";
 
+export type TextDirection = "ltr" | "rtl";
+
+export const LOCALE_DIR: Record<Locale, TextDirection> = {
+  de: "ltr",
+  en: "ltr",
+  sr: "ltr",
+  tr: "ltr",
+  hr: "ltr",
+  fr: "ltr",
+  es: "ltr",
+  it: "ltr",
+  ru: "ltr",
+  ar: "rtl",
+};
+
+export function getLocaleDir(
+  menuLocale: MenuLocale,
+  isEnglish: boolean
+): TextDirection {
+  return LOCALE_DIR[isEnglish ? "en" : menuLocale];
+}
+
 export const MENU_LOCALES: MenuLocale[] = [
   "de",
   "sr",

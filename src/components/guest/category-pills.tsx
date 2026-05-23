@@ -32,18 +32,25 @@ export function CategoryPills({
   if (categories.length <= 1) return null;
 
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div
+      role="tablist"
+      aria-label="Categories"
+      className="flex gap-2 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {categories.map((cat) => {
         const section = inferMenuSection(cat) as MenuSection;
         const Icon = SECTION_ICONS[section];
+        const isActive = activeCategory === cat.id;
 
         return (
           <button
             key={cat.id}
             type="button"
+            role="tab"
+            aria-selected={isActive}
             onClick={() => onSelect(cat.id)}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              activeCategory === cat.id
+              isActive
                 ? "bg-orange-500 text-white"
                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
             }`}

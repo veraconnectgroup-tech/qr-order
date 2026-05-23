@@ -15,21 +15,29 @@ import {
   type AppliedPromo,
 } from "@/components/guest/promo-input";
 import { readJsonResponse } from "@/lib/api/read-json-response";
-import { orderPlacedMessage } from "@/lib/menu-section";
-import type { MenuSection } from "@/lib/menu-section";
+import { fetchWithRetry, isServerErrorStatus } from "@/lib/payment/fetch-with-retry";
+import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
+import {
+  enqueueOfflineOrder,
+  registerOrderSync,
+} from "@/lib/pwa/offline-order-queue";
 import type { TaxBreakdownLine } from "@/lib/tax/vat";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 async function saveGuestEmail(sessionToken: string, guestEmail: string) {
-  if (!guestEmail) return;
-  await fetch("/api/sessions/guest-email", {
+  if (!guestEmail.trim()) return;
+  const res = await fetch("/api/sessions/guest-email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionToken, guestEmail }),
+    body: JSON.stringify({ sessionToken, guestEmail: guestEmail.trim() }),
   });
+  if (!res.ok) {
+    throw new Error("Could not save email.");
+  }
 }
 
 function OrderSummary({
@@ -131,6 +139,7 @@ export function CheckoutForm({
   const total = useCart((s) => s.total);
   const clearCart = useCart((s) => s.clearCart);
   const router = useRouter();
+  const isOnline = useOnlineStatus();
   const orderPlacedRef = useRef(false);
 
   const [cartHydrated, setCartHydrated] = useState(() =>
@@ -176,26 +185,30 @@ export function CheckoutForm({
   }, [storeReady, items.length, sessionToken, isDemo, slug, token, router]);
 
   async function handlePlaceOrder() {
-    if (!sessionToken) return;
+    if (!sessionToken || !isOnline) return;
     setProcessing(true);
     setError(null);
 
     try {
       await saveGuestEmail(sessionToken, guestEmail);
 
-      const res = await fetch("/api/orders", {
+      const res = await fetchWithRetry("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionToken,
           tableToken: token,
           items,
-          guestEmail: guestEmail || undefined,
+          guestEmail: guestEmail.trim() || undefined,
           isTakeaway,
           paymentMethod: "unset",
           promoCodeId: appliedPromo?.promoCodeId,
         }),
       });
+
+      if (isServerErrorStatus(res.status)) {
+        throw new Error(tUI("error.orderFailed"));
+      }
 
       const parsed = await readJsonResponse<{
         error?: string;
@@ -221,15 +234,30 @@ export function CheckoutForm({
       }
 
       orderPlacedRef.current = true;
+      recordGuestOrderPlaced();
       hapticSuccess();
-      toast.success(
-        orderPlacedMessage(
-          items.map((item) => item.menuSection ?? ("food" as MenuSection))
-        )
-      );
-      router.replace(`/${slug}/${token}/order/${json.data.orderId}`);
+      router.replace(`/${slug}/${token}/order/${json.data.orderId}?placed=1`);
       clearCart();
     } catch (e) {
+      if (!navigator.onLine || e instanceof TypeError) {
+        enqueueOfflineOrder({
+          sessionToken,
+          tableToken: token,
+          payload: {
+            sessionToken,
+            tableToken: token,
+            items,
+            guestEmail: guestEmail.trim() || undefined,
+            isTakeaway,
+            paymentMethod: "unset",
+            promoCodeId: appliedPromo?.promoCodeId,
+          },
+        });
+        void registerOrderSync();
+        toast.success(tUI("offline.orderQueued"));
+        setProcessing(false);
+        return;
+      }
       setError(e instanceof Error ? e.message : tUI("error.generic"));
       setProcessing(false);
     }
@@ -294,6 +322,7 @@ export function CheckoutForm({
           value={guestEmail}
           onChange={(e) => setGuestEmail(e.target.value)}
         />
+        <p className="mt-1.5 text-xs text-zinc-500">{tUI("checkout.emailHint")}</p>
       </div>
 
       {error && (
@@ -310,11 +339,19 @@ export function CheckoutForm({
 
       <Button
         type="button"
-        disabled={processing}
+        disabled={processing || !isOnline}
         onClick={handlePlaceOrder}
-        className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
+        className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600 disabled:animate-pulse"
       >
-        {processing ? tUI("checkout.placingOrder") : tUI("checkout.placeOrder")}
+        {processing
+          ? tUI("checkout.placingOrderWithTotal", {
+              amount: formatPrice(computedTotal, currency),
+            })
+          : !isOnline
+            ? tUI("offline.banner")
+            : tUI("checkout.placeOrderWithTotal", {
+                amount: formatPrice(computedTotal, currency),
+              })}
       </Button>
     </div>
   );

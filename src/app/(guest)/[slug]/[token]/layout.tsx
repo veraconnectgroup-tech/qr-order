@@ -1,9 +1,44 @@
 import { notFound } from "next/navigation";
+import type { Metadata, Viewport } from "next";
 import { AppLocaleProvider } from "@/components/guest/app-locale-provider";
+import { GuestSkipLink } from "@/components/guest/guest-skip-link";
 import { createServerClient } from "@/lib/supabase/server";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import type { MenuLocale } from "@/lib/i18n/translations";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; token: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  try {
+    const supabase = await createServerClient();
+    const { data } = await supabase
+      .from("organizations")
+      .select("name, logo_url")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    const org = data as { name: string; logo_url: string | null } | null;
+    return {
+      manifest: `/${slug}/manifest.webmanifest`,
+      title: org?.name,
+      appleWebApp: { capable: true, statusBarStyle: "black-translucent" },
+      icons: org?.logo_url
+        ? { apple: [{ url: org.logo_url }] }
+        : { apple: [{ url: "/icon-192.png" }] },
+    };
+  } catch {
+    return { manifest: `/${slug}/manifest.webmanifest` };
+  }
+}
+
+export const viewport: Viewport = {
+  themeColor: "#f97316",
+};
 
 export default async function GuestTokenLayout({
   children,
@@ -75,7 +110,8 @@ export default async function GuestTokenLayout({
       orgName={orgName}
       logoUrl={logoUrl}
     >
-      {children}
+      <GuestSkipLink />
+      <main id="main-content">{children}</main>
     </AppLocaleProvider>
   );
 }

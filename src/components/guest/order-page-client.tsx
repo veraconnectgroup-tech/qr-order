@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useGuestSessionToken } from "@/hooks/use-guest-session-token";
@@ -50,18 +51,28 @@ export function OrderPageClient({
   }
 
   return (
-    <OrderStatusTracker
-      slug={slug}
-      token={token}
-      orderId={orderId}
-      sessionToken={sessionToken}
-      currency={currency}
-      stripeOnboarded={stripeOnboarded}
-      paymentOnlineEnabled={paymentOnlineEnabled}
-      paymentAtBarEnabled={paymentAtBarEnabled}
-      paymentCardAtTableEnabled={paymentCardAtTableEnabled}
-      googleReviewUrl={googleReviewUrl}
-      inPersonPaymentLocation={inPersonPaymentLocation}
-    />
+    <Suspense
+      fallback={
+        <div className="space-y-4 px-4 py-6">
+          <div className="mx-auto h-8 w-48 animate-pulse rounded-lg bg-zinc-800" />
+          <div className="mx-auto h-12 w-24 animate-pulse rounded-lg bg-zinc-800" />
+          <div className="h-52 w-full animate-pulse rounded-xl bg-zinc-800" />
+        </div>
+      }
+    >
+      <OrderStatusTracker
+        slug={slug}
+        token={token}
+        orderId={orderId}
+        sessionToken={sessionToken}
+        currency={currency}
+        stripeOnboarded={stripeOnboarded}
+        paymentOnlineEnabled={paymentOnlineEnabled}
+        paymentAtBarEnabled={paymentAtBarEnabled}
+        paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+        googleReviewUrl={googleReviewUrl}
+        inPersonPaymentLocation={inPersonPaymentLocation}
+      />
+    </Suspense>
   );
 }

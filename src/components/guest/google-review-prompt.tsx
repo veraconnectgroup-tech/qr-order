@@ -47,7 +47,7 @@ export function GoogleReviewPrompt({
         onClick={handleReviewClick}
         className="mt-3 h-12 w-full rounded-xl border-0 bg-blue-600 text-base font-semibold text-white shadow-none hover:bg-blue-700"
       >
-        <Star className="mr-2 size-4 fill-white" />
+        <Star className="me-2 size-4 fill-white" />
         Leave a Google Review
       </Button>
     </section>

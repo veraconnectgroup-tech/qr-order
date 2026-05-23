@@ -18,6 +18,12 @@ import { GuestHeader } from "@/components/guest/guest-header";
 import { LanguageSelector } from "@/components/guest/language-selector";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { OfflineIndicator } from "@/components/guest/offline-indicator";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { readMenuCache, writeMenuCache } from "@/lib/pwa/menu-cache";
+import {
+  registerMenuPeriodicSync,
+  usePwaServiceWorkerMessages,
+} from "@/lib/pwa/sw-messages";
 import { ProductCard } from "@/components/guest/product-card";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
@@ -59,7 +65,7 @@ export function MenuView({
   locationName,
   tableName,
   zoneName,
-  categories,
+  categories: initialCategories,
   unavailableCategories = [],
   taxPercent,
   currency,
@@ -90,10 +96,16 @@ export function MenuView({
 }) {
   const { tUI, tName, menuLocale, isEnglish } = useAppLocale();
   const router = useRouter();
+  const isOnline = useOnlineStatus();
+  usePwaServiceWorkerMessages();
   const scrollKey = `menu-scroll-${slug}-${token}`;
-  const canPlaceOrders = orderingEnabled && acceptingOrders;
+  const [menuCategories, setMenuCategories] = useState(initialCategories);
+  const [showingCachedMenu, setShowingCachedMenu] = useState(false);
+  const canPlaceOrders = orderingEnabled && acceptingOrders && isOnline;
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
+  const [activeCategory, setActiveCategory] = useState(
+    initialCategories[0]?.id ?? ""
+  );
   const [now, setNow] = useState(() => new Date());
   const [detailProduct, setDetailProduct] = useState<ProductWithModifiers | null>(
     null
@@ -135,11 +147,63 @@ export function MenuView({
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    setMenuCategories(initialCategories);
+    writeMenuCache(slug, {
+      slug,
+      token,
+      orgName,
+      logoUrl: logoUrl ?? null,
+      locationName,
+      tableName,
+      zoneName,
+      categories: initialCategories,
+      taxPercent,
+      currency,
+      locationId,
+      tableId,
+      timezone,
+      orderingEnabled,
+      acceptingOrders,
+      aiConciergeEnabled,
+    });
+    void registerMenuPeriodicSync();
+  }, [
+    slug,
+    token,
+    orgName,
+    logoUrl,
+    locationName,
+    tableName,
+    zoneName,
+    initialCategories,
+    taxPercent,
+    currency,
+    locationId,
+    tableId,
+    timezone,
+    orderingEnabled,
+    acceptingOrders,
+    aiConciergeEnabled,
+  ]);
+
+  useEffect(() => {
+    if (isOnline) {
+      setShowingCachedMenu(false);
+      return;
+    }
+    const cached = readMenuCache(slug);
+    if (cached?.token === token) {
+      setMenuCategories(cached.categories);
+      setShowingCachedMenu(true);
+    }
+  }, [isOnline, slug, token]);
+
   const { scheduledCategories, scheduledUnavailable } = useMemo(() => {
     const available: MenuCategory[] = [];
     const unavailable: MenuCategory[] = [];
 
-    for (const category of categories) {
+    for (const category of menuCategories) {
       const scheduleRow = {
         schedule_enabled: category.schedule_enabled ?? false,
         schedule_start: category.schedule_start ?? null,
@@ -164,7 +228,7 @@ export function MenuView({
       scheduledCategories: available,
       scheduledUnavailable: unavailable,
     };
-  }, [categories, now, timezone, tName, tUI]);
+  }, [menuCategories, now, timezone, tName, tUI]);
 
   const allUnavailableCategories = useMemo(
     () => [...scheduledUnavailable, ...unavailableCategories],
@@ -268,8 +332,16 @@ export function MenuView({
   }, []);
 
   const handleRefresh = useCallback(async () => {
+    if (!navigator.onLine) {
+      const cached = readMenuCache(slug);
+      if (cached?.token === token) {
+        setMenuCategories(cached.categories);
+        setShowingCachedMenu(true);
+      }
+      return;
+    }
     router.refresh();
-  }, [router]);
+  }, [router, slug, token]);
 
   const hiddenByAllergenCount = useMemo(() => {
     if (allergenFilterCount === 0) return 0;
@@ -311,24 +383,24 @@ export function MenuView({
 
   const productById = useMemo(() => {
     const map = new Map<string, ProductWithModifiers>();
-    for (const category of categories) {
+    for (const category of menuCategories) {
       for (const product of category.products) {
         map.set(product.id, product);
       }
     }
     return map;
-  }, [categories]);
+  }, [menuCategories]);
 
   const menuSectionByProductIdAll = useMemo(() => {
     const map = new Map<string, MenuSection>();
-    for (const category of categories) {
+    for (const category of menuCategories) {
       const section = inferMenuSection(category);
       for (const product of category.products) {
         map.set(product.id, section);
       }
     }
     return map;
-  }, [categories]);
+  }, [menuCategories]);
 
   const aiReasonByProductId = useMemo(() => {
     if (!aiActive) return undefined;
@@ -606,13 +678,13 @@ export function MenuView({
           <div className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
             <div className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500 sm:left-4" />
+                <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500 sm:start-4" />
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={tUI("menu.search")}
-                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-3 pl-10 pr-4 text-base text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700 sm:py-2.5 sm:text-sm"
+                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-3 ps-10 pe-4 text-base text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700 sm:py-2.5 sm:text-sm"
                 />
               </div>
             </div>
