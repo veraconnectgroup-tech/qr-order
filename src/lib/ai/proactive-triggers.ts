@@ -1,6 +1,10 @@
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 
-export type ProactiveTriggerKind = "pairing" | "dessert" | "welcome_back";
+export type ProactiveTriggerKind =
+  | "pairing"
+  | "dessert"
+  | "welcome_back"
+  | "slow_kitchen";
 
 export type ProactiveTriggerMatch = {
   kind: ProactiveTriggerKind;
@@ -92,6 +96,36 @@ export function detectDessertTrigger(
   return {
     kind: "dessert",
     prompt: `Gast hat gegessen: ${formatPastItems(delivered)}. Empfehle Dessert.`,
+  };
+}
+
+export function detectSlowKitchenTrigger(
+  orders: AiGuestOrder[],
+  isShown: (orderId: string) => boolean,
+  now = Date.now()
+): ProactiveTriggerMatch | null {
+  const waiting = orders
+    .filter((order) => {
+      if (isShown(order.id)) return false;
+      if (!["pending", "accepted", "preparing"].includes(order.status)) {
+        return false;
+      }
+      return minutesAgo(order.created_at, now) >= 15;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+  const order = waiting[0];
+  if (!order) return null;
+
+  const mins = Math.floor(minutesAgo(order.created_at, now));
+
+  return {
+    kind: "slow_kitchen",
+    orderId: order.id,
+    prompt: `Bestellung #${order.id.slice(0, 8)} wartet seit ${mins} Minuten in der Küche. Schlage ein Getraenk vor während der Gast wartet.`,
   };
 }
 

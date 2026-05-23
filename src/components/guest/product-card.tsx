@@ -83,6 +83,7 @@ export function ProductCard({
           ? "pointer-events-none opacity-40"
           : "cursor-pointer hover:border-zinc-700 active:scale-[0.98]"
       )}
+      data-product-id={product.id}
     >
       <div className="relative h-[120px] bg-gradient-to-br from-zinc-800 to-zinc-900 sm:h-[160px]">
         {product.image_url ? (

@@ -22,13 +22,13 @@ import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { LanguageSelector } from "@/components/guest/language-selector";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
 import { OrderPlacedOverlay } from "@/components/guest/order-placed-overlay";
-import { FeedbackPrompt } from "@/components/guest/feedback-prompt";
-import { GoogleReviewPrompt } from "@/components/guest/google-review-prompt";
+import { AiFeedbackPrompt } from "@/components/guest/ai-feedback-prompt";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
 
@@ -97,6 +97,7 @@ export function OrderStatusTracker({
   token,
   orderId,
   sessionToken,
+  locationId,
   currency,
   stripeOnboarded,
   paymentOnlineEnabled,
@@ -109,6 +110,7 @@ export function OrderStatusTracker({
   token: string;
   orderId: string;
   sessionToken: string;
+  locationId: string;
   currency: string;
   stripeOnboarded: boolean;
   paymentOnlineEnabled: boolean;
@@ -132,6 +134,8 @@ export function OrderStatusTracker({
   const prevStatus = useRef<string | null>(null);
   const [statusPulse, setStatusPulse] = useState(false);
   const hapticFired = useRef(false);
+  const visitRecordedRef = useRef(false);
+  const { recordVisit } = useGuestMemory(locationId);
 
   const refreshOrder = useCallback(
     async (retryOnMiss = false) => {
@@ -212,6 +216,20 @@ export function OrderStatusTracker({
       hapticFired.current = true;
     }
   }, [order]);
+
+  useEffect(() => {
+    if (!order || order.status !== "delivered" || visitRecordedRef.current) {
+      return;
+    }
+
+    const itemNames = order.order_items.flatMap((item) =>
+      Array.from({ length: item.quantity }, () => item.product_name)
+    );
+    if (!itemNames.length) return;
+
+    visitRecordedRef.current = true;
+    recordVisit(itemNames);
+  }, [order, recordVisit]);
 
   if (loading) {
     return (
@@ -512,14 +530,13 @@ export function OrderStatusTracker({
       )}
 
       {order.status === "delivered" && (
-        <FeedbackPrompt orderId={orderId} sessionToken={sessionToken} />
+        <AiFeedbackPrompt
+          orderId={orderId}
+          sessionToken={sessionToken}
+          deliveredAt={order.delivered_at}
+          googleReviewUrl={googleReviewUrl}
+        />
       )}
-
-      <GoogleReviewPrompt
-        orderId={orderId}
-        googleReviewUrl={googleReviewUrl}
-        orderStatus={order.status}
-      />
 
       {/* Actions */}
       <section className="flex flex-col gap-3">

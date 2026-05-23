@@ -213,6 +213,9 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const orderBlock = input.orderContext?.trim()
     ? `\n\n${input.orderContext.trim()}`
     : "";
+  const browseBlock = input.browsingContext?.trim()
+    ? `\n\nBROWSE-KONTEXT:\n${input.browsingContext.trim()}`
+    : "";
 
   return [
     identityBlock(input.orgName, lang),
@@ -220,6 +223,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     outputFormatBlock(lang),
     guestContext,
     orderBlock,
+    browseBlock,
     "\n\nMENU:\n",
     input.menuText,
   ]

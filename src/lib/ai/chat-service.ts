@@ -68,6 +68,7 @@ export const aiChatRequestSchema = z.object({
   sessionId: zUuid().optional(),
   preferences: preferencesSchema,
   includeOrderContext: z.boolean().optional().default(true),
+  browsingContext: zSanitizedText(2000).optional(),
 });
 
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
@@ -378,6 +379,7 @@ export async function handleAiChat(body: unknown) {
     language,
     guestPrefs,
     orderContext,
+    browsingContext: input.browsingContext ?? null,
   });
 
   const openAiMessages: OpenAiChatMessage[] = [

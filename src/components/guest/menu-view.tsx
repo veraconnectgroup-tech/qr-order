@@ -35,15 +35,10 @@ import {
   isCategoryAvailable,
 } from "@/lib/menu/schedule";
 import { productMatchesSearch } from "@/lib/i18n/menu-locale";
-import { getDemoAiRecommendations } from "@/lib/demo-ai";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import {
-  allergenIdsFromSheetSelections,
-  apiPreferencesFromSheet,
   buildDrinkPairingPrompt,
-  buildSmartMenuPrompt,
-  type AiSheetSelections,
 } from "@/lib/ai/guest-sheet-preferences";
 import {
   readAiSessionId,
@@ -53,7 +48,13 @@ import {
 import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
+import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
+import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
+import { useSmartNudges } from "@/hooks/use-smart-nudges";
+import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
+import { useGuestMemory } from "@/hooks/use-guest-memory";
+import { AiSmartNudgeBanner } from "@/components/guest/ai-smart-nudge-banner";
 import type { ProductWithModifiers } from "@/types";
 
 const AiCartPairingBanner = dynamic(
@@ -70,17 +71,10 @@ const AiConciergeIntro = dynamic(
     })),
   { ssr: false }
 );
-const AiConciergeSheet = dynamic(
+const AiConciergeChat = dynamic(
   () =>
-    import("@/components/guest/ai-concierge-sheet").then((m) => ({
-      default: m.AiConciergeSheet,
-    })),
-  { ssr: false }
-);
-const AiMenuLoading = dynamic(
-  () =>
-    import("@/components/guest/ai-menu-loading").then((m) => ({
-      default: m.AiMenuLoading,
+    import("@/components/guest/ai-concierge-chat").then((m) => ({
+      default: m.AiConciergeChat,
     })),
   { ssr: false }
 );
@@ -146,8 +140,7 @@ export function MenuView({
     null
   );
   const [returnGlow, setReturnGlow] = useState(false);
-  const [aiSheetOpen, setAiSheetOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -160,6 +153,7 @@ export function MenuView({
     useState<ProductRecommendation | null>(null);
   const preAiExcludedRef = useRef<Set<AllergenId> | null>(null);
   const restoredScroll = useRef(false);
+  const menuMainRef = useRef<HTMLElement>(null);
 
   const openProductDetail = useCallback((product: ProductWithModifiers) => {
     (document.activeElement as HTMLElement | null)?.blur();
@@ -390,6 +384,22 @@ export function MenuView({
 
   const language = isEnglish ? "en" : menuLocale;
 
+  const {
+    profile: guestProfile,
+    isReturning,
+    hasKnownAllergies,
+    knownAllergies,
+    knownAllergySelection,
+    saveAllergies: saveGuestAllergies,
+  } = useGuestMemory(locationId);
+
+  const welcomeBackMessage = useMemo(() => {
+    if (!isReturning || !guestProfile.lastVisitItems.length) return null;
+    return tUI("ai.memory.welcomeBack", {
+      items: guestProfile.lastVisitItems.slice(0, 4).join(", "),
+    });
+  }, [isReturning, guestProfile.lastVisitItems, tUI]);
+
   const productById = useMemo(() => {
     const map = new Map<string, ProductWithModifiers>();
     for (const category of menuCategories) {
@@ -424,6 +434,107 @@ export function MenuView({
     () => cartItems.some((item) => item.menuSection === "drinks"),
     [cartItems]
   );
+
+  const productNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const product of productById.values()) {
+      map.set(product.id, tName(product));
+    }
+    return map;
+  }, [productById, tName]);
+
+  const { orders: sessionOrders } = useGuestTableOrders(
+    token,
+    sessionToken,
+    aiConciergeEnabled && !!sessionToken
+  );
+
+  const hasSessionOrders = sessionOrders.length > 0;
+
+  const { getAiContext, browseMinutes } = useScrollIntelligence(productNames, {
+    enabled: aiConciergeEnabled,
+    containerRef: menuMainRef,
+    hasOrdered: itemCount > 0 || hasSessionOrders,
+  });
+
+  const fetchPairingForNudge = useCallback(
+    async (prompt: string) => {
+      if (!sessionToken || hasDrinkInCart || isDemoGuestRoute(slug, token)) {
+        return null;
+      }
+
+      const sessionId =
+        aiSessionId ?? readAiSessionId(locationId, sessionToken) ?? undefined;
+
+      try {
+        const res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locationId,
+            tableId,
+            sessionToken,
+            message: prompt,
+            language,
+            sessionId,
+            preferences: { allergies: guestAllergies, mood: guestMood },
+            includeOrderContext: false,
+            browsingContext: getAiContext(),
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) return null;
+        return (json.data as { recommendations?: ProductRecommendation[] })
+          .recommendations?.[0] ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [
+      sessionToken,
+      hasDrinkInCart,
+      slug,
+      token,
+      aiSessionId,
+      locationId,
+      tableId,
+      language,
+      guestAllergies,
+      guestMood,
+      getAiContext,
+    ]
+  );
+
+  const smartNudgeMessages = useMemo(
+    () => ({
+      browse: tUI("ai.nudge.browse"),
+      dessert: tUI("ai.nudge.dessert"),
+      slowKitchen: tUI("ai.nudge.slowKitchen"),
+    }),
+    [tUI]
+  );
+
+  const formatPairingMessage = useCallback(
+    (rec: ProductRecommendation) =>
+      tUI("ai.proactive.pairing", {
+        name: rec.name,
+        price: formatPrice(rec.price, currency),
+      }),
+    [tUI, currency]
+  );
+
+  const { activeNudge, dismiss: dismissNudge } = useSmartNudges({
+    enabled: aiConciergeEnabled && canPlaceOrders,
+    browseMinutes,
+    cartItemCount: itemCount,
+    hasSessionOrders,
+    hasDrinkInCart,
+    aiChatOpen,
+    orders: sessionOrders,
+    messages: smartNudgeMessages,
+    formatPairingMessage,
+    fetchPairingRecommendation: fetchPairingForNudge,
+  });
 
   const resetAiRecommendations = useCallback(() => {
     setAiRecommendations([]);
@@ -586,15 +697,33 @@ export function MenuView({
     tableId,
   ]);
 
-  const handleAiSheetComplete = useCallback(
-    async (selections: AiSheetSelections) => {
-      if (!sessionToken) return;
+  const handleNudgeAction = useCallback(() => {
+    hapticClick();
+    setAiChatOpen(true);
+    dismissNudge();
+  }, [dismissNudge]);
 
-      const prefs = apiPreferencesFromSheet(selections);
-      setGuestAllergies(prefs.allergies);
-      setGuestMood(prefs.mood);
+  const handleNudgeAdd = useCallback(() => {
+    if (!activeNudge?.recommendation) return;
+    handleAddAiRecommendation(activeNudge.recommendation);
+    dismissNudge();
+  }, [activeNudge, dismissNudge, handleAddAiRecommendation]);
 
-      const allergenIds = allergenIdsFromSheetSelections(selections.allergies);
+  const handleAiChatSetupComplete = useCallback(
+    async ({
+      recommendations,
+      sessionId,
+      preferences,
+      allergenIds,
+    }: {
+      recommendations: ProductRecommendation[];
+      sessionId: string | null;
+      preferences: { allergies: string[]; mood: string };
+      allergenIds: AllergenId[];
+    }) => {
+      setGuestAllergies(preferences.allergies);
+      setGuestMood(preferences.mood);
+
       if (allergenIds.length > 0) {
         if (!preAiExcludedRef.current) {
           preAiExcludedRef.current = new Set(excluded);
@@ -602,71 +731,15 @@ export function MenuView({
         replaceExcluded(allergenIds);
       }
 
-      setAiLoading(true);
-
-      if (isDemoGuestRoute(slug, token)) {
-        await new Promise((resolve) => window.setTimeout(resolve, 600));
-        setAiRecommendations(
-          getDemoAiRecommendations(menuCategories, selections)
-        );
-        setAiActive(true);
-        setShowRecommendedSection(true);
-        setAiLoading(false);
-        return;
+      if (sessionId) {
+        setAiSessionId(sessionId);
       }
 
-      const sessionId =
-        readAiSessionId(locationId, sessionToken) ?? undefined;
-
-      try {
-        const res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            locationId,
-            tableId,
-            sessionToken,
-            message: buildSmartMenuPrompt(selections),
-            language,
-            sessionId,
-            preferences: prefs,
-            includeOrderContext: true,
-          }),
-        });
-
-        const json = await res.json();
-        if (!res.ok) return;
-
-        const data = json.data as {
-          recommendations: ProductRecommendation[];
-          sessionId: string;
-        };
-
-        if (data.sessionId) {
-          writeAiSessionId(locationId, sessionToken, data.sessionId);
-          setAiSessionId(data.sessionId);
-        }
-
-        setAiRecommendations(data.recommendations);
-        setAiActive(true);
-        setShowRecommendedSection(true);
-      } catch {
-        // AI unavailable — menu stays unchanged
-      } finally {
-        setAiLoading(false);
-      }
+      setAiRecommendations(recommendations);
+      setAiActive(true);
+      setShowRecommendedSection(true);
     },
-    [
-      sessionToken,
-      slug,
-      token,
-      menuCategories,
-      excluded,
-      replaceExcluded,
-      locationId,
-      tableId,
-      language,
-    ]
+    [excluded, replaceExcluded]
   );
 
   return (
@@ -694,8 +767,21 @@ export function MenuView({
             </div>
           )}
 
-          {aiConciergeEnabled && !aiActive && !aiLoading && (
-            <AiConciergeIntro onOpen={() => setAiSheetOpen(true)} />
+          {aiConciergeEnabled && !aiActive && (
+            <AiConciergeIntro
+              onOpen={() => setAiChatOpen(true)}
+              subtitle={welcomeBackMessage ?? undefined}
+            />
+          )}
+
+          {aiConciergeEnabled && (
+            <AiSmartNudgeBanner
+              nudge={activeNudge}
+              orderingDisabled={!canPlaceOrders}
+              onAction={handleNudgeAction}
+              onAdd={handleNudgeAdd}
+              onDismiss={dismissNudge}
+            />
           )}
 
           <div className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
@@ -727,7 +813,6 @@ export function MenuView({
             )}
           </div>
 
-          {aiLoading && <AiMenuLoading />}
 
           {!filtered &&
             aiActive &&
@@ -743,7 +828,7 @@ export function MenuView({
               />
             )}
 
-          <main className="px-3 py-4 sm:px-4 sm:py-6">
+          <main ref={menuMainRef} className="px-3 py-4 sm:px-4 sm:py-6">
             {hiddenByAllergenCount > 0 && (
               <p className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/90">
                 {tUI("allergen.hiddenCount", { count: hiddenByAllergenCount })}
@@ -791,7 +876,9 @@ export function MenuView({
 
           {orderingEnabled && (
             <>
-              {pairingRecommendation && !hasDrinkInCart && (
+              {pairingRecommendation &&
+                !hasDrinkInCart &&
+                activeNudge?.kind !== "drink_pairing" && (
                 <AiCartPairingBanner
                   recommendation={pairingRecommendation}
                   currency={currency}
@@ -800,13 +887,15 @@ export function MenuView({
                   onDismiss={() => setPairingRecommendation(null)}
                 />
               )}
-              <CartSummaryBar
-                slug={slug}
-                token={token}
-                taxPercent={taxPercent}
-                currency={currency}
-                glowOnMount={returnGlow}
-              />
+              {!detailProduct && (
+                <CartSummaryBar
+                  slug={slug}
+                  token={token}
+                  taxPercent={taxPercent}
+                  currency={currency}
+                  glowOnMount={returnGlow}
+                />
+              )}
             </>
           )}
 
@@ -824,10 +913,35 @@ export function MenuView({
           />
 
           {aiConciergeEnabled && (
-            <AiConciergeSheet
-              open={aiSheetOpen}
-              onOpenChange={setAiSheetOpen}
-              onComplete={handleAiSheetComplete}
+            <AiConciergeChat
+              open={aiChatOpen}
+              onOpenChange={setAiChatOpen}
+              slug={slug}
+              token={token}
+              locationId={locationId}
+              tableId={tableId}
+              sessionToken={sessionToken}
+              currency={currency}
+              orderingDisabled={!canPlaceOrders}
+              isDemo={isDemoGuestRoute(slug, token)}
+              menuCategories={menuCategories}
+              menuSectionByProductId={menuSectionByProductIdAll}
+              productTaxRateById={
+                new Map(
+                  [...productById.values()].map((p) => [
+                    p.id,
+                    p.tax_rate != null ? Number(p.tax_rate) : null,
+                  ])
+                )
+              }
+              onSetupComplete={handleAiChatSetupComplete}
+              getBrowsingContext={getAiContext}
+              welcomeBackMessage={welcomeBackMessage}
+              knownAllergySelection={
+                hasKnownAllergies ? knownAllergySelection : undefined
+              }
+              knownAllergies={hasKnownAllergies ? knownAllergies : undefined}
+              onSaveAllergies={saveGuestAllergies}
             />
           )}
         </div>

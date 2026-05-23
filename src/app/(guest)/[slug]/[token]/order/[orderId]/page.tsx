@@ -16,6 +16,7 @@ export default async function OrderPage({
       `
       id,
       location:locations!inner(
+        id,
         payment_online_enabled,
         payment_at_bar_enabled,
         payment_card_at_table_enabled,

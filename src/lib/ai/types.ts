@@ -43,6 +43,7 @@ export type BuildSystemPromptInput = {
   language: string;
   guestPrefs?: AiGuestPreferences | null;
   orderContext?: string | null;
+  browsingContext?: string | null;
 };
 
 export type OpenAiChatMessage = {
