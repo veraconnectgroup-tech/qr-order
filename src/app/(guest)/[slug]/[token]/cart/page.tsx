@@ -17,6 +17,7 @@ export default async function CartPage({
       <CartView
         slug={slug}
         token={token}
+        locationId={demo.locationId}
         orgName={demo.orgName}
         tableName={demo.tableName}
         taxPercent={demo.taxPercent}
@@ -44,7 +45,7 @@ export default async function CartPage({
 
   const { data: tableData } = await supabase
     .from("tables")
-    .select("name, location:locations!inner(accepting_orders)")
+    .select("name, location_id, location:locations!inner(accepting_orders)")
     .eq("qr_token", token)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -54,6 +55,7 @@ export default async function CartPage({
 
   const table = tableData as unknown as {
     name: string;
+    location_id: string;
     location: { accepting_orders: boolean };
   };
 
@@ -61,6 +63,7 @@ export default async function CartPage({
     <CartView
       slug={slug}
       token={token}
+      locationId={table.location_id}
       orgName={org.name}
       tableName={table.name}
       taxPercent={Number(org.default_tax_percent)}

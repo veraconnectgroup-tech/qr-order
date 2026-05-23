@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import type { OrderStatus, OrderWithDetails } from "@/types";
 
 const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name)), tip_staff:tip_staff_id(name)";
+  "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name)), tip_staff:tip_staff_id(name), split_payments(*)";
 
 function startOfTodayIso() {
   const d = new Date();

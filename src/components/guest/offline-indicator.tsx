@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 
 export function OfflineIndicator() {
+  const { tUI } = useAppLocale();
   const isOnline = useOnlineStatus();
   const [showReconnected, setShowReconnected] = useState(false);
   const [wasOffline, setWasOffline] = useState(false);
@@ -39,14 +41,9 @@ export function OfflineIndicator() {
           }`}
         >
           {showReconnected ? (
-            "Connected"
+            tUI("offline.connected")
           ) : (
-            <span>
-              Offline. Reconnecting
-              <span className="inline-flex w-6 justify-start">
-                <span className="animate-pulse">...</span>
-              </span>
-            </span>
+            <span>{tUI("offline.reconnecting")}</span>
           )}
         </motion.div>
       )}

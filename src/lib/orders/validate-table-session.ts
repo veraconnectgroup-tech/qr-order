@@ -9,6 +9,7 @@ export type ValidatedTableSession = {
     name: string;
     location_id: string;
     zone_id: string | null;
+    assigned_staff_id: string | null;
   };
   session: {
     id: string;
@@ -40,7 +41,7 @@ export async function validateTableSession(
 ): Promise<{ data: ValidatedTableSession } | { error: string; status: number }> {
   const { data: table } = await admin
     .from("tables")
-    .select("id, name, location_id, zone_id")
+    .select("id, name, location_id, zone_id, assigned_staff_id")
     .eq("qr_token", tableToken)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -145,4 +146,93 @@ export async function verifyOrderSessionAccess(
     !!session &&
     (session as { session_token: string }).session_token === sessionToken
   );
+}
+
+export async function verifyTableOrderAccess(
+  admin: AdminClient,
+  orderId: string,
+  tableToken: string,
+  sessionToken: string
+): Promise<
+  | {
+      order: {
+        id: string;
+        table_id: string | null;
+        location_id: string;
+        total: number;
+        tip_amount: number;
+        payment_status: string;
+        is_split: boolean;
+        stripe_payment_intent_id: string | null;
+      };
+      session: { id: string };
+      org: ValidatedTableSession["org"] & {
+        platform_fee_percent: number;
+        platform_fee_fixed: number;
+      };
+    }
+  | { error: string; status: number }
+> {
+  const sessionResult = await validateTableSession(
+    admin,
+    tableToken,
+    sessionToken
+  );
+  if ("error" in sessionResult) {
+    return sessionResult;
+  }
+
+  const { table, session, org } = sessionResult.data;
+
+  const { data: order } = await admin
+    .from("orders")
+    .select(
+      "id, table_id, location_id, total, tip_amount, payment_status, is_split, stripe_payment_intent_id"
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (!order) {
+    return { error: "Order not found.", status: 404 };
+  }
+
+  const orderRow = order as {
+    id: string;
+    table_id: string | null;
+    location_id: string;
+    total: number;
+    tip_amount: number;
+    payment_status: string;
+    is_split: boolean;
+    stripe_payment_intent_id: string | null;
+  };
+
+  if (orderRow.table_id !== table.id) {
+    return { error: "Order is not for this table.", status: 403 };
+  }
+
+  if (orderRow.location_id !== table.location_id) {
+    return { error: "Order location mismatch.", status: 403 };
+  }
+
+  const { data: orgFees } = await admin
+    .from("organizations")
+    .select("platform_fee_percent, platform_fee_fixed")
+    .eq("id", org.id)
+    .single();
+
+  const fees = orgFees as {
+    platform_fee_percent: number;
+    platform_fee_fixed: number;
+  } | null;
+
+  return {
+    order: orderRow,
+    session: { id: session.id },
+    org: {
+      ...org,
+      platform_fee_percent: fees?.platform_fee_percent ?? 0,
+      platform_fee_fixed: fees?.platform_fee_fixed ?? 0,
+    },
+  };
 }

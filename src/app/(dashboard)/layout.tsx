@@ -3,6 +3,7 @@ import { getStaffLocationId, requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { sumOrderRevenue } from "@/lib/orders/revenue";
+import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 
 async function getTodayRevenue(locationId: string) {
   const admin = createAdminClient();
@@ -47,7 +48,7 @@ export default async function DashboardLayout({
       .single(),
     admin
       .from("locations")
-      .select("in_person_payment_location")
+      .select("in_person_payment_location, menu_locale, default_locale")
       .eq("id", locationId)
       .single(),
     getTodayRevenue(locationId),
@@ -73,7 +74,14 @@ export default async function DashboardLayout({
 
   const locationRow = location as {
     in_person_payment_location: "bar" | "counter" | "table";
+    menu_locale: string | null;
+    default_locale: string | null;
   } | null;
+
+  const menuLocale = parseMenuLocaleFromDb(
+    locationRow?.menu_locale,
+    locationRow?.default_locale
+  );
 
   return (
     <DashboardShell
@@ -92,6 +100,7 @@ export default async function DashboardLayout({
         hasMenuItems: (productCount ?? 0) > 0,
         inPersonPaymentLocation:
           locationRow?.in_person_payment_location ?? "bar",
+        menuLocale,
       }}
     >
       {children}

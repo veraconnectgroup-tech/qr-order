@@ -131,17 +131,55 @@ export function OrderDetailPanel({
         </div>
       )}
 
+      {!refunded && Number(order.tip_amount ?? 0) > 0 && (
+        <p className="text-xs text-emerald-400/90">
+          Trinkgeld · {formatPrice(Number(order.tip_amount), currency)}
+          {order.tip_staff?.name ? ` · ${order.tip_staff.name}` : ""}
+        </p>
+      )}
+
+      {order.is_split && (order.split_payments?.length ?? 0) > 0 && (
+        <div
+          className={cn(
+            "rounded-lg border px-3 py-2 text-xs",
+            light
+              ? "border-zinc-200 bg-zinc-50 text-zinc-600"
+              : "border-zinc-800 bg-zinc-950/50 text-zinc-400"
+          )}
+        >
+          <p className="font-medium text-zinc-300">
+            Split račun ·{" "}
+            {
+              (order.split_payments ?? []).filter(
+                (s) => s.payment_status === "paid"
+              ).length
+            }{" "}
+            od {(order.split_payments ?? []).length} delova plaćeno
+          </p>
+          <ul className="mt-2 space-y-1">
+            {(order.split_payments ?? []).map((split, i) => (
+              <li key={split.id} className="flex justify-between gap-2">
+                <span>
+                  Deo {i + 1}
+                  {split.payment_status === "paid" ? " ✓" : ""}
+                </span>
+                <span className="tabular-nums">
+                  {formatPrice(
+                    Number(split.amount) + Number(split.tip_amount ?? 0),
+                    currency
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!refunded && paid && (
         <div className={cn("space-y-1", light ? "text-zinc-500" : "text-zinc-500")}>
           <p className="text-xs">
             Online payment · {formatPrice(Number(order.total), currency)}
           </p>
-          {Number(order.tip_amount ?? 0) > 0 && (
-            <p className="text-xs text-emerald-400/90">
-              Trinkgeld · {formatPrice(Number(order.tip_amount), currency)}
-              {order.tip_staff?.name ? ` · ${order.tip_staff.name}` : ""}
-            </p>
-          )}
         </div>
       )}
     </div>

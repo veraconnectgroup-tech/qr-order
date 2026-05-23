@@ -8,6 +8,12 @@ import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
+import { TipSelector } from "@/components/guest/tip-selector";
+import { UpsellBar } from "@/components/guest/upsell-bar";
+import {
+  PromoInput,
+  type AppliedPromo,
+} from "@/components/guest/promo-input";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { orderPlacedMessage } from "@/lib/menu-section";
 import type { MenuSection } from "@/lib/menu-section";
@@ -32,6 +38,8 @@ function OrderSummary({
   taxBreakdown,
   taxAmount,
   total,
+  discountAmount,
+  tipAmount,
   currency,
   tUI,
 }: {
@@ -40,9 +48,13 @@ function OrderSummary({
   taxBreakdown: TaxBreakdownLine[];
   taxAmount: number;
   total: number;
+  discountAmount: number;
+  tipAmount: number;
   currency: string;
   tUI: ReturnType<typeof useAppLocale>["tUI"];
 }) {
+  const grandTotal = total + tipAmount;
+
   return (
     <div className="rounded-xl bg-zinc-900 p-4">
       <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
@@ -77,10 +89,30 @@ function OrderSummary({
             <span>{formatPrice(taxAmount, currency)}</span>
           </div>
         )}
-        <div className="flex justify-between font-bold text-zinc-50">
+        {discountAmount > 0 && (
+          <div className="flex justify-between text-green-400">
+            <span>{tUI("checkout.discount")}</span>
+            <span className="tabular-nums">
+              -{formatPrice(discountAmount, currency)}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between text-zinc-300">
           <span>{tUI("checkout.total")}</span>
-          <span>{formatPrice(total, currency)}</span>
+          <span className="tabular-nums">{formatPrice(total, currency)}</span>
         </div>
+        {tipAmount > 0 && (
+          <div className="flex justify-between text-zinc-400">
+            <span>{tUI("checkout.tip")}</span>
+            <span className="tabular-nums">{formatPrice(tipAmount, currency)}</span>
+          </div>
+        )}
+        {tipAmount > 0 && (
+          <div className="flex justify-between border-t border-zinc-800 pt-2 font-bold text-zinc-50">
+            <span>{tUI("checkout.totalWithTip")}</span>
+            <span className="tabular-nums">{formatPrice(grandTotal, currency)}</span>
+          </div>
+        )}
       </div>
       <p className="mt-3 text-xs leading-relaxed text-zinc-500">
         {tUI("checkout.paymentLater")}
@@ -92,11 +124,13 @@ function OrderSummary({
 export function CheckoutForm({
   slug,
   token,
+  locationId,
   taxPercent,
   currency,
 }: {
   slug: string;
   token: string;
+  locationId: string;
   taxPercent: number;
   currency: string;
 }) {
@@ -116,10 +150,17 @@ export function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
   const [isTakeaway, setIsTakeaway] = useState(false);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
 
   const breakdown = taxBreakdown(isTakeaway, taxPercent);
   const computedTax = taxAmount(isTakeaway, taxPercent);
-  const computedTotal = total(isTakeaway, taxPercent);
+  const preDiscountTotal = total(isTakeaway, taxPercent);
+  const discountAmount = appliedPromo?.discountAmount ?? 0;
+  const computedTotal = Math.max(
+    0,
+    Math.round((preDiscountTotal - discountAmount) * 100) / 100
+  );
 
   useEffect(() => {
     if (orderPlacedRef.current) return;
@@ -148,6 +189,8 @@ export function CheckoutForm({
           guestEmail: guestEmail || undefined,
           isTakeaway,
           paymentMethod: "unset",
+          tipAmount,
+          promoCodeId: appliedPromo?.promoCodeId,
         }),
       });
 
@@ -209,14 +252,32 @@ export function CheckoutForm({
         </div>
       </div>
 
+      <PromoInput
+        locationId={locationId}
+        orderAmount={preDiscountTotal}
+        currency={currency}
+        value={appliedPromo}
+        onChange={setAppliedPromo}
+      />
+
       <OrderSummary
         items={items}
         subtotal={subtotal}
         taxBreakdown={breakdown}
         taxAmount={computedTax}
         total={computedTotal}
+        discountAmount={discountAmount}
+        tipAmount={tipAmount}
         currency={currency}
         tUI={tUI}
+      />
+
+      <TipSelector
+        subtotal={subtotal}
+        orderTotal={computedTotal}
+        currency={currency}
+        value={tipAmount}
+        onChange={setTipAmount}
       />
 
       <div>
@@ -238,6 +299,12 @@ export function CheckoutForm({
           {error}
         </p>
       )}
+
+      <UpsellBar
+        locationId={locationId}
+        currency={currency}
+        variant="checkout"
+      />
 
       <Button
         type="button"

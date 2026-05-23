@@ -8,23 +8,25 @@ import {
   useMemo,
   useState,
 } from "react";
+import { LanguageSplash } from "@/components/guest/language-splash";
 import {
-  detectLocale,
-  parseLocale,
-  persistLocaleOverride,
-} from "@/lib/i18n/detect-locale";
-import { resolveLocaleChoice } from "@/lib/i18n/locale-config";
+  persistGuestLangChoice,
+  readGuestLangChoice,
+} from "@/lib/i18n/locale-config";
 import {
   localizedDescription,
   localizedName,
 } from "@/lib/i18n/menu-locale";
-import { t, type Locale, type TranslationKey } from "@/lib/i18n/translations";
+import { t, type MenuLocale, type TranslationKey } from "@/lib/i18n/translations";
 
 type AppLocaleContextValue = {
-  locale: Locale;
-  availableLocales: Locale[];
-  setLocale: (locale: Locale) => void;
-  tUI: (key: TranslationKey | string, vars?: Record<string, string | number>) => string;
+  menuLocale: MenuLocale;
+  isEnglish: boolean;
+  setIsEnglish: (english: boolean) => void;
+  tUI: (
+    key: TranslationKey | string,
+    vars?: Record<string, string | number>
+  ) => string;
   tName: (item: { name: string; name_en?: string | null }) => string;
   tDescription: (item: {
     description?: string | null;
@@ -34,71 +36,80 @@ type AppLocaleContextValue = {
 
 const AppLocaleContext = createContext<AppLocaleContextValue | null>(null);
 
-function storageKey(slug: string, token: string) {
-  return `guest-locale:${slug}:${token}`;
-}
-
 export function AppLocaleProvider({
-  slug,
-  token,
-  defaultLocale = "de",
-  availableLocales = [defaultLocale],
+  locationId,
+  menuLocale,
+  orgName,
+  logoUrl,
   children,
 }: {
-  slug: string;
-  token: string;
-  defaultLocale?: Locale;
-  availableLocales?: Locale[];
+  locationId: string;
+  menuLocale: MenuLocale;
+  orgName: string;
+  logoUrl?: string | null;
   children: React.ReactNode;
 }) {
-  const locales = useMemo(() => {
-    const unique = [...new Set(availableLocales)];
-    return unique.length > 0 ? unique : [defaultLocale];
-  }, [availableLocales, defaultLocale]);
-
-  const [locale, setLocaleState] = useState<Locale>(() =>
-    resolveLocaleChoice(null, locales, defaultLocale)
-  );
+  const [ready, setReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [isEnglish, setIsEnglishState] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey(slug, token));
-    const parsed = parseLocale(saved);
-    if (parsed && locales.includes(parsed)) {
-      setLocaleState(parsed);
-      return;
+    const saved = readGuestLangChoice(locationId);
+    if (saved === null) {
+      setShowSplash(true);
+      setIsEnglishState(false);
+    } else {
+      setIsEnglishState(saved === "en");
+      setShowSplash(false);
     }
-    setLocaleState(detectLocale(defaultLocale, locales));
-  }, [slug, token, defaultLocale, locales]);
+    setReady(true);
+  }, [locationId]);
 
-  const setLocale = useCallback(
-    (next: Locale) => {
-      if (!locales.includes(next)) return;
-      setLocaleState(next);
-      localStorage.setItem(storageKey(slug, token), next);
-      persistLocaleOverride(next);
+  const setIsEnglish = useCallback(
+    (english: boolean) => {
+      setIsEnglishState(english);
+      persistGuestLangChoice(locationId, menuLocale, english);
+      setShowSplash(false);
     },
-    [slug, token, locales]
+    [locationId, menuLocale]
   );
 
   const value = useMemo(
     () => ({
-      locale,
-      availableLocales: locales,
-      setLocale,
+      menuLocale,
+      isEnglish,
+      setIsEnglish,
       tUI: (key: TranslationKey | string, vars?: Record<string, string | number>) =>
-        t(key, locale, vars),
+        t(key, menuLocale, isEnglish, vars),
       tName: (item: { name: string; name_en?: string | null }) =>
-        localizedName(item, locale),
+        localizedName(item, isEnglish),
       tDescription: (item: {
         description?: string | null;
         description_en?: string | null;
-      }) => localizedDescription(item, locale),
+      }) => localizedDescription(item, isEnglish),
     }),
-    [locale, locales, setLocale]
+    [menuLocale, isEnglish, setIsEnglish]
   );
 
+  if (!ready) {
+    return (
+      <div className="min-h-dvh bg-[var(--guest-bg,#0a0a0a)]" aria-hidden />
+    );
+  }
+
   return (
-    <AppLocaleContext.Provider value={value}>{children}</AppLocaleContext.Provider>
+    <AppLocaleContext.Provider value={value}>
+      {showSplash ? (
+        <LanguageSplash
+          menuLocale={menuLocale}
+          orgName={orgName}
+          logoUrl={logoUrl}
+          onChoose={(english) => setIsEnglish(english)}
+        />
+      ) : (
+        children
+      )}
+    </AppLocaleContext.Provider>
   );
 }
 
@@ -106,10 +117,10 @@ export function AppLocaleProvider({
 export const MenuLocaleProvider = AppLocaleProvider;
 
 const fallback: AppLocaleContextValue = {
-  locale: "de",
-  availableLocales: ["de"],
-  setLocale: () => {},
-  tUI: (key, vars) => t(key, "de", vars),
+  menuLocale: "de",
+  isEnglish: false,
+  setIsEnglish: () => {},
+  tUI: (key, vars) => t(key, "de", false, vars),
   tName: (item) => item.name,
   tDescription: (item) => item.description ?? null,
 };

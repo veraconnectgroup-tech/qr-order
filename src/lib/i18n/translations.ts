@@ -1,6 +1,5 @@
-export type Locale =
+export type MenuLocale =
   | "de"
-  | "en"
   | "sr"
   | "tr"
   | "hr"
@@ -10,9 +9,10 @@ export type Locale =
   | "it"
   | "ru";
 
-export const ALL_LOCALES: Locale[] = [
+export type Locale = MenuLocale | "en";
+
+export const MENU_LOCALES: MenuLocale[] = [
   "de",
-  "en",
   "sr",
   "tr",
   "hr",
@@ -23,24 +23,51 @@ export const ALL_LOCALES: Locale[] = [
   "ru",
 ];
 
+/** @deprecated Use MENU_LOCALES */
+export const ALL_LOCALES: Locale[] = [...MENU_LOCALES, "en"];
+
 /** @deprecated Use ALL_LOCALES */
 export const LOCALES = ALL_LOCALES;
 
-export const LOCALE_META: Record<Locale, { label: string }> = {
-  de: { label: "Deutsch" },
-  en: { label: "English" },
-  sr: { label: "Srpski" },
-  tr: { label: "Türkçe" },
-  hr: { label: "Hrvatski" },
-  ar: { label: "العربية" },
-  fr: { label: "Français" },
-  es: { label: "Español" },
-  it: { label: "Italiano" },
-  ru: { label: "Русский" },
+export const LOCALE_LABELS: Record<MenuLocale, string> = {
+  de: "Deutsch",
+  sr: "Srpski",
+  tr: "Türkçe",
+  hr: "Hrvatski",
+  fr: "Français",
+  es: "Español",
+  it: "Italiano",
+  ru: "Русский",
+  ar: "العربية",
 };
 
-/** @deprecated Use LOCALE_META[locale].label */
-export const LOCALE_LABELS: Record<
+export const LOCALE_SHORT: Record<MenuLocale, string> = {
+  de: "DE",
+  sr: "SR",
+  tr: "TR",
+  hr: "HR",
+  fr: "FR",
+  es: "ES",
+  it: "IT",
+  ru: "RU",
+  ar: "AR",
+};
+
+export const LOCALE_META: Record<Locale, { label: string }> = {
+  de: { label: LOCALE_LABELS.de },
+  en: { label: "English" },
+  sr: { label: LOCALE_LABELS.sr },
+  tr: { label: LOCALE_LABELS.tr },
+  hr: { label: LOCALE_LABELS.hr },
+  ar: { label: LOCALE_LABELS.ar },
+  fr: { label: LOCALE_LABELS.fr },
+  es: { label: LOCALE_LABELS.es },
+  it: { label: LOCALE_LABELS.it },
+  ru: { label: LOCALE_LABELS.ru },
+};
+
+/** @deprecated Use LOCALE_SHORT */
+export const LOCALE_LABELS_LEGACY: Record<
   Locale,
   { flag: string; label: string }
 > = {
@@ -65,6 +92,14 @@ const de: TranslationMap = {
   "common.confirm": "Bestätigen",
   "common.ok": "OK",
   "common.remove": "Entfernen",
+
+  "offline.reconnecting": "Offline. Verbindung wird wiederhergestellt…",
+  "offline.connected": "Wieder verbunden",
+  "refresh.pull": "Ziehen zum Aktualisieren",
+  "refresh.release": "Loslassen zum Aktualisieren",
+  "refresh.loading": "Aktualisiere…",
+  "menu.updating": "Menü wird aktualisiert",
+  "menu.updatingHint": "Bitte das Team um Hilfe bitten.",
 
   "cart.title": "Deine Bestellung",
   "cart.empty": "Dein Warenkorb ist leer",
@@ -136,6 +171,35 @@ const de: TranslationMap = {
   "menu.ingredients": "Zutaten",
   "menu.tags": "Tags",
   "menu.orderingPaused": "Bestellungen sind pausiert. Durchstöbere das Menü oder rufe das Team — bald geht es weiter.",
+  "menu.scheduleUnavailable": "Derzeit nicht verfügbar",
+
+  "feedback.title": "Wie war dein Erlebnis?",
+  "feedback.subtitle": "Deine Bewertung hilft uns, besser zu werden.",
+  "feedback.commentLabel": "Kommentar (optional)",
+  "feedback.commentPlaceholder": "Was hat dir gefallen oder was können wir verbessern?",
+  "feedback.submit": "Senden",
+  "feedback.sending": "Wird gesendet…",
+  "feedback.thanks": "Danke für deine Bewertung!",
+  "feedback.error": "Bewertung konnte nicht gesendet werden.",
+
+  "allergen.excludeTitle": "Allergene ausschließen",
+  "allergen.clearFilters": "Zurücksetzen",
+  "allergen.filtersActive": "{count} Filter aktiv",
+  "allergen.hiddenCount": "{count} Produkte wegen Allergenen ausgeblendet",
+  "allergen.gluten": "Gluten",
+  "allergen.crustaceans": "Krebstiere",
+  "allergen.eggs": "Eier",
+  "allergen.fish": "Fisch",
+  "allergen.peanuts": "Erdnüsse",
+  "allergen.soybeans": "Soja",
+  "allergen.milk": "Milch/Laktose",
+  "allergen.nuts": "Schalenfrüchte",
+  "allergen.celery": "Sellerie",
+  "allergen.mustard": "Senf",
+  "allergen.sesame": "Sesam",
+  "allergen.sulphites": "Sulfite",
+  "allergen.lupin": "Lupinen",
+  "allergen.molluscs": "Weichtiere",
 
   "product.serveSize": "Portionsgröße",
   "product.required": "Pflicht",
@@ -172,11 +236,56 @@ const de: TranslationMap = {
   "bill.secureStripe": "Sichere Zahlung über Stripe",
   "bill.paymentSuccess": "Zahlung erfolgreich!",
 
+  "split.title": "Rechnung teilen",
+  "split.subtitle": "Teile die Rechnung gleichmäßig oder nach Artikeln",
+  "split.modeEqual": "Gleich teilen",
+  "split.modeItems": "Nach Artikeln",
+  "split.people": "Anzahl Personen",
+  "split.decrease": "Weniger Personen",
+  "split.increase": "Mehr Personen",
+  "split.perPerson": "Je Person: {amount}",
+  "split.pickItems": "Wähle deine Artikel",
+  "split.yourShare": "Dein Anteil: {amount}",
+  "split.payShare": "Dein Anteil",
+  "split.create": "Aufteilung erstellen",
+  "split.progress": "Zahlungsfortschritt",
+  "split.paidParts": "{paid} von {total} Teilen bezahlt",
+  "split.part": "Teil {n}",
+  "split.itemsCount": "{count} Artikel",
+  "split.remaining": "Offen: {amount}",
+  "split.addPart": "Weiteren Teil hinzufügen",
+  "split.continue": "Split fortsetzen",
+  "split.missingOrder": "Bestellung nicht gefunden.",
+
   "tip.title": "Trinkgeld",
   "tip.hint": "Optional — geht an deinen Service (MwSt-frei)",
   "tip.none": "Kein Trinkgeld",
   "tip.custom": "Eigener Betrag",
   "tip.selected": "Trinkgeld: {amount}",
+  "tip.modeFixed": "€",
+  "tip.modePercent": "%",
+
+  "checkout.tip": "Trinkgeld",
+  "checkout.totalWithTip": "Gesamt inkl. Trinkgeld",
+  "checkout.discount": "Rabatt",
+
+  "promo.title": "Promo-Code",
+  "promo.placeholder": "CODE EINGEBEN",
+  "promo.apply": "Anwenden",
+  "promo.applying": "Prüfen…",
+  "promo.remove": "Entfernen",
+  "promo.applied": "Rabatt: {amount}",
+  "promo.errorInvalid": "Ungültiger Code",
+  "promo.errorExpired": "Code abgelaufen",
+  "promo.errorNotYetValid": "Code noch nicht gültig",
+  "promo.errorInactive": "Code ist deaktiviert",
+  "promo.errorMaxUses": "Code wurde bereits zu oft verwendet",
+  "promo.errorMinOrder": "Mindestbestellwert: {amount}",
+
+  "upsell.title": "Das passt dazu",
+  "upsell.checkoutTitle": "Noch etwas?",
+  "upsell.add": "Hinzufügen",
+  "upsell.defaultMessage": "{name} für nur {amount}",
 
   "payment.method": "Zahlungsart",
   "payment.online.title": "Online bezahlen",
@@ -210,6 +319,14 @@ const en: TranslationMap = {
   "common.confirm": "Confirm",
   "common.ok": "OK",
   "common.remove": "Remove",
+
+  "offline.reconnecting": "Offline. Reconnecting…",
+  "offline.connected": "Connected",
+  "refresh.pull": "Pull to refresh",
+  "refresh.release": "Release to refresh",
+  "refresh.loading": "Refreshing…",
+  "menu.updating": "Menu updating",
+  "menu.updatingHint": "Please ask staff for assistance.",
 
   "cart.title": "Your order",
   "cart.empty": "Your cart is empty",
@@ -281,6 +398,35 @@ const en: TranslationMap = {
   "menu.ingredients": "Ingredients",
   "menu.tags": "Tags",
   "menu.orderingPaused": "Ordering is paused. Browse the menu or call staff — new orders will open again soon.",
+  "menu.scheduleUnavailable": "Currently unavailable",
+
+  "feedback.title": "How was your experience?",
+  "feedback.subtitle": "Your rating helps us improve.",
+  "feedback.commentLabel": "Comment (optional)",
+  "feedback.commentPlaceholder": "What did you enjoy, or what could we do better?",
+  "feedback.submit": "Submit",
+  "feedback.sending": "Sending…",
+  "feedback.thanks": "Thanks for your feedback!",
+  "feedback.error": "Could not submit feedback.",
+
+  "allergen.excludeTitle": "Exclude allergens",
+  "allergen.clearFilters": "Clear",
+  "allergen.filtersActive": "{count} filters active",
+  "allergen.hiddenCount": "{count} items hidden due to allergens",
+  "allergen.gluten": "Gluten",
+  "allergen.crustaceans": "Crustaceans",
+  "allergen.eggs": "Eggs",
+  "allergen.fish": "Fish",
+  "allergen.peanuts": "Peanuts",
+  "allergen.soybeans": "Soybeans",
+  "allergen.milk": "Milk/Lactose",
+  "allergen.nuts": "Tree nuts",
+  "allergen.celery": "Celery",
+  "allergen.mustard": "Mustard",
+  "allergen.sesame": "Sesame",
+  "allergen.sulphites": "Sulphites",
+  "allergen.lupin": "Lupin",
+  "allergen.molluscs": "Molluscs",
 
   "product.serveSize": "Serve size",
   "product.required": "Required",
@@ -317,11 +463,56 @@ const en: TranslationMap = {
   "bill.secureStripe": "Secure payment via Stripe",
   "bill.paymentSuccess": "Payment successful!",
 
+  "split.title": "Split bill",
+  "split.subtitle": "Split equally or by items",
+  "split.modeEqual": "Split equally",
+  "split.modeItems": "By items",
+  "split.people": "Number of people",
+  "split.decrease": "Fewer people",
+  "split.increase": "More people",
+  "split.perPerson": "Per person: {amount}",
+  "split.pickItems": "Select your items",
+  "split.yourShare": "Your share: {amount}",
+  "split.payShare": "Your share",
+  "split.create": "Create split",
+  "split.progress": "Payment progress",
+  "split.paidParts": "{paid} of {total} parts paid",
+  "split.part": "Part {n}",
+  "split.itemsCount": "{count} items",
+  "split.remaining": "Remaining: {amount}",
+  "split.addPart": "Add another part",
+  "split.continue": "Continue split",
+  "split.missingOrder": "Order not found.",
+
   "tip.title": "Tip",
   "tip.hint": "Optional — goes to your server (VAT-free)",
   "tip.none": "No tip",
   "tip.custom": "Custom",
   "tip.selected": "Tip: {amount}",
+  "tip.modeFixed": "€",
+  "tip.modePercent": "%",
+
+  "checkout.tip": "Tip",
+  "checkout.totalWithTip": "Total incl. tip",
+  "checkout.discount": "Discount",
+
+  "promo.title": "Promo code",
+  "promo.placeholder": "ENTER CODE",
+  "promo.apply": "Apply",
+  "promo.applying": "Checking…",
+  "promo.remove": "Remove",
+  "promo.applied": "Discount: {amount}",
+  "promo.errorInvalid": "Invalid code",
+  "promo.errorExpired": "Code expired",
+  "promo.errorNotYetValid": "Code not valid yet",
+  "promo.errorInactive": "Code is inactive",
+  "promo.errorMaxUses": "Code has reached its usage limit",
+  "promo.errorMinOrder": "Minimum order: {amount}",
+
+  "upsell.title": "Goes well with",
+  "upsell.checkoutTitle": "Anything else?",
+  "upsell.add": "Add",
+  "upsell.defaultMessage": "{name} for just {amount}",
 
   "payment.method": "Payment method",
   "payment.online.title": "Pay online",
@@ -426,6 +617,16 @@ const sr: TranslationMap = {
   "menu.ingredients": "Sastojci",
   "menu.tags": "Oznake",
   "menu.orderingPaused": "Poručivanje je pauzirano. Pregledajte meni ili pozovite osoblje — uskoro se nastavlja.",
+  "menu.scheduleUnavailable": "Trenutno nedostupno",
+
+  "feedback.title": "Kako vam se svidelo?",
+  "feedback.subtitle": "Vaša ocena nam pomaže da budemo bolji.",
+  "feedback.commentLabel": "Komentar (opciono)",
+  "feedback.commentPlaceholder": "Šta vam se dopalo ili šta možemo poboljšati?",
+  "feedback.submit": "Pošalji",
+  "feedback.sending": "Šaljem…",
+  "feedback.thanks": "Hvala na oceni!",
+  "feedback.error": "Ocena nije poslata.",
 
   "product.serveSize": "Veličina porcije",
   "product.required": "Obavezno",
@@ -802,17 +1003,28 @@ export type TranslationKey = keyof typeof de;
 
 export function t(
   key: string,
-  locale: Locale,
+  menuLocale: MenuLocale,
+  isEnglish: boolean,
   vars?: Record<string, string | number>
 ): string {
+  const locale: Locale = isEnglish ? "en" : menuLocale;
   const table = translations[locale] ?? translations.de;
-  let text = table[key] ?? translations.de[key] ?? key;
+  let text = table[key] ?? translations.en[key] ?? translations.de[key] ?? key;
   if (vars) {
     for (const [name, value] of Object.entries(vars)) {
       text = text.replaceAll(`{${name}}`, String(value));
     }
   }
   return text;
+}
+
+/** @deprecated Use t(key, menuLocale, isEnglish) */
+export function tLocale(
+  key: string,
+  locale: Locale,
+  vars?: Record<string, string | number>
+): string {
+  return t(key, locale === "en" ? "de" : locale, locale === "en", vars);
 }
 
 export function orderStatusHeadlineKey(

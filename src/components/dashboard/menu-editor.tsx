@@ -23,6 +23,17 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { formatPrice } from "@/lib/format";
+import {
+  CategoryScheduleFields,
+  categoryScheduleFromRow,
+  defaultCategoryScheduleState,
+  type CategoryScheduleFormState,
+} from "@/components/dashboard/category-schedule-fields";
+import {
+  EU_ALLERGENS,
+  normalizeAllergenId,
+  type AllergenId,
+} from "@/lib/allergens";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import {
   Dialog,
@@ -33,6 +44,10 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import {
+  formatScheduleBadge,
+  normalizeScheduleDays,
+} from "@/lib/menu/schedule";
 import { cn } from "@/lib/utils";
 import { ProductImageUpload } from "@/components/dashboard/product-image-upload";
 import {
@@ -44,6 +59,7 @@ import {
   MENU_SECTIONS,
   type MenuSection,
 } from "@/lib/menu-section";
+import { LOCALE_LABELS, type MenuLocale } from "@/lib/i18n/translations";
 import type { Category, Product } from "@/types";
 
 type CategoryRow = Category & { productCount: number };
@@ -151,11 +167,13 @@ function SortableCategoryItem({
   selected,
   onSelect,
   onToggleActive,
+  onEdit,
 }: {
   category: CategoryRow;
   selected: boolean;
   onSelect: () => void;
   onToggleActive: (active: boolean) => void;
+  onEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: category.id });
@@ -195,6 +213,19 @@ function SortableCategoryItem({
           {category.name}
         </p>
         <p className="text-xs text-zinc-500">{category.productCount} items</p>
+        {formatScheduleBadge(category) && (
+          <p className="mt-0.5 text-[10px] leading-tight text-amber-400/90">
+            {formatScheduleBadge(category)}
+          </p>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+        aria-label={`Edit ${category.name}`}
+      >
+        <Pencil className="size-3.5" />
       </button>
       <Switch
         checked={category.is_active}
@@ -210,6 +241,7 @@ function ProductForm({
   initial,
   currency,
   orgId,
+  menuLocale,
   categoryMenuSection,
   onSubmit,
   onCancel,
@@ -218,6 +250,7 @@ function ProductForm({
   initial?: Partial<Product>;
   currency: string;
   orgId: string;
+  menuLocale: MenuLocale;
   categoryMenuSection: MenuSection;
   onSubmit: (values: {
     name: string;
@@ -255,9 +288,14 @@ function ProductForm({
   const [imageUrl, setImageUrl] = useState<string | null>(
     initial?.image_url ?? null
   );
-  const [allergensText, setAllergensText] = useState(
-    initial?.allergens?.join(", ") ?? ""
-  );
+  const [allergens, setAllergens] = useState<Set<AllergenId>>(() => {
+    const ids = new Set<AllergenId>();
+    for (const raw of initial?.allergens ?? []) {
+      const id = normalizeAllergenId(raw);
+      if (id) ids.add(id);
+    }
+    return ids;
+  });
   const [requiresServeSize, setRequiresServeSize] = useState(
     initial?.requires_serve_size ?? false
   );
@@ -281,6 +319,7 @@ function ProductForm({
 
   const taxRateValue: number | null =
     taxSetting === "default" ? null : taxSetting === "7" ? 7 : 19;
+  const primaryLang = LOCALE_LABELS[menuLocale];
 
   return (
     <div className="space-y-4 py-2">
@@ -292,7 +331,7 @@ function ProductForm({
       />
 
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Name</span>
+        <span className="text-sm text-zinc-400">Name ({primaryLang})</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -300,7 +339,7 @@ function ProductForm({
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Name (English, optional)</span>
+        <span className="text-sm text-zinc-400">Name (English)</span>
         <input
           value={nameEn}
           onChange={(e) => setNameEn(e.target.value)}
@@ -310,7 +349,7 @@ function ProductForm({
       </label>
       <label className="block space-y-1.5">
         <span className="text-sm text-zinc-400">
-          Ingredients (comma-separated)
+          Ingredients ({primaryLang}, comma-separated)
         </span>
         <textarea
           value={description}
@@ -322,7 +361,7 @@ function ProductForm({
       </label>
       <label className="block space-y-1.5">
         <span className="text-sm text-zinc-400">
-          Ingredients in English (optional)
+          Ingredients (English, optional)
         </span>
         <textarea
           value={descriptionEn}
@@ -332,15 +371,36 @@ function ProductForm({
           className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
         />
       </label>
-      <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Allergens (comma-separated)</span>
-        <input
-          value={allergensText}
-          onChange={(e) => setAllergensText(e.target.value)}
-          placeholder="gluten, dairy, sulfites"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
-        />
-      </label>
+      <div className="space-y-2">
+        <span className="text-sm text-zinc-400">Allergens (EU 14)</span>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {EU_ALLERGENS.map((allergen) => {
+            const checked = allergens.has(allergen.id);
+            return (
+              <label
+                key={allergen.id}
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-200"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    setAllergens((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(allergen.id)) next.delete(allergen.id);
+                      else next.add(allergen.id);
+                      return next;
+                    });
+                  }}
+                  className="size-4 rounded border-zinc-600"
+                />
+                <span aria-hidden>{allergen.emoji}</span>
+                <span>{allergen.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
       <label className="block space-y-1.5">
         <span className="text-sm text-zinc-400">Price ({currency})</span>
         <input
@@ -440,12 +500,8 @@ function ProductForm({
               prep_time_minutes: prepTime ? Number(prepTime) : null,
               is_available: isAvailable,
               image_url: imageUrl,
-              allergens: allergensText.trim()
-                ? allergensText
-                    .split(",")
-                    .map((a) => a.trim())
-                    .filter(Boolean)
-                : null,
+              allergens:
+                allergens.size > 0 ? [...allergens] : null,
               requires_serve_size: requiresServeSize,
               serve_size_presets: requiresServeSize
                 ? parseServeSizePresets(serveSizePresetsText)
@@ -464,7 +520,7 @@ function ProductForm({
 }
 
 export function MenuEditor() {
-  const { locationId, orgId, currency } = useDashboard();
+  const { locationId, orgId, currency, menuLocale } = useDashboard();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -478,6 +534,9 @@ export function MenuEditor() {
   const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
   const [newCategorySection, setNewCategorySection] =
     useState<MenuSection>("food");
+  const [categorySchedule, setCategorySchedule] =
+    useState<CategoryScheduleFormState>(() => defaultCategoryScheduleState());
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
@@ -564,30 +623,83 @@ export function MenuEditor() {
     toast.success("Category order updated");
   }
 
-  async function addCategory() {
+  function openNewCategoryDialog() {
+    setEditingCategoryId(null);
+    setNewCategoryName("");
+    setNewCategoryNameEn("");
+    setNewCategorySection("food");
+    setCategorySchedule(defaultCategoryScheduleState());
+    setCategoryDialogOpen(true);
+  }
+
+  function openEditCategoryDialog(category: CategoryRow) {
+    setEditingCategoryId(category.id);
+    setNewCategoryName(category.name);
+    setNewCategoryNameEn(category.name_en ?? "");
+    setNewCategorySection((category.menu_section as MenuSection) ?? "food");
+    setCategorySchedule(categoryScheduleFromRow(category));
+    setCategoryDialogOpen(true);
+  }
+
+  function schedulePayload(schedule: CategoryScheduleFormState) {
+    if (!schedule.schedule_enabled) {
+      return {
+        schedule_enabled: false,
+        schedule_start: null,
+        schedule_end: null,
+        schedule_days: normalizeScheduleDays([1, 2, 3, 4, 5, 6, 0]),
+      };
+    }
+
+    return {
+      schedule_enabled: true,
+      schedule_start: schedule.schedule_start,
+      schedule_end: schedule.schedule_end,
+      schedule_days: normalizeScheduleDays(schedule.schedule_days),
+    };
+  }
+
+  async function saveCategory() {
     if (!newCategoryName.trim()) return;
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from("categories").insert({
-      location_id: locationId,
+    const payload = {
       name: sanitizeText(newCategoryName, 200),
       name_en: newCategoryNameEn.trim()
         ? sanitizeText(newCategoryNameEn, 200)
         : null,
       menu_section: newCategorySection,
-      sort_order: categories.length,
-      is_active: true,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+      ...schedulePayload(categorySchedule),
+    };
+
+    if (editingCategoryId) {
+      const { error } = await supabase
+        .from("categories")
+        .update(payload)
+        .eq("id", editingCategoryId);
+      setSaving(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Category updated");
+    } else {
+      const { error } = await supabase.from("categories").insert({
+        location_id: locationId,
+        ...payload,
+        sort_order: categories.length,
+        is_active: true,
+      });
+      setSaving(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Category added");
     }
-    toast.success("Category added");
+
     setCategoryDialogOpen(false);
-    setNewCategoryName("");
-    setNewCategoryNameEn("");
-    setNewCategorySection("food");
+    setEditingCategoryId(null);
     load();
   }
 
@@ -712,11 +824,7 @@ export function MenuEditor() {
           <h2 className="text-sm font-semibold text-zinc-200">Categories</h2>
           <button
             type="button"
-            onClick={() => {
-              setNewCategoryName("");
-              setNewCategoryNameEn("");
-              setCategoryDialogOpen(true);
-            }}
+            onClick={openNewCategoryDialog}
             className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
             aria-label="Add category"
           >
@@ -747,11 +855,7 @@ export function MenuEditor() {
           <h2 className="text-sm font-semibold text-zinc-200">Categories</h2>
           <button
             type="button"
-            onClick={() => {
-              setNewCategoryName("");
-              setNewCategoryNameEn("");
-              setCategoryDialogOpen(true);
-            }}
+            onClick={openNewCategoryDialog}
             className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
             aria-label="Add category"
           >
@@ -781,6 +885,7 @@ export function MenuEditor() {
                     onToggleActive={(active) =>
                       toggleCategoryActive(category.id, active)
                     }
+                    onEdit={() => openEditCategoryDialog(category)}
                   />
                 ))}
               </div>
@@ -801,9 +906,25 @@ export function MenuEditor() {
               {selectedCategory && !selectedCategory.is_active && (
                 <span className="ml-2 text-orange-400">· Hidden from menu</span>
               )}
+              {selectedCategory && formatScheduleBadge(selectedCategory) && (
+                <span className="ml-2 text-amber-400">
+                  · {formatScheduleBadge(selectedCategory)}
+                </span>
+              )}
             </p>
           </div>
-          <button
+          <div className="flex gap-2">
+            {selectedCategory && (
+              <button
+                type="button"
+                onClick={() => openEditCategoryDialog(selectedCategory)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-zinc-800"
+              >
+                <Pencil className="size-4" />
+                Edit Category
+              </button>
+            )}
+            <button
             type="button"
             disabled={!selectedCategoryId}
             onClick={() => {
@@ -815,6 +936,7 @@ export function MenuEditor() {
             <Plus className="size-4" />
             Add Product
           </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-4">
@@ -850,7 +972,9 @@ export function MenuEditor() {
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
         <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-zinc-50">New Category</DialogTitle>
+            <DialogTitle className="text-zinc-50">
+              {editingCategoryId ? "Edit Category" : "New Category"}
+            </DialogTitle>
           </DialogHeader>
           <label className="block space-y-1.5 py-2">
             <span className="text-sm text-zinc-400">Name</span>
@@ -886,10 +1010,17 @@ export function MenuEditor() {
               ))}
             </select>
           </label>
+          <CategoryScheduleFields
+            value={categorySchedule}
+            onChange={setCategorySchedule}
+          />
           <DialogFooter className="border-zinc-800 bg-transparent">
             <button
               type="button"
-              onClick={() => setCategoryDialogOpen(false)}
+              onClick={() => {
+                setCategoryDialogOpen(false);
+                setEditingCategoryId(null);
+              }}
               className="rounded-lg px-4 py-2 text-sm text-zinc-400"
             >
               Cancel
@@ -897,10 +1028,10 @@ export function MenuEditor() {
             <button
               type="button"
               disabled={saving || !newCategoryName.trim()}
-              onClick={addCategory}
+              onClick={saveCategory}
               className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Add Category"}
+              {saving ? "Saving…" : editingCategoryId ? "Save" : "Add Category"}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -924,6 +1055,7 @@ export function MenuEditor() {
             initial={editingProduct ?? undefined}
             currency={currency}
             orgId={orgId}
+            menuLocale={menuLocale}
             categoryMenuSection={
               (selectedCategory?.menu_section as MenuSection) ?? "food"
             }

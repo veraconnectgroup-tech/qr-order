@@ -80,6 +80,11 @@ async function processStripeWebhookEvent(
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;
 
+      if (pi.metadata.split_payment_id) {
+        await verifyAndMarkSplitPaid(admin, pi);
+        break;
+      }
+
       if (pi.metadata.order_ids) {
         await verifyAndMarkSessionPaid(admin, pi);
         break;
@@ -117,7 +122,15 @@ async function processStripeWebhookEvent(
         paymentIntentId: pi.id,
         orderId: pi.metadata.order_id,
         orderIds: pi.metadata.order_ids,
+        splitPaymentId: pi.metadata.split_payment_id,
       });
+      if (pi.metadata.split_payment_id) {
+        await admin
+          .from("split_payments")
+          .update({ payment_status: "failed" })
+          .eq("id", pi.metadata.split_payment_id);
+        break;
+      }
       await admin
         .from("orders")
         .update({ payment_status: "failed", status: "rejected" })
@@ -318,4 +331,89 @@ async function verifyAndMarkPaid(
       error: err instanceof Error ? err.message : String(err),
     })
   );
+}
+
+async function verifyAndMarkSplitPaid(
+  admin: ReturnType<typeof createAdminClient>,
+  pi: Stripe.PaymentIntent
+) {
+  const splitId = pi.metadata.split_payment_id;
+  if (!splitId) return;
+
+  const { data: split } = await admin
+    .from("split_payments")
+    .select("id, order_id, amount, tip_amount, payment_status")
+    .eq("id", splitId)
+    .maybeSingle();
+
+  if (!split) return;
+
+  const row = split as {
+    id: string;
+    order_id: string;
+    amount: number;
+    tip_amount: number;
+    payment_status: string;
+  };
+
+  if (row.payment_status === "paid") return;
+
+  const expectedCents =
+    Math.round(Number(row.amount) * 100) +
+    Math.round(Number(row.tip_amount ?? 0) * 100);
+
+  if (expectedCents !== pi.amount) {
+    logger.error("FRAUD ALERT: Split amount mismatch", {
+      splitId,
+      orderId: row.order_id,
+      expected: expectedCents / 100,
+      got: pi.amount / 100,
+      paymentIntentId: pi.id,
+    });
+    return;
+  }
+
+  const sessionId = pi.metadata.session_id ?? null;
+
+  await admin
+    .from("split_payments")
+    .update({
+      payment_status: "paid",
+      paid_by_session_id: sessionId,
+    })
+    .eq("id", splitId);
+
+  const { data: allSplits } = await admin
+    .from("split_payments")
+    .select("payment_status")
+    .eq("order_id", row.order_id);
+
+  const splits = (allSplits as Array<{ payment_status: string }>) ?? [];
+  const allPaid =
+    splits.length > 0 && splits.every((s) => s.payment_status === "paid");
+
+  if (allPaid) {
+    await admin
+      .from("orders")
+      .update({
+        payment_status: "paid",
+        stripe_payment_intent_id: pi.id,
+      })
+      .eq("id", row.order_id);
+
+    void enqueue("/api/jobs/send-receipt", { orderId: row.order_id }).catch(
+      (err) =>
+        logger.error("Receipt enqueue failed", {
+          orderId: row.order_id,
+          error: err instanceof Error ? err.message : String(err),
+        })
+    );
+  }
+
+  logger.info("Split payment succeeded", {
+    splitId,
+    orderId: row.order_id,
+    paymentIntentId: pi.id,
+    orderFullyPaid: allPaid,
+  });
 }

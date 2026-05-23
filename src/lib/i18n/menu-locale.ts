@@ -1,18 +1,16 @@
-import type { Locale } from "@/lib/i18n/translations";
-
 export function localizedName(
   item: { name: string; name_en?: string | null },
-  locale: Locale
+  isEnglish: boolean
 ) {
-  if (locale === "en" && item.name_en?.trim()) return item.name_en.trim();
+  if (isEnglish && item.name_en?.trim()) return item.name_en.trim();
   return item.name;
 }
 
 export function localizedDescription(
   item: { description?: string | null; description_en?: string | null },
-  locale: Locale
+  isEnglish: boolean
 ) {
-  if (locale === "en" && item.description_en?.trim()) {
+  if (isEnglish && item.description_en?.trim()) {
     return item.description_en.trim();
   }
   return item.description ?? null;

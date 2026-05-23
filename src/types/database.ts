@@ -44,6 +44,16 @@ type Tables = {
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
     in_person_payment_location: "bar" | "counter" | "table";
+    menu_locale:
+      | "de"
+      | "sr"
+      | "tr"
+      | "hr"
+      | "ar"
+      | "fr"
+      | "es"
+      | "it"
+      | "ru";
     default_locale:
       | "de"
       | "en"
@@ -90,6 +100,10 @@ type Tables = {
     available_from: string | null;
     available_until: string | null;
     available_days: number[];
+    schedule_enabled: boolean;
+    schedule_start: string | null;
+    schedule_end: string | null;
+    schedule_days: number[];
     menu_section: string;
     created_at: string;
     deleted_at: string | null;
@@ -191,6 +205,9 @@ type Tables = {
     refunded_at: string | null;
     tip_amount: number;
     tip_staff_id: string | null;
+    is_split: boolean;
+    promo_code_id: string | null;
+    discount_amount: number;
     created_at: string;
     updated_at: string;
   };
@@ -257,6 +274,50 @@ type Tables = {
     metadata: Json;
     created_at: string;
   };
+  split_payments: {
+    id: string;
+    order_id: string;
+    amount: number;
+    tip_amount: number;
+    stripe_payment_intent_id: string | null;
+    payment_status: string;
+    paid_by_session_id: string | null;
+    items: Json | null;
+    created_at: string;
+  };
+  promo_codes: {
+    id: string;
+    location_id: string;
+    code: string;
+    discount_type: "percent" | "fixed";
+    discount_value: number;
+    min_order_amount: number;
+    max_uses: number | null;
+    used_count: number;
+    valid_from: string;
+    valid_until: string | null;
+    is_active: boolean;
+    created_at: string;
+  };
+  upsell_rules: {
+    id: string;
+    location_id: string;
+    trigger_product_id: string | null;
+    trigger_category_id: string | null;
+    suggest_product_id: string;
+    message: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+  };
+  order_feedback: {
+    id: string;
+    order_id: string;
+    location_id: string;
+    rating: number;
+    comment: string | null;
+    created_at: string;
+  };
 };
 
 type TableDef<T extends keyof Tables> = {
@@ -276,6 +337,10 @@ export interface Database {
       get_next_order_number: {
         Args: { p_location_id: string };
         Returns: number;
+      };
+      increment_promo_used_count: {
+        Args: { p_promo_id: string };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

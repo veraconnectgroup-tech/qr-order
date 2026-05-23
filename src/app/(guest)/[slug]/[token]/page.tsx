@@ -36,6 +36,10 @@ type RawCategory = {
   name_en: string | null;
   menu_section?: string | null;
   sort_order: number;
+  schedule_enabled?: boolean;
+  schedule_start?: string | null;
+  schedule_end?: string | null;
+  schedule_days?: number[] | null;
   products?: RawProduct[];
 };
 
@@ -69,6 +73,7 @@ export default async function GuestMenuPage({
         id,
         name,
         accepting_orders,
+        timezone,
         organization:organizations!inner(
           id,
           name,
@@ -101,6 +106,7 @@ export default async function GuestMenuPage({
       id: string;
       name: string;
       accepting_orders: boolean;
+      timezone: string;
       organization: {
         id: string;
         name: string;
@@ -129,6 +135,10 @@ export default async function GuestMenuPage({
       name: cat.name,
       name_en: cat.name_en,
       menu_section: cat.menu_section ?? null,
+      schedule_enabled: cat.schedule_enabled ?? false,
+      schedule_start: cat.schedule_start ?? null,
+      schedule_end: cat.schedule_end ?? null,
+      schedule_days: cat.schedule_days ?? [1, 2, 3, 4, 5, 6, 0],
       products: (cat.products ?? [])
         .sort((a, b) => a.sort_order - b.sort_order)
         .map(
@@ -173,6 +183,7 @@ export default async function GuestMenuPage({
       currency={org.currency}
       locationId={table.location_id}
       tableId={table.id}
+      timezone={table.location.timezone ?? "Europe/Berlin"}
       orderingEnabled={table.location.accepting_orders}
     />
   );

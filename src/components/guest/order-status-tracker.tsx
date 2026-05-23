@@ -18,6 +18,7 @@ import { AnimatedOrderNumber } from "@/components/guest/animated-order-number";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { LanguageSelector } from "@/components/guest/language-selector";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
+import { FeedbackPrompt } from "@/components/guest/feedback-prompt";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -409,6 +410,8 @@ export function OrderStatusTracker({
             paymentCardAtTableEnabled={paymentCardAtTableEnabled}
             inPersonPaymentLocation={inPersonPaymentLocation}
             isPaid={isPaid}
+            slug={slug}
+            orderId={orderId}
             onPaid={() => {
               refreshOrder().then((data) => {
                 if (data) setOrder(data);
@@ -416,6 +419,10 @@ export function OrderStatusTracker({
             }}
           />
         </section>
+      )}
+
+      {order.status === "delivered" && (
+        <FeedbackPrompt orderId={orderId} sessionToken={sessionToken} />
       )}
 
       {/* Actions */}

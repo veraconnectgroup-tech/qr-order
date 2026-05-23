@@ -1,9 +1,7 @@
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
-import { parseAvailableLocales } from "@/lib/i18n/locale-config";
-import { parseLocale } from "@/lib/i18n/detect-locale";
-import type { Locale } from "@/lib/i18n/translations";
+import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
@@ -24,7 +22,7 @@ export default async function AdminSettingsPage() {
     locationId
       ? admin
           .from("locations")
-          .select("name, default_locale, available_locales")
+          .select("name, menu_locale, default_locale")
           .eq("id", locationId)
           .single()
       : Promise.resolve({ data: null }),
@@ -43,14 +41,13 @@ export default async function AdminSettingsPage() {
 
   const locationRow = location as {
     name: string;
+    menu_locale: string | null;
     default_locale: string | null;
-    available_locales: string[] | null;
   } | null;
 
-  const defaultLocale = parseLocale(locationRow?.default_locale) ?? "de";
-  const availableLocales = parseAvailableLocales(
-    locationRow?.available_locales,
-    defaultLocale
+  const menuLocale = parseMenuLocaleFromDb(
+    locationRow?.menu_locale,
+    locationRow?.default_locale
   );
 
   return (
@@ -83,8 +80,7 @@ export default async function AdminSettingsPage() {
         {locationRow && (
           <LocationSettings
             locationName={locationRow.name}
-            availableLocales={availableLocales}
-            defaultLocale={defaultLocale}
+            menuLocale={menuLocale}
             canEdit
           />
         )}

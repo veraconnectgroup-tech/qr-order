@@ -8,6 +8,7 @@ import { formatOrderNumber } from "@/lib/format";
 import {
   getKitchenOrderItems,
 } from "@/lib/kitchen/menu-section";
+import { patchOrderStatus } from "@/lib/orders/patch-order-status";
 import { useKitchenOrders } from "@/hooks/use-kitchen-orders";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
@@ -36,20 +37,12 @@ function elapsedStyles(minutes: number, light = false) {
   return { text: light ? "text-green-600" : "text-green-400", pulse: false };
 }
 
-async function patchOrderStatus(
+async function patchKitchenOrderStatus(
   orderId: string,
   status: "preparing" | "ready" | "rejected",
   rejectionReason?: string
 ) {
-  const res = await fetch(`/api/orders/${orderId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, rejectionReason }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json.error ?? "Update failed");
-  }
+  await patchOrderStatus(orderId, status, rejectionReason);
 }
 
 export function KitchenCard({
@@ -220,7 +213,7 @@ export function KitchenBoard() {
     ) => {
       setBusyId(orderId);
       try {
-        await patchOrderStatus(orderId, status, rejectionReason);
+        await patchKitchenOrderStatus(orderId, status, rejectionReason);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Update failed");
         await refetch();

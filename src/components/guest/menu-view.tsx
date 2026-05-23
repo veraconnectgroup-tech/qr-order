@@ -15,7 +15,17 @@ import { OfflineIndicator } from "@/components/guest/offline-indicator";
 import { ProductCard } from "@/components/guest/product-card";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
+import {
+  AllergenFilter,
+  useAllergenExclusions,
+  allergenFilterStorageKey,
+} from "@/components/guest/allergen-filter";
 import { MenuGrid, type MenuCategory } from "@/components/guest/menu-grid";
+import { isProductHiddenByAllergenFilter } from "@/lib/allergens";
+import {
+  formatScheduleGuestHint,
+  isCategoryAvailable,
+} from "@/lib/menu/schedule";
 import { productMatchesSearch } from "@/lib/i18n/menu-locale";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
@@ -29,10 +39,12 @@ export function MenuView({
   tableName,
   zoneName,
   categories,
+  unavailableCategories = [],
   taxPercent,
   currency,
   locationId,
   tableId,
+  timezone,
   orderingEnabled = true,
 }: {
   slug: string;
@@ -43,17 +55,20 @@ export function MenuView({
   tableName: string;
   zoneName: string | null;
   categories: MenuCategory[];
+  unavailableCategories?: MenuCategory[];
   taxPercent: number;
   currency: string;
   locationId: string;
   tableId: string;
+  timezone: string;
   orderingEnabled?: boolean;
 }) {
-  const { tUI } = useAppLocale();
+  const { tUI, tName } = useAppLocale();
   const router = useRouter();
   const scrollKey = `menu-scroll-${slug}-${token}`;
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
+  const [now, setNow] = useState(() => new Date());
   const [detailProduct, setDetailProduct] = useState<ProductWithModifiers | null>(
     null
   );
@@ -68,6 +83,51 @@ export function MenuView({
   const setCartSession = useCart((s) => s.setSession);
   const itemCount = useCart((s) => s.itemCount());
   const setGuestSession = useGuestSession((s) => s.setSession);
+
+  const allergenStorageKey = allergenFilterStorageKey(slug, token);
+  const { excluded, toggle, clear, count: allergenFilterCount } =
+    useAllergenExclusions(allergenStorageKey);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const { scheduledCategories, scheduledUnavailable } = useMemo(() => {
+    const available: MenuCategory[] = [];
+    const unavailable: MenuCategory[] = [];
+
+    for (const category of categories) {
+      const scheduleRow = {
+        schedule_enabled: category.schedule_enabled ?? false,
+        schedule_start: category.schedule_start ?? null,
+        schedule_end: category.schedule_end ?? null,
+        schedule_days: category.schedule_days ?? null,
+      };
+
+      if (isCategoryAvailable(scheduleRow, now, timezone)) {
+        available.push(category);
+      } else if (scheduleRow.schedule_enabled) {
+        unavailable.push({
+          ...category,
+          scheduleHint:
+            category.scheduleHint ??
+            formatScheduleGuestHint(tName(category), scheduleRow) ??
+            tUI("menu.scheduleUnavailable"),
+        });
+      }
+    }
+
+    return {
+      scheduledCategories: available,
+      scheduledUnavailable: unavailable,
+    };
+  }, [categories, now, timezone, tName, tUI]);
+
+  const allUnavailableCategories = useMemo(
+    () => [...scheduledUnavailable, ...unavailableCategories],
+    [scheduledUnavailable, unavailableCategories]
+  );
 
   const subtitle = zoneName
     ? `${zoneName} · ${locationName}`
@@ -120,8 +180,21 @@ export function MenuView({
     return () => window.removeEventListener("scroll", save);
   }, [scrollKey]);
 
+  const filteredCategories = useMemo(() => {
+    if (allergenFilterCount === 0) return scheduledCategories;
+    return scheduledCategories
+      .map((category) => ({
+        ...category,
+        products: category.products.filter(
+          (product) =>
+            !isProductHiddenByAllergenFilter(product.allergens, excluded)
+        ),
+      }))
+      .filter((category) => category.products.length > 0);
+  }, [scheduledCategories, excluded, allergenFilterCount]);
+
   useEffect(() => {
-    if (search.trim() || !categories.length) return;
+    if (search.trim() || !filteredCategories.length) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -135,13 +208,13 @@ export function MenuView({
       { rootMargin: "-100px 0px -55% 0px", threshold: 0 }
     );
 
-    categories.forEach((cat) => {
+    filteredCategories.forEach((cat) => {
       const el = document.getElementById(`cat-${cat.id}`);
       if (el) observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, [categories, search]);
+  }, [filteredCategories, search]);
 
   const scrollToCategory = useCallback((catId: string) => {
     setActiveCategory(catId);
@@ -156,17 +229,37 @@ export function MenuView({
     router.refresh();
   }, [router]);
 
-  const allProducts = categories.flatMap((c) => c.products);
+  const hiddenByAllergenCount = useMemo(() => {
+    if (allergenFilterCount === 0) return 0;
+    const total = scheduledCategories.reduce(
+      (sum, cat) => sum + cat.products.length,
+      0
+    );
+    const visible = filteredCategories.reduce(
+      (sum, cat) => sum + cat.products.length,
+      0
+    );
+    return total - visible;
+  }, [scheduledCategories, filteredCategories, allergenFilterCount]);
+
+  useEffect(() => {
+    if (!filteredCategories.length) return;
+    if (!filteredCategories.some((cat) => cat.id === activeCategory)) {
+      setActiveCategory(filteredCategories[0].id);
+    }
+  }, [filteredCategories, activeCategory]);
+
+  const allProducts = filteredCategories.flatMap((c) => c.products);
   const menuSectionByProductId = useMemo(() => {
     const map = new Map<string, MenuSection>();
-    for (const category of categories) {
+    for (const category of filteredCategories) {
       const section = inferMenuSection(category);
       for (const product of category.products) {
         map.set(product.id, section);
       }
     }
     return map;
-  }, [categories]);
+  }, [filteredCategories]);
   const searchQuery = search.trim();
   const filtered = searchQuery
     ? allProducts.filter((p) => productMatchesSearch(p, searchQuery))
@@ -205,15 +298,27 @@ export function MenuView({
               </div>
             </div>
             {!filtered && (
-              <CategoryPills
-                categories={categories}
-                activeCategory={activeCategory}
-                onSelect={scrollToCategory}
-              />
+              <>
+                <CategoryPills
+                  categories={filteredCategories}
+                  activeCategory={activeCategory}
+                  onSelect={scrollToCategory}
+                />
+                <AllergenFilter
+                  excluded={excluded}
+                  onToggle={toggle}
+                  onClear={clear}
+                />
+              </>
             )}
           </div>
 
           <main className="px-3 py-4 sm:px-4 sm:py-6">
+            {hiddenByAllergenCount > 0 && (
+              <p className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/90">
+                {tUI("allergen.hiddenCount", { count: hiddenByAllergenCount })}
+              </p>
+            )}
             {filtered ? (
               <div>
                 {filtered.length === 0 ? (
@@ -239,7 +344,8 @@ export function MenuView({
               </div>
             ) : (
               <MenuGrid
-                categories={categories}
+                categories={filteredCategories}
+                unavailableCategories={allUnavailableCategories}
                 currency={currency}
                 orderingDisabled={!orderingEnabled}
                 onOpenDetail={openProductDetail}

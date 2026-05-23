@@ -16,6 +16,8 @@ type UsePostgresRealtimeOptions = {
   filter: string;
   onChange: () => void;
   enabled?: boolean;
+  fallbackPollMs?: number;
+  backupPollMs?: number;
 };
 
 function assertLocationFilter(locationId: string, filter: string) {
@@ -35,6 +37,8 @@ export function usePostgresRealtime({
   filter,
   onChange,
   enabled = true,
+  fallbackPollMs = REALTIME_FALLBACK_POLL_MS,
+  backupPollMs = REALTIME_BACKUP_POLL_MS,
 }: UsePostgresRealtimeOptions) {
   const [mode, setMode] = useState<RealtimeMode>("connecting");
   const onChangeRef = useRef(onChange);
@@ -56,9 +60,7 @@ export function usePostgresRealtime({
 
     function schedulePoll() {
       if (pollId) clearInterval(pollId);
-      const intervalMs = isLive
-        ? REALTIME_BACKUP_POLL_MS
-        : REALTIME_FALLBACK_POLL_MS;
+      const intervalMs = isLive ? backupPollMs : fallbackPollMs;
       pollId = setInterval(() => {
         if (!cancelled) onChangeRef.current();
       }, intervalMs);
@@ -112,7 +114,7 @@ export function usePostgresRealtime({
       if (pollId) clearInterval(pollId);
       supabase.removeChannel(channel);
     };
-  }, [channelName, table, locationId, filter, enabled]);
+  }, [channelName, table, locationId, filter, enabled, fallbackPollMs, backupPollMs]);
 
   return mode;
 }

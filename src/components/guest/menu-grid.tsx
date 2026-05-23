@@ -1,7 +1,7 @@
 "use client";
 
 import { ProductCard } from "@/components/guest/product-card";
-import { useMenuLocale } from "@/components/guest/menu-locale-provider";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { inferMenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
 
@@ -11,26 +11,36 @@ export type MenuCategory = {
   name_en?: string | null;
   menu_section?: string | null;
   products: ProductWithModifiers[];
+  schedule_enabled?: boolean;
+  schedule_start?: string | null;
+  schedule_end?: string | null;
+  schedule_days?: number[] | null;
+  scheduleHint?: string | null;
+  isScheduleAvailable?: boolean;
 };
 
 export function MenuGrid({
   categories,
+  unavailableCategories = [],
   currency,
   onOpenDetail,
   orderingDisabled = false,
 }: {
   categories: MenuCategory[];
+  unavailableCategories?: MenuCategory[];
   currency: string;
   onOpenDetail: (product: ProductWithModifiers) => void;
   orderingDisabled?: boolean;
 }) {
-  const { tName } = useMenuLocale();
-  if (!categories.length) {
+  const { tName, tUI } = useAppLocale();
+  if (!categories.length && !unavailableCategories.length) {
     return (
       <div className="py-20 text-center">
-        <p className="text-lg font-semibold text-zinc-50">Menu updating</p>
+        <p className="text-lg font-semibold text-zinc-50">
+          {tUI("menu.updating")}
+        </p>
         <p className="mt-2 text-sm text-zinc-400">
-          Please ask staff for assistance.
+          {tUI("menu.updatingHint")}
         </p>
       </div>
     );
@@ -62,6 +72,18 @@ export function MenuGrid({
               />
             ))}
           </div>
+        </section>
+      ))}
+
+      {unavailableCategories.map((category) => (
+        <section
+          key={`unavailable-${category.id}`}
+          className="mt-6 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4 opacity-70"
+        >
+          <h2 className="text-lg font-semibold text-zinc-500">{tName(category)}</h2>
+          {category.scheduleHint && (
+            <p className="mt-1 text-sm text-zinc-500">{category.scheduleHint}</p>
+          )}
         </section>
       ))}
     </div>

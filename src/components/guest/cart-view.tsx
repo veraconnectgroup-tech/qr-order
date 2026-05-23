@@ -10,6 +10,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { formatPrice } from "@/lib/format";
 import { formatServeSize } from "@/lib/serve-size";
+import { UpsellBar } from "@/components/guest/upsell-bar";
 import { QuantitySelector } from "@/components/guest/quantity-selector";
 import { Button } from "@/components/ui/button";
 
@@ -95,6 +96,7 @@ function EmptyCartState({ slug, token }: { slug: string; token: string }) {
 export function CartView({
   slug,
   token,
+  locationId,
   orgName,
   tableName,
   taxPercent,
@@ -103,6 +105,7 @@ export function CartView({
 }: {
   slug: string;
   token: string;
+  locationId: string;
   orgName: string;
   tableName: string;
   taxPercent: number;
@@ -213,6 +216,7 @@ export function CartView({
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800 bg-zinc-950/95 px-4 pt-3 pb-safe backdrop-blur-sm">
+        <UpsellBar locationId={locationId} currency={currency} variant="cart" />
         <div className="space-y-1 text-sm">
           <div className="flex justify-between text-zinc-400">
             <span>{tUI("cart.subtotal")}</span>

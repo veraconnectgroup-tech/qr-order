@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Maximize2 } from "lucide-react";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { PushOptIn } from "@/components/dashboard/push-opt-in";
 import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
@@ -65,6 +65,13 @@ export function KitchenHeader({
         <LiveClock />
         <div className="flex items-center gap-2">
           {realtimeMode && <LiveConnectionBadge mode={realtimeMode} />}
+          <Link
+            href="/dashboard/kitchen/kds"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+          >
+            <Maximize2 className="size-4" />
+            Otvori KDS
+          </Link>
           <PushOptIn />
           <SoundToggle />
           <Link

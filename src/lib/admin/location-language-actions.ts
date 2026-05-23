@@ -3,13 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
-import { isLocale } from "@/lib/i18n/locale-config";
-import type { Locale } from "@/lib/i18n/translations";
+import { isMenuLocale } from "@/lib/i18n/locale-config";
+import type { MenuLocale } from "@/lib/i18n/translations";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const localeSchema = z.enum([
+const menuLocaleSchema = z.enum([
   "de",
-  "en",
   "sr",
   "tr",
   "hr",
@@ -20,26 +19,12 @@ const localeSchema = z.enum([
   "ru",
 ]);
 
-const updateLanguagesSchema = z.object({
-  availableLocales: z.array(localeSchema).min(1),
-  defaultLocale: localeSchema,
-});
-
-export async function updateLocationLanguages(input: {
-  availableLocales: Locale[];
-  defaultLocale: Locale;
-}) {
+export async function updateLocationMenuLocale(menuLocale: MenuLocale) {
   const staff = await requireAdmin();
-  const parsed = updateLanguagesSchema.safeParse(input);
+  const parsed = menuLocaleSchema.safeParse(menuLocale);
 
-  if (!parsed.success) {
-    return { error: "Neispravan unos jezika." };
-  }
-
-  const { availableLocales, defaultLocale } = parsed.data;
-
-  if (!availableLocales.includes(defaultLocale)) {
-    return { error: "Podrazumevani jezik mora biti među dostupnim jezicima." };
+  if (!parsed.success || !isMenuLocale(parsed.data)) {
+    return { error: "Neispravan jezik menija." };
   }
 
   const locationId = await getStaffLocationId(staff);
@@ -48,13 +33,13 @@ export async function updateLocationLanguages(input: {
   }
 
   const admin = createAdminClient();
-  const uniqueLocales = [...new Set(availableLocales)].filter(isLocale);
 
   const { error } = await admin
     .from("locations")
     .update({
-      available_locales: uniqueLocales,
-      default_locale: defaultLocale,
+      menu_locale: parsed.data,
+      default_locale: parsed.data,
+      available_locales: [parsed.data, "en"],
       updated_at: new Date().toISOString(),
     } as never)
     .eq("id", locationId);
@@ -63,5 +48,14 @@ export async function updateLocationLanguages(input: {
 
   revalidatePath("/admin/settings");
   revalidatePath("/dashboard/settings");
+  revalidatePath("/", "layout");
   return { success: true };
+}
+
+/** @deprecated Use updateLocationMenuLocale */
+export async function updateLocationLanguages(input: {
+  availableLocales: MenuLocale[];
+  defaultLocale: MenuLocale;
+}) {
+  return updateLocationMenuLocale(input.defaultLocale);
 }

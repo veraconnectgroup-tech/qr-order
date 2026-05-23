@@ -25,6 +25,12 @@ import {
 import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
 import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
+import { clampTipAmount } from "@/lib/orders/tips";
+import {
+  validatePromoCode,
+  type PromoCodeRow,
+  type PromoErrorCode,
+} from "@/lib/promo/validate-promo";
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -53,9 +59,70 @@ export const createOrderSchema = z.object({
   paymentMethod: z
     .enum(["unset", "online", "at_bar", "card_at_table"])
     .default("unset"),
+  tipAmount: z.number().min(0).max(500).optional().default(0),
+  promoCodeId: z.string().uuid().optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
+const PROMO_ERROR_MESSAGES: Record<PromoErrorCode, string> = {
+  not_found: "Invalid promo code.",
+  inactive: "This promo code is not active.",
+  not_yet_valid: "This promo code is not valid yet.",
+  expired: "This promo code has expired.",
+  min_order: "Order total does not meet the minimum for this promo code.",
+  max_uses: "This promo code has reached its usage limit.",
+};
+
+async function resolvePromoDiscount(
+  admin: ReturnType<typeof createAdminClient>,
+  promoCodeId: string | undefined,
+  locationId: string,
+  preDiscountTotal: number
+): Promise<
+  | { discountAmount: number; promoCodeId: string | null }
+  | { error: string; status: number }
+> {
+  if (!promoCodeId) {
+    return { discountAmount: 0, promoCodeId: null };
+  }
+
+  const { data: promo } = await admin
+    .from("promo_codes")
+    .select("*")
+    .eq("id", promoCodeId)
+    .eq("location_id", locationId)
+    .maybeSingle();
+
+  const result = validatePromoCode(promo as PromoCodeRow | null, preDiscountTotal);
+  if (!result.valid) {
+    return {
+      error: PROMO_ERROR_MESSAGES[result.error],
+      status: 400,
+    };
+  }
+
+  return {
+    discountAmount: result.discountAmount,
+    promoCodeId: result.promoCodeId,
+  };
+}
+
+async function consumePromoCode(
+  admin: ReturnType<typeof createAdminClient>,
+  promoCodeId: string
+) {
+  const { data, error } = await admin.rpc("increment_promo_used_count", {
+    p_promo_id: promoCodeId,
+  });
+
+  if (error || !data) {
+    logger.warn("Promo code usage increment failed", {
+      promoCodeId,
+      error: error?.message,
+    });
+  }
+}
 
 function isPaymentMethodAllowed(
   method: PaymentMethod,
@@ -312,6 +379,23 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     return { error: totalError, status: 400 };
   }
 
+  const promoResult = await resolvePromoDiscount(
+    admin,
+    input.promoCodeId,
+    tableRow.location_id,
+    total
+  );
+  if ("error" in promoResult) {
+    return { error: promoResult.error, status: promoResult.status };
+  }
+
+  const discountAmount = promoResult.discountAmount;
+  const promoCodeId = promoResult.promoCodeId;
+  const finalTotal = Math.max(0, Math.round((total - discountAmount) * 100) / 100);
+
+  const tipAmount = clampTipAmount(input.tipAmount ?? 0, finalTotal);
+  const tipStaffId = tableRow.assigned_staff_id ?? null;
+
   async function saveOrderItems(orderId: string) {
     for (const item of validatedItems) {
       const unitWithMods =
@@ -381,11 +465,15 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         subtotal,
         tax_percent: effectiveTaxPercent,
         tax_amount: taxAmount,
-        total,
+        total: finalTotal,
+        discount_amount: discountAmount,
+        promo_code_id: promoCodeId,
         is_takeaway: input.isTakeaway,
         payment_status: "pending",
         payment_method: input.paymentMethod,
         stripe_payment_intent_id: null,
+        tip_amount: tipAmount,
+        tip_staff_id: tipStaffId,
       })
       .eq("id", pendingRow.id)
       .select("id, order_number, total, tax_percent")
@@ -415,6 +503,10 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       merged.order_number,
       tableRow.name
     );
+
+    if (promoCodeId) {
+      await consumePromoCode(admin, promoCodeId);
+    }
 
     logger.info("Order created", {
       orderId: merged.id,
@@ -460,13 +552,17 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       subtotal,
       tax_percent: effectiveTaxPercent,
       tax_amount: taxAmount,
-      total,
+      total: finalTotal,
+      discount_amount: discountAmount,
+      promo_code_id: promoCodeId,
       is_takeaway: input.isTakeaway,
       notes: sanitizedNotes,
       estimated_prep_minutes: prepMinutes,
       status: "pending",
       payment_status: "pending",
       payment_method: input.paymentMethod,
+      tip_amount: tipAmount,
+      tip_staff_id: tipStaffId,
     })
     .select("id, order_number, total, tax_percent")
     .single();
@@ -501,6 +597,10 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     orderRow.order_number,
     tableRow.name
   );
+
+  if (promoCodeId) {
+    await consumePromoCode(admin, promoCodeId);
+  }
 
   logger.info("Order created", {
     orderId: orderRow.id,

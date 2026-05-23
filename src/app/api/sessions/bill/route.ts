@@ -9,7 +9,6 @@ import {
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { clampTipAmount } from "@/lib/orders/tips";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 
@@ -53,7 +52,7 @@ export async function GET(req: NextRequest) {
   const { data: orders } = await admin
     .from("orders")
     .select(
-      "id, order_number, status, payment_status, payment_method, subtotal, tax_amount, total, created_at"
+      "id, order_number, status, payment_status, payment_method, subtotal, tax_amount, total, tip_amount, created_at"
     )
     .eq("session_id", session.id)
     .not("status", "in", '("rejected","cancelled")')
@@ -69,18 +68,23 @@ export async function GET(req: NextRequest) {
       subtotal: number;
       tax_amount: number;
       total: number;
+      tip_amount: number;
       created_at: string;
     }>) ?? [];
 
   const unpaid = rows.filter((o) => o.payment_status !== "paid");
   const amountDue = unpaid.reduce((sum, o) => sum + Number(o.total), 0);
+  const tipAmount = unpaid.reduce((sum, o) => sum + Number(o.tip_amount ?? 0), 0);
   const subtotal = unpaid.reduce((sum, o) => sum + Number(o.subtotal), 0);
   const taxAmount = unpaid.reduce((sum, o) => sum + Number(o.tax_amount), 0);
+  const chargeTotal = amountDue + tipAmount;
 
   return apiSuccess({
     orders: rows,
     unpaidOrderIds: unpaid.map((o) => o.id),
     amountDue,
+    tipAmount,
+    chargeTotal,
     subtotal,
     taxAmount,
     orderCount: rows.length,
@@ -92,43 +96,7 @@ const checkoutSchema = z.object({
   sessionToken: zSessionToken(),
   tableToken: zTableToken(),
   paymentMethod: z.enum(["online", "at_bar", "card_at_table"]),
-  tipAmount: z.number().min(0).optional(),
 });
-
-async function resolveTipStaffId(
-  admin: ReturnType<typeof createAdminClient>,
-  tableId: string
-): Promise<string | null> {
-  const { data: table } = await admin
-    .from("tables")
-    .select("assigned_staff_id")
-    .eq("id", tableId)
-    .single();
-  return (table as { assigned_staff_id: string | null } | null)
-    ?.assigned_staff_id ?? null;
-}
-
-async function persistSessionTip(
-  admin: ReturnType<typeof createAdminClient>,
-  orderIds: string[],
-  tipAmount: number,
-  tipStaffId: string | null
-) {
-  await admin
-    .from("orders")
-    .update({ tip_amount: 0, tip_staff_id: null } as never)
-    .in("id", orderIds);
-
-  if (tipAmount > 0 && orderIds[0]) {
-    await admin
-      .from("orders")
-      .update({
-        tip_amount: tipAmount,
-        tip_staff_id: tipStaffId,
-      } as never)
-      .eq("id", orderIds[0]);
-  }
-}
 
 async function loadPaymentOptions(locationId: string) {
   const admin = createAdminClient();
@@ -178,7 +146,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
   const { sessionToken, tableToken, paymentMethod } = parsed.data;
-  const tipAmountRaw = parsed.data.tipAmount ?? 0;
 
   const sessionResult = await validateTableSession(
     admin,
@@ -190,12 +157,11 @@ export async function POST(req: NextRequest) {
     return apiError(sessionResult.error, sessionResult.status);
   }
 
-  const { session, table } = sessionResult.data;
-  const tipStaffId = await resolveTipStaffId(admin, table.id);
+  const { session } = sessionResult.data;
 
   const { data: orders } = await admin
     .from("orders")
-    .select("id, total, location_id, stripe_payment_intent_id, payment_status")
+    .select("id, total, tip_amount, location_id, stripe_payment_intent_id, payment_status, is_split")
     .eq("session_id", session.id)
     .neq("payment_status", "paid")
     .not("status", "in", '("rejected","cancelled")');
@@ -204,13 +170,19 @@ export async function POST(req: NextRequest) {
     (orders as Array<{
       id: string;
       total: number;
+      tip_amount: number;
       location_id: string;
       stripe_payment_intent_id: string | null;
       payment_status: string;
+      is_split: boolean;
     }>) ?? [];
 
   if (unpaidOrders.length === 0) {
     return apiError("Nothing to pay.", 400);
+  }
+
+  if (unpaidOrders.some((o) => o.is_split)) {
+    return apiError("This bill is being split. Pay your share on the split screen.", 400);
   }
 
   const locationId = unpaidOrders[0].location_id;
@@ -224,11 +196,14 @@ export async function POST(req: NextRequest) {
     (sum, o) => sum + Number(o.total),
     0
   );
-  const tipAmount = clampTipAmount(tipAmountRaw, sessionTotal);
+  const tipAmount = unpaidOrders.reduce(
+    (sum, o) => sum + Number(o.tip_amount ?? 0),
+    0
+  );
+  const chargeTotal = sessionTotal + tipAmount;
 
   if (paymentMethod !== "online") {
     const now = new Date().toISOString();
-    await persistSessionTip(admin, orderIds, tipAmount, tipStaffId);
 
     const { error } = await admin
       .from("orders")
@@ -280,9 +255,8 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = getStripe();
-  const chargeTotal = sessionTotal + tipAmount;
 
-  if (existingPiId && tipAmount === 0) {
+  if (existingPiId) {
     const existing = await stripe.paymentIntents.retrieve(
       existingPiId,
       {},
@@ -290,7 +264,7 @@ export async function POST(req: NextRequest) {
     );
     if (
       existing.client_secret &&
-      existing.amount === Math.round(sessionTotal * 100)
+      existing.amount === Math.round(chargeTotal * 100)
     ) {
       await admin
         .from("orders")
@@ -304,13 +278,11 @@ export async function POST(req: NextRequest) {
         clientSecret: existing.client_secret,
         stripeAccountId: org.stripe_account_id,
         orderIds,
-        tipAmount: 0,
-        chargeTotal: sessionTotal,
+        tipAmount,
+        chargeTotal,
       });
     }
   }
-
-  await persistSessionTip(admin, orderIds, tipAmount, tipStaffId);
 
   const amountCents = Math.round(chargeTotal * 100);
   const applicationFee = calcPlatformFee(sessionTotal, {

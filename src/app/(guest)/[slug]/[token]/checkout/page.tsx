@@ -20,6 +20,7 @@ export default async function CheckoutPage({
         <CheckoutForm
           slug={slug}
           token={token}
+          locationId={demo.locationId}
           taxPercent={demo.taxPercent}
           currency={demo.currency}
         />
@@ -29,18 +30,40 @@ export default async function CheckoutPage({
 
   const supabase = await createServerClient();
 
-  const { data: orgData } = await supabase
-    .from("organizations")
-    .select("default_tax_percent, currency")
-    .eq("slug", slug)
+  const { data: tableData } = await supabase
+    .from("tables")
+    .select(
+      `
+      location_id,
+      location:locations!inner(
+        organization:organizations!inner(
+          default_tax_percent,
+          currency,
+          slug
+        )
+      )
+    `
+    )
+    .eq("qr_token", token)
+    .eq("is_active", true)
+    .is("deleted_at", null)
     .single();
 
-  if (!orgData) notFound();
+  if (!tableData) notFound();
 
-  const org = orgData as {
-    default_tax_percent: number;
-    currency: string;
+  const table = tableData as unknown as {
+    location_id: string;
+    location: {
+      organization: {
+        slug: string;
+        default_tax_percent: number;
+        currency: string;
+      };
+    };
   };
+
+  const org = table.location.organization;
+  if (org.slug !== slug) notFound();
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
@@ -48,6 +71,7 @@ export default async function CheckoutPage({
       <CheckoutForm
         slug={slug}
         token={token}
+        locationId={table.location_id}
         taxPercent={Number(org.default_tax_percent)}
         currency={org.currency}
       />

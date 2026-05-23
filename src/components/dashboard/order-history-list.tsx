@@ -21,7 +21,7 @@ type DateFilter = "today" | "yesterday" | "week" | "month" | "custom";
 type PaymentFilter = "all" | "paid" | "pending" | "refunded" | "partial_refund";
 
 const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), audit_log(action, amount, created_at)";
+  "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log(action, amount, created_at)";
 
 const PAGE_SIZE = 20;
 

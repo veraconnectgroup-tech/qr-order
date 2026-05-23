@@ -269,6 +269,9 @@ function demoOrder(
     refunded_at: null,
     tip_amount: 0,
     tip_staff_id: null,
+    is_split: false,
+    promo_code_id: null,
+    discount_amount: 0,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

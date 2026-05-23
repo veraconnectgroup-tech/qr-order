@@ -6,6 +6,7 @@ import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick } from "@/lib/haptics";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
+import { AllergenBadges } from "@/components/guest/allergen-badges";
 import { cn } from "@/lib/utils";
 import type { MenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
@@ -108,6 +109,7 @@ export function ProductCard({
             {displayDescription}
           </p>
         )}
+        <AllergenBadges allergens={product.allergens} className="mt-2" />
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-orange-500">
             {formatPrice(Number(product.price), currency)}

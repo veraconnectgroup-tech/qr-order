@@ -16,6 +16,7 @@ export type DashboardContextValue = {
   hasTables: boolean;
   hasMenuItems: boolean;
   inPersonPaymentLocation: "bar" | "counter" | "table";
+  menuLocale: import("@/lib/i18n/translations").MenuLocale;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);

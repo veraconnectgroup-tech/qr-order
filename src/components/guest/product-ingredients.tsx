@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { AllergenList } from "@/components/guest/allergen-badges";
 import { cn } from "@/lib/utils";
 
 export function parseIngredients(description: string | null | undefined) {
@@ -25,10 +26,10 @@ export function ProductIngredients({
 }) {
   const { tUI } = useAppLocale();
   const ingredients = parseIngredients(description);
-  const allergenList = allergens ?? [];
   const tagList = tags ?? [];
+  const hasAllergens = (allergens?.length ?? 0) > 0;
 
-  if (!ingredients.length && !allergenList.length && !tagList.length) {
+  if (!ingredients.length && !hasAllergens && !tagList.length) {
     return null;
   }
 
@@ -52,22 +53,13 @@ export function ProductIngredients({
         </section>
       )}
 
-      {allergenList.length > 0 && (
+      {hasAllergens && (
         <section>
           <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-amber-400">
             <AlertTriangle className="size-3.5" aria-hidden />
             {tUI("menu.allergens")}
           </h4>
-          <ul className="flex flex-wrap gap-2">
-            {allergenList.map((item) => (
-              <li
-                key={item}
-                className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium capitalize text-amber-200"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
+          <AllergenList allergens={allergens} />
         </section>
       )}
 

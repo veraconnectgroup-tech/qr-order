@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -20,12 +21,19 @@ import {
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
-import { TipSelector } from "@/components/guest/tip-selector";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { Button } from "@/components/ui/button";
 
+type SplitProgress = {
+  paid: number;
+  total: number;
+  isSplit: boolean;
+};
+
 type SessionBill = {
   amountDue: number;
+  tipAmount: number;
+  chargeTotal: number;
   subtotal: number;
   taxAmount: number;
   unpaidCount: number;
@@ -113,6 +121,8 @@ export function OrderBillPanel({
   inPersonPaymentLocation = "bar",
   isPaid,
   onPaid,
+  slug,
+  orderId,
 }: {
   token: string;
   sessionToken: string;
@@ -124,6 +134,8 @@ export function OrderBillPanel({
   inPersonPaymentLocation?: InPersonPaymentLocation;
   isPaid: boolean;
   onPaid: () => void;
+  slug?: string;
+  orderId?: string;
 }) {
   const { tUI } = useAppLocale();
   const [bill, setBill] = useState<SessionBill | null>(null);
@@ -134,8 +146,8 @@ export function OrderBillPanel({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tipAmount, setTipAmount] = useState(0);
   const [chargeTotal, setChargeTotal] = useState<number | null>(null);
+  const [splitProgress, setSplitProgress] = useState<SplitProgress | null>(null);
 
   const availableMethods = useMemo(
     () =>
@@ -163,15 +175,37 @@ export function OrderBillPanel({
     setBill(json.data as SessionBill);
   }, [sessionToken, token]);
 
-  useEffect(() => {
-    if (!isPaid) loadBill();
-  }, [isPaid, loadBill]);
+  const loadSplitProgress = useCallback(async () => {
+    if (!orderId) return;
+    const res = await fetch(
+      `/api/orders/${orderId}/split?sessionToken=${encodeURIComponent(sessionToken)}&tableToken=${encodeURIComponent(token)}`
+    );
+    if (!res.ok) return;
+    const json = await res.json();
+    const data = json.data as {
+      progress: { paid: number; total: number };
+      order: { isSplit: boolean; paymentStatus: string };
+    };
+    if (data?.progress) {
+      setSplitProgress({
+        paid: data.progress.paid,
+        total: data.progress.total,
+        isSplit: data.order.isSplit,
+      });
+    }
+  }, [orderId, sessionToken, token]);
 
   useEffect(() => {
-    setTipAmount(0);
+    if (!isPaid) {
+      void loadBill();
+      void loadSplitProgress();
+    }
+  }, [isPaid, loadBill, loadSplitProgress]);
+
+  useEffect(() => {
     setChargeTotal(null);
     setClientSecret(null);
-  }, [bill?.amountDue]);
+  }, [bill?.chargeTotal]);
 
   async function handleConfirmPayment() {
     if (!paymentMethod || !bill || bill.amountDue <= 0) return;
@@ -187,7 +221,6 @@ export function OrderBillPanel({
             sessionToken,
             tableToken: token,
             paymentMethod: "online",
-            tipAmount,
           }),
         });
         const parsed = await readJsonResponse<{
@@ -204,7 +237,7 @@ export function OrderBillPanel({
         if (!res.ok || !parsed.data.data?.clientSecret) {
           throw new Error(parsed.data.error ?? tUI("error.paymentFailed"));
         }
-        setChargeTotal(parsed.data.data.chargeTotal ?? bill.amountDue + tipAmount);
+        setChargeTotal(parsed.data.data.chargeTotal ?? bill.chargeTotal);
         setClientSecret(parsed.data.data.clientSecret);
         setStripeAccountId(parsed.data.data.stripeAccountId);
         setProcessing(false);
@@ -218,7 +251,6 @@ export function OrderBillPanel({
           sessionToken,
           tableToken: token,
           paymentMethod,
-          tipAmount,
         }),
       });
       const parsed = await readJsonResponse<{ error?: string }>(res);
@@ -275,7 +307,14 @@ export function OrderBillPanel({
         })
       : null;
 
-  const payTotal = chargeTotal ?? bill.amountDue + tipAmount;
+  const payTotal = chargeTotal ?? bill.chargeTotal;
+  const tipAmount = bill.tipAmount ?? 0;
+  const canSplit =
+    Boolean(slug && orderId) &&
+    stripeOnboarded &&
+    paymentOnlineEnabled &&
+    !splitProgress?.isSplit;
+  const isSplitActive = Boolean(splitProgress?.isSplit && splitProgress.total > 0);
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
@@ -283,6 +322,14 @@ export function OrderBillPanel({
         <Receipt className="size-5 text-orange-500" />
         <h2 className="text-lg font-semibold text-zinc-50">{tUI("bill.myBill")}</h2>
       </div>
+      {isSplitActive && (
+        <p className="mt-2 text-sm text-orange-400/90">
+          {tUI("split.paidParts", {
+            paid: splitProgress!.paid,
+            total: splitProgress!.total,
+          })}
+        </p>
+      )}
       {bill.unpaidCount > 1 && (
         <p className="mt-1 text-xs text-zinc-500">
           {tUI("bill.openOrders", { count: bill.unpaidCount })}
@@ -298,7 +345,7 @@ export function OrderBillPanel({
         </p>
         {tipAmount > 0 && (
           <p className="mt-1 text-xs text-zinc-500">
-            {formatPrice(bill.amountDue, currency)} + {tUI("tip.title")}{" "}
+            {formatPrice(bill.amountDue, currency)} + {tUI("checkout.tip")}{" "}
             {formatPrice(tipAmount, currency)}
           </p>
         )}
@@ -313,33 +360,56 @@ export function OrderBillPanel({
 
       {!clientSecret && (
         <>
-          <TipSelector
-            amountDue={bill.amountDue}
-            currency={currency}
-            value={tipAmount}
-            onChange={setTipAmount}
-          />
-          <div className="mt-5">
-            <PaymentMethodSelector
-              methods={availableMethods}
-              value={paymentMethod}
-              onChange={setPaymentMethod}
-              inPersonPaymentLocation={inPersonPaymentLocation}
-            />
-          </div>
+          {!isSplitActive && (
+            <div className="mt-5">
+              <PaymentMethodSelector
+                methods={availableMethods}
+                value={paymentMethod}
+                onChange={setPaymentMethod}
+                inPersonPaymentLocation={inPersonPaymentLocation}
+              />
+            </div>
+          )}
           {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-          <Button
-            type="button"
-            disabled={!paymentMethod || processing}
-            onClick={handleConfirmPayment}
-            className="mt-4 h-12 w-full rounded-xl bg-orange-500 font-bold hover:bg-orange-600"
-          >
-            {processing
-              ? tUI("bill.processing")
-              : paymentMethod === "online"
-                ? tUI("bill.continueCard")
-                : tUI("bill.confirmMethod")}
-          </Button>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            {canSplit && (
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                className="h-12 flex-1 rounded-xl border-zinc-700 bg-transparent font-semibold text-zinc-200 hover:bg-zinc-800"
+              >
+                <Link href={`/${slug}/${token}/split?orderId=${orderId}`}>
+                  {tUI("split.title")}
+                </Link>
+              </Button>
+            )}
+            {isSplitActive && slug && orderId && (
+              <Button
+                type="button"
+                asChild
+                className="h-12 w-full rounded-xl bg-orange-500 font-bold hover:bg-orange-600 sm:flex-1"
+              >
+                <Link href={`/${slug}/${token}/split?orderId=${orderId}`}>
+                  {tUI("split.continue")}
+                </Link>
+              </Button>
+            )}
+            {!isSplitActive && (
+              <Button
+                type="button"
+                disabled={!paymentMethod || processing}
+                onClick={handleConfirmPayment}
+                className="h-12 flex-1 rounded-xl bg-orange-500 font-bold hover:bg-orange-600"
+              >
+                {processing
+                  ? tUI("bill.processing")
+                  : paymentMethod === "online"
+                    ? tUI("bill.continueCard")
+                    : tUI("bill.confirmMethod")}
+              </Button>
+            )}
+          </div>
         </>
       )}
 

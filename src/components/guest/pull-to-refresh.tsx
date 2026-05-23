@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 
 const THRESHOLD = 80;
 
@@ -14,6 +15,7 @@ export function PullToRefresh({
   orgInitial: string;
   children: ReactNode;
 }) {
+  const { tUI } = useAppLocale();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(0);
@@ -61,7 +63,11 @@ export function PullToRefresh({
           >
             {orgInitial}
           </div>
-          {refreshing ? "Refreshing..." : pull >= THRESHOLD ? "Release to refresh" : "Pull to refresh"}
+          {refreshing
+            ? tUI("refresh.loading")
+            : pull >= THRESHOLD
+              ? tUI("refresh.release")
+              : tUI("refresh.pull")}
         </div>
       </motion.div>
       {children}

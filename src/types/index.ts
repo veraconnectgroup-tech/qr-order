@@ -18,6 +18,11 @@ export type OrderItemModifier =
   Database["public"]["Tables"]["order_item_modifiers"]["Row"];
 export type Staff = Database["public"]["Tables"]["staff"]["Row"];
 export type WaiterCall = Database["public"]["Tables"]["waiter_calls"]["Row"];
+export type SplitPayment = Database["public"]["Tables"]["split_payments"]["Row"];
+export type PromoCode = Database["public"]["Tables"]["promo_codes"]["Row"];
+export type UpsellRule = Database["public"]["Tables"]["upsell_rules"]["Row"];
+export type OrderFeedback =
+  Database["public"]["Tables"]["order_feedback"]["Row"];
 
 export type ProductWithModifiers = Product & {
   modifier_groups: (ModifierGroup & { modifiers: Modifier[] })[];
@@ -30,6 +35,7 @@ export type OrderWithDetails = Order & {
   tables?: { name: string; zone?: { name: string } | null } | null;
   refund_staff?: { name: string } | null;
   tip_staff?: { name: string } | null;
+  split_payments?: SplitPayment[];
   audit_log?: {
     action: string;
     amount: number | null;
