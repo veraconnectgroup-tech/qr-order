@@ -14,29 +14,29 @@ test.describe("Landing page", () => {
   test("nav links point to platform, enterprise, and pricing", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("navigation").getByRole("link", { name: "Platform" })).toHaveAttribute(
+    const headerNav = page.getByRole("banner").getByRole("navigation");
+
+    await expect(headerNav.getByRole("link", { name: "Platform" })).toHaveAttribute(
       "href",
       "#modules"
     );
-    await expect(page.getByRole("navigation").getByRole("link", { name: "Enterprise" })).toHaveAttribute(
+    await expect(headerNav.getByRole("link", { name: "Enterprise" })).toHaveAttribute(
       "href",
       "/enterprise"
     );
-    await expect(page.getByRole("navigation").getByRole("link", { name: "Pricing" })).toHaveAttribute(
+    await expect(headerNav.getByRole("link", { name: "Pricing" })).toHaveAttribute(
       "href",
       "#pricing"
     );
 
-    await page.getByRole("navigation").getByRole("link", { name: "Enterprise" }).click();
+    await headerNav.getByRole("link", { name: "Enterprise" }).click();
     await expect(page).toHaveURL(/\/enterprise$/);
   });
 
   test("footer legal links use correct URLs", async ({ page }) => {
     await page.goto("/");
 
-    const footer = page.locator("footer");
-    await footer.scrollIntoViewIfNeeded();
-
+    const footer = page.getByRole("contentinfo");
     await expect(footer.getByRole("link", { name: "Datenschutz" })).toHaveAttribute(
       "href",
       "/datenschutz"
