@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import type { OrderWithDetails } from "@/types";
+import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 
 const ORDER_SELECT =
   "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name))";
@@ -33,7 +34,8 @@ export function useKitchenOrders(locationId: string) {
     }
 
     setError(null);
-    setOrders((data as unknown as OrderWithDetails[]) ?? []);
+    const rows = (data as unknown as OrderWithDetails[]) ?? [];
+    setOrders(rows.filter(orderHasKitchenItems));
     setLoading(false);
   }, [locationId]);
 

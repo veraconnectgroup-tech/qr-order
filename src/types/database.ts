@@ -175,6 +175,7 @@ type Tables = {
     unit_price: number;
     notes: string | null;
     total: number;
+    menu_section: "drinks" | "food" | "desserts";
   };
   order_item_modifiers: {
     id: string;

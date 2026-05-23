@@ -5,6 +5,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChefHat } from "lucide-react";
 import { toast } from "sonner";
 import { formatOrderNumber } from "@/lib/format";
+import {
+  getKitchenOrderItems,
+} from "@/lib/kitchen/menu-section";
 import { useKitchenOrders } from "@/hooks/use-kitchen-orders";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
@@ -73,7 +76,7 @@ export function KitchenCard({
   );
   const styles = elapsedStyles(minutes, light);
   const isAccepted = order.status === "accepted";
-  const items = order.order_items ?? [];
+  const items = getKitchenOrderItems(order);
 
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30_000);
@@ -255,7 +258,9 @@ export function KitchenBoard() {
         <div className="flex flex-1 flex-col items-center justify-center p-4">
           <ChefHat className="size-16 text-zinc-700" />
           <p className="mt-4 text-xl text-zinc-500">All caught up!</p>
-          <p className="mt-1 text-zinc-600">New orders will appear here</p>
+          <p className="mt-1 text-zinc-600">
+            Food & dessert orders will appear here
+          </p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4">

@@ -127,7 +127,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
 
   const { data: products } = await admin
     .from("products")
-    .select("id, name, price, is_available, location_id")
+    .select("id, name, price, is_available, location_id, category_id")
     .in("id", productIds)
     .eq("location_id", tableRow.location_id)
     .eq("is_available", true);
@@ -141,6 +141,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         price: number;
         is_available: boolean;
         location_id: string;
+        category_id: string;
       },
     ])
   );
@@ -148,6 +149,25 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   if (productMap.size !== productIds.length) {
     return { error: "One or more products are unavailable.", status: 400 };
   }
+
+  const categoryIds = [
+    ...new Set([...productMap.values()].map((p) => p.category_id)),
+  ];
+
+  const { data: categories } = await admin
+    .from("categories")
+    .select("id, menu_section")
+    .in("id", categoryIds);
+
+  const categorySectionMap = new Map(
+    (categories ?? []).map((c) => [
+      (c as { id: string }).id,
+      (c as { menu_section: string }).menu_section as
+        | "drinks"
+        | "food"
+        | "desserts",
+    ])
+  );
 
   let modifierMap = new Map<
     string,
@@ -242,6 +262,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       ...item,
       notes: combinedNotes,
       productName: product.name,
+      menuSection:
+        categorySectionMap.get(product.category_id) ?? ("food" as const),
       modifiers: mods,
       unitPrice: Number(product.price),
       itemTotal,
@@ -272,6 +294,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
           unit_price: unitWithMods,
           notes: item.notes || null,
           total: item.itemTotal,
+          menu_section: item.menuSection,
         })
         .select("id")
         .single();

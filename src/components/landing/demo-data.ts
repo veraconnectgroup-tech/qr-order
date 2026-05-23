@@ -1,4 +1,5 @@
 import type { MenuCategory } from "@/components/guest/menu-grid";
+import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 import { getDemoProductMedia } from "@/lib/demo-product-media";
 import type { CartItem } from "@/hooks/use-cart";
 import type { OrderWithDetails, ProductWithModifiers } from "@/types";
@@ -218,6 +219,7 @@ function demoOrder(
     product_name: string;
     quantity: number;
     unit_price: number;
+    menu_section?: "drinks" | "food" | "desserts";
     modifiers?: string[];
   }>,
   total: number,
@@ -266,6 +268,7 @@ function demoOrder(
       quantity: item.quantity,
       notes: null,
       total: item.unit_price * item.quantity,
+      menu_section: item.menu_section ?? "food",
       order_item_modifiers: (item.modifiers ?? []).map((name, i) => ({
         id: `${item.id}-mod-${i}`,
         order_item_id: item.id,
@@ -286,9 +289,9 @@ export const DEMO_ORDERS: OrderWithDetails[] = [
     "Table 8",
     "Rooftop",
     [
-      { id: "oi1", product_name: "Aperol Spritz", quantity: 2, unit_price: 9.5 },
-      { id: "oi2", product_name: "Hugo Spritz", quantity: 1, unit_price: 10 },
-      { id: "oi3", product_name: "Espresso Martini", quantity: 1, unit_price: 13 },
+      { id: "oi1", product_name: "Aperol Spritz", quantity: 2, unit_price: 9.5, menu_section: "drinks" },
+      { id: "oi2", product_name: "Hugo Spritz", quantity: 1, unit_price: 10, menu_section: "drinks" },
+      { id: "oi3", product_name: "Espresso Martini", quantity: 1, unit_price: 13, menu_section: "drinks" },
     ],
     44.63,
     2
@@ -300,8 +303,8 @@ export const DEMO_ORDERS: OrderWithDetails[] = [
     "VIP 2",
     "Lounge",
     [
-      { id: "oi4", product_name: "Negroni", quantity: 2, unit_price: 12 },
-      { id: "oi5", product_name: "Nachos", quantity: 1, unit_price: 11 },
+      { id: "oi4", product_name: "Negroni", quantity: 2, unit_price: 12, menu_section: "drinks" },
+      { id: "oi5", product_name: "Nachos", quantity: 1, unit_price: 11, menu_section: "food" },
     ],
     38.08,
     5
@@ -312,7 +315,7 @@ export const DEMO_ORDERS: OrderWithDetails[] = [
     "preparing",
     "Bar 1",
     null,
-    [{ id: "oi6", product_name: "Espresso Martini", quantity: 2, unit_price: 13, modifiers: ["Extra shot"] }],
+    [{ id: "oi6", product_name: "Espresso Martini", quantity: 2, unit_price: 13, menu_section: "drinks", modifiers: ["Extra shot"] }],
     34.51,
     8
   ),
@@ -322,14 +325,15 @@ export const DEMO_ORDERS: OrderWithDetails[] = [
     "ready",
     "Table 3",
     "Terrace",
-    [{ id: "oi7", product_name: "Truffle Fries", quantity: 2, unit_price: 8.5 }],
+    [{ id: "oi7", product_name: "Truffle Fries", quantity: 2, unit_price: 8.5, menu_section: "food" }],
     20.23,
     11
   ),
 ];
 
-export const DEMO_KITCHEN_ORDERS = DEMO_ORDERS.filter((o) =>
-  ["accepted", "preparing"].includes(o.status)
+export const DEMO_KITCHEN_ORDERS = DEMO_ORDERS.filter(
+  (o) =>
+    ["accepted", "preparing"].includes(o.status) && orderHasKitchenItems(o)
 );
 
 export const DEMO_TODAY_REVENUE = 51.78;

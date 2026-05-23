@@ -486,3 +486,30 @@ SET
   image_url = 'https://images.unsplash.com/photo-1758218058958-78f40a716c20?w=600&q=80',
   updated_at = now()
 WHERE id = 'f0000000-0000-4000-8000-000000000001';
+
+-- ===== Kitchen routing by menu section (migration 00020) =====
+ALTER TABLE order_items
+  ADD COLUMN IF NOT EXISTS menu_section TEXT;
+
+ALTER TABLE order_items DROP CONSTRAINT IF EXISTS order_items_menu_section_check;
+
+ALTER TABLE order_items
+  ADD CONSTRAINT order_items_menu_section_check
+  CHECK (menu_section IS NULL OR menu_section IN ('drinks', 'food', 'desserts'));
+
+UPDATE order_items oi
+SET menu_section = c.menu_section
+FROM products p
+JOIN categories c ON c.id = p.category_id
+WHERE oi.product_id = p.id
+  AND oi.menu_section IS NULL;
+
+UPDATE order_items
+SET menu_section = 'food'
+WHERE menu_section IS NULL;
+
+ALTER TABLE order_items
+  ALTER COLUMN menu_section SET DEFAULT 'food';
+
+ALTER TABLE order_items
+  ALTER COLUMN menu_section SET NOT NULL;

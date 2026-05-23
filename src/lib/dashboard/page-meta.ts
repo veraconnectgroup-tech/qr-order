@@ -8,7 +8,7 @@ export const DASHBOARD_PAGES: Record<
   },
   "/dashboard/kitchen": {
     title: "Prep Display",
-    subtitle: "Food & drinks on one ticket",
+    subtitle: "Food & desserts only",
   },
   "/dashboard/tables": {
     title: "Tables",
