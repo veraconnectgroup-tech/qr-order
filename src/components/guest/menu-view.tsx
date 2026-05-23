@@ -50,6 +50,7 @@ import {
   trackAiConversion,
   writeAiSessionId,
 } from "@/lib/ai/guest-session-storage";
+import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick } from "@/lib/haptics";
@@ -165,11 +166,9 @@ export function MenuView({
     setDetailProduct(product);
   }, []);
 
-  const setCartSession = useCart((s) => s.setSession);
   const addItem = useCart((s) => s.addItem);
   const cartItems = useCart((s) => s.items);
   const itemCount = useCart((s) => s.itemCount());
-  const setGuestSession = useGuestSession((s) => s.setSession);
   const sessionToken = useGuestSession((s) => s.sessionToken);
 
   const allergenStorageKey = allergenFilterStorageKey(slug, token);
@@ -274,32 +273,8 @@ export function MenuView({
     : locationName;
 
   useEffect(() => {
-    async function initSession() {
-      try {
-        const res = await fetch(`/api/tables/${token}/session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        if (!res.ok) return;
-        const json = await res.json();
-        const { sessionId, sessionToken, tableName: tn, locationId: lid } =
-          json.data;
-        setGuestSession({
-          sessionId,
-          sessionToken,
-          tableId,
-          tableName: tn,
-          locationId: lid,
-          restaurantSlug: slug,
-        });
-        setCartSession(slug, token, tn, sessionToken);
-      } catch {
-        // Session init failed silently; checkout will prompt refresh
-      }
-    }
-    initSession();
-  }, [token, slug, tableId, setCartSession, setGuestSession]);
+    void ensureTableSession(slug, token, tableId);
+  }, [token, slug, tableId]);
 
   useEffect(() => {
     if (restoredScroll.current) return;

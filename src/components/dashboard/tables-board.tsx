@@ -87,8 +87,9 @@ function startOfTodayIso() {
 
 
 export function TablesBoard() {
-  const { locationId, orgSlug, orgName, currency } = useDashboard();
+  const { locationId, orgId, orgSlug: contextOrgSlug, orgName, currency } = useDashboard();
   const appUrl = useAppBaseUrl();
+  const [resolvedOrgSlug, setResolvedOrgSlug] = useState(contextOrgSlug);
   const guestUrlUnsafe = isUnsafeGuestBaseUrl(appUrl);
   const waiterCallsResult = useRealtimeWaiterCalls(locationId);
   const waiterCalls = waiterCallsResult.calls;
@@ -112,6 +113,27 @@ export function TablesBoard() {
       ),
     [waiterCalls]
   );
+
+  useEffect(() => {
+    setResolvedOrgSlug(contextOrgSlug);
+    if (contextOrgSlug) return;
+
+    let cancelled = false;
+    const supabase = createClient();
+    void supabase
+      .from("organizations")
+      .select("slug")
+      .eq("id", orgId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const slug = (data as { slug: string } | null)?.slug?.trim();
+        if (!cancelled && slug) setResolvedOrgSlug(slug);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contextOrgSlug, orgId]);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -290,9 +312,9 @@ export function TablesBoard() {
       setQrUrl(null);
       return;
     }
-    const url = guestTableUrl(orgSlug, selected.qr_token, appUrl);
+    const url = guestTableUrl(resolvedOrgSlug, selected.qr_token, appUrl);
     QRCode.toDataURL(url, { width: 200, margin: 2 }).then(setQrUrl);
-  }, [selected, appUrl, orgSlug]);
+  }, [selected, appUrl, resolvedOrgSlug]);
 
   async function regenerateToken(tableId: string) {
     const supabase = createClient();
@@ -421,7 +443,7 @@ export function TablesBoard() {
   async function downloadAllQrCodes() {
     const qrItems = await Promise.all(
       tables.map(async (table) => {
-        const url = guestTableUrl(orgSlug, table.qr_token, appUrl);
+        const url = guestTableUrl(resolvedOrgSlug, table.qr_token, appUrl);
         const dataUrl = await QRCode.toDataURL(url, { width: 160, margin: 1 });
         return { name: table.name, zone: table.zone?.name ?? "—", dataUrl, url };
       })
@@ -742,6 +764,13 @@ ${qrItems
                     Vercel, redeploy, then download QR codes again.
                   </p>
                 )}
+                {!resolvedOrgSlug && (
+                  <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    Organization slug is missing — guest links need a slug like{" "}
+                    <span className="font-mono">skyline-lounge</span>. Update it
+                    in Settings or contact support.
+                  </p>
+                )}
                 <div className="flex flex-col items-center gap-3">
                   {qrUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -754,10 +783,11 @@ ${qrItems
                     <Skeleton className="size-[200px] rounded-lg bg-zinc-800" />
                   )}
                   <p className="break-all text-center text-xs text-zinc-500">
-                    {guestTableUrl(orgSlug, selected.qr_token, appUrl).replace(
-                      /^https?:\/\//,
-                      ""
-                    )}
+                    {guestTableUrl(
+                      resolvedOrgSlug,
+                      selected.qr_token,
+                      appUrl
+                    ).replace(/^https?:\/\//, "")}
                   </p>
                   <div className="flex w-full gap-2">
                     <button

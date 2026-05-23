@@ -56,8 +56,8 @@ export default async function SettingsPage() {
     <SettingsBoard
       org={
         orgRow ?? {
-          name: "Restaurant",
-          slug: "",
+          name: staff.organizations?.name ?? "Restaurant",
+          slug: staff.organizations?.slug ?? "",
           email: null,
           phone: null,
           description: null,

@@ -7,6 +7,11 @@ import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { useGuestSessionToken } from "@/hooks/use-guest-session-token";
+import { useGuestSession } from "@/hooks/use-guest-session";
+import {
+  ensureTableSession,
+  isSessionExpiredError,
+} from "@/lib/guest/ensure-table-session";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -133,6 +138,7 @@ export function CheckoutForm({
   const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
   const { sessionToken, hydrated: sessionHydrated } = useGuestSessionToken();
+  const tableId = useGuestSession((s) => s.tableId);
   const subtotal = useCart((s) => s.subtotal());
   const taxBreakdown = useCart((s) => s.taxBreakdown);
   const taxAmount = useCart((s) => s.taxAmount);
@@ -172,87 +178,125 @@ export function CheckoutForm({
   }, []);
 
   useEffect(() => {
-    if (!storeReady || orderPlacedRef.current) return;
+    if (!storeReady || orderPlacedRef.current || isDemo) return;
     if (!items.length) {
       router.replace(`/${slug}/${token}/cart`);
       return;
     }
-    if (!sessionToken && !isDemo) {
-      router.replace(`/${slug}/${token}/cart`);
-      return;
+
+    let cancelled = false;
+
+    (async () => {
+      const freshToken = await ensureTableSession(slug, token, tableId);
+      if (cancelled) return;
+      if (!freshToken && !sessionToken) {
+        router.replace(`/${slug}/${token}`);
+        return;
+      }
+      setReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storeReady, items.length, sessionToken, isDemo, slug, token, tableId, router]);
+
+  async function submitOrder(activeSessionToken: string) {
+    await saveGuestEmail(activeSessionToken, guestEmail);
+
+    const res = await fetchWithRetry("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionToken: activeSessionToken,
+        tableToken: token,
+        items,
+        guestEmail: guestEmail.trim() || undefined,
+        isTakeaway,
+        paymentMethod: "unset",
+        promoCodeId: appliedPromo?.promoCodeId,
+      }),
+    });
+
+    if (isServerErrorStatus(res.status)) {
+      throw new Error(tUI("error.orderFailed"));
     }
-    setReady(true);
-  }, [storeReady, items.length, sessionToken, isDemo, slug, token, router]);
+
+    const parsed = await readJsonResponse<{
+      error?: string;
+      details?: { products?: string[] };
+      data?: { orderId: string };
+    }>(res);
+
+    if (!parsed.ok) {
+      throw new Error(parsed.error);
+    }
+
+    const json = parsed.data;
+    if (!res.ok || !json.data?.orderId) {
+      if (
+        json.error === "unavailable_products" &&
+        Array.isArray(json.details?.products)
+      ) {
+        for (const name of json.details.products) {
+          toast.error(tUI("cart.unavailableProduct", { name }));
+        }
+      }
+      throw new Error(json.error ?? tUI("error.orderFailed"));
+    }
+
+    return json.data.orderId;
+  }
 
   async function handlePlaceOrder() {
-    if (!sessionToken || !isOnline) return;
+    if (!isOnline) return;
     setProcessing(true);
     setError(null);
 
     try {
-      await saveGuestEmail(sessionToken, guestEmail);
-
-      const res = await fetchWithRetry("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionToken,
-          tableToken: token,
-          items,
-          guestEmail: guestEmail.trim() || undefined,
-          isTakeaway,
-          paymentMethod: "unset",
-          promoCodeId: appliedPromo?.promoCodeId,
-        }),
-      });
-
-      if (isServerErrorStatus(res.status)) {
+      let activeSessionToken =
+        sessionToken ?? (await ensureTableSession(slug, token, tableId));
+      if (!activeSessionToken) {
         throw new Error(tUI("error.orderFailed"));
       }
 
-      const parsed = await readJsonResponse<{
-        error?: string;
-        details?: { products?: string[] };
-        data?: { orderId: string };
-      }>(res);
+      let orderId: string;
+      try {
+        orderId = await submitOrder(activeSessionToken);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "";
+        if (!isSessionExpiredError(message)) throw e;
 
-      if (!parsed.ok) {
-        throw new Error(parsed.error);
-      }
-
-      const json = parsed.data;
-      if (!res.ok || !json.data?.orderId) {
-        if (
-          json.error === "unavailable_products" &&
-          Array.isArray(json.details?.products)
-        ) {
-          for (const name of json.details.products) {
-            toast.error(tUI("cart.unavailableProduct", { name }));
-          }
-        }
-        throw new Error(json.error ?? tUI("error.orderFailed"));
+        const refreshed = await ensureTableSession(slug, token, tableId);
+        if (!refreshed) throw e;
+        activeSessionToken = refreshed;
+        orderId = await submitOrder(activeSessionToken);
       }
 
       orderPlacedRef.current = true;
       recordGuestOrderPlaced();
       hapticSuccess();
-      router.replace(`/${slug}/${token}/order/${json.data.orderId}?placed=1`);
+      router.replace(`/${slug}/${token}/order/${orderId}?placed=1`);
       clearCart();
     } catch (e) {
       if (!navigator.onLine || e instanceof TypeError) {
-        enqueueOfflineOrder({
-          sessionToken,
-          tableToken: token,
-          payload: {
-            sessionToken,
+        const fallbackToken =
+          sessionToken ?? (await ensureTableSession(slug, token, tableId));
+        if (fallbackToken) {
+          enqueueOfflineOrder({
+            sessionToken: fallbackToken,
             tableToken: token,
-            items,
-            guestEmail: guestEmail.trim() || undefined,
-            isTakeaway,
-            paymentMethod: "unset",
-            promoCodeId: appliedPromo?.promoCodeId,
-          },
-        });
+            payload: {
+              sessionToken: fallbackToken,
+              tableToken: token,
+              items,
+              guestEmail: guestEmail.trim() || undefined,
+              isTakeaway,
+              paymentMethod: "unset",
+              promoCodeId: appliedPromo?.promoCodeId,
+            },
+          });
+        }
         void registerOrderSync();
         toast.success(tUI("offline.orderQueued"));
         setProcessing(false);

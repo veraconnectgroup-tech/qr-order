@@ -3,7 +3,7 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const STALE_SESSION_HOURS = 8;
+const STALE_SESSION_HOURS = 24;
 const WEBHOOK_RETENTION_DAYS = 30;
 
 export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {

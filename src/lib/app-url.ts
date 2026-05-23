@@ -83,10 +83,19 @@ export function getServerAppUrl(): string {
   return getGuestAppBaseUrl(null);
 }
 
+function joinGuestPath(base: string, ...segments: string[]) {
+  const cleanBase = normalizeUrl(base);
+  const path = segments
+    .map((segment) => segment.trim().replace(/^\/+|\/+$/g, ""))
+    .filter(Boolean)
+    .join("/");
+  return path ? `${cleanBase}/${path}` : cleanBase;
+}
+
 export function guestTableUrl(
   orgSlug: string,
   qrToken: string,
   clientOrigin?: string | null
 ) {
-  return `${getGuestAppBaseUrl(clientOrigin)}/${orgSlug}/${qrToken}`;
+  return joinGuestPath(getGuestAppBaseUrl(clientOrigin), orgSlug, qrToken);
 }

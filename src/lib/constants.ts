@@ -23,7 +23,7 @@ export const STAFF_ROLES = ["owner", "manager", "staff", "kitchen"] as const;
 
 export const ADMIN_ROLES = ["owner", "manager"] as const;
 
-export const SESSION_MAX_AGE_HOURS = 4;
+export const SESSION_MAX_AGE_HOURS = 12;
 
 export const WAITER_CALL_COOLDOWN_SECONDS = 60;
 

@@ -9,6 +9,7 @@ import { LanguageSelector } from "@/components/guest/language-selector";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
+import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import { formatPrice } from "@/lib/format";
 import { formatServeSize } from "@/lib/serve-size";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -126,6 +127,12 @@ export function CartView({
   const isOnline = useOnlineStatus();
   const canPlaceOrders = orderingEnabled && acceptingOrders;
   const canCheckout = canPlaceOrders && isOnline;
+  const tableId = useGuestSession((s) => s.tableId);
+
+  useEffect(() => {
+    if (!items.length) return;
+    void ensureTableSession(slug, token, tableId);
+  }, [items.length, slug, token, tableId]);
 
   if (!items.length) {
     return <EmptyCartState slug={slug} token={token} />;

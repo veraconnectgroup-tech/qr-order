@@ -104,7 +104,7 @@ export default async function DashboardLayout({
           accessibleLocations,
           orgId: staff.org_id,
           orgName: orgRow?.name ?? "Restaurant",
-          orgSlug: orgRow?.slug ?? "",
+          orgSlug: orgRow?.slug ?? staff.organizations?.slug ?? "",
           orgLogoUrl: orgRow?.logo_url ?? null,
           currency: orgRow?.currency ?? "EUR",
           staffName: staff.name,
