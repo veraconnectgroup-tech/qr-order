@@ -18,10 +18,10 @@ export function LandingCtaBanner() {
         </div>
 
         <h2 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-semibold leading-tight tracking-[-0.03em] text-white">
-          Take the short way.
+          Your guests are ready. Are you?
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-zinc-400">
-          Request access and run your first service on QR Order.
+          Join our pilot program — no credit card needed.
         </p>
 
         <Button
@@ -34,6 +34,8 @@ export function LandingCtaBanner() {
             <ArrowRight className="ml-1.5 size-4" />
           </Link>
         </Button>
+
+        <p className="mt-4 text-xs text-zinc-500">🇩🇪 Made in Hamburg</p>
       </div>
     </div>
   );

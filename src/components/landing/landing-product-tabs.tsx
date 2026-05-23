@@ -87,7 +87,7 @@ export function LandingProductTabs() {
   const current = views.find((v) => v.id === active) ?? views[0];
 
   return (
-    <section id="product" className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-20 text-white sm:py-28">
+    <section id="product" className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingSectionLabel>Product tour</LandingSectionLabel>

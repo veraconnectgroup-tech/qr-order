@@ -14,7 +14,7 @@ export function LandingClosingShowcase() {
         aria-hidden
       />
 
-      <section className="relative px-6 pt-20 pb-16 sm:pt-28 sm:pb-20">
+      <section className="relative px-6 py-16 md:py-20">
         <LandingContainer wide>
           <AnimateInView>
             <LandingCtaBanner />

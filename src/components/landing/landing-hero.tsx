@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 
 export function LandingHero() {
   return (
-    <section className="landing-hero-dark landing-dot-grid landing-glow-top relative overflow-hidden pt-[72px]">
-      <LandingContainer wide className="relative py-16 sm:py-20 lg:py-24">
+    <section className="landing-hero-dark landing-dot-grid landing-glow-top relative overflow-hidden pt-20 pb-12">
+      <LandingContainer wide className="relative">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-16">
           <HeroStagger className="max-w-[620px] lg:max-w-none">
             <HeroItem>

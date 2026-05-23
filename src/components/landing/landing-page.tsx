@@ -91,7 +91,7 @@ export function LandingPage() {
 
         <section
           id="pricing"
-          className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-20 text-white sm:py-28"
+          className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20"
         >
           <LandingContainer wide>
             <AnimateInView className="max-w-[480px]">

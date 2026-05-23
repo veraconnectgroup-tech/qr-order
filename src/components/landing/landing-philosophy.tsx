@@ -25,7 +25,7 @@ const solutions = [
 
 export function LandingPhilosophy() {
   return (
-    <section className="border-b border-zinc-800 bg-zinc-950 py-20 sm:py-28">
+    <section className="border-b border-zinc-800 bg-zinc-950 py-16 md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingEyebrow inverted>Why QR Order</LandingEyebrow>

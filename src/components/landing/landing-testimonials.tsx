@@ -1,54 +1,47 @@
-import { AnimateInView, StaggerInView, StaggerItem } from "@/components/landing/animate-in-view";
+import {
+  AnimateInView,
+  StaggerInView,
+  StaggerItem,
+} from "@/components/landing/animate-in-view";
 import {
   LandingContainer,
-  LandingEyebrow,
   LandingHeadline,
-  LandingLead,
 } from "@/components/landing/landing-primitives";
 
-const testimonials = [
-  {
-    quote:
-      "Finally an ordering system that understands German tax rules.",
-  },
-  {
-    quote: "Setup took 20 minutes. Staff needed zero training.",
-  },
-  {
-    quote: "Our guests love not having to wait for the waiter.",
-  },
-];
+const METRICS = [
+  { value: "< 30s", label: "Average guest order time" },
+  { value: "0€", label: "Monthly platform fee" },
+  { value: "99.9%", label: "Uptime SLA target" },
+  { value: "2 min", label: "Setup to first order" },
+] as const;
 
 export function LandingTestimonials() {
   return (
-    <section className="border-t border-zinc-800 bg-zinc-950 py-20 text-white sm:py-28">
+    <section className="border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[560px] text-center">
-          <LandingEyebrow inverted>Feedback</LandingEyebrow>
-          <LandingHeadline inverted className="mt-3">
-            Early operators, real workflows
-          </LandingHeadline>
-          <LandingLead inverted className="mt-4">
-            Anonymized feedback from hospitality teams testing QR Order in
-            production.
-          </LandingLead>
+          <LandingHeadline inverted>Built for real service</LandingHeadline>
         </AnimateInView>
 
-        <StaggerInView className="mt-14 grid gap-4 md:grid-cols-3">
-          {testimonials.map((t) => (
+        <StaggerInView className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          {METRICS.map(({ value, label }) => (
             <StaggerItem
-              key={t.quote}
-              className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/40 p-6"
+              key={label}
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 text-center"
             >
-              <p className="flex-1 text-[15px] leading-relaxed text-zinc-300">
-                &ldquo;{t.quote}&rdquo;
+              <p className="text-4xl font-bold text-orange-500 md:text-5xl">
+                {value}
               </p>
-              <p className="mt-6 border-t border-zinc-800 pt-5 text-[12px] font-medium uppercase tracking-wider text-zinc-500">
-                Early adopter feedback
-              </p>
+              <p className="mt-2 text-sm text-zinc-400">{label}</p>
             </StaggerItem>
           ))}
         </StaggerInView>
+
+        <AnimateInView className="mt-10 text-center text-sm text-zinc-500">
+          Real operator feedback coming soon.
+          <br />
+          Request access to join our pilot program.
+        </AnimateInView>
       </LandingContainer>
     </section>
   );

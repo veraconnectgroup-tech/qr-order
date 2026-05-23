@@ -130,7 +130,7 @@ export function LandingModules() {
       : modules.filter((m) => m.category === category);
 
   return (
-    <section id="modules" className="scroll-mt-24 bg-zinc-950 py-20 text-white sm:py-28">
+    <section id="modules" className="scroll-mt-24 bg-zinc-950 py-16 text-white md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingHeadline inverted>
