@@ -3,10 +3,9 @@ import { requireOwner } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function AdminLocationsPage() {
-  await requireOwner();
+  const staff = await requireOwner();
 
   const admin = createAdminClient();
-  const staff = await requireOwner();
   const { data } = await admin
     .from("locations")
     .select("id, name, address, city, postal_code, is_active, created_at")

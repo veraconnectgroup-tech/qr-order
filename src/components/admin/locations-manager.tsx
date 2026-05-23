@@ -42,8 +42,6 @@ function LocationDialog({
   const [pending, startTransition] = useTransition();
   const isEdit = !!location;
 
-  const [pending, startTransition] = useTransition();
-
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);

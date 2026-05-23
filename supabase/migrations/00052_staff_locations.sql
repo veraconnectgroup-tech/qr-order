@@ -34,33 +34,48 @@ CREATE POLICY "owner_manage_staff_locations" ON staff_locations
     )
   );
 
--- Resolve accessible locations: explicit assignments, legacy location_id, or all org locations.
+-- Resolve accessible locations: owners see all org locations; others use assignments.
 CREATE OR REPLACE FUNCTION get_user_location_ids()
 RETURNS UUID[] AS $$
-  SELECT COALESCE(
-    NULLIF(
-      ARRAY(
-        SELECT DISTINCT sl.location_id
-        FROM staff s
-        JOIN staff_locations sl ON sl.staff_id = s.id
-        JOIN locations l ON l.id = sl.location_id AND l.is_active = true
-        WHERE s.user_id = auth.uid()
-          AND s.is_active = true
-          AND s.deleted_at IS NULL
-      ),
-      '{}'::uuid[]
-    ),
-    ARRAY(
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM staff s
+      WHERE s.user_id = auth.uid()
+        AND s.role = 'owner'
+        AND s.is_active = true
+        AND s.deleted_at IS NULL
+    ) THEN ARRAY(
       SELECT l.id
       FROM staff s
       JOIN locations l ON l.org_id = s.org_id AND l.is_active = true
       WHERE s.user_id = auth.uid()
         AND s.is_active = true
         AND s.deleted_at IS NULL
-        AND (
-          s.location_id IS NULL
-          OR l.id = s.location_id
-        )
     )
-  );
+    ELSE COALESCE(
+      NULLIF(
+        ARRAY(
+          SELECT DISTINCT sl.location_id
+          FROM staff s
+          JOIN staff_locations sl ON sl.staff_id = s.id
+          JOIN locations l ON l.id = sl.location_id AND l.is_active = true
+          WHERE s.user_id = auth.uid()
+            AND s.is_active = true
+            AND s.deleted_at IS NULL
+        ),
+        '{}'::uuid[]
+      ),
+      ARRAY(
+        SELECT l.id
+        FROM staff s
+        JOIN locations l ON l.org_id = s.org_id AND l.is_active = true
+        WHERE s.user_id = auth.uid()
+          AND s.is_active = true
+          AND s.deleted_at IS NULL
+          AND s.location_id IS NOT NULL
+          AND l.id = s.location_id
+      )
+    )
+  END;
 $$ LANGUAGE sql SECURITY DEFINER STABLE;

@@ -253,6 +253,22 @@ export async function acceptStaffInvite(formData: FormData) {
     return { error: "Staff profile could not be created." };
   }
 
+  if (row.location_id) {
+    const { data: staffRow } = await admin
+      .from("staff")
+      .select("id")
+      .eq("user_id", authUser.user.id)
+      .eq("org_id", row.org_id)
+      .single();
+
+    if (staffRow) {
+      await admin.from("staff_locations").insert({
+        staff_id: (staffRow as { id: string }).id,
+        location_id: row.location_id,
+      } as never);
+    }
+  }
+
   await admin
     .from("staff_invites")
     .update({ accepted_at: new Date().toISOString() } as never)

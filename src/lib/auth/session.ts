@@ -67,23 +67,36 @@ export async function requireOwner() {
 export async function getStaffAccessibleLocationIds(staff: Staff) {
   const admin = createAdminClient();
 
+  if (staff.role === "owner") {
+    const { data: locations } = await admin
+      .from("locations")
+      .select("id")
+      .eq("org_id", staff.org_id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    return ((locations ?? []) as Array<{ id: string }>).map((row) => row.id);
+  }
+
   const { data: links } = await admin
     .from("staff_locations")
-    .select("location_id, locations!inner(id, org_id, is_active)")
+    .select("location_id")
     .eq("staff_id", staff.id);
 
-  const assignedIds = ((links ?? []) as Array<{
-    location_id: string;
-    locations: { id: string; org_id: string; is_active: boolean };
-  }>)
-    .filter(
-      (row) =>
-        row.locations.org_id === staff.org_id && row.locations.is_active
-    )
-    .map((row) => row.location_id);
+  const linkedIds = ((links ?? []) as Array<{ location_id: string }>).map(
+    (row) => row.location_id
+  );
 
-  if (assignedIds.length > 0) {
-    return [...new Set(assignedIds)];
+  if (linkedIds.length > 0) {
+    const { data: locations } = await admin
+      .from("locations")
+      .select("id")
+      .in("id", linkedIds)
+      .eq("org_id", staff.org_id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    return ((locations ?? []) as Array<{ id: string }>).map((row) => row.id);
   }
 
   if (staff.location_id) {

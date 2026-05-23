@@ -265,6 +265,10 @@ type Tables = {
     created_at: string;
     deleted_at: string | null;
   };
+  staff_locations: {
+    staff_id: string;
+    location_id: string;
+  };
   waiter_calls: {
     id: string;
     table_id: string;
