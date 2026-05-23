@@ -197,6 +197,7 @@ export function TablesBoard() {
   usePostgresRealtime({
     channelName: `tables-board-orders:${locationId}`,
     table: "orders",
+    locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: load,
   });

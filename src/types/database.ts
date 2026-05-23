@@ -44,6 +44,7 @@ type Tables = {
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
     in_person_payment_location: "bar" | "counter" | "table";
+    default_locale: "de" | "en" | "sr" | "tr" | "hr";
     created_at: string;
     updated_at: string;
   };
@@ -172,6 +173,10 @@ type Tables = {
     is_takeaway: boolean;
     tse_signature: string | null;
     tse_data: Json | null;
+    refund_id: string | null;
+    refund_reason: string | null;
+    refunded_by: string | null;
+    refunded_at: string | null;
     created_at: string;
     updated_at: string;
   };
@@ -227,6 +232,16 @@ type Tables = {
     event_type: string;
     processed_at: string;
     payload: Json | null;
+  };
+  audit_log: {
+    id: string;
+    action: string;
+    order_id: string | null;
+    staff_id: string | null;
+    amount: number | null;
+    reason: string | null;
+    metadata: Json;
+    created_at: string;
   };
 };
 

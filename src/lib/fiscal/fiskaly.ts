@@ -7,7 +7,7 @@ export type FiskalyPaymentType = "CASH" | "NON_CASH";
 export type FiskalyReceiptSchema = {
   standard_v1: {
     receipt: {
-      receipt_type: "RECEIPT";
+      receipt_type: "RECEIPT" | "CANCELLATION";
       amounts_per_vat_rate: Array<{ vat_rate: FiskalyVatRate; amount: string }>;
       amounts_per_payment_type: Array<{
         payment_type: FiskalyPaymentType;

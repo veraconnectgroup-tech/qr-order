@@ -9,8 +9,8 @@ import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { CartSummaryBar } from "@/components/guest/cart-summary-bar";
 import { CategoryPills } from "@/components/guest/category-pills";
 import { GuestHeader } from "@/components/guest/guest-header";
-import { MenuLanguageToggle } from "@/components/guest/menu-language-toggle";
-import { MenuLocaleProvider } from "@/components/guest/menu-locale-provider";
+import { LanguageSelector } from "@/components/guest/language-selector";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { OfflineIndicator } from "@/components/guest/offline-indicator";
 import { ProductCard } from "@/components/guest/product-card";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
@@ -49,6 +49,7 @@ export function MenuView({
   tableId: string;
   orderingEnabled?: boolean;
 }) {
+  const { tUI } = useAppLocale();
   const router = useRouter();
   const scrollKey = `menu-scroll-${slug}-${token}`;
   const [search, setSearch] = useState("");
@@ -172,7 +173,7 @@ export function MenuView({
     : null;
 
   return (
-    <MenuLocaleProvider slug={slug} token={token}>
+    <>
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
         <div className="min-h-dvh pb-cart-offset">
@@ -181,13 +182,12 @@ export function MenuView({
             logoUrl={logoUrl}
             subtitle={subtitle}
             tableName={tableName}
-            trailing={<MenuLanguageToggle />}
+            trailing={<LanguageSelector compact />}
           />
 
           {!orderingEnabled && (
             <div className="mx-4 mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              Ordering is paused. Browse the menu or call staff — new orders will
-              open again soon.
+              {tUI("menu.orderingPaused")}
             </div>
           )}
 
@@ -199,7 +199,7 @@ export function MenuView({
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search menu..."
+                  placeholder={tUI("menu.search")}
                   className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-3 pl-10 pr-4 text-base text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700 sm:py-2.5 sm:text-sm"
                 />
               </div>
@@ -218,7 +218,7 @@ export function MenuView({
               <div>
                 {filtered.length === 0 ? (
                   <p className="py-12 text-center text-zinc-400">
-                    No results for &quot;{searchQuery}&quot;
+                    {tUI("menu.noResults", { query: searchQuery })}
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
@@ -273,6 +273,6 @@ export function MenuView({
           />
         </div>
       </PullToRefresh>
-    </MenuLocaleProvider>
+    </>
   );
 }

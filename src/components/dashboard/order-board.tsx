@@ -26,6 +26,7 @@ import {
   type OrderColumnDef,
 } from "@/components/dashboard/order-card";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
+import { RefundOrderDialog } from "@/components/dashboard/refund-order-dialog";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
@@ -95,6 +96,8 @@ function DraggableOrderCard({
   onStartPreparing,
   onMarkReady,
   onMarkDelivered,
+  onRefund,
+  staffRole,
   inPersonPaymentLocation,
 }: {
   order: OrderWithDetails;
@@ -105,6 +108,8 @@ function DraggableOrderCard({
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onMarkDelivered: () => void;
+  onRefund?: () => void;
+  staffRole: string;
   inPersonPaymentLocation: "bar" | "counter" | "table";
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -125,6 +130,8 @@ function DraggableOrderCard({
         onStartPreparing={onStartPreparing}
         onMarkReady={onMarkReady}
         onMarkDelivered={onMarkDelivered}
+        onRefund={onRefund}
+        staffRole={staffRole}
         dragHandleProps={{ ...attributes, ...listeners }}
         inPersonPaymentLocation={inPersonPaymentLocation}
       />
@@ -162,6 +169,9 @@ export function OrderBoard() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<OrderWithDetails | null>(
+    null
+  );
+  const [refundTarget, setRefundTarget] = useState<OrderWithDetails | null>(
     null
   );
   const [mobileColumn, setMobileColumn] =
@@ -214,6 +224,7 @@ export function OrderBoard() {
   const realtimeMode = usePostgresRealtime({
     channelName: `orders-realtime:${locationId}`,
     table: "orders",
+    locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: fetchOrders,
   });
@@ -260,6 +271,31 @@ export function OrderBoard() {
     [fetchOrders, refreshAlerts]
   );
 
+  const refundOrder = useCallback(
+    async (orderId: string, reason: string, amount?: number) => {
+      setBusyId(orderId);
+      try {
+        const res = await fetch(`/api/orders/${orderId}/refund`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason, amount }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error ?? "Refund failed");
+        }
+        toast.success("Refund issued");
+        await fetchOrders();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Refund failed");
+        throw e;
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [fetchOrders]
+  );
+
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
   }
@@ -296,6 +332,11 @@ export function OrderBoard() {
     );
 
   function renderOrderCard(order: OrderWithDetails, draggable = true) {
+    const canRefund =
+      order.payment_status === "paid" &&
+      order.payment_method === "online" &&
+      ["owner", "manager"].includes(staffRole);
+
     const handlers = {
       busy: busyId === order.id,
       onAccept: () => patchOrder(order.id, "accepted"),
@@ -303,6 +344,8 @@ export function OrderBoard() {
       onStartPreparing: () => patchOrder(order.id, "preparing"),
       onMarkReady: () => patchOrder(order.id, "ready"),
       onMarkDelivered: () => patchOrder(order.id, "delivered"),
+      onRefund: canRefund ? () => setRefundTarget(order) : undefined,
+      staffRole,
     };
 
     if (draggable) {
@@ -463,6 +506,7 @@ export function OrderBoard() {
                 onStartPreparing={() => {}}
                 onMarkReady={() => {}}
                 onMarkDelivered={() => {}}
+                staffRole={staffRole}
               />
             </div>
           ) : null}
@@ -476,6 +520,18 @@ export function OrderBoard() {
         onConfirm={async (reason) => {
           if (!rejectTarget) return;
           await patchOrder(rejectTarget.id, "rejected", reason);
+        }}
+      />
+
+      <RefundOrderDialog
+        open={!!refundTarget}
+        orderNumber={refundTarget?.order_number ?? 0}
+        orderTotal={Number(refundTarget?.total ?? 0)}
+        currency={currency}
+        onClose={() => setRefundTarget(null)}
+        onConfirm={async (reason, amount) => {
+          if (!refundTarget) return;
+          await refundOrder(refundTarget.id, reason, amount);
         }}
       />
     </div>

@@ -1,8 +1,8 @@
-export type MenuLocale = "default" | "en";
+import type { Locale } from "@/lib/i18n/translations";
 
 export function localizedName(
   item: { name: string; name_en?: string | null },
-  locale: MenuLocale
+  locale: Locale
 ) {
   if (locale === "en" && item.name_en?.trim()) return item.name_en.trim();
   return item.name;
@@ -10,7 +10,7 @@ export function localizedName(
 
 export function localizedDescription(
   item: { description?: string | null; description_en?: string | null },
-  locale: MenuLocale
+  locale: Locale
 ) {
   if (locale === "en" && item.description_en?.trim()) {
     return item.description_en.trim();

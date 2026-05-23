@@ -1,26 +1,19 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { cacheStaleWhileRevalidate, noCache } from "@/lib/cache/headers";
+import {
+  healthHttpStatus,
+  runHealthChecks,
+} from "@/lib/health/checks";
 
 export async function GET() {
-  const timestamp = new Date().toISOString();
-  const version = process.env.NEXT_PUBLIC_APP_VERSION || "dev";
+  const payload = await runHealthChecks();
+  const headers =
+    payload.status === "healthy"
+      ? cacheStaleWhileRevalidate(10, 30)
+      : noCache();
 
-  try {
-    const admin = createAdminClient();
-    const { error } = await admin.from("organizations").select("id").limit(1);
-
-    if (error) {
-      return NextResponse.json(
-        { status: "degraded", error: "database", timestamp, version },
-        { status: 503 }
-      );
-    }
-
-    return NextResponse.json({ status: "ok", timestamp, version });
-  } catch {
-    return NextResponse.json(
-      { status: "degraded", error: "database", timestamp, version },
-      { status: 503 }
-    );
-  }
+  return NextResponse.json(payload, {
+    status: healthHttpStatus(payload.status),
+    headers,
+  });
 }

@@ -56,6 +56,7 @@ export function useKitchenOrders(locationId: string) {
   const realtimeMode = usePostgresRealtime({
     channelName: `kitchen-orders:${locationId}`,
     table: "orders",
+    locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: fetchOrders,
     enabled: Boolean(locationId),

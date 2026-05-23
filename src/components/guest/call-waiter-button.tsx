@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BellRing } from "lucide-react";
 import { toast } from "sonner";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { WAITER_CALL_COOLDOWN_SECONDS } from "@/lib/constants";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export function CallWaiterButton({
   token: string;
   tableName: string;
 }) {
+  const { tUI } = useAppLocale();
   const [open, setOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -48,8 +50,8 @@ export function CallWaiterButton({
 
   async function handleCall() {
     if (!sessionToken) {
-      toast.error("Session not active", {
-        description: "Refresh the page and try again.",
+      toast.error(tUI("waiter.sessionError"), {
+        description: tUI("waiter.sessionErrorHint"),
       });
       return;
     }
@@ -68,7 +70,9 @@ export function CallWaiterButton({
       setConfirmed(true);
       startCooldown();
     } catch {
-      toast.error("Could not call waiter", { description: "Please try again." });
+      toast.error(tUI("waiter.error"), {
+        description: tUI("waiter.errorHint"),
+      });
     } finally {
       setLoading(false);
     }
@@ -86,7 +90,9 @@ export function CallWaiterButton({
         disabled={cooldown > 0}
       >
         <BellRing className="mr-2 size-4" />
-        {cooldown > 0 ? `Wait ${cooldown}s` : "Call waiter"}
+        {cooldown > 0
+          ? tUI("waiter.waitSeconds", { seconds: cooldown })
+          : tUI("waiter.call")}
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
@@ -100,10 +106,12 @@ export function CallWaiterButton({
           {!confirmed ? (
             <>
               <SheetHeader>
-                <SheetTitle className="text-zinc-50">Call waiter?</SheetTitle>
+                <SheetTitle className="text-zinc-50">
+                  {tUI("waiter.confirmTitle")}
+                </SheetTitle>
               </SheetHeader>
               <p className="mt-2 text-body text-zinc-400">
-                Staff will be notified to come to {tableName}.
+                {tUI("waiter.confirmBody", { tableName })}
               </p>
               <div className="mt-6 flex gap-3">
                 <Button
@@ -111,30 +119,32 @@ export function CallWaiterButton({
                   disabled={loading}
                   className="flex-1 bg-orange-500 hover:bg-orange-600"
                 >
-                  {loading ? "Sending..." : "Call waiter"}
+                  {loading ? tUI("waiter.calling") : tUI("waiter.call")}
                 </Button>
                 <Button
                   variant="outline"
                   className="flex-1 border-zinc-700"
                   onClick={() => setOpen(false)}
                 >
-                  Cancel
+                  {tUI("waiter.cancel")}
                 </Button>
               </div>
             </>
           ) : (
             <>
               <SheetHeader>
-                <SheetTitle className="text-zinc-50">Waiter notified ✓</SheetTitle>
+                <SheetTitle className="text-zinc-50">
+                  {tUI("waiter.notified")}
+                </SheetTitle>
               </SheetHeader>
               <p className="mt-2 text-body text-zinc-400">
-                Someone will be with you shortly.
+                {tUI("waiter.notifiedBody")}
               </p>
               <Button
                 className="mt-6 w-full bg-orange-500 hover:bg-orange-600"
                 onClick={() => setOpen(false)}
               >
-                OK
+                {tUI("common.ok")}
               </Button>
             </>
           )}

@@ -6,19 +6,23 @@ import Link from "next/link";
 import { CheckCircle2, ChevronDown, XCircle } from "lucide-react";
 import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import {
-  orderStatusHeadline,
+  inPersonPaymentKeys,
+  orderStatusHeadlineKey,
+} from "@/lib/i18n/translations";
+import {
   orderStatusStepIndex,
 } from "@/lib/orders/order-status-display";
 import { AnimatedOrderNumber } from "@/components/guest/animated-order-number";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
+import { LanguageSelector } from "@/components/guest/language-selector";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
-import { guestPaymentInstruction } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
 
@@ -59,13 +63,13 @@ type OrderData = {
   tables: { name: string } | null;
 };
 
-const STEPS = [
-  { key: "pending", label: "Received", field: "created_at" as const },
-  { key: "accepted", label: "Accepted", field: "accepted_at" as const },
-  { key: "preparing", label: "Preparing", field: "preparing_at" as const },
-  { key: "ready", label: "Ready", field: "ready_at" as const },
-  { key: "delivered", label: "Delivered", field: "delivered_at" as const },
-];
+const STEP_KEYS = [
+  { key: "pending", field: "created_at" as const },
+  { key: "accepted", field: "accepted_at" as const },
+  { key: "preparing", field: "preparing_at" as const },
+  { key: "ready", field: "ready_at" as const },
+  { key: "delivered", field: "delivered_at" as const },
+] as const;
 
 const CLOSED_STATUSES = new Set(["rejected", "cancelled"]);
 
@@ -105,6 +109,7 @@ export function OrderStatusTracker({
   paymentCardAtTableEnabled: boolean;
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
+  const { tUI } = useAppLocale();
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -177,7 +182,7 @@ export function OrderStatusTracker({
   if (!order) {
     return (
       <div className="px-4 py-20 text-center text-zinc-400">
-        Order not found.
+        {tUI("order.notFound")}
       </div>
     );
   }
@@ -188,15 +193,26 @@ export function OrderStatusTracker({
   const isPaid = order.payment_status === "paid";
   const canAddMore = !isClosed;
   const stepIdx = orderStatusStepIndex(order.status);
-  const headline = orderStatusHeadline(order.status, order.payment_status);
-  const paymentHint = guestPaymentInstruction(
-    order.payment_method,
-    order.payment_status,
-    inPersonPaymentLocation
+  const headline = tUI(
+    orderStatusHeadlineKey(order.status, order.payment_status)
   );
+
+  let paymentHint: string | null = null;
+  if (order.payment_status !== "paid" && order.payment_method !== "unset") {
+    if (order.payment_method === "at_bar") {
+      paymentHint = tUI(
+        inPersonPaymentKeys(inPersonPaymentLocation).instruction
+      );
+    } else if (order.payment_method === "card_at_table") {
+      paymentHint = tUI("payment.cardAtTable.instruction");
+    }
+  }
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
+      <div className="mb-3 flex justify-end">
+        <LanguageSelector compact />
+      </div>
       {/* Status hero */}
       <section className="pb-5 text-center">
         {isRejected ? (
@@ -222,7 +238,9 @@ export function OrderStatusTracker({
               stepIdx >= 0 &&
               stepIdx < 4 && (
                 <p className="mt-2 text-sm text-zinc-400">
-                  ~{order.estimated_prep_minutes} min estimated
+                  {tUI("order.estimatedMin", {
+                    minutes: order.estimated_prep_minutes,
+                  })}
                 </p>
               )}
           </>
@@ -239,17 +257,18 @@ export function OrderStatusTracker({
       {!isClosed && (
         <section className="mb-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4">
           <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
-            Live status
+            {tUI("order.liveStatus")}
           </h2>
           <div className="space-y-0">
-            {STEPS.map((step, idx) => {
+            {STEP_KEYS.map((step, idx) => {
               const done = stepIdx > idx;
               const current = order.status === step.key;
               const time = formatTime(order[step.field]);
+              const statusLabel = tUI(`order.status.${step.key}`);
               const label =
                 current && order.estimated_prep_minutes
-                  ? `${step.label} (~${order.estimated_prep_minutes} min)`
-                  : step.label;
+                  ? `${statusLabel} (~${order.estimated_prep_minutes} min)`
+                  : statusLabel;
 
               return (
                 <div key={step.key} className="relative flex gap-3">
@@ -271,7 +290,7 @@ export function OrderStatusTracker({
                             : "bg-zinc-700"
                       }`}
                     />
-                    {idx < STEPS.length - 1 && (
+                    {idx < STEP_KEYS.length - 1 && (
                       <div
                         className={`my-1 min-h-5 w-0.5 flex-1 ${
                           done
@@ -315,10 +334,9 @@ export function OrderStatusTracker({
           className="flex w-full items-center justify-between px-4 py-3 text-left"
         >
           <div>
-            <p className="text-sm font-medium text-zinc-200">This order</p>
+            <p className="text-sm font-medium text-zinc-200">{tUI("order.thisOrder")}</p>
             <p className="text-xs text-zinc-500">
-              {order.order_items.length} item
-              {order.order_items.length === 1 ? "" : "s"} ·{" "}
+              {tUI("order.itemCount", { count: order.order_items.length })} ·{" "}
               {formatPrice(Number(order.total), currency)}
             </p>
           </div>
@@ -345,7 +363,7 @@ export function OrderStatusTracker({
             ))}
             <div className="mt-2 space-y-1 border-t border-zinc-800 pt-2 text-sm">
               <div className="flex justify-between text-zinc-500">
-                <span>Subtotal</span>
+                <span>{tUI("order.subtotal")}</span>
                 <span>{formatPrice(Number(order.subtotal), currency)}</span>
               </div>
               {Number(order.tax_amount) > 0 && (
@@ -414,7 +432,7 @@ export function OrderStatusTracker({
             variant="outline"
             className="h-12 w-full rounded-xl border-zinc-700 bg-transparent text-base font-semibold text-zinc-200 hover:bg-zinc-900"
           >
-            <Link href={`/${slug}/${token}`}>Add more items</Link>
+            <Link href={`/${slug}/${token}`}>{tUI("order.addMore")}</Link>
           </Button>
         )}
         {isRejected && (
@@ -422,7 +440,7 @@ export function OrderStatusTracker({
             asChild
             className="h-12 w-full rounded-xl bg-orange-500 text-base font-semibold hover:bg-orange-600"
           >
-            <Link href={`/${slug}/${token}`}>Order again</Link>
+            <Link href={`/${slug}/${token}`}>{tUI("order.orderAgain")}</Link>
           </Button>
         )}
       </section>

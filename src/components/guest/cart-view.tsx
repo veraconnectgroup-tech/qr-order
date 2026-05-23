@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { LanguageSelector } from "@/components/guest/language-selector";
 import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { formatPrice } from "@/lib/format";
@@ -12,6 +14,7 @@ import { QuantitySelector } from "@/components/guest/quantity-selector";
 import { Button } from "@/components/ui/button";
 
 function EmptyCartState({ slug, token }: { slug: string; token: string }) {
+  const { tUI } = useAppLocale();
   const sessionToken = useGuestSession((s) => s.sessionToken);
   const [activeOrder, setActiveOrder] = useState<{
     id: string;
@@ -49,37 +52,38 @@ function EmptyCartState({ slug, token }: { slug: string; token: string }) {
           href={`/${slug}/${token}`}
           className="touch-target inline-flex items-center text-zinc-400"
         >
-          ← Back
+          ← {tUI("common.back")}
         </Link>
-        <h1 className="text-heading text-zinc-50">Your order</h1>
+        <h1 className="min-w-0 flex-1 text-heading text-zinc-50">{tUI("cart.title")}</h1>
+        <LanguageSelector compact />
       </header>
       <div className="py-16 text-center sm:py-20">
         {activeOrder ? (
           <>
-            <p className="text-heading text-zinc-50">No items in cart</p>
+            <p className="text-heading text-zinc-50">{tUI("cart.emptyActive")}</p>
             <p className="mt-2 text-body text-zinc-400">
-              You already sent order #{activeOrder.order_number} to the kitchen.
+              {tUI("cart.emptyActiveHint", {
+                orderNumber: activeOrder.order_number,
+              })}
             </p>
             <Button
               asChild
               className="mt-6 h-12 bg-orange-500 hover:bg-orange-600"
             >
               <Link href={`/${slug}/${token}/order/${activeOrder.id}`}>
-                Track order status
+                {tUI("cart.trackOrder")}
               </Link>
             </Button>
           </>
         ) : (
           <>
-            <p className="text-heading text-zinc-50">Your cart is empty</p>
-            <p className="mt-2 text-body text-zinc-400">
-              Browse the menu and add something delicious
-            </p>
+            <p className="text-heading text-zinc-50">{tUI("cart.empty")}</p>
+            <p className="mt-2 text-body text-zinc-400">{tUI("cart.emptyHint")}</p>
             <Button
               asChild
               className="mt-6 h-12 bg-orange-500 hover:bg-orange-600"
             >
-              <Link href={`/${slug}/${token}`}>View menu</Link>
+              <Link href={`/${slug}/${token}`}>{tUI("cart.viewMenu")}</Link>
             </Button>
           </>
         )}
@@ -105,6 +109,7 @@ export function CartView({
   currency: string;
   orderingEnabled?: boolean;
 }) {
+  const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
   const removeItem = useCart((s) => s.removeItem);
   const updateQuantity = useCart((s) => s.updateQuantity);
@@ -124,9 +129,10 @@ export function CartView({
             href={`/${slug}/${token}`}
             className="touch-target inline-flex items-center text-zinc-400"
           >
-            ← Back
+            ← {tUI("common.back")}
           </Link>
-          <h1 className="text-heading text-zinc-50">Your order</h1>
+          <h1 className="min-w-0 flex-1 text-heading text-zinc-50">{tUI("cart.title")}</h1>
+          <LanguageSelector compact />
         </header>
 
         <p className="text-caption mb-4 text-zinc-500">
@@ -135,8 +141,7 @@ export function CartView({
 
         {!orderingEnabled && (
           <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Ordering is paused right now. You can review your cart, but checkout is
-            unavailable until staff reopens ordering.
+            {tUI("cart.orderingPaused")}
           </div>
         )}
 
@@ -168,7 +173,7 @@ export function CartView({
                   )}
                   {item.serveSize && (
                     <p className="text-caption mt-1 text-zinc-400">
-                      Serve: {formatServeSize(item.serveSize)}
+                      {tUI("cart.serve")}: {formatServeSize(item.serveSize)}
                     </p>
                   )}
                   {item.notes && (
@@ -181,7 +186,7 @@ export function CartView({
                   type="button"
                   onClick={() => removeItem(index)}
                   className="touch-target inline-flex shrink-0 items-center justify-center text-zinc-500 hover:text-red-400"
-                  aria-label="Remove item"
+                  aria-label={tUI("common.remove")}
                 >
                   <Trash2 className="size-5" />
                 </button>
@@ -203,22 +208,22 @@ export function CartView({
           href={`/${slug}/${token}`}
           className="mt-4 block rounded-xl border border-dashed border-zinc-700 p-4 text-center text-sm font-medium text-orange-500 touch-manipulation active:bg-zinc-900/50"
         >
-          + Add more items
+          {tUI("cart.addMore")}
         </Link>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800 bg-zinc-950/95 px-4 pt-3 pb-safe backdrop-blur-sm">
         <div className="space-y-1 text-sm">
           <div className="flex justify-between text-zinc-400">
-            <span>Subtotal</span>
+            <span>{tUI("cart.subtotal")}</span>
             <span className="tabular-nums">{formatPrice(subtotal, currency)}</span>
           </div>
           <div className="flex justify-between text-zinc-400">
-            <span>Tax ({taxPercent}%)</span>
+            <span>{tUI("cart.tax", { percent: taxPercent })}</span>
             <span className="tabular-nums">{formatPrice(taxAmount, currency)}</span>
           </div>
           <div className="flex justify-between border-t border-zinc-800 pt-2 font-semibold text-zinc-50">
-            <span>Total</span>
+            <span>{tUI("cart.total")}</span>
             <span className="text-lg font-bold tabular-nums">
               {formatPrice(total, currency)}
             </span>
@@ -230,11 +235,11 @@ export function CartView({
             asChild
             className="mt-3 h-12 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
           >
-            <Link href={`/${slug}/${token}/checkout`}>Place order →</Link>
+            <Link href={`/${slug}/${token}/checkout`}>{tUI("cart.checkout")}</Link>
           </Button>
         ) : (
           <Button disabled className="mt-3 h-12 w-full rounded-xl text-base font-bold">
-            Checkout unavailable
+            {tUI("cart.checkoutUnavailable")}
           </Button>
         )}
       </div>

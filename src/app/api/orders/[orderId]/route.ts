@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
+import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
+import { enqueue } from "@/lib/queue/client";
 import { withRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
@@ -18,20 +19,21 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const cacheHeaders = noCache();
   const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
   const { orderId } = await params;
 
   if (!isUuid(orderId)) {
-    return apiError("Invalid order id.", 400);
+    return apiError("Invalid order id.", 400, undefined, cacheHeaders);
   }
 
   const sessionParsed = parseSessionToken(
     req.nextUrl.searchParams.get("sessionToken")
   );
   if (!sessionParsed.success) {
-    return apiError("Unauthorized.", 401);
+    return apiError("Unauthorized.", 401, undefined, cacheHeaders);
   }
   const sessionToken = sessionParsed.data;
 
@@ -44,7 +46,7 @@ export async function GET(
     .single();
 
   if (!order) {
-    return apiError("Not found.", 404);
+    return apiError("Not found.", 404, undefined, cacheHeaders);
   }
 
   const orderBase = order as unknown as {
@@ -75,7 +77,7 @@ export async function GET(
   };
 
   if (!orderBase.session_id) {
-    return apiError("Unauthorized.", 401);
+    return apiError("Unauthorized.", 401, undefined, cacheHeaders);
   }
 
   const { data: session } = await admin
@@ -85,10 +87,10 @@ export async function GET(
     .single();
 
   if (!session || (session as { session_token: string }).session_token !== sessionToken) {
-    return apiError("Unauthorized.", 401);
+    return apiError("Unauthorized.", 401, undefined, cacheHeaders);
   }
 
-  return apiSuccess(orderBase);
+  return apiSuccess(orderBase, 200, cacheHeaders);
 }
 
 const statusSchema = z.object({
@@ -255,8 +257,8 @@ export async function PATCH(
   }
 
   if (status === "delivered") {
-    maybeSendOrderReceipt(orderId).catch((err) =>
-      logger.error("Receipt email failed", {
+    void enqueue("/api/jobs/send-receipt", { orderId }).catch((err) =>
+      logger.error("Receipt enqueue failed", {
         orderId,
         error: err instanceof Error ? err.message : String(err),
       })

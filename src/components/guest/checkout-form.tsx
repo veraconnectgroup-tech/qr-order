@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
@@ -32,6 +33,7 @@ function OrderSummary({
   taxAmount,
   total,
   currency,
+  tUI,
 }: {
   items: CartItem[];
   subtotal: number;
@@ -39,11 +41,12 @@ function OrderSummary({
   taxAmount: number;
   total: number;
   currency: string;
+  tUI: ReturnType<typeof useAppLocale>["tUI"];
 }) {
   return (
     <div className="rounded-xl bg-zinc-900 p-4">
       <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
-        Order summary
+        {tUI("checkout.orderSummary")}
       </h2>
       {items.map((item, i) => (
         <div key={i} className="flex justify-between py-1 text-sm text-zinc-300">
@@ -55,7 +58,7 @@ function OrderSummary({
       ))}
       <div className="mt-3 space-y-1 border-t border-zinc-800 pt-3 text-sm">
         <div className="flex justify-between text-zinc-400">
-          <span>Subtotal</span>
+          <span>{tUI("checkout.subtotal")}</span>
           <span>{formatPrice(subtotal, currency)}</span>
         </div>
         {taxBreakdown.length > 0 ? (
@@ -64,24 +67,23 @@ function OrderSummary({
               key={line.rate}
               className="flex justify-between text-zinc-400 tabular-nums"
             >
-              <span>MwSt {line.rate}%</span>
+              <span>{tUI("checkout.tax", { rate: line.rate })}</span>
               <span>{formatPrice(line.amount, currency)}</span>
             </div>
           ))
         ) : (
           <div className="flex justify-between text-zinc-400">
-            <span>MwSt</span>
+            <span>{tUI("checkout.taxGeneric")}</span>
             <span>{formatPrice(taxAmount, currency)}</span>
           </div>
         )}
         <div className="flex justify-between font-bold text-zinc-50">
-          <span>Total</span>
+          <span>{tUI("checkout.total")}</span>
           <span>{formatPrice(total, currency)}</span>
         </div>
       </div>
       <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-        You&apos;ll choose how to pay on the order screen after the kitchen
-        receives your order.
+        {tUI("checkout.paymentLater")}
       </p>
     </div>
   );
@@ -98,6 +100,7 @@ export function CheckoutForm({
   taxPercent: number;
   currency: string;
 }) {
+  const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
   const sessionToken = useCart((s) => s.sessionToken);
   const subtotal = useCart((s) => s.subtotal());
@@ -191,15 +194,17 @@ export function CheckoutForm({
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-zinc-100">Außer Haus / Takeaway</p>
+            <p className="text-sm font-medium text-zinc-100">
+              {tUI("checkout.takeaway")}
+            </p>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Reduced 7% VAT applies to eligible food items
+              {tUI("checkout.takeawayHint")}
             </p>
           </div>
           <Switch
             checked={isTakeaway}
             onCheckedChange={setIsTakeaway}
-            aria-label="Takeaway order"
+            aria-label={tUI("checkout.takeaway")}
           />
         </div>
       </div>
@@ -211,16 +216,17 @@ export function CheckoutForm({
         taxAmount={computedTax}
         total={computedTotal}
         currency={currency}
+        tUI={tUI}
       />
 
       <div>
         <Label htmlFor="checkout-email" className="text-zinc-400">
-          Email (optional, for receipt)
+          {tUI("checkout.email")}
         </Label>
         <Input
           id="checkout-email"
           type="email"
-          placeholder="you@example.com"
+          placeholder={tUI("checkout.emailPlaceholder")}
           className="mt-1 border-zinc-700 bg-zinc-950 text-zinc-100"
           value={guestEmail}
           onChange={(e) => setGuestEmail(e.target.value)}
@@ -239,7 +245,7 @@ export function CheckoutForm({
         onClick={handlePlaceOrder}
         className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"
       >
-        {processing ? "Placing order…" : "Place order"}
+        {processing ? tUI("checkout.placingOrder") : tUI("checkout.placeOrder")}
       </Button>
     </div>
   );

@@ -1,4 +1,7 @@
+"use client";
+
 import { AlertTriangle } from "lucide-react";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { cn } from "@/lib/utils";
 
 export function parseIngredients(description: string | null | undefined) {
@@ -20,6 +23,7 @@ export function ProductIngredients({
   tags?: string[] | null;
   className?: string;
 }) {
+  const { tUI } = useAppLocale();
   const ingredients = parseIngredients(description);
   const allergenList = allergens ?? [];
   const tagList = tags ?? [];
@@ -33,7 +37,7 @@ export function ProductIngredients({
       {ingredients.length > 0 && (
         <section>
           <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-300">
-            Ingredients
+            {tUI("menu.ingredients")}
           </h4>
           <ul className="flex flex-wrap gap-2">
             {ingredients.map((item) => (
@@ -52,7 +56,7 @@ export function ProductIngredients({
         <section>
           <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-amber-400">
             <AlertTriangle className="size-3.5" aria-hidden />
-            Allergens
+            {tUI("menu.allergens")}
           </h4>
           <ul className="flex flex-wrap gap-2">
             {allergenList.map((item) => (
@@ -70,7 +74,7 @@ export function ProductIngredients({
       {tagList.length > 0 && (
         <section>
           <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-300">
-            Tags
+            {tUI("menu.tags")}
           </h4>
           <ul className="flex flex-wrap gap-2">
             {tagList.map((item) => (

@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { createServerClient } from "@/lib/supabase/server";
 import { CheckoutForm } from "@/components/guest/checkout-form";
+import { GuestCheckoutHeader } from "@/components/guest/guest-checkout-header";
 import { getDemoGuestMenuProps, isDemoGuestRoute } from "@/lib/demo-guest";
 
 export default async function CheckoutPage({
@@ -17,16 +16,7 @@ export default async function CheckoutPage({
     const demo = getDemoGuestMenuProps(slug, token);
     return (
       <div className="min-h-dvh px-4 pb-safe pt-4">
-        <header className="mb-4 flex items-center gap-3 sm:mb-6">
-          <Link
-            href={`/${slug}/${token}/cart`}
-            className="touch-target inline-flex items-center text-zinc-400"
-          >
-            <ArrowLeft className="size-5" />
-          </Link>
-          <h1 className="text-heading text-zinc-50">Confirm order</h1>
-        </header>
-
+        <GuestCheckoutHeader slug={slug} token={token} />
         <CheckoutForm
           slug={slug}
           token={token}
@@ -54,16 +44,7 @@ export default async function CheckoutPage({
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">
-      <header className="mb-4 flex items-center gap-3 sm:mb-6">
-        <Link
-          href={`/${slug}/${token}/cart`}
-          className="touch-target inline-flex items-center text-zinc-400"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
-        <h1 className="text-heading text-zinc-50">Confirm order</h1>
-      </header>
-
+      <GuestCheckoutHeader slug={slug} token={token} />
       <CheckoutForm
         slug={slug}
         token={token}

@@ -28,6 +28,12 @@ export type OrderWithDetails = Order & {
     order_item_modifiers: OrderItemModifier[];
   })[];
   tables?: { name: string; zone?: { name: string } | null } | null;
+  refund_staff?: { name: string } | null;
+  audit_log?: {
+    action: string;
+    amount: number | null;
+    created_at: string;
+  }[];
 };
 
 export type OrderStatus = Order["status"];

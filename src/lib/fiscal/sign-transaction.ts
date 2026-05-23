@@ -7,6 +7,8 @@ import {
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
 import { logger } from "@/lib/logger";
+import { enqueue } from "@/lib/queue/client";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type TseSignatureResult = {
   tss_serial: string;
@@ -51,9 +53,14 @@ function mapPaymentType(paymentMethod: string): FiskalyPaymentType {
   return "CASH";
 }
 
-function buildReceiptSchema(order: OrderForTseSigning): FiskalyReceiptSchema {
+function buildReceiptSchema(
+  order: OrderForTseSigning,
+  receiptType: "RECEIPT" | "CANCELLATION" = "RECEIPT",
+  amountOverride?: number
+): FiskalyReceiptSchema {
   const currency = order.currency ?? "EUR";
   const items = order.order_items ?? [];
+  const grossTotal = amountOverride ?? Number(order.total);
 
   const grossByRate = new Map<number, number>();
   for (const item of items) {
@@ -66,7 +73,12 @@ function buildReceiptSchema(order: OrderForTseSigning): FiskalyReceiptSchema {
       order.tax_amount > 0 && order.subtotal > 0
         ? Math.round((order.tax_amount / order.subtotal) * 100)
         : 19;
-    grossByRate.set(fallbackRate === 7 ? 7 : 19, Number(order.total));
+    grossByRate.set(fallbackRate === 7 ? 7 : 19, grossTotal);
+  } else if (amountOverride != null && Number(order.total) > 0) {
+    const ratio = grossTotal / Number(order.total);
+    for (const [rate, amount] of [...grossByRate.entries()]) {
+      grossByRate.set(rate, amount * ratio);
+    }
   }
 
   const amounts_per_vat_rate = [...grossByRate.entries()].map(
@@ -79,12 +91,12 @@ function buildReceiptSchema(order: OrderForTseSigning): FiskalyReceiptSchema {
   return {
     standard_v1: {
       receipt: {
-        receipt_type: "RECEIPT",
+        receipt_type: receiptType,
         amounts_per_vat_rate,
         amounts_per_payment_type: [
           {
             payment_type: mapPaymentType(order.payment_method),
-            amount: formatFiskalyAmount(Number(order.total)),
+            amount: formatFiskalyAmount(grossTotal),
             currency_code: currency,
           },
         ],
@@ -200,13 +212,215 @@ export async function signOrderTransaction(
   return result;
 }
 
-export function scheduleOrderTseSign(
+export async function signOrderStornoTransaction(
   admin: SupabaseClient,
-  order: OrderForTseSigning
-) {
-  void signOrderTransaction(admin, order).catch((err) => {
-    logger.error("TSE signing failed", {
-      orderId: order.id,
+  order: OrderForTseSigning,
+  refundAmount?: number
+): Promise<TseSignatureResult | null> {
+  if (!isFiskalyConfigured()) {
+    return null;
+  }
+
+  const orgFiskaly = await loadOrgFiskalyConfig(admin, order.organizationId);
+  if (!orgFiskaly) {
+    return null;
+  }
+
+  const client = getFiskalyClient();
+  const schema = buildReceiptSchema(
+    order,
+    "CANCELLATION",
+    refundAmount ?? Number(order.total)
+  );
+
+  const tx = await client.createTransaction(orgFiskaly.fiskaly_tss_id, {
+    tx_id: crypto.randomUUID(),
+    client_id: orgFiskaly.fiskaly_client_id,
+    schema,
+    metadata: {
+      order_id: order.id,
+      order_number: String(order.order_number),
+      organization_id: order.organizationId,
+      storno: "true",
+    },
+  });
+
+  const result = toSignatureResult(tx);
+
+  logger.info("TSE storno transaction signed", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    tssSerial: result.tss_serial,
+    refundAmount: refundAmount ?? order.total,
+  });
+
+  return result;
+}
+
+export async function signOrderStornoById(
+  orderId: string,
+  refundAmount?: number
+): Promise<TseSignatureResult | null> {
+  const admin = createAdminClient();
+
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, subtotal, tax_amount, total, payment_method, location_id, tse_signature"
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    return null;
+  }
+
+  const row = order as {
+    id: string;
+    order_number: number;
+    subtotal: number;
+    tax_amount: number;
+    total: number;
+    payment_method: string;
+    location_id: string;
+    tse_signature: string | null;
+  };
+
+  if (!row.tse_signature) {
+    return null;
+  }
+
+  const { data: location } = await admin
+    .from("locations")
+    .select("org_id")
+    .eq("id", row.location_id)
+    .single();
+
+  if (!location) {
+    return null;
+  }
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("currency")
+    .eq("id", (location as { org_id: string }).org_id)
+    .single();
+
+  const { data: items } = await admin
+    .from("order_items")
+    .select("total, tax_rate")
+    .eq("order_id", orderId);
+
+  return signOrderStornoTransaction(
+    admin,
+    {
+      id: row.id,
+      organizationId: (location as { org_id: string }).org_id,
+      order_number: row.order_number,
+      subtotal: Number(row.subtotal),
+      tax_amount: Number(row.tax_amount),
+      total: Number(row.total),
+      payment_method: row.payment_method,
+      currency: (org as { currency: string } | null)?.currency,
+      order_items: ((items ?? []) as Array<{ total: number; tax_rate: number }>).map(
+        (item) => ({
+          total: Number(item.total),
+          tax_rate: Number(item.tax_rate),
+        })
+      ),
+    },
+    refundAmount
+  );
+}
+
+export function scheduleOrderTseStorno(orderId: string, refundAmount?: number) {
+  void signOrderStornoById(orderId, refundAmount).catch((err) => {
+    logger.error("TSE storno failed", {
+      orderId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+}
+
+export async function signOrderTransactionById(
+  orderId: string
+): Promise<TseSignatureResult | null> {
+  const admin = createAdminClient();
+
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, subtotal, tax_amount, total, payment_method, location_id, tse_signature"
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    return null;
+  }
+
+  const row = order as {
+    id: string;
+    order_number: number;
+    subtotal: number;
+    tax_amount: number;
+    total: number;
+    payment_method: string;
+    location_id: string;
+    tse_signature: string | null;
+  };
+
+  if (row.tse_signature) {
+    return null;
+  }
+
+  const { data: location, error: locationError } = await admin
+    .from("locations")
+    .select("org_id")
+    .eq("id", row.location_id)
+    .single();
+
+  if (locationError || !location) {
+    return null;
+  }
+
+  const { data: org, error: orgError } = await admin
+    .from("organizations")
+    .select("currency")
+    .eq("id", (location as { org_id: string }).org_id)
+    .single();
+
+  if (orgError || !org) {
+    return null;
+  }
+
+  const { data: items } = await admin
+    .from("order_items")
+    .select("total, tax_rate")
+    .eq("order_id", orderId);
+
+  return signOrderTransaction(admin, {
+    id: row.id,
+    organizationId: (location as { org_id: string }).org_id,
+    order_number: row.order_number,
+    subtotal: Number(row.subtotal),
+    tax_amount: Number(row.tax_amount),
+    total: Number(row.total),
+    payment_method: row.payment_method,
+    currency: (org as { currency: string }).currency,
+    order_items: ((items ?? []) as Array<{ total: number; tax_rate: number }>).map(
+      (item) => ({
+        total: Number(item.total),
+        tax_rate: Number(item.tax_rate),
+      })
+    ),
+  });
+}
+
+export function scheduleOrderTseSign(orderId: string) {
+  void enqueue("/api/jobs/tse-sign", { orderId }).catch((err) => {
+    logger.error("TSE sign enqueue failed", {
+      orderId,
       error: err instanceof Error ? err.message : String(err),
     });
   });

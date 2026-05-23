@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, Plus } from "lucide-react";
-import { useMenuLocale } from "@/components/guest/menu-locale-provider";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick } from "@/lib/haptics";
 import { useCart } from "@/hooks/use-cart";
@@ -24,7 +24,7 @@ export function ProductCard({
   orderingDisabled?: boolean;
 }) {
   const addItem = useCart((s) => s.addItem);
-  const { tName, tDescription } = useMenuLocale();
+  const { tName, tDescription, tUI } = useAppLocale();
   const displayName = tName(product);
   const displayDescription = tDescription(product);
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
@@ -114,14 +114,14 @@ export function ProductCard({
           </span>
           {unavailable ? (
             <span className="text-xs font-medium text-zinc-500">
-              {orderingDisabled ? "Paused" : "Unavailable"}
+              {orderingDisabled ? tUI("menu.paused") : tUI("menu.unavailable")}
             </span>
           ) : (
             <button
               type="button"
               onClick={handleAdd}
               className="flex size-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600 active:scale-95 touch-manipulation sm:size-8"
-              aria-label={`Add ${product.name}`}
+              aria-label={`Add ${displayName}`}
             >
               <Plus className="size-4" />
             </button>

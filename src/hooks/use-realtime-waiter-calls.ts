@@ -88,6 +88,7 @@ export function useRealtimeWaiterCalls(locationId: string) {
   const realtimeMode = usePostgresRealtime({
     channelName: `waiter-calls:${locationId}`,
     table: "waiter_calls",
+    locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: fetchCalls,
     enabled: Boolean(locationId),

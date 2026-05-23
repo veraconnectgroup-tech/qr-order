@@ -263,6 +263,10 @@ function demoOrder(
     is_takeaway: false,
     tse_signature: null,
     tse_data: null,
+    refund_id: null,
+    refund_reason: null,
+    refunded_by: null,
+    refunded_at: null,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

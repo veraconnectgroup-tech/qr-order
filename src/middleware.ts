@@ -61,6 +61,10 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
 
+  if (pathname.startsWith("/api/health")) {
+    return withResponseHeaders(NextResponse.next({ request }), true);
+  }
+
   if (isApiRoute) {
     if (request.method === "OPTIONS") {
       return withResponseHeaders(new NextResponse(null, { status: 204 }), true);

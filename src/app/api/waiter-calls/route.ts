@@ -6,6 +6,7 @@ import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { checkRateLimit, getClientIp, withRateLimit } from "@/lib/rate-limit";
 import { zOptionalSanitizedText, zSessionToken, zTableToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scheduleWaiterCallPush } from "@/lib/push/schedule-notify";
 
 const schema = z.object({
   tableToken: zTableToken(),
@@ -59,6 +60,8 @@ export async function POST(req: NextRequest) {
     if (error) {
       return apiError("Waiter call could not be created.", 500);
     }
+
+    scheduleWaiterCallPush(tableRow.location_id, tableRow.name);
 
     return apiSuccess({ ok: true });
   } catch (error) {

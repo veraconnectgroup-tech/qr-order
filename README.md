@@ -134,4 +134,22 @@ pnpm build            # Production build
 pnpm lint             # ESLint
 pnpm db:types:remote  # Tipovi iz cloud Supabase projekta
 ```
-# qr-order
+
+## Monitoring
+
+Public health check (UptimeRobot, Vercel, etc.):
+
+```text
+GET https://qr-order-iota.vercel.app/api/health
+```
+
+Recommended interval: 5 minutes. Returns `200` for `healthy` / `degraded`, `503` for `unhealthy` (database down).
+
+Deep check with DB write probe (internal only, requires `CRON_SECRET`):
+
+```text
+GET /api/health/deep
+Authorization: Bearer <CRON_SECRET>
+```
+
+Vercel cron runs deep health hourly via `vercel.json`.

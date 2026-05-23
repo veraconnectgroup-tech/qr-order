@@ -17,9 +17,10 @@ import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
 type DateFilter = "today" | "yesterday" | "week" | "month" | "custom";
+type PaymentFilter = "all" | "paid" | "pending" | "refunded" | "partial_refund";
 
 const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name)";
+  "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), audit_log(action, amount, created_at)";
 
 const PAGE_SIZE = 20;
 
@@ -202,8 +203,11 @@ function PaymentCell({
   if (status === "paid") {
     return <span className="text-green-400">Paid ✓</span>;
   }
-  if (status === "refunded" || status === "partial_refund") {
-    return <span className="text-red-400">Refund</span>;
+  if (status === "refunded") {
+    return <span className="text-red-400">Refundiran</span>;
+  }
+  if (status === "partial_refund") {
+    return <span className="text-amber-400">Delimično refundiran</span>;
   }
   if (status === "pending" && orderStatus === "delivered") {
     return (
@@ -213,6 +217,68 @@ function PaymentCell({
     );
   }
   return <span className="text-yellow-400">Pending</span>;
+}
+
+function getRefundAmount(order: OrderWithDetails): number | null {
+  const entry = order.audit_log
+    ?.filter((a) => a.action === "refund")
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+  if (entry?.amount != null) return Number(entry.amount);
+  if (
+    order.payment_status === "refunded" ||
+    order.payment_status === "partial_refund"
+  ) {
+    return Number(order.total);
+  }
+  return null;
+}
+
+function RefundCell({
+  order,
+  currency,
+}: {
+  order: OrderWithDetails;
+  currency: string;
+}) {
+  if (
+    order.payment_status !== "refunded" &&
+    order.payment_status !== "partial_refund"
+  ) {
+    return <span className="text-zinc-600">—</span>;
+  }
+
+  const amount = getRefundAmount(order);
+
+  return (
+    <div className="text-xs text-zinc-400">
+      {amount != null && (
+        <p className="font-mono text-zinc-300">
+          {formatPrice(amount, currency)}
+        </p>
+      )}
+      {order.refund_reason && (
+        <p className="mt-0.5 max-w-[180px] truncate" title={order.refund_reason}>
+          {order.refund_reason}
+        </p>
+      )}
+      {order.refund_staff?.name && (
+        <p className="mt-0.5">{order.refund_staff.name}</p>
+      )}
+      {order.refunded_at && (
+        <p className="mt-0.5 text-zinc-500">
+          {new Date(order.refunded_at).toLocaleString("de-DE", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function exportCsv(orders: OrderWithDetails[]) {
@@ -258,6 +324,7 @@ export function OrderHistoryList() {
   );
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -287,10 +354,13 @@ export function OrderHistoryList() {
 
   const previousRange = useMemo(() => getPreviousRange(range), [range]);
 
-  const filtered = useMemo(
-    () => orders.filter((o) => inRange(o.created_at, range)),
-    [orders, range]
-  );
+  const filtered = useMemo(() => {
+    let list = orders.filter((o) => inRange(o.created_at, range));
+    if (paymentFilter !== "all") {
+      list = list.filter((o) => o.payment_status === paymentFilter);
+    }
+    return list;
+  }, [orders, range, paymentFilter]);
 
   const previousFiltered = useMemo(
     () => orders.filter((o) => inRange(o.created_at, previousRange)),
@@ -312,7 +382,15 @@ export function OrderHistoryList() {
 
   useEffect(() => {
     setPage(1);
-  }, [filter, customFrom, customTo]);
+  }, [filter, customFrom, customTo, paymentFilter]);
+
+  const paymentFilters: { id: PaymentFilter; label: string }[] = [
+    { id: "all", label: "All payments" },
+    { id: "paid", label: "Paid" },
+    { id: "pending", label: "Pending" },
+    { id: "refunded", label: "Refunded" },
+    { id: "partial_refund", label: "Partial refund" },
+  ];
 
   const filters: { id: DateFilter; label: string }[] = [
     { id: "today", label: "Today" },
@@ -452,6 +530,24 @@ export function OrderHistoryList() {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {paymentFilters.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setPaymentFilter(f.id)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm transition",
+              paymentFilter === f.id
+                ? "bg-zinc-700 text-zinc-100"
+                : "bg-zinc-800/80 text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {paginated.length === 0 ? (
@@ -538,6 +634,12 @@ export function OrderHistoryList() {
                         />
                       </li>
                     )}
+                    {(order.payment_status === "refunded" ||
+                      order.payment_status === "partial_refund") && (
+                      <li className="border-t border-zinc-800 pt-2">
+                        <RefundCell order={order} currency={currency} />
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>
@@ -556,6 +658,7 @@ export function OrderHistoryList() {
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Payment</th>
+              <th className="px-4 py-3">Refund</th>
               <th className="px-4 py-3">Time</th>
               <th className="w-8 px-2 py-3" />
             </tr>
@@ -564,7 +667,7 @@ export function OrderHistoryList() {
             {paginated.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-12 text-center text-zinc-500"
                 >
                   No orders in this period
@@ -608,6 +711,9 @@ export function OrderHistoryList() {
                           inPersonPaymentLocation={inPersonPaymentLocation}
                         />
                       </td>
+                      <td className="px-4 py-3">
+                        <RefundCell order={order} currency={currency} />
+                      </td>
                       <td className="px-4 py-3 text-zinc-500">
                         {new Date(order.created_at).toLocaleTimeString(
                           "de-DE",
@@ -624,7 +730,7 @@ export function OrderHistoryList() {
                     </tr>
                     {isExpanded && (
                       <tr className="border-b border-zinc-800/50 bg-zinc-950/50">
-                        <td colSpan={8} className="px-6 py-4">
+                        <td colSpan={9} className="px-6 py-4">
                           <ul className="space-y-2">
                             {order.order_items?.map((item) => (
                               <li

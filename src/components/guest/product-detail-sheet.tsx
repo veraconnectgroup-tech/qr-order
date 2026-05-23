@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMenuLocale } from "@/components/guest/menu-locale-provider";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
@@ -40,7 +40,7 @@ export function ProductDetailSheet({
   menuSection?: MenuSection;
 }) {
   const addItem = useCart((s) => s.addItem);
-  const { tName, tDescription, locale } = useMenuLocale();
+  const { tName, tDescription, tUI } = useAppLocale();
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [serveSize, setServeSize] = useState<string | null>(null);
@@ -57,18 +57,16 @@ export function ProductDetailSheet({
       for (const modId of ids) {
         const mod = group.modifiers.find((m) => m.id === modId);
         if (mod) {
-          const modName =
-            locale === "en" && mod.name_en?.trim() ? mod.name_en.trim() : mod.name;
           result.push({
             modifierId: mod.id,
-            modifierName: modName,
+            modifierName: tName(mod),
             price: Number(mod.price),
           });
         }
       }
     }
     return result;
-  }, [groups, selected, locale]);
+  }, [groups, selected, tName]);
 
   const lineTotal = useMemo(() => {
     if (!product) return 0;
@@ -171,10 +169,10 @@ export function ProductDetailSheet({
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                  Serve size
+                  {tUI("product.serveSize")}
                 </h4>
                 <span className="rounded bg-orange-500/12 px-2 py-0.5 text-caption text-orange-500">
-                  Required
+                  {tUI("product.required")}
                 </span>
               </div>
               <ServeSizeSelector
@@ -190,13 +188,11 @@ export function ProductDetailSheet({
             <div key={group.id}>
               <div className="mb-3 flex items-center gap-2">
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                  {locale === "en" && group.name_en?.trim()
-                    ? group.name_en.trim()
-                    : group.name}
+                  {tName(group)}
                 </h4>
                 {group.is_required && (
                   <span className="rounded bg-orange-500/12 px-2 py-0.5 text-caption text-orange-500">
-                    Required
+                    {tUI("product.required")}
                   </span>
                 )}
               </div>
@@ -214,15 +210,13 @@ export function ProductDetailSheet({
                           onCheckedChange={() => toggleModifier(group, modifier)}
                         />
                         <span className="text-sm text-zinc-100">
-                          {locale === "en" && modifier.name_en?.trim()
-                            ? modifier.name_en.trim()
-                            : modifier.name}
+                          {tName(modifier)}
                         </span>
                       </div>
                       <span className="text-sm tabular-nums text-zinc-400">
                         {Number(modifier.price) > 0
                           ? `+${formatPrice(Number(modifier.price), currency)}`
-                          : "Free"}
+                          : tUI("product.free")}
                       </span>
                     </label>
                   );
@@ -233,12 +227,12 @@ export function ProductDetailSheet({
 
           <div>
             <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-300">
-              Special instructions
+              {tUI("checkout.notes")}
             </h4>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="No ice, extra cold..."
+              placeholder={tUI("product.notesPlaceholder")}
               rows={2}
               className="border-zinc-700 bg-zinc-950 text-zinc-100"
             />
@@ -249,8 +243,10 @@ export function ProductDetailSheet({
           <AddToCartButton
             label={
               orderingDisabled
-                ? "Ordering paused"
-                : `Add to Cart · ${formatPrice(lineTotal, currency)}`
+                ? tUI("product.orderingPaused")
+                : tUI("product.addToCart", {
+                    amount: formatPrice(lineTotal, currency),
+                  })
             }
             disabled={missingRequired || missingServeSize || orderingDisabled}
             onAdd={handleAdd}
@@ -258,8 +254,8 @@ export function ProductDetailSheet({
           {(missingRequired || missingServeSize) && (
             <p className="text-center text-caption text-zinc-500">
               {missingServeSize
-                ? "Select or enter a serve size"
-                : "Select all required options"}
+                ? tUI("product.selectServeSize")
+                : tUI("product.selectRequired")}
             </p>
           )}
         </div>

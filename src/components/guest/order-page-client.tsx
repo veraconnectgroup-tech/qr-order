@@ -1,6 +1,7 @@
 "use client";
 
 import type { InPersonPaymentLocation } from "@/lib/constants";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { OrderStatusTracker } from "@/components/guest/order-status-tracker";
 
@@ -25,12 +26,13 @@ export function OrderPageClient({
   paymentCardAtTableEnabled: boolean;
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
+  const { tUI } = useAppLocale();
   const sessionToken = useGuestSession((s) => s.sessionToken);
 
   if (!sessionToken) {
     return (
       <div className="px-4 py-20 text-center text-zinc-400">
-        Session not found. Please scan the QR code again.
+        {tUI("order.sessionMissing")}
       </div>
     );
   }

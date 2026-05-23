@@ -7,6 +7,7 @@ import { formatOrderNumber, formatPrice } from "@/lib/format";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
+import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -107,6 +108,8 @@ export function OrderCard({
   onStartPreparing,
   onMarkReady,
   onMarkDelivered,
+  onRefund,
+  staffRole,
   dragHandleProps,
   interactive = true,
   inPersonPaymentLocation = "bar",
@@ -120,6 +123,8 @@ export function OrderCard({
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onMarkDelivered: () => void;
+  onRefund?: () => void;
+  staffRole?: string;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   interactive?: boolean;
   inPersonPaymentLocation?: InPersonPaymentLocation;
@@ -225,15 +230,17 @@ export function OrderCard({
         <span className="font-mono text-base font-semibold text-orange-500">
           {formatPrice(Number(order.total), currency)}
         </span>
-        {paid ? (
-          <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-400">
-            Paid ✓
-          </span>
-        ) : (
-          <span className={cn("rounded-full px-2 py-0.5 text-xs", light ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-zinc-400")}>
-            {paymentLabel}
-          </span>
-        )}
+      </div>
+
+      <div className="mt-2">
+        <OrderDetailPanel
+          order={order}
+          currency={currency}
+          staffRole={staffRole ?? "staff"}
+          busy={busy}
+          onRefund={onRefund}
+          light={light}
+        />
       </div>
 
       {columnId === "new" && (

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 
@@ -19,6 +20,7 @@ export function CartSummaryBar({
   currency: string;
   glowOnMount?: boolean;
 }) {
+  const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
   const total = useCart((s) => s.total(false, taxPercent));
   const itemCount = useCart((s) => s.itemCount());
@@ -55,9 +57,10 @@ export function CartSummaryBar({
             className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-1"
           >
             <span className="text-sm font-medium">
-              {itemCount} {itemCount === 1 ? "item" : "items"}
+              {itemCount}{" "}
+              {itemCount === 1 ? tUI("cart.item") : tUI("cart.items")}
             </span>
-            <span className="text-sm font-semibold">View cart</span>
+            <span className="text-sm font-semibold">{tUI("cart.viewCart")}</span>
             <span className="text-right text-sm font-bold tabular-nums">
               {formatPrice(total, currency)}
             </span>

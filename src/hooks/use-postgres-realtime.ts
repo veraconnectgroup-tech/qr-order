@@ -12,14 +12,26 @@ export type RealtimeMode = "connecting" | "live" | "polling";
 type UsePostgresRealtimeOptions = {
   channelName: string;
   table: "orders" | "waiter_calls";
+  locationId: string;
   filter: string;
   onChange: () => void;
   enabled?: boolean;
 };
 
+function assertLocationFilter(locationId: string, filter: string) {
+  const required = `location_id=eq.${locationId}`;
+  if (!filter.includes(required)) {
+    const message = `Realtime filter must include ${required}`;
+    if (process.env.NODE_ENV === "development") {
+      throw new Error(message);
+    }
+  }
+}
+
 export function usePostgresRealtime({
   channelName,
   table,
+  locationId,
   filter,
   onChange,
   enabled = true,
@@ -33,6 +45,8 @@ export function usePostgresRealtime({
       setMode("polling");
       return;
     }
+
+    assertLocationFilter(locationId, filter);
 
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
@@ -98,7 +112,7 @@ export function usePostgresRealtime({
       if (pollId) clearInterval(pollId);
       supabase.removeChannel(channel);
     };
-  }, [channelName, table, filter, enabled]);
+  }, [channelName, table, locationId, filter, enabled]);
 
   return mode;
 }

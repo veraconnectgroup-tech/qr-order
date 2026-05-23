@@ -128,6 +128,7 @@ export function DashboardAlertsProvider({
   usePostgresRealtime({
     channelName: `dashboard-alerts-orders:${locationId}`,
     table: "orders",
+    locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: refreshCounts,
   });
@@ -135,6 +136,7 @@ export function DashboardAlertsProvider({
   usePostgresRealtime({
     channelName: `dashboard-alerts-calls:${locationId}`,
     table: "waiter_calls",
+    locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: refreshCounts,
   });

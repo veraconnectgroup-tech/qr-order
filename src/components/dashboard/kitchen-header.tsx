@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
+import { PushOptIn } from "@/components/dashboard/push-opt-in";
 import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import type { RealtimeMode } from "@/hooks/use-postgres-realtime";
@@ -64,6 +65,7 @@ export function KitchenHeader({
         <LiveClock />
         <div className="flex items-center gap-2">
           {realtimeMode && <LiveConnectionBadge mode={realtimeMode} />}
+          <PushOptIn />
           <SoundToggle />
           <Link
             href="/dashboard/orders"

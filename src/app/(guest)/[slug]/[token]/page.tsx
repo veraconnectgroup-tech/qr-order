@@ -7,6 +7,8 @@ import {
 } from "@/lib/demo-guest";
 import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
 
+export const revalidate = 60;
+
 type RawProduct = {
   id: string;
   name: string;

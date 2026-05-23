@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
-import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
 import { logger } from "@/lib/logger";
+import { enqueue } from "@/lib/queue/client";
+import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
@@ -133,13 +134,65 @@ async function processStripeWebhookEvent(
 
       if (!piId) break;
 
-      const isFullRefund = charge.amount_refunded === charge.amount;
-      await admin
+      const { data: order } = await admin
         .from("orders")
-        .update({
-          payment_status: isFullRefund ? "refunded" : "partial_refund",
-        })
-        .eq("stripe_payment_intent_id", piId);
+        .select(
+          "id, total, payment_status, refund_id, refund_reason, refunded_by, refunded_at, tse_signature"
+        )
+        .eq("stripe_payment_intent_id", piId)
+        .maybeSingle();
+
+      if (!order) break;
+
+      const orderRow = order as {
+        id: string;
+        total: number;
+        payment_status: string;
+        refund_id: string | null;
+        refund_reason: string | null;
+        refunded_by: string | null;
+        refunded_at: string | null;
+        tse_signature: string | null;
+      };
+
+      const isFullRefund = charge.amount_refunded >= charge.amount;
+      const paymentStatus = isFullRefund ? "refunded" : "partial_refund";
+
+      const refunds =
+        typeof charge.refunds === "object" && charge.refunds?.data
+          ? charge.refunds.data
+          : [];
+      const latestRefund = refunds[refunds.length - 1];
+      const refundId = latestRefund?.id ?? null;
+
+      const updates: Record<string, unknown> = {
+        payment_status: paymentStatus,
+      };
+
+      if (refundId && !orderRow.refund_id) {
+        updates.refund_id = refundId;
+      }
+      if (!orderRow.refunded_at) {
+        updates.refunded_at = new Date().toISOString();
+      }
+
+      await admin.from("orders").update(updates as never).eq("id", orderRow.id);
+
+      if (
+        orderRow.tse_signature &&
+        orderRow.payment_status !== "refunded" &&
+        orderRow.payment_status !== "partial_refund"
+      ) {
+        const refundAmount = charge.amount_refunded / 100;
+        scheduleOrderTseStorno(orderRow.id, refundAmount);
+      }
+
+      logger.info("Charge refunded (webhook sync)", {
+        orderId: orderRow.id,
+        paymentIntentId: piId,
+        full: isFullRefund,
+        fromDashboard: Boolean(orderRow.refunded_by),
+      });
       break;
     }
 
@@ -209,8 +262,8 @@ async function verifyAndMarkSessionPaid(
       sessionCheckout: true,
     });
 
-    maybeSendOrderReceipt(order.id).catch((err) =>
-      logger.error("Receipt email failed", {
+    void enqueue("/api/jobs/send-receipt", { orderId: order.id }).catch((err) =>
+      logger.error("Receipt enqueue failed", {
         orderId: order.id,
         error: err instanceof Error ? err.message : String(err),
       })
@@ -250,8 +303,8 @@ async function verifyAndMarkPaid(
     paymentIntentId: pi.id,
   });
 
-  maybeSendOrderReceipt(order.id).catch((err) =>
-    logger.error("Receipt email failed", {
+  void enqueue("/api/jobs/send-receipt", { orderId: order.id }).catch((err) =>
+    logger.error("Receipt enqueue failed", {
       orderId: order.id,
       error: err instanceof Error ? err.message : String(err),
     })

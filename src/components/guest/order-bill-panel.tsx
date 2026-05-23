@@ -12,10 +12,11 @@ import { Lock, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { inPersonPaymentKeys } from "@/lib/i18n/translations";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import {
   getAvailablePaymentMethods,
-  inPersonPaymentConfirmToast,
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
@@ -45,10 +46,12 @@ function StripePayForm({
   total,
   currency,
   onSuccess,
+  tUI,
 }: {
   total: number;
   currency: string;
   onSuccess: () => void;
+  tUI: ReturnType<typeof useAppLocale>["tUI"];
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -73,7 +76,7 @@ function StripePayForm({
     }
 
     hapticSuccess();
-    toast.success("Payment successful!");
+    toast.success(tUI("bill.paymentSuccess"));
     onSuccess();
   }
 
@@ -86,11 +89,13 @@ function StripePayForm({
         disabled={!stripe || processing}
         className="h-12 w-full rounded-xl bg-orange-500 font-bold hover:bg-orange-600"
       >
-        {processing ? "Processing..." : `Pay ${formatPrice(total, currency)}`}
+        {processing
+          ? tUI("bill.processing")
+          : tUI("checkout.pay", { amount: formatPrice(total, currency) })}
       </Button>
       <p className="flex items-center justify-center gap-1 text-xs text-zinc-500">
         <Lock className="size-3" />
-        Secure payment via Stripe
+        {tUI("bill.secureStripe")}
       </p>
     </form>
   );
@@ -119,6 +124,7 @@ export function OrderBillPanel({
   isPaid: boolean;
   onPaid: () => void;
 }) {
+  const { tUI } = useAppLocale();
   const [bill, setBill] = useState<SessionBill | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<SelectablePaymentMethod | null>(
     null
@@ -207,8 +213,8 @@ export function OrderBillPanel({
       hapticSuccess();
       toast.success(
         paymentMethod === "at_bar"
-          ? inPersonPaymentConfirmToast(inPersonPaymentLocation)
-          : "Staff will bring a card terminal"
+          ? tUI(inPersonPaymentKeys(inPersonPaymentLocation).confirm)
+          : tUI("payment.cardAtTable.confirm")
       );
       onPaid();
       loadBill();
@@ -225,8 +231,8 @@ export function OrderBillPanel({
         <div className="flex items-center gap-3">
           <Receipt className="size-5 text-green-400" />
           <div>
-            <p className="font-semibold text-green-300">Bill paid</p>
-            <p className="text-sm text-green-200/70">Thank you!</p>
+            <p className="font-semibold text-green-300">{tUI("bill.paid")}</p>
+            <p className="text-sm text-green-200/70">{tUI("bill.thankYou")}</p>
           </div>
         </div>
       </div>
@@ -257,24 +263,26 @@ export function OrderBillPanel({
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
       <div className="flex items-center gap-2">
         <Receipt className="size-5 text-orange-500" />
-        <h2 className="text-lg font-semibold text-zinc-50">My bill</h2>
+        <h2 className="text-lg font-semibold text-zinc-50">{tUI("bill.myBill")}</h2>
       </div>
       {bill.unpaidCount > 1 && (
         <p className="mt-1 text-xs text-zinc-500">
-          {bill.unpaidCount} open orders at your table
+          {tUI("bill.openOrders", { count: bill.unpaidCount })}
         </p>
       )}
 
       <div className="mt-4 rounded-lg bg-zinc-950 px-4 py-3">
         <p className="text-xs uppercase tracking-wide text-zinc-500">
-          Amount due
+          {tUI("bill.amountDue")}
         </p>
         <p className="mt-1 text-3xl font-bold tabular-nums text-zinc-50">
           {formatPrice(bill.amountDue, currency)}
         </p>
         {bill.taxAmount > 0 && (
           <p className="mt-1 text-xs text-zinc-500">
-            incl. tax {formatPrice(bill.taxAmount, currency)}
+            {tUI("bill.inclTax", {
+              amount: formatPrice(bill.taxAmount, currency),
+            })}
           </p>
         )}
       </div>
@@ -297,10 +305,10 @@ export function OrderBillPanel({
             className="mt-4 h-12 w-full rounded-xl bg-orange-500 font-bold hover:bg-orange-600"
           >
             {processing
-              ? "Processing..."
+              ? tUI("bill.processing")
               : paymentMethod === "online"
-                ? "Continue to card payment"
-                : "Confirm payment method"}
+                ? tUI("bill.continueCard")
+                : tUI("bill.confirmMethod")}
           </Button>
         </>
       )}
@@ -310,6 +318,7 @@ export function OrderBillPanel({
           <StripePayForm
             total={bill.amountDue}
             currency={currency}
+            tUI={tUI}
             onSuccess={() => {
               setClientSecret(null);
               onPaid();

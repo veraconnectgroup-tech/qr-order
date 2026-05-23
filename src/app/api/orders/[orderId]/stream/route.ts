@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { noCache } from "@/lib/cache/headers";
 import { isUuid } from "@/lib/security/sanitize";
 import { zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -38,30 +39,41 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const cacheHeaders = noCache();
   const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
   const { orderId } = await params;
 
   if (!isUuid(orderId)) {
-    return apiError("Invalid order id.", 400);
+    return apiError("Invalid order id.", 400, undefined, cacheHeaders);
   }
 
   const sessionParsed = zSessionToken().safeParse(
     req.nextUrl.searchParams.get("sessionToken") ?? ""
   );
   if (!sessionParsed.success) {
-    return apiError("Unauthorized", 401);
+    return apiError("Unauthorized", 401, undefined, cacheHeaders);
   }
   const sessionToken = sessionParsed.data;
 
   const allowed = await verifyGuestOrderAccess(orderId, sessionToken);
   if (!allowed) {
-    return apiError("Unauthorized", 401);
+    return apiError("Unauthorized", 401, undefined, cacheHeaders);
+  }
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("orders")
+    .select("location_id")
+    .eq("id", orderId)
+    .single();
+
+  if (!order) {
+    return apiError("Not found", 404, undefined, cacheHeaders);
   }
 
   const encoder = new TextEncoder();
-  const admin = createAdminClient();
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -118,7 +130,7 @@ export async function GET(
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
+      "Cache-Control": "private, no-cache, no-store, no-transform",
       Connection: "keep-alive",
     },
   });

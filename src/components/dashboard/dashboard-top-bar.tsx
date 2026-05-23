@@ -7,6 +7,7 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { DashboardMobileMenu } from "@/components/dashboard/dashboard-mobile-menu";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
+import { PushOptIn } from "@/components/dashboard/push-opt-in";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
@@ -58,6 +59,7 @@ export function DashboardTopBar() {
           </div>
         )}
         <SoundToggle />
+        <PushOptIn />
       </div>
     </header>
   );

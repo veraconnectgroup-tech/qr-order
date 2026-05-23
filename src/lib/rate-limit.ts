@@ -10,6 +10,7 @@ export type RateLimitScope =
   | "payments"
   | "export"
   | "fiscal"
+  | "jobs"
   | "default";
 
 const SCOPE_BY_USER = new Set<RateLimitScope>(["export", "fiscal"]);
@@ -42,6 +43,7 @@ const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
   payments: createScopeLimiter("payments", 30, "1 m"),
   export: createScopeLimiter("export", 10, "1 m"),
   fiscal: createScopeLimiter("fiscal", 10, "1 m"),
+  jobs: createScopeLimiter("jobs", 120, "1 m"),
   default: createScopeLimiter("default", 60, "1 m"),
 };
 
@@ -57,6 +59,7 @@ const MEMORY_SCOPE_CONFIG: Record<
   payments: { limit: 30, windowMs: 60 * 1000 },
   export: { limit: 10, windowMs: 60 * 1000 },
   fiscal: { limit: 10, windowMs: 60 * 1000 },
+  jobs: { limit: 120, windowMs: 60 * 1000 },
   default: { limit: 60, windowMs: 60 * 1000 },
 };
 

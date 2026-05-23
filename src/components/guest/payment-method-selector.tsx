@@ -1,12 +1,14 @@
 "use client";
 
 import { Banknote, CreditCard, Smartphone } from "lucide-react";
+import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { PaymentMethod } from "@/lib/constants";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import {
-  getPaymentMethodOption,
-  type SelectablePaymentMethod,
-} from "@/lib/payment-methods";
+  inPersonPaymentKeys,
+  type TranslationKey,
+} from "@/lib/i18n/translations";
+import type { SelectablePaymentMethod } from "@/lib/payment-methods";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -14,6 +16,30 @@ const ICONS = {
   at_bar: Banknote,
   card_at_table: CreditCard,
 } as const;
+
+function getMethodCopy(
+  method: SelectablePaymentMethod,
+  inPersonPaymentLocation: InPersonPaymentLocation,
+  tUI: (key: TranslationKey | string) => string
+) {
+  if (method === "online") {
+    return {
+      title: tUI("payment.online.title"),
+      description: tUI("payment.online.description"),
+    };
+  }
+  if (method === "card_at_table") {
+    return {
+      title: tUI("payment.cardAtTable.title"),
+      description: tUI("payment.cardAtTable.description"),
+    };
+  }
+  const keys = inPersonPaymentKeys(inPersonPaymentLocation);
+  return {
+    title: tUI(keys.title),
+    description: tUI(keys.description),
+  };
+}
 
 export function PaymentMethodSelector({
   methods,
@@ -26,14 +52,16 @@ export function PaymentMethodSelector({
   onChange: (method: SelectablePaymentMethod) => void;
   inPersonPaymentLocation?: InPersonPaymentLocation;
 }) {
+  const { tUI } = useAppLocale();
+
   return (
     <div className="space-y-2">
       <h2 className="text-caption uppercase tracking-wide text-zinc-500">
-        Payment method
+        {tUI("payment.method")}
       </h2>
       <div className="space-y-2">
         {methods.map((method) => {
-          const option = getPaymentMethodOption(method, inPersonPaymentLocation);
+          const option = getMethodCopy(method, inPersonPaymentLocation, tUI);
           const Icon = ICONS[method];
           const selected = value === method;
 
