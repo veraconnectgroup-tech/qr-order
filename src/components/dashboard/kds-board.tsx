@@ -80,6 +80,12 @@ function LiveClock() {
   );
 }
 
+function kdsTimerColor(minutes: number) {
+  if (minutes >= 10) return "text-red-400";
+  if (minutes >= 5) return "text-amber-400";
+  return "text-emerald-400";
+}
+
 function KdsOrderCard({
   order,
   timerWarningMin,
@@ -103,6 +109,7 @@ function KdsOrderCard({
   const isDelivered = order.status === "delivered";
   const elapsed = formatKdsElapsed(order.created_at);
   const minutes = kdsElapsedMinutes(order.created_at);
+  const timerColor = kdsTimerColor(minutes);
   const isLate = minutes >= timerWarningMin;
   const actionLabel = isDelivered ? null : kdsActionLabel(order.status);
 
@@ -114,15 +121,17 @@ function KdsOrderCard({
   return (
     <motion.div
       layout
+      layoutId={`kds-card-${order.id}`}
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={cn(
-        "rounded-2xl border-2 bg-zinc-900 p-4 shadow-lg",
+        "rounded-2xl border-2 bg-zinc-900 p-4 shadow-lg transition-colors duration-300",
         isDelivered
           ? "border-zinc-700 opacity-60"
           : isLate
-            ? "border-red-500 animate-pulse"
+            ? "border-red-500/80 animate-pulse"
             : order.status === "pending"
               ? "border-orange-500"
               : order.status === "accepted"
@@ -134,7 +143,7 @@ function KdsOrderCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <p className="text-4xl font-black tracking-tight text-zinc-50">
+          <p className="font-mono text-5xl font-black tracking-tight text-zinc-50">
             {formatOrderNumber(order.order_number)}
           </p>
           {autoPrinted && (
@@ -153,7 +162,7 @@ function KdsOrderCard({
           <span
             className={cn(
               "mt-2 block font-mono text-2xl font-bold tabular-nums",
-              isLate ? "text-red-400" : "text-emerald-400"
+              timerColor
             )}
           >
             {elapsed}

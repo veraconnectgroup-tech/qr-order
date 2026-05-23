@@ -55,8 +55,17 @@ const LazyHistoryShowcase = dynamic(
   { loading: TabVisualSkeleton }
 );
 
+const LazyAiShowcase = dynamic(
+  () =>
+    import("@/components/landing/ai-concierge-showcase").then((m) => ({
+      default: m.AiConciergeShowcase,
+    })),
+  { loading: TabVisualSkeleton }
+);
+
 export type ProductTabId =
   | "guest"
+  | "ai"
   | "floor"
   | "kitchen"
   | "payments"
@@ -72,6 +81,8 @@ export function LandingProductTabVisual({
   switch (id) {
     case "guest":
       return <LazyGuestMenuShowcase hideLabel={hideGuestLabel} />;
+    case "ai":
+      return <LazyAiShowcase hideLabel={hideGuestLabel} />;
     case "floor":
       return <LazyTablesShowcase />;
     case "kitchen":

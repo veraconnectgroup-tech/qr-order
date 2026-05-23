@@ -2,6 +2,10 @@ export const DASHBOARD_PAGES: Record<
   string,
   { title: string; subtitle?: string }
 > = {
+  "/dashboard": {
+    title: "Overview",
+    subtitle: "Today's operations at a glance",
+  },
   "/dashboard/orders": {
     title: "Live Orders",
     subtitle: "Real-time kanban board",
@@ -41,6 +45,9 @@ export const DASHBOARD_PAGES: Record<
 };
 
 export function getDashboardPageMeta(pathname: string) {
+  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    return DASHBOARD_PAGES["/dashboard"];
+  }
   const match = Object.entries(DASHBOARD_PAGES).find(([path]) =>
     pathname.startsWith(path)
   );

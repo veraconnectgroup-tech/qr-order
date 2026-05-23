@@ -19,23 +19,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
-function formatTimeAgo(iso: string) {
-  const minutes = Math.floor(
-    (Date.now() - new Date(iso).getTime()) / 60_000
-  );
-  if (minutes < 1) return "just now";
-  if (minutes === 1) return "1 min ago";
-  return `${minutes} min ago`;
-}
-
-function elapsedStyles(minutes: number, light = false) {
+function kitchenTimerStyles(minutes: number, light = false) {
   if (minutes >= 10) {
-    return { text: light ? "text-red-600" : "text-red-400", pulse: true };
+    return light ? "text-red-600" : "text-red-400";
   }
   if (minutes >= 5) {
-    return { text: light ? "text-yellow-600" : "text-yellow-400", pulse: false };
+    return light ? "text-amber-600" : "text-amber-400";
   }
-  return { text: light ? "text-green-600" : "text-green-400", pulse: false };
+  return light ? "text-emerald-600" : "text-emerald-400";
+}
+
+function formatKitchenTimer(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 async function patchKitchenOrderStatus(
@@ -65,42 +62,58 @@ export function KitchenCard({
   const [, tick] = useState(0);
   const tableName = order.tables?.name ?? "—";
   const since = order.created_at;
-  const minutes = Math.floor(
-    (Date.now() - new Date(since).getTime()) / 60_000
+  const seconds = Math.floor(
+    (Date.now() - new Date(since).getTime()) / 1000
   );
-  const styles = elapsedStyles(minutes, light);
+  const minutes = Math.floor(seconds / 60);
+  const timerClass = kitchenTimerStyles(minutes, light);
   const isAccepted = order.status === "accepted";
   const items = getKitchenOrderItems(order);
 
   useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 30_000);
+    const id = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
   return (
     <motion.div
       layout
+      layoutId={`kitchen-card-${order.id}`}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.3 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={cn(
-        "rounded-xl border-2 p-4",
+        "rounded-xl border-2 p-4 transition-colors duration-300",
         light ? "bg-white" : "bg-zinc-900",
-        isAccepted ? "border-orange-500" : "border-blue-500",
-        styles.pulse && "animate-pulse"
+        isAccepted ? "border-orange-500" : "border-blue-500"
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className={cn("text-2xl font-bold", light ? "text-zinc-900" : "text-zinc-100")}>
+        <p
+          className={cn(
+            "font-mono text-4xl font-black tracking-tight",
+            light ? "text-zinc-900" : "text-zinc-50"
+          )}
+        >
           {formatOrderNumber(order.order_number)}
         </p>
-        <div className="flex items-center gap-2">
-          <span className={cn("rounded-full px-3 py-1 text-sm", light ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-zinc-400")}>
+        <div className="flex flex-col items-end gap-1">
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 text-sm",
+              light ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-zinc-400"
+            )}
+          >
             {tableName}
           </span>
-          <span className={cn("text-sm", styles.text)}>
-            {formatTimeAgo(since)}
+          <span
+            className={cn(
+              "font-mono text-lg font-bold tabular-nums",
+              timerClass
+            )}
+          >
+            {formatKitchenTimer(seconds)}
           </span>
         </div>
       </div>

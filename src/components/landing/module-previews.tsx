@@ -202,3 +202,34 @@ export function ModulePreviewTips() {
     </PreviewFrame>
   );
 }
+
+export function ModulePreviewAi() {
+  return (
+    <PreviewFrame>
+      <div className="flex h-full flex-col justify-center gap-2 p-3">
+        <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 px-2.5 py-2">
+          <p className="text-[9px] leading-snug text-orange-200/90">
+            <span className="mr-1">🤖</span>
+            &quot;Based on your preferences…&quot;
+          </p>
+        </div>
+        <div className="space-y-1 pl-2">
+          <div className="flex items-start gap-1.5 text-[8px] text-zinc-300">
+            <span className="text-zinc-600">├─</span>
+            <span>
+              <span className="mr-0.5">🍷</span>
+              Aperol Spritz — matches your mood
+            </span>
+          </div>
+          <div className="flex items-start gap-1.5 text-[8px] text-zinc-300">
+            <span className="text-zinc-600">└─</span>
+            <span>
+              <span className="mr-0.5">🥗</span>
+              Caesar Salad — allergen-free
+            </span>
+          </div>
+        </div>
+      </div>
+    </PreviewFrame>
+  );
+}

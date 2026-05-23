@@ -9,6 +9,7 @@ export type DashboardContextValue = {
   orgId: string;
   orgName: string;
   orgSlug: string;
+  orgLogoUrl: string | null;
   currency: string;
   staffName: string;
   staffRole: string;

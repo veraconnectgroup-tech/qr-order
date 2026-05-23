@@ -61,9 +61,29 @@ function formatTimer(seconds: number) {
 
 function timerColor(seconds: number) {
   const minutes = Math.floor(seconds / 60);
-  if (minutes >= 10) return "text-red-400";
-  if (minutes >= 5) return "text-yellow-400";
+  if (minutes >= 20) return "text-red-400";
+  if (minutes >= 10) return "text-amber-400";
   return "text-zinc-500";
+}
+
+function statusStripClass(columnId: OrderColumnDef["id"]) {
+  return cn(
+    "absolute bottom-0 left-0 top-0 w-1 rounded-l-xl",
+    columnId === "new" && "bg-orange-500",
+    columnId === "preparing" && "bg-blue-500",
+    columnId === "ready" && "bg-emerald-500",
+    columnId === "delivered" && "bg-zinc-600"
+  );
+}
+
+function statusPillClass(columnId: OrderColumnDef["id"]) {
+  return cn(
+    "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+    columnId === "new" && "bg-orange-500/15 text-orange-400",
+    columnId === "preparing" && "bg-blue-500/15 text-blue-400",
+    columnId === "ready" && "bg-emerald-500/15 text-emerald-400",
+    columnId === "delivered" && "bg-zinc-700/50 text-zinc-400"
+  );
 }
 
 export function getOrderColumnId(
@@ -194,7 +214,7 @@ export function OrderCard({
             : undefined
         }
         className={cn(
-          "flex items-center justify-between gap-2 rounded-lg border p-2.5 transition",
+          "relative flex items-center justify-between gap-2 rounded-lg border p-2.5 transition",
           light
             ? "border-zinc-200 bg-white"
             : "border-zinc-800 bg-zinc-900",
@@ -203,7 +223,8 @@ export function OrderCard({
             : "opacity-60"
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+        <div className={statusStripClass("delivered")} />
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm pl-1">
           <span
             className={cn(
               "shrink-0 font-mono font-semibold tabular-nums",
@@ -257,16 +278,16 @@ export function OrderCard({
           : undefined
       }
       className={cn(
-        "rounded-xl border p-4 transition",
+        "relative rounded-xl border p-4 transition",
         light
           ? "border-zinc-200 bg-white hover:border-zinc-300"
           : "border-zinc-800 bg-zinc-900 hover:border-zinc-700",
-        columnId === "new" && "border-l-2 border-l-orange-500",
         paymentRequested && "ring-2 ring-amber-500/60"
       )}
     >
+      <div className={statusStripClass(columnId)} />
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {dragHandleProps && (
             <button
               type="button"
@@ -280,6 +301,7 @@ export function OrderCard({
           <p className={cn("font-mono text-lg font-bold", light ? "text-zinc-900" : "text-zinc-50")}>
             {formatOrderNumber(order.order_number)}
           </p>
+          <span className={statusPillClass(columnId)}>{columnId}</span>
           {order.order_source === "staff" && (
             <span
               className={cn(

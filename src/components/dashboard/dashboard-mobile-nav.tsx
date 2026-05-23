@@ -7,6 +7,7 @@ import {
   Bell,
   ChefHat,
   Grid3X3,
+  LayoutDashboard,
   LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ import { NavNotificationBadge } from "@/components/dashboard/nav-notification-ba
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
 const tabs = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid, alertKey: "orders" as const },
   { href: "/dashboard/kitchen", label: "Prep", icon: ChefHat },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3, alertKey: "payments" as const },
@@ -28,8 +30,8 @@ export function DashboardMobileNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom,0px))] border-t border-zinc-800 bg-zinc-950 pb-[env(safe-area-inset-bottom,0px)] md:hidden">
-      {tabs.map(({ href, label, icon: Icon, alertKey }) => {
-        const active = pathname.startsWith(href);
+      {tabs.map(({ href, label, icon: Icon, alertKey, exact }) => {
+        const active = exact ? pathname === href : pathname.startsWith(href);
         const badgeCount =
           alertKey === "orders"
             ? pendingOrders + pendingPaymentRequests

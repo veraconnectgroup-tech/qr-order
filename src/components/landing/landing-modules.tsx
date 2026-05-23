@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   QrCode,
   Smartphone,
+  Sparkles,
   Split,
   Users,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
 } from "@/components/landing/animate-in-view";
 import {
   ModulePreviewAnalytics,
+  ModulePreviewAi,
   ModulePreviewFloor,
   ModulePreviewInPerson,
   ModulePreviewKitchen,
@@ -63,6 +65,13 @@ const modules: Array<{
     description: "Guests add to a table session bill without creating an account.",
     category: "Guest",
     Preview: ModulePreviewSession,
+  },
+  {
+    icon: Sparkles,
+    title: "AI Concierge",
+    description: "Smart sommelier — allergies, mood, personalized picks.",
+    category: "Guest",
+    Preview: ModulePreviewAi,
   },
   {
     icon: LayoutGrid,

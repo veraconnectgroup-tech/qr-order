@@ -51,7 +51,7 @@ export default async function DashboardLayout({
     await Promise.all([
     admin
       .from("organizations")
-      .select("id, name, slug, currency, stripe_onboarded, onboarding_completed, trial_ends_at")
+      .select("id, name, slug, currency, logo_url, stripe_onboarded, onboarding_completed, trial_ends_at")
       .eq("id", staff.org_id)
       .single(),
     admin
@@ -77,6 +77,7 @@ export default async function DashboardLayout({
     name: string;
     slug: string;
     currency: string;
+    logo_url: string | null;
     stripe_onboarded: boolean;
     onboarding_completed: boolean;
     trial_ends_at: string | null;
@@ -104,6 +105,7 @@ export default async function DashboardLayout({
           orgId: staff.org_id,
           orgName: orgRow?.name ?? "Restaurant",
           orgSlug: orgRow?.slug ?? "",
+          orgLogoUrl: orgRow?.logo_url ?? null,
           currency: orgRow?.currency ?? "EUR",
           staffName: staff.name,
           staffRole: staff.role,

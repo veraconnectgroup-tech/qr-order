@@ -48,6 +48,21 @@ function formatDuration(since: string) {
   return `${minutes}m`;
 }
 
+function TableSessionTimer({ openedAt }: { openedAt: string }) {
+  const [, tick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <p className="mt-1 font-mono text-xs tabular-nums text-emerald-400/90">
+      {formatDuration(openedAt)}
+    </p>
+  );
+}
+
 function orderStatusLabel(status: string) {
   switch (status) {
     case "delivered":
@@ -228,6 +243,47 @@ export function TablesBoard() {
     if (activeZone === "all") return tables;
     return tables.filter((t) => t.zone_id === activeZone);
   }, [tables, activeZone]);
+
+  const groupedTables = useMemo(() => {
+    if (activeZone !== "all") {
+      const zone = zones.find((z) => z.id === activeZone);
+      return [
+        {
+          zoneId: activeZone,
+          zoneName: zone?.name ?? "Zone",
+          tables: filtered,
+        },
+      ];
+    }
+
+    const groups: Array<{
+      zoneId: string | null;
+      zoneName: string;
+      tables: TableRow[];
+    }> = [];
+
+    for (const zone of zoneTabs) {
+      const zoneTables = filtered.filter((t) => t.zone_id === zone.id);
+      if (zoneTables.length > 0) {
+        groups.push({
+          zoneId: zone.id,
+          zoneName: zone.name,
+          tables: zoneTables,
+        });
+      }
+    }
+
+    const unassigned = filtered.filter((t) => !t.zone_id);
+    if (unassigned.length > 0) {
+      groups.push({
+        zoneId: null,
+        zoneName: "Unassigned",
+        tables: unassigned,
+      });
+    }
+
+    return groups;
+  }, [activeZone, filtered, zoneTabs, zones]);
 
   useEffect(() => {
     if (!selected) {
@@ -511,58 +567,76 @@ ${qrItems
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
-        {filtered.map((table) => {
-          const status = tableStatus(table);
-          return (
-            <button
-              key={table.id}
-              type="button"
-              onClick={() => setSelected(table)}
-              className={cn(
-                "cursor-pointer rounded-xl border bg-zinc-900 p-3 text-center transition hover:border-zinc-600 sm:p-5",
-                status === "attention" && "animate-pulse border-red-500",
-                status === "payment" && "animate-pulse border-amber-500",
-                status === "occupied" && "border-green-500/50",
-                status === "available" && "border-zinc-800"
-              )}
-            >
-              <p className="font-mono text-base font-bold text-zinc-50 sm:text-xl">
-                {table.name}
-              </p>
-              <p className="mt-1 text-sm text-zinc-500">{table.seats} seats</p>
-              {status === "attention" ? (
-                <p className="mt-2 text-sm text-red-400">
-                  <span className="mr-1 inline-block size-2 rounded-full bg-red-500" />
-                  Needs attention
-                </p>
-              ) : status === "payment" ? (
-                <p className="mt-2 text-sm text-amber-400">
-                  <span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />
-                  Payment requested
-                </p>
-              ) : status === "occupied" ? (
-                <>
-                  <p className="mt-2 text-sm text-green-400">
-                    <span className="mr-1 inline-block size-2 rounded-full bg-green-500" />
-                    Occupied
+      {groupedTables.map((group) => (
+        <section key={group.zoneId ?? "unassigned"} className="mb-8 last:mb-0">
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-zinc-200">
+              {group.zoneName}
+            </h3>
+            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-400">
+              {group.tables.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
+            {group.tables.map((table) => {
+              const status = tableStatus(table);
+              const isActive = status !== "available";
+
+              return (
+                <button
+                  key={table.id}
+                  type="button"
+                  onClick={() => setSelected(table)}
+                  className={cn(
+                    "cursor-pointer rounded-xl border bg-zinc-900 p-3 text-center transition hover:border-zinc-600 sm:p-5",
+                    status === "available" &&
+                      "border-dashed border-zinc-700 bg-zinc-950/50",
+                    status === "attention" &&
+                      "animate-pulse border-red-500 ring-1 ring-emerald-500/30",
+                    status === "payment" &&
+                      "animate-pulse border-amber-500 ring-1 ring-emerald-500/30",
+                    status === "occupied" &&
+                      "border-emerald-500/40 ring-1 ring-emerald-500/30 animate-pulse"
+                  )}
+                >
+                  <p className="font-mono text-base font-bold text-zinc-50 sm:text-xl">
+                    {table.name}
                   </p>
-                  {table.sessionTotal > 0 && (
-                    <p className="mt-1 font-mono text-orange-500">
-                      {formatPrice(table.sessionTotal, currency)}
+                  <p className="mt-1 text-sm text-zinc-500">{table.seats} seats</p>
+                  {table.session && <TableSessionTimer openedAt={table.session.opened_at} />}
+                  {status === "attention" ? (
+                    <p className="mt-2 text-sm text-red-400">
+                      <span className="mr-1 inline-block size-2 rounded-full bg-red-500" />
+                      Needs attention
+                    </p>
+                  ) : status === "payment" ? (
+                    <p className="mt-2 text-sm text-amber-400">
+                      <span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />
+                      Payment requested
+                    </p>
+                  ) : isActive ? (
+                    <>
+                      <p className="mt-2 text-sm text-emerald-400">
+                        <span className="mr-1 inline-block size-2 rounded-full bg-emerald-500" />
+                        Occupied
+                      </p>
+                      {table.sessionTotal > 0 && (
+                        <p className="mt-1 font-mono text-orange-500">
+                          {formatPrice(table.sessionTotal, currency)}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="mt-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      Available
                     </p>
                   )}
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-zinc-500">
-                  <span className="mr-1 inline-block size-2 rounded-full bg-green-500" />
-                  Available
-                </p>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
       <AnimatePresence>
         {selected && (

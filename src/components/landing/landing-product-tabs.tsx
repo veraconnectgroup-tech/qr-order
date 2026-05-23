@@ -36,6 +36,17 @@ const views: Array<{
     ],
   },
   {
+    id: "ai",
+    label: "AI",
+    title: "Smart concierge",
+    bullets: [
+      "Allergy and mood preferences in one sheet",
+      "Personalized picks from your live menu",
+      "Pairing suggestions after each order",
+      "Optional per location — owner controlled",
+    ],
+  },
+  {
     id: "floor",
     label: "Floor",
     title: "Table operations",
