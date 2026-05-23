@@ -24,9 +24,9 @@ const columns = [
   {
     title: "Legal",
     links: [
-      { href: "#", label: "Privacy" },
-      { href: "#", label: "Terms" },
-      { href: "#", label: "Imprint" },
+      { href: "/datenschutz", label: "Datenschutz" },
+      { href: "/agb", label: "AGB" },
+      { href: "/impressum", label: "Impressum" },
     ],
   },
 ];

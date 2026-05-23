@@ -9,6 +9,7 @@ import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingPhilosophy } from "@/components/landing/landing-philosophy";
+import { LandingTrustStrip } from "@/components/landing/landing-trust-strip";
 import { LandingProductTabs } from "@/components/landing/landing-product-tabs";
 import { LandingTestimonials } from "@/components/landing/landing-testimonials";
 import { LandingWorkflows } from "@/components/landing/landing-workflows";
@@ -24,7 +25,18 @@ import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
 
-const plans = [
+const plans: Array<{
+  name: string;
+  price: string;
+  period: string;
+  fee: string;
+  description: string;
+  features: string[];
+  cta: string;
+  href: string;
+  primary: boolean;
+  complianceNote?: string;
+}> = [
   {
     name: "Standard",
     price: "€0",
@@ -59,6 +71,7 @@ const plans = [
     cta: "Contact sales",
     href: "/enterprise",
     primary: false,
+    complianceNote: "KassenSichV • DATEV • TSE included",
   },
 ];
 
@@ -69,6 +82,7 @@ export function LandingPage() {
 
       <main>
         <LandingHero />
+        <LandingTrustStrip />
         <LandingPhilosophy />
         <LandingModules />
         <LandingProductTabs />
@@ -128,6 +142,11 @@ export function LandingPage() {
                         </FeatureCheck>
                       ))}
                     </ul>
+                    {plan.complianceNote && (
+                      <p className="mt-6 text-[12px] font-medium tracking-wide text-zinc-500">
+                        {plan.complianceNote}
+                      </p>
+                    )}
                     <Button
                       asChild
                       className={cn(

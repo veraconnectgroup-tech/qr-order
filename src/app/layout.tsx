@@ -17,12 +17,28 @@ const display = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "QR Order — Hospitality ordering platform",
-    template: "%s | QR Order",
+    default: "QR Order — Ordering & payments for hospitality",
+    template: "%s — QR Order",
   },
   description:
-    "Enterprise-grade QR ordering, live operations, and payments for restaurants, bars, and multi-location venues.",
+    "QR-based guest ordering, live kitchen operations, and Stripe payments for restaurants, bars, and hotel F&B. KassenSichV compliant. Made in Germany.",
+  metadataBase: new URL("https://qr-order-iota.vercel.app"),
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "QR Order — Ordering & payments for hospitality",
+    description:
+      "Scan. Order. Pay. Enterprise ordering infrastructure for hospitality venues.",
+    url: "https://qr-order-iota.vercel.app",
+    siteName: "QR Order",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "QR Order",
+    description: "Enterprise ordering & payments for hospitality",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport = {
