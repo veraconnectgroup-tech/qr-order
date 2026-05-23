@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/product-showcases";
@@ -10,7 +11,6 @@ import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingPhilosophy } from "@/components/landing/landing-philosophy";
 import { LandingTrustStrip } from "@/components/landing/landing-trust-strip";
-import { LandingProductTabs } from "@/components/landing/landing-product-tabs";
 import { LandingTestimonials } from "@/components/landing/landing-testimonials";
 import { LandingWorkflows } from "@/components/landing/landing-workflows";
 import {
@@ -24,6 +24,23 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
+
+const LandingProductTabs = dynamic(
+  () =>
+    import("@/components/landing/landing-product-tabs").then((m) => ({
+      default: m.LandingProductTabs,
+    })),
+  {
+    loading: () => (
+      <div
+        className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 md:py-20"
+        aria-hidden
+      >
+        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-zinc-900/40" />
+      </div>
+    ),
+  }
+);
 
 const plans: Array<{
   name: string;
@@ -54,6 +71,7 @@ const plans: Array<{
     cta: "Request access",
     href: "/signup",
     primary: true,
+    complianceNote: "KassenSichV • DSGVO • DATEV • TSE included",
   },
   {
     name: "Enterprise",
@@ -77,10 +95,10 @@ const plans: Array<{
 
 export function LandingPage() {
   return (
-    <div className="landing-page landing-raycast min-h-screen overflow-x-hidden bg-zinc-950 antialiased">
+    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden bg-zinc-950 antialiased">
       <LandingNav />
 
-      <main>
+      <main className="relative z-[2]">
         <LandingHero />
         <LandingTrustStrip />
         <LandingPhilosophy />
@@ -110,12 +128,17 @@ export function LandingPage() {
                 <AnimateInView key={plan.name}>
                   <div
                     className={cn(
-                      "flex h-full flex-col rounded-xl border p-8 sm:p-10",
+                      "landing-glow-border relative flex h-full flex-col rounded-xl border p-8 sm:p-10",
                       plan.primary
-                        ? "border-[var(--lp-accent)] bg-zinc-900/80"
+                        ? "landing-pricing-border landing-pricing-glass ring-1 ring-white/10"
                         : "border-zinc-800 bg-zinc-900/40"
                     )}
                   >
+                    {plan.primary && (
+                      <span className="absolute -top-3 left-8 rounded-full bg-orange-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(234,88,12,0.4)]">
+                        Most popular
+                      </span>
+                    )}
                     <p className="text-[13px] font-medium uppercase tracking-wider text-zinc-500">
                       {plan.name}
                     </p>

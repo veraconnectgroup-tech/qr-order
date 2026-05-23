@@ -1,16 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/feature-visuals";
 import {
-  CheckoutShowcase,
-  GuestMenuShowcase,
-  HistoryShowcase,
-  KitchenShowcase,
-  TablesShowcase,
-} from "@/components/landing/product-showcases";
+  LandingProductTabVisual,
+  type ProductTabId,
+} from "@/components/landing/landing-product-tab-visual";
 import {
   LandingContainer,
   LandingHeadline,
@@ -19,7 +16,14 @@ import {
 } from "@/components/landing/landing-primitives";
 import { cn } from "@/lib/utils";
 
-const views = [
+const TAB_INTERVAL_MS = 6000;
+
+const views: Array<{
+  id: ProductTabId;
+  label: string;
+  title: string;
+  bullets: string[];
+}> = [
   {
     id: "guest",
     label: "Guest",
@@ -30,7 +34,6 @@ const views = [
       "Session bill across multiple rounds",
       "Pay at table in under 15 seconds",
     ],
-    visual: <GuestMenuShowcase hideLabel />,
   },
   {
     id: "floor",
@@ -42,7 +45,6 @@ const views = [
       "Waiter calls from guest devices",
       "Staff assignments per table",
     ],
-    visual: <TablesShowcase />,
   },
   {
     id: "kitchen",
@@ -54,7 +56,6 @@ const views = [
       "Large tap targets for gloved hands",
       "Fullscreen mode for wall displays",
     ],
-    visual: <KitchenShowcase />,
   },
   {
     id: "payments",
@@ -66,7 +67,6 @@ const views = [
       "Digital tips at payment time",
       "Bar, counter, or table checkout",
     ],
-    visual: <CheckoutShowcase />,
   },
   {
     id: "analytics",
@@ -78,13 +78,51 @@ const views = [
       "CSV export for finance teams",
       "DATEV-ready transaction records",
     ],
-    visual: <HistoryShowcase />,
   },
-] as const;
+];
 
 export function LandingProductTabs() {
-  const [active, setActive] = useState<(typeof views)[number]["id"]>("guest");
+  const [active, setActive] = useState<ProductTabId>("guest");
+  const [paused, setPaused] = useState(false);
+  const [progressKey, setProgressKey] = useState(0);
+  const navRef = useRef<HTMLElement>(null);
   const current = views.find((v) => v.id === active) ?? views[0];
+  const activeIndex = views.findIndex((v) => v.id === active);
+
+  const selectTab = useCallback((id: ProductTabId) => {
+    setActive(id);
+    setProgressKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    if (paused) return;
+    const id = window.setInterval(() => {
+      setActive((prev: ProductTabId) => {
+        const idx = views.findIndex((v) => v.id === prev);
+        const next = views[(idx + 1) % views.length];
+        return next.id;
+      });
+      setProgressKey((k) => k + 1);
+    }, TAB_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [paused, active]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      setPaused(true);
+      const delta = e.key === "ArrowRight" ? 1 : -1;
+      const next = views[(activeIndex + delta + views.length) % views.length];
+      selectTab(next.id);
+    }
+
+    nav.addEventListener("keydown", onKeyDown);
+    return () => nav.removeEventListener("keydown", onKeyDown);
+  }, [activeIndex, selectTab]);
 
   return (
     <section id="product" className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
@@ -101,25 +139,47 @@ export function LandingProductTabs() {
         </AnimateInView>
 
         <nav
-          className="mt-10 flex flex-wrap items-center justify-center gap-2"
+          ref={navRef}
+          tabIndex={0}
+          className="mx-auto mt-10 flex max-w-[640px] flex-col items-center gap-3 outline-none"
           aria-label="Product views"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
+          }}
         >
-          {views.map((view) => (
-            <button
-              key={view.id}
-              type="button"
-              onClick={() => setActive(view.id)}
-              aria-current={active === view.id ? "true" : undefined}
-              className={cn(
-                "rounded-full px-4 py-2 text-[13px] font-medium transition",
-                active === view.id
-                  ? "bg-orange-500 text-white shadow-[0_0_20px_rgba(234,88,12,0.35)]"
-                  : "border border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-              )}
-            >
-              {view.label}
-            </button>
-          ))}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {views.map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => {
+                  setPaused(true);
+                  selectTab(view.id);
+                }}
+                aria-current={active === view.id ? "true" : undefined}
+                className={cn(
+                  "rounded-full px-4 py-2 text-[13px] font-medium transition",
+                  active === view.id
+                    ? "bg-orange-500 text-white shadow-[0_0_20px_rgba(234,88,12,0.35)]"
+                    : "border border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                )}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+          <div className="h-0.5 w-full max-w-xs overflow-hidden rounded-full bg-zinc-800">
+            {!paused && (
+              <div
+                key={`${active}-${progressKey}`}
+                className="landing-tab-progress h-full rounded-full bg-orange-500"
+                style={{ animationDuration: `${TAB_INTERVAL_MS}ms` }}
+              />
+            )}
+          </div>
         </nav>
 
         <div className="relative mx-auto mt-12 max-w-[1080px] sm:mt-14">
@@ -132,9 +192,9 @@ export function LandingProductTabs() {
           <AnimatePresence mode="wait">
             <motion.div
               key={current.id}
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -24 }}
+              initial={{ opacity: 0, scale: 0.98, x: 24 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.98, x: -24 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               className="relative overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-900/80 shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm"
             >
@@ -161,7 +221,7 @@ export function LandingProductTabs() {
                       aria-hidden
                     />
                     <div className="relative scale-[1.05] sm:scale-110">
-                      {current.visual}
+                      <LandingProductTabVisual id={current.id} />
                     </div>
                   </div>
                 </div>

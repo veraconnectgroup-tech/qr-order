@@ -1,10 +1,28 @@
-import type { MenuCategory } from "@/components/guest/menu-grid";
 import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 import { getDemoProductMedia } from "@/lib/demo-product-media";
 import type { CartItem } from "@/hooks/use-cart";
 import type { OrderWithDetails, ProductWithModifiers } from "@/types";
 
-const NOW = Date.now();
+export type DemoMenuCategory = {
+  id: string;
+  name: string;
+  name_en?: string | null;
+  menu_section?: string | null;
+  products: ProductWithModifiers[];
+};
+
+/** Fixed reference time so landing previews hydrate identically on server and client. */
+export const DEMO_NOW_MS = new Date("2026-05-23T21:00:00.000Z").getTime();
+
+const NOW = DEMO_NOW_MS;
+
+export function demoElapsedSeconds(iso: string) {
+  return Math.max(0, Math.floor((NOW - new Date(iso).getTime()) / 1000));
+}
+
+export function demoElapsedMinutes(iso: string) {
+  return Math.max(0, Math.floor((NOW - new Date(iso).getTime()) / 60_000));
+}
 
 function minutesAgo(minutes: number) {
   return new Date(NOW - minutes * 60_000).toISOString();
@@ -59,7 +77,7 @@ const DRINKS_ID = "e0000000-0000-4000-8000-000000000001";
 const FOOD_ID = "e0000000-0000-4000-8000-000000000006";
 const DESSERTS_ID = "e0000000-0000-4000-8000-000000000007";
 
-export const DEMO_MENU_CATEGORIES: MenuCategory[] = [
+export const DEMO_MENU_CATEGORIES: DemoMenuCategory[] = [
   {
     id: DRINKS_ID,
     name: "Drinks",

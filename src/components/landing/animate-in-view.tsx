@@ -1,9 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
-import type { ReactNode } from "react";
-
-const easeOut = "easeOut" as const;
+import type { CSSProperties, ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { useInViewOnce } from "@/components/landing/use-in-view-once";
 
 export function AnimateInView({
   children,
@@ -14,16 +13,16 @@ export function AnimateInView({
   className?: string;
   delay?: number;
 }) {
+  const { ref, visible } = useInViewOnce();
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.4, delay, ease: easeOut }}
-      className={className}
+    <div
+      ref={ref}
+      className={cn("landing-reveal", visible && "landing-reveal-visible", className)}
+      style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -34,19 +33,19 @@ export function StaggerInView({
   children: ReactNode;
   className?: string;
 }) {
+  const { ref, visible } = useInViewOnce();
+
   return (
-    <motion.div
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-80px" }}
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.1 } },
-      }}
-      className={className}
+    <div
+      ref={ref}
+      className={cn(
+        "landing-stagger",
+        visible && "landing-stagger-visible",
+        className
+      )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -57,21 +56,7 @@ export function StaggerItem({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 20 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.4, ease: easeOut },
-        },
-      }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={cn("landing-stagger-item", className)}>{children}</div>;
 }
 
 export function HeroStagger({
@@ -81,41 +66,21 @@ export function HeroStagger({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.1 } },
-      }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={cn("landing-hero-stagger", className)}>{children}</div>;
 }
 
 export function HeroItem({
   children,
   className,
+  style,
 }: {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 20 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.4, ease: easeOut },
-        },
-      }}
-      className={className}
-    >
+    <div className={cn("landing-hero-stagger-item", className)} style={style}>
       {children}
-    </motion.div>
+    </div>
   );
 }

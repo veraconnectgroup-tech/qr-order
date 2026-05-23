@@ -1,7 +1,6 @@
 "use client";
 
-import { Lock } from "lucide-react";
-import { CheckoutTrustBadges } from "@/components/guest/checkout-trust-badges";
+import { Lock, Shield } from "lucide-react";
 import {
   DEMO_CART_ITEMS,
   DEMO_CURRENCY,
@@ -83,8 +82,16 @@ export function CheckoutShowcase() {
           Secure payment via Stripe
         </p>
 
-        <div className="mt-3 scale-[0.92] sm:mt-4 sm:scale-90">
-          <CheckoutTrustBadges />
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] text-zinc-500 sm:mt-4 sm:text-xs">
+          <span className="flex items-center gap-1.5">
+            <Lock className="size-3.5" />
+            256-bit SSL
+          </span>
+          <span className="text-zinc-600">Stripe</span>
+          <span className="flex items-center gap-1.5">
+            <Shield className="size-3.5" />
+            PCI DSS compliant
+          </span>
         </div>
       </div>
     </ShowcasePhone>

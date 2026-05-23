@@ -11,7 +11,6 @@ import {
   LandingLead,
   LandingSection,
 } from "@/components/landing/landing-primitives";
-import { ScaledDashboardPreview } from "@/components/landing/scaled-dashboard-preview";
 import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
 import { GuestMenuContent } from "@/components/landing/showcase-content";
 import {
@@ -106,9 +105,7 @@ export function LandingEnterprise({ fullPage = false }: LandingEnterpriseProps) 
                 theme="light"
                 className="shadow-[var(--lp-shadow-lg)] ring-1 ring-[var(--lp-border)]"
               >
-                <ScaledDashboardPreview designHeight={620}>
-                  <DashboardScreenShowcase screen="orders" variant="hero" theme="light" />
-                </ScaledDashboardPreview>
+                <DashboardScreenShowcase screen="orders" variant="hero" theme="light" />
               </ShowcaseWindow>
             </AnimateInView>
           </div>
@@ -124,9 +121,7 @@ export function LandingEnterprise({ fullPage = false }: LandingEnterpriseProps) 
                 theme="light"
                 className="shadow-[var(--lp-shadow-lg)] ring-1 ring-[var(--lp-border)]"
               >
-                <ScaledDashboardPreview designHeight={620}>
-                  <DashboardScreenShowcase screen="tables" variant="hero" theme="light" />
-                </ScaledDashboardPreview>
+                <DashboardScreenShowcase screen="tables" variant="hero" theme="light" />
               </ShowcaseWindow>
             </AnimateInView>
             <AnimateInView className="order-1 lg:order-2">

@@ -4,7 +4,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import { DashboardScreenShowcase } from "@/components/landing/dashboard-screen-showcase";
 import { HeroFloat, HeroGlow, HeroSlideIn } from "@/components/landing/hero-motion";
 import { GuestMenuContent } from "@/components/landing/showcase-content";
-import { ScaledDashboardPreview } from "@/components/landing/scaled-dashboard-preview";
 import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
 import {
   ShowcasePhone,
@@ -31,12 +30,10 @@ export function LandingHeroVisual() {
             theme="dark"
             className="border-0 shadow-none ring-0"
           >
-            <ScaledDashboardPreview designHeight={420}>
-              <DashboardScreenShowcase screen="orders" variant="hero" theme="dark" />
-            </ScaledDashboardPreview>
+            <DashboardScreenShowcase screen="orders" variant="hero" theme="dark" />
           </ShowcaseWindow>
         </div>
-        <HeroFloat delay={0.35} className="absolute -bottom-6 -left-2 z-10 w-[38%] min-w-[120px] max-w-[160px]">
+        <HeroFloat delay={0.35} className="landing-float absolute -bottom-6 -left-2 z-10 w-[38%] min-w-[120px] max-w-[160px]">
           <ShowcasePhone hideLabel className="max-w-none shadow-[0_20px_48px_rgba(0,0,0,0.75)]">
             <ScaledPhonePreview designHeight={480}>
               <GuestMenuContent variant="hero" />
@@ -65,16 +62,14 @@ export function LandingHeroVisual() {
               theme="dark"
               className="border-0 shadow-none ring-0"
             >
-              <ScaledDashboardPreview designHeight={480}>
-                <DashboardScreenShowcase screen="orders" variant="hero" theme="dark" />
-              </ScaledDashboardPreview>
+              <DashboardScreenShowcase screen="orders" variant="hero" theme="dark" />
             </ShowcaseWindow>
           </div>
         </HeroSlideIn>
 
         <HeroFloat
           delay={0.28}
-          className="absolute bottom-[6%] left-[-4%] z-30 w-[36%] min-w-[170px] max-w-[220px]"
+          className="landing-float absolute bottom-[6%] left-[-4%] z-30 w-[36%] min-w-[170px] max-w-[220px]"
         >
           <ShowcasePhone
             hideLabel

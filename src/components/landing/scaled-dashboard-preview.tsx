@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useContainerScale } from "@/components/landing/use-container-scale";
 
 const DESIGN_WIDTH = 1120;
 
@@ -14,24 +14,9 @@ export function ScaledDashboardPreview({
   designHeight?: number;
   className?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const update = () => {
-      const width = el.clientWidth;
-      setScale(Math.min(width / DESIGN_WIDTH, 1));
-    };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
+  const { containerRef, scale } = useContainerScale(DESIGN_WIDTH, {
+    maxScale: 1,
+  });
   const scaledHeight = designHeight * scale;
 
   return (

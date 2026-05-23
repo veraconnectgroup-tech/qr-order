@@ -1,11 +1,9 @@
 "use client";
 
-import { KitchenCard } from "@/components/dashboard/kitchen-board";
+import { ShowcaseKitchenCard } from "@/components/landing/showcase-static/showcase-kitchen-card";
 import { DEMO_KITCHEN_ORDERS } from "@/components/landing/demo-data";
 import { ShowcaseTablet } from "@/components/landing/showcase-frame";
 import { cn } from "@/lib/utils";
-
-const noop = () => {};
 
 export function KitchenShowcase() {
   return (
@@ -34,26 +32,18 @@ export function KitchenShowcase() {
               </span>
             </span>
             <span>
-              Preparing:{" "}
-              <span className="font-semibold text-zinc-200">1</span>
+              Preparing: <span className="font-semibold text-zinc-200">1</span>
             </span>
           </div>
         </div>
         <div
           className={cn(
             "grid grid-cols-1 gap-3 bg-zinc-950 p-3 sm:grid-cols-2 sm:p-4",
-            "[&_button]:px-3 [&_button]:py-1.5 [&_button]:text-xs [&_li]:text-sm [&_p.text-2xl]:text-xl [&_p.text-base]:text-sm"
+            "[&_span.rounded-lg]:px-3 [&_span.rounded-lg]:py-1.5 [&_span.rounded-lg]:text-xs [&_li]:text-sm [&_p.text-2xl]:text-xl"
           )}
         >
           {DEMO_KITCHEN_ORDERS.map((order) => (
-            <KitchenCard
-              key={order.id}
-              order={order}
-              busy={false}
-              onStartPreparing={noop}
-              onMarkReady={noop}
-              onReject={noop}
-            />
+            <ShowcaseKitchenCard key={order.id} order={order} />
           ))}
         </div>
       </div>

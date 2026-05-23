@@ -8,20 +8,47 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "#modules", label: "Platform" },
-  { href: "/enterprise", label: "Enterprise" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "#modules", label: "Platform", sectionId: "modules" },
+  { href: "/enterprise", label: "Enterprise", sectionId: null },
+  { href: "#pricing", label: "Pricing", sectionId: "pricing" },
+  { href: "#product", label: "Product", sectionId: "product" },
 ];
 
 export function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const sectionIds = navLinks
+      .map((l) => l.sectionId)
+      .filter((id): id is string => Boolean(id));
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target.id) {
+          setActiveSection(visible.target.id);
+        }
+      },
+      { rootMargin: "-40% 0px -45% 0px", threshold: [0, 0.25, 0.5] }
+    );
+
+    for (const id of sectionIds) {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    }
+
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -37,7 +64,7 @@ export function LandingNav() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200",
           scrolled
-            ? "border-zinc-800 bg-zinc-950/95 backdrop-blur-md"
+            ? "landing-nav-gradient-border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md"
             : "border-transparent bg-transparent"
         )}
       >
@@ -52,9 +79,17 @@ export function LandingNav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-[13px] font-medium text-zinc-400 transition hover:text-white"
+                className={cn(
+                  "relative text-[13px] font-medium transition hover:text-white",
+                  link.sectionId && activeSection === link.sectionId
+                    ? "text-white"
+                    : "text-zinc-400"
+                )}
               >
                 {link.label}
+                {link.sectionId && activeSection === link.sectionId && (
+                  <span className="absolute -bottom-[1.15rem] left-0 right-0 h-0.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                )}
               </Link>
             ))}
             <Link
@@ -102,16 +137,18 @@ export function LandingNav() {
             </button>
           </div>
           <nav className="flex flex-col gap-1 px-6 py-6">
-            {[...navLinks, { href: "/login", label: "Log in" }].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="rounded-lg py-3 text-[16px] font-medium text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {[...navLinks, { href: "/login", label: "Log in", sectionId: null }].map(
+              (link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg py-3 text-[16px] font-medium text-white"
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
           </nav>
           <div className="px-6">
             <Button asChild className="landing-btn-accent h-11 w-full rounded-full">

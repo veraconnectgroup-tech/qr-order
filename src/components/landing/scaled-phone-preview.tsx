@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useContainerScale } from "@/components/landing/use-container-scale";
 
-const DESIGN_WIDTH = 300;
+const DEFAULT_DESIGN_WIDTH = 300;
 
 export function ScaledPhonePreview({
   children,
-  designWidth = DESIGN_WIDTH,
+  designWidth = DEFAULT_DESIGN_WIDTH,
   designHeight = 560,
   className,
 }: {
@@ -16,24 +16,7 @@ export function ScaledPhonePreview({
   designHeight?: number;
   className?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const update = () => {
-      const width = el.clientWidth;
-      setScale(width / designWidth);
-    };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [designWidth]);
-
+  const { containerRef, scale } = useContainerScale(designWidth);
   const scaledHeight = designHeight * scale;
 
   return (

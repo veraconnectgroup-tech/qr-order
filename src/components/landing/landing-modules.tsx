@@ -47,6 +47,7 @@ const modules: Array<{
   description: string;
   category: Exclude<(typeof categories)[number], "All">;
   Preview: ModulePreview;
+  featured?: boolean;
 }> = [
   {
     icon: QrCode,
@@ -54,6 +55,7 @@ const modules: Array<{
     description: "Scan to open a mobile-native menu — modifiers, serve sizes, live status.",
     category: "Guest",
     Preview: ModulePreviewQr,
+    featured: true,
   },
   {
     icon: Smartphone,
@@ -75,6 +77,7 @@ const modules: Array<{
     description: "Prep line with timers and large tap targets for peak service.",
     category: "Operations",
     Preview: ModulePreviewKitchen,
+    featured: true,
   },
   {
     icon: Users,
@@ -89,6 +92,7 @@ const modules: Array<{
     description: "Card payments routed to each venue with clear per-order fees.",
     category: "Payments",
     Preview: ModulePreviewStripe,
+    featured: true,
   },
   {
     icon: CreditCard,
@@ -160,11 +164,14 @@ export function LandingModules() {
           ))}
         </div>
 
-        <StaggerInView className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map(({ icon: Icon, title, description, Preview }) => (
+        <StaggerInView className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map(({ icon: Icon, title, description, Preview, featured }) => (
             <StaggerItem
               key={title}
-              className="landing-module-card group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 transition duration-200 hover:scale-[1.02] hover:border-orange-500/40 hover:shadow-[0_0_40px_rgba(234,88,12,0.12)]"
+              className={cn(
+                "landing-glow-border landing-module-card group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 transition duration-200 hover:border-orange-500/40 hover:bg-gradient-to-br hover:from-orange-500/[0.06] hover:to-transparent hover:shadow-[0_0_40px_rgba(234,88,12,0.12)]",
+                featured && "sm:col-span-2"
+              )}
             >
               <div className="p-3 pb-0">
                 <Preview />

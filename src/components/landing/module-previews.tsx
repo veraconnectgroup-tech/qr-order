@@ -10,7 +10,7 @@ function PreviewFrame({
   return (
     <div
       className={cn(
-        "relative h-[88px] overflow-hidden rounded-lg border border-zinc-800/80 bg-[#09090b]",
+        "landing-preview-shimmer relative h-[148px] overflow-hidden rounded-lg border border-zinc-800/80 bg-[#09090b] sm:h-[156px]",
         className
       )}
     >
@@ -70,7 +70,8 @@ export function ModulePreviewFloor() {
             key={t}
             className={cn(
               "flex items-center justify-center rounded text-[8px] font-bold",
-              i === 2 ? "bg-orange-500/30 text-orange-300" : "bg-zinc-800 text-zinc-500"
+              i === 2 ? "bg-orange-500/30 text-orange-300" : "bg-zinc-800 text-zinc-500",
+              i === 0 && "pulse-dot"
             )}
           >
             {t}
