@@ -60,10 +60,10 @@ export function KitchenHeader({
 
   return (
     <div className="shrink-0 border-b border-zinc-800 bg-zinc-950">
-      <header className="flex h-14 items-center justify-between px-4">
+      <header className="grid h-14 grid-cols-[1fr_auto_1fr] items-center px-4">
         <p className="truncate text-sm font-semibold text-zinc-300">{orgName}</p>
         <LiveClock />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           {realtimeMode && <LiveConnectionBadge mode={realtimeMode} />}
           <Link
             href="/dashboard/kitchen/kds"

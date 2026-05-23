@@ -68,6 +68,7 @@ type Tables = {
     available_locales: string[];
     google_review_url: string | null;
     ordering_enabled: boolean;
+    ai_concierge_enabled: boolean;
     created_at: string;
     updated_at: string;
   };
@@ -129,6 +130,7 @@ type Tables = {
     serve_size_presets: string[] | null;
     allow_custom_serve_size: boolean;
     tax_rate: number | null;
+    ai_description: string | null;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
@@ -320,6 +322,41 @@ type Tables = {
     comment: string | null;
     created_at: string;
   };
+  ai_credits: {
+    org_id: string;
+    balance: number;
+    lifetime_purchased: number;
+    lifetime_used: number;
+    updated_at: string;
+  };
+  ai_sessions: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    table_id: string;
+    session_token: string;
+    language: string;
+    guest_preferences: Json;
+    messages: Json;
+    tokens_used: number;
+    credits_used: number;
+    products_recommended: string[];
+    products_added: string[];
+    conversion_count: number;
+    status: "active" | "completed" | "expired";
+    created_at: string;
+    completed_at: string | null;
+  };
+  ai_credit_packages: {
+    id: string;
+    name: string;
+    credits: number;
+    price_cents: number;
+    currency: string;
+    is_active: boolean;
+    sort_order: number;
+    created_at: string;
+  };
 };
 
 type TableDef<T extends keyof Tables> = {
@@ -343,6 +380,14 @@ export interface Database {
       increment_promo_used_count: {
         Args: { p_promo_id: string };
         Returns: boolean;
+      };
+      decrement_ai_credits: {
+        Args: { p_org_id: string; p_amount: number };
+        Returns: number;
+      };
+      add_ai_credits: {
+        Args: { p_org_id: string; p_amount: number };
+        Returns: number;
       };
     };
     Enums: Record<string, never>;

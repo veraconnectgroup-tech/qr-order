@@ -1,17 +1,21 @@
+import { Suspense } from "react";
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
+import type { AiCreditPackage } from "@/types";
 
 export default async function AdminSettingsPage() {
   const staff = await requireAdmin();
   const admin = createAdminClient();
   const locationId = await getStaffLocationId(staff);
 
-  const [{ data: org }, { data: location }] = await Promise.all([
+  const [{ data: org }, { data: location }, { data: credits }, { data: packages }] =
+    await Promise.all([
     admin
       .from("organizations")
       .select(
@@ -22,10 +26,22 @@ export default async function AdminSettingsPage() {
     locationId
       ? admin
           .from("locations")
-          .select("name, menu_locale, default_locale, google_review_url, ordering_enabled")
+          .select(
+            "name, menu_locale, default_locale, google_review_url, ordering_enabled, ai_concierge_enabled"
+          )
           .eq("id", locationId)
           .single()
       : Promise.resolve({ data: null }),
+    admin
+      .from("ai_credits")
+      .select("balance, lifetime_used")
+      .eq("org_id", staff.org_id)
+      .maybeSingle(),
+    admin
+      .from("ai_credit_packages")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order"),
   ]);
 
   const orgRow = org as {
@@ -45,7 +61,15 @@ export default async function AdminSettingsPage() {
     default_locale: string | null;
     google_review_url: string | null;
     ordering_enabled: boolean;
+    ai_concierge_enabled: boolean;
   } | null;
+
+  const creditsRow = credits as {
+    balance: number;
+    lifetime_used: number;
+  } | null;
+
+  const creditPackages = (packages ?? []) as AiCreditPackage[];
 
   const menuLocale = parseMenuLocaleFromDb(
     locationRow?.menu_locale,
@@ -80,13 +104,27 @@ export default async function AdminSettingsPage() {
         </div>
 
         {locationRow && (
-          <LocationSettings
-            locationName={locationRow.name}
-            menuLocale={menuLocale}
-            googleReviewUrl={locationRow.google_review_url}
-            orderingEnabled={locationRow.ordering_enabled}
-            canEdit
-          />
+          <>
+            <LocationSettings
+              locationName={locationRow.name}
+              menuLocale={menuLocale}
+              googleReviewUrl={locationRow.google_review_url}
+              orderingEnabled={locationRow.ordering_enabled}
+              canEdit
+            />
+
+            <Suspense fallback={null}>
+              <AiConciergeSettings
+                locationName={locationRow.name}
+                aiConciergeEnabled={locationRow.ai_concierge_enabled}
+                creditsBalance={creditsRow?.balance ?? 0}
+                creditsLifetimeUsed={creditsRow?.lifetime_used ?? 0}
+                packages={creditPackages}
+                currency={orgRow?.currency ?? "EUR"}
+                canEdit
+              />
+            </Suspense>
+          </>
         )}
 
         <TseSettingsPanel

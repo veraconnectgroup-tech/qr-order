@@ -23,6 +23,10 @@ export type PromoCode = Database["public"]["Tables"]["promo_codes"]["Row"];
 export type UpsellRule = Database["public"]["Tables"]["upsell_rules"]["Row"];
 export type OrderFeedback =
   Database["public"]["Tables"]["order_feedback"]["Row"];
+export type AiCredits = Database["public"]["Tables"]["ai_credits"]["Row"];
+export type AiSession = Database["public"]["Tables"]["ai_sessions"]["Row"];
+export type AiCreditPackage =
+  Database["public"]["Tables"]["ai_credit_packages"]["Row"];
 
 export type ProductWithModifiers = Product & {
   modifier_groups: (ModifierGroup & { modifiers: Modifier[] })[];

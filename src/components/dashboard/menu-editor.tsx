@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Plus, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { invalidateMenuCache } from "@/lib/ai/menu-cache";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { formatPrice } from "@/lib/format";
 import {
@@ -269,6 +270,7 @@ function ProductForm({
     serve_size_presets: string[] | null;
     allow_custom_serve_size: boolean;
     tax_rate: number | null;
+    ai_description: string;
   }) => void;
   onCancel: () => void;
   saving: boolean;
@@ -278,6 +280,9 @@ function ProductForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [descriptionEn, setDescriptionEn] = useState(
     initial?.description_en ?? ""
+  );
+  const [aiDescription, setAiDescription] = useState(
+    initial?.ai_description ?? ""
   );
   const [price, setPrice] = useState(
     initial?.price != null ? String(initial.price) : ""
@@ -371,6 +376,16 @@ function ProductForm({
           onChange={(e) => setDescriptionEn(e.target.value)}
           rows={2}
           placeholder="Prosecco, Aperol, soda, orange slice"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+        />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm text-zinc-400">AI Beschreibung</span>
+        <textarea
+          value={aiDescription}
+          onChange={(e) => setAiDescription(e.target.value)}
+          rows={3}
+          placeholder="Beschreiben Sie Zubereitung, Zutaten, Empfehlungen fuer den AI Concierge"
           className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
         />
       </label>
@@ -511,6 +526,7 @@ function ProductForm({
                 : null,
               allow_custom_serve_size: allowCustomServeSize,
               tax_rate: taxRateValue,
+              ai_description: aiDescription.trim(),
             })
           }
           className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
@@ -735,6 +751,7 @@ export function MenuEditor() {
     serve_size_presets: string[] | null;
     allow_custom_serve_size: boolean;
     tax_rate: number | null;
+    ai_description: string;
   }) {
     if (!selectedCategoryId) return;
     setSaving(true);
@@ -757,6 +774,9 @@ export function MenuEditor() {
       serve_size_presets: values.serve_size_presets,
       allow_custom_serve_size: values.allow_custom_serve_size,
       tax_rate: values.tax_rate,
+      ai_description: values.ai_description
+        ? sanitizeText(values.ai_description, 2000)
+        : null,
     };
 
     if (editingProduct) {
@@ -773,6 +793,7 @@ export function MenuEditor() {
         return;
       }
       toast.success("Product updated");
+      void invalidateMenuCache(locationId);
     } else {
       const { error } = await supabase.from("products").insert({
         location_id: locationId,
@@ -786,6 +807,7 @@ export function MenuEditor() {
         return;
       }
       toast.success("Product added");
+      void invalidateMenuCache(locationId);
     }
 
     setProductDialogOpen(false);

@@ -11,6 +11,7 @@ export type RateLimitScope =
   | "export"
   | "fiscal"
   | "jobs"
+  | "ai"
   | "default";
 
 const SCOPE_BY_USER = new Set<RateLimitScope>(["export", "fiscal"]);
@@ -44,6 +45,7 @@ const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
   export: createScopeLimiter("export", 10, "1 m"),
   fiscal: createScopeLimiter("fiscal", 10, "1 m"),
   jobs: createScopeLimiter("jobs", 120, "1 m"),
+  ai: createScopeLimiter("ai", 20, "1 h"),
   default: createScopeLimiter("default", 60, "1 m"),
 };
 
@@ -60,6 +62,7 @@ const MEMORY_SCOPE_CONFIG: Record<
   export: { limit: 10, windowMs: 60 * 1000 },
   fiscal: { limit: 10, windowMs: 60 * 1000 },
   jobs: { limit: 120, windowMs: 60 * 1000 },
+  ai: { limit: 20, windowMs: 60 * 60 * 1000 },
   default: { limit: 60, windowMs: 60 * 1000 },
 };
 
@@ -138,6 +141,33 @@ export async function withRateLimit(
   }
 
   const key = await resolveRateLimitKey(req, scope);
+  const limiter = upstashLimiters[scope];
+
+  if (useRedis && limiter) {
+    const result = await limiter.limit(key);
+
+    if (!result.success) {
+      const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
+      return tooManyRequests(retryAfter);
+    }
+
+    return null;
+  }
+
+  const config = MEMORY_SCOPE_CONFIG[scope];
+  if (!checkRateLimit(key, config.limit, config.windowMs)) {
+    const retryAfter = Math.ceil(config.windowMs / 1000);
+    return tooManyRequests(retryAfter);
+  }
+
+  return null;
+}
+
+export async function withRateLimitByKey(
+  scope: RateLimitScope,
+  identifier: string
+): Promise<NextResponse | null> {
+  const key = `${scope}:${identifier}`;
   const limiter = upstashLimiters[scope];
 
   if (useRedis && limiter) {

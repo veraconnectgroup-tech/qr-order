@@ -319,13 +319,13 @@ export function KdsBoard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-black text-zinc-50">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
+      <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-lg font-bold text-zinc-100">{orgName}</p>
           <p className="text-sm text-zinc-500">Kitchen Display System</p>
         </div>
         <LiveClock />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <KdsConnectionBadge mode={realtimeMode} />
           <button
             type="button"

@@ -219,6 +219,49 @@ async function processStripeWebhookEvent(
       }
       break;
     }
+
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const packageId = session.metadata?.packageId;
+      const orgId = session.metadata?.orgId;
+      const creditsRaw = session.metadata?.credits;
+
+      if (!packageId || !orgId || !creditsRaw) break;
+      if (session.payment_status !== "paid") break;
+
+      const credits = Number.parseInt(creditsRaw, 10);
+      if (!Number.isFinite(credits) || credits <= 0) {
+        logger.error("AI credits purchase invalid amount", {
+          orgId,
+          packageId,
+          creditsRaw,
+        });
+        break;
+      }
+
+      const { data: newBalance, error } = await admin.rpc("add_ai_credits", {
+        p_org_id: orgId,
+        p_amount: credits,
+      });
+
+      if (error) {
+        logger.error("AI credits add failed", {
+          orgId,
+          packageId,
+          error: error.message,
+        });
+        throw error;
+      }
+
+      logger.info("AI credits purchased", {
+        orgId,
+        packageId,
+        credits,
+        balance: newBalance,
+        checkoutSessionId: session.id,
+      });
+      break;
+    }
   }
 }
 

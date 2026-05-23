@@ -44,6 +44,7 @@ function demoProduct(
     serve_size_presets: options?.serveSizePresets ?? null,
     allow_custom_serve_size: true,
     tax_rate: options?.taxRate ?? null,
+    ai_description: null,
     created_at: minutesAgo(60),
     updated_at: minutesAgo(60),
     deleted_at: null,

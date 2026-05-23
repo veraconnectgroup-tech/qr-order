@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
+import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
+import { AiProactiveBanner } from "@/components/guest/ai-proactive-banner";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { CartSummaryBar } from "@/components/guest/cart-summary-bar";
 import { CategoryPills } from "@/components/guest/category-pills";
@@ -47,6 +49,7 @@ export function MenuView({
   timezone,
   orderingEnabled = true,
   acceptingOrders = true,
+  aiConciergeEnabled = false,
 }: {
   slug: string;
   token: string;
@@ -64,6 +67,7 @@ export function MenuView({
   timezone: string;
   orderingEnabled?: boolean;
   acceptingOrders?: boolean;
+  aiConciergeEnabled?: boolean;
 }) {
   const { tUI, tName } = useAppLocale();
   const router = useRouter();
@@ -86,6 +90,12 @@ export function MenuView({
   const setCartSession = useCart((s) => s.setSession);
   const itemCount = useCart((s) => s.itemCount());
   const setGuestSession = useGuestSession((s) => s.setSession);
+  const sessionToken = useGuestSession((s) => s.sessionToken);
+  const { orders: guestOrders } = useGuestTableOrders(
+    token,
+    sessionToken,
+    aiConciergeEnabled && Boolean(sessionToken)
+  );
 
   const allergenStorageKey = allergenFilterStorageKey(slug, token);
   const { excluded, toggle, clear, count: allergenFilterCount } =
@@ -308,6 +318,21 @@ export function MenuView({
             </div>
             {!filtered && (
               <>
+                {aiConciergeEnabled && (
+                  <AiProactiveBanner
+                    slug={slug}
+                    token={token}
+                    locationId={locationId}
+                    tableId={tableId}
+                    sessionToken={sessionToken}
+                    currency={currency}
+                    orders={guestOrders}
+                    aiConciergeEnabled={aiConciergeEnabled}
+                    categories={categories}
+                    orderingDisabled={!canPlaceOrders}
+                    onOpenProduct={openProductDetail}
+                  />
+                )}
                 <CategoryPills
                   categories={filteredCategories}
                   activeCategory={activeCategory}

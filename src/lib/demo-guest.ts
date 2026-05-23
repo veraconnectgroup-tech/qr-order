@@ -43,6 +43,7 @@ export function getDemoGuestMenuProps(slug: string, token: string) {
     tableId: "demo-table",
     orderingEnabled: true,
     acceptingOrders: true,
+    aiConciergeEnabled: false,
     timezone: "Europe/Berlin",
   };
 }

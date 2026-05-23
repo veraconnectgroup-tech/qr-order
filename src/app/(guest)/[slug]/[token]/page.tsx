@@ -26,6 +26,7 @@ type RawProduct = {
   serve_size_presets?: string[] | null;
   allow_custom_serve_size?: boolean;
   tax_rate?: number | null;
+  ai_description?: string | null;
   deleted_at?: string | null;
   modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
 };
@@ -74,6 +75,7 @@ export default async function GuestMenuPage({
         name,
         accepting_orders,
         ordering_enabled,
+        ai_concierge_enabled,
         timezone,
         organization:organizations!inner(
           id,
@@ -108,6 +110,7 @@ export default async function GuestMenuPage({
       name: string;
       accepting_orders: boolean;
       ordering_enabled: boolean;
+      ai_concierge_enabled: boolean;
       timezone: string;
       organization: {
         id: string;
@@ -155,6 +158,7 @@ export default async function GuestMenuPage({
             serve_size_presets: p.serve_size_presets ?? null,
             allow_custom_serve_size: p.allow_custom_serve_size ?? true,
             tax_rate: p.tax_rate ?? null,
+            ai_description: p.ai_description ?? null,
             deleted_at: p.deleted_at ?? null,
             created_at: "",
             updated_at: "",
@@ -188,6 +192,7 @@ export default async function GuestMenuPage({
       timezone={table.location.timezone ?? "Europe/Berlin"}
       orderingEnabled={table.location.ordering_enabled}
       acceptingOrders={table.location.accepting_orders}
+      aiConciergeEnabled={table.location.ai_concierge_enabled}
     />
   );
 }
