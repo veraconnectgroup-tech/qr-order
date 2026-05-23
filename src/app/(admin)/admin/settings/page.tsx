@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
+import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
 
 export default async function AdminSettingsPage() {
   const staff = await requireAdmin();
@@ -8,7 +10,9 @@ export default async function AdminSettingsPage() {
 
   const { data: org } = await admin
     .from("organizations")
-    .select("stripe_account_id, stripe_onboarded, name, email, currency, default_tax_percent")
+    .select(
+      "stripe_account_id, stripe_onboarded, name, email, currency, default_tax_percent, fiskaly_tss_id, fiskaly_client_id"
+    )
     .eq("id", staff.org_id)
     .single();
 
@@ -19,6 +23,8 @@ export default async function AdminSettingsPage() {
     email: string | null;
     currency: string;
     default_tax_percent: number;
+    fiskaly_tss_id: string | null;
+    fiskaly_client_id: string | null;
   } | null;
 
   return (
@@ -47,6 +53,12 @@ export default async function AdminSettingsPage() {
             </div>
           </dl>
         </div>
+
+        <TseSettingsPanel
+          tssId={orgRow?.fiskaly_tss_id ?? null}
+          clientId={orgRow?.fiskaly_client_id ?? null}
+          platformConfigured={isFiskalyConfigured()}
+        />
 
         <StripeConnectButton
           connected={orgRow?.stripe_onboarded ?? false}

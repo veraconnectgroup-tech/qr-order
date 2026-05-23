@@ -4,7 +4,6 @@ import {
   type FiskalyReceiptSchema,
   type FiskalyVatRate,
   getFiskalyClient,
-  getFiskalyTssId,
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
 
@@ -19,6 +18,7 @@ export type TseSignatureResult = {
 
 export type OrderForTseSigning = {
   id: string;
+  organizationId: string;
   order_number: number;
   subtotal: number;
   tax_amount: number;
@@ -26,6 +26,11 @@ export type OrderForTseSigning = {
   payment_method: string;
   currency?: string;
   order_items?: Array<{ total: number; tax_rate: number }>;
+};
+
+type OrgFiskalyConfig = {
+  fiskaly_tss_id: string;
+  fiskaly_client_id: string;
 };
 
 function formatFiskalyAmount(value: number): string {
@@ -56,9 +61,10 @@ function buildReceiptSchema(order: OrderForTseSigning): FiskalyReceiptSchema {
   }
 
   if (grossByRate.size === 0) {
-    const fallbackRate = order.tax_amount > 0 && order.subtotal > 0
-      ? Math.round((order.tax_amount / order.subtotal) * 100)
-      : 19;
+    const fallbackRate =
+      order.tax_amount > 0 && order.subtotal > 0
+        ? Math.round((order.tax_amount / order.subtotal) * 100)
+        : 19;
     grossByRate.set(fallbackRate === 7 ? 7 : 19, Number(order.total));
   }
 
@@ -98,11 +104,42 @@ function toSignatureResult(
 
   return {
     tss_serial: tx.tss_serial_number ?? "",
-    signature_counter: Number.isFinite(signatureCounter) ? signatureCounter : tx.number,
+    signature_counter: Number.isFinite(signatureCounter)
+      ? signatureCounter
+      : tx.number,
     signature: signatureValue,
     start_time: tx.time_start,
     end_time: tx.time_end ?? tx.time_start,
     qr_code_data: tx.qr_code_data ?? "",
+  };
+}
+
+async function loadOrgFiskalyConfig(
+  admin: SupabaseClient,
+  organizationId: string
+): Promise<OrgFiskalyConfig | null> {
+  const { data, error } = await admin
+    .from("organizations")
+    .select("fiskaly_tss_id, fiskaly_client_id")
+    .eq("id", organizationId)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const row = data as {
+    fiskaly_tss_id: string | null;
+    fiskaly_client_id: string | null;
+  };
+
+  if (!row.fiskaly_tss_id || !row.fiskaly_client_id) {
+    return null;
+  }
+
+  return {
+    fiskaly_tss_id: row.fiskaly_tss_id,
+    fiskaly_client_id: row.fiskaly_client_id,
   };
 }
 
@@ -114,22 +151,22 @@ export async function signOrderTransaction(
     return null;
   }
 
-  const tssId = getFiskalyTssId();
-  if (!tssId) {
+  const orgFiskaly = await loadOrgFiskalyConfig(admin, order.organizationId);
+  if (!orgFiskaly) {
     return null;
   }
 
   const client = getFiskalyClient();
-  const fiskalyClientId = await client.resolveClientId(tssId);
   const schema = buildReceiptSchema(order);
 
-  const tx = await client.createTransaction(tssId, {
+  const tx = await client.createTransaction(orgFiskaly.fiskaly_tss_id, {
     tx_id: crypto.randomUUID(),
-    client_id: fiskalyClientId,
+    client_id: orgFiskaly.fiskaly_client_id,
     schema,
     metadata: {
       order_id: order.id,
       order_number: String(order.order_number),
+      organization_id: order.organizationId,
     },
   });
 
@@ -142,8 +179,8 @@ export async function signOrderTransaction(
       tse_data: {
         ...result,
         tx_id: tx._id,
-        tss_id: tssId,
-        client_id: fiskalyClientId,
+        tss_id: orgFiskaly.fiskaly_tss_id,
+        client_id: orgFiskaly.fiskaly_client_id,
         payment_method: order.payment_method,
       },
     })

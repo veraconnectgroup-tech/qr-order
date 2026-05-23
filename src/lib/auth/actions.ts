@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { scheduleFiskalyTssProvision } from "@/lib/fiscal/provision-tss";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -98,6 +99,8 @@ export async function signupAction(formData: FormData) {
   if (orgError || !org) {
     return { error: "Could not create your organization." };
   }
+
+  scheduleFiskalyTssProvision(org.id);
 
   const { data: location, error: locError } = await admin
     .from("locations")

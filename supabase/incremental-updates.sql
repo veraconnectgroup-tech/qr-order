@@ -529,3 +529,7 @@ WHERE tax_rate IS NULL;
 -- ===== Fiskaly Cloud TSE (migration 00022) =====
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS tse_signature TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS tse_data JSONB;
+
+-- ===== Fiskaly per-organization TSS (migration 00023) =====
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS fiskaly_tss_id TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS fiskaly_client_id TEXT;

@@ -44,83 +44,110 @@ export type FiskalyTransactionResponse = {
   latest_revision?: number;
 };
 
+export type FiskalyTssResponse = {
+  _id: string;
+  state: string;
+  admin_puk?: string;
+  description?: string;
+  serial_number?: string;
+};
+
+export type FiskalyClientResponse = {
+  _id: string;
+  serial_number: string;
+  state: string;
+  tss_id: string;
+};
+
 type AuthResponse = {
   access_token: string;
   access_token_expires_at?: number;
   access_token_expires_in?: number;
 };
 
+type RequestOptions = {
+  timeoutMs?: number;
+};
+
 export function isFiskalyConfigured(): boolean {
   return Boolean(
     process.env.FISKALY_API_KEY?.trim() &&
-      process.env.FISKALY_API_SECRET?.trim() &&
-      process.env.FISKALY_TSS_ID?.trim()
+      process.env.FISKALY_API_SECRET?.trim()
   );
 }
 
-export function getFiskalyTssId(): string | null {
-  return process.env.FISKALY_TSS_ID?.trim() || null;
-}
-
-export function getFiskalyClientId(): string | null {
-  return process.env.FISKALY_CLIENT_ID?.trim() || null;
+export function getFiskalyAdminPin(): string {
+  return process.env.FISKALY_TSS_ADMIN_PIN?.trim() || "543210";
 }
 
 export class FiskalyClient {
   private accessToken: string | null = null;
   private tokenExpiresAtMs = 0;
-  private cachedClientId: string | null = null;
 
   private async request<T>(
     path: string,
-    init: RequestInit = {}
+    init: RequestInit = {},
+    options: RequestOptions = {}
   ): Promise<T> {
     const token = await this.authenticate();
     if (!token) {
       throw new Error("Fiskaly is not configured.");
     }
 
-    const res = await fetch(`${FISKALY_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init.headers ?? {}),
-      },
-    });
+    const controller = new AbortController();
+    const timeout = options.timeoutMs
+      ? setTimeout(() => controller.abort(), options.timeoutMs)
+      : null;
 
-    if (res.status === 401) {
-      this.accessToken = null;
-      this.tokenExpiresAtMs = 0;
-      const retryToken = await this.authenticate(true);
-      if (!retryToken) {
-        throw new Error("Fiskaly authentication failed.");
-      }
-      const retry = await fetch(`${FISKALY_BASE_URL}${path}`, {
+    try {
+      const res = await fetch(`${FISKALY_BASE_URL}${path}`, {
         ...init,
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${retryToken}`,
+          Authorization: `Bearer ${token}`,
           ...(init.headers ?? {}),
         },
       });
-      if (!retry.ok) {
-        const body = await retry.text();
-        throw new Error(`Fiskaly request failed (${retry.status}): ${body}`);
+
+      if (res.status === 401) {
+        this.accessToken = null;
+        this.tokenExpiresAtMs = 0;
+        const retryToken = await this.authenticate(true);
+        if (!retryToken) {
+          throw new Error("Fiskaly authentication failed.");
+        }
+        const retry = await fetch(`${FISKALY_BASE_URL}${path}`, {
+          ...init,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${retryToken}`,
+            ...(init.headers ?? {}),
+          },
+        });
+        if (!retry.ok) {
+          const body = await retry.text();
+          throw new Error(`Fiskaly request failed (${retry.status}): ${body}`);
+        }
+        if (retry.status === 204) {
+          return {} as T;
+        }
+        return retry.json() as Promise<T>;
       }
-      return retry.json() as Promise<T>;
-    }
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Fiskaly request failed (${res.status}): ${body}`);
-    }
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Fiskaly request failed (${res.status}): ${body}`);
+      }
 
-    if (res.status === 204) {
-      return {} as T;
-    }
+      if (res.status === 204) {
+        return {} as T;
+      }
 
-    return res.json() as Promise<T>;
+      return res.json() as Promise<T>;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
   }
 
   async authenticate(force = false): Promise<string | null> {
@@ -164,25 +191,72 @@ export class FiskalyClient {
     return this.accessToken;
   }
 
-  async resolveClientId(tssId: string): Promise<string> {
-    const configured = getFiskalyClientId();
-    if (configured) return configured;
+  async createTss(
+    tssId: string,
+    metadata?: Record<string, string>
+  ): Promise<FiskalyTssResponse> {
+    return this.request<FiskalyTssResponse>(`/tss/${tssId}`, {
+      method: "PUT",
+      body: JSON.stringify({ metadata }),
+    });
+  }
 
-    if (this.cachedClientId) return this.cachedClientId;
-
-    const list = await this.request<{ data?: Array<{ _id: string }> }>(
-      `/tss/${tssId}/client?limit=1`
+  async updateTss(
+    tssId: string,
+    body: {
+      state: "UNINITIALIZED" | "INITIALIZED" | "DISABLED";
+      description?: string;
+      metadata?: Record<string, string>;
+    },
+    options?: RequestOptions
+  ): Promise<FiskalyTssResponse> {
+    return this.request<FiskalyTssResponse>(
+      `/tss/${tssId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      },
+      options
     );
+  }
 
-    const clientId = list.data?.[0]?._id;
-    if (!clientId) {
-      throw new Error(
-        "No Fiskaly client found for TSS. Set FISKALY_CLIENT_ID in env."
-      );
-    }
+  async changeAdminPin(
+    tssId: string,
+    adminPuk: string,
+    newAdminPin: string
+  ): Promise<void> {
+    await this.request(`/tss/${tssId}/admin`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        admin_puk: adminPuk,
+        new_admin_pin: newAdminPin,
+      }),
+    });
+  }
 
-    this.cachedClientId = clientId;
-    return clientId;
+  async adminAuth(tssId: string, adminPin: string): Promise<void> {
+    await this.request(`/tss/${tssId}/admin/auth`, {
+      method: "POST",
+      body: JSON.stringify({ admin_pin: adminPin }),
+    });
+  }
+
+  async createClient(
+    tssId: string,
+    clientId: string,
+    serialNumber: string,
+    metadata?: Record<string, string>
+  ): Promise<FiskalyClientResponse> {
+    return this.request<FiskalyClientResponse>(
+      `/tss/${tssId}/client/${clientId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          serial_number: serialNumber,
+          metadata,
+        }),
+      }
+    );
   }
 
   private async upsertTransaction(
@@ -205,11 +279,10 @@ export class FiskalyClient {
     data: FiskalyCreateTransactionInput
   ): Promise<FiskalyTransactionResponse> {
     const txId = data.tx_id ?? crypto.randomUUID();
-    const clientId = data.client_id || (await this.resolveClientId(tssId));
 
     await this.upsertTransaction(tssId, txId, 1, {
       state: "ACTIVE",
-      client_id: clientId,
+      client_id: data.client_id,
       metadata: data.metadata,
     });
 
@@ -219,7 +292,7 @@ export class FiskalyClient {
 
     return this.upsertTransaction(tssId, txId, 2, {
       state: "FINISHED",
-      client_id: clientId,
+      client_id: data.client_id,
       schema: data.schema,
       metadata: data.metadata,
     });

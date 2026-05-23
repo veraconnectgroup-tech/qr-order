@@ -23,6 +23,8 @@ type Tables = {
     email: string | null;
     phone: string | null;
     website: string | null;
+    fiskaly_tss_id: string | null;
+    fiskaly_client_id: string | null;
     created_at: string;
     updated_at: string;
   };
