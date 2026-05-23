@@ -89,14 +89,14 @@ async function processStripeWebhookEvent(
 
       const { data: order } = await admin
         .from("orders")
-        .select("id, total, payment_status, stripe_payment_intent_id")
+        .select("id, total, payment_status, stripe_payment_intent_id, tip_amount")
         .eq("stripe_payment_intent_id", pi.id)
         .maybeSingle();
 
       if (!order && orderId) {
         const { data: byMeta } = await admin
           .from("orders")
-          .select("id, total, payment_status, stripe_payment_intent_id")
+          .select("id, total, payment_status, stripe_payment_intent_id, tip_amount")
           .eq("id", orderId)
           .maybeSingle();
         if (byMeta) {
@@ -225,16 +225,21 @@ async function verifyAndMarkSessionPaid(
 
   const { data: orders } = await admin
     .from("orders")
-    .select("id, total, payment_status")
+    .select("id, total, payment_status, tip_amount")
     .in("id", orderIds);
 
-  const rows = (orders as OrderRow[]) ?? [];
+  const rows = (orders as (OrderRow & { tip_amount?: number })[]) ?? [];
   if (rows.length === 0) return;
 
-  const expectedCents = rows.reduce(
-    (sum, o) => sum + Math.round(Number(o.total) * 100),
-    0
-  );
+  const tipFromMeta = pi.metadata.tip_amount
+    ? Number(pi.metadata.tip_amount)
+    : 0;
+  const tipFromDb = rows.reduce((sum, o) => sum + Number(o.tip_amount ?? 0), 0);
+  const tipAmount = tipFromMeta > 0 ? tipFromMeta : tipFromDb;
+
+  const expectedCents =
+    rows.reduce((sum, o) => sum + Math.round(Number(o.total) * 100), 0) +
+    Math.round(tipAmount * 100);
 
   if (expectedCents !== pi.amount) {
     logger.error("FRAUD ALERT: Session amount mismatch", {
@@ -273,10 +278,14 @@ async function verifyAndMarkSessionPaid(
 
 async function verifyAndMarkPaid(
   admin: ReturnType<typeof createAdminClient>,
-  order: OrderRow,
+  order: OrderRow & { tip_amount?: number },
   pi: Stripe.PaymentIntent
 ) {
-  const expectedCents = Math.round(Number(order.total) * 100);
+  const tipAmount = pi.metadata.tip_amount
+    ? Number(pi.metadata.tip_amount)
+    : Number(order.tip_amount ?? 0);
+  const expectedCents =
+    Math.round(Number(order.total) * 100) + Math.round(tipAmount * 100);
 
   if (expectedCents !== pi.amount) {
     logger.error("FRAUD ALERT: Amount mismatch", {

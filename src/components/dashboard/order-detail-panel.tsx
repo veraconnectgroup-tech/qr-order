@@ -132,9 +132,17 @@ export function OrderDetailPanel({
       )}
 
       {!refunded && paid && (
-        <p className={cn("text-xs", light ? "text-zinc-500" : "text-zinc-500")}>
-          Online payment · {formatPrice(Number(order.total), currency)}
-        </p>
+        <div className={cn("space-y-1", light ? "text-zinc-500" : "text-zinc-500")}>
+          <p className="text-xs">
+            Online payment · {formatPrice(Number(order.total), currency)}
+          </p>
+          {Number(order.tip_amount ?? 0) > 0 && (
+            <p className="text-xs text-emerald-400/90">
+              Trinkgeld · {formatPrice(Number(order.tip_amount), currency)}
+              {order.tip_staff?.name ? ` · ${order.tip_staff.name}` : ""}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

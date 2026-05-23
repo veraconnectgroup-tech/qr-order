@@ -20,6 +20,7 @@ import {
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
+import { TipSelector } from "@/components/guest/tip-selector";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { Button } from "@/components/ui/button";
 
@@ -133,6 +134,8 @@ export function OrderBillPanel({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [chargeTotal, setChargeTotal] = useState<number | null>(null);
 
   const availableMethods = useMemo(
     () =>
@@ -164,6 +167,12 @@ export function OrderBillPanel({
     if (!isPaid) loadBill();
   }, [isPaid, loadBill]);
 
+  useEffect(() => {
+    setTipAmount(0);
+    setChargeTotal(null);
+    setClientSecret(null);
+  }, [bill?.amountDue]);
+
   async function handleConfirmPayment() {
     if (!paymentMethod || !bill || bill.amountDue <= 0) return;
     setProcessing(true);
@@ -178,11 +187,16 @@ export function OrderBillPanel({
             sessionToken,
             tableToken: token,
             paymentMethod: "online",
+            tipAmount,
           }),
         });
         const parsed = await readJsonResponse<{
           error?: string;
-          data?: { clientSecret: string; stripeAccountId: string };
+          data?: {
+            clientSecret: string;
+            stripeAccountId: string;
+            chargeTotal?: number;
+          };
         }>(res);
         if (!parsed.ok) {
           throw new Error(parsed.error);
@@ -190,6 +204,7 @@ export function OrderBillPanel({
         if (!res.ok || !parsed.data.data?.clientSecret) {
           throw new Error(parsed.data.error ?? "Payment failed.");
         }
+        setChargeTotal(parsed.data.data.chargeTotal ?? bill.amountDue + tipAmount);
         setClientSecret(parsed.data.data.clientSecret);
         setStripeAccountId(parsed.data.data.stripeAccountId);
         setProcessing(false);
@@ -203,6 +218,7 @@ export function OrderBillPanel({
           sessionToken,
           tableToken: token,
           paymentMethod,
+          tipAmount,
         }),
       });
       const parsed = await readJsonResponse<{ error?: string }>(res);
@@ -259,6 +275,8 @@ export function OrderBillPanel({
         })
       : null;
 
+  const payTotal = chargeTotal ?? bill.amountDue + tipAmount;
+
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
       <div className="flex items-center gap-2">
@@ -276,8 +294,14 @@ export function OrderBillPanel({
           {tUI("bill.amountDue")}
         </p>
         <p className="mt-1 text-3xl font-bold tabular-nums text-zinc-50">
-          {formatPrice(bill.amountDue, currency)}
+          {formatPrice(payTotal, currency)}
         </p>
+        {tipAmount > 0 && (
+          <p className="mt-1 text-xs text-zinc-500">
+            {formatPrice(bill.amountDue, currency)} + {tUI("tip.title")}{" "}
+            {formatPrice(tipAmount, currency)}
+          </p>
+        )}
         {bill.taxAmount > 0 && (
           <p className="mt-1 text-xs text-zinc-500">
             {tUI("bill.inclTax", {
@@ -289,6 +313,12 @@ export function OrderBillPanel({
 
       {!clientSecret && (
         <>
+          <TipSelector
+            amountDue={bill.amountDue}
+            currency={currency}
+            value={tipAmount}
+            onChange={setTipAmount}
+          />
           <div className="mt-5">
             <PaymentMethodSelector
               methods={availableMethods}
@@ -316,11 +346,12 @@ export function OrderBillPanel({
       {clientSecret && stripePromise && (
         <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
           <StripePayForm
-            total={bill.amountDue}
+            total={payTotal}
             currency={currency}
             tUI={tUI}
             onSuccess={() => {
               setClientSecret(null);
+              setChargeTotal(null);
               onPaid();
               loadBill();
             }}

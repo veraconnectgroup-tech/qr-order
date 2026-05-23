@@ -2,12 +2,12 @@ import http from "k6/http";
 import {
   BASE_URL,
   TEST_PRODUCT_ID,
-  TEST_TOKEN,
   jsonParams,
+  pickTableToken,
 } from "./config.js";
 
 /** POST /api/tables/{token}/session → sessionToken */
-export function openTableSession(baseUrl = BASE_URL, tableToken = TEST_TOKEN) {
+export function openTableSession(baseUrl = BASE_URL, tableToken = pickTableToken()) {
   const res = http.post(
     `${baseUrl}/api/tables/${tableToken}/session`,
     "{}",
@@ -37,7 +37,7 @@ export function openTableSession(baseUrl = BASE_URL, tableToken = TEST_TOKEN) {
 export function createTestOrder(
   sessionToken,
   baseUrl = BASE_URL,
-  tableToken = TEST_TOKEN
+  tableToken = pickTableToken()
 ) {
   const payload = JSON.stringify({
     sessionToken,
@@ -79,7 +79,10 @@ export function createTestOrder(
 }
 
 /** Session + order in one call (for SSE load tests). */
-export function bootstrapGuestOrder(baseUrl = BASE_URL, tableToken = TEST_TOKEN) {
+export function bootstrapGuestOrder(
+  baseUrl = BASE_URL,
+  tableToken = pickTableToken()
+) {
   const session = openTableSession(baseUrl, tableToken);
   if (!session.ok) {
     return { ok: false, sessionRes: session.res };

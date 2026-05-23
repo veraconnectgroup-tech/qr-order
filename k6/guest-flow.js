@@ -3,9 +3,9 @@ import http from "k6/http";
 import {
   BASE_URL,
   TEST_SLUG,
-  TEST_TOKEN,
   THRESHOLDS,
   jsonParams,
+  pickTableToken,
 } from "./config.js";
 import { createTestOrder, openTableSession } from "./helpers.js";
 
@@ -25,6 +25,8 @@ export const options = {
 };
 
 export default function guestFlow() {
+  const tableToken = pickTableToken();
+
   const landing = http.get(`${BASE_URL}/`, {
     tags: { name: "landing" },
   });
@@ -37,13 +39,13 @@ export default function guestFlow() {
   check(health, { "health 200": (r) => r.status === 200 });
   sleep(1);
 
-  const menu = http.get(`${BASE_URL}/${TEST_SLUG}/${TEST_TOKEN}`, {
+  const menu = http.get(`${BASE_URL}/${TEST_SLUG}/${tableToken}`, {
     tags: { name: "menu" },
   });
   check(menu, { "menu 200": (r) => r.status === 200 });
   sleep(1);
 
-  const session = openTableSession();
+  const session = openTableSession(BASE_URL, tableToken);
   check(session.res, {
     "session 200": (r) => r.status === 200,
   });
@@ -52,7 +54,7 @@ export default function guestFlow() {
   }
   sleep(1);
 
-  const order = createTestOrder(session.sessionToken);
+  const order = createTestOrder(session.sessionToken, BASE_URL, tableToken);
   check(order.res, {
     "create order 200/201": (r) => r.status === 200 || r.status === 201,
   });

@@ -63,6 +63,7 @@ type Tables = {
     qr_token: string;
     seats: number;
     is_active: boolean;
+    assigned_staff_id: string | null;
     created_at: string;
     deleted_at: string | null;
   };
@@ -177,6 +178,8 @@ type Tables = {
     refund_reason: string | null;
     refunded_by: string | null;
     refunded_at: string | null;
+    tip_amount: number;
+    tip_staff_id: string | null;
     created_at: string;
     updated_at: string;
   };

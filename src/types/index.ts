@@ -29,6 +29,7 @@ export type OrderWithDetails = Order & {
   })[];
   tables?: { name: string; zone?: { name: string } | null } | null;
   refund_staff?: { name: string } | null;
+  tip_staff?: { name: string } | null;
   audit_log?: {
     action: string;
     amount: number | null;

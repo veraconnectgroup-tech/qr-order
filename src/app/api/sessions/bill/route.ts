@@ -9,6 +9,7 @@ import {
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { clampTipAmount } from "@/lib/orders/tips";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 
@@ -91,7 +92,43 @@ const checkoutSchema = z.object({
   sessionToken: zSessionToken(),
   tableToken: zTableToken(),
   paymentMethod: z.enum(["online", "at_bar", "card_at_table"]),
+  tipAmount: z.number().min(0).optional(),
 });
+
+async function resolveTipStaffId(
+  admin: ReturnType<typeof createAdminClient>,
+  tableId: string
+): Promise<string | null> {
+  const { data: table } = await admin
+    .from("tables")
+    .select("assigned_staff_id")
+    .eq("id", tableId)
+    .single();
+  return (table as { assigned_staff_id: string | null } | null)
+    ?.assigned_staff_id ?? null;
+}
+
+async function persistSessionTip(
+  admin: ReturnType<typeof createAdminClient>,
+  orderIds: string[],
+  tipAmount: number,
+  tipStaffId: string | null
+) {
+  await admin
+    .from("orders")
+    .update({ tip_amount: 0, tip_staff_id: null } as never)
+    .in("id", orderIds);
+
+  if (tipAmount > 0 && orderIds[0]) {
+    await admin
+      .from("orders")
+      .update({
+        tip_amount: tipAmount,
+        tip_staff_id: tipStaffId,
+      } as never)
+      .eq("id", orderIds[0]);
+  }
+}
 
 async function loadPaymentOptions(locationId: string) {
   const admin = createAdminClient();
@@ -141,6 +178,7 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
   const { sessionToken, tableToken, paymentMethod } = parsed.data;
+  const tipAmountRaw = parsed.data.tipAmount ?? 0;
 
   const sessionResult = await validateTableSession(
     admin,
@@ -152,7 +190,8 @@ export async function POST(req: NextRequest) {
     return apiError(sessionResult.error, sessionResult.status);
   }
 
-  const { session } = sessionResult.data;
+  const { session, table } = sessionResult.data;
+  const tipStaffId = await resolveTipStaffId(admin, table.id);
 
   const { data: orders } = await admin
     .from("orders")
@@ -185,9 +224,12 @@ export async function POST(req: NextRequest) {
     (sum, o) => sum + Number(o.total),
     0
   );
+  const tipAmount = clampTipAmount(tipAmountRaw, sessionTotal);
 
   if (paymentMethod !== "online") {
     const now = new Date().toISOString();
+    await persistSessionTip(admin, orderIds, tipAmount, tipStaffId);
+
     const { error } = await admin
       .from("orders")
       .update({
@@ -238,14 +280,18 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = getStripe();
+  const chargeTotal = sessionTotal + tipAmount;
 
-  if (existingPiId) {
+  if (existingPiId && tipAmount === 0) {
     const existing = await stripe.paymentIntents.retrieve(
       existingPiId,
       {},
       { stripeAccount: org.stripe_account_id }
     );
-    if (existing.client_secret) {
+    if (
+      existing.client_secret &&
+      existing.amount === Math.round(sessionTotal * 100)
+    ) {
       await admin
         .from("orders")
         .update({
@@ -258,11 +304,15 @@ export async function POST(req: NextRequest) {
         clientSecret: existing.client_secret,
         stripeAccountId: org.stripe_account_id,
         orderIds,
+        tipAmount: 0,
+        chargeTotal: sessionTotal,
       });
     }
   }
 
-  const amountCents = Math.round(sessionTotal * 100);
+  await persistSessionTip(admin, orderIds, tipAmount, tipStaffId);
+
+  const amountCents = Math.round(chargeTotal * 100);
   const applicationFee = calcPlatformFee(sessionTotal, {
     feePercent: org.platform_fee_percent,
     feeFixed: org.platform_fee_fixed,
@@ -278,6 +328,7 @@ export async function POST(req: NextRequest) {
         order_id: orderIds[0],
         order_ids: orderIds.join(","),
         session_id: session.id,
+        tip_amount: String(tipAmount),
       },
     },
     { stripeAccount: org.stripe_account_id }
@@ -301,5 +352,7 @@ export async function POST(req: NextRequest) {
     clientSecret: intent.client_secret,
     stripeAccountId: org.stripe_account_id,
     orderIds,
+    tipAmount,
+    chargeTotal,
   });
 }

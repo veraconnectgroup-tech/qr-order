@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Download, Plus, QrCode } from "lucide-react";
-import { createTable, createZone } from "@/lib/admin/actions";
+import { createTable, createZone, assignTableStaff } from "@/lib/admin/actions";
 import { useAppBaseUrl } from "@/hooks/use-app-base-url";
 import { guestTableUrl } from "@/lib/app-url";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Table, Zone } from "@/types";
+import type { Staff, Table, Zone } from "@/types";
 
 function QrPreview({
   table,
@@ -82,11 +82,13 @@ function QrPreview({
 export function TablesManager({
   tables,
   zones,
+  staffMembers,
   orgSlug,
   orgName,
 }: {
   tables: Table[];
   zones: Zone[];
+  staffMembers: Pick<Staff, "id" | "name">[];
   orgSlug: string;
   orgName: string;
 }) {
@@ -222,6 +224,7 @@ export function TablesManager({
                   <TableCard
                     key={table.id}
                     table={table}
+                    staffMembers={staffMembers}
                     onShowQr={() => setQrTable(table)}
                   />
                 ))}
@@ -238,6 +241,7 @@ export function TablesManager({
                   <TableCard
                     key={table.id}
                     table={table}
+                    staffMembers={staffMembers}
                     onShowQr={() => setQrTable(table)}
                   />
                 ))}
@@ -252,15 +256,43 @@ export function TablesManager({
 
 function TableCard({
   table,
+  staffMembers,
   onShowQr,
 }: {
   table: Table;
+  staffMembers: Pick<Staff, "id" | "name">[];
   onShowQr: () => void;
 }) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4">
       <p className="font-semibold">{table.name}</p>
       <p className="text-sm text-neutral-500">{table.seats} mesta</p>
+      {staffMembers.length > 0 && (
+        <div className="mt-2">
+          <Label className="text-xs text-neutral-500">Konobar (Trinkgeld)</Label>
+          <Select
+            value={table.assigned_staff_id ?? "none"}
+            onValueChange={async (v) => {
+              await assignTableStaff(
+                table.id,
+                v === "none" ? null : v
+              );
+            }}
+          >
+            <SelectTrigger className="mt-1 h-8 text-xs">
+              <SelectValue placeholder="Nije dodeljen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Nije dodeljen</SelectItem>
+              {staffMembers.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="mt-3 flex gap-2">
         <Button variant="outline" size="sm" onClick={onShowQr}>
           <QrCode className="mr-1 size-4" />

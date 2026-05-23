@@ -8,6 +8,7 @@ import {
   revenueEligibleOrders,
   sumOrderRevenue,
 } from "@/lib/orders/revenue";
+import { sumTips } from "@/lib/orders/tips";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +21,7 @@ type DateFilter = "today" | "yesterday" | "week" | "month" | "custom";
 type PaymentFilter = "all" | "paid" | "pending" | "refunded" | "partial_refund";
 
 const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), audit_log(action, amount, created_at)";
+  "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), audit_log(action, amount, created_at)";
 
 const PAGE_SIZE = 20;
 
@@ -368,6 +369,7 @@ export function OrderHistoryList() {
   );
 
   const stats = useMemo(() => computeStats(filtered), [filtered]);
+  const totalTips = useMemo(() => sumTips(filtered), [filtered]);
   const prevStats = useMemo(
     () => computeStats(previousFiltered),
     [previousFiltered]
@@ -429,7 +431,7 @@ export function OrderHistoryList() {
         </button>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         {[
           {
             label: "Revenue",
@@ -476,6 +478,12 @@ export function OrderHistoryList() {
                   ({stats.topCount})
                 </span>
               ) : null,
+            compare: null,
+          },
+          {
+            label: "Ukupan Trinkgeld",
+            value: formatPrice(totalTips, currency),
+            sub: null,
             compare: null,
           },
         ].map((card) => (

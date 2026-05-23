@@ -129,6 +129,12 @@ const de: TranslationMap = {
   "bill.secureStripe": "Sichere Zahlung über Stripe",
   "bill.paymentSuccess": "Zahlung erfolgreich!",
 
+  "tip.title": "Trinkgeld",
+  "tip.hint": "Optional — geht an deinen Service (MwSt-frei)",
+  "tip.none": "Kein Trinkgeld",
+  "tip.custom": "Eigener Betrag",
+  "tip.selected": "Trinkgeld: {amount}",
+
   "payment.method": "Zahlungsart",
   "payment.online.title": "Online bezahlen",
   "payment.online.description": "Apple Pay, Google Pay oder Karte — sicher über Stripe",
@@ -263,6 +269,12 @@ const en: TranslationMap = {
   "bill.processing": "Processing…",
   "bill.secureStripe": "Secure payment via Stripe",
   "bill.paymentSuccess": "Payment successful!",
+
+  "tip.title": "Tip",
+  "tip.hint": "Optional — goes to your server (VAT-free)",
+  "tip.none": "No tip",
+  "tip.custom": "Custom",
+  "tip.selected": "Tip: {amount}",
 
   "payment.method": "Payment method",
   "payment.online.title": "Pay online",
@@ -399,6 +411,12 @@ const sr: TranslationMap = {
   "bill.secureStripe": "Sigurno plaćanje preko Stripe-a",
   "bill.paymentSuccess": "Plaćanje uspešno!",
 
+  "tip.title": "Napojnica",
+  "tip.hint": "Opciono — ide vašem konobaru (bez PDV-a)",
+  "tip.none": "Bez napojnice",
+  "tip.custom": "Iznos",
+  "tip.selected": "Napojnica: {amount}",
+
   "payment.method": "Način plaćanja",
   "payment.online.title": "Plati online",
   "payment.online.description": "Apple Pay, Google Pay ili kartica — sigurno preko Stripe-a",
@@ -534,6 +552,12 @@ const tr: TranslationMap = {
   "bill.secureStripe": "Stripe ile güvenli ödeme",
   "bill.paymentSuccess": "Ödeme başarılı!",
 
+  "tip.title": "Bahşiş",
+  "tip.hint": "İsteğe bağlı — garsonunuza gider (KDV'siz)",
+  "tip.none": "Bahşiş yok",
+  "tip.custom": "Özel",
+  "tip.selected": "Bahşiş: {amount}",
+
   "payment.method": "Ödeme yöntemi",
   "payment.online.title": "Online öde",
   "payment.online.description": "Apple Pay, Google Pay veya kart — güvenli Stripe ödeme",
@@ -668,6 +692,12 @@ const hr: TranslationMap = {
   "bill.processing": "Obrada…",
   "bill.secureStripe": "Sigurno plaćanje putem Stripe-a",
   "bill.paymentSuccess": "Plaćanje uspješno!",
+
+  "tip.title": "Napojnica",
+  "tip.hint": "Opcionalno — ide vašem konobaru (bez PDV-a)",
+  "tip.none": "Bez napojnice",
+  "tip.custom": "Iznos",
+  "tip.selected": "Napojnica: {amount}",
 
   "payment.method": "Način plaćanja",
   "payment.online.title": "Plati online",

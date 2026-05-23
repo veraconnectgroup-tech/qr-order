@@ -267,6 +267,8 @@ function demoOrder(
     refund_reason: null,
     refunded_by: null,
     refunded_at: null,
+    tip_amount: 0,
+    tip_staff_id: null,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

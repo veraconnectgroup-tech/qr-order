@@ -155,3 +155,29 @@ export async function createZone(formData: FormData) {
   revalidatePath("/admin/tables");
   return { success: true };
 }
+
+export async function assignTableStaff(tableId: string, staffId: string | null) {
+  const adminStaff = await requireAdmin();
+  const locationId = await getStaffLocationId(adminStaff);
+  if (!locationId) return { error: "Lokacija nije pronađena." };
+
+  const supabase = await createServerClient();
+  const { data: table } = await supabase
+    .from("tables")
+    .select("id, location_id")
+    .eq("id", tableId)
+    .single();
+
+  if (!table || (table as { location_id: string }).location_id !== locationId) {
+    return { error: "Sto nije pronađen." };
+  }
+
+  const { error } = await supabase
+    .from("tables")
+    .update({ assigned_staff_id: staffId } as never)
+    .eq("id", tableId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/tables");
+  return { success: true };
+}

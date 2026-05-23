@@ -124,10 +124,19 @@ async function resolveRateLimitKey(
   return `${scope}:${ip}`;
 }
 
+const LOAD_TEST_SCOPES = new Set<RateLimitScope>(["orders", "sessions"]);
+
 export async function withRateLimit(
   req: NextRequest,
   scope: RateLimitScope
 ): Promise<NextResponse | null> {
+  if (
+    process.env.LOAD_TEST === "true" &&
+    LOAD_TEST_SCOPES.has(scope)
+  ) {
+    return null;
+  }
+
   const key = await resolveRateLimitKey(req, scope);
   const limiter = upstashLimiters[scope];
 
