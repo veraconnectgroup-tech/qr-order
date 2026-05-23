@@ -63,6 +63,7 @@ type Tables = {
     seats: number;
     is_active: boolean;
     created_at: string;
+    deleted_at: string | null;
   };
   categories: {
     id: string;
@@ -78,6 +79,7 @@ type Tables = {
     available_days: number[];
     menu_section: string;
     created_at: string;
+    deleted_at: string | null;
   };
   products: {
     id: string;
@@ -100,6 +102,7 @@ type Tables = {
     tax_rate: number | null;
     created_at: string;
     updated_at: string;
+    deleted_at: string | null;
   };
   modifier_groups: {
     id: string;
@@ -201,6 +204,7 @@ type Tables = {
     email: string | null;
     is_active: boolean;
     created_at: string;
+    deleted_at: string | null;
   };
   waiter_calls: {
     id: string;
@@ -217,6 +221,12 @@ type Tables = {
     location_id: string;
     date: string;
     last_number: number;
+  };
+  webhook_events: {
+    id: string;
+    event_type: string;
+    processed_at: string;
+    payload: Json | null;
   };
 };
 

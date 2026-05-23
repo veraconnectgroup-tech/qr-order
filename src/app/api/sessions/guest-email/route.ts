@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -11,14 +12,14 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const limited = await withRateLimitScope(req, "sessions");
+    const limited = await withRateLimit(req, "sessions");
     if (limited) return limited;
 
     const body = await req.json();
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+      return apiError("Invalid input", 400);
     }
 
     const admin = createAdminClient();
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!session) {
-      return NextResponse.json({ error: "Session not found." }, { status: 404 });
+      return apiError("Session not found.", 404);
     }
 
     const { error } = await admin
@@ -41,14 +42,14 @@ export async function POST(req: NextRequest) {
       .eq("id", (session as { id: string }).id);
 
     if (error) {
-      return NextResponse.json({ error: "Could not save email." }, { status: 500 });
+      return apiError("Could not save email.", 500);
     }
 
-    return NextResponse.json({ data: { ok: true } });
+    return apiSuccess({ ok: true });
   } catch (error) {
     logger.error("Guest email save error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: "Internal error." }, { status: 500 });
+    return apiError("Internal error.", 500);
   }
 }

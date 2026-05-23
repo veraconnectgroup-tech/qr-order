@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
@@ -14,17 +15,14 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const limited = await withRateLimitScope(req, "payments");
+    const limited = await withRateLimit(req, "payments");
     if (limited) return limited;
 
     const body = await req.json();
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return apiError("Invalid input", 400, parsed.error.flatten());
     }
 
     const admin = createAdminClient();
@@ -37,7 +35,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (!hasAccess) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: order } = await admin
@@ -49,10 +47,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!order) {
-      return NextResponse.json(
-        { error: "Order not found." },
-        { status: 404 }
-      );
+      return apiError("Order not found.", 404);
     }
 
     const orderRow = order as {
@@ -66,17 +61,11 @@ export async function POST(req: NextRequest) {
     };
 
     if (orderRow.payment_method !== "online") {
-      return NextResponse.json(
-        { error: "This order uses an in-venue payment method." },
-        { status: 400 }
-      );
+      return apiError("This order uses an in-venue payment method.", 400);
     }
 
     if (orderRow.status === "rejected" || orderRow.status === "cancelled") {
-      return NextResponse.json(
-        { error: "Order is no longer payable." },
-        { status: 400 }
-      );
+      return apiError("Order is no longer payable.", 400);
     }
 
     const { data: location } = await admin
@@ -86,7 +75,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!location) {
-      return NextResponse.json({ error: "Location not found." }, { status: 404 });
+      return apiError("Location not found.", 404);
     }
 
     const { data: orgData } = await admin
@@ -106,14 +95,11 @@ export async function POST(req: NextRequest) {
     } | null;
 
     if (!org?.stripe_onboarded || !org.stripe_account_id) {
-      return NextResponse.json(
-        { error: "Payments are not configured for this venue." },
-        { status: 400 }
-      );
+      return apiError("Payments are not configured for this venue.", 400);
     }
 
     if (orderRow.payment_status === "paid") {
-      return NextResponse.json({ error: "Already paid." }, { status: 400 });
+      return apiError("Already paid.", 400);
     }
 
     const stripe = getStripe();
@@ -136,11 +122,9 @@ export async function POST(req: NextRequest) {
       }
 
       if (existing.client_secret) {
-        return NextResponse.json({
-          data: {
-            clientSecret: existing.client_secret,
-            stripeAccountId: org.stripe_account_id,
-          },
+        return apiSuccess({
+          clientSecret: existing.client_secret,
+          stripeAccountId: org.stripe_account_id,
         });
       }
     }
@@ -170,19 +154,14 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", orderRow.id);
 
-    return NextResponse.json({
-      data: {
-        clientSecret: paymentIntent.client_secret,
-        stripeAccountId: org.stripe_account_id,
-      },
+    return apiSuccess({
+      clientSecret: paymentIntent.client_secret,
+      stripeAccountId: org.stripe_account_id,
     });
   } catch (error) {
     logger.error("Payment intent error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      { error: "Payment could not be started." },
-      { status: 500 }
-    );
+    return apiError("Payment could not be started.", 500);
   }
 }

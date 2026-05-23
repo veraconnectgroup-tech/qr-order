@@ -54,11 +54,13 @@ export default async function DashboardLayout({
     admin
       .from("tables")
       .select("id", { count: "exact", head: true })
-      .eq("location_id", locationId),
+      .eq("location_id", locationId)
+      .is("deleted_at", null),
     admin
       .from("products")
       .select("id", { count: "exact", head: true })
-      .eq("location_id", locationId),
+      .eq("location_id", locationId)
+      .is("deleted_at", null),
   ]);
 
   const orgRow = org as {

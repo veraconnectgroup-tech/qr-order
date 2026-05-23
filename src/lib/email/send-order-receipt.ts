@@ -91,7 +91,12 @@ export async function maybeSendOrderReceipt(orderId: string) {
     .single();
 
   const { data: table } = row.table_id
-    ? await admin.from("tables").select("name, qr_token").eq("id", row.table_id).single()
+    ? await admin
+        .from("tables")
+        .select("name, qr_token")
+        .eq("id", row.table_id)
+        .is("deleted_at", null)
+        .single()
     : { data: null };
 
   const locationRow = location as { name: string; org_id: string } | null;

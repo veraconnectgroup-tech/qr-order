@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe/client";
 import { handleStripeWebhookEvent } from "@/lib/stripe/webhook";
@@ -13,20 +13,31 @@ export async function POST(req: Request) {
     return new Response("Missing signature", { status: 400 });
   }
 
+  let event: Stripe.Event;
+
   try {
     const stripe = getStripe();
-    const event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret
-    );
-
-    await handleStripeWebhookEvent(event);
-    return new Response("OK", { status: 200 });
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (error) {
     logger.error("Webhook signature verification failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return new Response("Invalid signature", { status: 400 });
+  }
+
+  try {
+    await handleStripeWebhookEvent(event);
+    logger.info("Stripe webhook processed", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+    return new Response("OK", { status: 200 });
+  } catch (error) {
+    logger.error("Stripe webhook processing failed", {
+      eventId: event.id,
+      eventType: event.type,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return new Response("Webhook handler failed", { status: 500 });
   }
 }

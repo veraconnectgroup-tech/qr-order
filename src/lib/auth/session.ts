@@ -24,6 +24,7 @@ export async function getCurrentStaff() {
     .select("*, organizations(id, name, slug, currency, default_tax_percent)")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .maybeSingle();
 
   return data as

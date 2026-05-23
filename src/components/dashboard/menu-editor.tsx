@@ -495,11 +495,13 @@ export function MenuEditor() {
           .from("categories")
           .select("*")
           .eq("location_id", locationId)
+          .is("deleted_at", null)
           .order("sort_order"),
         supabase
           .from("products")
           .select("*")
           .eq("location_id", locationId)
+          .is("deleted_at", null)
           .order("sort_order"),
       ]);
 

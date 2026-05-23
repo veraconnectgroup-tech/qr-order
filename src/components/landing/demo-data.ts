@@ -46,6 +46,7 @@ function demoProduct(
     tax_rate: options?.taxRate ?? null,
     created_at: minutesAgo(60),
     updated_at: minutesAgo(60),
+    deleted_at: null,
     modifier_groups: [],
   };
 }

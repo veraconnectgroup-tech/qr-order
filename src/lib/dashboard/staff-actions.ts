@@ -37,6 +37,7 @@ export async function createStaffInvite(formData: FormData) {
     .select("id")
     .eq("org_id", staff.org_id)
     .eq("email", email)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (existingStaff) {
@@ -211,6 +212,7 @@ export async function acceptStaffInvite(formData: FormData) {
     .select("id")
     .eq("org_id", row.org_id)
     .eq("email", row.email)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (existingStaff) {

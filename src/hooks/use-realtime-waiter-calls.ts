@@ -28,6 +28,7 @@ async function enrichCalls(
     .from("tables")
     .select("id, name, zone:zones(name)")
     .eq("location_id", locationId)
+    .is("deleted_at", null)
     .in("id", tableIds);
 
   const tableMap = new Map(

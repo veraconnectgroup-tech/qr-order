@@ -2,10 +2,79 @@ import type Stripe from "stripe";
 import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/types/database";
+
+function isDuplicateError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const record = error as { code?: string; message?: string };
+  return (
+    record.code === "23505" ||
+    /duplicate key/i.test(record.message ?? "")
+  );
+}
+
+async function deleteWebhookEvent(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string
+) {
+  const { error } = await admin.from("webhook_events").delete().eq("id", eventId);
+
+  if (error) {
+    logger.warn("Failed to delete webhook event after processing error", {
+      eventId,
+      error: error.message,
+    });
+  }
+}
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
   const admin = createAdminClient();
 
+  const { data: existing } = await admin
+    .from("webhook_events")
+    .select("id")
+    .eq("id", event.id)
+    .maybeSingle();
+
+  if (existing) {
+    logger.info("Duplicate webhook skipped", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+    return;
+  }
+
+  try {
+    const { error: insertError } = await admin.from("webhook_events").insert({
+      id: event.id,
+      event_type: event.type,
+      payload: event as unknown as Json,
+    });
+
+    if (insertError) {
+      if (isDuplicateError(insertError)) {
+        logger.info("Duplicate webhook skipped", {
+          eventId: event.id,
+          eventType: event.type,
+        });
+        return;
+      }
+      throw insertError;
+    }
+
+    await processStripeWebhookEvent(admin, event);
+  } catch (err) {
+    if (!isDuplicateError(err)) {
+      await deleteWebhookEvent(admin, event.id);
+    }
+    throw err;
+  }
+}
+
+async function processStripeWebhookEvent(
+  admin: ReturnType<typeof createAdminClient>,
+  event: Stripe.Event
+) {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;

@@ -29,6 +29,7 @@ export default async function CartPage({
     .select("name, location:locations!inner(accepting_orders)")
     .eq("qr_token", token)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .single();
 
   if (!tableData) notFound();

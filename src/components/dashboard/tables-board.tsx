@@ -110,6 +110,7 @@ export function TablesBoard() {
       .select("*, zone:zones(*)")
       .eq("location_id", locationId)
       .eq("is_active", true)
+      .is("deleted_at", null)
       .order("name");
 
     const { data: sessions } = await supabase

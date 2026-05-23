@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { logger } from "@/lib/logger";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   assertStripeConnectConfig,
@@ -20,12 +21,12 @@ async function requireConnectStaff() {
 
 export async function GET(req: NextRequest) {
   try {
-    const limited = await withRateLimitScope(req, "default");
+    const limited = await withRateLimit(req, "default");
     if (limited) return limited;
 
     const staff = await requireConnectStaff();
     if (!staff) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      return apiError("Unauthorized.", 401);
     }
 
     assertStripeConnectConfig();
@@ -44,9 +45,7 @@ export async function GET(req: NextRequest) {
     } | null;
 
     if (!orgRow?.stripe_account_id) {
-      return NextResponse.json({
-        data: { onboarded: false, hasAccount: false },
-      });
+      return apiSuccess({ onboarded: false, hasAccount: false });
     }
 
     const { onboarded } = await syncStripeConnectStatus(
@@ -54,32 +53,27 @@ export async function GET(req: NextRequest) {
       orgRow.stripe_account_id
     );
 
-    return NextResponse.json({
-      data: {
-        onboarded,
-        hasAccount: true,
-        accountId: orgRow.stripe_account_id,
-      },
+    return apiSuccess({
+      onboarded,
+      hasAccount: true,
+      accountId: orgRow.stripe_account_id,
     });
   } catch (error) {
     logger.error("Stripe connect sync error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      { error: stripeConnectErrorMessage(error) },
-      { status: 500 }
-    );
+    return apiError(stripeConnectErrorMessage(error), 500);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const limited = await withRateLimitScope(req, "default");
+    const limited = await withRateLimit(req, "default");
     if (limited) return limited;
 
     const staff = await requireConnectStaff();
     if (!staff) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      return apiError("Unauthorized.", 401);
     }
 
     assertStripeConnectConfig();
@@ -92,7 +86,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!org) {
-      return NextResponse.json({ error: "Organization not found." }, { status: 404 });
+      return apiError("Organization not found.", 404);
     }
 
     const orgRow = org as {
@@ -117,12 +111,11 @@ export async function POST(req: NextRequest) {
         .eq("id", orgRow.id);
     }
 
-    return NextResponse.json({ data: { url } });
+    return apiSuccess({ url });
   } catch (error) {
     logger.error("Stripe connect error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    const message = stripeConnectErrorMessage(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(stripeConnectErrorMessage(error), 500);
   }
 }

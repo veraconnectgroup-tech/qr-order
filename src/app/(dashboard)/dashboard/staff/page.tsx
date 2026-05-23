@@ -12,6 +12,7 @@ export default async function StaffPage() {
       .from("staff")
       .select("id, name, email, role, is_active")
       .eq("org_id", staff.org_id)
+      .is("deleted_at", null)
       .order("created_at"),
     canManage
       ? admin

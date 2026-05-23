@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { getCurrentStaff } from "@/lib/auth/session";
 import {
   datevExportFilename,
@@ -6,7 +7,7 @@ import {
   parseDatevDateRange,
 } from "@/lib/export/datev";
 import { logger } from "@/lib/logger";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 
 async function requireExportStaff() {
   const staff = await getCurrentStaff();
@@ -18,12 +19,12 @@ async function requireExportStaff() {
 
 export async function GET(req: NextRequest) {
   try {
-    const limited = await withRateLimitScope(req, "export");
+    const limited = await withRateLimit(req, "export");
     if (limited) return limited;
 
     const staff = await requireExportStaff();
     if (!staff) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      return apiError("Unauthorized.", 401);
     }
 
     const fromParam = req.nextUrl.searchParams.get("from");
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     const parsed = parseDatevDateRange(fromParam, toParam);
 
     if ("error" in parsed) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return apiError(parsed.error, 400);
     }
 
     const csv = await generateDatevExport(
@@ -54,9 +55,6 @@ export async function GET(req: NextRequest) {
     logger.error("DATEV export error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      { error: "DATEV export could not be generated." },
-      { status: 500 }
-    );
+    return apiError("DATEV export could not be generated.", 500);
   }
 }

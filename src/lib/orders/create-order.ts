@@ -137,7 +137,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     .select("id, name, price, is_available, location_id, category_id, tax_rate")
     .in("id", productIds)
     .eq("location_id", tableRow.location_id)
-    .eq("is_available", true);
+    .eq("is_available", true)
+    .is("deleted_at", null);
 
   const productMap = new Map(
     (products ?? []).map((p) => [
@@ -165,7 +166,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   const { data: categories } = await admin
     .from("categories")
     .select("id, menu_section")
-    .in("id", categoryIds);
+    .in("id", categoryIds)
+    .is("deleted_at", null);
 
   const categorySectionMap = new Map(
     (categories ?? []).map((c) => [

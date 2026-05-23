@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 import {
   getAvailablePaymentMethods,
   type SelectablePaymentMethod,
@@ -11,17 +12,17 @@ import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 
 export async function GET(req: NextRequest) {
-  const limited = await withRateLimitScope(req, "sessions");
+  const limited = await withRateLimit(req, "sessions");
   if (limited) return limited;
 
   const sessionToken = req.nextUrl.searchParams.get("sessionToken");
   if (!sessionToken) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return apiError("Unauthorized.", 401);
   }
 
   const tableToken = req.nextUrl.searchParams.get("tableToken");
   if (!tableToken) {
-    return NextResponse.json({ error: "Invalid table." }, { status: 400 });
+    return apiError("Invalid table.", 400);
   }
 
   const admin = createAdminClient();
@@ -32,10 +33,7 @@ export async function GET(req: NextRequest) {
   );
 
   if ("error" in sessionResult) {
-    return NextResponse.json(
-      { error: sessionResult.error },
-      { status: sessionResult.status }
-    );
+    return apiError(sessionResult.error, sessionResult.status);
   }
 
   const { session } = sessionResult.data;
@@ -67,16 +65,14 @@ export async function GET(req: NextRequest) {
   const subtotal = unpaid.reduce((sum, o) => sum + Number(o.subtotal), 0);
   const taxAmount = unpaid.reduce((sum, o) => sum + Number(o.tax_amount), 0);
 
-  return NextResponse.json({
-    data: {
-      orders: rows,
-      unpaidOrderIds: unpaid.map((o) => o.id),
-      amountDue,
-      subtotal,
-      taxAmount,
-      orderCount: rows.length,
-      unpaidCount: unpaid.length,
-    },
+  return apiSuccess({
+    orders: rows,
+    unpaidOrderIds: unpaid.map((o) => o.id),
+    amountDue,
+    subtotal,
+    taxAmount,
+    orderCount: rows.length,
+    unpaidCount: unpaid.length,
   });
 }
 
@@ -123,13 +119,13 @@ async function loadPaymentOptions(locationId: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const limited = await withRateLimitScope(req, "sessions");
+  const limited = await withRateLimit(req, "sessions");
   if (limited) return limited;
 
   const body = await req.json();
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input." }, { status: 400 });
+    return apiError("Invalid input.", 400);
   }
 
   const admin = createAdminClient();
@@ -142,10 +138,7 @@ export async function POST(req: NextRequest) {
   );
 
   if ("error" in sessionResult) {
-    return NextResponse.json(
-      { error: sessionResult.error },
-      { status: sessionResult.status }
-    );
+    return apiError(sessionResult.error, sessionResult.status);
   }
 
   const { session } = sessionResult.data;
@@ -167,16 +160,13 @@ export async function POST(req: NextRequest) {
     }>) ?? [];
 
   if (unpaidOrders.length === 0) {
-    return NextResponse.json({ error: "Nothing to pay." }, { status: 400 });
+    return apiError("Nothing to pay.", 400);
   }
 
   const locationId = unpaidOrders[0].location_id;
   const methods = await loadPaymentOptions(locationId);
   if (!methods?.includes(paymentMethod as SelectablePaymentMethod)) {
-    return NextResponse.json(
-      { error: "This payment method is not available." },
-      { status: 400 }
-    );
+    return apiError("This payment method is not available.", 400);
   }
 
   const orderIds = unpaidOrders.map((o) => o.id);
@@ -196,15 +186,13 @@ export async function POST(req: NextRequest) {
       .in("id", orderIds);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return apiError(error.message, 500);
     }
 
-    return NextResponse.json({
-      data: {
-        ok: true,
-        orderIds,
-        paymentMethod,
-      },
+    return apiSuccess({
+      ok: true,
+      orderIds,
+      paymentMethod,
     });
   }
 
@@ -235,10 +223,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (!org.stripe_onboarded || !org.stripe_account_id) {
-    return NextResponse.json(
-      { error: "Online payments are not available." },
-      { status: 400 }
-    );
+    return apiError("Online payments are not available.", 400);
   }
 
   const stripe = getStripe();
@@ -258,12 +243,10 @@ export async function POST(req: NextRequest) {
         })
         .in("id", orderIds);
 
-      return NextResponse.json({
-        data: {
-          clientSecret: existing.client_secret,
-          stripeAccountId: org.stripe_account_id,
-          orderIds,
-        },
+      return apiSuccess({
+        clientSecret: existing.client_secret,
+        stripeAccountId: org.stripe_account_id,
+        orderIds,
       });
     }
   }
@@ -290,10 +273,7 @@ export async function POST(req: NextRequest) {
   );
 
   if (!intent.client_secret) {
-    return NextResponse.json(
-      { error: "Payment could not be started." },
-      { status: 500 }
-    );
+    return apiError("Payment could not be started.", 500);
   }
 
   await admin
@@ -306,11 +286,9 @@ export async function POST(req: NextRequest) {
     })
     .in("id", orderIds);
 
-  return NextResponse.json({
-    data: {
-      clientSecret: intent.client_secret,
-      stripeAccountId: org.stripe_account_id,
-      orderIds,
-    },
+  return apiSuccess({
+    clientSecret: intent.client_secret,
+    stripeAccountId: org.stripe_account_id,
+    orderIds,
   });
 }

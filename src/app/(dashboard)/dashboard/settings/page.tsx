@@ -29,8 +29,9 @@ export default async function SettingsPage() {
     locationId
       ? admin
           .from("tables")
-          .select("token")
+          .select("qr_token")
           .eq("location_id", locationId)
+          .is("deleted_at", null)
           .order("created_at", { ascending: true })
           .limit(1)
           .maybeSingle()
@@ -85,7 +86,7 @@ export default async function SettingsPage() {
       canEdit={canEdit}
       stripePlatformReady={isStripePlatformConfigured()}
       sampleTableToken={
-        (sampleTable as { token: string } | null)?.token ?? null
+        (sampleTable as { qr_token: string } | null)?.qr_token ?? null
       }
     />
   );

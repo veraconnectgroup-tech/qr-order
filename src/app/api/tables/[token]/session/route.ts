@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import { logger } from "@/lib/logger";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -14,7 +15,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const limited = await withRateLimitScope(req, "sessions");
+    const limited = await withRateLimit(req, "sessions");
     if (limited) return limited;
 
     const { token } = await params;
@@ -22,7 +23,7 @@ export async function POST(
     const parsed = schema.safeParse({ tableToken: token, ...body });
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+      return apiError("Invalid request.", 400);
     }
 
     const admin = createAdminClient();
@@ -32,13 +33,11 @@ export async function POST(
       .select("id, name, location_id")
       .eq("qr_token", token)
       .eq("is_active", true)
+      .is("deleted_at", null)
       .single();
 
     if (!table) {
-      return NextResponse.json(
-        { error: "Table not found." },
-        { status: 404 }
-      );
+      return apiError("Table not found.", 404);
     }
 
     const tableRow = table as {
@@ -62,14 +61,12 @@ export async function POST(
 
     if (existing) {
       const row = existing as { id: string; session_token: string };
-      return NextResponse.json({
-        data: {
-          sessionId: row.id,
-          sessionToken: row.session_token,
-          tableId: tableRow.id,
-          tableName: tableRow.name,
-          locationId: tableRow.location_id,
-        },
+      return apiSuccess({
+        sessionId: row.id,
+        sessionToken: row.session_token,
+        tableId: tableRow.id,
+        tableName: tableRow.name,
+        locationId: tableRow.location_id,
       });
     }
 
@@ -89,30 +86,22 @@ export async function POST(
       .single();
 
     if (error || !session) {
-      return NextResponse.json(
-        { error: "Session could not be created." },
-        { status: 500 }
-      );
+      return apiError("Session could not be created.", 500);
     }
 
     const sessionRow = session as { id: string; session_token: string };
 
-    return NextResponse.json({
-      data: {
-        sessionId: sessionRow.id,
-        sessionToken: sessionRow.session_token,
-        tableId: tableRow.id,
-        tableName: tableRow.name,
-        locationId: tableRow.location_id,
-      },
+    return apiSuccess({
+      sessionId: sessionRow.id,
+      sessionToken: sessionRow.session_token,
+      tableId: tableRow.id,
+      tableName: tableRow.name,
+      locationId: tableRow.location_id,
     });
   } catch (error) {
     logger.error("Session API error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json(
-      { error: "Internal server error." },
-      { status: 500 }
-    );
+    return apiError("Internal server error.", 500);
   }
 }

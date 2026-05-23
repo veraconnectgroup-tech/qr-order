@@ -24,6 +24,7 @@ type RawProduct = {
   serve_size_presets?: string[] | null;
   allow_custom_serve_size?: boolean;
   tax_rate?: number | null;
+  deleted_at?: string | null;
   modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
 };
 
@@ -79,6 +80,7 @@ export default async function GuestMenuPage({
     )
     .eq("qr_token", token)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .single();
 
   if (!tableData) {
@@ -116,6 +118,7 @@ export default async function GuestMenuPage({
     .select("*, products(*, modifier_groups(*, modifiers(*)))")
     .eq("location_id", table.location_id)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .order("sort_order");
 
   const categories = ((categoriesData ?? []) as unknown as RawCategory[])
@@ -138,6 +141,7 @@ export default async function GuestMenuPage({
             serve_size_presets: p.serve_size_presets ?? null,
             allow_custom_serve_size: p.allow_custom_serve_size ?? true,
             tax_rate: p.tax_rate ?? null,
+            deleted_at: p.deleted_at ?? null,
             created_at: "",
             updated_at: "",
             modifier_groups: (p.modifier_groups ?? [])

@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
-import { withRateLimitScope } from "@/lib/rate-limit";
+import { withRateLimit } from "@/lib/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
@@ -12,14 +13,14 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  const limited = await withRateLimitScope(req, "orders");
+  const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
   const { orderId } = await params;
   const sessionToken = req.nextUrl.searchParams.get("sessionToken");
 
   if (!sessionToken) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return apiError("Unauthorized.", 401);
   }
 
   const admin = createAdminClient();
@@ -31,7 +32,7 @@ export async function GET(
     .single();
 
   if (!order) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return apiError("Not found.", 404);
   }
 
   const orderBase = order as unknown as {
@@ -62,7 +63,7 @@ export async function GET(
   };
 
   if (!orderBase.session_id) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return apiError("Unauthorized.", 401);
   }
 
   const { data: session } = await admin
@@ -72,10 +73,10 @@ export async function GET(
     .single();
 
   if (!session || (session as { session_token: string }).session_token !== sessionToken) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return apiError("Unauthorized.", 401);
   }
 
-  return NextResponse.json({ data: orderBase });
+  return apiSuccess(orderBase);
 }
 
 const statusSchema = z.object({
@@ -130,6 +131,7 @@ async function verifyStaffOrderAccess(
     .select("id, org_id, location_id, role")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (!staff) return null;
@@ -162,21 +164,21 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  const limited = await withRateLimitScope(req, "orders");
+  const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
   const { orderId } = await params;
   const access = await verifyStaffOrderAccess(orderId);
 
   if (!access) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return apiError("Unauthorized.", 401);
   }
 
   const body = await req.json();
   const parsed = statusSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+    return apiError("Invalid status.", 400);
   }
 
   const { status, rejectionReason } = parsed.data;
@@ -223,10 +225,7 @@ export async function PATCH(
       );
 
       if ("error" in refundResult) {
-        return NextResponse.json(
-          { error: refundResult.error },
-          { status: 400 }
-        );
+        return apiError(refundResult.error, 400);
       }
     }
   }
@@ -237,7 +236,7 @@ export async function PATCH(
     .eq("id", orderId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError(error.message, 500);
   }
 
   if (status === "delivered") {
@@ -249,5 +248,5 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json({ data: { ok: true } });
+  return apiSuccess({ ok: true });
 }

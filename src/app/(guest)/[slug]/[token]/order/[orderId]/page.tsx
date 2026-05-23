@@ -30,6 +30,7 @@ export default async function OrderPage({
     )
     .eq("qr_token", token)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .single();
 
   if (!tableData) notFound();

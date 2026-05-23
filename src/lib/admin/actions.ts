@@ -56,7 +56,10 @@ export async function createCategory(formData: FormData) {
 export async function deleteCategory(id: string) {
   await requireAdmin();
   const supabase = await createServerClient();
-  const { error } = await supabase.from("categories").delete().eq("id", id);
+  const { error } = await supabase
+    .from("categories")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/categories");
   return { success: true };

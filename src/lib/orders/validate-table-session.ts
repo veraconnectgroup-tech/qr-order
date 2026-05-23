@@ -43,6 +43,7 @@ export async function validateTableSession(
     .select("id, name, location_id, zone_id")
     .eq("qr_token", tableToken)
     .eq("is_active", true)
+    .is("deleted_at", null)
     .single();
 
   if (!table) {

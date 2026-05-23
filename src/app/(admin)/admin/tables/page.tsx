@@ -13,6 +13,7 @@ export default async function AdminTablesPage() {
       .from("tables")
       .select("*")
       .eq("location_id", locationId!)
+      .is("deleted_at", null)
       .order("name"),
     supabase
       .from("zones")
