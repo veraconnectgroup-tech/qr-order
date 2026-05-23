@@ -6,6 +6,7 @@ import { DashboardProvider } from "@/components/dashboard/dashboard-provider";
 import type { DashboardContextValue } from "@/components/dashboard/dashboard-provider";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardTopBar } from "@/components/dashboard/dashboard-top-bar";
+import { PwaInstallBanner } from "@/components/dashboard/pwa-install-banner";
 import { DashboardAlertsProvider } from "@/hooks/use-dashboard-alerts";
 import { SoundAlertProvider } from "@/hooks/use-sound-alert";
 
@@ -15,8 +16,9 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
       <DashboardAlertsProvider>
         <div className="flex min-h-dvh overflow-x-hidden bg-zinc-950 text-zinc-50">
           <DashboardSidebar />
-          <div className="flex min-h-dvh min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
-            <DashboardTopBar />
+        <div className="flex min-h-dvh min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+          <PwaInstallBanner />
+          <DashboardTopBar />
             <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
               {children}
             </main>
@@ -44,6 +46,7 @@ export function DashboardShell({
         <SoundAlertProvider>
           <DashboardAlertsProvider>
             <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-50 md:min-h-dvh">
+              <PwaInstallBanner />
               {children}
             </div>
           </DashboardAlertsProvider>

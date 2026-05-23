@@ -7,6 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Scan, order, pay — no app needed",
     start_url: "/",
     display: "standalone",
+    scope: "/",
+    orientation: "any",
     background_color: "#09090b",
     theme_color: "#f97316",
     icons: [

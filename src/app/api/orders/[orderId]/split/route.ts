@@ -20,6 +20,7 @@ import { verifyTableOrderAccess } from "@/lib/orders/validate-table-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import { clampTipAmount } from "@/lib/orders/tips";
 
 const querySchema = z.object({
   sessionToken: zSessionToken(),
@@ -31,6 +32,7 @@ const equalSplitSchema = z.object({
   parts: z.number().int().min(MIN_SPLIT_PARTS).max(MAX_SPLIT_PARTS),
   sessionToken: zSessionToken(),
   tableToken: zTableToken(),
+  tipAmount: z.number().min(0).max(500).optional().default(0),
 });
 
 const byItemsSplitSchema = z.object({
@@ -38,6 +40,7 @@ const byItemsSplitSchema = z.object({
   items: z.array(z.string().uuid()).min(1),
   sessionToken: zSessionToken(),
   tableToken: zTableToken(),
+  tipAmount: z.number().min(0).max(500).optional().default(0),
 });
 
 const postSchema = z.discriminatedUnion("mode", [
@@ -226,6 +229,7 @@ export async function GET(
       order: {
         id: ctx.order.id,
         total: orderTotal,
+        subtotal: Number(ctx.order.subtotal),
         tipAmount: orderTip,
         paymentStatus: ctx.order.payment_status,
         isSplit: ctx.order.is_split,
@@ -289,7 +293,34 @@ export async function POST(
   }
 
   const orderTotal = Number(ctx.order.total);
-  const orderTip = Number(ctx.order.tip_amount ?? 0);
+  let orderTip = Number(ctx.order.tip_amount ?? 0);
+
+  if (orderTip <= 0 && parsed.data.tipAmount > 0) {
+    orderTip = clampTipAmount(parsed.data.tipAmount, orderTotal);
+
+    const { data: tableRow } = ctx.order.table_id
+      ? await admin
+          .from("tables")
+          .select("assigned_staff_id")
+          .eq("id", ctx.order.table_id)
+          .maybeSingle()
+      : { data: null };
+
+    const { error: tipError } = await admin
+      .from("orders")
+      .update({
+        tip_amount: orderTip,
+        tip_staff_id:
+          (tableRow as { assigned_staff_id: string | null } | null)
+            ?.assigned_staff_id ?? null,
+      })
+      .eq("id", orderId);
+
+    if (tipError) {
+      return apiError(tipError.message, 500);
+    }
+  }
+
   const existingTotals = sumSplitAmounts(ctx.splits);
 
   if (ctx.splits.length > 0 && parsed.data.mode === "equal") {

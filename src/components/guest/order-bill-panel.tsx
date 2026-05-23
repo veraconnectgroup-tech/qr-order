@@ -21,6 +21,7 @@ import {
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
+import { TipSelector } from "@/components/guest/tip-selector";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { Button } from "@/components/ui/button";
 
@@ -147,6 +148,7 @@ export function OrderBillPanel({
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chargeTotal, setChargeTotal] = useState<number | null>(null);
+  const [selectedTip, setSelectedTip] = useState(0);
   const [splitProgress, setSplitProgress] = useState<SplitProgress | null>(null);
 
   const availableMethods = useMemo(
@@ -205,7 +207,13 @@ export function OrderBillPanel({
   useEffect(() => {
     setChargeTotal(null);
     setClientSecret(null);
-  }, [bill?.chargeTotal]);
+  }, [bill?.amountDue, selectedTip]);
+
+  useEffect(() => {
+    if (bill && bill.tipAmount > 0) {
+      setSelectedTip(bill.tipAmount);
+    }
+  }, [bill?.tipAmount, bill?.amountDue]);
 
   async function handleConfirmPayment() {
     if (!paymentMethod || !bill || bill.amountDue <= 0) return;
@@ -221,6 +229,7 @@ export function OrderBillPanel({
             sessionToken,
             tableToken: token,
             paymentMethod: "online",
+            tipAmount: selectedTip,
           }),
         });
         const parsed = await readJsonResponse<{
@@ -251,6 +260,7 @@ export function OrderBillPanel({
           sessionToken,
           tableToken: token,
           paymentMethod,
+          tipAmount: selectedTip,
         }),
       });
       const parsed = await readJsonResponse<{ error?: string }>(res);
@@ -307,8 +317,7 @@ export function OrderBillPanel({
         })
       : null;
 
-  const payTotal = chargeTotal ?? bill.chargeTotal;
-  const tipAmount = bill.tipAmount ?? 0;
+  const payTotal = chargeTotal ?? bill.amountDue + selectedTip;
   const canSplit =
     Boolean(slug && orderId) &&
     stripeOnboarded &&
@@ -343,10 +352,10 @@ export function OrderBillPanel({
         <p className="mt-1 text-3xl font-bold tabular-nums text-zinc-50">
           {formatPrice(payTotal, currency)}
         </p>
-        {tipAmount > 0 && (
+        {selectedTip > 0 && (
           <p className="mt-1 text-xs text-zinc-500">
             {formatPrice(bill.amountDue, currency)} + {tUI("checkout.tip")}{" "}
-            {formatPrice(tipAmount, currency)}
+            {formatPrice(selectedTip, currency)}
           </p>
         )}
         {bill.taxAmount > 0 && (
@@ -360,6 +369,17 @@ export function OrderBillPanel({
 
       {!clientSecret && (
         <>
+          {!isSplitActive && (
+            <div className="mt-5">
+              <TipSelector
+                subtotal={bill.subtotal}
+                orderTotal={bill.amountDue}
+                currency={currency}
+                value={selectedTip}
+                onChange={setSelectedTip}
+              />
+            </div>
+          )}
           {!isSplitActive && (
             <div className="mt-5">
               <PaymentMethodSelector

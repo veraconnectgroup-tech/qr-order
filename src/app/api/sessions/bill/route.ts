@@ -11,6 +11,10 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import {
+  clampTipAmount,
+  distributeTipAcrossOrders,
+} from "@/lib/orders/tips";
 
 export async function GET(req: NextRequest) {
   const limited = await withRateLimit(req, "sessions");
@@ -96,6 +100,7 @@ const checkoutSchema = z.object({
   sessionToken: zSessionToken(),
   tableToken: zTableToken(),
   paymentMethod: z.enum(["online", "at_bar", "card_at_table"]),
+  tipAmount: z.number().min(0).max(500).optional().default(0),
 });
 
 async function loadPaymentOptions(locationId: string) {
@@ -145,7 +150,8 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { sessionToken, tableToken, paymentMethod } = parsed.data;
+  const { sessionToken, tableToken, paymentMethod, tipAmount: requestedTip } =
+    parsed.data;
 
   const sessionResult = await validateTableSession(
     admin,
@@ -157,7 +163,7 @@ export async function POST(req: NextRequest) {
     return apiError(sessionResult.error, sessionResult.status);
   }
 
-  const { session } = sessionResult.data;
+  const { session, table } = sessionResult.data;
 
   const { data: orders } = await admin
     .from("orders")
@@ -196,10 +202,25 @@ export async function POST(req: NextRequest) {
     (sum, o) => sum + Number(o.total),
     0
   );
-  const tipAmount = unpaidOrders.reduce(
-    (sum, o) => sum + Number(o.tip_amount ?? 0),
-    0
+
+  const tipAmount = clampTipAmount(requestedTip, sessionTotal);
+  const tipStaffId = table.assigned_staff_id ?? null;
+  const tipDistribution = distributeTipAcrossOrders(
+    unpaidOrders.map((o) => ({ id: o.id, total: Number(o.total) })),
+    tipAmount
   );
+
+  for (const { id, tip_amount } of tipDistribution) {
+    const { error: tipError } = await admin
+      .from("orders")
+      .update({ tip_amount, tip_staff_id: tipStaffId })
+      .eq("id", id);
+
+    if (tipError) {
+      return apiError(tipError.message, 500);
+    }
+  }
+
   const chargeTotal = sessionTotal + tipAmount;
 
   if (paymentMethod !== "online") {

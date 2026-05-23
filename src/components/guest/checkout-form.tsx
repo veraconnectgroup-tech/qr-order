@@ -8,7 +8,6 @@ import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
-import { TipSelector } from "@/components/guest/tip-selector";
 import { UpsellBar } from "@/components/guest/upsell-bar";
 import {
   PromoInput,
@@ -39,7 +38,6 @@ function OrderSummary({
   taxAmount,
   total,
   discountAmount,
-  tipAmount,
   currency,
   tUI,
 }: {
@@ -49,12 +47,9 @@ function OrderSummary({
   taxAmount: number;
   total: number;
   discountAmount: number;
-  tipAmount: number;
   currency: string;
   tUI: ReturnType<typeof useAppLocale>["tUI"];
 }) {
-  const grandTotal = total + tipAmount;
-
   return (
     <div className="rounded-xl bg-zinc-900 p-4">
       <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
@@ -97,22 +92,10 @@ function OrderSummary({
             </span>
           </div>
         )}
-        <div className="flex justify-between text-zinc-300">
+        <div className="flex justify-between font-bold text-zinc-50">
           <span>{tUI("checkout.total")}</span>
           <span className="tabular-nums">{formatPrice(total, currency)}</span>
         </div>
-        {tipAmount > 0 && (
-          <div className="flex justify-between text-zinc-400">
-            <span>{tUI("checkout.tip")}</span>
-            <span className="tabular-nums">{formatPrice(tipAmount, currency)}</span>
-          </div>
-        )}
-        {tipAmount > 0 && (
-          <div className="flex justify-between border-t border-zinc-800 pt-2 font-bold text-zinc-50">
-            <span>{tUI("checkout.totalWithTip")}</span>
-            <span className="tabular-nums">{formatPrice(grandTotal, currency)}</span>
-          </div>
-        )}
       </div>
       <p className="mt-3 text-xs leading-relaxed text-zinc-500">
         {tUI("checkout.paymentLater")}
@@ -150,7 +133,6 @@ export function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
   const [isTakeaway, setIsTakeaway] = useState(false);
-  const [tipAmount, setTipAmount] = useState(0);
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
 
   const breakdown = taxBreakdown(isTakeaway, taxPercent);
@@ -189,7 +171,6 @@ export function CheckoutForm({
           guestEmail: guestEmail || undefined,
           isTakeaway,
           paymentMethod: "unset",
-          tipAmount,
           promoCodeId: appliedPromo?.promoCodeId,
         }),
       });
@@ -275,17 +256,8 @@ export function CheckoutForm({
         taxAmount={computedTax}
         total={computedTotal}
         discountAmount={discountAmount}
-        tipAmount={tipAmount}
         currency={currency}
         tUI={tUI}
-      />
-
-      <TipSelector
-        subtotal={subtotal}
-        orderTotal={computedTotal}
-        currency={currency}
-        value={tipAmount}
-        onChange={setTipAmount}
       />
 
       <div>

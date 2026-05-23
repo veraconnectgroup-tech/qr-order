@@ -160,6 +160,7 @@ export async function verifyTableOrderAccess(
         table_id: string | null;
         location_id: string;
         total: number;
+        subtotal: number;
         tip_amount: number;
         payment_status: string;
         is_split: boolean;
@@ -187,7 +188,7 @@ export async function verifyTableOrderAccess(
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, table_id, location_id, total, tip_amount, payment_status, is_split, stripe_payment_intent_id"
+      "id, table_id, location_id, subtotal, total, tip_amount, payment_status, is_split, stripe_payment_intent_id"
     )
     .eq("id", orderId)
     .single();
@@ -200,6 +201,7 @@ export async function verifyTableOrderAccess(
     id: string;
     table_id: string | null;
     location_id: string;
+    subtotal: number;
     total: number;
     tip_amount: number;
     payment_status: string;

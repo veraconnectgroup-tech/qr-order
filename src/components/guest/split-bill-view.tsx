@@ -15,6 +15,7 @@ import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { readJsonResponse } from "@/lib/api/read-json-response";
+import { TipSelector } from "@/components/guest/tip-selector";
 import { MIN_SPLIT_PARTS, MAX_SPLIT_PARTS } from "@/lib/orders/split-payments";
 import { Button } from "@/components/ui/button";
 
@@ -40,6 +41,7 @@ type SplitState = {
   order: {
     id: string;
     total: number;
+    subtotal: number;
     tipAmount: number;
     paymentStatus: string;
     isSplit: boolean;
@@ -143,6 +145,7 @@ export function SplitBillView({
   const [activeSplitId, setActiveSplitId] = useState<string | null>(null);
   const [addingPart, setAddingPart] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedTip, setSelectedTip] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -154,6 +157,9 @@ export function SplitBillView({
     );
     if (parsed.ok && parsed.data.data) {
       setState(parsed.data.data);
+      if (parsed.data.data.order.tipAmount > 0) {
+        setSelectedTip(parsed.data.data.order.tipAmount);
+      }
     }
     setLoading(false);
   }, [orderId, sessionToken, token]);
@@ -195,12 +201,14 @@ export function SplitBillView({
             parts,
             sessionToken,
             tableToken: token,
+            tipAmount: selectedTip,
           }
         : {
             mode: "by_items" as const,
             items: Array.from(selectedItems),
             sessionToken,
             tableToken: token,
+            tipAmount: selectedTip,
           };
 
     try {
@@ -396,6 +404,16 @@ export function SplitBillView({
             </div>
           )}
 
+          {state.order.tipAmount <= 0 && (
+            <TipSelector
+              subtotal={state.order.subtotal}
+              orderTotal={state.order.total}
+              currency={currency}
+              value={selectedTip}
+              onChange={setSelectedTip}
+            />
+          )}
+
           {error && <p className="text-sm text-red-400">{error}</p>}
 
           <Button
@@ -540,6 +558,7 @@ export function SplitBillView({
                           items: Array.from(selectedItems),
                           sessionToken,
                           tableToken: token,
+                          tipAmount: selectedTip,
                         }),
                       });
                       const parsed = await readJsonResponse<{ error?: string }>(

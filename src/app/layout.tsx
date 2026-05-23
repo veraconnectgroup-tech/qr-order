@@ -40,6 +40,13 @@ export const metadata: Metadata = {
     description: "Enterprise ordering & payments for hospitality",
   },
   robots: { index: true, follow: true },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport = {

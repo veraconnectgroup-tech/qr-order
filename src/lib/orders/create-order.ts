@@ -25,7 +25,6 @@ import {
 import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
 import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
-import { clampTipAmount } from "@/lib/orders/tips";
 import {
   validatePromoCode,
   type PromoCodeRow,
@@ -59,7 +58,6 @@ export const createOrderSchema = z.object({
   paymentMethod: z
     .enum(["unset", "online", "at_bar", "card_at_table"])
     .default("unset"),
-  tipAmount: z.number().min(0).max(500).optional().default(0),
   promoCodeId: z.string().uuid().optional(),
 });
 
@@ -402,9 +400,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   const promoCodeId = promoResult.promoCodeId;
   const finalTotal = Math.max(0, Math.round((total - discountAmount) * 100) / 100);
 
-  const tipAmount = clampTipAmount(input.tipAmount ?? 0, finalTotal);
-  const tipStaffId = tableRow.assigned_staff_id ?? null;
-
   async function saveOrderItems(orderId: string) {
     for (const item of validatedItems) {
       const unitWithMods =
@@ -481,8 +476,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         payment_status: "pending",
         payment_method: input.paymentMethod,
         stripe_payment_intent_id: null,
-        tip_amount: tipAmount,
-        tip_staff_id: tipStaffId,
+        tip_amount: 0,
+        tip_staff_id: null,
       })
       .eq("id", pendingRow.id)
       .select("id, order_number, total, tax_percent")
@@ -570,8 +565,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       status: "pending",
       payment_status: "pending",
       payment_method: input.paymentMethod,
-      tip_amount: tipAmount,
-      tip_staff_id: tipStaffId,
+      tip_amount: 0,
+      tip_staff_id: null,
     })
     .select("id, order_number, total, tax_percent")
     .single();
