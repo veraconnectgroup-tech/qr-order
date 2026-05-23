@@ -10,9 +10,11 @@ import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { orderPlacedMessage } from "@/lib/menu-section";
 import type { MenuSection } from "@/lib/menu-section";
+import type { TaxBreakdownLine } from "@/lib/tax/vat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 async function saveGuestEmail(sessionToken: string, guestEmail: string) {
   if (!guestEmail) return;
@@ -26,14 +28,14 @@ async function saveGuestEmail(sessionToken: string, guestEmail: string) {
 function OrderSummary({
   items,
   subtotal,
-  taxPercent,
+  taxBreakdown,
   taxAmount,
   total,
   currency,
 }: {
   items: CartItem[];
   subtotal: number;
-  taxPercent: number;
+  taxBreakdown: TaxBreakdownLine[];
   taxAmount: number;
   total: number;
   currency: string;
@@ -56,10 +58,22 @@ function OrderSummary({
           <span>Subtotal</span>
           <span>{formatPrice(subtotal, currency)}</span>
         </div>
-        <div className="flex justify-between text-zinc-400">
-          <span>Tax ({taxPercent}%)</span>
-          <span>{formatPrice(taxAmount, currency)}</span>
-        </div>
+        {taxBreakdown.length > 0 ? (
+          taxBreakdown.map((line) => (
+            <div
+              key={line.rate}
+              className="flex justify-between text-zinc-400 tabular-nums"
+            >
+              <span>MwSt {line.rate}%</span>
+              <span>{formatPrice(line.amount, currency)}</span>
+            </div>
+          ))
+        ) : (
+          <div className="flex justify-between text-zinc-400">
+            <span>MwSt</span>
+            <span>{formatPrice(taxAmount, currency)}</span>
+          </div>
+        )}
         <div className="flex justify-between font-bold text-zinc-50">
           <span>Total</span>
           <span>{formatPrice(total, currency)}</span>
@@ -87,8 +101,9 @@ export function CheckoutForm({
   const items = useCart((s) => s.items);
   const sessionToken = useCart((s) => s.sessionToken);
   const subtotal = useCart((s) => s.subtotal());
-  const taxAmount = useCart((s) => s.taxAmount(taxPercent));
-  const total = useCart((s) => s.total(taxPercent));
+  const taxBreakdown = useCart((s) => s.taxBreakdown);
+  const taxAmount = useCart((s) => s.taxAmount);
+  const total = useCart((s) => s.total);
   const clearCart = useCart((s) => s.clearCart);
   const router = useRouter();
   const orderPlacedRef = useRef(false);
@@ -97,6 +112,11 @@ export function CheckoutForm({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
+  const [isTakeaway, setIsTakeaway] = useState(false);
+
+  const breakdown = taxBreakdown(isTakeaway, taxPercent);
+  const computedTax = taxAmount(isTakeaway, taxPercent);
+  const computedTotal = total(isTakeaway, taxPercent);
 
   useEffect(() => {
     if (orderPlacedRef.current) return;
@@ -123,6 +143,7 @@ export function CheckoutForm({
           tableToken: token,
           items,
           guestEmail: guestEmail || undefined,
+          isTakeaway,
           paymentMethod: "unset",
         }),
       });
@@ -167,12 +188,28 @@ export function CheckoutForm({
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-zinc-100">Außer Haus / Takeaway</p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Reduced 7% VAT applies to eligible food items
+            </p>
+          </div>
+          <Switch
+            checked={isTakeaway}
+            onCheckedChange={setIsTakeaway}
+            aria-label="Takeaway order"
+          />
+        </div>
+      </div>
+
       <OrderSummary
         items={items}
         subtotal={subtotal}
-        taxPercent={taxPercent}
-        taxAmount={taxAmount}
-        total={total}
+        taxBreakdown={breakdown}
+        taxAmount={computedTax}
+        total={computedTotal}
         currency={currency}
       />
 

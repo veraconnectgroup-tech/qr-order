@@ -109,8 +109,8 @@ export function CartView({
   const removeItem = useCart((s) => s.removeItem);
   const updateQuantity = useCart((s) => s.updateQuantity);
   const subtotal = useCart((s) => s.subtotal());
-  const taxAmount = useCart((s) => s.taxAmount(taxPercent));
-  const total = useCart((s) => s.total(taxPercent));
+  const taxAmount = useCart((s) => s.taxAmount(false, taxPercent));
+  const total = useCart((s) => s.total(false, taxPercent));
 
   if (!items.length) {
     return <EmptyCartState slug={slug} token={token} />;

@@ -20,7 +20,7 @@ export function CartSummaryBar({
   glowOnMount?: boolean;
 }) {
   const items = useCart((s) => s.items);
-  const total = useCart((s) => s.total(taxPercent));
+  const total = useCart((s) => s.total(false, taxPercent));
   const itemCount = useCart((s) => s.itemCount());
   const cartBump = useCart((s) => s.cartBump);
   const prevCount = useRef(itemCount);

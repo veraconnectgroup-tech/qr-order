@@ -12,6 +12,7 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { unpaidPaymentHint } from "@/lib/payment-methods";
+import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -526,6 +527,17 @@ export function OrderHistoryList() {
                         </span>
                       </li>
                     ))}
+                    {(order.order_items?.length ?? 0) > 0 && (
+                      <li className="border-t border-zinc-800 pt-2">
+                        <TaxBreakdownLines
+                          items={(order.order_items ?? []).map((item) => ({
+                            total: Number(item.total),
+                            tax_rate: Number(item.tax_rate ?? 19),
+                          }))}
+                          currency={currency}
+                        />
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>
@@ -636,6 +648,16 @@ export function OrderHistoryList() {
                               </li>
                             ))}
                           </ul>
+                          {(order.order_items?.length ?? 0) > 0 && (
+                            <TaxBreakdownLines
+                              items={(order.order_items ?? []).map((item) => ({
+                                total: Number(item.total),
+                                tax_rate: Number(item.tax_rate ?? 19),
+                              }))}
+                              currency={currency}
+                              className="mt-3 border-t border-zinc-800 pt-3"
+                            />
+                          )}
                         </td>
                       </tr>
                     )}

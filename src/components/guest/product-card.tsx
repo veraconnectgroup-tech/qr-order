@@ -7,16 +7,19 @@ import { hapticClick } from "@/lib/haptics";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { MenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
 
 export function ProductCard({
   product,
   currency,
+  menuSection = "food",
   onOpenDetail,
   orderingDisabled = false,
 }: {
   product: ProductWithModifiers;
   currency: string;
+  menuSection?: MenuSection;
   onOpenDetail: () => void;
   orderingDisabled?: boolean;
 }) {
@@ -46,6 +49,9 @@ export function ProductCard({
       unitPrice: Number(product.price),
       quantity: 1,
       notes: "",
+      menuSection,
+      productTaxRate:
+        product.tax_rate != null ? Number(product.tax_rate) : null,
       modifiers: [],
     });
     toastAddedToCart(displayName, Number(product.price), currency);

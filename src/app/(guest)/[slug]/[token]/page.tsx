@@ -23,6 +23,7 @@ type RawProduct = {
   requires_serve_size?: boolean;
   serve_size_presets?: string[] | null;
   allow_custom_serve_size?: boolean;
+  tax_rate?: number | null;
   modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
 };
 
@@ -136,6 +137,7 @@ export default async function GuestMenuPage({
             requires_serve_size: p.requires_serve_size ?? false,
             serve_size_presets: p.serve_size_presets ?? null,
             allow_custom_serve_size: p.allow_custom_serve_size ?? true,
+            tax_rate: p.tax_rate ?? null,
             created_at: "",
             updated_at: "",
             modifier_groups: (p.modifier_groups ?? [])

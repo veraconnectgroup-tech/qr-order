@@ -6,6 +6,7 @@ import { Clock, CreditCard } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { paymentMethodLabel } from "@/lib/payment-methods";
+import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -208,6 +209,17 @@ export function OrderCard({
       </ul>
 
       <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")} />
+
+      {(order.order_items?.length ?? 0) > 0 && (
+        <TaxBreakdownLines
+          items={(order.order_items ?? []).map((item) => ({
+            total: Number(item.total),
+            tax_rate: Number(item.tax_rate ?? 19),
+          }))}
+          currency={currency}
+          className={cn("mb-2", light ? "text-zinc-600" : "text-zinc-500")}
+        />
+      )}
 
       <div className="flex items-center justify-between">
         <span className="font-mono text-base font-semibold text-orange-500">

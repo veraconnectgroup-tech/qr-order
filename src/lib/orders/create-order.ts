@@ -11,6 +11,10 @@ import {
 import { sanitizeText } from "@/lib/security/sanitize";
 import { serveSizeOrderNote } from "@/lib/serve-size";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  calculateOrderTaxFromItems,
+  resolveItemTaxRate,
+} from "@/lib/tax/vat";
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -39,6 +43,7 @@ export const createOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1).max(MAX_ITEMS_PER_ORDER),
   notes: z.string().max(1000).optional(),
   guestEmail: z.string().email().optional().or(z.literal("")),
+  isTakeaway: z.boolean().optional().default(false),
   paymentMethod: z
     .enum(["unset", "online", "at_bar", "card_at_table"])
     .default("unset"),
@@ -127,7 +132,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
 
   const { data: products } = await admin
     .from("products")
-    .select("id, name, price, is_available, location_id, category_id")
+    .select("id, name, price, is_available, location_id, category_id, tax_rate")
     .in("id", productIds)
     .eq("location_id", tableRow.location_id)
     .eq("is_available", true);
@@ -142,6 +147,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         is_available: boolean;
         location_id: string;
         category_id: string;
+        tax_rate: number | null;
       },
     ])
   );
@@ -258,12 +264,24 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       .filter(Boolean)
       .join(" · ");
 
+    const menuSection =
+      categorySectionMap.get(product.category_id) ?? ("food" as const);
+    const productTaxRate =
+      product.tax_rate != null ? Number(product.tax_rate) : null;
+    const taxRate = resolveItemTaxRate({
+      productTaxRate,
+      menuSection,
+      isTakeaway: input.isTakeaway,
+      orgDefaultRate: taxPercent,
+    });
+
     return {
       ...item,
       notes: combinedNotes,
       productName: product.name,
-      menuSection:
-        categorySectionMap.get(product.category_id) ?? ("food" as const),
+      menuSection,
+      productTaxRate,
+      taxRate,
       modifiers: mods,
       unitPrice: Number(product.price),
       itemTotal,
@@ -271,8 +289,15 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   });
 
   const subtotal = validatedItems.reduce((s, i) => s + i.itemTotal, 0);
-  const taxAmount = subtotal * (taxPercent / 100);
-  const total = subtotal + taxAmount;
+  const taxResult = calculateOrderTaxFromItems(
+    validatedItems.map((item) => ({
+      lineTotal: item.itemTotal,
+      taxRate: item.taxRate,
+    }))
+  );
+  const taxAmount = taxResult.taxAmount;
+  const effectiveTaxPercent = taxResult.effectiveTaxPercent || taxPercent;
+  const total = taxResult.total;
 
   const totalError = validateOrderTotal(total);
   if (totalError) {
@@ -295,6 +320,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
           notes: item.notes || null,
           total: item.itemTotal,
           menu_section: item.menuSection,
+          tax_rate: item.taxRate,
         })
         .select("id")
         .single();
@@ -345,9 +371,10 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       .from("orders")
       .update({
         subtotal,
-        tax_percent: taxPercent,
+        tax_percent: effectiveTaxPercent,
         tax_amount: taxAmount,
         total,
+        is_takeaway: input.isTakeaway,
         payment_status: "pending",
         payment_method: input.paymentMethod,
         stripe_payment_intent_id: null,
@@ -411,9 +438,10 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       session_id: sessionRow.id,
       order_number: orderNumber as number,
       subtotal,
-      tax_percent: taxPercent,
+      tax_percent: effectiveTaxPercent,
       tax_amount: taxAmount,
       total,
+      is_takeaway: input.isTakeaway,
       notes: sanitizedNotes,
       estimated_prep_minutes: prepMinutes,
       status: "pending",

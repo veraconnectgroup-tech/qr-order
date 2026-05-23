@@ -227,6 +227,9 @@ export function MenuView({
                         key={product.id}
                         product={product}
                         currency={currency}
+                        menuSection={
+                          menuSectionByProductId.get(product.id) ?? "food"
+                        }
                         orderingDisabled={!orderingEnabled}
                         onOpenDetail={() => openProductDetail(product)}
                       />

@@ -95,6 +95,7 @@ type Tables = {
     requires_serve_size: boolean;
     serve_size_presets: string[] | null;
     allow_custom_serve_size: boolean;
+    tax_rate: number | null;
     created_at: string;
     updated_at: string;
   };
@@ -163,6 +164,7 @@ type Tables = {
     ready_at: string | null;
     delivered_at: string | null;
     receipt_sent_at: string | null;
+    is_takeaway: boolean;
     created_at: string;
     updated_at: string;
   };
@@ -176,6 +178,7 @@ type Tables = {
     notes: string | null;
     total: number;
     menu_section: "drinks" | "food" | "desserts";
+    tax_rate: number;
   };
   order_item_modifiers: {
     id: string;

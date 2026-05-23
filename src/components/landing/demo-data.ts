@@ -20,6 +20,7 @@ function demoProduct(
   options?: {
     requiresServeSize?: boolean;
     serveSizePresets?: string[];
+    taxRate?: number | null;
   }
 ): ProductWithModifiers {
   const media = getDemoProductMedia(name);
@@ -42,6 +43,7 @@ function demoProduct(
     requires_serve_size: options?.requiresServeSize ?? false,
     serve_size_presets: options?.serveSizePresets ?? null,
     allow_custom_serve_size: true,
+    tax_rate: options?.taxRate ?? null,
     created_at: minutesAgo(60),
     updated_at: minutesAgo(60),
     modifier_groups: [],
@@ -257,6 +259,7 @@ function demoOrder(
         : null,
     delivered_at: status === "delivered" ? minutesAgo(1) : null,
     receipt_sent_at: null,
+    is_takeaway: false,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({
@@ -269,6 +272,7 @@ function demoOrder(
       notes: null,
       total: item.unit_price * item.quantity,
       menu_section: item.menu_section ?? "food",
+      tax_rate: 19,
       order_item_modifiers: (item.modifiers ?? []).map((name, i) => ({
         id: `${item.id}-mod-${i}`,
         order_item_id: item.id,

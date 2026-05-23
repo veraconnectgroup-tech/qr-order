@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { MenuSection } from "@/lib/menu-section";
+import {
+  STANDARD_VAT_RATE,
+  calculateOrderTaxFromItems,
+  resolveItemTaxRate,
+  type TaxBreakdownLine,
+} from "@/lib/tax/vat";
 
 export interface CartItem {
   productId: string;
@@ -10,6 +16,7 @@ export interface CartItem {
   notes: string;
   serveSize?: string | null;
   menuSection?: MenuSection;
+  productTaxRate?: number | null;
   modifiers: Array<{
     modifierId: string;
     modifierName: string;
@@ -38,14 +45,36 @@ interface CartStore {
   clearCart: () => void;
 
   subtotal: () => number;
-  taxAmount: (taxPercent: number) => number;
-  total: (taxPercent: number) => number;
+  taxBreakdown: (
+    isTakeaway: boolean,
+    orgDefaultRate?: number
+  ) => TaxBreakdownLine[];
+  taxAmount: (isTakeaway: boolean, orgDefaultRate?: number) => number;
+  total: (isTakeaway: boolean, orgDefaultRate?: number) => number;
   itemCount: () => number;
 }
 
 function calcItemTotal(item: Omit<CartItem, "itemTotal">) {
   const modifierTotal = item.modifiers.reduce((s, m) => s + m.price, 0);
   return (item.unitPrice + modifierTotal) * item.quantity;
+}
+
+function cartTaxCalculation(
+  items: CartItem[],
+  isTakeaway: boolean,
+  orgDefaultRate = STANDARD_VAT_RATE
+) {
+  return calculateOrderTaxFromItems(
+    items.map((item) => ({
+      lineTotal: item.itemTotal,
+      taxRate: resolveItemTaxRate({
+        productTaxRate: item.productTaxRate,
+        menuSection: item.menuSection ?? "food",
+        isTakeaway,
+        orgDefaultRate,
+      }),
+    }))
+  );
 }
 
 export const useCart = create<CartStore>()(
@@ -96,8 +125,12 @@ export const useCart = create<CartStore>()(
       clearCart: () => set({ items: [] }),
 
       subtotal: () => get().items.reduce((sum, item) => sum + item.itemTotal, 0),
-      taxAmount: (taxPercent) => get().subtotal() * (taxPercent / 100),
-      total: (taxPercent) => get().subtotal() + get().taxAmount(taxPercent),
+      taxBreakdown: (isTakeaway, orgDefaultRate) =>
+        cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).breakdown,
+      taxAmount: (isTakeaway, orgDefaultRate) =>
+        cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).taxAmount,
+      total: (isTakeaway, orgDefaultRate) =>
+        cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).total,
       itemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
     }),
     { name: "qr-order-cart" }

@@ -110,6 +110,8 @@ export function ProductDetailSheet({
       notes,
       serveSize,
       menuSection,
+      productTaxRate:
+        product.tax_rate != null ? Number(product.tax_rate) : null,
       modifiers: selectedModifiers,
     });
     toastAddedToCart(displayName, lineTotal, currency);

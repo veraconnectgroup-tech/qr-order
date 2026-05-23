@@ -209,6 +209,7 @@ function ProductForm({
   initial,
   currency,
   orgId,
+  categoryMenuSection,
   onSubmit,
   onCancel,
   saving,
@@ -216,6 +217,7 @@ function ProductForm({
   initial?: Partial<Product>;
   currency: string;
   orgId: string;
+  categoryMenuSection: MenuSection;
   onSubmit: (values: {
     name: string;
     name_en: string;
@@ -229,6 +231,7 @@ function ProductForm({
     requires_serve_size: boolean;
     serve_size_presets: string[] | null;
     allow_custom_serve_size: boolean;
+    tax_rate: number | null;
   }) => void;
   onCancel: () => void;
   saving: boolean;
@@ -264,6 +267,19 @@ function ProductForm({
   const [allowCustomServeSize, setAllowCustomServeSize] = useState(
     initial?.allow_custom_serve_size ?? true
   );
+  const isDrinksCategory = categoryMenuSection === "drinks";
+  const initialTaxSetting =
+    initial?.tax_rate == null
+      ? "default"
+      : Number(initial.tax_rate) === 7
+        ? "7"
+        : "19";
+  const [taxSetting, setTaxSetting] = useState<"default" | "7" | "19">(
+    isDrinksCategory ? "19" : initialTaxSetting
+  );
+
+  const taxRateValue: number | null =
+    taxSetting === "default" ? null : taxSetting === "7" ? 7 : 19;
 
   return (
     <div className="space-y-4 py-2">
@@ -345,6 +361,26 @@ function ProductForm({
           className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
         />
       </label>
+      <label className="block space-y-1.5">
+        <span className="text-sm text-zinc-400">MwSt-Satz</span>
+        <select
+          value={isDrinksCategory ? "19" : taxSetting}
+          onChange={(e) =>
+            setTaxSetting(e.target.value as "default" | "7" | "19")
+          }
+          disabled={isDrinksCategory}
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <option value="default">Org default (19%)</option>
+          <option value="7">Ermäßigt (7%)</option>
+          <option value="19">Standard (19%)</option>
+        </select>
+        {isDrinksCategory && (
+          <p className="text-xs text-zinc-500">
+            Drinks are always taxed at 19%.
+          </p>
+        )}
+      </label>
       <label className="flex items-center gap-2 text-sm text-zinc-300">
         <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
         Available on guest menu
@@ -414,6 +450,7 @@ function ProductForm({
                 ? parseServeSizePresets(serveSizePresetsText)
                 : null,
               allow_custom_serve_size: allowCustomServeSize,
+              tax_rate: taxRateValue,
             })
           }
           className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
@@ -577,6 +614,7 @@ export function MenuEditor() {
     requires_serve_size: boolean;
     serve_size_presets: string[] | null;
     allow_custom_serve_size: boolean;
+    tax_rate: number | null;
   }) {
     if (!selectedCategoryId) return;
     setSaving(true);
@@ -594,6 +632,7 @@ export function MenuEditor() {
       requires_serve_size: values.requires_serve_size,
       serve_size_presets: values.serve_size_presets,
       allow_custom_serve_size: values.allow_custom_serve_size,
+      tax_rate: values.tax_rate,
     };
 
     if (editingProduct) {
@@ -876,6 +915,9 @@ export function MenuEditor() {
             initial={editingProduct ?? undefined}
             currency={currency}
             orgId={orgId}
+            categoryMenuSection={
+              (selectedCategory?.menu_section as MenuSection) ?? "food"
+            }
             saving={saving}
             onCancel={() => {
               setProductDialogOpen(false);

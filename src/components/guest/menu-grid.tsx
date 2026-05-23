@@ -2,6 +2,7 @@
 
 import { ProductCard } from "@/components/guest/product-card";
 import { useMenuLocale } from "@/components/guest/menu-locale-provider";
+import { inferMenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
 
 export type MenuCategory = {
@@ -55,6 +56,7 @@ export function MenuGrid({
                 key={product.id}
                 product={product}
                 currency={currency}
+                menuSection={inferMenuSection(category)}
                 orderingDisabled={orderingDisabled}
                 onOpenDetail={() => onOpenDetail(product)}
               />

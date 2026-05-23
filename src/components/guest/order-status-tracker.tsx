@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { guestPaymentInstruction } from "@/lib/payment-methods";
+import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 
 type OrderData = {
   id: string;
@@ -41,6 +42,7 @@ type OrderData = {
     product_name: string;
     quantity: number;
     total: number;
+    tax_rate?: number;
     notes: string | null;
     order_item_modifiers: Array<{ modifier_name: string }>;
   }>;
@@ -337,12 +339,25 @@ export function OrderStatusTracker({
                 <span>{formatPrice(Number(order.subtotal), currency)}</span>
               </div>
               {Number(order.tax_amount) > 0 && (
-                <div className="flex justify-between text-zinc-500">
-                  <span>Tax ({Number(order.tax_percent)}%)</span>
-                  <span>
-                    {formatPrice(Number(order.tax_amount), currency)}
-                  </span>
-                </div>
+                <>
+                  {(order.order_items?.length ?? 0) > 0 ? (
+                    <TaxBreakdownLines
+                      items={order.order_items.map((item) => ({
+                        total: Number(item.total),
+                        tax_rate: Number(item.tax_rate ?? 19),
+                      }))}
+                      currency={currency}
+                      className="text-zinc-500"
+                    />
+                  ) : (
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Tax ({Number(order.tax_percent)}%)</span>
+                      <span>
+                        {formatPrice(Number(order.tax_amount), currency)}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
