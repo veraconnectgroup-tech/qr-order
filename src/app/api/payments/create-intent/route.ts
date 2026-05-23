@@ -4,13 +4,14 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
 import { withRateLimit } from "@/lib/rate-limit";
+import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 
 const schema = z.object({
-  orderId: z.string().uuid(),
-  sessionToken: z.string().min(1),
+  orderId: zUuid(),
+  sessionToken: zSessionToken(),
 });
 
 export async function POST(req: NextRequest) {

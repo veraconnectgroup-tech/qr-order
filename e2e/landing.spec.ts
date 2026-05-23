@@ -32,7 +32,8 @@ test.describe("Landing page", () => {
   test("footer legal links use correct URLs", async ({ page }) => {
     await page.goto("/");
 
-    const footer = page.getByRole("contentinfo");
+    const footer = page.locator("footer");
+    await footer.scrollIntoViewIfNeeded();
 
     await expect(footer.getByRole("link", { name: "Datenschutz" })).toHaveAttribute(
       "href",

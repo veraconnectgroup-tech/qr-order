@@ -4,10 +4,11 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
+import { zTableToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
-  tableToken: z.string().min(1),
+  tableToken: zTableToken(),
 });
 
 export async function POST(
@@ -19,8 +20,13 @@ export async function POST(
     if (limited) return limited;
 
     const { token } = await params;
+    const tokenParsed = zTableToken().safeParse(token);
+    if (!tokenParsed.success) {
+      return apiError("Invalid request.", 400);
+    }
+
     const body = await req.json().catch(() => ({}));
-    const parsed = schema.safeParse({ tableToken: token, ...body });
+    const parsed = schema.safeParse({ tableToken: tokenParsed.data, ...body });
 
     if (!parsed.success) {
       return apiError("Invalid request.", 400);
@@ -31,7 +37,7 @@ export async function POST(
     const { data: table } = await admin
       .from("tables")
       .select("id, name, location_id")
-      .eq("qr_token", token)
+      .eq("qr_token", tokenParsed.data)
       .eq("is_active", true)
       .is("deleted_at", null)
       .single();

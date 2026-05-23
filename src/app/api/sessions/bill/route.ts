@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { withRateLimit } from "@/lib/rate-limit";
+import { zSessionToken, zTableToken } from "@/lib/security/zod-fields";
 import {
   getAvailablePaymentMethods,
   type SelectablePaymentMethod,
@@ -25,11 +26,21 @@ export async function GET(req: NextRequest) {
     return apiError("Invalid table.", 400);
   }
 
+  const sessionParsed = zSessionToken().safeParse(sessionToken ?? "");
+  if (!sessionParsed.success) {
+    return apiError("Unauthorized.", 401);
+  }
+
+  const tableParsed = zTableToken().safeParse(tableToken ?? "");
+  if (!tableParsed.success) {
+    return apiError("Invalid table.", 400);
+  }
+
   const admin = createAdminClient();
   const sessionResult = await validateTableSession(
     admin,
-    tableToken,
-    sessionToken
+    tableParsed.data,
+    sessionParsed.data
   );
 
   if ("error" in sessionResult) {
@@ -77,8 +88,8 @@ export async function GET(req: NextRequest) {
 }
 
 const checkoutSchema = z.object({
-  sessionToken: z.string().min(1),
-  tableToken: z.string().min(1),
+  sessionToken: zSessionToken(),
+  tableToken: zTableToken(),
   paymentMethod: z.enum(["online", "at_bar", "card_at_table"]),
 });
 

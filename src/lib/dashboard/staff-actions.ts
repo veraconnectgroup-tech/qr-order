@@ -3,13 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendEmail } from "@/lib/email/resend";
+import { escapeHtml } from "@/lib/security/escape";
+import {
+  zEmailNormalized,
+  zInviteToken,
+  zSanitizedText,
+} from "@/lib/security/zod-fields";
 import { requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STAFF_ROLES } from "@/lib/constants";
 
 const inviteSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(2).max(100),
+  email: zEmailNormalized(),
+  name: zSanitizedText(100).pipe(z.string().min(2)),
   role: z.enum(STAFF_ROLES),
 });
 
@@ -92,8 +98,8 @@ export async function createStaffInvite(formData: FormData) {
   await sendEmail({
     to: email,
     subject: `Join ${orgName} on QR Order`,
-    html: `<p>You've been invited to join <strong>${orgName}</strong> as <strong>${role}</strong>.</p>
-<p><a href="${link}">Accept invite and set your password →</a></p>
+    html: `<p>You've been invited to join <strong>${escapeHtml(orgName)}</strong> as <strong>${escapeHtml(role)}</strong>.</p>
+<p><a href="${escapeHtml(link)}">Accept invite and set your password →</a></p>
 <p>This link expires in 7 days.</p>`,
   });
 
@@ -169,8 +175,8 @@ export async function revokeStaffInvite(inviteId: string) {
 }
 
 const acceptSchema = z.object({
-  token: z.string().min(1),
-  password: z.string().min(8),
+  token: zInviteToken(),
+  password: z.string().trim().min(8).max(128),
 });
 
 export async function acceptStaffInvite(formData: FormData) {

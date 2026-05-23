@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { escapeCsvField } from "@/lib/security/escape";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
 
 /** SKR03 accounts used for DATEV export */
@@ -42,13 +43,6 @@ function formatDatevDate(isoDate: string): string {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = String(d.getFullYear());
   return `${day}${month}${year}`;
-}
-
-function escapeCsvField(value: string): string {
-  if (/[;"\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
 }
 
 function resolveRevenueAccount(
@@ -95,6 +89,7 @@ function orderToDatevRow(order: OrderRow): DatevRow {
   const items = order.order_items ?? [];
   const { konto, ustSatz } = resolveRevenueAccount(items);
   const gegenkonto = paymentGegenkonto(order.payment_method);
+  const orderNumber = String(Math.max(0, Math.floor(Number(order.order_number))));
 
   return {
     umsatz: Number(order.subtotal),
@@ -102,7 +97,7 @@ function orderToDatevRow(order: OrderRow): DatevRow {
     konto,
     gegenkonto,
     belegdatum: formatDatevDate(order.created_at),
-    buchungstext: `Bestellung #${String(order.order_number).padStart(4, "0")}`,
+    buchungstext: `Bestellung #${orderNumber.padStart(4, "0")}`,
     ustSatz,
   };
 }

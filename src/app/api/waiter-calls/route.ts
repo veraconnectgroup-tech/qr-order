@@ -4,11 +4,13 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { checkRateLimit, getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { zOptionalSanitizedText, zSessionToken, zTableToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
-  tableToken: z.string().min(1),
-  sessionToken: z.string().min(1),
+  tableToken: zTableToken(),
+  sessionToken: zSessionToken(),
+  message: zOptionalSanitizedText(200),
 });
 
 export async function POST(req: NextRequest) {

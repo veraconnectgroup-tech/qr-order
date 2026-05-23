@@ -1,13 +1,18 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
-import { sanitizeText } from "@/lib/security/sanitize";
+import { isUuid } from "@/lib/security/sanitize";
+import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { processRefund } from "@/lib/stripe/refund";
-import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
+
+function parseSessionToken(value: string | null) {
+  return zSessionToken().safeParse(value ?? "");
+}
 
 export async function GET(
   req: NextRequest,
@@ -17,11 +22,18 @@ export async function GET(
   if (limited) return limited;
 
   const { orderId } = await params;
-  const sessionToken = req.nextUrl.searchParams.get("sessionToken");
 
-  if (!sessionToken) {
+  if (!isUuid(orderId)) {
+    return apiError("Invalid order id.", 400);
+  }
+
+  const sessionParsed = parseSessionToken(
+    req.nextUrl.searchParams.get("sessionToken")
+  );
+  if (!sessionParsed.success) {
     return apiError("Unauthorized.", 401);
   }
+  const sessionToken = sessionParsed.data;
 
   const admin = createAdminClient();
 
@@ -81,7 +93,7 @@ export async function GET(
 
 const statusSchema = z.object({
   status: z.enum(["accepted", "preparing", "ready", "delivered", "rejected"]),
-  rejectionReason: z.string().max(500).optional(),
+  rejectionReason: zOrderNotesOptional(),
 });
 
 type StaffAccess = {
@@ -168,6 +180,11 @@ export async function PATCH(
   if (limited) return limited;
 
   const { orderId } = await params;
+
+  if (!isUuid(orderId)) {
+    return apiError("Invalid order id.", 400);
+  }
+
   const access = await verifyStaffOrderAccess(orderId);
 
   if (!access) {
@@ -210,9 +227,7 @@ export async function PATCH(
   }
 
   if (status === "rejected") {
-    updates.rejection_reason = rejectionReason
-      ? sanitizeText(rejectionReason, 500)
-      : null;
+    updates.rejection_reason = rejectionReason ?? null;
 
     if (
       access.order.payment_status === "paid" &&

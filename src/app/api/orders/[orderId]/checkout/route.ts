@@ -4,6 +4,8 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
 import { withRateLimit } from "@/lib/rate-limit";
+import { isUuid } from "@/lib/security/sanitize";
+import { zSessionToken } from "@/lib/security/zod-fields";
 import {
   getAvailablePaymentMethods,
   type SelectablePaymentMethod,
@@ -13,7 +15,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 
 const schema = z.object({
-  sessionToken: z.string().min(1),
+  sessionToken: zSessionToken(),
   paymentMethod: z.enum(["online", "at_bar", "card_at_table"]),
 });
 
@@ -60,6 +62,11 @@ export async function POST(
     if (limited) return limited;
 
     const { orderId } = await params;
+
+    if (!isUuid(orderId)) {
+      return apiError("Invalid order id.", 400);
+    }
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
 

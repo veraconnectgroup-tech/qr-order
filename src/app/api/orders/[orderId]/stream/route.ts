@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { isUuid } from "@/lib/security/sanitize";
+import { zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { withRateLimit } from "@/lib/rate-limit";
 
@@ -40,11 +42,18 @@ export async function GET(
   if (limited) return limited;
 
   const { orderId } = await params;
-  const sessionToken = req.nextUrl.searchParams.get("sessionToken");
 
-  if (!sessionToken) {
+  if (!isUuid(orderId)) {
+    return apiError("Invalid order id.", 400);
+  }
+
+  const sessionParsed = zSessionToken().safeParse(
+    req.nextUrl.searchParams.get("sessionToken") ?? ""
+  );
+  if (!sessionParsed.success) {
     return apiError("Unauthorized", 401);
   }
+  const sessionToken = sessionParsed.data;
 
   const allowed = await verifyGuestOrderAccess(orderId, sessionToken);
   if (!allowed) {

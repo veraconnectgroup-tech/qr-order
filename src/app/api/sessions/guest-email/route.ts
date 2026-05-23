@@ -3,11 +3,12 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
+import { zEmailNormalized, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
-  sessionToken: z.string().min(1),
-  guestEmail: z.string().email(),
+  sessionToken: zSessionToken(),
+  guestEmail: zEmailNormalized(),
 });
 
 export async function POST(req: NextRequest) {

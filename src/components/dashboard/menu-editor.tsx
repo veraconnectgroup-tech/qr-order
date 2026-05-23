@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Plus, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeText } from "@/lib/security/sanitize";
 import { formatPrice } from "@/lib/format";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import {
@@ -569,8 +570,10 @@ export function MenuEditor() {
     const supabase = createClient();
     const { error } = await supabase.from("categories").insert({
       location_id: locationId,
-      name: newCategoryName.trim(),
-      name_en: newCategoryNameEn.trim() || null,
+      name: sanitizeText(newCategoryName, 200),
+      name_en: newCategoryNameEn.trim()
+        ? sanitizeText(newCategoryNameEn, 200)
+        : null,
       menu_section: newCategorySection,
       sort_order: categories.length,
       is_active: true,
@@ -622,10 +625,14 @@ export function MenuEditor() {
     setSaving(true);
     const supabase = createClient();
     const payload = {
-      name: values.name,
-      name_en: values.name_en || null,
-      description: values.description || null,
-      description_en: values.description_en || null,
+      name: sanitizeText(values.name, 200),
+      name_en: values.name_en ? sanitizeText(values.name_en, 200) : null,
+      description: values.description
+        ? sanitizeText(values.description, 5000)
+        : null,
+      description_en: values.description_en
+        ? sanitizeText(values.description_en, 5000)
+        : null,
       price: values.price,
       prep_time_minutes: values.prep_time_minutes,
       is_available: values.is_available,

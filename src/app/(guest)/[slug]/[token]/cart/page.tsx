@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { CartView } from "@/components/guest/cart-view";
+import { getDemoGuestMenuProps, isDemoGuestRoute } from "@/lib/demo-guest";
 
 export default async function CartPage({
   params,
@@ -8,6 +9,23 @@ export default async function CartPage({
   params: Promise<{ slug: string; token: string }>;
 }) {
   const { slug, token } = await params;
+  const isDemo = isDemoGuestRoute(slug, token);
+
+  if (isDemo) {
+    const demo = getDemoGuestMenuProps(slug, token);
+    return (
+      <CartView
+        slug={slug}
+        token={token}
+        orgName={demo.orgName}
+        tableName={demo.tableName}
+        taxPercent={demo.taxPercent}
+        currency={demo.currency}
+        orderingEnabled={demo.orderingEnabled}
+      />
+    );
+  }
+
   const supabase = await createServerClient();
 
   const { data: orgData } = await supabase

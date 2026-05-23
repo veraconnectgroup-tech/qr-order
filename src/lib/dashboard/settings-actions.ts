@@ -3,13 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getStaffLocationId, requireAdmin, requireStaff } from "@/lib/auth/session";
+import {
+  zEmailNormalized,
+  zOptionalSanitizedText,
+  zSanitizedText,
+} from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const orgSettingsSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  description: z.string().optional(),
+  name: zSanitizedText(200).pipe(z.string().min(2)),
+  email: z.union([z.literal(""), zEmailNormalized()]).optional(),
+  phone: zOptionalSanitizedText(50),
+  description: zOptionalSanitizedText(2000),
   default_tax_percent: z.coerce.number().min(0).max(100),
 });
 

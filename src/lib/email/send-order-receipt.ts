@@ -65,7 +65,7 @@ export async function maybeSendOrderReceipt(orderId: string) {
   }>;
 
   const itemIds = itemRows.map((i) => i.id);
-  let modifiersByItem = new Map<string, Array<{ modifier_name: string; price: number }>>();
+  const modifiersByItem = new Map<string, Array<{ modifier_name: string; price: number }>>();
 
   if (itemIds.length > 0) {
     const { data: modifiers } = await admin

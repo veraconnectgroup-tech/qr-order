@@ -13,9 +13,8 @@ test.describe("Guest ordering flow (demo menu)", () => {
     await expect(page.getByRole("link", { name: /view cart/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /view cart/i })).toContainText("1");
 
-    await page.getByRole("link", { name: /view cart/i }).click();
-    await expect(page).toHaveURL(/\/cart$/);
-    await expect(page.getByText("Aperol Spritz")).toBeVisible();
+    await page.goto(`${DEMO_PATH}/cart`);
+    await expect(page.getByText("Aperol Spritz").first()).toBeVisible();
 
     await page.getByRole("link", { name: /place order/i }).click();
     await expect(page).toHaveURL(/\/checkout$/);

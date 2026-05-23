@@ -3,29 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { scheduleFiskalyTssProvision } from "@/lib/fiscal/provision-tss";
+import { sanitizeSlug } from "@/lib/security/sanitize";
+import { zEmailNormalized, zSanitizedText } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
-import { scheduleFiskalyTssProvision } from "@/lib/fiscal/provision-tss";
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: zEmailNormalized(),
+  password: z.string().trim().min(6).max(128),
 });
 
 const signupSchema = z.object({
-  restaurantName: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(8),
+  restaurantName: zSanitizedText(200).pipe(z.string().min(2)),
+  email: zEmailNormalized(),
+  password: z.string().trim().min(8).max(128),
 });
-
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export async function loginAction(formData: FormData) {
   const parsed = loginSchema.safeParse({
@@ -63,7 +56,10 @@ export async function signupAction(formData: FormData) {
   const supabase = await createServerClient();
   const admin = createAdminClient();
 
-  let slug = slugify(restaurantName);
+  let slug = sanitizeSlug(restaurantName);
+  if (!slug) {
+    slug = `venue-${Date.now().toString(36).slice(-6)}`;
+  }
   const { data: existing } = await admin
     .from("organizations")
     .select("slug")

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createServerClient } from "@/lib/supabase/server";
 import { CheckoutForm } from "@/components/guest/checkout-form";
+import { getDemoGuestMenuProps, isDemoGuestRoute } from "@/lib/demo-guest";
 
 export default async function CheckoutPage({
   params,
@@ -10,6 +11,32 @@ export default async function CheckoutPage({
   params: Promise<{ slug: string; token: string }>;
 }) {
   const { slug, token } = await params;
+  const isDemo = isDemoGuestRoute(slug, token);
+
+  if (isDemo) {
+    const demo = getDemoGuestMenuProps(slug, token);
+    return (
+      <div className="min-h-dvh px-4 pb-safe pt-4">
+        <header className="mb-4 flex items-center gap-3 sm:mb-6">
+          <Link
+            href={`/${slug}/${token}/cart`}
+            className="touch-target inline-flex items-center text-zinc-400"
+          >
+            <ArrowLeft className="size-5" />
+          </Link>
+          <h1 className="text-heading text-zinc-50">Confirm order</h1>
+        </header>
+
+        <CheckoutForm
+          slug={slug}
+          token={token}
+          taxPercent={demo.taxPercent}
+          currency={demo.currency}
+        />
+      </div>
+    );
+  }
+
   const supabase = await createServerClient();
 
   const { data: orgData } = await supabase

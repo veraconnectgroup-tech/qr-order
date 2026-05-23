@@ -3,28 +3,33 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
+import {
+  zOptionalSanitizedText,
+  zSanitizedText,
+  zUuid,
+} from "@/lib/security/zod-fields";
 import { createServerClient } from "@/lib/supabase/server";
 
 const categorySchema = z.object({
-  name: z.string().min(1),
-  name_en: z.string().optional(),
-  description: z.string().optional(),
+  name: zSanitizedText(200).pipe(z.string().min(1)),
+  name_en: zOptionalSanitizedText(200),
+  description: zOptionalSanitizedText(2000),
   sort_order: z.coerce.number().default(0),
 });
 
 const productSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
+  name: zSanitizedText(200).pipe(z.string().min(1)),
+  description: zOptionalSanitizedText(5000),
   price: z.coerce.number().positive(),
-  category_id: z.string().uuid().optional().nullable(),
+  category_id: zUuid().optional().nullable(),
   is_available: z.coerce.boolean().default(true),
   prep_time_minutes: z.coerce.number().optional().nullable(),
 });
 
 const tableSchema = z.object({
-  name: z.string().min(1),
-  zone_id: z.string().uuid().optional().nullable(),
-  seats: z.coerce.number().min(1).default(4),
+  name: zSanitizedText(100).pipe(z.string().min(1)),
+  zone_id: zUuid().optional().nullable(),
+  seats: z.coerce.number().min(1).max(50).default(4),
 });
 
 export async function createCategory(formData: FormData) {
@@ -136,13 +141,14 @@ export async function createZone(formData: FormData) {
   const locationId = await getStaffLocationId(staff);
   if (!locationId) return { error: "Lokacija nije pronađena." };
 
-  const name = formData.get("name") as string;
-  if (!name?.trim()) return { error: "Unesite naziv zone." };
+  const nameRaw = formData.get("name");
+  const parsedName = zSanitizedText(100).pipe(z.string().min(1)).safeParse(nameRaw);
+  if (!parsedName.success) return { error: "Unesite naziv zone." };
 
   const supabase = await createServerClient();
   const { error } = await supabase.from("zones").insert({
     location_id: locationId,
-    name: name.trim(),
+    name: parsedName.data,
   });
 
   if (error) return { error: error.message };

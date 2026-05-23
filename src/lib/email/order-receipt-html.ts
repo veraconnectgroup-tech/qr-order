@@ -1,4 +1,5 @@
 import { formatOrderNumber, formatPrice } from "@/lib/format";
+import { escapeHtml } from "@/lib/security/escape";
 
 type ReceiptItem = {
   product_name: string;
@@ -23,14 +24,6 @@ type ReceiptData = {
   items: ReceiptItem[];
   orderUrl?: string;
 };
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 export function buildOrderReceiptHtml(data: ReceiptData) {
   const paid = data.paymentStatus === "paid";
@@ -77,8 +70,8 @@ export function buildOrderReceiptHtml(data: ReceiptData) {
 
     <div style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:20px">
       <div style="display:flex;justify-content:space-between;margin-bottom:16px">
-        <span style="color:#a1a1aa;font-size:14px">${formatOrderNumber(data.orderNumber)}</span>
-        <span style="color:#a1a1aa;font-size:14px">${date}</span>
+        <span style="color:#a1a1aa;font-size:14px">${escapeHtml(formatOrderNumber(data.orderNumber))}</span>
+        <span style="color:#a1a1aa;font-size:14px">${escapeHtml(date)}</span>
       </div>
 
       <table style="width:100%;border-collapse:collapse">${rows}</table>
@@ -88,7 +81,7 @@ export function buildOrderReceiptHtml(data: ReceiptData) {
           <span>Subtotal</span><span>${formatPrice(data.subtotal, data.currency)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span>Tax (${data.taxPercent}%)</span><span>${formatPrice(data.taxAmount, data.currency)}</span>
+          <span>Tax (${escapeHtml(String(data.taxPercent))}%)</span><span>${formatPrice(data.taxAmount, data.currency)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;color:#fafafa;margin-top:8px">
           <span>Total</span><span>${formatPrice(data.total, data.currency)}</span>

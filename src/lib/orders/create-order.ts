@@ -8,7 +8,14 @@ import {
   validateOrderItems,
   validateOrderTotal,
 } from "@/lib/security/order-limits";
-import { sanitizeText } from "@/lib/security/sanitize";
+import { sanitizeOrderNotes } from "@/lib/security/sanitize";
+import {
+  zOptionalEmailNormalized,
+  zOrderNotesNullish,
+  zOrderNotesOptional,
+  zSessionToken,
+  zTableToken,
+} from "@/lib/security/zod-fields";
 import { serveSizeOrderNote } from "@/lib/serve-size";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -23,12 +30,8 @@ const cartItemSchema = z.object({
   productName: z.string().min(1).max(200),
   unitPrice: z.number().positive(),
   quantity: z.number().int().min(1).max(MAX_QUANTITY_PER_ITEM),
-  notes: z
-    .string()
-    .max(500)
-    .nullish()
-    .transform((v) => v ?? ""),
-  serveSize: z.string().max(20).nullish(),
+  notes: zOrderNotesNullish(),
+  serveSize: z.string().trim().max(20).nullish(),
   modifiers: z.array(
     z.object({
       modifierId: z.string().uuid(),
@@ -40,11 +43,11 @@ const cartItemSchema = z.object({
 });
 
 export const createOrderSchema = z.object({
-  sessionToken: z.string().min(1),
-  tableToken: z.string().min(1),
+  sessionToken: zSessionToken(),
+  tableToken: zTableToken(),
   items: z.array(cartItemSchema).min(1).max(MAX_ITEMS_PER_ORDER),
-  notes: z.string().max(1000).optional(),
-  guestEmail: z.string().email().optional().or(z.literal("")),
+  notes: zOrderNotesOptional(500),
+  guestEmail: zOptionalEmailNormalized(),
   isTakeaway: z.boolean().optional().default(false),
   paymentMethod: z
     .enum(["unset", "online", "at_bar", "card_at_table"])
@@ -264,7 +267,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     const itemTotal = unitWithMods * item.quantity;
 
     const serveNote = serveSizeOrderNote(item.serveSize);
-    const combinedNotes = [serveNote, sanitizeText(item.notes, 500)]
+    const combinedNotes = [serveNote, item.notes ? sanitizeOrderNotes(item.notes) : ""]
       .filter(Boolean)
       .join(" · ");
 
@@ -452,9 +455,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   }
 
   const prepMinutes = 8;
-  const sanitizedNotes = input.notes
-    ? sanitizeText(input.notes, 1000)
-    : null;
+  const sanitizedNotes = input.notes ? sanitizeOrderNotes(input.notes) : null;
 
   const { data: order, error: orderError } = await admin
     .from("orders")
