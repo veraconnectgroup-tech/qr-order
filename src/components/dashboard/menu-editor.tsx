@@ -21,7 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Plus, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { invalidateMenuCache } from "@/lib/ai/menu-cache";
+import { invalidateMenuCache } from "@/lib/ai/menu-cache-invalidate";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { formatPrice } from "@/lib/format";
 import {

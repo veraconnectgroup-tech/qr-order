@@ -212,17 +212,4 @@ export async function getCachedMenuForLocation(
   return payload;
 }
 
-export async function invalidateMenuCache(locationId: string) {
-  const redis = getAiRedis();
-  if (!redis) return;
-
-  try {
-    await redis.del(menuCacheKey(locationId));
-    logger.info("AI menu cache invalidated", { locationId });
-  } catch (error) {
-    logger.warn("AI menu cache invalidation failed", {
-      locationId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
+export { invalidateMenuCache } from "@/lib/ai/menu-cache-invalidate";
