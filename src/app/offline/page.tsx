@@ -1,6 +1,6 @@
 "use client";
 
-import { QrMark } from "@/lib/pwa/app-icon";
+import { QrMark } from "@/lib/pwa/qr-mark";
 import { Button } from "@/components/ui/button";
 
 export default function OfflinePage() {

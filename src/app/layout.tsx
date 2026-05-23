@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, IBM_Plex_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { PwaRegister } from "@/components/pwa-register";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans">
         <Providers>
+          <PwaRegister />
           {children}
           <Toaster richColors closeButton />
         </Providers>
