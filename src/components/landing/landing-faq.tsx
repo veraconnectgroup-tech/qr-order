@@ -5,31 +5,46 @@ import { AnimateInView } from "@/components/landing/animate-in-view";
 import {
   LandingContainer,
   LandingHeadline,
+  LandingLead,
 } from "@/components/landing/landing-primitives";
 import { cn } from "@/lib/utils";
 
-const FAQS = [
+const faqs = [
   {
     q: "Ist QR Order KassenSichV-konform?",
-    a: "Ja. Jede Transaktion wird über eine zertifizierte TSE signiert. DATEV-Export inklusive.",
+    a:
+      "Ja. Jede Transaktion wird über eine " +
+      "zertifizierte TSE signiert. " +
+      "DATEV-Export inklusive.",
   },
   {
     q: "Brauchen Gäste eine App?",
-    a: "Nein. Gäste scannen den QR-Code und bestellen direkt im mobilen Browser. Kein Download nötig.",
+    a:
+      "Nein. Gäste scannen den QR-Code und " +
+      "bestellen direkt im mobilen Browser. " +
+      "Kein Download nötig.",
   },
   {
     q: "Wie funktioniert Split Bill?",
-    a: "Gäste können nach Artikeln oder gleichmäßig aufteilen. Jeder bezahlt seinen Anteil separat.",
+    a:
+      "Gäste können nach Artikeln oder " +
+      "gleichmäßig aufteilen. Jeder bezahlt " +
+      "seinen Anteil separat.",
   },
   {
     q: "Was kostet QR Order?",
-    a: "0€ monatlich. Wir berechnen nur eine kleine Gebühr pro Online-Kartenzahlung.",
+    a:
+      "0€ monatlich. Wir berechnen nur eine " +
+      "kleine Gebühr pro Online-Kartenzahlung.",
   },
   {
     q: "Wie schnell kann ich starten?",
-    a: "In unter 2 Minuten. Account erstellen, Menü hochladen, QR-Codes drucken — fertig.",
+    a:
+      "In unter 2 Minuten. Account erstellen, " +
+      "Menü hochladen, QR-Codes drucken " +
+      "— fertig.",
   },
-] as const;
+];
 
 export function LandingFaq() {
   return (
@@ -40,10 +55,19 @@ export function LandingFaq() {
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-2xl text-center">
           <LandingHeadline inverted>Häufige Fragen</LandingHeadline>
+          <LandingLead inverted className="mt-4">
+            Antworten für Betreiber, die QR-Bestellung evaluieren.
+          </LandingLead>
+          <a
+            href="mailto:hello@qrorder.app"
+            className="mt-6 inline-block text-[14px] font-medium text-[var(--lp-accent)] hover:underline"
+          >
+            Team kontaktieren →
+          </a>
         </AnimateInView>
 
         <div className="mx-auto mt-10 max-w-2xl">
-          {FAQS.map((faq) => (
+          {faqs.map((faq) => (
             <details
               key={faq.q}
               className="group border-b border-zinc-800 py-4"

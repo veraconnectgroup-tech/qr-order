@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Play } from "lucide-react";
 import {
   HeroItem,
   HeroStagger,
@@ -49,11 +48,8 @@ export function LandingHero() {
                   asChild
                   className="h-12 rounded-full border-zinc-700 bg-transparent px-8 text-sm font-medium text-zinc-200 hover:bg-zinc-900 hover:text-white"
                 >
-                  <Link href="#product" className="inline-flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-full bg-orange-500/15">
-                      <Play className="size-3.5 fill-orange-400 text-orange-400" />
-                    </span>
-                    Watch 60s demo
+                  <Link href="/skyline-lounge/demo-table-8">
+                    See live demo →
                   </Link>
                 </Button>
               </div>

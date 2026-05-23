@@ -67,16 +67,22 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-14 border-t border-zinc-800 pt-8">
-          <p className="text-center text-xs text-zinc-600 sm:text-left">
-            Built with Next.js · Stripe · Supabase · Vercel
-          </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 flex items-center justify-center gap-1 text-xs text-zinc-600">
+          <span>Built with</span>
+          <span>Next.js</span>
+          <span>·</span>
+          <span>Stripe</span>
+          <span>·</span>
+          <span>Supabase</span>
+          <span>·</span>
+          <span>Vercel</span>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2 border-t border-zinc-800 pt-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px]">© 2026 QR Order · Hamburg, Germany</p>
           <p className="text-[12px] text-zinc-500">
             Payments powered by Stripe Connect
           </p>
-          </div>
         </div>
       </LandingContainer>
     </footer>
