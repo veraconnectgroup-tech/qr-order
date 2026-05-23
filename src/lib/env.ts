@@ -1,17 +1,18 @@
-import "server-only";
-
-import { publicEnv } from "@/lib/env/public";
+const isServer = typeof window === "undefined";
 
 function requireEnv(key: string): string {
   const val = process.env[key];
-  if (!val) throw new Error(`Missing env: ${key}`);
-  return val;
+  if (!val && isServer) throw new Error(`Missing env: ${key}`);
+  return val ?? "";
 }
 
-/** Server-only env (API routes, Server Components, layouts). */
 export const env = {
-  ...publicEnv,
-  supabaseServiceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  supabaseServiceKey: isServer
+    ? requireEnv("SUPABASE_SERVICE_ROLE_KEY")
+    : "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
   cronSecret: process.env.CRON_SECRET,
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 } as const;
