@@ -5,7 +5,9 @@ test.describe("Landing page", () => {
     await page.goto("/");
 
     await expect(
-      page.getByRole("heading", { name: /your shortcut to every order/i })
+      page.getByRole("heading", {
+        name: /operating system for modern hospitality/i,
+      })
     ).toBeVisible();
   });
 

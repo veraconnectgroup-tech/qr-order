@@ -1,10 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const DEMO_PATH = "/skyline-lounge/demo-table-8";
+const DEMO_LANG_KEY = "qr_lang_demo-location";
+
+async function openDemoMenu(page: Page) {
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, "en");
+  }, DEMO_LANG_KEY);
+  await page.goto(DEMO_PATH);
+}
 
 test.describe("Guest ordering flow (demo menu)", () => {
-  test("loads menu, updates cart, and shows MwSt on checkout", async ({ page }) => {
-    await page.goto(DEMO_PATH);
+  test("loads menu, updates cart, and shows VAT on checkout", async ({ page }) => {
+    await openDemoMenu(page);
 
     await expect(page.getByText("Aperol Spritz").first()).toBeVisible();
 
@@ -19,6 +27,6 @@ test.describe("Guest ordering flow (demo menu)", () => {
     await page.getByRole("link", { name: /place order/i }).click();
     await expect(page).toHaveURL(/\/checkout$/);
 
-    await expect(page.getByText(/MwSt 19%/)).toBeVisible();
+    await expect(page.getByText(/VAT 19%/)).toBeVisible();
   });
 });
