@@ -5,6 +5,7 @@ import {
   getDemoGuestMenuProps,
   isDemoGuestRoute,
 } from "@/lib/demo-guest";
+import { getDemoAiRecommendations } from "@/lib/demo-ai";
 import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
 
 export const revalidate = 60;

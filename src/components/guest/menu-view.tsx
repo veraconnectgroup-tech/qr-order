@@ -35,6 +35,8 @@ import {
   isCategoryAvailable,
 } from "@/lib/menu/schedule";
 import { productMatchesSearch } from "@/lib/i18n/menu-locale";
+import { getDemoAiRecommendations } from "@/lib/demo-ai";
+import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import {
   allergenIdsFromSheetSelections,
@@ -627,6 +629,17 @@ export function MenuView({
 
       setAiLoading(true);
 
+      if (isDemoGuestRoute(slug, token)) {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        setAiRecommendations(
+          getDemoAiRecommendations(menuCategories, selections)
+        );
+        setAiActive(true);
+        setShowRecommendedSection(true);
+        setAiLoading(false);
+        return;
+      }
+
       const sessionId =
         readAiSessionId(locationId, sessionToken) ?? undefined;
 
@@ -670,6 +683,9 @@ export function MenuView({
     },
     [
       sessionToken,
+      slug,
+      token,
+      menuCategories,
       excluded,
       replaceExcluded,
       locationId,
