@@ -23,6 +23,7 @@ export default async function CheckoutPage({
           locationId={demo.locationId}
           taxPercent={demo.taxPercent}
           currency={demo.currency}
+          isDemo
         />
       </div>
     );

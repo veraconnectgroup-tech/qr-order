@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
+import {
+  getDemoGuestSession,
+  isDemoGuestTableToken,
+} from "@/lib/demo-guest";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zTableToken } from "@/lib/security/zod-fields";
@@ -30,6 +34,10 @@ export async function POST(
 
     if (!parsed.success) {
       return apiError("Invalid request.", 400);
+    }
+
+    if (isDemoGuestTableToken(tokenParsed.data)) {
+      return apiSuccess(getDemoGuestSession());
     }
 
     const admin = createAdminClient();

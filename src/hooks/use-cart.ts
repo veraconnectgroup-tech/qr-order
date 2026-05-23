@@ -88,13 +88,16 @@ export const useCart = create<CartStore>()(
       cartBump: 0,
 
       setSession: (slug, token, tableName, sessionToken) =>
-        set({
+        set((state) => ({
           restaurantSlug: slug,
           tableToken: token,
           tableName,
           sessionToken,
-          items: [],
-        }),
+          items:
+            state.restaurantSlug === slug && state.tableToken === token
+              ? state.items
+              : [],
+        })),
 
       addItem: (item) => {
         const itemTotal = calcItemTotal(item);

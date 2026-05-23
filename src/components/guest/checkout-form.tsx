@@ -110,12 +110,14 @@ export function CheckoutForm({
   locationId,
   taxPercent,
   currency,
+  isDemo = false,
 }: {
   slug: string;
   token: string;
   locationId: string;
   taxPercent: number;
   currency: string;
+  isDemo?: boolean;
 }) {
   const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
@@ -128,6 +130,7 @@ export function CheckoutForm({
   const router = useRouter();
   const orderPlacedRef = useRef(false);
 
+  const [hydrated, setHydrated] = useState(() => useCart.persist.hasHydrated());
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,13 +148,23 @@ export function CheckoutForm({
   );
 
   useEffect(() => {
-    if (orderPlacedRef.current) return;
-    if (!items.length || !sessionToken) {
+    const unsub = useCart.persist.onFinishHydration(() => setHydrated(true));
+    setHydrated(useCart.persist.hasHydrated());
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || orderPlacedRef.current) return;
+    if (!items.length) {
+      router.replace(`/${slug}/${token}/cart`);
+      return;
+    }
+    if (!sessionToken && !isDemo) {
       router.replace(`/${slug}/${token}/cart`);
       return;
     }
     setReady(true);
-  }, [items.length, sessionToken, slug, token, router]);
+  }, [hydrated, items.length, sessionToken, isDemo, slug, token, router]);
 
   async function handlePlaceOrder() {
     if (!sessionToken) return;

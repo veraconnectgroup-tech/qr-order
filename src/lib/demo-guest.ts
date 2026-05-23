@@ -11,6 +11,21 @@ export function isDemoGuestRoute(slug: string, token: string) {
   return slug === DEMO_GUEST_SLUG && token === DEMO_GUEST_TOKEN;
 }
 
+export function isDemoGuestTableToken(token: string) {
+  return token === DEMO_GUEST_TOKEN;
+}
+
+/** Static session for the public demo menu — no Supabase required. */
+export function getDemoGuestSession() {
+  return {
+    sessionId: "demo-session",
+    sessionToken: "demo-session-token",
+    tableId: "demo-table",
+    tableName: "Table 8",
+    locationId: "demo-location",
+  };
+}
+
 /** Static demo menu when Supabase seed is not deployed yet. */
 export function getDemoGuestMenuProps(slug: string, token: string) {
   return {
