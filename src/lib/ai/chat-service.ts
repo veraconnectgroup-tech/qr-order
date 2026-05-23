@@ -24,6 +24,7 @@ import {
   isAiSessionMessageLimitReached,
 } from "@/lib/ai/session-lifecycle";
 import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
+import { parseBrowsingContextToScrollContext } from "@/lib/ai/scroll-context";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -462,6 +463,10 @@ export async function handleAiChat(body: unknown) {
     ]),
   ];
 
+  const scrollContext = input.browsingContext
+    ? parseBrowsingContextToScrollContext(input.browsingContext)
+    : null;
+
   const tokensUsed =
     (sessionRow?.tokens_used ?? 0) + openAiResult.tokensUsed;
   const creditsUsed =
@@ -479,6 +484,7 @@ export async function handleAiChat(body: unknown) {
         products_recommended: recommendedIds,
         language,
         guest_preferences: guestPrefs,
+        ...(scrollContext ? { scroll_context: scrollContext } : {}),
       })
       .eq("id", sessionRow.id);
 
@@ -503,6 +509,7 @@ export async function handleAiChat(body: unknown) {
         products_added: [],
         conversion_count: 0,
         status: "active",
+        ...(scrollContext ? { scroll_context: scrollContext } : {}),
       })
       .select("id")
       .single();

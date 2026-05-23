@@ -193,6 +193,8 @@ const de: TranslationMap = {
   "ai.recommendation.added": "Hinzugefügt",
   "ai.intro.title": "AI Concierge",
   "ai.intro.subtitle": "Dein digitaler Kellner — sag was du magst",
+  "ai.memory.welcomeBack":
+    "Willkommen zurück! 👋 Letztes Mal: {items} — nochmal?",
   "ai.overlay.welcome": "Hallo! Ich helfe Ihnen, das perfekte Gericht zu finden.",
   "ai.overlay.placeholder": "Was möchten Sie essen?",
   "ai.overlay.send": "Senden",
@@ -228,7 +230,7 @@ const de: TranslationMap = {
   "menu.orderingPaused": "Bestellungen sind pausiert. Durchstöbere das Menü oder rufe das Team — bald geht es weiter.",
   "menu.scheduleUnavailable": "Derzeit nicht verfügbar",
 
-  "feedback.title": "Wie war dein Erlebnis?",
+  "feedback.title": "Wie war's? 😊",
   "feedback.subtitle": "Deine Bewertung hilft uns, besser zu werden.",
   "feedback.commentLabel": "Kommentar (optional)",
   "feedback.commentPlaceholder": "Was hat dir gefallen oder was können wir verbessern?",
@@ -236,6 +238,8 @@ const de: TranslationMap = {
   "feedback.sending": "Wird gesendet…",
   "feedback.thanks": "Danke für deine Bewertung!",
   "feedback.error": "Bewertung konnte nicht gesendet werden.",
+  "feedback.googleReview": "Auch auf Google bewerten? ⭐",
+  "feedback.googleReviewButton": "Auf Google bewerten",
 
   "allergen.excludeTitle": "Allergene ausschließen",
   "allergen.clearFilters": "Zurücksetzen",
@@ -479,6 +483,7 @@ const en: TranslationMap = {
   "ai.recommendation.added": "Added",
   "ai.intro.title": "AI Concierge",
   "ai.intro.subtitle": "Your digital waiter — tell me what you like",
+  "ai.memory.welcomeBack": "Welcome back! 👋 Last time: {items} — again?",
   "ai.overlay.welcome": "Hi! I can help you find the perfect dish.",
   "ai.overlay.placeholder": "What would you like to eat?",
   "ai.overlay.send": "Send",
@@ -514,7 +519,7 @@ const en: TranslationMap = {
   "menu.orderingPaused": "Ordering is paused. Browse the menu or call staff — new orders will open again soon.",
   "menu.scheduleUnavailable": "Currently unavailable",
 
-  "feedback.title": "How was your experience?",
+  "feedback.title": "How was it? 😊",
   "feedback.subtitle": "Your rating helps us improve.",
   "feedback.commentLabel": "Comment (optional)",
   "feedback.commentPlaceholder": "What did you enjoy, or what could we do better?",
@@ -522,6 +527,8 @@ const en: TranslationMap = {
   "feedback.sending": "Sending…",
   "feedback.thanks": "Thanks for your feedback!",
   "feedback.error": "Could not submit feedback.",
+  "feedback.googleReview": "Leave a Google review too? ⭐",
+  "feedback.googleReviewButton": "Review on Google",
 
   "allergen.excludeTitle": "Exclude allergens",
   "allergen.clearFilters": "Clear",

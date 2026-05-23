@@ -25,6 +25,7 @@ export type OrderFeedback =
   Database["public"]["Tables"]["order_feedback"]["Row"];
 export type AiCredits = Database["public"]["Tables"]["ai_credits"]["Row"];
 export type AiSession = Database["public"]["Tables"]["ai_sessions"]["Row"];
+export type AiInsight = Database["public"]["Tables"]["ai_insights"]["Row"];
 export type AiCreditPackage =
   Database["public"]["Tables"]["ai_credit_packages"]["Row"];
 

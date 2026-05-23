@@ -67,6 +67,7 @@ export function OrderPageClient({
         token={token}
         orderId={orderId}
         sessionToken={sessionToken}
+        locationId={locationId}
         currency={currency}
         stripeOnboarded={stripeOnboarded}
         paymentOnlineEnabled={paymentOnlineEnabled}

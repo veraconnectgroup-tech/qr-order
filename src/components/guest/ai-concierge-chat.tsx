@@ -478,7 +478,6 @@ export function AiConciergeChat({
     moodOptions,
     welcomeBackMessage,
     knownAllergySelection,
-    knownAllergies,
   ]);
 
   useEffect(() => {

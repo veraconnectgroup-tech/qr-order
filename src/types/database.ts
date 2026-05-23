@@ -409,6 +409,28 @@ type Tables = {
     status: "active" | "completed" | "expired";
     created_at: string;
     completed_at: string | null;
+    scroll_context: Json | null;
+    nudges_shown: string[];
+    guest_rating: number | null;
+    guest_feedback: string | null;
+  };
+  ai_insights: {
+    id: string;
+    org_id: string;
+    location_id: string | null;
+    type:
+      | "menu_gap"
+      | "demand_signal"
+      | "conversion"
+      | "alert"
+      | "feedback_summary";
+    severity: "info" | "warning" | "critical";
+    title: string;
+    detail: string;
+    metadata: Json;
+    insight_date: string;
+    is_read: boolean;
+    created_at: string;
   };
   ai_credit_packages: {
     id: string;

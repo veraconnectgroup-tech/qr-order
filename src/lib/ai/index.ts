@@ -14,8 +14,23 @@ export {
   detectDessertTrigger,
   detectPairingTrigger,
   detectProactiveTrigger,
+  detectSlowKitchenTrigger,
   detectWelcomeBackTrigger,
 } from "@/lib/ai/proactive-triggers";
+export {
+  generateAiIntelligence,
+  persistAiInsights,
+  runDailyAiIntelligence,
+} from "@/lib/ai/intelligence-service";
+export type {
+  AiInsightInsert,
+  AiInsightSeverity,
+  AiInsightType,
+} from "@/lib/ai/intelligence-service";
+export {
+  parseBrowsingContextToScrollContext,
+} from "@/lib/ai/scroll-context";
+export type { ScrollContext, ScrollContextView } from "@/lib/ai/scroll-context";
 export type {
   ProactiveTriggerKind,
   ProactiveTriggerMatch,

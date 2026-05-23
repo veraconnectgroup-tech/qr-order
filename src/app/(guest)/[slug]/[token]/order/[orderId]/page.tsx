@@ -38,6 +38,7 @@ export default async function OrderPage({
 
   const table = tableData as unknown as {
     location: {
+      id: string;
       payment_online_enabled: boolean;
       payment_at_bar_enabled: boolean;
       payment_card_at_table_enabled: boolean;
@@ -58,6 +59,7 @@ export default async function OrderPage({
       slug={slug}
       token={token}
       orderId={orderId}
+      locationId={table.location.id}
       currency={org.currency}
       stripeOnboarded={org.stripe_onboarded}
       paymentOnlineEnabled={table.location.payment_online_enabled}
