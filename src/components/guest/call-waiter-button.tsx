@@ -98,7 +98,7 @@ export function CallWaiterButton({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
-          className="rounded-t-2xl border-zinc-800 bg-zinc-900 text-zinc-50"
+          className="guest-theme rounded-t-2xl border-zinc-800 bg-zinc-900 text-zinc-50"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
@@ -123,7 +123,7 @@ export function CallWaiterButton({
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 border-zinc-700"
+                  className="flex-1 border-zinc-700 bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-zinc-50"
                   onClick={() => setOpen(false)}
                 >
                   {tUI("waiter.cancel")}

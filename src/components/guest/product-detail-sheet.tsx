@@ -132,7 +132,7 @@ export function ProductDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[90vh] overflow-y-auto rounded-t-2xl border-zinc-800 bg-zinc-900 p-0 text-zinc-50"
+        className="guest-theme max-h-[90vh] overflow-y-auto rounded-t-2xl border-zinc-800 bg-zinc-900 p-0 text-zinc-50"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
