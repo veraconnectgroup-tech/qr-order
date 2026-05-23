@@ -2,7 +2,12 @@ import { buildOrderReceiptHtml } from "@/lib/email/order-receipt-html";
 import { sendEmail } from "@/lib/email/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function maybeSendOrderReceipt(orderId: string) {
+type SendReceiptResult = { sent: boolean; error?: string };
+
+export async function sendOrderReceipt(
+  orderId: string,
+  options?: { force?: boolean }
+): Promise<SendReceiptResult> {
   const admin = createAdminClient();
 
   const { data: order } = await admin
@@ -11,7 +16,9 @@ export async function maybeSendOrderReceipt(orderId: string) {
     .eq("id", orderId)
     .single();
 
-  if (!order) return;
+  if (!order) {
+    return { sent: false, error: "Order not found." };
+  }
 
   const row = order as {
     id: string;
@@ -29,13 +36,17 @@ export async function maybeSendOrderReceipt(orderId: string) {
     table_id: string | null;
   };
 
-  if (row.receipt_sent_at) return;
+  if (row.receipt_sent_at && !options?.force) {
+    return { sent: false, error: "Receipt already sent." };
+  }
 
   const shouldSend =
     row.payment_status === "paid" ||
     (row.status === "delivered" && row.payment_status === "pending");
 
-  if (!shouldSend) return;
+  if (!shouldSend) {
+    return { sent: false, error: "Order is not eligible for a receipt." };
+  }
 
   let guestEmail: string | null = null;
 
@@ -46,10 +57,13 @@ export async function maybeSendOrderReceipt(orderId: string) {
       .eq("id", row.session_id)
       .single();
 
-    guestEmail = (session as { guest_email: string | null } | null)?.guest_email ?? null;
+    guestEmail =
+      (session as { guest_email: string | null } | null)?.guest_email ?? null;
   }
 
-  if (!guestEmail) return;
+  if (!guestEmail) {
+    return { sent: false, error: "No guest email on file." };
+  }
 
   const { data: items } = await admin
     .from("order_items")
@@ -65,7 +79,10 @@ export async function maybeSendOrderReceipt(orderId: string) {
   }>;
 
   const itemIds = itemRows.map((i) => i.id);
-  const modifiersByItem = new Map<string, Array<{ modifier_name: string; price: number }>>();
+  const modifiersByItem = new Map<
+    string,
+    Array<{ modifier_name: string; price: number }>
+  >();
 
   if (itemIds.length > 0) {
     const { data: modifiers } = await admin
@@ -100,7 +117,9 @@ export async function maybeSendOrderReceipt(orderId: string) {
     : { data: null };
 
   const locationRow = location as { name: string; org_id: string } | null;
-  if (!locationRow) return;
+  if (!locationRow) {
+    return { sent: false, error: "Location not found." };
+  }
 
   const { data: orgData } = await admin
     .from("organizations")
@@ -152,5 +171,16 @@ export async function maybeSendOrderReceipt(orderId: string) {
       .from("orders")
       .update({ receipt_sent_at: new Date().toISOString() } as never)
       .eq("id", orderId);
+    return { sent: true };
   }
+
+  return { sent: false, error: "Email delivery failed." };
+}
+
+export async function maybeSendOrderReceipt(orderId: string) {
+  await sendOrderReceipt(orderId);
+}
+
+export async function resendOrderReceipt(orderId: string) {
+  return sendOrderReceipt(orderId, { force: true });
 }

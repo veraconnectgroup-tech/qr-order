@@ -1,9 +1,28 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Download } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Mail,
+  MoreHorizontal,
+  RotateCcw,
+  Search,
+} from "lucide-react";
+import { toast } from "sonner";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
+import {
+  resolveAnalyticsDateRange,
+  type AnalyticsSearchParams,
+} from "@/lib/analytics/date-range";
 import {
   revenueEligibleOrders,
   sumOrderRevenue,
@@ -11,76 +30,26 @@ import {
 import { sumTips } from "@/lib/orders/tips";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
+import { HistoryDateRangePicker } from "@/components/dashboard/history-date-range-picker";
+import { RefundOrderDialog } from "@/components/dashboard/refund-order-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { unpaidPaymentHint } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
-
-type DateFilter = "today" | "yesterday" | "week" | "month" | "custom";
-type PaymentFilter = "all" | "paid" | "pending" | "refunded" | "partial_refund";
-type SourceFilter = "all" | "qr" | "staff" | "kiosk";
-
-const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log(action, amount, created_at)";
-
-const PAGE_SIZE = 20;
-
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-function getRange(
-  filter: DateFilter,
-  customFrom: string,
-  customTo: string
-): { start: Date; end: Date } {
-  const now = new Date();
-  const today = startOfDay(now);
-
-  if (filter === "today") {
-    return { start: today, end: endOfDay(now) };
-  }
-  if (filter === "yesterday") {
-    const y = new Date(today);
-    y.setDate(y.getDate() - 1);
-    return { start: y, end: endOfDay(y) };
-  }
-  if (filter === "week") {
-    const w = new Date(today);
-    w.setDate(w.getDate() - 6);
-    return { start: w, end: endOfDay(now) };
-  }
-  if (filter === "month") {
-    const m = new Date(today);
-    m.setDate(m.getDate() - 29);
-    return { start: m, end: endOfDay(now) };
-  }
-  return {
-    start: startOfDay(new Date(customFrom)),
-    end: endOfDay(new Date(customTo)),
-  };
-}
-
-function getPreviousRange(range: { start: Date; end: Date }) {
-  const durationMs = range.end.getTime() - range.start.getTime();
-  const prevEnd = new Date(range.start.getTime() - 1);
-  const prevStart = new Date(prevEnd.getTime() - durationMs);
-  return { start: prevStart, end: prevEnd };
-}
-
-function inRange(iso: string, range: { start: Date; end: Date }) {
-  const t = new Date(iso).getTime();
-  return t >= range.start.getTime() && t <= range.end.getTime();
-}
 
 type PeriodStats = {
   revenue: number;
@@ -89,6 +58,13 @@ type PeriodStats = {
   topItem: string;
   topCount: number;
 };
+
+function getPreviousRange(range: { start: Date; end: Date }) {
+  const durationMs = range.end.getTime() - range.start.getTime();
+  const prevEnd = new Date(range.start.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  return { start: prevStart, end: prevEnd };
+}
 
 function computeStats(orders: OrderWithDetails[]): PeriodStats {
   const eligible = revenueEligibleOrders(orders);
@@ -191,6 +167,28 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function RefundStatusBadge({
+  paymentStatus,
+}: {
+  paymentStatus: string;
+}) {
+  if (paymentStatus === "refunded") {
+    return (
+      <span className="rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
+        Refunded
+      </span>
+    );
+  }
+  if (paymentStatus === "partial_refund") {
+    return (
+      <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
+        Partial refund
+      </span>
+    );
+  }
+  return null;
+}
+
 function PaymentCell({
   status,
   orderStatus,
@@ -283,164 +281,303 @@ function RefundCell({
   );
 }
 
-function exportCsv(orders: OrderWithDetails[]) {
-  const header =
-    "order_number,table,items_count,total,status,payment_status,created_at";
-  const rows = orders.map((o) => {
-    const items =
-      o.order_items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
-    return [
-      o.order_number,
-      o.tables?.name ?? "",
-      items,
-      o.total,
-      o.status,
-      o.payment_status,
-      o.created_at,
-    ]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      .join(",");
-  });
+function OrderRowActions({
+  order,
+  staffRole,
+  onRefund,
+  onResent,
+}: {
+  order: OrderWithDetails;
+  staffRole: string;
+  onRefund: () => void;
+  onResent: () => void;
+}) {
+  const canRefund =
+    order.payment_status === "paid" &&
+    order.payment_method === "online" &&
+    ["owner", "manager"].includes(staffRole);
+  const guestEmail = order.table_sessions?.guest_email;
+  const canResend = Boolean(guestEmail) && ["owner", "manager"].includes(staffRole);
 
-  const blob = new Blob([[header, ...rows].join("\n")], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  if (!canRefund && !canResend) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          aria-label="Order actions"
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="border-zinc-700 bg-zinc-900 text-zinc-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {canRefund ? (
+          <DropdownMenuItem
+            className="cursor-pointer focus:bg-zinc-800 focus:text-zinc-50"
+            onClick={onRefund}
+          >
+            <RotateCcw className="mr-2 size-4" />
+            Issue refund
+          </DropdownMenuItem>
+        ) : null}
+        {canResend ? (
+          <DropdownMenuItem
+            className="cursor-pointer focus:bg-zinc-800 focus:text-zinc-50"
+            onClick={onResent}
+          >
+            <Mail className="mr-2 size-4" />
+            Resend receipt
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function OrderHistoryListSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-11 w-full max-w-4xl rounded-lg bg-zinc-800" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
+        ))}
+      </div>
+      <Skeleton className="h-64 rounded-xl bg-zinc-800" />
+    </div>
+  );
 }
 
 export function OrderHistoryList() {
-  const { locationId, currency, inPersonPaymentLocation } = useDashboard();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { currency, inPersonPaymentLocation, staffRole } = useDashboard();
+
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [statsOrders, setStatsOrders] = useState<OrderWithDetails[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<DateFilter>("today");
-  const [customFrom, setCustomFrom] = useState(
-    () => new Date().toISOString().slice(0, 10)
-  );
-  const [customTo, setCustomTo] = useState(
-    () => new Date().toISOString().slice(0, 10)
-  );
-  const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [refundTarget, setRefundTarget] = useState<OrderWithDetails | null>(
+    null
+  );
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("q") ?? ""
+  );
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const queryString = searchParams.toString();
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const pageSize = 50;
+
+  const rangeParams = useMemo(
+    (): AnalyticsSearchParams => ({
+      preset: searchParams.get("preset") ?? undefined,
+      from: searchParams.get("from") ?? undefined,
+      to: searchParams.get("to") ?? undefined,
+    }),
+    [searchParams]
+  );
+  const range = useMemo(
+    () => resolveAnalyticsDateRange(rangeParams),
+    [rangeParams]
+  );
+  const previousRange = useMemo(() => getPreviousRange(range), [range]);
+
+  const updateParams = useCallback(
+    (patch: Record<string, string | null>, resetPage = true) => {
+      const next = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === "") next.delete(key);
+        else next.set(key, value);
+      }
+      if (resetPage) next.delete("page");
+      router.push(`/dashboard/history?${next.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
-    const supabase = createClient();
-    const fetchFrom = new Date();
-    fetchFrom.setDate(fetchFrom.getDate() - 62);
-
-    const { data } = await supabase
-      .from("orders")
-      .select(ORDER_SELECT)
-      .eq("location_id", locationId)
-      .gte("created_at", fetchFrom.toISOString())
-      .order("created_at", { ascending: false });
-
-    setOrders((data as unknown as OrderWithDetails[]) ?? []);
-    setLoading(false);
-  }, [locationId]);
+    try {
+      const res = await fetch(`/api/orders/history?${queryString}`);
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? "Failed to load history");
+      }
+      setOrders(json.data.orders ?? []);
+      setStatsOrders(json.data.statsOrders ?? []);
+      setTotal(json.data.total ?? 0);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load history");
+      setOrders([]);
+      setStatsOrders([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [queryString]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const range = useMemo(
-    () => getRange(filter, customFrom, customTo),
-    [filter, customFrom, customTo]
-  );
+  useEffect(() => {
+    setSearchInput(searchParams.get("q") ?? "");
+  }, [searchParams]);
 
-  const previousRange = useMemo(() => getPreviousRange(range), [range]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const current = searchParams.get("q") ?? "";
+      if (searchInput.trim() === current.trim()) return;
+      updateParams({ q: searchInput.trim() || null });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, searchParams, updateParams]);
 
-  const filtered = useMemo(() => {
-    let list = orders.filter((o) => inRange(o.created_at, range));
-    if (paymentFilter !== "all") {
-      list = list.filter((o) => o.payment_status === paymentFilter);
-    }
-    if (sourceFilter !== "all") {
-      list = list.filter((o) => o.order_source === sourceFilter);
-    }
-    return list;
-  }, [orders, range, paymentFilter, sourceFilter]);
-
+  const stats = useMemo(() => computeStats(statsOrders), [statsOrders]);
+  const totalTips = useMemo(() => sumTips(statsOrders), [statsOrders]);
   const previousFiltered = useMemo(
-    () => orders.filter((o) => inRange(o.created_at, previousRange)),
-    [orders, previousRange]
+    () =>
+      statsOrders.filter((o) => {
+        const t = new Date(o.created_at).getTime();
+        return (
+          t >= previousRange.start.getTime() &&
+          t <= previousRange.end.getTime()
+        );
+      }),
+    [statsOrders, previousRange]
   );
-
-  const stats = useMemo(() => computeStats(filtered), [filtered]);
-  const totalTips = useMemo(() => sumTips(filtered), [filtered]);
   const prevStats = useMemo(
     () => computeStats(previousFiltered),
     [previousFiltered]
   );
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
-  );
+  const rangeStart = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(safePage * pageSize, total);
 
-  useEffect(() => {
-    setPage(1);
-  }, [filter, customFrom, customTo, paymentFilter, sourceFilter]);
+  const canExport = ["owner", "manager"].includes(staffRole);
 
-  const paymentFilters: { id: PaymentFilter; label: string }[] = [
-    { id: "all", label: "All payments" },
-    { id: "paid", label: "Paid" },
-    { id: "pending", label: "Pending" },
-    { id: "refunded", label: "Refunded" },
-    { id: "partial_refund", label: "Partial refund" },
-  ];
-
-  const sourceFilters: { id: SourceFilter; label: string }[] = [
-    { id: "all", label: "All sources" },
-    { id: "qr", label: "QR" },
-    { id: "staff", label: "Staff" },
-    { id: "kiosk", label: "Kiosk" },
-  ];
-
-  const filters: { id: DateFilter; label: string }[] = [
-    { id: "today", label: "Today" },
-    { id: "yesterday", label: "Yesterday" },
-    { id: "week", label: "This Week" },
-    { id: "month", label: "This Month" },
-    { id: "custom", label: "Custom" },
-  ];
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
-          ))}
-        </div>
-        <Skeleton className="h-64 rounded-xl bg-zinc-800" />
-      </div>
-    );
+  async function handleRefund(orderId: string, reason: string, amount?: number) {
+    const res = await fetch(`/api/orders/${orderId}/refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason, amount }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error ?? "Refund failed");
+    }
+    toast.success("Refund issued");
+    await load();
   }
 
-  const rangeStart = (safePage - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length);
+  async function handleResendReceipt(orderId: string) {
+    setResendingId(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/resend-receipt`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? "Could not send receipt");
+      }
+      toast.success("Receipt sent");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not send receipt");
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  if (loading && orders.length === 0) {
+    return <OrderHistoryListSkeleton />;
+  }
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          onClick={() => exportCsv(filtered)}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700 touch-manipulation"
+      <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
+        <HistoryDateRangePicker />
+
+        <Select
+          value={searchParams.get("status") ?? "all"}
+          onValueChange={(value) => updateParams({ status: value === "all" ? null : value })}
         >
-          <Download className="size-4" />
-          Export CSV
-        </button>
+          <SelectTrigger className="min-h-11 w-full border-zinc-700 bg-zinc-900 text-zinc-200 sm:w-[140px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+            <SelectItem value="all">All status</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="refunded">Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={searchParams.get("payment") ?? "all"}
+          onValueChange={(value) =>
+            updateParams({ payment: value === "all" ? null : value })
+          }
+        >
+          <SelectTrigger className="min-h-11 w-full border-zinc-700 bg-zinc-900 text-zinc-200 sm:w-[150px]">
+            <SelectValue placeholder="Payment" />
+          </SelectTrigger>
+          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+            <SelectItem value="all">All payment</SelectItem>
+            <SelectItem value="online">Online</SelectItem>
+            <SelectItem value="at_bar">At bar</SelectItem>
+            <SelectItem value="card_at_table">Card at table</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={searchParams.get("source") ?? "all"}
+          onValueChange={(value) =>
+            updateParams({ source: value === "all" ? null : value })
+          }
+        >
+          <SelectTrigger className="min-h-11 w-full border-zinc-700 bg-zinc-900 text-zinc-200 sm:w-[130px]">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+            <SelectItem value="all">All sources</SelectItem>
+            <SelectItem value="guest">Guest</SelectItem>
+            <SelectItem value="staff">Staff</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="relative min-h-11 flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Order #, table, email…"
+            className="h-11 w-full rounded-lg border border-zinc-700 bg-zinc-900 py-2 pl-10 pr-3 text-sm text-zinc-200 outline-none focus:border-orange-500"
+          />
+        </div>
+
+        {canExport ? (
+          <a
+            href={`/api/export/csv?${queryString.replace(/(^|&)page=[^&]*/g, "").replace(/^&/, "")}`}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700 touch-manipulation"
+          >
+            <Download className="size-4" />
+            Export CSV
+          </a>
+        ) : null}
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
@@ -513,87 +650,15 @@ export function OrderHistoryList() {
         ))}
       </div>
 
-      <AnalyticsCharts orders={filtered} range={range} currency={currency} />
+      <AnalyticsCharts orders={statsOrders} range={range} currency={currency} />
 
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        {filters.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setFilter(f.id)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition",
-              filter === f.id
-                ? "bg-orange-500 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-        {filter === "custom" && (
-          <div className="ml-2 flex flex-wrap items-center gap-2">
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
-            />
-            <span className="text-zinc-600">–</span>
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {sourceFilters.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setSourceFilter(f.id)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition",
-              sourceFilter === f.id
-                ? "bg-zinc-700 text-zinc-100"
-                : "bg-zinc-800/80 text-zinc-500 hover:text-zinc-300"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {paymentFilters.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setPaymentFilter(f.id)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition",
-              paymentFilter === f.id
-                ? "bg-zinc-700 text-zinc-100"
-                : "bg-zinc-800/80 text-zinc-500 hover:text-zinc-300"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
-        {paginated.length === 0 ? (
+        {orders.length === 0 ? (
           <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 py-12 text-center text-zinc-500">
-            No orders in this period
+            No orders match these filters
           </p>
         ) : (
-          paginated.map((order) => {
+          orders.map((order) => {
             const itemCount =
               order.order_items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
             const isExpanded = expandedId === order.id;
@@ -603,14 +668,14 @@ export function OrderHistoryList() {
                 key={order.id}
                 className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50"
               >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExpandedId(isExpanded ? null : order.id)
-                  }
-                  className="flex w-full items-start justify-between gap-3 p-4 text-left"
-                >
-                  <div className="min-w-0">
+                <div className="flex items-start gap-2 p-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedId(isExpanded ? null : order.id)
+                    }
+                    className="min-w-0 flex-1 text-left"
+                  >
                     <p className="font-mono font-semibold text-zinc-50">
                       {formatOrderNumber(order.order_number)}
                     </p>
@@ -619,16 +684,15 @@ export function OrderHistoryList() {
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <StatusBadge status={order.status} />
+                      <RefundStatusBadge paymentStatus={order.payment_status} />
                       <PaymentCell
                         status={order.payment_status}
                         orderStatus={order.status}
-                        paymentMethod={
-                          (order as { payment_method?: string }).payment_method
-                        }
+                        paymentMethod={order.payment_method}
                         inPersonPaymentLocation={inPersonPaymentLocation}
                       />
                     </div>
-                  </div>
+                  </button>
                   <div className="shrink-0 text-right">
                     <p className="font-mono font-semibold text-zinc-200">
                       {formatPrice(Number(order.total), currency)}
@@ -639,13 +703,14 @@ export function OrderHistoryList() {
                         minute: "2-digit",
                       })}
                     </p>
-                    {isExpanded ? (
-                      <ChevronUp className="ml-auto mt-2 size-4 text-zinc-500" />
-                    ) : (
-                      <ChevronDown className="ml-auto mt-2 size-4 text-zinc-500" />
-                    )}
                   </div>
-                </button>
+                  <OrderRowActions
+                    order={order}
+                    staffRole={staffRole}
+                    onRefund={() => setRefundTarget(order)}
+                    onResent={() => handleResendReceipt(order.id)}
+                  />
+                </div>
                 {isExpanded && (
                   <ul className="space-y-2 border-t border-zinc-800 px-4 py-3">
                     {order.order_items?.map((item) => (
@@ -698,21 +763,21 @@ export function OrderHistoryList() {
               <th className="px-4 py-3">Payment</th>
               <th className="px-4 py-3">Refund</th>
               <th className="px-4 py-3">Time</th>
-              <th className="w-8 px-2 py-3" />
+              <th className="w-12 px-2 py-3" />
             </tr>
           </thead>
           <tbody>
-            {paginated.length === 0 ? (
+            {orders.length === 0 ? (
               <tr>
                 <td
                   colSpan={9}
                   className="px-4 py-12 text-center text-zinc-500"
                 >
-                  No orders in this period
+                  No orders match these filters
                 </td>
               </tr>
             ) : (
-              paginated.map((order) => {
+              orders.map((order) => {
                 const itemCount =
                   order.order_items?.reduce((s, i) => s + i.quantity, 0) ??
                   0;
@@ -724,7 +789,7 @@ export function OrderHistoryList() {
                       onClick={() =>
                         setExpandedId(isExpanded ? null : order.id)
                       }
-                      className="cursor-pointer border-b border-zinc-800/50 px-4 py-3 transition hover:bg-zinc-800/30"
+                      className="cursor-pointer border-b border-zinc-800/50 transition hover:bg-zinc-800/30"
                     >
                       <td className="px-4 py-3 font-mono font-semibold text-zinc-50">
                         {formatOrderNumber(order.order_number)}
@@ -737,15 +802,18 @@ export function OrderHistoryList() {
                         {formatPrice(Number(order.total), currency)}
                       </td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={order.status} />
+                        <div className="flex flex-wrap gap-1">
+                          <StatusBadge status={order.status} />
+                          <RefundStatusBadge
+                            paymentStatus={order.payment_status}
+                          />
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <PaymentCell
                           status={order.payment_status}
                           orderStatus={order.status}
-                          paymentMethod={
-                            (order as { payment_method?: string }).payment_method
-                          }
+                          paymentMethod={order.payment_method}
                           inPersonPaymentLocation={inPersonPaymentLocation}
                         />
                       </td>
@@ -758,12 +826,13 @@ export function OrderHistoryList() {
                           { hour: "2-digit", minute: "2-digit" }
                         )}
                       </td>
-                      <td className="px-2 py-3 text-zinc-500">
-                        {isExpanded ? (
-                          <ChevronUp className="size-4" />
-                        ) : (
-                          <ChevronDown className="size-4" />
-                        )}
+                      <td className="px-2 py-3">
+                        <OrderRowActions
+                          order={order}
+                          staffRole={staffRole}
+                          onRefund={() => setRefundTarget(order)}
+                          onResent={() => handleResendReceipt(order.id)}
+                        />
                       </td>
                     </tr>
                     {isExpanded && (
@@ -813,16 +882,16 @@ export function OrderHistoryList() {
         </table>
       </div>
 
-      {filtered.length > 0 && (
+      {total > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-zinc-500">
-            Showing {rangeStart}-{rangeEnd} of {filtered.length}
+            Showing {rangeStart}-{rangeEnd} of {total}
           </p>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={safePage <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => updateParams({ page: String(safePage - 1) }, false)}
               className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 disabled:opacity-50"
             >
               Prev
@@ -830,7 +899,7 @@ export function OrderHistoryList() {
             <button
               type="button"
               disabled={safePage >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => updateParams({ page: String(safePage + 1) }, false)}
               className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 disabled:opacity-50"
             >
               Next
@@ -838,6 +907,24 @@ export function OrderHistoryList() {
           </div>
         </div>
       )}
+
+      <RefundOrderDialog
+        open={!!refundTarget}
+        orderNumber={refundTarget?.order_number ?? 0}
+        orderTotal={Number(refundTarget?.total ?? 0)}
+        currency={currency}
+        onClose={() => setRefundTarget(null)}
+        onConfirm={async (reason, amount) => {
+          if (!refundTarget) return;
+          await handleRefund(refundTarget.id, reason, amount);
+        }}
+      />
+
+      {resendingId ? (
+        <span className="sr-only" aria-live="polite">
+          Sending receipt…
+        </span>
+      ) : null}
     </div>
   );
 }

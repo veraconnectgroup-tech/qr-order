@@ -37,6 +37,7 @@ export type OrderWithDetails = Order & {
     order_item_modifiers: OrderItemModifier[];
   })[];
   tables?: { name: string; zone?: { name: string } | null } | null;
+  table_sessions?: { guest_email: string | null } | null;
   refund_staff?: { name: string } | null;
   tip_staff?: { name: string } | null;
   split_payments?: SplitPayment[];

@@ -36,6 +36,15 @@ export type ParsedHistoryFilters = {
 export const ORDER_HISTORY_SELECT =
   "*, order_items(*, order_item_modifiers(*)), tables(name), table_sessions(guest_email), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log(action, amount, created_at)";
 
+// Supabase query builder typing is too strict for shared filter helpers.
+type HistoryQuery = {
+  gte: (column: string, value: string) => HistoryQuery;
+  lte: (column: string, value: string) => HistoryQuery;
+  eq: (column: string, value: string | number) => HistoryQuery;
+  in: (column: string, values: string[]) => HistoryQuery;
+  or: (filters: string) => HistoryQuery;
+};
+
 function parseEnum<T extends string>(
   value: string | undefined,
   allowed: readonly T[],
@@ -76,50 +85,46 @@ export function parseHistoryFilters(
   };
 }
 
-type OrdersQuery = ReturnType<
-  ReturnType<typeof createAdminClient>["from"]
->;
-
-export function applyHistoryFilters<T extends OrdersQuery>(
-  query: T,
+export function applyHistoryFilters<Q extends HistoryQuery>(
+  query: Q,
   filters: ParsedHistoryFilters
-): T {
+): Q {
   let next = query
     .gte("created_at", filters.range.start.toISOString())
-    .lte("created_at", filters.range.end.toISOString()) as T;
+    .lte("created_at", filters.range.end.toISOString()) as Q;
 
   if (filters.status === "completed") {
-    next = next.eq("status", "delivered") as T;
+    next = next.eq("status", "delivered") as Q;
   } else if (filters.status === "cancelled") {
-    next = next.in("status", ["cancelled", "rejected"]) as T;
+    next = next.in("status", ["cancelled", "rejected"]) as Q;
   } else if (filters.status === "refunded") {
-    next = next.in("payment_status", ["refunded", "partial_refund"]) as T;
+    next = next.in("payment_status", ["refunded", "partial_refund"]) as Q;
   }
 
   if (filters.payment !== "all") {
-    next = next.eq("payment_method", filters.payment) as T;
+    next = next.eq("payment_method", filters.payment) as Q;
   }
 
   if (filters.source === "guest") {
-    next = next.in("order_source", ["qr", "kiosk"]) as T;
+    next = next.in("order_source", ["qr", "kiosk"]) as Q;
   } else if (filters.source === "staff") {
-    next = next.eq("order_source", "staff") as T;
+    next = next.eq("order_source", "staff") as Q;
   }
 
   return next;
 }
 
-export async function applyHistorySearch<T extends OrdersQuery>(
-  query: T,
+export async function applyHistorySearch<Q extends HistoryQuery>(
+  query: Q,
   locationId: string,
   search: string
-): Promise<T> {
+): Promise<Q> {
   const q = search.trim();
   if (!q) return query;
 
   const numMatch = q.replace(/^#/, "").match(/^\d+$/);
   if (numMatch) {
-    return query.eq("order_number", Number.parseInt(numMatch[0], 10)) as T;
+    return query.eq("order_number", Number.parseInt(numMatch[0], 10)) as Q;
   }
 
   const admin = createAdminClient();
@@ -142,14 +147,14 @@ export async function applyHistorySearch<T extends OrdersQuery>(
   );
 
   if (!tableIds.length && !sessionIds.length) {
-    return query.eq("id", "00000000-0000-0000-0000-000000000000") as T;
+    return query.eq("id", "00000000-0000-0000-0000-000000000000") as Q;
   }
 
   const parts: string[] = [];
   if (tableIds.length) parts.push(`table_id.in.(${tableIds.join(",")})`);
   if (sessionIds.length) parts.push(`session_id.in.(${sessionIds.join(",")})`);
 
-  return query.or(parts.join(",")) as T;
+  return query.or(parts.join(",")) as Q;
 }
 
 export function historyParamsToQueryString(

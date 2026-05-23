@@ -1,5 +1,13 @@
-import { OrderHistoryList } from "@/components/dashboard/order-history-list";
+import { Suspense } from "react";
+import {
+  OrderHistoryList,
+  OrderHistoryListSkeleton,
+} from "@/components/dashboard/order-history-list";
 
 export default function HistoryPage() {
-  return <OrderHistoryList />;
+  return (
+    <Suspense fallback={<OrderHistoryListSkeleton />}>
+      <OrderHistoryList />
+    </Suspense>
+  );
 }
