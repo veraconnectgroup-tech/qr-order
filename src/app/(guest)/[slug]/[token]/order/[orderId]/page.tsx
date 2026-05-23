@@ -19,7 +19,6 @@ export default async function OrderPage({
         payment_online_enabled,
         payment_at_bar_enabled,
         payment_card_at_table_enabled,
-        in_person_payment_location,
         organization:organizations!inner(
           slug,
           currency,
@@ -40,7 +39,6 @@ export default async function OrderPage({
       payment_online_enabled: boolean;
       payment_at_bar_enabled: boolean;
       payment_card_at_table_enabled: boolean;
-      in_person_payment_location: "bar" | "counter" | "table";
       organization: {
         slug: string;
         currency: string;
@@ -62,9 +60,7 @@ export default async function OrderPage({
       paymentOnlineEnabled={table.location.payment_online_enabled}
       paymentAtBarEnabled={table.location.payment_at_bar_enabled}
       paymentCardAtTableEnabled={table.location.payment_card_at_table_enabled}
-      inPersonPaymentLocation={
-        table.location.in_person_payment_location ?? "bar"
-      }
+      inPersonPaymentLocation="bar"
     />
   );
 }
