@@ -49,7 +49,7 @@ export function buildKitchenTicketHtml(
   hr { border: none; border-top: 2px dashed #000; margin: 12px 0; }
 </style></head><body>
 <h1>${formatOrderNumber(order.order_number)}</h1>
-<div class="meta">${orgName} · Sto ${tableName} · ${time}</div>
+<div class="meta">${orgName} · Table ${tableName} · ${time}</div>
 <hr />
 ${itemRows}
 ${orderNotes}

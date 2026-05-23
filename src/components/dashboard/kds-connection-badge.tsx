@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 import type { RealtimeMode } from "@/hooks/use-postgres-realtime";
 
 const labels: Record<RealtimeMode, string> = {
-  connecting: "Ponovo povezivanje…",
-  live: "Povezan",
-  polling: "Ponovo povezivanje…",
+  connecting: "Reconnecting…",
+  live: "Connected",
+  polling: "Reconnecting…",
 };
 
 export function KdsConnectionBadge({ mode }: { mode: RealtimeMode }) {

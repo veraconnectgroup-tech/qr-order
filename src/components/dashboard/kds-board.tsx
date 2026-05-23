@@ -125,7 +125,7 @@ function KdsOrderCard({
         </p>
         <div className="text-right">
           <span className="block rounded-lg bg-zinc-800 px-3 py-1 text-lg font-semibold text-zinc-200">
-            Sto {tableName}
+            Table {tableName}
           </span>
           <span
             className={cn(

@@ -1,5 +1,5 @@
 self.addEventListener("push", (e) => {
-  const d = e.data?.json() ?? { title: "QR Order", body: "Nova notifikacija" };
+  const d = e.data?.json() ?? { title: "QR Order", body: "New notification" };
   e.waitUntil(
     self.registration.showNotification(d.title, {
       body: d.body,
