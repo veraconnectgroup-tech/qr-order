@@ -101,5 +101,9 @@ export default process.env.NEXT_PUBLIC_SENTRY_DSN
   ? withSentryConfig(configWithPwa, {
       silent: true,
       widenClientFileUpload: true,
+      // Avoid failing Vercel builds when SENTRY_AUTH_TOKEN is not set.
+      sourcemaps: {
+        disable: !process.env.SENTRY_AUTH_TOKEN,
+      },
     })
   : configWithPwa;

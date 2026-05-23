@@ -20,8 +20,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      - name: Generate route types
+        run: pnpm exec next typegen
+
       - name: Type check
-        run: pnpm tsc --noEmit
+        run: pnpm type-check
 
       - name: Lint
         run: pnpm lint
@@ -62,5 +65,6 @@ jobs:
         run: pnpm test:e2e
         env:
           CI: true
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'placeholder' }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
