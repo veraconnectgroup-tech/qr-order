@@ -121,34 +121,63 @@ export function OrderStatusTracker({
   const [statusPulse, setStatusPulse] = useState(false);
   const hapticFired = useRef(false);
 
-  const refreshOrder = useCallback(async () => {
-    const res = await fetch(
-      `/api/orders/${orderId}?sessionToken=${encodeURIComponent(sessionToken)}`
-    );
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json.data as OrderData;
-  }, [orderId, sessionToken]);
+  const refreshOrder = useCallback(
+    async (retryOnMiss = false) => {
+      const maxAttempts = retryOnMiss ? 8 : 1;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const res = await fetch(
+          `/api/orders/${orderId}?sessionToken=${encodeURIComponent(sessionToken)}`
+        );
+
+        if (res.ok) {
+          const json = await res.json();
+          return json.data as OrderData;
+        }
+
+        if (res.status === 401) {
+          return null;
+        }
+
+        if (res.status === 404 && attempt < maxAttempts - 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 350 * (attempt + 1))
+          );
+          continue;
+        }
+
+        return null;
+      }
+
+      return null;
+    },
+    [orderId, sessionToken]
+  );
 
   useEffect(() => {
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
 
-    async function refresh() {
-      const data = await refreshOrder();
-      if (!data || cancelled) return;
-      setOrder(data);
-      if (shouldStopPolling(data) && pollId) {
-        clearInterval(pollId);
-        pollId = null;
+    async function refresh(initial = false) {
+      const data = await refreshOrder(initial);
+      if (cancelled) return;
+      if (data) {
+        setOrder(data);
+        if (shouldStopPolling(data) && pollId) {
+          clearInterval(pollId);
+          pollId = null;
+        }
+        return;
       }
+      if (initial) setLoading(false);
     }
 
-    refresh().finally(() => {
+    setLoading(true);
+    refresh(true).finally(() => {
       if (!cancelled) setLoading(false);
     });
 
-    pollId = setInterval(refresh, REALTIME_FALLBACK_POLL_MS);
+    pollId = setInterval(() => refresh(false), REALTIME_FALLBACK_POLL_MS);
 
     return () => {
       cancelled = true;

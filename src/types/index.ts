@@ -45,6 +45,7 @@ export type OrderWithDetails = Order & {
     amount: number | null;
     created_at: string;
   }[];
+  transferred_from_table_name?: string | null;
 };
 
 export type OrderStatus = Order["status"];

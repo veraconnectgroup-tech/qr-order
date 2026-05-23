@@ -37,6 +37,11 @@ import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badg
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import {
+  buildTransferSourceMap,
+  type TableTransferRow,
+} from "@/lib/tables/transfer-source-map";
 import type { OrderStatus, OrderWithDetails } from "@/types";
 
 const ORDER_SELECT =
@@ -210,7 +215,22 @@ export function OrderBoard() {
       return;
     }
 
-    setOrders((data as unknown as OrderWithDetails[]) ?? []);
+    const { data: transfers } = await supabase
+      .from("table_transfers")
+      .select("order_ids, from_table:from_table_id(name)")
+      .eq("location_id", locationId)
+      .gte("created_at", startOfTodayIso());
+
+    const transferMap = buildTransferSourceMap(
+      (transfers ?? []) as unknown as TableTransferRow[]
+    );
+
+    const enriched = ((data ?? []) as OrderWithDetails[]).map((order) => ({
+      ...order,
+      transferred_from_table_name: transferMap.get(order.id) ?? null,
+    }));
+
+    setOrders(enriched);
   }, [locationId]);
 
   useEffect(() => {
@@ -227,12 +247,24 @@ export function OrderBoard() {
     };
   }, [fetchOrders]);
 
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void fetchOrders();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchOrders]);
+
   const realtimeMode = usePostgresRealtime({
     channelName: `orders-realtime:${locationId}`,
     table: "orders",
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: fetchOrders,
+    backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
 
   const patchOrder = useCallback(

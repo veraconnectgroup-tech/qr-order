@@ -2,7 +2,7 @@
 
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
-import { useGuestSession } from "@/hooks/use-guest-session";
+import { useGuestSessionToken } from "@/hooks/use-guest-session-token";
 import { OrderStatusTracker } from "@/components/guest/order-status-tracker";
 
 export function OrderPageClient({
@@ -29,7 +29,17 @@ export function OrderPageClient({
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
   const { tUI } = useAppLocale();
-  const sessionToken = useGuestSession((s) => s.sessionToken);
+  const { sessionToken, hydrated } = useGuestSessionToken();
+
+  if (!hydrated) {
+    return (
+      <div className="space-y-4 px-4 py-6">
+        <div className="mx-auto h-8 w-48 animate-pulse rounded-lg bg-zinc-800" />
+        <div className="mx-auto h-12 w-24 animate-pulse rounded-lg bg-zinc-800" />
+        <div className="h-52 w-full animate-pulse rounded-xl bg-zinc-800" />
+      </div>
+    );
+  }
 
   if (!sessionToken) {
     return (

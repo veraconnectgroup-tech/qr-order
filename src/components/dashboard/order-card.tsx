@@ -280,6 +280,16 @@ export function OrderCard({
               Staff
             </span>
           )}
+          {order.transferred_from_table_name && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                light ? "text-zinc-500" : "text-zinc-500"
+              )}
+            >
+              Transferred from {order.transferred_from_table_name}
+            </span>
+          )}
         </div>
         <OrderTimer createdAt={order.created_at} />
       </div>

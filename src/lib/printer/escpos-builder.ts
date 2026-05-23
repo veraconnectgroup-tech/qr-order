@@ -1,0 +1,126 @@
+export type PaperWidth = 58 | 80;
+
+export type TextAlign = "left" | "center" | "right";
+
+const ESC = 0x1b;
+const GS = 0x1d;
+const LF = 0x0a;
+
+export function paperLineWidth(paperWidth: PaperWidth): number {
+  return paperWidth === 58 ? 32 : 48;
+}
+
+export function separatorLine(
+  paperWidth: PaperWidth,
+  char = "-"
+): string {
+  return char.repeat(paperLineWidth(paperWidth));
+}
+
+export class EscPosBuilder {
+  private chunks: Uint8Array[] = [];
+
+  private pushBytes(...bytes: number[]) {
+    this.chunks.push(Uint8Array.from(bytes));
+  }
+
+  private pushText(str: string) {
+    this.chunks.push(new TextEncoder().encode(str));
+  }
+
+  initialize() {
+    this.pushBytes(ESC, 0x40);
+    return this;
+  }
+
+  textSize(width: number, height: number) {
+    const w = Math.min(8, Math.max(1, Math.round(width)));
+    const h = Math.min(8, Math.max(1, Math.round(height)));
+    const n = (w - 1) * 16 + (h - 1);
+    this.pushBytes(GS, 0x21, n);
+    return this;
+  }
+
+  bold(on: boolean) {
+    this.pushBytes(ESC, 0x45, on ? 1 : 0);
+    return this;
+  }
+
+  align(alignment: TextAlign) {
+    const n = alignment === "center" ? 1 : alignment === "right" ? 2 : 0;
+    this.pushBytes(ESC, 0x61, n);
+    return this;
+  }
+
+  text(str: string) {
+    this.pushText(str);
+    return this;
+  }
+
+  newline(count = 1) {
+    for (let i = 0; i < count; i++) {
+      this.pushBytes(LF);
+    }
+    return this;
+  }
+
+  separator(char = "-", paperWidth: PaperWidth = 80) {
+    this.text(separatorLine(paperWidth, char));
+    this.newline();
+    return this;
+  }
+
+  cut() {
+    this.pushBytes(GS, 0x56, 0x42, 0x03);
+    return this;
+  }
+
+  openCashDrawer() {
+    this.pushBytes(ESC, 0x70, 0x00, 0x19, 0xfa);
+    return this;
+  }
+
+  build(): Uint8Array {
+    const total = this.chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of this.chunks) {
+      out.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return out;
+  }
+}
+
+export function formatAlignedLine(
+  left: string,
+  right: string,
+  paperWidth: PaperWidth
+): string {
+  const width = paperLineWidth(paperWidth);
+  const space = width - left.length - right.length;
+  if (space >= 1) {
+    return `${left}${" ".repeat(space)}${right}`;
+  }
+  return `${left} ${right}`.slice(0, width);
+}
+
+export function wrapText(text: string, paperWidth: PaperWidth): string[] {
+  const width = paperLineWidth(paperWidth);
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= width) {
+      current = next;
+      continue;
+    }
+    if (current) lines.push(current);
+    current = word.length > width ? word.slice(0, width) : word;
+  }
+
+  if (current) lines.push(current);
+  return lines.length > 0 ? lines : [""];
+}

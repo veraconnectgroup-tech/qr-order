@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
+import { useGuestSessionToken } from "@/hooks/use-guest-session-token";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -121,7 +122,7 @@ export function CheckoutForm({
 }) {
   const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
-  const sessionToken = useCart((s) => s.sessionToken);
+  const { sessionToken, hydrated: sessionHydrated } = useGuestSessionToken();
   const subtotal = useCart((s) => s.subtotal());
   const taxBreakdown = useCart((s) => s.taxBreakdown);
   const taxAmount = useCart((s) => s.taxAmount);
@@ -130,7 +131,9 @@ export function CheckoutForm({
   const router = useRouter();
   const orderPlacedRef = useRef(false);
 
-  const [hydrated, setHydrated] = useState(() => useCart.persist.hasHydrated());
+  const [hydrated, setHydrated] = useState(
+    () => sessionHydrated && useCart.persist.hasHydrated()
+  );
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,10 +151,12 @@ export function CheckoutForm({
   );
 
   useEffect(() => {
-    const unsub = useCart.persist.onFinishHydration(() => setHydrated(true));
-    setHydrated(useCart.persist.hasHydrated());
+    const unsub = useCart.persist.onFinishHydration(() => {
+      setHydrated(sessionHydrated && useCart.persist.hasHydrated());
+    });
+    setHydrated(sessionHydrated && useCart.persist.hasHydrated());
     return unsub;
-  }, []);
+  }, [sessionHydrated]);
 
   useEffect(() => {
     if (!hydrated || orderPlacedRef.current) return;

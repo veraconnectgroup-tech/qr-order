@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, Plus, RefreshCw, X } from "lucide-react";
+import { Download, Plus, RefreshCw, ArrowRightLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
@@ -12,6 +12,8 @@ import { useAppBaseUrl } from "@/hooks/use-app-base-url";
 import { guestTableUrl, isUnsafeGuestBaseUrl } from "@/lib/app-url";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
+import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import { TransferDialog } from "@/components/dashboard/transfer-dialog";
 import {
   Dialog,
   DialogContent,
@@ -84,6 +86,7 @@ export function TablesBoard() {
   const [addOpen, setAddOpen] = useState(false);
   const [zonesOpen, setZonesOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [newTable, setNewTable] = useState({ name: "", zoneId: "", seats: 4 });
   const [newZoneName, setNewZoneName] = useState("");
 
@@ -200,6 +203,7 @@ export function TablesBoard() {
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: load,
+    backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
 
   const zoneTabs = useMemo(() => {
@@ -708,6 +712,17 @@ ${qrItems
                 </div>
               </div>
 
+              {selected.activeOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTransferOpen(true)}
+                  className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-zinc-700"
+                >
+                  <ArrowRightLeft className="size-4" />
+                  Transfer
+                </button>
+              )}
+
               {selected.session && (
                 <button
                   type="button"
@@ -721,6 +736,21 @@ ${qrItems
           </>
         )}
       </AnimatePresence>
+
+      {selected && (
+        <TransferDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          fromTable={selected}
+          activeOrders={selected.activeOrders}
+          allTables={tables}
+          currency={currency}
+          onSuccess={() => {
+            setSelected(null);
+            load();
+          }}
+        />
+      )}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">

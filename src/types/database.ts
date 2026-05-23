@@ -108,8 +108,25 @@ type Tables = {
     schedule_end: string | null;
     schedule_days: number[];
     menu_section: string;
+    printer_target: "kitchen" | "bar" | "receipt";
     created_at: string;
     deleted_at: string | null;
+  };
+  printer_configs: {
+    id: string;
+    location_id: string;
+    name: string;
+    type: "usb" | "lan";
+    ip_address: string | null;
+    port: number;
+    usb_vendor: string | null;
+    usb_product: string | null;
+    paper_width: number;
+    is_default: boolean;
+    auto_print: boolean;
+    print_for: ("kitchen" | "receipt" | "bar")[];
+    created_at: string;
+    updated_at: string;
   };
   products: {
     id: string;
@@ -322,6 +339,19 @@ type Tables = {
     location_id: string;
     rating: number;
     comment: string | null;
+    created_at: string;
+  };
+  table_transfers: {
+    id: string;
+    location_id: string;
+    from_table_id: string;
+    to_table_id: string;
+    from_session_id: string | null;
+    to_session_id: string | null;
+    transferred_by: string;
+    transfer_type: "full" | "partial";
+    order_ids: string[];
+    note: string | null;
     created_at: string;
   };
   ai_credits: {
