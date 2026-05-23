@@ -1,23 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Printer } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
-import { printKitchenOrder } from "@/lib/printer/print-kitchen-order";
-import { printKitchenTicket } from "@/lib/kitchen/print-ticket";
+import { printReceiptOrder } from "@/lib/printer/print-receipt-order";
 import type { OrderWithDetails } from "@/types";
 import { cn } from "@/lib/utils";
 
-export function KitchenPrintButton({
+export function ReceiptPrintButton({
   order,
   orgName,
+  currency,
   className,
-  label = "Print",
+  label = "Print Receipt",
+  light = false,
 }: {
   order: OrderWithDetails;
   orgName: string;
+  currency: string;
   className?: string;
   label?: string;
+  light?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -26,9 +29,7 @@ export function KitchenPrintButton({
     setBusy(true);
     try {
       const setup = await loadPrinterSetup();
-      await printKitchenOrder(order, orgName, setup);
-    } catch {
-      printKitchenTicket(order, orgName);
+      await printReceiptOrder(order, orgName, currency, setup);
     } finally {
       setBusy(false);
     }
@@ -40,11 +41,14 @@ export function KitchenPrintButton({
       disabled={busy}
       onClick={() => void handlePrint()}
       className={cn(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-600 px-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation disabled:opacity-50",
+        "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition disabled:opacity-50 touch-manipulation",
+        light
+          ? "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+          : "border-zinc-700 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800",
         className
       )}
     >
-      <Printer className="size-4" />
+      <Receipt className="size-3.5" />
       {busy ? "Printing…" : label}
     </button>
   );

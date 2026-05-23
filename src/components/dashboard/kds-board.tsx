@@ -27,7 +27,8 @@ import {
   setKdsSoundEnabled,
   playNewOrderSound,
 } from "@/lib/audio/notification-sound";
-import { printKitchenTicket } from "@/lib/kitchen/print-ticket";
+import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
+import { printKitchenOrder } from "@/lib/printer/print-kitchen-order";
 import {
   kdsActionLabel,
   nextKdsStatus,
@@ -264,9 +265,12 @@ export function KdsBoard() {
     if (newOrders.length > 0) {
       playNewOrderSound();
       if (isKdsAutoPrintEnabled()) {
-        for (const order of newOrders) {
-          printKitchenTicket(order, orgName);
-        }
+        void (async () => {
+          const setup = await loadPrinterSetup();
+          for (const order of newOrders) {
+            await printKitchenOrder(order, orgName, setup, { silent: true });
+          }
+        })();
       }
     }
 

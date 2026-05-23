@@ -1,6 +1,8 @@
-import { NextRequest } from "next/server";
+
 import { z } from "zod";
+import { safeJsonParse } from "@/lib/api/safe-json";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zUuid } from "@/lib/security/zod-fields";
 import { validatePromoCode, type PromoCodeRow } from "@/lib/promo/validate-promo";
@@ -12,45 +14,52 @@ const bodySchema = z.object({
   orderAmount: z.number().min(0),
 });
 
-export async function POST(req: NextRequest) {
-  const limited = await withRateLimit(req, "orders");
-  if (limited) return limited;
+export const POST = withErrorHandler(
+  "promo-validate-post",
+  async (req, _ctx) => {
+    const limited = await withRateLimit(req, "orders");
+    if (limited) return limited;
 
-  const body = await req.json();
-  const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) {
-    return apiError("Invalid input.", 400);
-  }
+    const body = await safeJsonParse(req);
+    if (!body) {
+      return apiError("Invalid JSON.", 400);
+    }
 
-  const { code, locationId, orderAmount } = parsed.data;
-  const admin = createAdminClient();
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) {
+      return apiError("Invalid input.", 400);
+    }
 
-  const { data: promo } = await admin
-    .from("promo_codes")
-    .select("*")
-    .eq("location_id", locationId)
-    .ilike("code", code)
-    .maybeSingle();
+    const { code, locationId, orderAmount } = parsed.data;
+    const admin = createAdminClient();
 
-  const result = validatePromoCode(
-    promo as PromoCodeRow | null,
-    orderAmount
-  );
+    const { data: promo } = await admin
+      .from("promo_codes")
+      .select("*")
+      .eq("location_id", locationId)
+      .ilike("code", code)
+      .maybeSingle();
 
-  if (!result.valid) {
+    const result = validatePromoCode(
+      promo as PromoCodeRow | null,
+      orderAmount
+    );
+
+    if (!result.valid) {
+      return apiSuccess({
+        valid: false,
+        error: result.error,
+        minOrderAmount: result.minOrderAmount,
+      });
+    }
+
     return apiSuccess({
-      valid: false,
-      error: result.error,
-      minOrderAmount: result.minOrderAmount,
+      valid: true,
+      promoCodeId: result.promoCodeId,
+      code: result.code,
+      discountType: result.discountType,
+      discountValue: result.discountValue,
+      discountAmount: result.discountAmount,
     });
   }
-
-  return apiSuccess({
-    valid: true,
-    promoCodeId: result.promoCodeId,
-    code: result.code,
-    discountType: result.discountType,
-    discountValue: result.discountValue,
-    discountAmount: result.discountAmount,
-  });
-}
+);

@@ -3,6 +3,68 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+function isUniqueViolation(error: { code?: string; message?: string }) {
+  return (
+    error.code === "23505" ||
+    /duplicate key/i.test(error.message ?? "")
+  );
+}
+
+async function resolveActiveSession(
+  admin: AdminClient,
+  tableId: string,
+  cutoff: string
+) {
+  const { data: existing } = await admin
+    .from("table_sessions")
+    .select("id, session_token")
+    .eq("table_id", tableId)
+    .eq("status", "active")
+    .gte("opened_at", cutoff)
+    .order("opened_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!existing) return null;
+
+  const row = existing as { id: string; session_token: string };
+  return { sessionId: row.id, sessionToken: row.session_token };
+}
+
+async function dedupeActiveSessions(admin: AdminClient, tableId: string) {
+  const now = new Date().toISOString();
+  const { data: allActive } = await admin
+    .from("table_sessions")
+    .select("id, session_token, opened_at")
+    .eq("table_id", tableId)
+    .eq("status", "active")
+    .order("opened_at", { ascending: true });
+
+  if (!allActive || allActive.length <= 1) {
+    return null;
+  }
+
+  const rows = allActive as Array<{
+    id: string;
+    session_token: string;
+    opened_at: string;
+  }>;
+  const oldest = rows[0];
+  const duplicates = rows.slice(1);
+
+  for (const dup of duplicates) {
+    await admin
+      .from("table_sessions")
+      .update({ status: "closed", closed_at: now })
+      .eq("id", dup.id);
+  }
+
+  return {
+    sessionId: oldest.id,
+    sessionToken: oldest.session_token,
+  };
+}
+
 export async function findOrCreateTableSession(
   admin: AdminClient,
   tableId: string,
@@ -14,20 +76,8 @@ export async function findOrCreateTableSession(
   const maxAge = SESSION_MAX_AGE_HOURS * 60 * 60 * 1000;
   const cutoff = new Date(Date.now() - maxAge).toISOString();
 
-  const { data: existing } = await admin
-    .from("table_sessions")
-    .select("id, session_token")
-    .eq("table_id", tableId)
-    .eq("status", "active")
-    .gte("opened_at", cutoff)
-    .order("opened_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existing) {
-    const row = existing as { id: string; session_token: string };
-    return { sessionId: row.id, sessionToken: row.session_token };
-  }
+  const existing = await resolveActiveSession(admin, tableId, cutoff);
+  if (existing) return existing;
 
   await admin
     .from("table_sessions")
@@ -44,9 +94,20 @@ export async function findOrCreateTableSession(
     .select("id, session_token")
     .single();
 
-  if (error || !session) {
+  if (error) {
+    if (isUniqueViolation(error)) {
+      const raced = await resolveActiveSession(admin, tableId, cutoff);
+      if (raced) return raced;
+    }
     return { error: "Session could not be created.", status: 500 };
   }
+
+  if (!session) {
+    return { error: "Session could not be created.", status: 500 };
+  }
+
+  const deduped = await dedupeActiveSessions(admin, tableId);
+  if (deduped) return deduped;
 
   const sessionRow = session as { id: string; session_token: string };
   return {

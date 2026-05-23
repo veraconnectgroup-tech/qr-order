@@ -1,11 +1,10 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import {
   getDemoGuestSession,
   isDemoGuestTableToken,
 } from "@/lib/demo-guest";
-import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zTableToken } from "@/lib/security/zod-fields";
 import { findOrCreateTableSession } from "@/lib/sessions/find-or-create-table-session";
@@ -15,15 +14,13 @@ const schema = z.object({
   tableToken: zTableToken(),
 });
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
-  try {
+export const POST = withErrorHandler(
+  "tables-token-session-post",
+  async (req, ctx) => {
     const limited = await withRateLimit(req, "sessions");
     if (limited) return limited;
 
-    const { token } = await params;
+    const { token } = await ctx.params;
     const tokenParsed = zTableToken().safeParse(token);
     if (!tokenParsed.success) {
       return apiError("Invalid request.", 400);
@@ -77,10 +74,5 @@ export async function POST(
       tableName: tableRow.name,
       locationId: tableRow.location_id,
     });
-  } catch (error) {
-    logger.error("Session API error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Internal server error.", 500);
   }
-}
+);

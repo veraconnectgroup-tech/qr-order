@@ -1,7 +1,6 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { logger } from "@/lib/logger";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zEmailNormalized, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,8 +10,9 @@ const schema = z.object({
   guestEmail: zEmailNormalized(),
 });
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(
+  "sessions-guest-email-post",
+  async (req, _ctx) => {
     const limited = await withRateLimit(req, "sessions");
     if (limited) return limited;
 
@@ -47,10 +47,5 @@ export async function POST(req: NextRequest) {
     }
 
     return apiSuccess({ ok: true });
-  } catch (error) {
-    logger.error("Guest email save error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Internal error.", 500);
   }
-}
+);

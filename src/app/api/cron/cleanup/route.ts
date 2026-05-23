@@ -1,12 +1,12 @@
-import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const STALE_SESSION_HOURS = 8;
 const WEBHOOK_RETENTION_DAYS = 30;
 
-export async function GET(req: NextRequest) {
+export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
 
@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
     return apiError("Session cleanup failed", 500);
   }
 
-  const staleIds = (staleSessions ?? []).map((row) => (row as { id: string }).id);
+  const staleIds = (staleSessions ?? []).map(
+    (row) => (row as { id: string }).id
+  );
   let sessionsClosed = 0;
 
   if (staleIds.length > 0) {
@@ -80,4 +82,4 @@ export async function GET(req: NextRequest) {
     sessionsClosed,
     webhookEventsPurgedBefore: webhookCutoff,
   });
-}
+});

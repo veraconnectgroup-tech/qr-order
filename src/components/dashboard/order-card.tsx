@@ -9,6 +9,8 @@ import { paymentMethodLabel } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
+import { KitchenPrintButton } from "@/components/dashboard/kitchen-print-button";
+import { ReceiptPrintButton } from "@/components/dashboard/receipt-print-button";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -129,6 +131,7 @@ function OrderTimer({ createdAt }: { createdAt: string }) {
 export function OrderCard({
   order,
   currency,
+  orgName,
   busy,
   onAccept,
   onReject,
@@ -144,6 +147,7 @@ export function OrderCard({
 }: {
   order: OrderWithDetails;
   currency: string;
+  orgName?: string;
   busy: boolean;
   onAccept: () => void;
   onReject: () => void;
@@ -228,6 +232,14 @@ export function OrderCard({
         >
           {formatOrderClockTime(timeIso)}
         </span>
+        {orgName && paid && (
+          <ReceiptPrintButton
+            order={order}
+            orgName={orgName}
+            currency={currency}
+            light={light}
+          />
+        )}
       </motion.article>
     );
   }
@@ -349,6 +361,21 @@ export function OrderCard({
           light={light}
         />
       </div>
+
+      {orgName && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <KitchenPrintButton order={order} orgName={orgName} className="flex-1" />
+          {paid && (
+            <ReceiptPrintButton
+              order={order}
+              orgName={orgName}
+              currency={currency}
+              light={light}
+              className="flex-1"
+            />
+          )}
+        </div>
+      )}
 
       {columnId === "new" && (
         <div className="mt-3 flex gap-2">

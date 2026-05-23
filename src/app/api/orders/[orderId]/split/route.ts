@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
@@ -178,15 +178,14 @@ async function createSplitPaymentIntent(
   return { intent, clientSecret: intent.client_secret };
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
+export const GET = withErrorHandler(
+  "orders-orderId-split-get",
+  async (req, routeCtx) => {
   const cacheHeaders = noCache();
   const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
-  const { orderId } = await params;
+  const { orderId } = await routeCtx.params;
   if (!isUuid(orderId)) {
     return apiError("Invalid order id.", 400, undefined, cacheHeaders);
   }
@@ -253,16 +252,15 @@ export async function GET(
     200,
     cacheHeaders
   );
-}
+});
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
+export const POST = withErrorHandler(
+  "orders-orderId-split-post",
+  async (req, routeCtx) => {
   const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
-  const { orderId } = await params;
+  const { orderId } = await routeCtx.params;
   if (!isUuid(orderId)) {
     return apiError("Invalid order id.", 400);
   }
@@ -473,4 +471,4 @@ export async function POST(
       total: allSplits.length,
     },
   });
-}
+});

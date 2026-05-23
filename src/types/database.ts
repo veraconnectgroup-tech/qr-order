@@ -286,6 +286,7 @@ type Tables = {
     event_type: string;
     processed_at: string;
     payload: Json | null;
+    status: "processing" | "completed" | "failed";
   };
   audit_log: {
     id: string;

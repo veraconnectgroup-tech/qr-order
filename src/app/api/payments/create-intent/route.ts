@@ -1,7 +1,6 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { logger } from "@/lib/logger";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
@@ -14,8 +13,9 @@ const schema = z.object({
   sessionToken: zSessionToken(),
 });
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(
+  "payments-create-intent-post",
+  async (req, _ctx) => {
     const limited = await withRateLimit(req, "payments");
     if (limited) return limited;
 
@@ -159,10 +159,5 @@ export async function POST(req: NextRequest) {
       clientSecret: paymentIntent.client_secret,
       stripeAccountId: org.stripe_account_id,
     });
-  } catch (error) {
-    logger.error("Payment intent error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Payment could not be started.", 500);
   }
-}
+);

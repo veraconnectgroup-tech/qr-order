@@ -1,9 +1,8 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getServerAppUrl } from "@/lib/app-url";
 import { getCurrentStaff } from "@/lib/auth/session";
-import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,8 +20,9 @@ async function requirePurchaseStaff() {
   return staff;
 }
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(
+  "ai-purchase-post",
+  async (req, _ctx) => {
     const limited = await withRateLimit(req, "payments");
     if (limited) return limited;
 
@@ -85,11 +85,17 @@ export async function POST(req: NextRequest) {
         {
           quantity: 1,
           price_data: {
-            currency: (packageRow.currency || orgRow.currency || "EUR").toLowerCase(),
+            currency: (
+              packageRow.currency ||
+              orgRow.currency ||
+              "EUR"
+            ).toLowerCase(),
             unit_amount: packageRow.price_cents,
             product_data: {
               name: `AI Concierge — ${packageRow.name}`,
-              description: `${packageRow.credits.toLocaleString("de-DE")} Kredite für ${orgRow.name}`,
+              description: `${packageRow.credits.toLocaleString(
+                "de-DE"
+              )} Kredite für ${orgRow.name}`,
             },
           },
         },
@@ -101,10 +107,5 @@ export async function POST(req: NextRequest) {
     }
 
     return apiSuccess({ url: session.url });
-  } catch (error) {
-    logger.error("AI purchase checkout error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Checkout could not be started.", 500);
   }
-}
+);

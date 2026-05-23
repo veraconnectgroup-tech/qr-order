@@ -553,6 +553,9 @@ export function MenuEditor() {
   const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
   const [newCategorySection, setNewCategorySection] =
     useState<MenuSection>("food");
+  const [newCategoryPrinterTarget, setNewCategoryPrinterTarget] = useState<
+    "kitchen" | "bar"
+  >("kitchen");
   const [categorySchedule, setCategorySchedule] =
     useState<CategoryScheduleFormState>(() => defaultCategoryScheduleState());
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -647,6 +650,7 @@ export function MenuEditor() {
     setNewCategoryName("");
     setNewCategoryNameEn("");
     setNewCategorySection("food");
+    setNewCategoryPrinterTarget("kitchen");
     setCategorySchedule(defaultCategoryScheduleState());
     setCategoryDialogOpen(true);
   }
@@ -656,6 +660,9 @@ export function MenuEditor() {
     setNewCategoryName(category.name);
     setNewCategoryNameEn(category.name_en ?? "");
     setNewCategorySection((category.menu_section as MenuSection) ?? "food");
+    setNewCategoryPrinterTarget(
+      category.printer_target === "bar" ? "bar" : "kitchen"
+    );
     setCategorySchedule(categoryScheduleFromRow(category));
     setCategoryDialogOpen(true);
   }
@@ -688,6 +695,7 @@ export function MenuEditor() {
         ? sanitizeText(newCategoryNameEn, 200)
         : null,
       menu_section: newCategorySection,
+      printer_target: newCategoryPrinterTarget,
       ...schedulePayload(categorySchedule),
     };
 
@@ -1033,6 +1041,19 @@ export function MenuEditor() {
                   {MENU_SECTION_LABELS[section]}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="block space-y-1.5 pb-2">
+            <span className="text-sm text-zinc-400">Printer</span>
+            <select
+              value={newCategoryPrinterTarget}
+              onChange={(e) =>
+                setNewCategoryPrinterTarget(e.target.value as "kitchen" | "bar")
+              }
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+            >
+              <option value="kitchen">Kitchen</option>
+              <option value="bar">Bar</option>
             </select>
           </label>
           <CategoryScheduleFields

@@ -1,8 +1,9 @@
-import { NextRequest } from "next/server";
+export const maxDuration = 15;
+
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
-import { logger } from "@/lib/logger";
 import { verifyQStashSignature } from "@/lib/queue/verify";
 import { withRateLimit } from "@/lib/rate-limit";
 
@@ -10,8 +11,9 @@ const bodySchema = z.object({
   orderId: z.string().uuid(),
 });
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(
+  "jobs-send-receipt-post",
+  async (req, _ctx) => {
     const limited = await withRateLimit(req, "jobs");
     if (limited) return limited;
 
@@ -28,10 +30,5 @@ export async function POST(req: NextRequest) {
     await maybeSendOrderReceipt(parsed.data.orderId);
 
     return apiSuccess({ ok: true });
-  } catch (error) {
-    logger.error("Send receipt job failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Job failed.", 500);
   }
-}
+);

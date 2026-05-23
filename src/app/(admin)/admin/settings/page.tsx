@@ -7,6 +7,7 @@ import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
+import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel";
 import type { AiCreditPackage } from "@/types";
 
 export default async function AdminSettingsPage() {
@@ -124,6 +125,8 @@ export default async function AdminSettingsPage() {
                 canEdit
               />
             </Suspense>
+
+            <PrinterSettingsPanel />
           </>
         )}
 

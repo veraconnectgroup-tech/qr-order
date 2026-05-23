@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { noCache } from "@/lib/cache/headers";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zUuid } from "@/lib/security/zod-fields";
@@ -25,7 +25,7 @@ const querySchema = z.object({
     .pipe(z.array(zUuid())),
 });
 
-export async function GET(req: NextRequest) {
+export const GET = withErrorHandler("upsell-suggestions-get", async (req, _ctx) => {
   const cacheHeaders = noCache();
   const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
@@ -41,11 +41,7 @@ export async function GET(req: NextRequest) {
 
   const { locationId, productIds } = parsed.data;
   const categoryIds = await resolveCartCategoryIds(locationId, productIds);
-  const suggestions = await getSuggestions(
-    locationId,
-    productIds,
-    categoryIds
-  );
+  const suggestions = await getSuggestions(locationId, productIds, categoryIds);
 
   return apiSuccess({ suggestions }, 200, cacheHeaders);
-}
+});

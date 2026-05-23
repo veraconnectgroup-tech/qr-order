@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
 import { notifyLocationPush } from "@/lib/push/notify-location";
@@ -13,7 +13,7 @@ const notifySchema = z.object({
   url: z.string().url().max(2048).optional(),
 });
 
-export async function POST(req: NextRequest) {
+export const POST = withErrorHandler("push-notify-post", async (req, _ctx) => {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
 
@@ -22,7 +22,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (!isPushConfigured()) {
-    return apiError("Push notifications are not configured.", 503, undefined, noCache());
+    return apiError(
+      "Push notifications are not configured.",
+      503,
+      undefined,
+      noCache()
+    );
   }
 
   const body = await req.json().catch(() => null);
@@ -33,24 +38,16 @@ export async function POST(req: NextRequest) {
 
   const { locationId, title, body: messageBody, url } = parsed.data;
 
-  try {
-    const result = await notifyLocationPush(locationId, {
-      title,
-      body: messageBody,
-      url,
-    });
+  const result = await notifyLocationPush(locationId, {
+    title,
+    body: messageBody,
+    url,
+  });
 
-    logger.info("Push notifications sent", {
-      locationId,
-      ...result,
-    });
+  logger.info("Push notifications sent", {
+    locationId,
+    ...result,
+  });
 
-    return apiSuccess(result, 200, noCache());
-  } catch (error) {
-    logger.error("Push notify failed", {
-      locationId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Push notify failed.", 500, undefined, noCache());
-  }
-}
+  return apiSuccess(result, 200, noCache());
+});

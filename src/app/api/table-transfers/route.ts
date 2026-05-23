@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff, getStaffLocationId } from "@/lib/auth/session";
-import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zOrderNotesOptional, zUuid } from "@/lib/security/zod-fields";
 import { transferOrders } from "@/lib/tables/transfer-orders";
@@ -14,8 +14,9 @@ const transferSchema = z.object({
   note: zOrderNotesOptional(),
 });
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(
+  "table-transfers-post",
+  async (req, _ctx) => {
     const limited = await withRateLimit(req, "default");
     if (limited) return limited;
 
@@ -58,10 +59,5 @@ export async function POST(req: NextRequest) {
       transferred: result.data.transferred,
       to_table_name: result.data.toTableName,
     });
-  } catch (error) {
-    logger.error("Table transfer error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Transfer could not be completed.", 500);
   }
-}
+);

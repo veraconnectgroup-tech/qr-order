@@ -5,6 +5,14 @@ import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
+const PROCESSING_STALE_MS = 30_000;
+
+type WebhookEventRow = {
+  id: string;
+  status: string;
+  processed_at: string;
+};
+
 function isDuplicateError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const record = error as { code?: string; message?: string };
@@ -14,18 +22,54 @@ function isDuplicateError(error: unknown): boolean {
   );
 }
 
-async function deleteWebhookEvent(
+function isProcessingStale(processedAt: string) {
+  return Date.now() - new Date(processedAt).getTime() >= PROCESSING_STALE_MS;
+}
+
+async function markWebhookStatus(
   admin: ReturnType<typeof createAdminClient>,
-  eventId: string
+  eventId: string,
+  status: "processing" | "completed" | "failed"
 ) {
-  const { error } = await admin.from("webhook_events").delete().eq("id", eventId);
+  const { error } = await admin
+    .from("webhook_events")
+    .update({ status, processed_at: new Date().toISOString() })
+    .eq("id", eventId);
 
   if (error) {
-    logger.warn("Failed to delete webhook event after processing error", {
+    logger.warn("Failed to update webhook event status", {
       eventId,
+      status,
       error: error.message,
     });
   }
+}
+
+function shouldSkipExistingWebhook(existing: WebhookEventRow, event: Stripe.Event) {
+  if (existing.status === "completed") {
+    logger.info("Duplicate webhook skipped", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+    return true;
+  }
+
+  if (existing.status === "processing" && !isProcessingStale(existing.processed_at)) {
+    logger.info("Webhook still processing, skipped", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+    return true;
+  }
+
+  if (existing.status === "processing") {
+    logger.warn("Stale processing webhook, retrying", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+  }
+
+  return false;
 }
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
@@ -33,40 +77,42 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
 
   const { data: existing } = await admin
     .from("webhook_events")
-    .select("id")
+    .select("id, status, processed_at")
     .eq("id", event.id)
     .maybeSingle();
 
-  if (existing) {
-    logger.info("Duplicate webhook skipped", {
-      eventId: event.id,
-      eventType: event.type,
-    });
+  if (existing && shouldSkipExistingWebhook(existing as WebhookEventRow, event)) {
     return;
   }
 
   try {
-    const { error: insertError } = await admin.from("webhook_events").insert({
-      id: event.id,
-      event_type: event.type,
-      payload: event as unknown as Json,
-    });
+    if (existing) {
+      await markWebhookStatus(admin, event.id, "processing");
+    } else {
+      const { error: insertError } = await admin.from("webhook_events").insert({
+        id: event.id,
+        event_type: event.type,
+        payload: event as unknown as Json,
+        status: "processing",
+      });
 
-    if (insertError) {
-      if (isDuplicateError(insertError)) {
-        logger.info("Duplicate webhook skipped", {
-          eventId: event.id,
-          eventType: event.type,
-        });
-        return;
+      if (insertError) {
+        if (isDuplicateError(insertError)) {
+          logger.info("Duplicate webhook skipped", {
+            eventId: event.id,
+            eventType: event.type,
+          });
+          return;
+        }
+        throw insertError;
       }
-      throw insertError;
     }
 
     await processStripeWebhookEvent(admin, event);
+    await markWebhookStatus(admin, event.id, "completed");
   } catch (err) {
     if (!isDuplicateError(err)) {
-      await deleteWebhookEvent(admin, event.id);
+      await markWebhookStatus(admin, event.id, "failed");
     }
     throw err;
   }

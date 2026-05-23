@@ -1,7 +1,9 @@
-import { NextRequest } from "next/server";
+export const maxDuration = 15;
+
+
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { logger } from "@/lib/logger";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
 import { withRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
@@ -53,15 +55,13 @@ async function loadPaymentOptions(locationId: string) {
   });
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
-  try {
+export const POST = withErrorHandler(
+  "orders-orderId-checkout-post",
+  async (req, ctx) => {
     const limited = await withRateLimit(req, "orders");
     if (limited) return limited;
 
-    const { orderId } = await params;
+    const { orderId } = await ctx.params;
 
     if (!isUuid(orderId)) {
       return apiError("Invalid order id.", 400);
@@ -135,95 +135,120 @@ export async function POST(
       return apiSuccess({ ok: true, paymentMethod });
     }
 
-    if (orderRow.stripe_payment_intent_id) {
-      const stripe = getStripe();
-      const existing = await stripe.paymentIntents.retrieve(
-        orderRow.stripe_payment_intent_id
-      );
-      if (existing.client_secret) {
-        const { data: location } = await admin
-          .from("locations")
-          .select("org_id")
-          .eq("id", orderRow.location_id)
-          .single();
-        const { data: orgData } = await admin
-          .from("organizations")
-          .select("stripe_account_id")
-          .eq("id", (location as { org_id: string }).org_id)
-          .single();
-
-        return apiSuccess({
-          clientSecret: existing.client_secret,
-          stripeAccountId: (orgData as { stripe_account_id: string })
-            .stripe_account_id,
-        });
-      }
-    }
-
-    const { data: location } = await admin
-      .from("locations")
-      .select("org_id")
-      .eq("id", orderRow.location_id)
-      .single();
-
-    const { data: orgData } = await admin
-      .from("organizations")
-      .select(
-        "stripe_account_id, platform_fee_percent, platform_fee_fixed, currency, stripe_onboarded"
-      )
-      .eq("id", (location as { org_id: string }).org_id)
-      .single();
-
-    const org = orgData as {
-      stripe_account_id: string | null;
-      platform_fee_percent: number;
-      platform_fee_fixed: number;
-      currency: string;
-      stripe_onboarded: boolean;
-    };
-
-    if (!org.stripe_onboarded || !org.stripe_account_id) {
-      return apiError("Online payments are not available.", 400);
-    }
-
-    const stripe = getStripe();
-    const amountCents = Math.round(Number(orderRow.total) * 100);
-    const applicationFee = calcPlatformFee(Number(orderRow.total), {
-      feePercent: org.platform_fee_percent,
-      feeFixed: org.platform_fee_fixed,
-    });
-
-    const intent = await stripe.paymentIntents.create(
-      {
-        amount: amountCents,
-        currency: (org.currency ?? "eur").toLowerCase(),
-        automatic_payment_methods: { enabled: true },
-        application_fee_amount: applicationFee,
-        metadata: { order_id: orderId },
-      },
-      { stripeAccount: org.stripe_account_id }
-    );
-
-    await admin
+    const { data: locked, error: lockErr } = await admin
       .from("orders")
-      .update({
-        stripe_payment_intent_id: intent.id,
-        payment_status: "processing",
-      })
-      .eq("id", orderId);
+      .update({ payment_status: "processing" })
+      .eq("id", orderId)
+      .eq("payment_status", "pending")
+      .select("id");
 
-    if (!intent.client_secret) {
-      return apiError("Payment could not be started.", 500);
+    if (lockErr) {
+      return apiError(lockErr.message, 500);
     }
 
-    return apiSuccess({
-      clientSecret: intent.client_secret,
-      stripeAccountId: org.stripe_account_id,
-    });
-  } catch (error) {
-    logger.error("Order checkout error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Payment could not be started.", 500);
+    if (!locked || locked.length === 0) {
+      return apiError("Payment already in progress.", 409);
+    }
+
+    async function revertPaymentLock() {
+      await admin
+        .from("orders")
+        .update({ payment_status: "pending" })
+        .eq("id", orderId)
+        .eq("payment_status", "processing");
+    }
+
+    try {
+      if (orderRow.stripe_payment_intent_id) {
+        const stripe = getStripe();
+        const existing = await stripe.paymentIntents.retrieve(
+          orderRow.stripe_payment_intent_id
+        );
+        if (existing.client_secret) {
+          const { data: location } = await admin
+            .from("locations")
+            .select("org_id")
+            .eq("id", orderRow.location_id)
+            .single();
+          const { data: orgData } = await admin
+            .from("organizations")
+            .select("stripe_account_id")
+            .eq("id", (location as { org_id: string }).org_id)
+            .single();
+
+          return apiSuccess({
+            clientSecret: existing.client_secret,
+            stripeAccountId: (orgData as { stripe_account_id: string })
+              .stripe_account_id,
+          });
+        }
+      }
+
+      const { data: location } = await admin
+        .from("locations")
+        .select("org_id")
+        .eq("id", orderRow.location_id)
+        .single();
+
+      const { data: orgData } = await admin
+        .from("organizations")
+        .select(
+          "stripe_account_id, platform_fee_percent, platform_fee_fixed, currency, stripe_onboarded"
+        )
+        .eq("id", (location as { org_id: string }).org_id)
+        .single();
+
+      const org = orgData as {
+        stripe_account_id: string | null;
+        platform_fee_percent: number;
+        platform_fee_fixed: number;
+        currency: string;
+        stripe_onboarded: boolean;
+      };
+
+      if (!org.stripe_onboarded || !org.stripe_account_id) {
+        await revertPaymentLock();
+        return apiError("Online payments are not available.", 400);
+      }
+
+      const stripe = getStripe();
+      const amountCents = Math.round(Number(orderRow.total) * 100);
+      const applicationFee = calcPlatformFee(Number(orderRow.total), {
+        feePercent: org.platform_fee_percent,
+        feeFixed: org.platform_fee_fixed,
+      });
+
+      const intent = await stripe.paymentIntents.create(
+        {
+          amount: amountCents,
+          currency: (org.currency ?? "eur").toLowerCase(),
+          automatic_payment_methods: { enabled: true },
+          application_fee_amount: applicationFee,
+          metadata: { order_id: orderId },
+        },
+        { stripeAccount: org.stripe_account_id }
+      );
+
+      if (!intent.client_secret) {
+        await revertPaymentLock();
+        return apiError("Payment could not be started.", 500);
+      }
+
+      await admin
+        .from("orders")
+        .update({
+          stripe_payment_intent_id: intent.id,
+          payment_status: "processing",
+        })
+        .eq("id", orderId);
+
+      return apiSuccess({
+        clientSecret: intent.client_secret,
+        stripeAccountId: org.stripe_account_id,
+      });
+    } catch (stripeError) {
+      await revertPaymentLock();
+      throw stripeError;
+    }
   }
-}
+);

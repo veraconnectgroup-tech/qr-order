@@ -1,8 +1,9 @@
-import { NextRequest } from "next/server";
+export const maxDuration = 15;
+
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff } from "@/lib/auth/session";
-import { logger } from "@/lib/logger";
 import { processRefund } from "@/lib/stripe/refund";
 import { withRateLimit } from "@/lib/rate-limit";
 import { sanitizeOrderNotes } from "@/lib/security/sanitize";
@@ -27,11 +28,9 @@ async function requireRefundStaff() {
   return staff;
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
-  try {
+export const POST = withErrorHandler(
+  "orders-orderId-refund-post",
+  async (req, ctx) => {
     const limited = await withRateLimit(req, "payments");
     if (limited) return limited;
 
@@ -40,7 +39,7 @@ export async function POST(
       return apiError("Unauthorized.", 401);
     }
 
-    const { orderId } = await params;
+    const { orderId } = await ctx.params;
     if (!isUuid(orderId)) {
       return apiError("Invalid order id.", 400);
     }
@@ -109,10 +108,5 @@ export async function POST(
           ? "refunded"
           : "partial_refund",
     });
-  } catch (error) {
-    logger.error("Refund error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Refund could not be processed.", 500);
   }
-}
+);

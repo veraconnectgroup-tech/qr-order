@@ -19,6 +19,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
+import { useReceiptAutoPrint } from "@/hooks/use-receipt-auto-print";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import {
@@ -101,6 +102,7 @@ function DroppableColumn({
 function DraggableOrderCard({
   order,
   currency,
+  orgName,
   busy,
   onAccept,
   onReject,
@@ -113,6 +115,7 @@ function DraggableOrderCard({
 }: {
   order: OrderWithDetails;
   currency: string;
+  orgName: string;
   busy: boolean;
   onAccept: () => void;
   onReject: () => void;
@@ -135,6 +138,7 @@ function DraggableOrderCard({
       <OrderCard
         order={order}
         currency={currency}
+        orgName={orgName}
         busy={busy}
         onAccept={onAccept}
         onReject={onReject}
@@ -166,6 +170,7 @@ function ColumnSkeleton() {
 export function OrderBoard() {
   const {
     locationId,
+    orgName,
     currency,
     stripeOnboarded,
     hasTables,
@@ -191,6 +196,8 @@ export function OrderBoard() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
+
+  useReceiptAutoPrint({ orders, orgName, currency });
 
   const fetchOrders = useCallback(async () => {
     const supabase = createClient();
@@ -431,6 +438,7 @@ export function OrderBoard() {
           key={order.id}
           order={order}
           currency={currency}
+          orgName={orgName}
           inPersonPaymentLocation={inPersonPaymentLocation}
           {...handlers}
         />
@@ -442,6 +450,7 @@ export function OrderBoard() {
         key={order.id}
         order={order}
         currency={currency}
+        orgName={orgName}
         inPersonPaymentLocation={inPersonPaymentLocation}
         {...handlers}
       />
@@ -619,6 +628,7 @@ export function OrderBoard() {
               <OrderCard
                 order={activeOrder}
                 currency={currency}
+                orgName={orgName}
                 busy={false}
                 inPersonPaymentLocation={inPersonPaymentLocation}
                 onAccept={() => {}}

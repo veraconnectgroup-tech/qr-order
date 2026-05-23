@@ -1,5 +1,7 @@
-import { NextRequest } from "next/server";
+
 import { z } from "zod";
+import { safeJsonParse } from "@/lib/api/safe-json";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
@@ -15,83 +17,86 @@ function parseSessionToken(value: string | null) {
   return zSessionToken().safeParse(value ?? "");
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
-  const cacheHeaders = noCache();
-  const limited = await withRateLimit(req, "orders");
-  if (limited) return limited;
+export const GET = withErrorHandler(
+  "orders-orderId-get",
+  async (req, ctx) => {
+    const cacheHeaders = noCache();
+    const limited = await withRateLimit(req, "orders");
+    if (limited) return limited;
 
-  const { orderId } = await params;
+    const { orderId } = await ctx.params;
 
-  if (!isUuid(orderId)) {
-    return apiError("Invalid order id.", 400, undefined, cacheHeaders);
-  }
+    if (!isUuid(orderId)) {
+      return apiError("Invalid order id.", 400, undefined, cacheHeaders);
+    }
 
-  const sessionParsed = parseSessionToken(
-    req.nextUrl.searchParams.get("sessionToken")
-  );
-  if (!sessionParsed.success) {
-    return apiError("Unauthorized.", 401, undefined, cacheHeaders);
-  }
-  const sessionToken = sessionParsed.data;
+    const sessionParsed = parseSessionToken(
+      req.nextUrl.searchParams.get("sessionToken")
+    );
+    if (!sessionParsed.success) {
+      return apiError("Unauthorized.", 401, undefined, cacheHeaders);
+    }
+    const sessionToken = sessionParsed.data;
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
-  const { data: order } = await admin
-    .from("orders")
-    .select("*, order_items(*, order_item_modifiers(*)), tables(name)")
-    .eq("id", orderId)
-    .single();
+    const { data: order } = await admin
+      .from("orders")
+      .select("*, order_items(*, order_item_modifiers(*)), tables(name)")
+      .eq("id", orderId)
+      .single();
 
-  if (!order) {
-    return apiError("Not found.", 404, undefined, cacheHeaders);
-  }
+    if (!order) {
+      return apiError("Not found.", 404, undefined, cacheHeaders);
+    }
 
-  const orderBase = order as unknown as {
-    session_id: string | null;
-    id: string;
-    order_number: number;
-    status: string;
-    payment_status: string;
-    subtotal: number;
-    tax_amount: number;
-    tax_percent: number;
-    total: number;
-    rejection_reason: string | null;
-    estimated_prep_minutes: number | null;
-    created_at: string;
-    accepted_at: string | null;
-    preparing_at: string | null;
-    ready_at: string | null;
-    delivered_at: string | null;
-    order_items: Array<{
-      product_name: string;
-      quantity: number;
+    const orderBase = order as unknown as {
+      session_id: string | null;
+      id: string;
+      order_number: number;
+      status: string;
+      payment_status: string;
+      subtotal: number;
+      tax_amount: number;
+      tax_percent: number;
       total: number;
-      notes: string | null;
-      order_item_modifiers: Array<{ modifier_name: string; price: number }>;
-    }>;
-    tables: { name: string } | null;
-  };
+      rejection_reason: string | null;
+      estimated_prep_minutes: number | null;
+      created_at: string;
+      accepted_at: string | null;
+      preparing_at: string | null;
+      ready_at: string | null;
+      delivered_at: string | null;
+      order_items: Array<{
+        product_name: string;
+        quantity: number;
+        total: number;
+        notes: string | null;
+        order_item_modifiers: Array<{ modifier_name: string; price: number }>;
+      }>;
+      tables: { name: string } | null;
+    };
 
-  if (!orderBase.session_id) {
-    return apiError("Unauthorized.", 401, undefined, cacheHeaders);
+    if (!orderBase.session_id) {
+      return apiError("Unauthorized.", 401, undefined, cacheHeaders);
+    }
+
+    const { data: session } = await admin
+      .from("table_sessions")
+      .select("session_token")
+      .eq("id", orderBase.session_id)
+      .single();
+
+    if (
+      !session ||
+      (session as { session_token: string }).session_token !== sessionToken
+    ) {
+      return apiError("Unauthorized.", 401, undefined, cacheHeaders);
+    }
+
+    return apiSuccess(orderBase, 200, cacheHeaders);
   }
-
-  const { data: session } = await admin
-    .from("table_sessions")
-    .select("session_token")
-    .eq("id", orderBase.session_id)
-    .single();
-
-  if (!session || (session as { session_token: string }).session_token !== sessionToken) {
-    return apiError("Unauthorized.", 401, undefined, cacheHeaders);
-  }
-
-  return apiSuccess(orderBase, 200, cacheHeaders);
-}
+);
 
 const statusSchema = z.object({
   status: z.enum(["accepted", "preparing", "ready", "delivered", "rejected"]),
@@ -174,50 +179,72 @@ async function verifyStaffOrderAccess(
   return { order: orderRow, staff: staffRow };
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
-  const limited = await withRateLimit(req, "orders");
-  if (limited) return limited;
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  pending: ["accepted", "rejected"],
+  accepted: ["preparing", "rejected"],
+  preparing: ["ready", "rejected"],
+  ready: ["delivered", "rejected"],
+  delivered: [],
+  rejected: [],
+  cancelled: [],
+};
 
-  const { orderId } = await params;
+export const PATCH = withErrorHandler(
+  "orders-orderId-patch",
+  async (req, ctx) => {
+    const limited = await withRateLimit(req, "orders");
+    if (limited) return limited;
 
-  if (!isUuid(orderId)) {
-    return apiError("Invalid order id.", 400);
-  }
+    const { orderId } = await ctx.params;
 
-  const access = await verifyStaffOrderAccess(orderId);
+    if (!isUuid(orderId)) {
+      return apiError("Invalid order id.", 400);
+    }
 
-  if (!access) {
-    return apiError("Unauthorized.", 401);
-  }
+    const access = await verifyStaffOrderAccess(orderId);
 
-  const body = await req.json();
-  const parsed = statusSchema.safeParse(body);
+    if (!access) {
+      return apiError("Unauthorized.", 401);
+    }
 
-  if (!parsed.success) {
-    return apiError("Invalid status.", 400);
-  }
+    const body = await safeJsonParse(req);
+    if (!body) {
+      return apiError("Invalid JSON.", 400);
+    }
 
-  const { status, rejectionReason } = parsed.data;
-  const admin = createAdminClient();
-  const now = new Date().toISOString();
+    const parsed = statusSchema.safeParse(body);
 
-  const updates: Partial<{
-    status: string;
-    accepted_at: string;
-    preparing_at: string;
-    ready_at: string;
-    delivered_at: string;
-    rejection_reason: string | null;
-    payment_status: string;
-  }> = { status };
+    if (!parsed.success) {
+      return apiError("Invalid status.", 400);
+    }
 
-  if (status === "accepted") updates.accepted_at = now;
-  if (status === "preparing") updates.preparing_at = now;
-  if (status === "ready") updates.ready_at = now;
-  if (status === "delivered") updates.delivered_at = now;
+    const { status, rejectionReason } = parsed.data;
+
+    const allowedNext = VALID_TRANSITIONS[access.order.status] ?? [];
+    if (!allowedNext.includes(status)) {
+      return apiError(
+        `Cannot change from '${access.order.status}' to '${status}'.`,
+        409
+      );
+    }
+
+    const admin = createAdminClient();
+    const now = new Date().toISOString();
+
+    const updates: Partial<{
+      status: string;
+      accepted_at: string;
+      preparing_at: string;
+      ready_at: string;
+      delivered_at: string;
+      rejection_reason: string | null;
+      payment_status: string;
+    }> = { status };
+
+    if (status === "accepted") updates.accepted_at = now;
+    if (status === "preparing") updates.preparing_at = now;
+    if (status === "ready") updates.ready_at = now;
+    if (status === "delivered") updates.delivered_at = now;
 
     if (
       status === "delivered" &&
@@ -225,45 +252,46 @@ export async function PATCH(
       access.order.payment_method !== "online" &&
       access.order.payment_method !== "unset"
     ) {
-    updates.payment_status = "paid";
-  }
+      updates.payment_status = "paid";
+    }
 
-  if (status === "rejected") {
-    updates.rejection_reason = rejectionReason ?? null;
+    if (status === "rejected") {
+      updates.rejection_reason = rejectionReason ?? null;
 
-    if (
-      access.order.payment_status === "paid" &&
-      access.order.stripe_payment_intent_id
-    ) {
-      const refundResult = await processRefund(
-        access.order,
-        access.staff.id,
-        rejectionReason ?? "Order rejected by staff"
-      );
+      if (
+        access.order.payment_status === "paid" &&
+        access.order.stripe_payment_intent_id
+      ) {
+        const refundResult = await processRefund(
+          access.order,
+          access.staff.id,
+          rejectionReason ?? "Order rejected by staff"
+        );
 
-      if ("error" in refundResult) {
-        return apiError(refundResult.error, 400);
+        if ("error" in refundResult) {
+          return apiError(refundResult.error, 400);
+        }
       }
     }
+
+    const { error } = await admin
+      .from("orders")
+      .update(updates as never)
+      .eq("id", orderId);
+
+    if (error) {
+      return apiError(error.message, 500);
+    }
+
+    if (status === "delivered") {
+      void enqueue("/api/jobs/send-receipt", { orderId }).catch((err) =>
+        logger.error("Receipt enqueue failed", {
+          orderId,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
+
+    return apiSuccess({ ok: true });
   }
-
-  const { error } = await admin
-    .from("orders")
-    .update(updates as never)
-    .eq("id", orderId);
-
-  if (error) {
-    return apiError(error.message, 500);
-  }
-
-  if (status === "delivered") {
-    void enqueue("/api/jobs/send-receipt", { orderId }).catch((err) =>
-      logger.error("Receipt enqueue failed", {
-        orderId,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    );
-  }
-
-  return apiSuccess({ ok: true });
-}
+);

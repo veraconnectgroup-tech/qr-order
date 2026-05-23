@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { apiError } from "@/lib/api-response";
+import { NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { logger } from "@/lib/logger";
 import { sendLanPrintJob } from "@/lib/printer/send-lan";
@@ -17,7 +17,7 @@ function decodeBase64Payload(value: string): Uint8Array {
   return Uint8Array.from(buffer);
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withErrorHandler("printer-print-post", async (req, _ctx) => {
   try {
     const limited = await withRateLimit(req, "default");
     if (limited) return limited;
@@ -35,19 +35,22 @@ export async function POST(req: NextRequest) {
     const parsed = printSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid input." }, { status: 400 });
     }
 
     const payload = decodeBase64Payload(parsed.data.data);
     if (payload.length === 0) {
-      return NextResponse.json({ error: "Empty print payload." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Empty print payload." },
+        { status: 400 }
+      );
     }
 
     if (payload.length > 512_000) {
-      return NextResponse.json({ error: "Print payload too large." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Print payload too large." },
+        { status: 400 }
+      );
     }
 
     await sendLanPrintJob(parsed.data.ip, parsed.data.port, payload);
@@ -62,4 +65,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

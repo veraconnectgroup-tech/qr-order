@@ -1,5 +1,4 @@
 import { formatOrderNumber } from "@/lib/format";
-import { getKitchenOrderItems } from "@/lib/kitchen/menu-section";
 import {
   EscPosBuilder,
   type PaperWidth,
@@ -7,17 +6,23 @@ import {
 } from "@/lib/printer/escpos-builder";
 import type { OrderWithDetails } from "@/types";
 
+type KitchenTicketItem = OrderWithDetails["order_items"][number];
+
 export function buildKitchenTicketEscPos(
-  order: OrderWithDetails,
+  order: Pick<OrderWithDetails, "order_number" | "created_at" | "notes"> & {
+    tables?: OrderWithDetails["tables"];
+    order_items: KitchenTicketItem[];
+  },
   orgName: string,
-  paperWidth: PaperWidth = 80
+  paperWidth: PaperWidth = 80,
+  headerLabel?: string
 ): Uint8Array {
   const tableName = order.tables?.name ?? "—";
   const time = new Date(order.created_at).toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const items = getKitchenOrderItems(order);
+  const items = order.order_items;
   const builder = new EscPosBuilder().initialize();
 
   builder
@@ -27,7 +32,13 @@ export function buildKitchenTicketEscPos(
     .text(formatOrderNumber(order.order_number))
     .newline()
     .bold(false)
-    .textSize(1, 1)
+    .textSize(1, 1);
+
+  if (headerLabel) {
+    builder.text(headerLabel).newline();
+  }
+
+  builder
     .text(`${orgName} · ${tableName} · ${time}`)
     .newline()
     .text(separatorLine(paperWidth))

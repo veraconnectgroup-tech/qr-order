@@ -1,11 +1,11 @@
-import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { logger } from "@/lib/logger";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
+import { logger } from "@/lib/logger";
+import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const postSchema = z.object({
@@ -15,7 +15,7 @@ const postSchema = z.object({
   comment: z.string().max(1000).optional(),
 });
 
-export async function GET(req: NextRequest) {
+export const GET = withErrorHandler("feedback-get", async (req, _ctx) => {
   const limited = await withRateLimit(req, "orders");
   if (limited) return limited;
 
@@ -48,10 +48,11 @@ export async function GET(req: NextRequest) {
     submitted: !!feedback,
     feedback: feedback ?? null,
   });
-}
+});
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(
+  "feedback-post",
+  async (req, _ctx) => {
     const limited = await withRateLimit(req, "orders");
     if (limited) return limited;
 
@@ -124,10 +125,5 @@ export async function POST(req: NextRequest) {
     }
 
     return apiSuccess({ feedback: inserted });
-  } catch (error) {
-    logger.error("Feedback POST error", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Internal error.", 500);
   }
-}
+);
