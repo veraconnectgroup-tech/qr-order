@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import {
-  EU_ALLERGEN_IDS,
   normalizeAllergenId,
   type AllergenId,
 } from "@/lib/allergens";
@@ -23,6 +22,16 @@ const categorySchema = z.object({
   name_en: zOptionalSanitizedText(200),
   description: zOptionalSanitizedText(2000),
   sort_order: z.coerce.number().default(0),
+  menu_section: z.enum(MENU_SECTIONS).optional(),
+  schedule_enabled: z
+    .union([z.literal("true"), z.literal("false"), z.boolean()])
+    .optional()
+    .transform((v) =>
+      v === undefined ? undefined : v === true || v === "true"
+    ),
+  schedule_start: zOptionalSanitizedText(10),
+  schedule_end: zOptionalSanitizedText(10),
+  schedule_days: z.string().optional(),
 });
 
 const categoryUpdateSchema = z.object({
@@ -163,15 +172,53 @@ export async function createCategory(formData: FormData) {
     name_en: formData.get("name_en") || undefined,
     description: formData.get("description") || undefined,
     sort_order: formData.get("sort_order") || 0,
+    menu_section: formData.get("menu_section") || undefined,
+    schedule_enabled: formData.has("schedule_enabled")
+      ? formData.get("schedule_enabled")
+      : undefined,
+    schedule_start: formData.get("schedule_start") || undefined,
+    schedule_end: formData.get("schedule_end") || undefined,
+    schedule_days: formData.get("schedule_days") || undefined,
   });
 
   if (!parsed.success) return { error: "Invalid data." };
 
   const supabase = await createServerClient();
-  const { error } = await supabase.from("categories").insert({
+  const { data: maxRow } = await supabase
+    .from("categories")
+    .select("sort_order")
+    .eq("location_id", locationId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextSort =
+    ((maxRow as { sort_order: number } | null)?.sort_order ?? -1) + 1;
+
+  const insert: Record<string, unknown> = {
     location_id: locationId,
-    ...parsed.data,
-  });
+    name: parsed.data.name,
+    name_en: parsed.data.name_en ?? null,
+    description: parsed.data.description ?? null,
+    sort_order: nextSort,
+    menu_section: parsed.data.menu_section ?? "food",
+  };
+
+  if (parsed.data.schedule_enabled !== undefined) {
+    insert.schedule_enabled = parsed.data.schedule_enabled;
+    if (!parsed.data.schedule_enabled) {
+      insert.schedule_start = null;
+      insert.schedule_end = null;
+      insert.schedule_days = normalizeScheduleDays([1, 2, 3, 4, 5, 6, 0]);
+    } else {
+      insert.schedule_start = parsed.data.schedule_start ?? null;
+      insert.schedule_end = parsed.data.schedule_end ?? null;
+      const days = parseScheduleDays(parsed.data.schedule_days);
+      insert.schedule_days = days ?? normalizeScheduleDays([1, 2, 3, 4, 5, 6, 0]);
+    }
+  }
+
+  const { error } = await supabase.from("categories").insert(insert);
 
   if (error) return { error: error.message };
 
@@ -333,7 +380,16 @@ export async function updateCategory(id: string, formData: FormData) {
 
   if (!category) return { error: "Category not found." };
 
-  const patch: Record<string, unknown> = {};
+  const patch: {
+    name?: string;
+    name_en?: string | null;
+    description?: string | null;
+    menu_section?: string;
+    schedule_enabled?: boolean;
+    schedule_start?: string | null;
+    schedule_end?: string | null;
+    schedule_days?: number[];
+  } = {};
   if (parsed.data.name !== undefined) patch.name = parsed.data.name;
   if (parsed.data.name_en !== undefined) patch.name_en = parsed.data.name_en ?? null;
   if (parsed.data.description !== undefined) {

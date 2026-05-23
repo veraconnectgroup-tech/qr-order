@@ -21,6 +21,7 @@ type DashboardAlertsContextValue = {
   pendingOrders: number;
   pendingWaiterCalls: number;
   pendingPaymentRequests: number;
+  totalPendingAlerts: number;
   refreshAlerts: () => Promise<void>;
 };
 
@@ -236,6 +237,8 @@ export function DashboardAlertsProvider({
         pendingOrders,
         pendingWaiterCalls,
         pendingPaymentRequests,
+        totalPendingAlerts:
+          pendingOrders + pendingWaiterCalls + pendingPaymentRequests,
         refreshAlerts: refreshCounts,
       }}
     >

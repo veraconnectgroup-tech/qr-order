@@ -87,18 +87,22 @@ export const POST = withErrorHandler(
       };
     };
 
+    const upsertRow: Record<string, string | null> = {
+      user_id: user.id,
+      staff_id: staff.id,
+      location_id: locationId,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      keys_p256dh: subscription.keys.p256dh,
+      keys_auth: subscription.keys.auth,
+    };
+    const userAgent = req.headers.get("user-agent")?.slice(0, 512);
+    if (userAgent) upsertRow.user_agent = userAgent;
+
     const { error } = await (supabase as unknown as PushClient)
       .from("push_subscriptions")
-      .upsert(
-        {
-          user_id: user.id,
-          location_id: locationId,
-          endpoint: subscription.endpoint,
-          keys_p256dh: subscription.keys.p256dh,
-          keys_auth: subscription.keys.auth,
-        },
-        { onConflict: "endpoint" }
-      );
+      .upsert(upsertRow as Record<string, string>, { onConflict: "endpoint" });
 
     if (error) {
       return apiError("Subscription could not be saved.", 500);

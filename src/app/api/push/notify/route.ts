@@ -8,6 +8,7 @@ import { isPushConfigured } from "@/lib/push/vapid";
 
 const notifySchema = z.object({
   locationId: z.string().uuid(),
+  type: z.enum(["new-order", "waiter-call", "order-ready"]).optional(),
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(500),
   url: z.string().url().max(2048).optional(),
@@ -36,7 +37,7 @@ export const POST = withErrorHandler("push-notify-post", async (req, _ctx) => {
     return apiError("Invalid input.", 400, parsed.error.flatten(), noCache());
   }
 
-  const { locationId, title, body: messageBody, url } = parsed.data;
+  const { locationId, type, title, body: messageBody, url } = parsed.data;
 
   const result = await notifyLocationPush(locationId, {
     title,
@@ -46,6 +47,7 @@ export const POST = withErrorHandler("push-notify-post", async (req, _ctx) => {
 
   logger.info("Push notifications sent", {
     locationId,
+    type,
     ...result,
   });
 

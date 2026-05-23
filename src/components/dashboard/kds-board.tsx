@@ -28,7 +28,11 @@ import {
   playNewOrderSound,
 } from "@/lib/audio/notification-sound";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
-import { printKitchenOrder } from "@/lib/printer/print-kitchen-order";
+import {
+  hasAutoKitchenPrinters,
+  printKitchenOrder,
+  type KitchenPrintResult,
+} from "@/lib/printer/print-kitchen-order";
 import {
   kdsActionLabel,
   nextKdsStatus,
@@ -37,6 +41,10 @@ import {
 import { useKdsOrders } from "@/hooks/use-kds-orders";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { KdsConnectionBadge } from "@/components/dashboard/kds-connection-badge";
+import {
+  KdsPrinterStatus,
+  useKdsPrinterStatus,
+} from "@/components/dashboard/kds-printer-status";
 import { KitchenPrintButton } from "@/components/dashboard/kitchen-print-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -77,13 +85,17 @@ function KdsOrderCard({
   timerWarningMin,
   busy,
   orgName,
+  autoPrinted,
   onAdvance,
+  onPrintResult,
 }: {
   order: OrderWithDetails;
   timerWarningMin: number;
   busy: boolean;
   orgName: string;
+  autoPrinted: boolean;
   onAdvance: () => void;
+  onPrintResult: (result: KitchenPrintResult) => void;
 }) {
   const [, tick] = useState(0);
   const tableName = order.tables?.name ?? "—";
@@ -121,9 +133,19 @@ function KdsOrderCard({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-4xl font-black tracking-tight text-zinc-50">
-          {formatOrderNumber(order.order_number)}
-        </p>
+        <div className="flex items-start gap-2">
+          <p className="text-4xl font-black tracking-tight text-zinc-50">
+            {formatOrderNumber(order.order_number)}
+          </p>
+          {autoPrinted && (
+            <span
+              className="mt-1 rounded-md bg-zinc-800 px-2 py-1 text-sm"
+              title="Ticket auto-printed"
+            >
+              🖨️
+            </span>
+          )}
+        </div>
         <div className="text-right">
           <span className="block rounded-lg bg-zinc-800 px-3 py-1 text-lg font-semibold text-zinc-200">
             Table {tableName}
@@ -188,6 +210,7 @@ function KdsOrderCard({
           order={order}
           orgName={orgName}
           className="min-h-14 px-4 text-base"
+          onResult={onPrintResult}
         />
       </div>
     </motion.div>
@@ -206,9 +229,48 @@ export function KdsBoard() {
   const [autoPrint, setAutoPrintState] = useState(false);
   const [timerWarningMin, setTimerWarningMinState] = useState(10);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [autoPrintedIds, setAutoPrintedIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [lastPrint, setLastPrint] = useState<KitchenPrintResult | null>(null);
+
+  const { status: printerStatus } = useKdsPrinterStatus(lastPrint);
 
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+
+  const handlePrintResult = useCallback((result: KitchenPrintResult) => {
+    setLastPrint(result);
+  }, []);
+
+  const autoPrintOrder = useCallback(
+    async (order: OrderWithDetails, silent: boolean) => {
+      const setup = await loadPrinterSetup();
+      if (!hasAutoKitchenPrinters(setup)) return;
+
+      const result = await printKitchenOrder(order, orgName, setup, {
+        silent,
+        autoOnly: true,
+      });
+      setLastPrint(result);
+
+      if (result.ok && !result.usedFallback) {
+        setAutoPrintedIds((prev) => new Set(prev).add(order.id));
+      }
+
+      if (!result.ok || result.usedFallback) {
+        toast.error(`Kitchen print failed for #${order.order_number}`, {
+          action: {
+            label: "Retry",
+            onClick: () => {
+              void autoPrintOrder(order, false);
+            },
+          },
+        });
+      }
+    },
+    [orgName]
+  );
 
   useEffect(() => {
     setSoundEnabledState(isKdsSoundEnabled());
@@ -266,16 +328,15 @@ export function KdsBoard() {
       playNewOrderSound();
       if (isKdsAutoPrintEnabled()) {
         void (async () => {
-          const setup = await loadPrinterSetup();
           for (const order of newOrders) {
-            await printKitchenOrder(order, orgName, setup, { silent: true });
+            await autoPrintOrder(order, true);
           }
         })();
       }
     }
 
     seenIdsRef.current = currentIds;
-  }, [orders, loading, orgName]);
+  }, [orders, loading, autoPrintOrder]);
 
   const ordersByColumn = useMemo(() => {
     const map = new Map<string, OrderWithDetails[]>();
@@ -330,6 +391,7 @@ export function KdsBoard() {
         </div>
         <LiveClock />
         <div className="flex items-center justify-end gap-2">
+          <KdsPrinterStatus status={printerStatus} />
           <KdsConnectionBadge mode={realtimeMode} />
           <button
             type="button"
@@ -465,7 +527,9 @@ export function KdsBoard() {
                           timerWarningMin={timerWarningMin}
                           busy={busyId === order.id}
                           orgName={orgName}
+                          autoPrinted={autoPrintedIds.has(order.id)}
                           onAdvance={() => advanceOrder(order)}
+                          onPrintResult={handlePrintResult}
                         />
                       ))
                     )}

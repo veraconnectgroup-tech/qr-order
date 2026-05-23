@@ -4,8 +4,10 @@ import { isPushConfigured, sendPush, type PushPayload } from "@/lib/push/vapid";
 type PushSubscriptionRow = {
   id: string;
   endpoint: string;
-  keys_p256dh: string;
-  keys_auth: string;
+  p256dh?: string | null;
+  auth?: string | null;
+  keys_p256dh?: string | null;
+  keys_auth?: string | null;
 };
 
 export type NotifyLocationResult = {
@@ -13,6 +15,13 @@ export type NotifyLocationResult = {
   failed: number;
   removed: number;
 };
+
+function subscriptionKeys(row: PushSubscriptionRow) {
+  const p256dh = row.p256dh ?? row.keys_p256dh;
+  const auth = row.auth ?? row.keys_auth;
+  if (!p256dh || !auth) return null;
+  return { p256dh, auth };
+}
 
 export async function notifyLocationPush(
   locationId: string,
@@ -43,7 +52,7 @@ export async function notifyLocationPush(
 
   const { data, error } = await pushAdmin
     .from("push_subscriptions")
-    .select("id, endpoint, keys_p256dh, keys_auth")
+    .select("id, endpoint, p256dh, auth, keys_p256dh, keys_auth")
     .eq("location_id", locationId);
 
   if (error || !data?.length) {
@@ -55,10 +64,16 @@ export async function notifyLocationPush(
   let removed = 0;
 
   for (const row of data) {
+    const keys = subscriptionKeys(row);
+    if (!keys) {
+      failed += 1;
+      continue;
+    }
+
     const result = await sendPush(
       {
         endpoint: row.endpoint,
-        keys: { p256dh: row.keys_p256dh, auth: row.keys_auth },
+        keys,
       },
       payload
     );

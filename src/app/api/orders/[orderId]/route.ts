@@ -11,6 +11,7 @@ import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { scheduleOrderReadyPush } from "@/lib/push/schedule-notify";
 import { processRefund } from "@/lib/stripe/refund";
 
 function parseSessionToken(value: string | null) {
@@ -108,6 +109,7 @@ type StaffAccess = {
     id: string;
     location_id: string;
     status: string;
+    order_number: number;
     payment_status: string;
     payment_method: string;
     stripe_payment_intent_id: string | null;
@@ -136,7 +138,7 @@ async function verifyStaffOrderAccess(
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, location_id, status, payment_status, payment_method, stripe_payment_intent_id, total, created_at"
+      "id, location_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, created_at"
     )
     .eq("id", orderId)
     .single();
@@ -281,6 +283,13 @@ export const PATCH = withErrorHandler(
 
     if (error) {
       return apiError(error.message, 500);
+    }
+
+    if (status === "ready") {
+      scheduleOrderReadyPush(
+        access.order.location_id,
+        access.order.order_number
+      );
     }
 
     if (status === "delivered") {

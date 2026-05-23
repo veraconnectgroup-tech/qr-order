@@ -2,6 +2,7 @@
 
 import { Bell, BellRing } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,9 @@ export function PushOptIn({ className }: { className?: string }) {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setState(permission === "denied" ? "denied" : "default");
+        if (permission === "denied") {
+          toast.error("Notifications blocked in browser settings");
+        }
         return;
       }
 
@@ -84,6 +88,7 @@ export function PushOptIn({ className }: { className?: string }) {
       const json = subscription.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
         setState("default");
+        toast.error("Could not read push subscription");
         return;
       }
 
@@ -104,12 +109,38 @@ export function PushOptIn({ className }: { className?: string }) {
 
       if (!res.ok) {
         setState("default");
+        toast.error("Could not save notification subscription");
         return;
       }
 
       setState("active");
+      toast.success("Push notifications enabled");
     } catch {
       setState("default");
+      toast.error("Failed to enable notifications");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disablePush() {
+    setBusy(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        const endpoint = subscription.endpoint;
+        await subscription.unsubscribe();
+        await fetch("/api/push/subscribe", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint }),
+        });
+      }
+      setState("default");
+      toast.success("Push notifications disabled");
+    } catch {
+      toast.error("Could not disable notifications");
     } finally {
       setBusy(false);
     }
@@ -121,21 +152,35 @@ export function PushOptIn({ className }: { className?: string }) {
 
   if (state === "active") {
     return (
-      <Badge
-        variant="secondary"
-        className={cn(
-          "hidden gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 sm:inline-flex",
-          className
-        )}
+      <button
+        type="button"
+        onClick={() => void disablePush()}
+        disabled={busy}
+        className={cn("hidden sm:inline-flex", className)}
       >
-        <BellRing className="size-3" />
-        Notifications active
-      </Badge>
+        <Badge
+          variant="secondary"
+          className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+        >
+          <BellRing className="size-3" />
+          {busy ? "Updating…" : "Notifications on"}
+        </Badge>
+      </button>
     );
   }
 
   if (state === "denied") {
-    return null;
+    return (
+      <span
+        className={cn(
+          "hidden text-xs text-zinc-500 sm:inline",
+          className
+        )}
+        title="Enable notifications in browser settings"
+      >
+        Notifications blocked
+      </span>
+    );
   }
 
   return (

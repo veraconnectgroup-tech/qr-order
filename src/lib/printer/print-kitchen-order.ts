@@ -6,86 +6,95 @@ import { buildKitchenTicketEscPos } from "@/lib/printer/format-kitchen-ticket";
 import { printTicket } from "@/lib/printer/print-service";
 import { splitOrderItemsByTarget } from "@/lib/printer/split-items";
 import type { PaperWidth } from "@/lib/printer/escpos-builder";
-import type { PrinterConfig, PrinterSetup, PrinterTarget } from "@/lib/printer/types";
+import type {
+  PrinterConfig,
+  PrinterSetup,
+  PrinterTarget,
+} from "@/lib/printer/types";
 import type { OrderWithDetails } from "@/types";
 
-function printersForTarget(
-  configs: PrinterConfig[],
-  target: Exclude<PrinterTarget, "receipt">
-) {
-  return configs.filter((config) => config.print_for.includes(target));
+export type KitchenPrintResult = {
+  ok: boolean;
+  usedFallback: boolean;
+  printedCount: number;
+};
+
+function isKitchenPrinter(config: PrinterConfig) {
+  return (
+    config.print_for.includes("kitchen") || config.print_for.includes("bar")
+  );
 }
 
-async function printToFirstAvailable(
-  data: Uint8Array,
-  printers: PrinterConfig[]
-): Promise<{ ok: boolean; error?: string }> {
-  for (const printer of printers) {
-    const result = await printTicket(data, printer);
-    if (result.ok) return result;
-  }
+export function hasKitchenPrinters(setup: PrinterSetup) {
+  return setup.configs.some(isKitchenPrinter);
+}
 
-  return {
-    ok: false,
-    error: printers[0]
-      ? "All configured printers failed."
-      : "No printer configured for this ticket.",
-  };
+export function hasAutoKitchenPrinters(setup: PrinterSetup) {
+  return setup.configs.some(
+    (config) => config.auto_print && isKitchenPrinter(config)
+  );
+}
+
+function itemsForPrinter(
+  split: ReturnType<typeof splitOrderItemsByTarget>,
+  printFor: PrinterTarget[]
+) {
+  const items = [];
+  if (printFor.includes("kitchen")) items.push(...split.kitchen);
+  if (printFor.includes("bar")) items.push(...split.bar);
+  return items;
+}
+
+function ticketHeaderLabel(printFor: PrinterTarget[]) {
+  const hasKitchen = printFor.includes("kitchen");
+  const hasBar = printFor.includes("bar");
+  if (hasBar && !hasKitchen) return "BAR";
+  return undefined;
 }
 
 export async function printKitchenOrder(
   order: OrderWithDetails,
   orgName: string,
   setup: PrinterSetup,
-  options?: { silent?: boolean }
-): Promise<boolean> {
-  const relevantPrinters = setup.configs.filter(
-    (config) =>
-      config.print_for.includes("kitchen") || config.print_for.includes("bar")
-  );
+  options?: { silent?: boolean; autoOnly?: boolean }
+): Promise<KitchenPrintResult> {
+  const printers = setup.configs.filter((config) => {
+    if (!isKitchenPrinter(config)) return false;
+    if (options?.autoOnly && !config.auto_print) return false;
+    return true;
+  });
 
-  if (relevantPrinters.length === 0) {
-    return printKitchenTicket(order, orgName);
+  if (printers.length === 0) {
+    const usedFallback = printKitchenTicket(order, orgName);
+    return { ok: usedFallback, usedFallback, printedCount: 0 };
   }
 
-  const { kitchen, bar } = splitOrderItemsByTarget(order, setup.productTargets);
+  const split = splitOrderItemsByTarget(order, setup.productTargets);
+  let printedCount = 0;
   let failed = false;
 
-  if (kitchen.length > 0) {
-    const kitchenPrinters = printersForTarget(setup.configs, "kitchen");
-    if (kitchenPrinters.length === 0) {
-      failed = true;
+  for (const printer of printers) {
+    const items = itemsForPrinter(split, printer.print_for);
+    if (items.length === 0) continue;
+
+    const data = buildKitchenTicketEscPos(
+      { ...order, order_items: items },
+      orgName,
+      printer.paper_width as PaperWidth,
+      ticketHeaderLabel(printer.print_for)
+    );
+
+    const result = await printTicket(data, printer);
+    if (result.ok) {
+      printedCount += 1;
     } else {
-      const paperWidth = kitchenPrinters[0].paper_width as PaperWidth;
-      const data = buildKitchenTicketEscPos(
-        { ...order, order_items: kitchen },
-        orgName,
-        paperWidth
-      );
-      const result = await printToFirstAvailable(data, kitchenPrinters);
-      if (!result.ok) failed = true;
+      failed = true;
     }
   }
 
-  if (bar.length > 0) {
-    const barPrinters = printersForTarget(setup.configs, "bar");
-    if (barPrinters.length === 0) {
-      failed = true;
-    } else {
-      const paperWidth = barPrinters[0].paper_width as PaperWidth;
-      const data = buildKitchenTicketEscPos(
-        { ...order, order_items: bar },
-        orgName,
-        paperWidth,
-        "BAR"
-      );
-      const result = await printToFirstAvailable(data, barPrinters);
-      if (!result.ok) failed = true;
-    }
-  }
-
-  if (kitchen.length === 0 && bar.length === 0) {
-    return printKitchenTicket(order, orgName);
+  if (printedCount === 0 && !failed) {
+    const usedFallback = printKitchenTicket(order, orgName);
+    return { ok: usedFallback, usedFallback, printedCount: 0 };
   }
 
   if (failed) {
@@ -93,10 +102,10 @@ export async function printKitchenOrder(
       toast.error("Printer offline, using browser print");
     }
     printKitchenTicket(order, orgName);
-    return false;
+    return { ok: printedCount > 0, usedFallback: true, printedCount };
   }
 
-  return true;
+  return { ok: true, usedFallback: false, printedCount };
 }
 
 export async function printTestTicket(

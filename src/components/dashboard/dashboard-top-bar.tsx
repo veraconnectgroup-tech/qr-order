@@ -16,9 +16,11 @@ export function DashboardTopBar() {
   const { title } = getDashboardPageMeta(pathname);
   const { currency } = useDashboard();
   const { todayOrderCount, todayRevenue } = useDashboardStats();
-  const { pendingOrders, pendingPaymentRequests } = useDashboardAlerts();
+  const { pendingOrders, pendingPaymentRequests, totalPendingAlerts } =
+    useDashboardAlerts();
   const isOrdersPage = pathname.startsWith("/dashboard/orders");
   const ordersAlertCount = pendingOrders + pendingPaymentRequests;
+  const headerAlertCount = isOrdersPage ? ordersAlertCount : totalPendingAlerts;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-950/80 px-3 backdrop-blur-xl md:h-16 md:gap-3 md:px-6">
@@ -27,8 +29,8 @@ export function DashboardTopBar() {
         <h1 className="truncate text-base font-bold text-zinc-50 md:text-xl">
           {title}
         </h1>
-        {ordersAlertCount > 0 && (
-          <NavNotificationBadge count={ordersAlertCount} className="hidden sm:inline-flex" />
+        {headerAlertCount > 0 && (
+          <NavNotificationBadge count={headerAlertCount} className="hidden sm:inline-flex" />
         )}
       </div>
 

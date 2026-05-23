@@ -5,6 +5,10 @@ import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
 import { printReceiptOrder } from "@/lib/printer/print-receipt-order";
 import type { OrderWithDetails } from "@/types";
 
+function isReceiptEligible(order: OrderWithDetails) {
+  return order.status === "delivered" || order.payment_status === "paid";
+}
+
 export function useReceiptAutoPrint({
   orders,
   orgName,
@@ -22,10 +26,7 @@ export function useReceiptAutoPrint({
   useEffect(() => {
     if (!enabled) return;
 
-    const eligible = orders.filter(
-      (order) =>
-        order.status === "delivered" && order.payment_status === "paid"
-    );
+    const eligible = orders.filter(isReceiptEligible);
     const currentIds = new Set(eligible.map((order) => order.id));
 
     if (!initializedRef.current) {

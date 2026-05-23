@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Printer } from "lucide-react";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
-import { printKitchenOrder } from "@/lib/printer/print-kitchen-order";
+import {
+  printKitchenOrder,
+  type KitchenPrintResult,
+} from "@/lib/printer/print-kitchen-order";
 import { printKitchenTicket } from "@/lib/kitchen/print-ticket";
 import type { OrderWithDetails } from "@/types";
 import { cn } from "@/lib/utils";
@@ -13,11 +16,15 @@ export function KitchenPrintButton({
   orgName,
   className,
   label = "Print",
+  showAutoBadge = false,
+  onResult,
 }: {
   order: OrderWithDetails;
   orgName: string;
   className?: string;
   label?: string;
+  showAutoBadge?: boolean;
+  onResult?: (result: KitchenPrintResult) => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -26,9 +33,11 @@ export function KitchenPrintButton({
     setBusy(true);
     try {
       const setup = await loadPrinterSetup();
-      await printKitchenOrder(order, orgName, setup);
+      const result = await printKitchenOrder(order, orgName, setup);
+      onResult?.(result);
     } catch {
       printKitchenTicket(order, orgName);
+      onResult?.({ ok: true, usedFallback: true, printedCount: 0 });
     } finally {
       setBusy(false);
     }
@@ -40,12 +49,20 @@ export function KitchenPrintButton({
       disabled={busy}
       onClick={() => void handlePrint()}
       className={cn(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-600 px-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation disabled:opacity-50",
+        "relative inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-600 px-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation disabled:opacity-50",
         className
       )}
     >
       <Printer className="size-4" />
       {busy ? "Printing…" : label}
+      {showAutoBadge && (
+        <span
+          className="absolute -right-1 -top-1 rounded-full bg-zinc-950 px-1 text-[10px]"
+          title="Auto-printed"
+        >
+          🖨️
+        </span>
+      )}
     </button>
   );
 }

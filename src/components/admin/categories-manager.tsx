@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   formatScheduleBadge,
@@ -55,7 +54,7 @@ import {
 } from "@/lib/menu-section";
 import type { Category } from "@/types";
 
-type CategoryRow = Category & { productCount: number };
+export type CategoryRow = Category & { productCount: number };
 
 function scheduleSummary(category: Category): string | null {
   if (!category.schedule_enabled) return null;
