@@ -3,7 +3,7 @@ import { Tablet } from "lucide-react";
 
 function TabletCaption({ label }: { label: string }) {
   return (
-    <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-zinc-600 sm:text-xs">
+    <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 sm:text-xs">
       <Tablet className="size-3" aria-hidden />
       {label}
     </p>

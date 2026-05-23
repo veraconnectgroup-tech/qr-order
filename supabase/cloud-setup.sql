@@ -544,7 +544,7 @@ CREATE POLICY "Staff read own org audit log" ON audit_log
 
 -- Demo product photos + allergens (see src/lib/product-stock-images.ts)
 UPDATE products SET
-  image_url = 'https://images.unsplash.com/photo-1595475207225-428b62bda831?w=600&q=80',
+  image_url = 'https://images.unsplash.com/photo-1758218058958-78f40a716c20?w=600&q=80',
   allergens = ARRAY['sulfites']
 WHERE id = 'f0000000-0000-4000-8000-000000000001';
 

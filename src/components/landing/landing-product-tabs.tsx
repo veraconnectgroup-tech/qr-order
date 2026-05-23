@@ -99,7 +99,7 @@ export function LandingProductTabs() {
                     {current.description}
                   </p>
                 </div>
-                <div className="flex min-h-[340px] items-center justify-center bg-zinc-950/90 p-8 sm:min-h-[400px]">
+                <div className="flex min-h-[340px] items-center justify-center bg-black/40 p-6 sm:min-h-[400px] sm:p-8">
                   {current.visual}
                 </div>
               </div>

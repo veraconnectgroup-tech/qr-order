@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { DashboardScreenShowcase } from "@/components/landing/dashboard-screen-showcase";
 import {
   HeroItem,
@@ -9,12 +8,7 @@ import {
 } from "@/components/landing/animate-in-view";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { ScaledDashboardPreview } from "@/components/landing/scaled-dashboard-preview";
-import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
-import { GuestMenuContent } from "@/components/landing/showcase-content";
-import {
-  ShowcasePhone,
-  ShowcaseWindow,
-} from "@/components/landing/showcase-frame";
+import { ShowcaseWindow } from "@/components/landing/showcase-frame";
 import { Button } from "@/components/ui/button";
 
 export function LandingHero() {
@@ -62,28 +56,20 @@ export function LandingHero() {
 
         <div className="relative mx-auto mt-14 max-w-[920px] sm:mt-16 lg:mt-20">
           <div className="landing-hero-stage pointer-events-none absolute -inset-6 rounded-[2rem] sm:-inset-10" aria-hidden />
-          <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl sm:p-4">
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-black p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:p-4">
             <ShowcaseWindow
               url="app.qr-order.com/dashboard/orders"
-              theme="light"
+              theme="dark"
               className="border-0 shadow-none ring-0"
             >
               <ScaledDashboardPreview designHeight={520}>
                 <DashboardScreenShowcase
                   screen="orders"
                   variant="hero"
-                  theme="light"
+                  theme="dark"
                 />
               </ScaledDashboardPreview>
             </ShowcaseWindow>
-
-            <div className="absolute -bottom-6 left-4 z-10 hidden w-[26%] min-w-[130px] max-w-[180px] md:block lg:left-8">
-              <ShowcasePhone hideLabel className="shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
-                <ScaledPhonePreview designHeight={360}>
-                  <GuestMenuContent variant="hero" />
-                </ScaledPhonePreview>
-              </ShowcasePhone>
-            </div>
           </div>
         </div>
       </LandingContainer>

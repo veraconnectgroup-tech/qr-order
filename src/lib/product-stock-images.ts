@@ -16,7 +16,7 @@ export type ProductStockImage = {
 };
 
 const PHOTOS = {
-  aperolSpritz: "photo-1595475207225-428b62bda831",
+  aperolSpritz: "photo-1758218058958-78f40a716c20",
   negroni: "photo-1514362545857-3bc16c4c7d1b",
   espressoMartini: "photo-1544145945-f90425340c7e",
   hugoSpritz: "photo-1556679343-c7306c1976bc",

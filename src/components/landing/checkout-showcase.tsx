@@ -50,7 +50,7 @@ export function CheckoutShowcase() {
             </div>
             <div className="flex justify-between font-semibold text-zinc-50">
               <span>Total</span>
-              <span className="text-orange-500">
+              <span className="text-[var(--lp-accent)]">
                 {formatPrice(total, DEMO_CURRENCY)}
               </span>
             </div>
@@ -73,7 +73,7 @@ export function CheckoutShowcase() {
 
         <Button
           type="button"
-          className="mt-3 h-10 w-full bg-orange-500 text-sm hover:bg-orange-600 sm:mt-4 sm:h-11"
+          className="mt-3 h-10 w-full rounded-xl bg-zinc-100 text-sm font-semibold text-zinc-900 hover:bg-white sm:mt-4 sm:h-11"
         >
           Pay {formatPrice(total, DEMO_CURRENCY)}
         </Button>

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/product-showcases";
+import { LandingClosingShowcase } from "@/components/landing/landing-closing-showcase";
 import { LandingFaq } from "@/components/landing/landing-faq";
-import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
@@ -17,7 +17,6 @@ import {
   LandingEyebrow,
   LandingHeadline,
   LandingLead,
-  LandingSectionLabel,
 } from "@/components/landing/landing-primitives";
 import { platformFeeDescriptionEn } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -150,41 +149,7 @@ export function LandingPage() {
 
         <LandingFaq />
 
-        <div className="relative border-t border-zinc-800">
-          <div className="landing-glow-bottom pointer-events-none absolute inset-0" aria-hidden />
-          <section className="relative py-20 text-center text-white sm:py-28">
-            <LandingContainer wide>
-              <AnimateInView>
-                <LandingSectionLabel>Get started</LandingSectionLabel>
-                <LandingHeadline inverted className="mx-auto mt-5 max-w-md">
-                  Take the short way.
-                </LandingHeadline>
-                <LandingLead inverted className="mx-auto mt-4 max-w-sm">
-                  Request access and run your first service on QR Order.
-                </LandingLead>
-                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <Button
-                    size="lg"
-                    asChild
-                    className="landing-btn-accent h-12 rounded-full px-8 text-sm font-semibold"
-                  >
-                    <Link href="/signup">Request access</Link>
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    asChild
-                    className="h-12 rounded-full border-zinc-700 bg-transparent px-8 text-sm text-zinc-300 hover:bg-zinc-900 hover:text-white"
-                  >
-                    <a href="mailto:hello@qrorder.app">Contact sales</a>
-                  </Button>
-                </div>
-              </AnimateInView>
-            </LandingContainer>
-          </section>
-
-          <LandingFooter />
-        </div>
+        <LandingClosingShowcase />
       </main>
     </div>
   );

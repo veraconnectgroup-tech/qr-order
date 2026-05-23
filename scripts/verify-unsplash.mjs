@@ -1,6 +1,6 @@
 /** Verify all product stock image URLs return HTTP 200. */
 const images = [
-  ["Aperol Spritz", "photo-1595475207225-428b62bda831"],
+  ["Aperol Spritz", "photo-1758218058958-78f40a716c20"],
   ["Negroni", "photo-1514362545857-3bc16c4c7d1b"],
   ["Espresso Martini", "photo-1544145945-f90425340c7e"],
   ["Hugo Spritz", "photo-1556679343-c7306c1976bc"],

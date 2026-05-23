@@ -33,7 +33,7 @@ const columns = [
 
 export function LandingFooter() {
   return (
-    <footer className="relative border-t border-zinc-800/80 bg-zinc-950 py-16 text-zinc-400 sm:py-20">
+    <footer className="relative border-t border-zinc-800/60 bg-black py-16 text-zinc-400 sm:py-20">
       <LandingContainer wide>
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>

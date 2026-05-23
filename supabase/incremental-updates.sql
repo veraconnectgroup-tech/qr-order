@@ -54,7 +54,7 @@ CREATE POLICY "Service role manages audit log" ON audit_log
 -- See src/lib/product-stock-images.ts for the canonical list.
 
 UPDATE products SET
-  image_url = 'https://images.unsplash.com/photo-1595475207225-428b62bda831?w=600&q=80',
+  image_url = 'https://images.unsplash.com/photo-1758218058958-78f40a716c20?w=600&q=80',
   allergens = ARRAY['sulfites']
 WHERE id = 'f0000000-0000-4000-8000-000000000001';
 
@@ -479,3 +479,10 @@ ALTER TABLE orders
 CREATE INDEX IF NOT EXISTS idx_orders_payment_requested
   ON orders (location_id, payment_requested_at)
   WHERE payment_requested_at IS NOT NULL AND payment_status <> 'paid';
+
+-- ===== Fix Aperol Spritz image (migration 00019) =====
+UPDATE products
+SET
+  image_url = 'https://images.unsplash.com/photo-1758218058958-78f40a716c20?w=600&q=80',
+  updated_at = now()
+WHERE id = 'f0000000-0000-4000-8000-000000000001';

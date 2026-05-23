@@ -52,7 +52,7 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
 
   if (isHero) {
     return (
-      <div className="pointer-events-none relative flex h-[560px] w-[300px] flex-col bg-[#09090b]">
+      <div className="pointer-events-none relative flex h-full min-h-[480px] w-full flex-col bg-[#09090b]">
         <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/95 px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-[var(--lp-accent)] ring-1 ring-zinc-700">
@@ -77,8 +77,8 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
               className={cn(
                 "shrink-0 rounded-full px-3 py-1 text-[11px] font-medium",
                 activeCategory === cat.id
-                  ? "bg-orange-500 text-white"
-                  : "bg-zinc-800 text-zinc-400"
+                  ? "bg-zinc-800 text-zinc-100 ring-1 ring-[var(--lp-accent)]/40"
+                  : "bg-zinc-900 text-zinc-500 ring-1 ring-zinc-800"
               )}
             >
               {cat.name}

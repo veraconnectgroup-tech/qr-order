@@ -281,7 +281,7 @@ export function DashboardScreenShowcase({
   screen,
   className,
   variant = "feature",
-  theme = "light",
+  theme = "dark",
 }: {
   screen: DashboardShowcaseScreen;
   className?: string;

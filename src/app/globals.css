@@ -373,6 +373,64 @@
     0 0 22px rgba(234, 88, 12, 0.45);
 }
 
+.landing-diagonal-bars-closing {
+  inset: -12% -8% 8%;
+  opacity: 0.9;
+}
+
+.landing-closing-stage {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
+  padding-bottom: 0;
+}
+
+.landing-closing-window {
+  transform: perspective(1400px) rotateX(5deg);
+  transform-origin: 50% 0%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 40px 120px rgba(0, 0, 0, 0.85);
+}
+
+.landing-closing-vignette {
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 45%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.55) 75%,
+    #000 100%
+  );
+}
+
+.landing-closing-fade {
+  background: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
+}
+
+.landing-cta-banner {
+  background: #0a0a0a;
+}
+
+.landing-cta-banner-grid {
+  background-image:
+    linear-gradient(rgba(234, 88, 12, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(234, 88, 12, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, #000 15%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, #000 15%, transparent 72%);
+}
+
+.landing-cta-banner-rings {
+  background-image: repeating-radial-gradient(
+    circle at 50% 18%,
+    transparent 0,
+    transparent 47px,
+    rgba(234, 88, 12, 0.11) 48px,
+    rgba(234, 88, 12, 0.04) 49px,
+    transparent 50px
+  );
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 25%, #000 10%, transparent 68%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 25%, #000 10%, transparent 68%);
+}
+
 .landing-marquee-mask {
   mask-image: linear-gradient(
     to right,

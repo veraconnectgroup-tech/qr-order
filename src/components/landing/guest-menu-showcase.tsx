@@ -10,7 +10,7 @@ export function GuestMenuShowcase({ hideLabel = false }: { hideLabel?: boolean }
       shortLabel="Guest — menu"
       hideLabel={hideLabel}
     >
-      <GuestMenuContent variant="feature" />
+      <GuestMenuContent variant="hero" />
     </ShowcasePhone>
   );
 }
