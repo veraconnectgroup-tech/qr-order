@@ -17,6 +17,7 @@ import {
 } from "@/components/landing/demo-data";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { ShowcaseTheme } from "@/components/landing/showcase-frame";
 import type { OrderWithDetails } from "@/types";
 
 const noop = () => {};
@@ -54,7 +55,7 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
       <div className="pointer-events-none relative flex h-[560px] w-[300px] flex-col bg-[#09090b]">
         <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/95 px-3 py-2.5">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-[var(--lp-accent)] ring-1 ring-zinc-700">
               S
             </div>
             <div className="min-w-0 flex-1">
@@ -122,10 +123,10 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
                     {product.name}
                   </p>
                   <div className="mt-1.5 flex items-center justify-between gap-1">
-                    <span className="text-[11px] font-semibold text-orange-500">
+                    <span className="text-[11px] font-semibold text-zinc-200">
                       {formatPrice(Number(product.price), DEMO_CURRENCY)}
                     </span>
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[var(--lp-accent)] ring-1 ring-zinc-700">
                       <span className="text-sm leading-none">+</span>
                     </span>
                   </div>
@@ -135,13 +136,13 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 bg-orange-500 px-3 py-2.5 text-white">
+        <div className="absolute inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-950/95 px-3 py-2.5 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="font-medium">
+            <span className="font-medium text-zinc-400">
               {CART_COUNT} {CART_COUNT === 1 ? "item" : "items"}
             </span>
-            <span className="font-semibold">Cart →</span>
-            <span className="font-bold tabular-nums">
+            <span className="font-semibold text-zinc-200">Cart →</span>
+            <span className="font-bold tabular-nums text-[var(--lp-accent)]">
               {formatPrice(CART_TOTAL, DEMO_CURRENCY)}
             </span>
           </div>
@@ -201,10 +202,14 @@ export function GuestMenuContent({ variant = "feature" }: { variant?: "feature" 
 /** Orders board — hero (2 cols) or feature (full) */
 export function OrdersBoardContent({
   variant = "feature",
+  theme = "dark",
 }: {
   variant?: "hero" | "feature";
+  theme?: ShowcaseTheme;
 }) {
   const isHero = variant === "hero";
+  const light = theme === "light";
+  const cardAppearance = light ? "light" : "default";
   const columns = isHero
     ? ORDER_COLUMNS.filter((c) => ["new", "preparing", "ready"].includes(c.id))
     : ORDER_COLUMNS;
@@ -212,9 +217,9 @@ export function OrdersBoardContent({
   if (isHero) {
     return (
       <div className="pointer-events-none select-none p-3 [&_article]:p-3 [&_button]:py-1.5 [&_button]:text-xs [&_li]:text-xs [&_p.font-mono.text-lg]:text-base">
-        <div className="mb-2 flex items-center justify-between gap-2 border-b border-zinc-800 pb-2">
-          <p className="text-xs font-semibold text-zinc-200">Live Orders</p>
-          <span className="text-[10px] text-emerald-400">● Live</span>
+        <div className={cn("mb-2 flex items-center justify-between gap-2 border-b pb-2", light ? "border-zinc-200" : "border-zinc-800")}>
+          <p className={cn("text-xs font-semibold", light ? "text-zinc-800" : "text-zinc-200")}>Live Orders</p>
+          <span className="text-[10px] text-emerald-500">● Live</span>
         </div>
         <div className="flex gap-2 overflow-hidden">
           {columns.map((column) => {
@@ -226,11 +231,12 @@ export function OrdersBoardContent({
               <div
                 key={column.id}
                 className={cn(
-                  "min-w-0 flex-1 rounded-lg border-t-2 bg-zinc-900/50 p-2",
-                  column.border
+                  "min-w-0 flex-1 rounded-lg border-t-2 p-2",
+                  column.border,
+                  light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900/50"
                 )}
               >
-                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wide text-zinc-500">
+                <p className={cn("mb-1.5 text-[9px] font-bold uppercase tracking-wide", light ? "text-zinc-500" : "text-zinc-500")}>
                   {column.label}
                 </p>
                 <OrderCard
@@ -238,6 +244,7 @@ export function OrdersBoardContent({
                   currency={DEMO_CURRENCY}
                   busy={false}
                   interactive={false}
+                  appearance={cardAppearance}
                   onAccept={noop}
                   onReject={noop}
                   onStartPreparing={noop}
@@ -254,18 +261,18 @@ export function OrdersBoardContent({
 
   return (
     <div className="pointer-events-none select-none">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 px-3 py-3 sm:px-4">
+      <div className={cn("flex flex-wrap items-center justify-between gap-2 border-b px-3 py-3 sm:px-4", light ? "border-zinc-200 bg-white" : "border-zinc-800")}>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
+          <p className={cn("text-[10px] font-medium uppercase tracking-wider sm:text-xs", light ? "text-zinc-500" : "text-zinc-500")}>
             Operations
           </p>
-          <p className="text-sm font-semibold text-zinc-100 sm:text-base">
+          <p className={cn("text-sm font-semibold sm:text-base", light ? "text-zinc-900" : "text-zinc-100")}>
             Live Orders
           </p>
         </div>
         <p className="text-[10px] text-zinc-500 sm:text-xs">
           Skyline Lounge ·{" "}
-          <span className="font-medium text-emerald-400">● Live</span>
+          <span className="font-medium text-emerald-500">● Live</span>
         </p>
       </div>
 
@@ -290,6 +297,7 @@ export function OrdersBoardContent({
                 currency={DEMO_CURRENCY}
                 busy={false}
                 interactive={false}
+                appearance={cardAppearance}
                 onAccept={noop}
                 onReject={noop}
                 onStartPreparing={noop}
@@ -310,13 +318,14 @@ export function OrdersBoardContent({
             <div
               key={column.id}
               className={cn(
-                "flex w-[min(240px,38vw)] shrink-0 flex-col rounded-xl bg-zinc-900/40 p-2.5",
+                "flex w-[min(240px,38vw)] shrink-0 flex-col rounded-xl p-2.5",
                 "border-t-2 lg:w-[220px]",
-                column.border
+                column.border,
+                light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900/40"
               )}
             >
               <div className="mb-2.5 flex items-center justify-between px-0.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                <h3 className={cn("text-xs font-semibold uppercase tracking-wider", light ? "text-zinc-600" : "text-zinc-300")}>
                   {column.label}
                 </h3>
                 <span
@@ -336,6 +345,7 @@ export function OrdersBoardContent({
                     currency={DEMO_CURRENCY}
                     busy={false}
                     interactive={false}
+                    appearance={cardAppearance}
                     onAccept={noop}
                     onReject={noop}
                     onStartPreparing={noop}

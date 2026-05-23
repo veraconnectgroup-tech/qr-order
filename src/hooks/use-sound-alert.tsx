@@ -33,6 +33,11 @@ function playBeep(frequency: number, durationMs: number, volume = 0.12) {
   }
 }
 
+function playNewOrderSound() {
+  playBeep(880, 220, 0.18);
+  setTimeout(() => playBeep(1100, 280, 0.16), 240);
+}
+
 function playWaiterCallSound() {
   try {
     const ctx = new AudioContext();
@@ -64,16 +69,18 @@ function playWaiterCallSound() {
   }
 }
 
-function playNewOrderSound() {
-  playBeep(880, 220, 0.18);
-  setTimeout(() => playBeep(1100, 280, 0.16), 240);
+function playPaymentRequestSound() {
+  playBeep(523, 160, 0.2);
+  setTimeout(() => playBeep(784, 220, 0.18), 180);
 }
 
 type SoundAlertContextValue = {
   enabled: boolean;
   enable: () => void;
   toggle: () => void;
-  play: (sound: "new-order" | "waiter-call" | "kitchen-order") => void;
+  play: (
+    sound: "new-order" | "waiter-call" | "kitchen-order" | "payment-request"
+  ) => void;
 };
 
 const SoundAlertContext = createContext<SoundAlertContextValue | null>(null);
@@ -106,7 +113,9 @@ export function SoundAlertProvider({
   }, [toggle]);
 
   const play = useCallback(
-    (sound: "new-order" | "waiter-call" | "kitchen-order") => {
+    (
+      sound: "new-order" | "waiter-call" | "kitchen-order" | "payment-request"
+    ) => {
       if (!enabledRef.current) return;
 
       const audio = new Audio(`/sounds/${sound}.mp3`);
@@ -116,7 +125,8 @@ export function SoundAlertProvider({
           playBeep(660, 180);
           setTimeout(() => playBeep(880, 220), 200);
           setTimeout(() => playBeep(990, 180), 400);
-        } else playWaiterCallSound();
+        } else if (sound === "payment-request") playPaymentRequestSound();
+        else playWaiterCallSound();
       });
     },
     []

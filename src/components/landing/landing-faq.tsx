@@ -3,6 +3,12 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { AnimateInView } from "@/components/landing/animate-in-view";
+import {
+  LandingContainer,
+  LandingEyebrow,
+  LandingHeadline,
+  LandingLead,
+} from "@/components/landing/landing-primitives";
 import { cn } from "@/lib/utils";
 
 const faqs = [
@@ -32,57 +38,57 @@ export function LandingFaq() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="scroll-mt-20 border-t border-white/[0.06] px-5 py-20 sm:px-6 sm:py-24">
-      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
-        <AnimateInView>
-          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
-            FAQ
-          </p>
-          <h2 className="font-display mt-4 text-3xl font-semibold tracking-[-0.02em] text-zinc-50 sm:text-4xl">
-            Questions operators ask before rollout
-          </h2>
-          <p className="mt-4 text-base leading-relaxed text-zinc-500">
-            Straight answers for owners, GMs, and ops leads evaluating QR
-            ordering.
-          </p>
-          <a
-            href="mailto:hello@qrorder.app"
-            className="mt-6 inline-block text-sm font-medium text-zinc-300 underline-offset-4 hover:text-zinc-100 hover:underline"
-          >
-            Talk to our team →
-          </a>
-        </AnimateInView>
+    <section
+      id="faq"
+      className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-20 text-white sm:py-28"
+    >
+      <LandingContainer wide>
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-20">
+          <AnimateInView>
+            <LandingEyebrow inverted>FAQ</LandingEyebrow>
+            <LandingHeadline inverted className="mt-4">
+              Questions operators ask before rollout
+            </LandingHeadline>
+            <LandingLead inverted className="mt-4">
+              Straight answers for owners, GMs, and ops leads evaluating QR
+              ordering.
+            </LandingLead>
+            <a
+              href="mailto:hello@qrorder.app"
+              className="mt-6 inline-block text-[14px] font-medium text-[var(--lp-accent)] hover:underline"
+            >
+              Talk to our team →
+            </a>
+          </AnimateInView>
 
-        <AnimateInView className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.06]">
-          {faqs.map((item, i) => {
-            const isOpen = open === i;
-            return (
-              <div key={item.q}>
+          <div className="divide-y divide-zinc-800 border-y border-zinc-800">
+            {faqs.map((faq, i) => (
+              <AnimateInView key={faq.q}>
                 <button
                   type="button"
-                  onClick={() => setOpen(isOpen ? null : i)}
-                  className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left sm:px-6 sm:py-5"
+                  onClick={() => setOpen(open === i ? null : i)}
+                  className="flex w-full items-start justify-between gap-4 py-5 text-left"
                 >
-                  <span className="text-sm font-medium text-zinc-200 sm:text-[15px]">
-                    {item.q}
+                  <span className="text-[15px] font-medium text-zinc-100">
+                    {faq.q}
                   </span>
                   <ChevronDown
                     className={cn(
-                      "mt-0.5 size-4 shrink-0 text-zinc-500 transition-transform",
-                      isOpen && "rotate-180"
+                      "mt-0.5 size-5 shrink-0 text-zinc-500 transition-transform",
+                      open === i && "rotate-180"
                     )}
                   />
                 </button>
-                {isOpen && (
-                  <p className="px-5 pb-4 text-sm leading-relaxed text-zinc-500 sm:px-6 sm:pb-5">
-                    {item.a}
+                {open === i && (
+                  <p className="pb-5 text-[15px] leading-relaxed text-zinc-400">
+                    {faq.a}
                   </p>
                 )}
-              </div>
-            );
-          })}
-        </AnimateInView>
-      </div>
+              </AnimateInView>
+            ))}
+          </div>
+        </div>
+      </LandingContainer>
     </section>
   );
 }

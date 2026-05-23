@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Clock } from "lucide-react";
+import { Clock, CreditCard } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { paymentMethodLabel } from "@/lib/payment-methods";
@@ -109,6 +109,7 @@ export function OrderCard({
   dragHandleProps,
   interactive = true,
   inPersonPaymentLocation = "bar",
+  appearance = "default",
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -121,12 +122,18 @@ export function OrderCard({
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   interactive?: boolean;
   inPersonPaymentLocation?: InPersonPaymentLocation;
+  appearance?: "default" | "light";
 }) {
+  const light = appearance === "light";
   const columnId = getOrderColumnId(order.status);
   const tableName = order.tables?.name ?? "—";
   const zoneName = (order.tables as { zone?: { name: string } | null })?.zone
     ?.name;
   const paid = order.payment_status === "paid";
+  const paymentRequested =
+    !paid &&
+    order.payment_requested_at != null &&
+    order.payment_method !== "unset";
   const paymentLabel = paymentMethodLabel(
     (order as { payment_method?: string }).payment_method ?? "online",
     inPersonPaymentLocation
@@ -145,8 +152,12 @@ export function OrderCard({
           : undefined
       }
       className={cn(
-        "rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition hover:border-zinc-700",
+        "rounded-xl border p-4 transition",
+        light
+          ? "border-zinc-200 bg-white hover:border-zinc-300"
+          : "border-zinc-800 bg-zinc-900 hover:border-zinc-700",
         columnId === "new" && "border-l-2 border-l-orange-500",
+        paymentRequested && "ring-2 ring-amber-500/60",
         columnId === "delivered" && "opacity-60"
       )}
     >
@@ -162,7 +173,7 @@ export function OrderCard({
               ⠿
             </button>
           )}
-          <p className="font-mono text-lg font-bold text-zinc-50">
+          <p className={cn("font-mono text-lg font-bold", light ? "text-zinc-900" : "text-zinc-50")}>
             {formatOrderNumber(order.order_number)}
           </p>
         </div>
@@ -170,13 +181,20 @@ export function OrderCard({
       </div>
 
       <div className="mt-2 flex items-center gap-2">
-        <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-200">
+        <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-200")}>
           {tableName}
         </span>
         {zoneName && <span className="text-xs text-zinc-500">{zoneName}</span>}
       </div>
 
-      <ul className="mt-3 space-y-1 text-sm text-zinc-300">
+      {paymentRequested && (
+        <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-300">
+          <CreditCard className="size-3.5 shrink-0" />
+          Payment requested · {paymentLabel}
+        </div>
+      )}
+
+      <ul className={cn("mt-3 space-y-1 text-sm", light ? "text-zinc-700" : "text-zinc-300")}>
         {order.order_items?.map((item) => (
           <li key={item.id}>
             {item.quantity}× {item.product_name}
@@ -189,7 +207,7 @@ export function OrderCard({
         ))}
       </ul>
 
-      <div className="my-3 border-t border-zinc-800" />
+      <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")} />
 
       <div className="flex items-center justify-between">
         <span className="font-mono text-base font-semibold text-orange-500">
@@ -200,7 +218,7 @@ export function OrderCard({
             Paid ✓
           </span>
         ) : (
-          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
+          <span className={cn("rounded-full px-2 py-0.5 text-xs", light ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-zinc-400")}>
             {paymentLabel}
           </span>
         )}

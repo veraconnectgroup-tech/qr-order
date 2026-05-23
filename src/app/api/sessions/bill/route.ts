@@ -179,9 +179,13 @@ export async function POST(req: NextRequest) {
   );
 
   if (paymentMethod !== "online") {
+    const now = new Date().toISOString();
     const { error } = await admin
       .from("orders")
-      .update({ payment_method: paymentMethod })
+      .update({
+        payment_method: paymentMethod,
+        payment_requested_at: now,
+      })
       .in("id", orderIds);
 
     if (error) {
@@ -239,6 +243,14 @@ export async function POST(req: NextRequest) {
       { stripeAccount: org.stripe_account_id }
     );
     if (existing.client_secret) {
+      await admin
+        .from("orders")
+        .update({
+          payment_method: "online",
+          payment_requested_at: new Date().toISOString(),
+        })
+        .in("id", orderIds);
+
       return NextResponse.json({
         data: {
           clientSecret: existing.client_secret,
@@ -283,6 +295,7 @@ export async function POST(req: NextRequest) {
       payment_method: "online",
       payment_status: "processing",
       stripe_payment_intent_id: intent.id,
+      payment_requested_at: new Date().toISOString(),
     })
     .in("id", orderIds);
 

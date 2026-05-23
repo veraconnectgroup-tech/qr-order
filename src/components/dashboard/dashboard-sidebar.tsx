@@ -20,7 +20,7 @@ import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 const navItems = [
   { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid, alertKey: "orders" as const },
   { href: "/dashboard/kitchen", label: "Prep Display", icon: ChefHat },
-  { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
+  { href: "/dashboard/tables", label: "Tables", icon: Grid3X3, alertKey: "payments" as const },
   { href: "/dashboard/waiter-calls", label: "Waiter Calls", icon: Bell, alertKey: "calls" as const },
   { href: "/dashboard/history", label: "History", icon: BarChart3 },
   { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
@@ -31,7 +31,8 @@ const navItems = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { orgName, staffName, staffRole } = useDashboard();
-  const { pendingOrders, pendingWaiterCalls } = useDashboardAlerts();
+  const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
+    useDashboardAlerts();
 
   return (
     <aside className="hidden w-[260px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 md:flex">
@@ -48,10 +49,12 @@ export function DashboardSidebar() {
           const active = pathname.startsWith(href);
           const badgeCount =
             alertKey === "orders"
-              ? pendingOrders
+              ? pendingOrders + pendingPaymentRequests
               : alertKey === "calls"
                 ? pendingWaiterCalls
-                : 0;
+                : alertKey === "payments"
+                  ? pendingPaymentRequests
+                  : 0;
 
           return (
             <Link

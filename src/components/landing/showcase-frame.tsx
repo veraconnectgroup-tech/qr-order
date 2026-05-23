@@ -1,41 +1,62 @@
 import { Smartphone, Tablet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export type ShowcaseTheme = "dark" | "light";
+
 /** Cursor-style app window chrome */
 export function ShowcaseWindow({
   children,
   url,
   title,
   className,
+  theme = "dark",
 }: {
   children: React.ReactNode;
   url?: string;
   title?: string;
   className?: string;
+  theme?: ShowcaseTheme;
 }) {
   const barLabel = url ?? title;
+  const isLight = theme === "light";
 
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-white/[0.08] bg-[#09090b]",
-        "shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]",
+        "overflow-hidden rounded-xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.18)]",
+        isLight
+          ? "border-zinc-200/90 bg-white"
+          : "border-white/[0.08] bg-[#09090b] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]",
         className
       )}
     >
-      <div className="flex items-center gap-2.5 border-b border-white/[0.06] bg-white/[0.02] px-3 py-2">
+      <div
+        className={cn(
+          "flex items-center gap-2.5 border-b px-3 py-2",
+          isLight
+            ? "border-zinc-200 bg-zinc-50"
+            : "border-white/[0.06] bg-white/[0.02]"
+        )}
+      >
         <div className="flex shrink-0 gap-1.5">
-          <div className="size-2.5 rounded-full bg-zinc-700/80" />
-          <div className="size-2.5 rounded-full bg-zinc-700/80" />
-          <div className="size-2.5 rounded-full bg-zinc-700/80" />
+          <div className={cn("size-2.5 rounded-full", isLight ? "bg-red-400/80" : "bg-zinc-700/80")} />
+          <div className={cn("size-2.5 rounded-full", isLight ? "bg-amber-400/80" : "bg-zinc-700/80")} />
+          <div className={cn("size-2.5 rounded-full", isLight ? "bg-emerald-400/80" : "bg-zinc-700/80")} />
         </div>
         {barLabel && (
-          <div className="min-w-0 flex-1 truncate rounded-md bg-zinc-950/90 px-2.5 py-0.5 text-center text-[10px] text-zinc-500">
+          <div
+            className={cn(
+              "min-w-0 flex-1 truncate rounded-md px-2.5 py-0.5 text-center text-[10px]",
+              isLight
+                ? "bg-white text-zinc-500 ring-1 ring-zinc-200"
+                : "bg-zinc-950/90 text-zinc-500"
+            )}
+          >
             {barLabel}
           </div>
         )}
       </div>
-      <div className="bg-[#09090b]">{children}</div>
+      <div className={isLight ? "bg-white" : "bg-[#09090b]"}>{children}</div>
     </div>
   );
 }
@@ -50,7 +71,7 @@ function DeviceCaption({
   shortLabel?: string;
 }) {
   return (
-    <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-zinc-600 sm:text-xs">
+    <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 sm:text-xs">
       <Icon className="size-3 shrink-0" aria-hidden />
       <span className="hidden sm:inline">{label}</span>
       <span className="sm:hidden">{shortLabel ?? label}</span>
@@ -79,15 +100,26 @@ export function ShowcaseStage({
   );
 }
 
-function StatusBar({ url }: { url: string }) {
+function StatusBar({ url, theme }: { url: string; theme: ShowcaseTheme }) {
+  const isLight = theme === "light";
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-950 px-3 py-2">
+    <div
+      className={cn(
+        "flex items-center gap-2 border-b px-3 py-2",
+        isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-800 bg-zinc-950"
+      )}
+    >
       <div className="flex shrink-0 gap-1">
-        <div className="size-1.5 rounded-full bg-zinc-700 sm:size-2" />
-        <div className="size-1.5 rounded-full bg-zinc-700 sm:size-2" />
-        <div className="size-1.5 rounded-full bg-zinc-700 sm:size-2" />
+        <div className={cn("size-1.5 rounded-full sm:size-2", isLight ? "bg-zinc-300" : "bg-zinc-700")} />
+        <div className={cn("size-1.5 rounded-full sm:size-2", isLight ? "bg-zinc-300" : "bg-zinc-700")} />
+        <div className={cn("size-1.5 rounded-full sm:size-2", isLight ? "bg-zinc-300" : "bg-zinc-700")} />
       </div>
-      <div className="min-w-0 flex-1 truncate rounded-md bg-zinc-900 px-2 py-0.5 text-center text-[9px] text-zinc-500 sm:text-[10px]">
+      <div
+        className={cn(
+          "min-w-0 flex-1 truncate rounded-md px-2 py-0.5 text-center text-[9px] sm:text-[10px]",
+          isLight ? "bg-white text-zinc-500 ring-1 ring-zinc-200" : "bg-zinc-900 text-zinc-500"
+        )}
+      >
         {url}
       </div>
     </div>
@@ -97,13 +129,21 @@ function StatusBar({ url }: { url: string }) {
 function TabletScreen({
   children,
   url,
+  theme,
 }: {
   children: React.ReactNode;
   url?: string;
+  theme: ShowcaseTheme;
 }) {
+  const isLight = theme === "light";
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b]">
-      {url && <StatusBar url={url} />}
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border",
+        isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-[#09090b]"
+      )}
+    >
+      {url && <StatusBar url={url} theme={theme} />}
       {children}
     </div>
   );
@@ -116,6 +156,7 @@ export function ShowcaseTablet({
   shortLabel,
   className,
   hideCaption = false,
+  theme = "dark",
 }: {
   children: React.ReactNode;
   url?: string;
@@ -123,18 +164,42 @@ export function ShowcaseTablet({
   shortLabel?: string;
   className?: string;
   hideCaption?: boolean;
+  theme?: ShowcaseTheme;
 }) {
+  const isLight = theme === "light";
+
   return (
     <div className={cn("mx-auto w-full min-w-0 max-w-full", className)}>
       <div className="w-full min-w-0 md:hidden">
-        <ShowcaseWindow url={url}>{children}</ShowcaseWindow>
+        <ShowcaseWindow url={url} theme={theme}>
+          {children}
+        </ShowcaseWindow>
       </div>
 
       <div className="mx-auto hidden w-full max-w-[920px] md:block">
-        <div className="relative rounded-[1.25rem] border-[6px] border-zinc-800 bg-zinc-900 p-2 shadow-[0_16px_48px_rgba(0,0,0,0.5)] lg:rounded-[1.35rem] lg:border-[7px] lg:p-2.5">
-          <div className="absolute left-1/2 top-3.5 z-10 size-1.5 -translate-x-1/2 rounded-full bg-zinc-700 lg:top-4 lg:size-2" />
-          <TabletScreen url={url}>{children}</TabletScreen>
-          <div className="mx-auto mt-1.5 h-1 w-14 rounded-full bg-zinc-700 lg:mt-2 lg:w-16" />
+        <div
+          className={cn(
+            "relative rounded-[1.25rem] p-2 shadow-[0_16px_48px_rgba(0,0,0,0.12)] lg:rounded-[1.35rem] lg:p-2.5",
+            isLight
+              ? "border-[6px] border-zinc-200 bg-zinc-100 lg:border-[7px]"
+              : "border-[6px] border-zinc-800 bg-zinc-900 lg:border-[7px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+          )}
+        >
+          <div
+            className={cn(
+              "absolute left-1/2 top-3.5 z-10 size-1.5 -translate-x-1/2 rounded-full lg:top-4 lg:size-2",
+              isLight ? "bg-zinc-300" : "bg-zinc-700"
+            )}
+          />
+          <TabletScreen url={url} theme={theme}>
+            {children}
+          </TabletScreen>
+          <div
+            className={cn(
+              "mx-auto mt-1.5 h-1 w-14 rounded-full lg:mt-2 lg:w-16",
+              isLight ? "bg-zinc-300" : "bg-zinc-700"
+            )}
+          />
         </div>
       </div>
 
@@ -192,13 +257,15 @@ export function ShowcaseBrowser({
   children,
   url,
   className = "",
+  theme = "dark",
 }: {
   children: React.ReactNode;
   url?: string;
   className?: string;
+  theme?: ShowcaseTheme;
 }) {
   return (
-    <ShowcaseTablet url={url} className={className} label="Staff tablet">
+    <ShowcaseTablet url={url} className={className} label="Staff tablet" theme={theme}>
       {children}
     </ShowcaseTablet>
   );

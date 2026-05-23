@@ -23,14 +23,14 @@ function formatTimeAgo(iso: string) {
   return `${minutes} min ago`;
 }
 
-function elapsedStyles(minutes: number) {
+function elapsedStyles(minutes: number, light = false) {
   if (minutes >= 10) {
-    return { text: "text-red-400", pulse: true };
+    return { text: light ? "text-red-600" : "text-red-400", pulse: true };
   }
   if (minutes >= 5) {
-    return { text: "text-yellow-400", pulse: false };
+    return { text: light ? "text-yellow-600" : "text-yellow-400", pulse: false };
   }
-  return { text: "text-green-400", pulse: false };
+  return { text: light ? "text-green-600" : "text-green-400", pulse: false };
 }
 
 async function patchOrderStatus(
@@ -55,20 +55,23 @@ export function KitchenCard({
   onMarkReady,
   onReject,
   busy,
+  appearance = "default",
 }: {
   order: OrderWithDetails;
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onReject: () => void;
   busy: boolean;
+  appearance?: "default" | "light";
 }) {
+  const light = appearance === "light";
   const [, tick] = useState(0);
   const tableName = order.tables?.name ?? "—";
   const since = order.created_at;
   const minutes = Math.floor(
     (Date.now() - new Date(since).getTime()) / 60_000
   );
-  const styles = elapsedStyles(minutes);
+  const styles = elapsedStyles(minutes, light);
   const isAccepted = order.status === "accepted";
   const items = order.order_items ?? [];
 
@@ -85,17 +88,18 @@ export function KitchenCard({
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "rounded-xl border-2 bg-zinc-900 p-4",
+        "rounded-xl border-2 p-4",
+        light ? "bg-white" : "bg-zinc-900",
         isAccepted ? "border-orange-500" : "border-blue-500",
         styles.pulse && "animate-pulse"
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-2xl font-bold text-zinc-100">
+        <p className={cn("text-2xl font-bold", light ? "text-zinc-900" : "text-zinc-100")}>
           {formatOrderNumber(order.order_number)}
         </p>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-zinc-800 px-3 py-1 text-sm text-zinc-400">
+          <span className={cn("rounded-full px-3 py-1 text-sm", light ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-zinc-400")}>
             {tableName}
           </span>
           <span className={cn("text-sm", styles.text)}>
@@ -104,34 +108,34 @@ export function KitchenCard({
         </div>
       </div>
 
-      <div className="my-3 border-t border-zinc-800" />
+      <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")} />
 
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.id}>
-            <p className="text-base text-zinc-200">
+            <p className={cn("text-base", light ? "text-zinc-800" : "text-zinc-200")}>
               <span className="font-bold text-orange-500">{item.quantity}×</span>{" "}
               {item.product_name}
             </p>
             {item.order_item_modifiers?.map((m) => (
-              <p key={m.id} className="pl-6 text-sm text-zinc-500">
+              <p key={m.id} className={cn("pl-6 text-sm", light ? "text-zinc-500" : "text-zinc-500")}>
                 → {m.modifier_name}
               </p>
             ))}
             {item.notes && (
-              <p className="pl-6 text-sm text-zinc-500">→ {item.notes}</p>
+              <p className={cn("pl-6 text-sm", light ? "text-zinc-500" : "text-zinc-500")}>→ {item.notes}</p>
             )}
           </li>
         ))}
       </ul>
 
       {order.notes && (
-        <p className="mt-3 border-l-2 border-amber-500 pl-3 text-sm italic text-amber-400">
+        <p className={cn("mt-3 border-l-2 border-amber-500 pl-3 text-sm italic", light ? "text-amber-700" : "text-amber-400")}>
           {order.notes}
         </p>
       )}
 
-      <div className="my-3 border-t border-zinc-800" />
+      <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")} />
 
       <div className="flex flex-wrap items-center gap-2">
         {isAccepted ? (

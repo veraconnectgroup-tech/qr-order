@@ -226,10 +226,34 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
   );
 }
 
-export function FeatureCheck({ children }: { children: React.ReactNode }) {
+export function FeatureCheck({
+  children,
+  light,
+  accent,
+}: {
+  children: React.ReactNode;
+  light?: boolean;
+  accent?: boolean;
+}) {
+  const onDark = accent && !light;
   return (
-    <li className="flex items-start gap-2 text-sm text-zinc-400">
-      <Check className="mt-0.5 size-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
+    <li
+      className={cn(
+        "flex items-start gap-2 text-sm",
+        onDark ? "text-zinc-300" : light ? "text-zinc-600" : "text-zinc-400"
+      )}
+    >
+      <Check
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          accent
+            ? "text-[var(--lp-accent,#ea580c)]"
+            : light
+              ? "text-zinc-500"
+              : "text-zinc-500"
+        )}
+        strokeWidth={1.75}
+      />
       {children}
     </li>
   );

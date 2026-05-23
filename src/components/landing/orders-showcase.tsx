@@ -9,8 +9,9 @@ export function OrdersShowcase({ compact = false }: { compact?: boolean }) {
       url="dashboard.qrorder.app/orders"
       label="Staff tablet — live orders"
       shortLabel="Staff — orders"
+      theme="light"
     >
-      <OrdersBoardContent variant={compact ? "hero" : "feature"} />
+      <OrdersBoardContent variant={compact ? "hero" : "feature"} theme="light" />
     </ShowcaseTablet>
   );
 }

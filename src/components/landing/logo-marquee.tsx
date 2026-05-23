@@ -1,34 +1,35 @@
-const logos = [
+import { LandingContainer } from "@/components/landing/landing-primitives";
+
+const operators = [
   "Skyline Lounge",
   "Harbor Group",
   "Altstadt Bars",
   "Rooftop Collective",
   "Nord Hospitality",
   "The Copper Room",
-  "Marina F&B",
 ];
 
 export function LogoMarquee() {
-  const track = [...logos, ...logos];
+  const track = [...operators, ...operators];
 
   return (
-    <section className="border-b border-white/[0.06] py-11 sm:py-12">
-      <div className="mx-auto max-w-6xl px-5 sm:px-6">
-        <p className="text-center text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-600">
-          Trusted by modern hospitality teams
+    <section className="border-b border-[var(--lp-border)] bg-[var(--lp-tint)] py-5">
+      <LandingContainer wide>
+        <p className="text-center text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--lp-subtle)]">
+          Used by hospitality operators across Europe
         </p>
-      </div>
-      <div className="landing-marquee-mask relative mt-8 overflow-hidden">
-        <div className="landing-marquee-track flex w-max gap-12 px-6 sm:gap-16">
+      </LandingContainer>
+      <div className="landing-marquee-mask relative mt-4 overflow-hidden">
+        <ul className="landing-marquee-track flex w-max gap-10 px-6">
           {track.map((name, i) => (
-            <span
+            <li
               key={`${name}-${i}`}
-              className="shrink-0 text-sm font-medium tracking-tight text-zinc-600 sm:text-[15px]"
+              className="shrink-0 text-[14px] font-medium tracking-[-0.01em] text-[var(--lp-muted)]"
             >
               {name}
-            </span>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );

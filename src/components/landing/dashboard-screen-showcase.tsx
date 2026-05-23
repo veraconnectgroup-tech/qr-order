@@ -16,30 +16,36 @@ import {
   ShowcaseDashboardShell,
   type DashboardShowcaseScreen,
 } from "@/components/landing/showcase-dashboard-shell";
+import type { ShowcaseTheme } from "@/components/landing/showcase-frame";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function TableCard({
   table,
   compact = false,
+  theme = "dark",
 }: {
   table: DemoTable;
   compact?: boolean;
+  theme?: ShowcaseTheme;
 }) {
+  const light = theme === "light";
   return (
     <div
       className={cn(
-        "rounded-xl border bg-zinc-900 text-center",
+        "rounded-xl border text-center",
         compact ? "p-2" : "p-4",
+        light ? "bg-white" : "bg-zinc-900",
         table.status === "attention" && "animate-pulse border-red-500",
         table.status === "occupied" && "border-green-500/50",
-        table.status === "available" && "border-zinc-800"
+        table.status === "available" && (light ? "border-zinc-200" : "border-zinc-800")
       )}
     >
       <p
         className={cn(
-          "font-mono font-bold text-zinc-50",
-          compact ? "text-xs" : "text-lg"
+          "font-mono font-bold",
+          compact ? "text-xs" : "text-lg",
+          light ? "text-zinc-900" : "text-zinc-50"
         )}
       >
         {table.name}
@@ -79,7 +85,14 @@ function TableCard({
   );
 }
 
-export function TablesShowcaseContent({ compact = false }: { compact?: boolean }) {
+export function TablesShowcaseContent({
+  compact = false,
+  theme = "dark",
+}: {
+  compact?: boolean;
+  theme?: ShowcaseTheme;
+}) {
+  const light = theme === "light";
   return (
     <>
       <div
@@ -90,14 +103,16 @@ export function TablesShowcaseContent({ compact = false }: { compact?: boolean }
       >
         <div
           className={cn(
-            "flex flex-wrap gap-4 border-b border-zinc-800 pb-1.5",
-            compact && "gap-2"
+            "flex flex-wrap gap-4 border-b pb-1.5",
+            compact && "gap-2",
+            light ? "border-zinc-200" : "border-zinc-800"
           )}
         >
           <span
             className={cn(
-              "border-b-2 border-orange-500 pb-1.5 font-medium text-white",
-              compact ? "text-[10px]" : "text-xs"
+              "border-b-2 border-orange-500 pb-1.5 font-medium",
+              compact ? "text-[10px]" : "text-xs",
+              light ? "text-zinc-900" : "text-white"
             )}
           >
             All ({DEMO_TABLES.length})
@@ -116,7 +131,7 @@ export function TablesShowcaseContent({ compact = false }: { compact?: boolean }
         </div>
         {!compact && (
           <div className="flex gap-2">
-            <span className="rounded-lg bg-zinc-800 px-3 py-1.5 text-[11px] text-zinc-300">
+            <span className={cn("rounded-lg px-3 py-1.5 text-[11px]", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300")}>
               Download All QR Codes
             </span>
             <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white">
@@ -133,14 +148,15 @@ export function TablesShowcaseContent({ compact = false }: { compact?: boolean }
         )}
       >
         {DEMO_TABLES.map((table) => (
-          <TableCard key={table.id} table={table} compact={compact} />
+          <TableCard key={table.id} table={table} compact={compact} theme={theme} />
         ))}
       </div>
     </>
   );
 }
 
-function HistoryShowcaseContent() {
+function HistoryShowcaseContent({ theme = "dark" }: { theme?: ShowcaseTheme }) {
+  const light = theme === "light";
   const stats = [
     { label: "Revenue", value: formatPrice(DEMO_TODAY_REVENUE, DEMO_CURRENCY), delta: "+100% ↑" },
     { label: "Orders", value: "4", delta: "+100% ↑" },
@@ -154,10 +170,13 @@ function HistoryShowcaseContent() {
         {stats.map((s) => (
           <div
             key={s.label}
-            className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+            className={cn(
+              "rounded-xl border p-4",
+              light ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-900"
+            )}
           >
-            <p className="text-[11px] text-zinc-400">{s.label}</p>
-            <p className="mt-0.5 font-mono text-xl font-bold text-white">
+            <p className={cn("text-[11px]", light ? "text-zinc-500" : "text-zinc-400")}>{s.label}</p>
+            <p className={cn("mt-0.5 font-mono text-xl font-bold", light ? "text-zinc-900" : "text-white")}>
               {s.value}
             </p>
             <p className="mt-1 text-[11px] text-green-400">{s.delta}</p>
@@ -174,7 +193,9 @@ function HistoryShowcaseContent() {
                 "rounded-lg px-2.5 py-1 text-[11px]",
                 i === 0
                   ? "bg-orange-500 text-white"
-                  : "bg-zinc-800 text-zinc-400"
+                  : light
+                    ? "bg-zinc-100 text-zinc-600"
+                    : "bg-zinc-800 text-zinc-400"
               )}
             >
               {f}
@@ -183,10 +204,10 @@ function HistoryShowcaseContent() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+      <div className={cn("overflow-hidden rounded-xl border", light ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-900/50")}>
         <table className="w-full text-[11px]">
           <thead>
-            <tr className="bg-zinc-800/50 text-left text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+            <tr className={cn("text-left text-[10px] font-semibold uppercase tracking-wider", light ? "bg-zinc-50 text-zinc-500" : "bg-zinc-800/50 text-zinc-400")}>
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Table</th>
               <th className="px-3 py-2">Items</th>
@@ -205,9 +226,9 @@ function HistoryShowcaseContent() {
             ].map((row) => (
               <tr
                 key={row.num}
-                className="border-b border-zinc-800/50 text-zinc-300"
+                className={cn("border-b", light ? "border-zinc-100 text-zinc-700" : "border-zinc-800/50 text-zinc-300")}
               >
-                <td className="px-3 py-2 font-mono font-semibold text-zinc-50">
+                <td className={cn("px-3 py-2 font-mono font-semibold", light ? "text-zinc-900" : "text-zinc-50")}>
                   #{String(row.num).padStart(3, "0")}
                 </td>
                 <td className="px-3 py-2">{row.table}</td>
@@ -260,10 +281,12 @@ export function DashboardScreenShowcase({
   screen,
   className,
   variant = "feature",
+  theme = "light",
 }: {
   screen: DashboardShowcaseScreen;
   className?: string;
   variant?: "feature" | "hero";
+  theme?: ShowcaseTheme;
 }) {
   const meta = SCREEN_META[screen];
   const isHero = variant === "hero";
@@ -281,12 +304,13 @@ export function DashboardScreenShowcase({
         currency={DEMO_CURRENCY}
         showExport={meta.showExport && !isHero}
         compact={isHero}
+        theme={theme}
       >
         {screen === "orders" && (
-          <OrdersBoardContent variant={isHero ? "hero" : "feature"} />
+          <OrdersBoardContent variant={isHero ? "hero" : "feature"} theme={theme} />
         )}
-        {screen === "tables" && <TablesShowcaseContent compact={isHero} />}
-        {screen === "history" && <HistoryShowcaseContent />}
+        {screen === "tables" && <TablesShowcaseContent compact={isHero} theme={theme} />}
+        {screen === "history" && <HistoryShowcaseContent theme={theme} />}
       </ShowcaseDashboardShell>
     </ScaledDashboardPreview>
   );

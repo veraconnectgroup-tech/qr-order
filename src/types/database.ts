@@ -154,6 +154,7 @@ type Tables = {
       | "partial_refund"
       | "failed";
     payment_method: "online" | "at_bar" | "card_at_table" | "unset";
+    payment_requested_at: string | null;
     notes: string | null;
     rejection_reason: string | null;
     estimated_prep_minutes: number | null;

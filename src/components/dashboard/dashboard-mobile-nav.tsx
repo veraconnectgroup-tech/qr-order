@@ -16,14 +16,15 @@ import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 const tabs = [
   { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid, alertKey: "orders" as const },
   { href: "/dashboard/kitchen", label: "Prep", icon: ChefHat },
-  { href: "/dashboard/tables", label: "Tables", icon: Grid3X3 },
+  { href: "/dashboard/tables", label: "Tables", icon: Grid3X3, alertKey: "payments" as const },
   { href: "/dashboard/waiter-calls", label: "Calls", icon: Bell, alertKey: "calls" as const },
   { href: "/dashboard/history", label: "History", icon: BarChart3 },
 ];
 
 export function DashboardMobileNav() {
   const pathname = usePathname();
-  const { pendingOrders, pendingWaiterCalls } = useDashboardAlerts();
+  const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
+    useDashboardAlerts();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom,0px))] border-t border-zinc-800 bg-zinc-950 pb-[env(safe-area-inset-bottom,0px)] md:hidden">
@@ -31,10 +32,12 @@ export function DashboardMobileNav() {
         const active = pathname.startsWith(href);
         const badgeCount =
           alertKey === "orders"
-            ? pendingOrders
+            ? pendingOrders + pendingPaymentRequests
             : alertKey === "calls"
               ? pendingWaiterCalls
-              : 0;
+              : alertKey === "payments"
+                ? pendingPaymentRequests
+                : 0;
 
         return (
           <Link

@@ -111,9 +111,14 @@ export async function POST(
       );
     }
 
+    const now = new Date().toISOString();
+
     await admin
       .from("orders")
-      .update({ payment_method: paymentMethod })
+      .update({
+        payment_method: paymentMethod,
+        payment_requested_at: now,
+      })
       .eq("id", orderId);
 
     if (paymentMethod !== "online") {

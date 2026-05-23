@@ -10,6 +10,7 @@ import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useAppBaseUrl } from "@/hooks/use-app-base-url";
 import { guestTableUrl, isUnsafeGuestBaseUrl } from "@/lib/app-url";
+import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
 import {
   Dialog,
@@ -22,7 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Order, Table, TableSession, Zone } from "@/types";
 
-type TableOrder = Pick<Order, "id" | "order_number" | "total" | "status">;
+type TableOrder = Pick<
+  Order,
+  "id" | "order_number" | "total" | "status" | "payment_requested_at" | "payment_status" | "payment_method"
+>;
 
 type TableRow = Table & {
   zone: Zone | null;
@@ -30,6 +34,7 @@ type TableRow = Table & {
   activeOrders: TableOrder[];
   sessionTotal: number;
   hasWaiterCall: boolean;
+  hasPaymentRequest: boolean;
 };
 
 function formatDuration(since: string) {
@@ -122,7 +127,9 @@ export function TablesBoard() {
 
     const { data: orders } = await supabase
       .from("orders")
-      .select("id, table_id, session_id, order_number, total, status, created_at")
+      .select(
+        "id, table_id, session_id, order_number, total, status, created_at, payment_requested_at, payment_status, payment_method"
+      )
       .eq("location_id", locationId)
       .gte("created_at", startOfTodayIso())
       .neq("status", "rejected");
@@ -160,6 +167,12 @@ export function TablesBoard() {
         (sum, o) => sum + Number(o.total),
         0
       );
+      const hasPaymentRequest = activeOrders.some(
+        (o) =>
+          o.payment_status !== "paid" &&
+          o.payment_requested_at != null &&
+          o.payment_method !== "unset"
+      );
       return {
         ...t,
         zone: t.zone,
@@ -167,6 +180,7 @@ export function TablesBoard() {
         activeOrders,
         sessionTotal,
         hasWaiterCall: pendingCallTableIds.has(t.id),
+        hasPaymentRequest,
       };
     });
 
@@ -178,6 +192,13 @@ export function TablesBoard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  usePostgresRealtime({
+    channelName: `tables-board-orders:${locationId}`,
+    table: "orders",
+    filter: `location_id=eq.${locationId}`,
+    onChange: load,
+  });
 
   const zoneTabs = useMemo(() => {
     const countByZone = new Map<string, number>();
@@ -382,6 +403,7 @@ ${qrItems
 
   function tableStatus(table: TableRow) {
     if (table.hasWaiterCall) return "attention" as const;
+    if (table.hasPaymentRequest) return "payment" as const;
     if (table.session || table.activeOrders.length > 0) return "occupied" as const;
     return "available" as const;
   }
@@ -494,6 +516,7 @@ ${qrItems
               className={cn(
                 "cursor-pointer rounded-xl border bg-zinc-900 p-3 text-center transition hover:border-zinc-600 sm:p-5",
                 status === "attention" && "animate-pulse border-red-500",
+                status === "payment" && "animate-pulse border-amber-500",
                 status === "occupied" && "border-green-500/50",
                 status === "available" && "border-zinc-800"
               )}
@@ -506,6 +529,11 @@ ${qrItems
                 <p className="mt-2 text-sm text-red-400">
                   <span className="mr-1 inline-block size-2 rounded-full bg-red-500" />
                   Needs attention
+                </p>
+              ) : status === "payment" ? (
+                <p className="mt-2 text-sm text-amber-400">
+                  <span className="mr-1 inline-block size-2 rounded-full bg-amber-500" />
+                  Payment requested
                 </p>
               ) : status === "occupied" ? (
                 <>
@@ -565,11 +593,18 @@ ${qrItems
               <p className="mt-3 text-sm text-zinc-400">
                 Zone: {selected.zone?.name ?? "—"} · {selected.seats} seats ·
                 Status:{" "}
-                {tableStatus(selected) === "occupied" ||
-                tableStatus(selected) === "attention"
+                {tableStatus(selected) === "attention" ||
+                tableStatus(selected) === "payment" ||
+                tableStatus(selected) === "occupied"
                   ? "Occupied"
                   : "Available"}
               </p>
+
+              {selected.hasPaymentRequest && (
+                <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-300">
+                  Guest requested payment — check bill / terminal
+                </p>
+              )}
 
               {selected.session && (
                 <p className="mt-2 text-sm text-zinc-500">

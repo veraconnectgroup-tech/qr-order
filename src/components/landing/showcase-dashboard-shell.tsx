@@ -9,6 +9,7 @@ import {
   Settings,
   UtensilsCrossed,
 } from "lucide-react";
+import type { ShowcaseTheme } from "@/components/landing/showcase-frame";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export function ShowcaseDashboardShell({
   children,
   showExport,
   compact = false,
+  theme = "dark",
 }: {
   activeScreen: DashboardShowcaseScreen;
   title: string;
@@ -41,20 +43,30 @@ export function ShowcaseDashboardShell({
   children: React.ReactNode;
   showExport?: boolean;
   compact?: boolean;
+  theme?: ShowcaseTheme;
 }) {
+  const light = theme === "light";
+
   return (
-    <div className="flex h-full bg-zinc-950 text-zinc-50">
+    <div
+      className={cn(
+        "flex h-full",
+        light ? "bg-white text-zinc-900" : "bg-zinc-950 text-zinc-50"
+      )}
+    >
       <aside
         className={cn(
-          "flex shrink-0 flex-col border-r border-zinc-800 bg-zinc-950",
-          compact ? "w-[168px]" : "w-[220px]"
+          "flex shrink-0 flex-col border-r",
+          compact ? "w-[168px]" : "w-[220px]",
+          light ? "border-zinc-200 bg-zinc-50" : "border-zinc-800 bg-zinc-950"
         )}
       >
-        <div className={cn("border-b border-zinc-800", compact ? "p-2.5" : "p-4")}>
+        <div className={cn("border-b", compact ? "p-2.5" : "p-4", light ? "border-zinc-200" : "border-zinc-800")}>
           <p
             className={cn(
-              "truncate font-bold text-zinc-50",
-              compact ? "text-xs" : "text-sm"
+              "truncate font-bold",
+              compact ? "text-xs" : "text-sm",
+              light ? "text-zinc-900" : "text-zinc-50"
             )}
           >
             Skyline Lounge
@@ -63,7 +75,7 @@ export function ShowcaseDashboardShell({
             <span className="size-1.5 rounded-full bg-emerald-500" />
             <span
               className={cn(
-                "font-medium text-emerald-400",
+                "font-medium text-emerald-600",
                 compact ? "text-[10px]" : "text-[11px]"
               )}
             >
@@ -82,8 +94,12 @@ export function ShowcaseDashboardShell({
                   "flex items-center gap-2 rounded-lg font-medium",
                   compact ? "px-2 py-1.5 text-[11px]" : "gap-2.5 px-2.5 py-2 text-[13px]",
                   active
-                    ? "border-l-2 border-orange-500 bg-zinc-800/50 pl-1.5 text-white"
-                    : "border-l-2 border-transparent text-zinc-400"
+                    ? light
+                      ? "border-l-2 border-orange-500 bg-orange-50 pl-1.5 text-orange-900"
+                      : "border-l-2 border-orange-500 bg-zinc-800/50 pl-1.5 text-white"
+                    : light
+                      ? "border-l-2 border-transparent text-zinc-500"
+                      : "border-l-2 border-transparent text-zinc-400"
                 )}
               >
                 <Icon className={cn("shrink-0", compact ? "size-3" : "size-3.5")} />
@@ -94,13 +110,13 @@ export function ShowcaseDashboardShell({
         </nav>
 
         {!compact && (
-          <div className="border-t border-zinc-800 p-3">
-            <div className="rounded-lg bg-zinc-900 p-2.5">
-              <p className="text-[10px] text-zinc-500">Staff</p>
-              <p className="mt-0.5 truncate text-xs font-medium text-zinc-300">
+          <div className={cn("border-t p-3", light ? "border-zinc-200" : "border-zinc-800")}>
+            <div className={cn("rounded-lg p-2.5", light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900")}>
+              <p className={cn("text-[10px]", light ? "text-zinc-500" : "text-zinc-500")}>Staff</p>
+              <p className={cn("mt-0.5 truncate text-xs font-medium", light ? "text-zinc-800" : "text-zinc-300")}>
                 Nica
               </p>
-              <p className="text-[10px] capitalize text-zinc-600">owner</p>
+              <p className={cn("text-[10px] capitalize", light ? "text-zinc-400" : "text-zinc-600")}>owner</p>
             </div>
           </div>
         )}
@@ -109,27 +125,40 @@ export function ShowcaseDashboardShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header
           className={cn(
-            "flex shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950/90",
-            compact ? "h-11 px-3" : "h-14 px-5"
+            "flex shrink-0 items-center justify-between border-b",
+            compact ? "h-11 px-3" : "h-14 px-5",
+            light ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-950/90"
           )}
         >
           <h1
             className={cn(
-              "font-bold text-zinc-50",
-              compact ? "text-sm" : "text-lg"
+              "font-bold",
+              compact ? "text-sm" : "text-lg",
+              light ? "text-zinc-900" : "text-zinc-50"
             )}
           >
             {title}
           </h1>
           <div className="flex items-center gap-2">
-            <div className={cn("rounded-lg bg-zinc-900", compact ? "px-2 py-0.5" : "px-2.5 py-1")}>
-              <span className="text-[10px] text-zinc-500">Today </span>
+            <div
+              className={cn(
+                "rounded-lg",
+                compact ? "px-2 py-0.5" : "px-2.5 py-1",
+                light ? "bg-orange-50 ring-1 ring-orange-100" : "bg-zinc-900"
+              )}
+            >
+              <span className={cn("text-[10px]", light ? "text-zinc-500" : "text-zinc-500")}>Today </span>
               <span className="font-mono text-xs font-bold text-orange-500">
                 {formatPrice(todayRevenue, currency)}
               </span>
             </div>
             {showExport && (
-              <div className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-[11px] text-zinc-300">
+              <div
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px]",
+                  light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300"
+                )}
+              >
                 <Download className="size-3" />
                 Export CSV
               </div>
@@ -137,7 +166,13 @@ export function ShowcaseDashboardShell({
           </div>
         </header>
 
-        <main className={cn("flex-1 overflow-hidden", compact ? "p-3" : "p-5")}>
+        <main
+          className={cn(
+            "flex-1 overflow-hidden",
+            compact ? "p-3" : "p-5",
+            light ? "bg-zinc-50/50" : ""
+          )}
+        >
           {children}
         </main>
       </div>
