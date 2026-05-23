@@ -7,6 +7,7 @@ import { formatOrderNumber, formatPrice } from "@/lib/format";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
+import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
@@ -202,14 +203,13 @@ export function OrderCard({
 
       <ul className={cn("mt-3 space-y-1 text-sm", light ? "text-zinc-700" : "text-zinc-300")}>
         {order.order_items?.map((item) => (
-          <li key={item.id}>
-            {item.quantity}× {item.product_name}
-            {item.order_item_modifiers?.map((m) => (
-              <span key={m.id} className="ml-4 block text-xs text-zinc-500">
-                + {m.modifier_name}
-              </span>
-            ))}
-          </li>
+          <OrderItemProductLine
+            key={item.id}
+            item={item}
+            modifiers={item.order_item_modifiers}
+            allowMarkUnavailable={columnId !== "delivered"}
+            nameClassName={light ? "text-zinc-700" : "text-zinc-300"}
+          />
         ))}
       </ul>
 

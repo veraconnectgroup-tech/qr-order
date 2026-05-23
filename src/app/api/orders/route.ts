@@ -19,7 +19,11 @@ export async function POST(req: NextRequest) {
     const result = await createOrderFromCart(parsed.data);
 
     if ("error" in result && result.error) {
-      return apiError(result.error, result.status ?? 500);
+      const details =
+        "products" in result && Array.isArray(result.products)
+          ? { products: result.products }
+          : undefined;
+      return apiError(result.error, result.status ?? 500, details);
     }
 
     return apiSuccess(result.data);

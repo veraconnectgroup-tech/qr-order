@@ -208,23 +208,32 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     .select("id, name, price, is_available, location_id, category_id, tax_rate")
     .in("id", productIds)
     .eq("location_id", tableRow.location_id)
-    .eq("is_available", true)
     .is("deleted_at", null);
 
-  const productMap = new Map(
-    (products ?? []).map((p) => [
-      (p as { id: string }).id,
-      p as {
-        id: string;
-        name: string;
-        price: number;
-        is_available: boolean;
-        location_id: string;
-        category_id: string;
-        tax_rate: number | null;
-      },
-    ])
-  );
+  const allProducts = (products ?? []) as Array<{
+    id: string;
+    name: string;
+    price: number;
+    is_available: boolean;
+    location_id: string;
+    category_id: string;
+    tax_rate: number | null;
+  }>;
+
+  const unavailableNames = productIds
+    .map((id) => allProducts.find((p) => p.id === id))
+    .filter((p) => !p || !p.is_available)
+    .map((p) => p?.name ?? "Unknown product");
+
+  if (unavailableNames.length > 0) {
+    return {
+      error: "unavailable_products",
+      status: 400,
+      products: unavailableNames,
+    };
+  }
+
+  const productMap = new Map(allProducts.map((p) => [p.id, p]));
 
   if (productMap.size !== productIds.length) {
     return { error: "One or more products are unavailable.", status: 400 };

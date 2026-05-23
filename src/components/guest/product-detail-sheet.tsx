@@ -79,6 +79,9 @@ export function ProductDetailSheet({
   );
   const missingServeSize =
     showServeSize && (!serveSize || !isValidServeSize(serveSize));
+  const outOfStock = product ? !product.is_available : false;
+  const cannotAdd =
+    outOfStock || orderingDisabled || missingRequired || missingServeSize;
 
   function toggleModifier(group: ModifierGroup, modifier: Modifier) {
     setSelected((prev) => {
@@ -98,7 +101,7 @@ export function ProductDetailSheet({
   }
 
   function handleAdd() {
-    if (!product || missingRequired || missingServeSize) return;
+    if (!product || cannotAdd) return;
     const displayName = tName(product);
     addItem({
       productId: product.id,
@@ -242,16 +245,18 @@ export function ProductDetailSheet({
 
           <AddToCartButton
             label={
-              orderingDisabled
-                ? tUI("product.orderingPaused")
-                : tUI("product.addToCart", {
-                    amount: formatPrice(lineTotal, currency),
-                  })
+              outOfStock
+                ? tUI("menu.currentlyUnavailable")
+                : orderingDisabled
+                  ? tUI("product.orderingPaused")
+                  : tUI("product.addToCart", {
+                      amount: formatPrice(lineTotal, currency),
+                    })
             }
-            disabled={missingRequired || missingServeSize || orderingDisabled}
+            disabled={cannotAdd}
             onAdd={handleAdd}
           />
-          {(missingRequired || missingServeSize) && (
+          {!outOfStock && (missingRequired || missingServeSize) && (
             <p className="text-center text-caption text-zinc-500">
               {missingServeSize
                 ? tUI("product.selectServeSize")

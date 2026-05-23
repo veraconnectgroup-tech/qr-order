@@ -196,7 +196,7 @@ export function CheckoutForm({
 
       const parsed = await readJsonResponse<{
         error?: string;
-        details?: unknown;
+        details?: { products?: string[] };
         data?: { orderId: string };
       }>(res);
 
@@ -206,6 +206,14 @@ export function CheckoutForm({
 
       const json = parsed.data;
       if (!res.ok || !json.data?.orderId) {
+        if (
+          json.error === "unavailable_products" &&
+          Array.isArray(json.details?.products)
+        ) {
+          for (const name of json.details.products) {
+            toast.error(tUI("cart.unavailableProduct", { name }));
+          }
+        }
         throw new Error(json.error ?? tUI("error.orderFailed"));
       }
 

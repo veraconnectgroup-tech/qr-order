@@ -14,6 +14,7 @@ import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { KitchenHeader } from "@/components/dashboard/kitchen-header";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
+import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
@@ -108,20 +109,13 @@ export function KitchenCard({
 
       <ul className="space-y-2">
         {items.map((item) => (
-          <li key={item.id}>
-            <p className={cn("text-base", light ? "text-zinc-800" : "text-zinc-200")}>
-              <span className="font-bold text-orange-500">{item.quantity}×</span>{" "}
-              {item.product_name}
-            </p>
-            {item.order_item_modifiers?.map((m) => (
-              <p key={m.id} className={cn("pl-6 text-sm", light ? "text-zinc-500" : "text-zinc-500")}>
-                → {m.modifier_name}
-              </p>
-            ))}
-            {item.notes && (
-              <p className={cn("pl-6 text-sm", light ? "text-zinc-500" : "text-zinc-500")}>→ {item.notes}</p>
-            )}
-          </li>
+          <OrderItemProductLine
+            key={item.id}
+            item={item}
+            modifiers={item.order_item_modifiers}
+            notes={item.notes}
+            nameClassName={light ? "text-zinc-800" : "text-zinc-200"}
+          />
         ))}
       </ul>
 

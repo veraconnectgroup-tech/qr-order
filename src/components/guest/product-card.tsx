@@ -29,16 +29,16 @@ export function ProductCard({
   const displayName = tName(product);
   const displayDescription = tDescription(product);
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
-  const unavailable = !product.is_available || orderingDisabled;
+  const outOfStock = !product.is_available;
+  const cannotOrder = outOfStock || orderingDisabled;
 
   function openDetail() {
-    if (unavailable) return;
     onOpenDetail();
   }
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
-    if (unavailable) return;
+    if (cannotOrder) return;
     if (hasModifiers) {
       onOpenDetail();
       return;
@@ -61,7 +61,7 @@ export function ProductCard({
   return (
     <article
       role="button"
-      tabIndex={-1}
+      tabIndex={0}
       onClick={openDetail}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -72,7 +72,8 @@ export function ProductCard({
       aria-label={`View ${displayName}`}
       className={cn(
         "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition",
-        unavailable
+        outOfStock && "bg-zinc-900/60 opacity-70",
+        cannotOrder && !outOfStock
           ? "pointer-events-none opacity-40"
           : "cursor-pointer hover:border-zinc-700 active:scale-[0.98]"
       )}
@@ -83,7 +84,10 @@ export function ProductCard({
           <img
             src={product.image_url}
             alt={displayName}
-            className="size-full object-cover"
+            className={cn(
+              "size-full object-cover",
+              outOfStock && "grayscale"
+            )}
           />
         ) : (
           <div className="flex size-full items-center justify-center">
@@ -91,6 +95,11 @@ export function ProductCard({
               {displayName.charAt(0)}
             </span>
           </div>
+        )}
+        {outOfStock && (
+          <span className="absolute left-2 top-2 rounded-full bg-zinc-950/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+            {tUI("menu.currentlyUnavailable")}
+          </span>
         )}
         {product.prep_time_minutes != null && product.prep_time_minutes > 0 && (
           <span className="absolute right-2 top-2 flex items-center gap-0.5 rounded-full bg-zinc-950/80 px-1.5 py-0.5 text-[10px] text-zinc-300 backdrop-blur-sm">
@@ -114,9 +123,11 @@ export function ProductCard({
           <span className="text-sm font-semibold text-orange-500">
             {formatPrice(Number(product.price), currency)}
           </span>
-          {unavailable ? (
+          {cannotOrder ? (
             <span className="text-xs font-medium text-zinc-500">
-              {orderingDisabled ? tUI("menu.paused") : tUI("menu.unavailable")}
+              {orderingDisabled && !outOfStock
+                ? tUI("menu.paused")
+                : tUI("menu.currentlyUnavailable")}
             </span>
           ) : (
             <button

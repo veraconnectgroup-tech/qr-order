@@ -91,10 +91,15 @@ function ProductCard({
     <div
       className={cn(
         "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:border-zinc-700",
-        !product.is_available && "opacity-60"
+        !product.is_available && "border-zinc-700 bg-zinc-800/80 opacity-80"
       )}
     >
       <div className="relative h-[140px] w-full">
+        {!product.is_available && (
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-red-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
+            Nedostupno
+          </span>
+        )}
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -133,20 +138,18 @@ function ProductCard({
       </div>
 
       <div className="mt-3 flex items-center justify-between border-t border-zinc-800 px-4 py-3">
-        <span className="flex items-center gap-1.5 text-xs">
-          <span
-            className={cn(
-              "inline-block size-2 rounded-full",
-              product.is_available ? "bg-green-500" : "bg-red-500"
-            )}
-          />
-          {product.is_available ? "Available" : "Unavailable"}
+        <span className="text-xs font-medium text-zinc-400">
+          {product.is_available ? "Na stanju" : "Nema na stanju"}
         </span>
         <div className="flex items-center gap-2">
           <Switch
             checked={product.is_available}
             onCheckedChange={onToggleAvailable}
-            aria-label={`Toggle ${product.name}`}
+            aria-label={
+              product.is_available
+                ? `Označi ${product.name} kao nedostupan`
+                : `Označi ${product.name} kao dostupan`
+            }
           />
           <button
             type="button"
