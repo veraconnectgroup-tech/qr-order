@@ -1,8 +1,5 @@
 import { LandingContainer } from "@/components/landing/landing-primitives";
-import {
-  TrustLogoList,
-  TrustLogoMarquee,
-} from "@/components/landing/trust-logos";
+import { TrustLogoList } from "@/components/landing/trust-logos";
 
 export function LandingTrustStrip() {
   return (
@@ -15,15 +12,15 @@ export function LandingTrustStrip() {
           Integrations &amp; compliance
         </p>
 
-        {/* Desktop: static row */}
-        <ul className="mt-5 hidden flex-wrap items-center justify-center gap-3 md:flex">
+        {/* Mobile: 2-column grid */}
+        <ul className="mt-5 grid grid-cols-2 gap-3 md:hidden">
           <TrustLogoList />
         </ul>
 
-        {/* Mobile: marquee */}
-        <div className="landing-marquee-mask relative mt-5 overflow-hidden md:hidden">
-          <TrustLogoMarquee />
-        </div>
+        {/* Desktop: flex wrap center */}
+        <ul className="mt-5 hidden flex-wrap items-center justify-center gap-3 md:flex">
+          <TrustLogoList />
+        </ul>
       </LandingContainer>
     </section>
   );

@@ -73,6 +73,32 @@ export function getOrderColumnId(
   return "delivered";
 }
 
+export const DELIVERED_BOARD_MAX_AGE_MS = 60 * 60 * 1000;
+export const DELIVERED_BOARD_FADE_AGE_MS = 30 * 60 * 1000;
+export const DELIVERED_BOARD_MAX_VISIBLE = 10;
+
+export function getDeliveredTimestamp(order: OrderWithDetails): number {
+  return new Date(
+    order.delivered_at ?? order.updated_at ?? order.created_at
+  ).getTime();
+}
+
+export function getDeliveredAgeMs(order: OrderWithDetails): number {
+  return Date.now() - getDeliveredTimestamp(order);
+}
+
+export function isDeliveredVisibleOnBoard(order: OrderWithDetails): boolean {
+  if (order.status !== "delivered") return true;
+  return getDeliveredAgeMs(order) < DELIVERED_BOARD_MAX_AGE_MS;
+}
+
+function formatOrderClockTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("de-DE", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function OrderTimer({ createdAt }: { createdAt: string }) {
   const [seconds, setSeconds] = useState(() =>
     Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)
@@ -146,6 +172,66 @@ export function OrderCard({
     inPersonPaymentLocation
   );
 
+  if (columnId === "delivered") {
+    const deliveredAgeMs = getDeliveredAgeMs(order);
+    const timeIso =
+      order.delivered_at ?? order.updated_at ?? order.created_at;
+
+    return (
+      <motion.article
+        layout={interactive}
+        layoutId={interactive ? order.id : undefined}
+        initial={interactive ? { opacity: 0, y: -8 } : false}
+        animate={interactive ? { opacity: 1, y: 0 } : undefined}
+        exit={interactive ? { opacity: 0, scale: 0.98 } : undefined}
+        transition={
+          interactive
+            ? { type: "spring", stiffness: 400, damping: 30 }
+            : undefined
+        }
+        className={cn(
+          "flex items-center justify-between gap-2 rounded-lg border p-2.5 transition",
+          light
+            ? "border-zinc-200 bg-white"
+            : "border-zinc-800 bg-zinc-900",
+          deliveredAgeMs >= DELIVERED_BOARD_FADE_AGE_MS
+            ? "opacity-40"
+            : "opacity-60"
+        )}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+          <span
+            className={cn(
+              "shrink-0 font-mono font-semibold tabular-nums",
+              light ? "text-zinc-900" : "text-zinc-50"
+            )}
+          >
+            {formatOrderNumber(order.order_number)}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
+              light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300"
+            )}
+          >
+            {tableName}
+          </span>
+          <span className="ml-auto shrink-0 font-mono font-semibold tabular-nums text-orange-500">
+            {formatPrice(Number(order.total), currency)}
+          </span>
+        </div>
+        <span
+          className={cn(
+            "shrink-0 font-mono text-xs tabular-nums",
+            light ? "text-zinc-500" : "text-zinc-500"
+          )}
+        >
+          {formatOrderClockTime(timeIso)}
+        </span>
+      </motion.article>
+    );
+  }
+
   return (
     <motion.article
       layout={interactive}
@@ -164,8 +250,7 @@ export function OrderCard({
           ? "border-zinc-200 bg-white hover:border-zinc-300"
           : "border-zinc-800 bg-zinc-900 hover:border-zinc-700",
         columnId === "new" && "border-l-2 border-l-orange-500",
-        paymentRequested && "ring-2 ring-amber-500/60",
-        columnId === "delivered" && "opacity-60"
+        paymentRequested && "ring-2 ring-amber-500/60"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -207,7 +292,7 @@ export function OrderCard({
             key={item.id}
             item={item}
             modifiers={item.order_item_modifiers}
-            allowMarkUnavailable={columnId !== "delivered"}
+            allowMarkUnavailable
             nameClassName={light ? "text-zinc-700" : "text-zinc-300"}
           />
         ))}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   DndContext,
   DragOverlay,
@@ -20,7 +21,10 @@ import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import {
+  DELIVERED_BOARD_MAX_VISIBLE,
+  getDeliveredTimestamp,
   getOrderColumnId,
+  isDeliveredVisibleOnBoard,
   ORDER_COLUMNS,
   OrderCard,
   type OrderColumnDef,
@@ -331,6 +335,45 @@ export function OrderBoard() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
+  const sortDeliveredColumn = (list: OrderWithDetails[]) =>
+    [...list].sort(
+      (a, b) => getDeliveredTimestamp(b) - getDeliveredTimestamp(a)
+    );
+
+  function getColumnBoardOrders(column: OrderColumnDef): {
+    visible: OrderWithDetails[];
+    hiddenCount: number;
+    totalCount: number;
+  } {
+    if (column.id === "delivered") {
+      const qualifying = sortDeliveredColumn(
+        orders.filter(
+          (o) => o.status === "delivered" && isDeliveredVisibleOnBoard(o)
+        )
+      );
+      return {
+        visible: qualifying.slice(0, DELIVERED_BOARD_MAX_VISIBLE),
+        hiddenCount: Math.max(
+          0,
+          qualifying.length - DELIVERED_BOARD_MAX_VISIBLE
+        ),
+        totalCount: qualifying.length,
+      };
+    }
+
+    const colOrders = sortColumn(
+      orders.filter((o) => column.statuses.includes(o.status))
+    );
+    return { visible: colOrders, hiddenCount: 0, totalCount: colOrders.length };
+  }
+
+  // Re-evaluate delivered age cutoffs (30 min fade, 60 min hide)
+  const [, setDeliveredTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setDeliveredTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   function renderOrderCard(order: OrderWithDetails, draggable = true) {
     const canRefund =
       order.payment_status === "paid" &&
@@ -402,9 +445,7 @@ export function OrderBoard() {
       <div className="md:hidden">
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {ORDER_COLUMNS.map((column) => {
-            const count = orders.filter((o) =>
-              column.statuses.includes(o.status)
-            ).length;
+            const { totalCount } = getColumnBoardOrders(column);
             const active = mobileColumn === column.id;
             return (
               <button
@@ -418,29 +459,45 @@ export function OrderBoard() {
                     : "bg-zinc-800 text-zinc-400"
                 )}
               >
-                {column.label} ({count})
+                {column.label} ({totalCount})
               </button>
             );
           })}
         </div>
 
-        <div className="space-y-3">
+        <div
+          className={cn(
+            "space-y-2",
+            mobileColumn === "delivered" &&
+              "max-h-[calc(100vh-200px)] overflow-y-auto [scrollbar-width:thin]"
+          )}
+        >
           {loading ? (
             <ColumnSkeleton />
           ) : (
             (() => {
               const column = ORDER_COLUMNS.find((c) => c.id === mobileColumn)!;
-              const colOrders = sortColumn(
-                orders.filter((o) => column.statuses.includes(o.status))
-              );
-              if (colOrders.length === 0) {
+              const { visible, hiddenCount } = getColumnBoardOrders(column);
+              if (visible.length === 0) {
                 return (
                   <p className="py-12 text-center text-sm text-zinc-500">
                     No orders
                   </p>
                 );
               }
-              return colOrders.map((order) => renderOrderCard(order, false));
+              return (
+                <>
+                  {visible.map((order) => renderOrderCard(order, false))}
+                  {hiddenCount > 0 && (
+                    <Link
+                      href="/dashboard/history"
+                      className="block py-2 text-center text-sm text-zinc-500 transition hover:text-orange-400"
+                    >
+                      +{hiddenCount} more · View in History
+                    </Link>
+                  )}
+                </>
+              );
             })()
           )}
         </div>
@@ -455,9 +512,8 @@ export function OrderBoard() {
       >
         <div className="hidden gap-4 overflow-x-auto pb-2 md:flex">
           {ORDER_COLUMNS.map((column) => {
-            const colOrders = sortColumn(
-              orders.filter((o) => column.statuses.includes(o.status))
-            );
+            const { visible, hiddenCount, totalCount } =
+              getColumnBoardOrders(column);
 
             return (
               <DroppableColumn key={column.id} column={column}>
@@ -471,21 +527,37 @@ export function OrderBoard() {
                       column.badge
                     )}
                   >
-                    {colOrders.length}
+                    {totalCount}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div
+                  className={cn(
+                    "flex flex-col gap-2",
+                    column.id === "delivered" &&
+                      "max-h-[calc(100vh-200px)] overflow-y-auto [scrollbar-width:thin]"
+                  )}
+                >
                   {loading ? (
                     <ColumnSkeleton />
-                  ) : colOrders.length === 0 ? (
+                  ) : visible.length === 0 ? (
                     <p className="py-8 text-center text-sm text-zinc-500">
                       No orders
                     </p>
                   ) : (
-                    <AnimatePresence mode="popLayout">
-                      {colOrders.map((order) => renderOrderCard(order))}
-                    </AnimatePresence>
+                    <>
+                      <AnimatePresence mode="popLayout">
+                        {visible.map((order) => renderOrderCard(order))}
+                      </AnimatePresence>
+                      {hiddenCount > 0 && (
+                        <Link
+                          href="/dashboard/history"
+                          className="py-2 text-center text-sm text-zinc-500 transition hover:text-orange-400"
+                        >
+                          +{hiddenCount} more · View in History
+                        </Link>
+                      )}
+                    </>
                   )}
                 </div>
               </DroppableColumn>
