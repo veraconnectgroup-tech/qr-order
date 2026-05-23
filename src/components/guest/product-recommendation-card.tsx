@@ -36,7 +36,6 @@ export function ProductRecommendationCard({
   orderingDisabled?: boolean;
   onOpenDetail?: () => void;
   className?: string;
-  aiSessionId?: string | null;
   conversionContext?: {
     sessionId: string;
     locationId: string;
