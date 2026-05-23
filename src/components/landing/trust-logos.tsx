@@ -28,48 +28,27 @@ export function StripeLogo() {
   );
 }
 
-function AppleIcon() {
-  return (
-    <svg
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      aria-hidden
-      className="shrink-0 fill-white"
-    >
-      <path d="M12.152 7.896c-.948 0-2.415 1.078-3.96 1.04-2.001-.038-3.834-1.172-4.805-2.978-.988-1.806-.834-4.174.374-5.652.765-1.012 1.989-1.635 3.112-1.653.96.015 1.858.644 2.445.644.548 0 1.555-.625 2.627-.536 1.123.089 1.876.519 2.377 1.028-2.082 1.229-1.743 4.419.356 5.433-.433 1.124-1.022 2.228-1.844 3.217-.594.719-1.293 1.423-2.211 1.423zm-.3-10.896c.525.624.88 1.487.783 2.348-.752-.03-1.664-.498-2.179-1.122-.485-.589-.913-1.531-.793-2.42.845.065 1.707.444 2.189 1.194z" />
-    </svg>
-  );
-}
-
 export function ApplePayLogo() {
   return (
-    <span className="flex items-center gap-1 font-medium text-white">
-      <AppleIcon />
-      Pay
-    </span>
-  );
-}
-
-function GoogleGIcon() {
-  return (
-    <span
-      aria-hidden
-      className="inline-grid size-5 shrink-0 grid-cols-2 grid-rows-2 overflow-hidden rounded-full"
-    >
-      <span className="bg-[#4285F4]" />
-      <span className="bg-[#EA4335]" />
-      <span className="bg-[#FBBC05]" />
-      <span className="bg-[#34A853]" />
+    <span className="flex items-center gap-1 text-white">
+      <span className="text-lg leading-none" aria-hidden>
+        {"\uF8FF"}
+      </span>
+      <span className="font-semibold">Pay</span>
     </span>
   );
 }
 
 export function GooglePayLogo() {
   return (
-    <span className="flex items-center gap-1.5 font-medium text-white">
-      <GoogleGIcon />
-      Pay
+    <span className="flex items-center gap-0.5 font-semibold">
+      <span className="text-[#4285F4]">G</span>
+      <span className="text-[#EA4335]">o</span>
+      <span className="text-[#FBBC05]">o</span>
+      <span className="text-[#4285F4]">g</span>
+      <span className="text-[#34A853]">l</span>
+      <span className="text-[#EA4335]">e</span>
+      <span className="ml-1 text-white">Pay</span>
     </span>
   );
 }
