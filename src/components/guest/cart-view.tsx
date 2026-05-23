@@ -226,7 +226,9 @@ export function CartView({
             <span className="tabular-nums">{formatPrice(subtotal, currency)}</span>
           </div>
           <div className="flex justify-between text-zinc-400">
-            <span>{tUI("cart.tax", { percent: taxPercent })}</span>
+            <span data-testid="cart-tax-line">
+              {tUI("cart.tax", { percent: taxPercent })}
+            </span>
             <span className="tabular-nums">{formatPrice(taxAmount, currency)}</span>
           </div>
           <div className="flex justify-between border-t border-zinc-800 pt-2 font-semibold text-zinc-50">

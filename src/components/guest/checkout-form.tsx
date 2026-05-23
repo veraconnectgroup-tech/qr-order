@@ -75,13 +75,15 @@ function OrderSummary({
               key={line.rate}
               className="flex justify-between text-zinc-400 tabular-nums"
             >
-              <span>{tUI("checkout.tax", { rate: line.rate })}</span>
+              <span data-testid="checkout-tax-line">
+                {tUI("checkout.tax", { rate: line.rate })}
+              </span>
               <span>{formatPrice(line.amount, currency)}</span>
             </div>
           ))
         ) : (
           <div className="flex justify-between text-zinc-400">
-            <span>{tUI("checkout.taxGeneric")}</span>
+            <span data-testid="checkout-tax-line">{tUI("checkout.taxGeneric")}</span>
             <span>{formatPrice(taxAmount, currency)}</span>
           </div>
         )}
@@ -131,9 +133,12 @@ export function CheckoutForm({
   const router = useRouter();
   const orderPlacedRef = useRef(false);
 
-  const [hydrated, setHydrated] = useState(
-    () => sessionHydrated && useCart.persist.hasHydrated()
+  const [cartHydrated, setCartHydrated] = useState(() =>
+    useCart.persist.hasHydrated()
   );
+  const storeReady = isDemo
+    ? cartHydrated
+    : cartHydrated && sessionHydrated;
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,15 +156,14 @@ export function CheckoutForm({
   );
 
   useEffect(() => {
-    const unsub = useCart.persist.onFinishHydration(() => {
-      setHydrated(sessionHydrated && useCart.persist.hasHydrated());
-    });
-    setHydrated(sessionHydrated && useCart.persist.hasHydrated());
-    return unsub;
-  }, [sessionHydrated]);
+    if (useCart.persist.hasHydrated()) {
+      setCartHydrated(true);
+    }
+    return useCart.persist.onFinishHydration(() => setCartHydrated(true));
+  }, []);
 
   useEffect(() => {
-    if (!hydrated || orderPlacedRef.current) return;
+    if (!storeReady || orderPlacedRef.current) return;
     if (!items.length) {
       router.replace(`/${slug}/${token}/cart`);
       return;
@@ -169,7 +173,7 @@ export function CheckoutForm({
       return;
     }
     setReady(true);
-  }, [hydrated, items.length, sessionToken, isDemo, slug, token, router]);
+  }, [storeReady, items.length, sessionToken, isDemo, slug, token, router]);
 
   async function handlePlaceOrder() {
     if (!sessionToken) return;
