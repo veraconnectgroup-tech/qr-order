@@ -1,19 +1,62 @@
-export type Locale = "de" | "en" | "sr" | "tr" | "hr";
+export type Locale =
+  | "de"
+  | "en"
+  | "sr"
+  | "tr"
+  | "hr"
+  | "ar"
+  | "fr"
+  | "es"
+  | "it"
+  | "ru";
 
-export const LOCALES: Locale[] = ["de", "en", "sr", "tr", "hr"];
+export const ALL_LOCALES: Locale[] = [
+  "de",
+  "en",
+  "sr",
+  "tr",
+  "hr",
+  "ar",
+  "fr",
+  "es",
+  "it",
+  "ru",
+];
 
+/** @deprecated Use ALL_LOCALES */
+export const LOCALES = ALL_LOCALES;
+
+export const LOCALE_META: Record<Locale, { label: string }> = {
+  de: { label: "Deutsch" },
+  en: { label: "English" },
+  sr: { label: "Srpski" },
+  tr: { label: "Türkçe" },
+  hr: { label: "Hrvatski" },
+  ar: { label: "العربية" },
+  fr: { label: "Français" },
+  es: { label: "Español" },
+  it: { label: "Italiano" },
+  ru: { label: "Русский" },
+};
+
+/** @deprecated Use LOCALE_META[locale].label */
 export const LOCALE_LABELS: Record<
   Locale,
   { flag: string; label: string }
 > = {
-  de: { flag: "🇩🇪", label: "DE" },
-  en: { flag: "🇬🇧", label: "EN" },
-  sr: { flag: "🇷🇸", label: "SR" },
-  tr: { flag: "🇹🇷", label: "TR" },
-  hr: { flag: "🇭🇷", label: "HR" },
+  de: { flag: "", label: "DE" },
+  en: { flag: "", label: "EN" },
+  sr: { flag: "", label: "SR" },
+  tr: { flag: "", label: "TR" },
+  hr: { flag: "", label: "HR" },
+  ar: { flag: "", label: "AR" },
+  fr: { flag: "", label: "FR" },
+  es: { flag: "", label: "ES" },
+  it: { flag: "", label: "IT" },
+  ru: { flag: "", label: "RU" },
 };
 
-type TranslationMap = Record<string, string>;
+export type TranslationMap = Record<string, string>;
 
 const de: TranslationMap = {
   "common.back": "Zurück",
@@ -154,6 +197,10 @@ const de: TranslationMap = {
   "payment.atTable.description": "Jetzt bestellen — Personal holt die Zahlung am Tisch ein",
   "payment.atTable.instruction": "Bezahle am Tisch, wenn du bereit bist. Ein Mitarbeiter kommt zu dir.",
   "payment.atTable.confirm": "Am Tisch bezahlen wenn bereit",
+
+  "error.generic": "Etwas ist schiefgelaufen.",
+  "error.orderFailed": "Bestellung konnte nicht aufgegeben werden.",
+  "error.paymentFailed": "Zahlung fehlgeschlagen.",
 };
 
 const en: TranslationMap = {
@@ -295,6 +342,10 @@ const en: TranslationMap = {
   "payment.atTable.description": "Order now — staff will collect payment at your table",
   "payment.atTable.instruction": "Pay at your table when you're ready. A staff member will come to you.",
   "payment.atTable.confirm": "Pay at your table when ready",
+
+  "error.generic": "Something went wrong.",
+  "error.orderFailed": "Order could not be placed.",
+  "error.paymentFailed": "Payment failed.",
 };
 
 const sr: TranslationMap = {
@@ -436,6 +487,10 @@ const sr: TranslationMap = {
   "payment.atTable.description": "Poručite sada — osoblje naplaćuje za stolom",
   "payment.atTable.instruction": "Platite za stolom kada ste spremni. Osoblje dolazi do vas.",
   "payment.atTable.confirm": "Plati za stolom kada ste spremni",
+
+  "error.generic": "Nešto nije u redu.",
+  "error.orderFailed": "Porudžbina nije mogla biti poslata.",
+  "error.paymentFailed": "Plaćanje nije uspelo.",
 };
 
 const tr: TranslationMap = {
@@ -577,6 +632,10 @@ const tr: TranslationMap = {
   "payment.atTable.description": "Şimdi sipariş ver — personel masada tahsil eder",
   "payment.atTable.instruction": "Hazır olduğunuzda masada ödeyin. Bir personel size gelecek.",
   "payment.atTable.confirm": "Hazır olunca masada öde",
+
+  "error.generic": "Bir şeyler ters gitti.",
+  "error.orderFailed": "Sipariş verilemedi.",
+  "error.paymentFailed": "Ödeme başarısız.",
 };
 
 const hr: TranslationMap = {
@@ -718,7 +777,13 @@ const hr: TranslationMap = {
   "payment.atTable.description": "Naručite sada — osoblje naplaćuje za stolom",
   "payment.atTable.instruction": "Platite za stolom kad ste spremni. Osoblje dolazi do vas.",
   "payment.atTable.confirm": "Plati za stolom kad ste spremni",
+
+  "error.generic": "Nešto nije u redu.",
+  "error.orderFailed": "Narudžba nije mogla biti poslana.",
+  "error.paymentFailed": "Plaćanje nije uspjelo.",
 };
+
+import { ar, es, fr, it, ru } from "./locales";
 
 export const translations: Record<Locale, TranslationMap> = {
   de,
@@ -726,6 +791,11 @@ export const translations: Record<Locale, TranslationMap> = {
   sr,
   tr,
   hr,
+  ar,
+  fr,
+  es,
+  it,
+  ru,
 };
 
 export type TranslationKey = keyof typeof de;

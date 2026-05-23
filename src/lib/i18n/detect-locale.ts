@@ -1,30 +1,48 @@
 import type { Locale } from "@/lib/i18n/translations";
-import { LOCALES } from "@/lib/i18n/translations";
+import { isLocale, resolveLocaleChoice } from "@/lib/i18n/locale-config";
 
 export function parseLocale(value: string | null | undefined): Locale | null {
-  if (value && (LOCALES as readonly string[]).includes(value)) {
-    return value as Locale;
+  if (value && isLocale(value)) {
+    return value;
   }
   return null;
 }
 
-export function detectLocale(defaultLocale: Locale = "de"): Locale {
+export function detectLocale(
+  defaultLocale: Locale,
+  availableLocales: Locale[]
+): Locale {
   if (typeof window === "undefined") {
-    return defaultLocale;
+    return resolveLocaleChoice(null, availableLocales, defaultLocale);
   }
 
-  const override = localStorage.getItem("guest-locale-override");
-  const parsedOverride = parseLocale(override);
-  if (parsedOverride) return parsedOverride;
+  const saved = localStorage.getItem("guest-locale-override");
+  const parsedSaved = parseLocale(saved);
+  if (parsedSaved && availableLocales.includes(parsedSaved)) {
+    return parsedSaved;
+  }
 
   const lang = navigator.language.toLowerCase();
-  if (lang.startsWith("en")) return "en";
-  if (lang.startsWith("sr")) return "sr";
-  if (lang.startsWith("hr")) return "hr";
-  if (lang.startsWith("tr")) return "tr";
-  if (lang.startsWith("de")) return "de";
+  const browserCandidates: Locale[] = [];
 
-  return defaultLocale;
+  if (lang.startsWith("en")) browserCandidates.push("en");
+  if (lang.startsWith("sr")) browserCandidates.push("sr");
+  if (lang.startsWith("hr")) browserCandidates.push("hr");
+  if (lang.startsWith("tr")) browserCandidates.push("tr");
+  if (lang.startsWith("de")) browserCandidates.push("de");
+  if (lang.startsWith("ar")) browserCandidates.push("ar");
+  if (lang.startsWith("fr")) browserCandidates.push("fr");
+  if (lang.startsWith("es")) browserCandidates.push("es");
+  if (lang.startsWith("it")) browserCandidates.push("it");
+  if (lang.startsWith("ru")) browserCandidates.push("ru");
+
+  for (const candidate of browserCandidates) {
+    if (availableLocales.includes(candidate)) {
+      return candidate;
+    }
+  }
+
+  return resolveLocaleChoice(null, availableLocales, defaultLocale);
 }
 
 export function persistLocaleOverride(locale: Locale) {

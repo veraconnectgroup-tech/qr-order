@@ -71,7 +71,7 @@ function StripePayForm({
     });
 
     if (submitError) {
-      setError(submitError.message ?? "Payment failed.");
+      setError(submitError.message ?? tUI("error.paymentFailed"));
       setProcessing(false);
       return;
     }
@@ -202,7 +202,7 @@ export function OrderBillPanel({
           throw new Error(parsed.error);
         }
         if (!res.ok || !parsed.data.data?.clientSecret) {
-          throw new Error(parsed.data.error ?? "Payment failed.");
+          throw new Error(parsed.data.error ?? tUI("error.paymentFailed"));
         }
         setChargeTotal(parsed.data.data.chargeTotal ?? bill.amountDue + tipAmount);
         setClientSecret(parsed.data.data.clientSecret);
@@ -235,7 +235,7 @@ export function OrderBillPanel({
       onPaid();
       loadBill();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      setError(e instanceof Error ? e.message : tUI("error.generic"));
     } finally {
       setProcessing(false);
     }

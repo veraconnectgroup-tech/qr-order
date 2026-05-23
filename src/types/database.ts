@@ -44,7 +44,18 @@ type Tables = {
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
     in_person_payment_location: "bar" | "counter" | "table";
-    default_locale: "de" | "en" | "sr" | "tr" | "hr";
+    default_locale:
+      | "de"
+      | "en"
+      | "sr"
+      | "tr"
+      | "hr"
+      | "ar"
+      | "fr"
+      | "es"
+      | "it"
+      | "ru";
+    available_locales: string[];
     created_at: string;
     updated_at: string;
   };

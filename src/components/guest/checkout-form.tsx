@@ -163,7 +163,7 @@ export function CheckoutForm({
 
       const json = parsed.data;
       if (!res.ok || !json.data?.orderId) {
-        throw new Error(json.error ?? "Order could not be placed.");
+        throw new Error(json.error ?? tUI("error.orderFailed"));
       }
 
       orderPlacedRef.current = true;
@@ -176,7 +176,7 @@ export function CheckoutForm({
       router.replace(`/${slug}/${token}/order/${json.data.orderId}`);
       clearCart();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      setError(e instanceof Error ? e.message : tUI("error.generic"));
       setProcessing(false);
     }
   }

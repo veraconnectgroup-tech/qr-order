@@ -1,20 +1,34 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
+import { parseAvailableLocales } from "@/lib/i18n/locale-config";
+import { parseLocale } from "@/lib/i18n/detect-locale";
+import type { Locale } from "@/lib/i18n/translations";
+import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
 
 export default async function AdminSettingsPage() {
   const staff = await requireAdmin();
   const admin = createAdminClient();
+  const locationId = await getStaffLocationId(staff);
 
-  const { data: org } = await admin
-    .from("organizations")
-    .select(
-      "stripe_account_id, stripe_onboarded, name, email, currency, default_tax_percent, fiskaly_tss_id, fiskaly_client_id"
-    )
-    .eq("id", staff.org_id)
-    .single();
+  const [{ data: org }, { data: location }] = await Promise.all([
+    admin
+      .from("organizations")
+      .select(
+        "stripe_account_id, stripe_onboarded, name, email, currency, default_tax_percent, fiskaly_tss_id, fiskaly_client_id"
+      )
+      .eq("id", staff.org_id)
+      .single(),
+    locationId
+      ? admin
+          .from("locations")
+          .select("name, default_locale, available_locales")
+          .eq("id", locationId)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
 
   const orgRow = org as {
     stripe_account_id: string | null;
@@ -26,6 +40,18 @@ export default async function AdminSettingsPage() {
     fiskaly_tss_id: string | null;
     fiskaly_client_id: string | null;
   } | null;
+
+  const locationRow = location as {
+    name: string;
+    default_locale: string | null;
+    available_locales: string[] | null;
+  } | null;
+
+  const defaultLocale = parseLocale(locationRow?.default_locale) ?? "de";
+  const availableLocales = parseAvailableLocales(
+    locationRow?.available_locales,
+    defaultLocale
+  );
 
   return (
     <div className="p-6">
@@ -53,6 +79,15 @@ export default async function AdminSettingsPage() {
             </div>
           </dl>
         </div>
+
+        {locationRow && (
+          <LocationSettings
+            locationName={locationRow.name}
+            availableLocales={availableLocales}
+            defaultLocale={defaultLocale}
+            canEdit
+          />
+        )}
 
         <TseSettingsPanel
           tssId={orgRow?.fiskaly_tss_id ?? null}
