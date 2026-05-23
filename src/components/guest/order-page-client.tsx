@@ -14,6 +14,7 @@ export function OrderPageClient({
   paymentOnlineEnabled,
   paymentAtBarEnabled,
   paymentCardAtTableEnabled,
+  googleReviewUrl,
   inPersonPaymentLocation,
 }: {
   slug: string;
@@ -24,6 +25,7 @@ export function OrderPageClient({
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
+  googleReviewUrl: string | null;
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
   const { tUI } = useAppLocale();
@@ -48,6 +50,7 @@ export function OrderPageClient({
       paymentOnlineEnabled={paymentOnlineEnabled}
       paymentAtBarEnabled={paymentAtBarEnabled}
       paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+      googleReviewUrl={googleReviewUrl}
       inPersonPaymentLocation={inPersonPaymentLocation}
     />
   );

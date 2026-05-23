@@ -73,6 +73,7 @@ export default async function GuestMenuPage({
         id,
         name,
         accepting_orders,
+        ordering_enabled,
         timezone,
         organization:organizations!inner(
           id,
@@ -106,6 +107,7 @@ export default async function GuestMenuPage({
       id: string;
       name: string;
       accepting_orders: boolean;
+      ordering_enabled: boolean;
       timezone: string;
       organization: {
         id: string;
@@ -184,7 +186,8 @@ export default async function GuestMenuPage({
       locationId={table.location_id}
       tableId={table.id}
       timezone={table.location.timezone ?? "Europe/Berlin"}
-      orderingEnabled={table.location.accepting_orders}
+      orderingEnabled={table.location.ordering_enabled}
+      acceptingOrders={table.location.accepting_orders}
     />
   );
 }

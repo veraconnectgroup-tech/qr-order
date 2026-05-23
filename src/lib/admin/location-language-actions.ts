@@ -59,3 +59,60 @@ export async function updateLocationLanguages(input: {
 }) {
   return updateLocationMenuLocale(input.defaultLocale);
 }
+
+const googleReviewUrlSchema = z.union([z.literal(""), z.string().url()]);
+
+export async function updateLocationGoogleReviewUrl(googleReviewUrl: string) {
+  const staff = await requireAdmin();
+  const parsed = googleReviewUrlSchema.safeParse(googleReviewUrl.trim());
+
+  if (!parsed.success) {
+    return { error: "Enter a valid URL or leave the field empty." };
+  }
+
+  const locationId = await getStaffLocationId(staff);
+  if (!locationId) {
+    return { error: "Location not found." };
+  }
+
+  const admin = createAdminClient();
+  const normalized = parsed.data === "" ? null : parsed.data;
+
+  const { error } = await admin
+    .from("locations")
+    .update({
+      google_review_url: normalized,
+      updated_at: new Date().toISOString(),
+    } as never)
+    .eq("id", locationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/settings");
+  return { success: true };
+}
+
+export async function updateLocationOrderingEnabled(orderingEnabled: boolean) {
+  const staff = await requireAdmin();
+  const locationId = await getStaffLocationId(staff);
+
+  if (!locationId) {
+    return { error: "Location not found." };
+  }
+
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("locations")
+    .update({
+      ordering_enabled: orderingEnabled,
+      updated_at: new Date().toISOString(),
+    } as never)
+    .eq("id", locationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout");
+  return { success: true };
+}

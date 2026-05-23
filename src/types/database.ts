@@ -66,6 +66,8 @@ type Tables = {
       | "it"
       | "ru";
     available_locales: string[];
+    google_review_url: string | null;
+    ordering_enabled: boolean;
     created_at: string;
     updated_at: string;
   };

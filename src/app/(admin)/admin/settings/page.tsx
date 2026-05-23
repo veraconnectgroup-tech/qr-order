@@ -22,7 +22,7 @@ export default async function AdminSettingsPage() {
     locationId
       ? admin
           .from("locations")
-          .select("name, menu_locale, default_locale")
+          .select("name, menu_locale, default_locale, google_review_url, ordering_enabled")
           .eq("id", locationId)
           .single()
       : Promise.resolve({ data: null }),
@@ -43,6 +43,8 @@ export default async function AdminSettingsPage() {
     name: string;
     menu_locale: string | null;
     default_locale: string | null;
+    google_review_url: string | null;
+    ordering_enabled: boolean;
   } | null;
 
   const menuLocale = parseMenuLocaleFromDb(
@@ -81,6 +83,8 @@ export default async function AdminSettingsPage() {
           <LocationSettings
             locationName={locationRow.name}
             menuLocale={menuLocale}
+            googleReviewUrl={locationRow.google_review_url}
+            orderingEnabled={locationRow.ordering_enabled}
             canEdit
           />
         )}

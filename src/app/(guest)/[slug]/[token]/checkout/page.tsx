@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { CheckoutForm } from "@/components/guest/checkout-form";
 import { GuestCheckoutHeader } from "@/components/guest/guest-checkout-header";
@@ -36,6 +36,7 @@ export default async function CheckoutPage({
       `
       location_id,
       location:locations!inner(
+        ordering_enabled,
         organization:organizations!inner(
           default_tax_percent,
           currency,
@@ -54,6 +55,7 @@ export default async function CheckoutPage({
   const table = tableData as unknown as {
     location_id: string;
     location: {
+      ordering_enabled: boolean;
       organization: {
         slug: string;
         default_tax_percent: number;
@@ -64,6 +66,10 @@ export default async function CheckoutPage({
 
   const org = table.location.organization;
   if (org.slug !== slug) notFound();
+
+  if (!table.location.ordering_enabled) {
+    redirect(`/${slug}/${token}`);
+  }
 
   return (
     <div className="min-h-dvh px-4 pb-safe pt-4">

@@ -102,6 +102,7 @@ export function CartView({
   taxPercent,
   currency,
   orderingEnabled = true,
+  acceptingOrders = true,
 }: {
   slug: string;
   token: string;
@@ -111,6 +112,7 @@ export function CartView({
   taxPercent: number;
   currency: string;
   orderingEnabled?: boolean;
+  acceptingOrders?: boolean;
 }) {
   const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
@@ -119,6 +121,7 @@ export function CartView({
   const subtotal = useCart((s) => s.subtotal());
   const taxAmount = useCart((s) => s.taxAmount(false, taxPercent));
   const total = useCart((s) => s.total(false, taxPercent));
+  const canPlaceOrders = orderingEnabled && acceptingOrders;
 
   if (!items.length) {
     return <EmptyCartState slug={slug} token={token} />;
@@ -142,7 +145,7 @@ export function CartView({
           {tableName} · {orgName}
         </p>
 
-        {!orderingEnabled && (
+        {!canPlaceOrders && (
           <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             {tUI("cart.orderingPaused")}
           </div>
@@ -234,7 +237,7 @@ export function CartView({
           </div>
         </div>
 
-        {orderingEnabled ? (
+        {canPlaceOrders ? (
           <Button
             asChild
             className="mt-3 h-12 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600"

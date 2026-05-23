@@ -21,6 +21,7 @@ export type ValidatedTableSession = {
     id: string;
     org_id: string;
     accepting_orders: boolean;
+    ordering_enabled: boolean;
     payment_online_enabled: boolean;
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
@@ -56,7 +57,7 @@ export async function validateTableSession(
   const { data: location } = await admin
     .from("locations")
     .select(
-      "id, org_id, accepting_orders, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
     )
     .eq("id", tableRow.location_id)
     .single();
@@ -66,6 +67,10 @@ export async function validateTableSession(
   }
 
   const locationRow = location as ValidatedTableSession["location"];
+
+  if (!locationRow.ordering_enabled) {
+    return { error: "Online ordering is not available.", status: 403 };
+  }
 
   if (!locationRow.accepting_orders) {
     return { error: "Ordering is temporarily paused.", status: 403 };

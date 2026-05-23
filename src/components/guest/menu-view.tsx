@@ -46,6 +46,7 @@ export function MenuView({
   tableId,
   timezone,
   orderingEnabled = true,
+  acceptingOrders = true,
 }: {
   slug: string;
   token: string;
@@ -62,10 +63,12 @@ export function MenuView({
   tableId: string;
   timezone: string;
   orderingEnabled?: boolean;
+  acceptingOrders?: boolean;
 }) {
   const { tUI, tName } = useAppLocale();
   const router = useRouter();
   const scrollKey = `menu-scroll-${slug}-${token}`;
+  const canPlaceOrders = orderingEnabled && acceptingOrders;
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [now, setNow] = useState(() => new Date());
@@ -279,6 +282,12 @@ export function MenuView({
           />
 
           {!orderingEnabled && (
+            <div className="mx-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+              Browse our menu. To order, ask your server.
+            </div>
+          )}
+
+          {orderingEnabled && !acceptingOrders && (
             <div className="mx-4 mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
               {tUI("menu.orderingPaused")}
             </div>
@@ -335,7 +344,7 @@ export function MenuView({
                         menuSection={
                           menuSectionByProductId.get(product.id) ?? "food"
                         }
-                        orderingDisabled={!orderingEnabled}
+                        orderingDisabled={!canPlaceOrders}
                         onOpenDetail={() => openProductDetail(product)}
                       />
                     ))}
@@ -347,7 +356,7 @@ export function MenuView({
                 categories={filteredCategories}
                 unavailableCategories={allUnavailableCategories}
                 currency={currency}
-                orderingDisabled={!orderingEnabled}
+                orderingDisabled={!canPlaceOrders}
                 onOpenDetail={openProductDetail}
               />
             )}
@@ -357,18 +366,20 @@ export function MenuView({
             </div>
           </main>
 
-          <CartSummaryBar
-            slug={slug}
-            token={token}
-            taxPercent={taxPercent}
-            currency={currency}
-            glowOnMount={returnGlow}
-          />
+          {orderingEnabled && (
+            <CartSummaryBar
+              slug={slug}
+              token={token}
+              taxPercent={taxPercent}
+              currency={currency}
+              glowOnMount={returnGlow}
+            />
+          )}
 
           <ProductDetailSheet
             product={detailProduct}
             currency={currency}
-            orderingDisabled={!orderingEnabled}
+            orderingDisabled={!canPlaceOrders}
             menuSection={
               detailProduct
                 ? menuSectionByProductId.get(detailProduct.id) ?? "food"

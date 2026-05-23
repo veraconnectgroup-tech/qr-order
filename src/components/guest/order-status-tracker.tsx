@@ -19,6 +19,7 @@ import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { LanguageSelector } from "@/components/guest/language-selector";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
 import { FeedbackPrompt } from "@/components/guest/feedback-prompt";
+import { GoogleReviewPrompt } from "@/components/guest/google-review-prompt";
 import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,6 +98,7 @@ export function OrderStatusTracker({
   paymentOnlineEnabled,
   paymentAtBarEnabled,
   paymentCardAtTableEnabled,
+  googleReviewUrl,
   inPersonPaymentLocation,
 }: {
   slug: string;
@@ -108,6 +110,7 @@ export function OrderStatusTracker({
   paymentOnlineEnabled: boolean;
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
+  googleReviewUrl: string | null;
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
   const { tUI } = useAppLocale();
@@ -424,6 +427,12 @@ export function OrderStatusTracker({
       {order.status === "delivered" && (
         <FeedbackPrompt orderId={orderId} sessionToken={sessionToken} />
       )}
+
+      <GoogleReviewPrompt
+        orderId={orderId}
+        googleReviewUrl={googleReviewUrl}
+        orderStatus={order.status}
+      />
 
       {/* Actions */}
       <section className="flex flex-col gap-3">

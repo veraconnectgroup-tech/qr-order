@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { CartView } from "@/components/guest/cart-view";
 import { getDemoGuestMenuProps, isDemoGuestRoute } from "@/lib/demo-guest";
@@ -23,6 +23,7 @@ export default async function CartPage({
         taxPercent={demo.taxPercent}
         currency={demo.currency}
         orderingEnabled={demo.orderingEnabled}
+        acceptingOrders={demo.acceptingOrders}
       />
     );
   }
@@ -45,7 +46,9 @@ export default async function CartPage({
 
   const { data: tableData } = await supabase
     .from("tables")
-    .select("name, location_id, location:locations!inner(accepting_orders)")
+    .select(
+      "name, location_id, location:locations!inner(accepting_orders, ordering_enabled)"
+    )
     .eq("qr_token", token)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -56,8 +59,12 @@ export default async function CartPage({
   const table = tableData as unknown as {
     name: string;
     location_id: string;
-    location: { accepting_orders: boolean };
+    location: { accepting_orders: boolean; ordering_enabled: boolean };
   };
+
+  if (!table.location.ordering_enabled) {
+    redirect(`/${slug}/${token}`);
+  }
 
   return (
     <CartView
@@ -68,7 +75,8 @@ export default async function CartPage({
       tableName={table.name}
       taxPercent={Number(org.default_tax_percent)}
       currency={org.currency}
-      orderingEnabled={table.location.accepting_orders}
+      orderingEnabled={table.location.ordering_enabled}
+      acceptingOrders={table.location.accepting_orders}
     />
   );
 }
