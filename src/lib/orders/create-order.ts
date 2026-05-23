@@ -25,6 +25,7 @@ import {
 import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
 import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
+import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import {
   validatePromoCode,
   type PromoCodeRow,
@@ -508,6 +509,13 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       tableRow.name
     );
 
+    dispatchOrgWebhook(orgRow.id, "order.created", {
+      order_id: merged.id,
+      order_number: merged.order_number,
+      location_id: tableRow.location_id,
+      total: merged.total,
+    });
+
     if (promoCodeId) {
       await consumePromoCode(admin, promoCodeId);
     }
@@ -601,6 +609,13 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     orderRow.order_number,
     tableRow.name
   );
+
+  dispatchOrgWebhook(orgRow.id, "order.created", {
+    order_id: orderRow.id,
+    order_number: orderRow.order_number,
+    location_id: tableRow.location_id,
+    total: orderRow.total,
+  });
 
   if (promoCodeId) {
     await consumePromoCode(admin, promoCodeId);

@@ -1,8 +1,9 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { OnboardingGuard } from "@/components/dashboard/onboarding-guard";
 import {
+  getEffectiveStaff,
   getStaffAccessibleLocations,
   getStaffLocationId,
-  requireStaff,
 } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -31,7 +32,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const staff = await requireStaff();
+  const staff = await getEffectiveStaff();
   const [locationId, accessibleLocations] = await Promise.all([
     getStaffLocationId(staff),
     getStaffAccessibleLocations(staff),
@@ -50,7 +51,7 @@ export default async function DashboardLayout({
     await Promise.all([
     admin
       .from("organizations")
-      .select("id, name, slug, currency, stripe_onboarded")
+      .select("id, name, slug, currency, stripe_onboarded, onboarding_completed, trial_ends_at")
       .eq("id", staff.org_id)
       .single(),
     admin
@@ -77,6 +78,8 @@ export default async function DashboardLayout({
     slug: string;
     currency: string;
     stripe_onboarded: boolean;
+    onboarding_completed: boolean;
+    trial_ends_at: string | null;
   } | null;
 
   const locationRow = location as {
@@ -92,28 +95,34 @@ export default async function DashboardLayout({
   );
 
   return (
-    <DashboardShell
-      context={{
-        locationId,
-        locationName: locationRow?.name ?? "Location",
-        accessibleLocations,
-        orgId: staff.org_id,
-        orgName: orgRow?.name ?? "Restaurant",
-        orgSlug: orgRow?.slug ?? "",
-        currency: orgRow?.currency ?? "EUR",
-        staffName: staff.name,
-        staffRole: staff.role,
-        staffEmail: staff.email,
-        todayRevenue,
-        stripeOnboarded: orgRow?.stripe_onboarded ?? false,
-        hasTables: (tableCount ?? 0) > 0,
-        hasMenuItems: (productCount ?? 0) > 0,
+    <OnboardingGuard onboardingCompleted={orgRow?.onboarding_completed ?? true}>
+      <DashboardShell
+        context={{
+          locationId,
+          locationName: locationRow?.name ?? "Location",
+          accessibleLocations,
+          orgId: staff.org_id,
+          orgName: orgRow?.name ?? "Restaurant",
+          orgSlug: orgRow?.slug ?? "",
+          currency: orgRow?.currency ?? "EUR",
+          staffName: staff.name,
+          staffRole: staff.role,
+          staffEmail: staff.email,
+          todayRevenue,
+          stripeOnboarded: orgRow?.stripe_onboarded ?? false,
+          hasTables: (tableCount ?? 0) > 0,
+          hasMenuItems: (productCount ?? 0) > 0,
+        onboardingCompleted: orgRow?.onboarding_completed ?? true,
+        trialEndsAt: orgRow?.trial_ends_at ?? null,
+        impersonating: staff.impersonating ?? false,
+        impersonatedOrgName: staff.impersonated_org_name ?? null,
         inPersonPaymentLocation:
-          locationRow?.in_person_payment_location ?? "bar",
-        menuLocale,
-      }}
-    >
-      {children}
-    </DashboardShell>
+            locationRow?.in_person_payment_location ?? "bar",
+          menuLocale,
+        }}
+      >
+        {children}
+      </DashboardShell>
+    </OnboardingGuard>
   );
 }

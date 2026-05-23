@@ -20,7 +20,7 @@ import {
 } from "@/lib/orders/tips";
 
 export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "sessions");
+  const limited = await withRateLimit(req, "bill");
   if (limited) return limited;
 
     const sessionToken = req.nextUrl.searchParams.get("sessionToken");
@@ -148,7 +148,7 @@ async function loadPaymentOptions(locationId: string) {
 export const POST = withErrorHandler(
   "sessions-bill-post",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "sessions");
+    const limited = await withRateLimit(req, "bill");
     if (limited) return limited;
 
     const body = await safeJsonParse(req);

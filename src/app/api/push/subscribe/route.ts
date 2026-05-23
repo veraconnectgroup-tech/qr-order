@@ -45,7 +45,7 @@ async function staffCanAccessLocation(
 export const POST = withErrorHandler(
   "push-subscribe-post",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "default");
+    const limited = await withRateLimit(req, "push");
     if (limited) return limited;
 
     const staff = await getCurrentStaff();
@@ -115,7 +115,7 @@ export const POST = withErrorHandler(
 export const DELETE = withErrorHandler(
   "push-subscribe-delete",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "default");
+    const limited = await withRateLimit(req, "push");
     if (limited) return limited;
 
     const staff = await getCurrentStaff();

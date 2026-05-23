@@ -2,6 +2,8 @@ import type Stripe from "stripe";
 import { logger } from "@/lib/logger";
 import { enqueue } from "@/lib/queue/client";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
+import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
+import { orgIdForOrder } from "@/lib/webhooks/org-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
@@ -375,6 +377,14 @@ async function verifyAndMarkSessionPaid(
         error: err instanceof Error ? err.message : String(err),
       })
     );
+
+    const orgId = await orgIdForOrder(order.id);
+    if (orgId) {
+      dispatchOrgWebhook(orgId, "order.paid", {
+        order_id: order.id,
+        payment_intent_id: pi.id,
+      });
+    }
   }
 }
 
@@ -420,6 +430,14 @@ async function verifyAndMarkPaid(
       error: err instanceof Error ? err.message : String(err),
     })
   );
+
+  const orgId = await orgIdForOrder(order.id);
+  if (orgId) {
+    dispatchOrgWebhook(orgId, "order.paid", {
+      order_id: order.id,
+      payment_intent_id: pi.id,
+    });
+  }
 }
 
 async function verifyAndMarkSplitPaid(

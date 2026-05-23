@@ -3,7 +3,25 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LOCATION_COOKIE_NAME } from "@/lib/auth/location-cookie";
+import { IMPERSONATE_COOKIE } from "@/lib/platform/impersonation-cookie";
 import type { Staff } from "@/types";
+
+export type EffectiveStaff = Staff & {
+  organizations: {
+    id: string;
+    name: string;
+    slug: string;
+    currency: string;
+    default_tax_percent: number;
+  } | null;
+  impersonating?: boolean;
+  impersonated_org_name?: string;
+};
+
+async function getImpersonatedOrgId() {
+  const cookieStore = await cookies();
+  return cookieStore.get(IMPERSONATE_COOKIE)?.value ?? null;
+}
 
 export async function getSession() {
   const supabase = await createServerClient();
@@ -23,7 +41,9 @@ export async function getCurrentStaff() {
 
   const { data } = await supabase
     .from("staff")
-    .select("*, organizations(id, name, slug, currency, default_tax_percent)")
+    .select(
+      "*, organizations(id, name, slug, currency, default_tax_percent)"
+    )
     .eq("user_id", user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -62,6 +82,62 @@ export async function requireOwner() {
     redirect("/dashboard");
   }
   return staff;
+}
+
+export async function requirePlatformAdmin() {
+  const staff = await getCurrentStaff();
+  if (!staff?.is_platform_admin) {
+    redirect("/dashboard");
+  }
+  return staff;
+}
+
+export async function getEffectiveStaff(): Promise<EffectiveStaff> {
+  const staff = await getCurrentStaff();
+  if (!staff) redirect("/login");
+
+  const impersonatedOrgId = await getImpersonatedOrgId();
+  if (!impersonatedOrgId || !staff.is_platform_admin) {
+    return { ...staff, impersonating: false };
+  }
+
+  const admin = createAdminClient();
+  const [{ data: org }, { data: owner }] = await Promise.all([
+    admin
+      .from("organizations")
+      .select("id, name, slug, currency, default_tax_percent")
+      .eq("id", impersonatedOrgId)
+      .maybeSingle(),
+    admin
+      .from("staff")
+      .select("*")
+      .eq("org_id", impersonatedOrgId)
+      .eq("role", "owner")
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (!org || !owner) {
+    return { ...staff, impersonating: false };
+  }
+
+  const orgRow = org as {
+    id: string;
+    name: string;
+    slug: string;
+    currency: string;
+    default_tax_percent: number;
+  };
+
+  return {
+    ...(owner as Staff),
+    organizations: orgRow,
+    is_platform_admin: true,
+    impersonating: true,
+    impersonated_org_name: orgRow.name,
+  };
 }
 
 export async function getStaffAccessibleLocationIds(staff: Staff) {

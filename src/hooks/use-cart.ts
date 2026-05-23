@@ -88,16 +88,18 @@ export const useCart = create<CartStore>()(
       cartBump: 0,
 
       setSession: (slug, token, tableName, sessionToken) =>
-        set((state) => ({
-          restaurantSlug: slug,
-          tableToken: token,
-          tableName,
-          sessionToken,
-          items:
-            state.restaurantSlug === slug && state.tableToken === token
-              ? state.items
-              : [],
-        })),
+        set((state) => {
+          const sameTable =
+            state.restaurantSlug === slug && state.tableToken === token;
+          const firstSession = !state.restaurantSlug && !state.tableToken;
+          return {
+            restaurantSlug: slug,
+            tableToken: token,
+            tableName,
+            sessionToken,
+            items: sameTable || firstSession ? state.items : [],
+          };
+        }),
 
       addItem: (item) => {
         const itemTotal = calcItemTotal(item);
@@ -136,6 +138,23 @@ export const useCart = create<CartStore>()(
         cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).total,
       itemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
     }),
-    { name: "qr-order-cart" }
+    {
+      name: "qr-order-cart",
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<CartStore> | undefined;
+        if (!saved) return current;
+        const sameTable =
+          saved.restaurantSlug === current.restaurantSlug &&
+          saved.tableToken === current.tableToken;
+        if (!sameTable) {
+          return { ...current, ...saved, items: saved.items ?? [] };
+        }
+        const items =
+          current.items.length >= (saved.items?.length ?? 0)
+            ? current.items
+            : (saved.items ?? []);
+        return { ...current, ...saved, items };
+      },
+    }
   )
 );

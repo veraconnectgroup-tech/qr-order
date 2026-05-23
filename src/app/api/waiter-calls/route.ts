@@ -18,7 +18,7 @@ const schema = z.object({
 });
 
 export const POST = withErrorHandler("waiter-calls-post", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "default");
+  const limited = await withRateLimit(req, "waiter-calls");
   if (limited) return limited;
 
   const body = await req.json();

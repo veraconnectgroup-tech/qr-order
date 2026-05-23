@@ -6,14 +6,14 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, x-session-token",
+    "Content-Type, Authorization, x-session-token, X-API-Key",
 };
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.sentry.io",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co",
+  "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
   "font-src 'self'",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.sentry.io https://*.upstash.io",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
@@ -76,6 +76,7 @@ export async function middleware(request: NextRequest) {
   const needsAuth =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") ||
+    pathname.startsWith("/platform") ||
     pathname === "/login" ||
     pathname === "/signup";
 
@@ -111,7 +112,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (
-    (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) &&
+    (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/platform")) &&
     !user
   ) {
     const url = request.nextUrl.clone();

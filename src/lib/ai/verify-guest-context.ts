@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
+import { hasFeature } from "@/lib/platform/feature-flags";
 
 export type AiGuestContext = {
   orgId: string;
@@ -22,7 +23,7 @@ export async function verifyAiGuestContext(
   const { data: location, error: locationError } = await admin
     .from("locations")
     .select(
-      "id, org_id, ai_concierge_enabled, organization:organizations(id, name)"
+      "id, org_id, ai_concierge_enabled, organization:organizations(id, name, feature_flags)"
     )
     .eq("id", input.locationId)
     .single();
@@ -35,10 +36,16 @@ export async function verifyAiGuestContext(
     id: string;
     org_id: string;
     ai_concierge_enabled: boolean;
-    organization: { id: string; name: string } | null;
+    organization: { id: string; name: string; feature_flags?: unknown } | null;
   };
 
-  if (!row.ai_concierge_enabled) {
+  if (
+    !row.ai_concierge_enabled ||
+    !hasFeature(
+      { feature_flags: row.organization?.feature_flags as import("@/types/database").Json },
+      "ai_concierge"
+    )
+  ) {
     return { error: "AI Concierge is not enabled for this location.", status: 403 };
   }
 

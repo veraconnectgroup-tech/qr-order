@@ -16,7 +16,7 @@ const postSchema = z.object({
 });
 
 export const GET = withErrorHandler("feedback-get", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "orders");
+  const limited = await withRateLimit(req, "feedback");
   if (limited) return limited;
 
   const orderId = req.nextUrl.searchParams.get("orderId");
@@ -53,7 +53,7 @@ export const GET = withErrorHandler("feedback-get", async (req, _ctx) => {
 export const POST = withErrorHandler(
   "feedback-post",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withRateLimit(req, "feedback");
     if (limited) return limited;
 
     const body = await req.json();

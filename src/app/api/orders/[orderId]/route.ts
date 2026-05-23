@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { scheduleOrderReadyPush } from "@/lib/push/schedule-notify";
 import { processRefund } from "@/lib/stripe/refund";
+import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 
 function parseSessionToken(value: string | null) {
   return zSessionToken().safeParse(value ?? "");
@@ -299,6 +300,19 @@ export const PATCH = withErrorHandler(
           error: err instanceof Error ? err.message : String(err),
         })
       );
+    }
+
+    dispatchOrgWebhook(access.staff.org_id, "order.status_changed", {
+      order_id: orderId,
+      previous_status: access.order.status,
+      status,
+    });
+
+    if (status === "rejected") {
+      dispatchOrgWebhook(access.staff.org_id, "order.cancelled", {
+        order_id: orderId,
+        status,
+      });
     }
 
     return apiSuccess({ ok: true });

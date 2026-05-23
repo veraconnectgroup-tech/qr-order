@@ -5,6 +5,7 @@ import { GuestSkipLink } from "@/components/guest/guest-skip-link";
 import { createServerClient } from "@/lib/supabase/server";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+import { guestPageMetadata } from "@/lib/seo/guest-metadata";
 import type { MenuLocale } from "@/lib/i18n/translations";
 
 export async function generateMetadata({
@@ -12,7 +13,16 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string; token: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug, token } = await params;
+
+  if (isDemoGuestRoute(slug, token)) {
+    return guestPageMetadata({
+      orgName: "Skyline Lounge",
+      slug,
+      description:
+        "Try the live demo menu — scan, order, and pay with QR Order.",
+    });
+  }
 
   try {
     const supabase = await createServerClient();
@@ -23,16 +33,17 @@ export async function generateMetadata({
       .maybeSingle();
 
     const org = data as { name: string; logo_url: string | null } | null;
-    return {
-      manifest: `/${slug}/manifest.webmanifest`,
-      title: org?.name,
-      appleWebApp: { capable: true, statusBarStyle: "black-translucent" },
-      icons: org?.logo_url
-        ? { apple: [{ url: org.logo_url }] }
-        : { apple: [{ url: "/icon-192.png" }] },
-    };
+    if (!org) {
+      return guestPageMetadata({ orgName: "Menu", slug, noIndex: true });
+    }
+
+    return guestPageMetadata({
+      orgName: org.name,
+      slug,
+      logoUrl: org.logo_url,
+    });
   } catch {
-    return { manifest: `/${slug}/manifest.webmanifest` };
+    return guestPageMetadata({ orgName: "Menu", slug, noIndex: true });
   }
 }
 

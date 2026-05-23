@@ -34,10 +34,12 @@ test.describe("Guest ordering flow (demo menu)", () => {
 
     await page.getByRole("button", { name: "Add Aperol Spritz" }).click();
 
-    await expect(page.getByRole("link", { name: /view cart/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /view cart/i })).toContainText("1");
-
-    await page.getByRole("link", { name: /view cart/i }).click();
+    const cartLink = page.getByRole("link", {
+      name: /items, total|Artikel, Gesamt/i,
+    });
+    await expect(cartLink).toBeVisible();
+    await expect(cartLink).toContainText(/1/);
+    await cartLink.click();
     await expect(page).toHaveURL(/\/cart$/);
     await expect(page.getByText("Aperol Spritz").first()).toBeVisible();
     await expectTaxLine(page);

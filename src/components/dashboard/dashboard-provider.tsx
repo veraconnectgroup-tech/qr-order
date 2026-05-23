@@ -17,6 +17,10 @@ export type DashboardContextValue = {
   stripeOnboarded: boolean;
   hasTables: boolean;
   hasMenuItems: boolean;
+  onboardingCompleted: boolean;
+  trialEndsAt: string | null;
+  impersonating: boolean;
+  impersonatedOrgName: string | null;
   inPersonPaymentLocation: "bar" | "counter" | "table";
   menuLocale: import("@/lib/i18n/translations").MenuLocale;
 };

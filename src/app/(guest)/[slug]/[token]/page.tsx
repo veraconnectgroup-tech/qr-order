@@ -50,15 +50,15 @@ export default async function GuestMenuPage({
   params: Promise<{ slug: string; token: string }>;
 }) {
   const { slug, token } = await params;
-  const isDemo = isDemoGuestRoute(slug, token);
+
+  if (isDemoGuestRoute(slug, token)) {
+    return <MenuView {...getDemoGuestMenuProps(slug, token)} />;
+  }
 
   let supabase;
   try {
     supabase = await createServerClient();
   } catch {
-    if (isDemo) {
-      return <MenuView {...getDemoGuestMenuProps(slug, token)} />;
-    }
     notFound();
   }
 
@@ -93,12 +93,7 @@ export default async function GuestMenuPage({
     .is("deleted_at", null)
     .single();
 
-  if (!tableData) {
-    if (isDemo) {
-      return <MenuView {...getDemoGuestMenuProps(slug, token)} />;
-    }
-    notFound();
-  }
+  if (!tableData) notFound();
 
   const table = tableData as unknown as {
     id: string;

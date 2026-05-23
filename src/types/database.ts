@@ -25,8 +25,33 @@ type Tables = {
     website: string | null;
     fiskaly_tss_id: string | null;
     fiskaly_client_id: string | null;
+    onboarding_completed: boolean;
+    trial_ends_at: string | null;
+    feature_flags: Json;
     created_at: string;
     updated_at: string;
+  };
+  api_keys: {
+    id: string;
+    org_id: string;
+    name: string;
+    key_hash: string;
+    key_prefix: string;
+    scopes: string[];
+    last_used_at: string | null;
+    expires_at: string | null;
+    created_at: string;
+    revoked_at: string | null;
+  };
+  webhook_configs: {
+    id: string;
+    org_id: string;
+    url: string;
+    secret: string;
+    events: string[];
+    is_active: boolean;
+    failure_count: number;
+    created_at: string;
   };
   locations: {
     id: string;
@@ -262,6 +287,7 @@ type Tables = {
     name: string;
     email: string | null;
     is_active: boolean;
+    is_platform_admin: boolean;
     created_at: string;
     deleted_at: string | null;
   };

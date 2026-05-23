@@ -8,6 +8,8 @@ import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
 import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel";
+import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
+import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import type { AiCreditPackage } from "@/types";
 
 export default async function AdminSettingsPage() {
@@ -15,7 +17,7 @@ export default async function AdminSettingsPage() {
   const admin = createAdminClient();
   const locationId = await getStaffLocationId(staff);
 
-  const [{ data: org }, { data: location }, { data: credits }, { data: packages }] =
+  const [{ data: org }, { data: location }, { data: credits }, { data: packages }, { data: apiKeys }, { data: webhooks }] =
     await Promise.all([
     admin
       .from("organizations")
@@ -43,6 +45,16 @@ export default async function AdminSettingsPage() {
       .select("*")
       .eq("is_active", true)
       .order("sort_order"),
+    admin
+      .from("api_keys")
+      .select("id, name, key_prefix, scopes, last_used_at, created_at, revoked_at")
+      .eq("org_id", staff.org_id)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("webhook_configs")
+      .select("id, url, events, is_active, failure_count, created_at")
+      .eq("org_id", staff.org_id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const orgRow = org as {
@@ -140,6 +152,9 @@ export default async function AdminSettingsPage() {
           connected={orgRow?.stripe_onboarded ?? false}
           accountId={orgRow?.stripe_account_id ?? null}
         />
+
+        <ApiKeysPanel keys={(apiKeys ?? []) as never} canEdit />
+        <WebhooksPanel webhooks={(webhooks ?? []) as never} canEdit />
       </div>
     </div>
   );

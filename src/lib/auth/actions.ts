@@ -96,6 +96,9 @@ export async function signupAction(formData: FormData) {
     return { error: "Could not create your organization." };
   }
 
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
   scheduleFiskalyTssProvision(org.id);
 
   const { data: location, error: locError } = await admin
@@ -104,6 +107,7 @@ export async function signupAction(formData: FormData) {
       org_id: org.id,
       name: restaurantName,
       is_active: true,
+      timezone: "Europe/Berlin",
     })
     .select("id")
     .single();
@@ -111,6 +115,38 @@ export async function signupAction(formData: FormData) {
   if (locError || !location) {
     return { error: "Could not create your location." };
   }
+
+  await admin
+    .from("organizations")
+    .update({
+      onboarding_completed: false,
+      trial_ends_at: trialEndsAt.toISOString(),
+    })
+    .eq("id", org.id);
+
+  await admin.from("categories").insert([
+    {
+      location_id: location.id,
+      name: "Food",
+      name_en: "Food",
+      sort_order: 0,
+      menu_section: "food",
+    },
+    {
+      location_id: location.id,
+      name: "Drinks",
+      name_en: "Drinks",
+      sort_order: 1,
+      menu_section: "drinks",
+    },
+    {
+      location_id: location.id,
+      name: "Desserts",
+      name_en: "Desserts",
+      sort_order: 2,
+      menu_section: "desserts",
+    },
+  ] as never);
 
   const { error: staffError } = await admin.from("staff").insert({
     user_id: authData.user.id,
@@ -125,7 +161,7 @@ export async function signupAction(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard/orders");
+  redirect("/dashboard/setup");
 }
 
 export async function logoutAction() {

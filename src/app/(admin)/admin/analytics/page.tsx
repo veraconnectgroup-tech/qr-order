@@ -1,13 +1,15 @@
 import { Suspense } from "react";
 import { AnalyticsDateRangePicker } from "@/components/admin/analytics/date-range-picker";
 import { AvgTicketKpiCard } from "@/components/admin/analytics/avg-ticket-kpi-card";
-import { OrderSourceChart } from "@/components/admin/analytics/order-source-chart";
-import { OrdersByHourChart } from "@/components/admin/analytics/orders-by-hour-chart";
+import {
+  OrderSourceChart,
+  OrdersByHourChart,
+  PaymentMethodsChart,
+  RevenueChart,
+  TopProductsChart,
+} from "@/components/charts-dynamic";
 import { OrdersKpiCard } from "@/components/admin/analytics/orders-kpi-card";
-import { PaymentMethodsChart } from "@/components/admin/analytics/payment-methods-chart";
-import { RevenueChart } from "@/components/admin/analytics/revenue-chart";
 import { RevenueKpiCard } from "@/components/admin/analytics/revenue-kpi-card";
-import { TopProductsChart } from "@/components/admin/analytics/top-products-chart";
 import { DatevExportPanel } from "@/components/admin/datev-export-panel";
 import { FeedbackRatingKpiCard } from "@/components/admin/feedback-rating-kpi-card";
 import { TipsKpiCard } from "@/components/admin/tips-kpi-card";

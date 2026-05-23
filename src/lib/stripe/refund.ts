@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { getStripe } from "@/lib/stripe/client";
 import { logger } from "@/lib/logger";
+import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
+import { orgIdForLocation } from "@/lib/webhooks/org-context";
 
 export type OrderForRefund = {
   id: string;
@@ -132,6 +134,15 @@ export async function processRefund(
     amount: refundAmount,
     full: isFullRefund,
   });
+
+  const orgId = await orgIdForLocation(order.location_id);
+  if (orgId) {
+    dispatchOrgWebhook(orgId, "order.refunded", {
+      order_id: order.id,
+      amount: refundAmount,
+      full: isFullRefund,
+    });
+  }
 
   return { ok: true, refundId: refund.id, amount: refundAmount };
 }

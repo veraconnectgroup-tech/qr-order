@@ -1,10 +1,4 @@
 import * as Sentry from "@sentry/nextjs";
+import { getSentryOptions } from "./src/lib/sentry-options";
 
-const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-
-if (dsn) {
-  Sentry.init({
-    dsn,
-    tracesSampleRate: 0.1,
-  });
-}
+Sentry.init(getSentryOptions());

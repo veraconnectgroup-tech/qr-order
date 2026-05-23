@@ -4,14 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createServerClient } from "@/lib/supabase/server";
 
+/** Production rate-limit scopes — see README § Rate limiting */
 export type RateLimitScope =
   | "orders"
   | "sessions"
+  | "bill"
   | "payments"
   | "export"
   | "fiscal"
   | "jobs"
   | "ai"
+  | "waiter-calls"
+  | "feedback"
+  | "push"
   | "default";
 
 const SCOPE_BY_USER = new Set<RateLimitScope>(["export", "fiscal"]);
@@ -39,13 +44,17 @@ function createScopeLimiter(
 }
 
 const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
-  orders: createScopeLimiter("orders", 120, "1 h"),
-  sessions: createScopeLimiter("sessions", 60, "1 m"),
+  orders: createScopeLimiter("orders", 10, "1 m"),
+  sessions: createScopeLimiter("sessions", 30, "1 m"),
+  bill: createScopeLimiter("bill", 5, "1 m"),
   payments: createScopeLimiter("payments", 30, "1 m"),
   export: createScopeLimiter("export", 10, "1 m"),
   fiscal: createScopeLimiter("fiscal", 10, "1 m"),
   jobs: createScopeLimiter("jobs", 120, "1 m"),
-  ai: createScopeLimiter("ai", 20, "1 h"),
+  ai: createScopeLimiter("ai", 20, "1 m"),
+  "waiter-calls": createScopeLimiter("waiter-calls", 3, "1 m"),
+  feedback: createScopeLimiter("feedback", 5, "1 m"),
+  push: createScopeLimiter("push", 10, "1 m"),
   default: createScopeLimiter("default", 60, "1 m"),
 };
 
@@ -56,13 +65,17 @@ const MEMORY_SCOPE_CONFIG: Record<
   RateLimitScope,
   { limit: number; windowMs: number }
 > = {
-  orders: { limit: 120, windowMs: 60 * 60 * 1000 },
-  sessions: { limit: 60, windowMs: 60 * 1000 },
+  orders: { limit: 10, windowMs: 60 * 1000 },
+  sessions: { limit: 30, windowMs: 60 * 1000 },
+  bill: { limit: 5, windowMs: 60 * 1000 },
   payments: { limit: 30, windowMs: 60 * 1000 },
   export: { limit: 10, windowMs: 60 * 1000 },
   fiscal: { limit: 10, windowMs: 60 * 1000 },
   jobs: { limit: 120, windowMs: 60 * 1000 },
-  ai: { limit: 20, windowMs: 60 * 60 * 1000 },
+  ai: { limit: 20, windowMs: 60 * 1000 },
+  "waiter-calls": { limit: 3, windowMs: 60 * 1000 },
+  feedback: { limit: 5, windowMs: 60 * 1000 },
+  push: { limit: 10, windowMs: 60 * 1000 },
   default: { limit: 60, windowMs: 60 * 1000 },
 };
 

@@ -29,7 +29,7 @@ import {
 } from "@/lib/orders/revenue";
 import { sumTips } from "@/lib/orders/tips";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
-import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
+import { AnalyticsCharts } from "@/components/charts-dynamic";
 import { HistoryDateRangePicker } from "@/components/dashboard/history-date-range-picker";
 import { RefundOrderDialog } from "@/components/dashboard/refund-order-dialog";
 import { Skeleton } from "@/components/ui/skeleton";

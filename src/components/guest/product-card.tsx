@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Clock, Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
@@ -85,14 +86,12 @@ export function ProductCard({
     >
       <div className="relative h-[120px] bg-gradient-to-br from-zinc-800 to-zinc-900 sm:h-[160px]">
         {product.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={product.image_url}
             alt={displayName}
-            className={cn(
-              "size-full object-cover",
-              outOfStock && "grayscale"
-            )}
+            fill
+            sizes="(max-width: 640px) 50vw, 33vw"
+            className={cn("object-cover", outOfStock && "grayscale")}
           />
         ) : (
           <div className="flex size-full items-center justify-center">

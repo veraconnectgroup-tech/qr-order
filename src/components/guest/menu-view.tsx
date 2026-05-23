@@ -1,15 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useGuestSession } from "@/hooks/use-guest-session";
-import { AiCartPairingBanner } from "@/components/guest/ai-cart-pairing-banner";
-import { AiConciergeIntro } from "@/components/guest/ai-concierge-intro";
-import { AiConciergeSheet } from "@/components/guest/ai-concierge-sheet";
-import { AiMenuLoading } from "@/components/guest/ai-menu-loading";
-import { AiRecommendedSection } from "@/components/guest/ai-recommended-section";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import { CallWaiterButton } from "@/components/guest/call-waiter-button";
 import { CartSummaryBar } from "@/components/guest/cart-summary-bar";
@@ -56,6 +52,42 @@ import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick } from "@/lib/haptics";
 import type { ProductWithModifiers } from "@/types";
+
+const AiCartPairingBanner = dynamic(
+  () =>
+    import("@/components/guest/ai-cart-pairing-banner").then((m) => ({
+      default: m.AiCartPairingBanner,
+    })),
+  { ssr: false }
+);
+const AiConciergeIntro = dynamic(
+  () =>
+    import("@/components/guest/ai-concierge-intro").then((m) => ({
+      default: m.AiConciergeIntro,
+    })),
+  { ssr: false }
+);
+const AiConciergeSheet = dynamic(
+  () =>
+    import("@/components/guest/ai-concierge-sheet").then((m) => ({
+      default: m.AiConciergeSheet,
+    })),
+  { ssr: false }
+);
+const AiMenuLoading = dynamic(
+  () =>
+    import("@/components/guest/ai-menu-loading").then((m) => ({
+      default: m.AiMenuLoading,
+    })),
+  { ssr: false }
+);
+const AiRecommendedSection = dynamic(
+  () =>
+    import("@/components/guest/ai-recommended-section").then((m) => ({
+      default: m.AiRecommendedSection,
+    })),
+  { ssr: false }
+);
 
 export function MenuView({
   slug,

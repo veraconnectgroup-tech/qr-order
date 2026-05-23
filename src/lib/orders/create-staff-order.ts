@@ -21,6 +21,7 @@ import {
 import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
 import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
+import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import type { Staff } from "@/types";
 
 const staffOrderItemSchema = z.object({
@@ -453,6 +454,14 @@ export async function createStaffOrder(
 
   // 13. scheduleNewOrderPush (kitchen notification)
   scheduleNewOrderPush(locationRow.id, orderRow.order_number, tableRow.name);
+
+  dispatchOrgWebhook(staff.org_id, "order.created", {
+    order_id: orderRow.id,
+    order_number: orderRow.order_number,
+    location_id: locationRow.id,
+    total: orderRow.total,
+    source: "staff",
+  });
 
   logger.info("Staff order created", {
     orderId: orderRow.id,
