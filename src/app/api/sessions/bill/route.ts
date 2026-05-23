@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
+import { withRateLimitScope } from "@/lib/rate-limit";
 import {
   getAvailablePaymentMethods,
   type SelectablePaymentMethod,
@@ -10,6 +11,9 @@ import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 
 export async function GET(req: NextRequest) {
+  const limited = await withRateLimitScope(req, "sessions");
+  if (limited) return limited;
+
   const sessionToken = req.nextUrl.searchParams.get("sessionToken");
   if (!sessionToken) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -119,6 +123,9 @@ async function loadPaymentOptions(locationId: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await withRateLimitScope(req, "sessions");
+  if (limited) return limited;
+
   const body = await req.json();
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {

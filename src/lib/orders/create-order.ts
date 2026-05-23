@@ -16,6 +16,7 @@ import {
   resolveItemTaxRate,
 } from "@/lib/tax/vat";
 import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
+import { logger } from "@/lib/logger";
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -417,6 +418,13 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       })),
     });
 
+    logger.info("Order created", {
+      orderId: merged.id,
+      orderNumber: merged.order_number,
+      merged: true,
+      locationId: tableRow.location_id,
+    });
+
     return {
       data: {
         orderId: merged.id,
@@ -504,6 +512,12 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       total: item.itemTotal,
       tax_rate: item.taxRate,
     })),
+  });
+
+  logger.info("Order created", {
+    orderId: orderRow.id,
+    orderNumber: orderRow.order_number,
+    locationId: tableRow.location_id,
   });
 
   return {

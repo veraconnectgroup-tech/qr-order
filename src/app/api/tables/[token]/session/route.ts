@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
+import { withRateLimitScope } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -13,20 +14,15 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const limited = await withRateLimitScope(req, "sessions");
+    if (limited) return limited;
+
     const { token } = await params;
     const body = await req.json().catch(() => ({}));
     const parsed = schema.safeParse({ tableToken: token, ...body });
 
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-    }
-
-    const ip = getClientIp(req);
-    if (!checkRateLimit(`session:ip:${ip}`, 30, 60 * 60 * 1000)) {
-      return NextResponse.json(
-        { error: "Too many session requests" },
-        { status: 429 }
-      );
     }
 
     const admin = createAdminClient();
@@ -111,7 +107,9 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("Session API error:", error);
+    logger.error("Session API error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Internal server error." },
       { status: 500 }

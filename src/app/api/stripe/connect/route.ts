@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCurrentStaff } from "@/lib/auth/session";
+import { logger } from "@/lib/logger";
+import { withRateLimitScope } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   assertStripeConnectConfig,
@@ -16,8 +18,11 @@ async function requireConnectStaff() {
   return staff;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const limited = await withRateLimitScope(req, "default");
+    if (limited) return limited;
+
     const staff = await requireConnectStaff();
     if (!staff) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -57,7 +62,9 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Stripe connect sync error:", error);
+    logger.error("Stripe connect sync error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: stripeConnectErrorMessage(error) },
       { status: 500 }
@@ -65,8 +72,11 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const limited = await withRateLimitScope(req, "default");
+    if (limited) return limited;
+
     const staff = await requireConnectStaff();
     if (!staff) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -109,7 +119,9 @@ export async function POST() {
 
     return NextResponse.json({ data: { url } });
   } catch (error) {
-    console.error("Stripe connect error:", error);
+    logger.error("Stripe connect error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     const message = stripeConnectErrorMessage(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

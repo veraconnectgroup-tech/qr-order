@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { withRateLimitScope } from "@/lib/rate-limit";
 
 const ORDER_SELECT =
   "*, order_items(*, order_item_modifiers(*)), tables(name)";
@@ -34,6 +35,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const limited = await withRateLimitScope(req, "orders");
+  if (limited) return limited;
+
   const { orderId } = await params;
   const sessionToken = req.nextUrl.searchParams.get("sessionToken");
 

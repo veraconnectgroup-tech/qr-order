@@ -5,6 +5,8 @@ import {
   generateDatevExport,
   parseDatevDateRange,
 } from "@/lib/export/datev";
+import { logger } from "@/lib/logger";
+import { withRateLimitScope } from "@/lib/rate-limit";
 
 async function requireExportStaff() {
   const staff = await getCurrentStaff();
@@ -16,6 +18,9 @@ async function requireExportStaff() {
 
 export async function GET(req: NextRequest) {
   try {
+    const limited = await withRateLimitScope(req, "export");
+    if (limited) return limited;
+
     const staff = await requireExportStaff();
     if (!staff) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -46,7 +51,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("DATEV export error:", error);
+    logger.error("DATEV export error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "DATEV export could not be generated." },
       { status: 500 }

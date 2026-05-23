@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, withRateLimitScope } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -11,6 +12,9 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = await withRateLimitScope(req, "default");
+    if (limited) return limited;
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
 
@@ -67,7 +71,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ data: { ok: true } });
   } catch (error) {
-    console.error("Waiter call error:", error);
+    logger.error("Waiter call error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json({ error: "Internal error." }, { status: 500 });
   }
 }

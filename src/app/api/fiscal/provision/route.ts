@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { provisionFiskalyTss } from "@/lib/fiscal/provision-tss";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
+import { logger } from "@/lib/logger";
+import { withRateLimitScope } from "@/lib/rate-limit";
 
 async function requireProvisionStaff() {
   const staff = await getCurrentStaff();
@@ -11,8 +13,11 @@ async function requireProvisionStaff() {
   return staff;
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const limited = await withRateLimitScope(req, "fiscal");
+    if (limited) return limited;
+
     const staff = await requireProvisionStaff();
     if (!staff) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -45,7 +50,9 @@ export async function POST() {
       },
     });
   } catch (error) {
-    console.error("[fiskaly] Manual TSE provisioning failed:", error);
+    logger.error("Manual TSE provisioning failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
         error:

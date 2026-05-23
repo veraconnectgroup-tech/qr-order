@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { maybeSendOrderReceipt } from "@/lib/email/send-order-receipt";
+import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
@@ -42,6 +43,11 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
 
     case "payment_intent.payment_failed": {
       const pi = event.data.object as Stripe.PaymentIntent;
+      logger.error("Payment failed", {
+        paymentIntentId: pi.id,
+        orderId: pi.metadata.order_id,
+        orderIds: pi.metadata.order_ids,
+      });
       await admin
         .from("orders")
         .update({ payment_status: "failed", status: "rejected" })
@@ -109,7 +115,7 @@ async function verifyAndMarkSessionPaid(
   );
 
   if (expectedCents !== pi.amount) {
-    console.error("FRAUD ALERT: Session amount mismatch", {
+    logger.error("FRAUD ALERT: Session amount mismatch", {
       orderIds,
       expected: expectedCents / 100,
       got: pi.amount / 100,
@@ -128,8 +134,17 @@ async function verifyAndMarkSessionPaid(
       })
       .eq("id", order.id);
 
+    logger.info("Payment succeeded", {
+      orderId: order.id,
+      paymentIntentId: pi.id,
+      sessionCheckout: true,
+    });
+
     maybeSendOrderReceipt(order.id).catch((err) =>
-      console.error("Receipt email failed:", err)
+      logger.error("Receipt email failed", {
+        orderId: order.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
     );
   }
 }
@@ -142,7 +157,7 @@ async function verifyAndMarkPaid(
   const expectedCents = Math.round(Number(order.total) * 100);
 
   if (expectedCents !== pi.amount) {
-    console.error("FRAUD ALERT: Amount mismatch", {
+    logger.error("FRAUD ALERT: Amount mismatch", {
       orderId: order.id,
       expected: order.total,
       got: pi.amount / 100,
@@ -161,7 +176,15 @@ async function verifyAndMarkPaid(
     })
     .eq("id", order.id);
 
+  logger.info("Payment succeeded", {
+    orderId: order.id,
+    paymentIntentId: pi.id,
+  });
+
   maybeSendOrderReceipt(order.id).catch((err) =>
-    console.error("Receipt email failed:", err)
+    logger.error("Receipt email failed", {
+      orderId: order.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
   );
 }

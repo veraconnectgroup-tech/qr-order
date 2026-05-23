@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
+import { withRateLimitScope } from "@/lib/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
@@ -10,6 +12,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const limited = await withRateLimitScope(req, "orders");
+  if (limited) return limited;
+
   const { orderId } = await params;
   const sessionToken = req.nextUrl.searchParams.get("sessionToken");
 
@@ -157,6 +162,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const limited = await withRateLimitScope(req, "orders");
+  if (limited) return limited;
+
   const { orderId } = await params;
   const access = await verifyStaffOrderAccess(orderId);
 
@@ -234,7 +242,10 @@ export async function PATCH(
 
   if (status === "delivered") {
     maybeSendOrderReceipt(orderId).catch((err) =>
-      console.error("Receipt email failed:", err)
+      logger.error("Receipt email failed", {
+        orderId,
+        error: err instanceof Error ? err.message : String(err),
+      })
     );
   }
 

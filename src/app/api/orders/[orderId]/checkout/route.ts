@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
+import { withRateLimitScope } from "@/lib/rate-limit";
 import {
   getAvailablePaymentMethods,
   type SelectablePaymentMethod,
@@ -53,6 +55,9 @@ export async function POST(
   { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
+    const limited = await withRateLimitScope(req, "orders");
+    if (limited) return limited;
+
     const { orderId } = await params;
     const body = await req.json();
     const parsed = schema.safeParse(body);
@@ -223,7 +228,9 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("Order checkout error:", error);
+    logger.error("Order checkout error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Payment could not be started." },
       { status: 500 }

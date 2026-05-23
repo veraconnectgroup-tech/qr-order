@@ -6,6 +6,7 @@ import {
   getFiskalyClient,
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
+import { logger } from "@/lib/logger";
 
 export type TseSignatureResult = {
   tss_serial: string;
@@ -190,6 +191,12 @@ export async function signOrderTransaction(
     throw new Error(`TSE data could not be saved: ${error.message}`);
   }
 
+  logger.info("TSE transaction signed", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    tssSerial: result.tss_serial,
+  });
+
   return result;
 }
 
@@ -198,6 +205,9 @@ export function scheduleOrderTseSign(
   order: OrderForTseSigning
 ) {
   void signOrderTransaction(admin, order).catch((err) => {
-    console.error("[fiskaly] TSE signing failed for order", order.id, err);
+    logger.error("TSE signing failed", {
+      orderId: order.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
   });
 }

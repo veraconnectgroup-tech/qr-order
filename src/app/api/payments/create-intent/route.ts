@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
+import { withRateLimitScope } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
@@ -12,6 +14,9 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = await withRateLimitScope(req, "payments");
+    if (limited) return limited;
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
 
@@ -172,7 +177,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Payment intent error:", error);
+    logger.error("Payment intent error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Payment could not be started." },
       { status: 500 }

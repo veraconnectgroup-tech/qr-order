@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe/client";
 import { handleStripeWebhookEvent } from "@/lib/stripe/webhook";
 
@@ -23,7 +24,9 @@ export async function POST(req: Request) {
     await handleStripeWebhookEvent(event);
     return new Response("OK", { status: 200 });
   } catch (error) {
-    console.error("Webhook signature verification failed:", error);
+    logger.error("Webhook signature verification failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return new Response("Invalid signature", { status: 400 });
   }
 }
