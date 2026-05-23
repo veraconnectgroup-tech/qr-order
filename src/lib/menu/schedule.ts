@@ -90,13 +90,13 @@ export function isCategoryAvailable(
 }
 
 const DAY_LABELS: Record<number, string> = {
-  0: "Ned",
-  1: "Pon",
-  2: "Uto",
-  3: "Sri",
-  4: "Čet",
-  5: "Pet",
-  6: "Sub",
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
 };
 
 export function formatScheduleDays(days: number[] | null | undefined): string {
@@ -142,24 +142,24 @@ export function formatScheduleGuestHint(
     category.schedule_end
   );
   if (!range) return null;
-  return `${categoryName} dostupan ${range}`;
+  return `${categoryName} available ${range}`;
 }
 
 export const SCHEDULE_PRESETS = {
   breakfast: {
-    label: "Doručak (07-11)",
+    label: "Breakfast (07–11)",
     schedule_start: "07:00",
     schedule_end: "11:30",
     schedule_days: [0, 1, 2, 3, 4, 5, 6],
   },
   lunch: {
-    label: "Ručak (11-15)",
+    label: "Lunch (11–15)",
     schedule_start: "11:00",
     schedule_end: "15:00",
     schedule_days: [0, 1, 2, 3, 4, 5, 6],
   },
   dinner: {
-    label: "Večera (17-22)",
+    label: "Dinner (17–22)",
     schedule_start: "17:00",
     schedule_end: "22:00",
     schedule_days: [0, 1, 2, 3, 4, 5, 6],

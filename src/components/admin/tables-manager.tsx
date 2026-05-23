@@ -58,12 +58,12 @@ function QrPreview({
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>QR kod — {table.name}</DialogTitle>
+        <DialogTitle>QR code — {table.name}</DialogTitle>
       </DialogHeader>
       <div className="flex flex-col items-center gap-4 py-4">
         {qrUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={qrUrl} alt={`QR kod za ${table.name}`} className="rounded-lg" />
+          <img src={qrUrl} alt={`QR code for ${table.name}`} className="rounded-lg" />
         ) : (
           <div className="size-[280px] animate-pulse rounded-lg bg-neutral-100" />
         )}
@@ -72,7 +72,7 @@ function QrPreview({
         <p className="break-all text-center text-xs text-neutral-400">{scanUrl}</p>
         <Button onClick={downloadPng} disabled={!qrUrl}>
           <Download className="mr-2 size-4" />
-          Preuzmi PNG
+          Download PNG
         </Button>
       </div>
     </DialogContent>
@@ -107,18 +107,18 @@ export function TablesManager({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Stolovi</h1>
+        <h1 className="text-2xl font-bold">Tables</h1>
         <div className="flex gap-2">
           <Dialog open={zoneOpen} onOpenChange={setZoneOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Plus className="mr-2 size-4" />
-                Zona
+                Zone
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nova zona</DialogTitle>
+                <DialogTitle>New zone</DialogTitle>
               </DialogHeader>
               <form
                 action={async (fd) => {
@@ -128,11 +128,11 @@ export function TablesManager({
                 className="space-y-4"
               >
                 <div>
-                  <Label htmlFor="zone-name">Naziv zone</Label>
+                  <Label htmlFor="zone-name">Zone name</Label>
                   <Input id="zone-name" name="name" required className="mt-1" />
                 </div>
                 <Button type="submit" className="w-full">
-                  Sačuvaj
+                  Save
                 </Button>
               </form>
             </DialogContent>
@@ -142,12 +142,12 @@ export function TablesManager({
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 size-4" />
-                Dodaj sto
+                Add table
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Novi sto</DialogTitle>
+                <DialogTitle>New table</DialogTitle>
               </DialogHeader>
               <form
                 action={async (fd) => {
@@ -159,11 +159,11 @@ export function TablesManager({
                 className="space-y-4"
               >
                 <div>
-                  <Label htmlFor="table-name">Naziv</Label>
+                  <Label htmlFor="table-name">Name</Label>
                   <Input id="table-name" name="name" required className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="seats">Broj mesta</Label>
+                  <Label htmlFor="seats">Seats</Label>
                   <Input
                     id="seats"
                     name="seats"
@@ -175,10 +175,10 @@ export function TablesManager({
                 </div>
                 {zones.length > 0 && (
                   <div>
-                    <Label>Zona</Label>
+                    <Label>Zone</Label>
                     <Select value={zoneId} onValueChange={setZoneId}>
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Izaberi zonu" />
+                        <SelectValue placeholder="Select zone" />
                       </SelectTrigger>
                       <SelectContent>
                         {zones.map((z) => (
@@ -191,7 +191,7 @@ export function TablesManager({
                   </div>
                 )}
                 <Button type="submit" className="w-full">
-                  Sačuvaj
+                  Save
                 </Button>
               </form>
             </DialogContent>
@@ -207,9 +207,9 @@ export function TablesManager({
 
       {!tables.length ? (
         <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">Nema stolova.</p>
+          <p className="text-neutral-600">No tables yet.</p>
           <p className="mt-1 text-sm text-neutral-400">
-            Dodaj zone i stolove, pa generiši QR kodove.
+            Add zones and tables, then generate QR codes.
           </p>
         </div>
       ) : (
@@ -234,7 +234,7 @@ export function TablesManager({
           {ungrouped.length > 0 && (
             <section>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-                Bez zone
+                Unzoned
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {ungrouped.map((table) => (
@@ -266,10 +266,10 @@ function TableCard({
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4">
       <p className="font-semibold">{table.name}</p>
-      <p className="text-sm text-neutral-500">{table.seats} mesta</p>
+      <p className="text-sm text-neutral-500">{table.seats} seats</p>
       {staffMembers.length > 0 && (
         <div className="mt-2">
-          <Label className="text-xs text-neutral-500">Konobar (Trinkgeld)</Label>
+          <Label className="text-xs text-neutral-500">Waiter (tips)</Label>
           <Select
             value={table.assigned_staff_id ?? "none"}
             onValueChange={async (v) => {
@@ -280,10 +280,10 @@ function TableCard({
             }}
           >
             <SelectTrigger className="mt-1 h-8 text-xs">
-              <SelectValue placeholder="Nije dodeljen" />
+              <SelectValue placeholder="Unassigned" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Nije dodeljen</SelectItem>
+              <SelectItem value="none">Unassigned</SelectItem>
               {staffMembers.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name}

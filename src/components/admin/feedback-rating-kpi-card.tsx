@@ -27,13 +27,13 @@ export async function FeedbackRatingKpiCard() {
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">Prosečna ocena (30 dana)</p>
+      <p className="text-sm text-neutral-500">Average rating (30 days)</p>
       <p className="mt-2 font-mono text-3xl font-bold text-neutral-900">
         {formatAverageRating(avg)}
         <span className="ml-1 text-lg font-normal text-neutral-400">/ 5</span>
       </p>
       <p className="mt-1 text-xs text-neutral-500">
-        {count} {count === 1 ? "ocena" : "ocena"} · posle isporuke
+        {count} {count === 1 ? "rating" : "ratings"} · post-delivery
       </p>
     </div>
   );

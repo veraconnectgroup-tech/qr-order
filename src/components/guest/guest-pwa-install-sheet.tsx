@@ -68,12 +68,12 @@ export function GuestPwaInstallSheet() {
             <Smartphone className="size-5 text-orange-400" />
           </div>
           <SheetTitle className="text-zinc-50">
-            Dodaj na Home Screen za lakši pristup
+            Add to Home Screen for easier access
           </SheetTitle>
           <SheetDescription className="text-zinc-400">
             {isIos
-              ? "Tap Share ⬆️ → Add to Home Screen za brži pristup meniju."
-              : "Instaliraj aplikaciju za brže naručivanje bez browser trake."}
+              ? "Tap Share ⬆️ → Add to Home Screen for quicker menu access."
+              : "Install the app for faster ordering without the browser bar."}
           </SheetDescription>
         </SheetHeader>
 
@@ -101,7 +101,7 @@ export function GuestPwaInstallSheet() {
               className="h-12 flex-1 rounded-xl bg-orange-500 font-semibold hover:bg-orange-600"
             >
               <Download className="mr-2 size-4" />
-              {installing ? "…" : "Instaliraj"}
+              {installing ? "…" : "Install"}
             </Button>
           )}
           <Button
@@ -110,7 +110,7 @@ export function GuestPwaInstallSheet() {
             onClick={handleDismiss}
             className="h-12 flex-1 rounded-xl border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800"
           >
-            Ne sada
+            Not now
           </Button>
         </div>
       </SheetContent>

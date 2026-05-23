@@ -26,11 +26,11 @@ const STATUS_LABEL: Record<
   ReturnType<typeof getPromoStatus>,
   { label: string; className: string }
 > = {
-  active: { label: "Aktivan", className: "text-green-600" },
-  inactive: { label: "Neaktivan", className: "text-neutral-400" },
-  expired: { label: "Istekao", className: "text-amber-600" },
-  exhausted: { label: "Potrošen", className: "text-red-600" },
-  scheduled: { label: "Zakazan", className: "text-blue-600" },
+  active: { label: "Active", className: "text-green-600" },
+  inactive: { label: "Inactive", className: "text-neutral-400" },
+  expired: { label: "Expired", className: "text-amber-600" },
+  exhausted: { label: "Exhausted", className: "text-red-600" },
+  scheduled: { label: "Scheduled", className: "text-blue-600" },
 };
 
 function PromoForm({
@@ -49,7 +49,7 @@ function PromoForm({
   return (
     <form action={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="code">Kod</Label>
+        <Label htmlFor="code">Code</Label>
         <Input
           id="code"
           name="code"
@@ -61,19 +61,19 @@ function PromoForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="discount_type">Tip</Label>
+          <Label htmlFor="discount_type">Type</Label>
           <select
             id="discount_type"
             name="discount_type"
             defaultValue={promo?.discount_type ?? "percent"}
             className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
           >
-            <option value="percent">Procenat (%)</option>
-            <option value="fixed">Fiksni ({currency})</option>
+            <option value="percent">Percent (%)</option>
+            <option value="fixed">Fixed ({currency})</option>
           </select>
         </div>
         <div>
-          <Label htmlFor="discount_value">Vrednost</Label>
+          <Label htmlFor="discount_value">Value</Label>
           <Input
             id="discount_value"
             name="discount_value"
@@ -88,7 +88,7 @@ function PromoForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="min_order_amount">Min. narudžba ({currency})</Label>
+          <Label htmlFor="min_order_amount">Min. order ({currency})</Label>
           <Input
             id="min_order_amount"
             name="min_order_amount"
@@ -100,7 +100,7 @@ function PromoForm({
           />
         </div>
         <div>
-          <Label htmlFor="max_uses">Max korišćenja (prazno = ∞)</Label>
+          <Label htmlFor="max_uses">Max uses (blank = ∞)</Label>
           <Input
             id="max_uses"
             name="max_uses"
@@ -113,7 +113,7 @@ function PromoForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="valid_from">Važi od</Label>
+          <Label htmlFor="valid_from">Valid from</Label>
           <Input
             id="valid_from"
             name="valid_from"
@@ -127,7 +127,7 @@ function PromoForm({
           />
         </div>
         <div>
-          <Label htmlFor="valid_until">Važi do (opciono)</Label>
+          <Label htmlFor="valid_until">Valid until (optional)</Label>
           <Input
             id="valid_until"
             name="valid_until"
@@ -149,11 +149,11 @@ function PromoForm({
           defaultChecked={promo?.is_active ?? true}
           className="size-4 rounded border-neutral-300"
         />
-        <Label htmlFor="is_active">Aktivan</Label>
+        <Label htmlFor="is_active">Active</Label>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Čuvanje..." : "Sačuvaj"}
+        {pending ? "Saving..." : "Save"}
       </Button>
     </form>
   );
@@ -197,7 +197,7 @@ export function PromoManager({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Obrisati promo kod?")) return;
+    if (!confirm("Delete this promo code?")) return;
     await deletePromoCode(id);
   }
 
@@ -205,21 +205,21 @@ export function PromoManager({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Promo kodovi</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">Promo codes</h1>
           <p className="mt-1 text-sm text-neutral-600">
-            Popusti za goste pri checkout-u
+            Discounts for guests at checkout
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" />
-              Novi kod
+              New code
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Novi promo kod</DialogTitle>
+              <DialogTitle>New promo code</DialogTitle>
             </DialogHeader>
             <PromoForm
               currency={currency}
@@ -233,17 +233,17 @@ export function PromoManager({
 
       {!promos.length ? (
         <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">Još nema promo kodova.</p>
+          <p className="text-neutral-600">No promo codes yet.</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
           <table className="w-full text-sm">
             <thead className="border-b bg-neutral-50 text-left">
               <tr>
-                <th className="px-4 py-3 font-medium">Kod</th>
-                <th className="px-4 py-3 font-medium">Popust</th>
+                <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium">Discount</th>
                 <th className="px-4 py-3 font-medium">Min.</th>
-                <th className="px-4 py-3 font-medium">Korišćenja</th>
+                <th className="px-4 py-3 font-medium">Uses</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
@@ -285,7 +285,7 @@ export function PromoManager({
                             setError(null);
                             setEditPromo(promo);
                           }}
-                          aria-label="Izmeni"
+                          aria-label="Edit"
                         >
                           <Pencil className="size-4" />
                         </Button>
@@ -296,13 +296,13 @@ export function PromoManager({
                             togglePromoCode(promo.id, !promo.is_active)
                           }
                         >
-                          {promo.is_active ? "Deaktiviraj" : "Aktiviraj"}
+                          {promo.is_active ? "Deactivate" : "Activate"}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(promo.id)}
-                          aria-label="Obriši"
+                          aria-label="Delete"
                         >
                           <Trash2 className="size-4 text-red-500" />
                         </Button>
@@ -319,7 +319,7 @@ export function PromoManager({
       <Dialog open={!!editPromo} onOpenChange={(open) => !open && setEditPromo(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Izmeni promo kod</DialogTitle>
+            <DialogTitle>Edit promo code</DialogTitle>
           </DialogHeader>
           {editPromo && (
             <PromoForm

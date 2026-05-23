@@ -53,10 +53,10 @@ function parseUpsellForm(formData: FormData) {
 export async function createUpsellRule(formData: FormData) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const parsed = parseUpsellForm(formData);
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   const admin = createAdminClient();
   const { data: maxRow } = await admin
@@ -90,7 +90,7 @@ export async function createUpsellRule(formData: FormData) {
 export async function updateUpsellRule(id: string, formData: FormData) {
   await requireAdmin();
   const parsed = parseUpsellForm(formData);
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   const supabase = await createServerClient();
   const { error } = await supabase
@@ -122,7 +122,7 @@ export async function deleteUpsellRule(id: string) {
 export async function reorderUpsellRules(orderedIds: string[]) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const supabase = await createServerClient();
 

@@ -52,7 +52,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold">Podešavanja</h1>
+      <h1 className="mb-6 text-2xl font-bold">Settings</h1>
 
       <div className="space-y-6">
         <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">

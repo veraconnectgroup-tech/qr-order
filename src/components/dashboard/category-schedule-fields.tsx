@@ -8,13 +8,13 @@ import {
 } from "@/lib/menu/schedule";
 
 const WEEKDAYS = [
-  { value: 1, label: "Pon" },
-  { value: 2, label: "Uto" },
-  { value: 3, label: "Sri" },
-  { value: 4, label: "Čet" },
-  { value: 5, label: "Pet" },
-  { value: 6, label: "Sub" },
-  { value: 0, label: "Ned" },
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
 ];
 
 export type CategoryScheduleFormState = {
@@ -80,7 +80,7 @@ export function CategoryScheduleFields({
   return (
     <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
       <label className="flex items-center justify-between gap-3 text-sm text-zinc-300">
-        <span>Vremenski ograničeno</span>
+        <span>Time-limited availability</span>
         <Switch
           checked={value.schedule_enabled}
           onCheckedChange={(checked) =>
@@ -108,7 +108,7 @@ export function CategoryScheduleFields({
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1.5">
-              <span className="text-xs text-zinc-500">Od</span>
+              <span className="text-xs text-zinc-500">From</span>
               <input
                 type="time"
                 value={value.schedule_start}
@@ -119,7 +119,7 @@ export function CategoryScheduleFields({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-xs text-zinc-500">Do</span>
+              <span className="text-xs text-zinc-500">To</span>
               <input
                 type="time"
                 value={value.schedule_end}
@@ -132,7 +132,7 @@ export function CategoryScheduleFields({
           </div>
 
           <div>
-            <span className="mb-2 block text-xs text-zinc-500">Dani</span>
+            <span className="mb-2 block text-xs text-zinc-500">Days</span>
             <div className="flex flex-wrap gap-2">
               {WEEKDAYS.map((day) => {
                 const active = value.schedule_days.includes(day.value);

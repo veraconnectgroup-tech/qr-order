@@ -59,29 +59,29 @@ export function MenuManager({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Upravljanje menijem</h1>
+        <h1 className="text-2xl font-bold">Menu management</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" />
-              Dodaj proizvod
+              Add product
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Novi proizvod</DialogTitle>
+              <DialogTitle>New product</DialogTitle>
             </DialogHeader>
             <form action={handleCreate} className="space-y-4">
               <div>
-                <Label htmlFor="name">Naziv</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input id="name" name="name" required className="mt-1" />
               </div>
               <div>
-                <Label htmlFor="description">Opis</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" className="mt-1" />
               </div>
               <div>
-                <Label htmlFor="price">Cena ({currency})</Label>
+                <Label htmlFor="price">Price ({currency})</Label>
                 <Input
                   id="price"
                   name="price"
@@ -93,10 +93,10 @@ export function MenuManager({
                 />
               </div>
               <div>
-                <Label>Kategorija</Label>
+                <Label>Category</Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Izaberi kategoriju" />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
@@ -123,11 +123,11 @@ export function MenuManager({
                   checked={isAvailable}
                   onCheckedChange={setIsAvailable}
                 />
-                <Label htmlFor="is_available">Dostupan</Label>
+                <Label htmlFor="is_available">Available</Label>
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <Button type="submit" disabled={pending} className="w-full">
-                {pending ? "Čuvanje..." : "Sačuvaj proizvod"}
+                {pending ? "Saving..." : "Save product"}
               </Button>
             </form>
           </DialogContent>
@@ -136,9 +136,9 @@ export function MenuManager({
 
       {!products.length ? (
         <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">Meni je prazan.</p>
+          <p className="text-neutral-600">Your menu is empty.</p>
           <p className="mt-1 text-sm text-neutral-400">
-            Dodaj prvi proizvod da gosti mogu da naručuju.
+            Add your first product so guests can order.
           </p>
         </div>
       ) : (
@@ -146,10 +146,10 @@ export function MenuManager({
           <table className="w-full text-sm">
             <thead className="border-b bg-neutral-50 text-left">
               <tr>
-                <th className="px-4 py-3 font-medium">Naziv</th>
-                <th className="px-4 py-3 font-medium">Cena</th>
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Price</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Akcije</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -168,7 +168,7 @@ export function MenuManager({
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={product.is_available ? "default" : "secondary"}>
-                      {product.is_available ? "Uključen" : "Isključen"}
+                      {product.is_available ? "On" : "Off"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
@@ -182,7 +182,7 @@ export function MenuManager({
                         )
                       }
                     >
-                      {product.is_available ? "Isključi" : "Uključi"}
+                      {product.is_available ? "Turn off" : "Turn on"}
                     </Button>
                   </td>
                 </tr>

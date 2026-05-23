@@ -70,7 +70,7 @@ export function KitchenHeader({
             className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
           >
             <Maximize2 className="size-4" />
-            Otvori KDS
+            Open KDS
           </Link>
           <PushOptIn />
           <SoundToggle />

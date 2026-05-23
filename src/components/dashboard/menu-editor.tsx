@@ -97,7 +97,7 @@ function ProductCard({
       <div className="relative h-[140px] w-full">
         {!product.is_available && (
           <span className="absolute left-2 top-2 z-10 rounded-full bg-red-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
-            Nedostupno
+            Unavailable
           </span>
         )}
         {product.image_url ? (
@@ -139,7 +139,7 @@ function ProductCard({
 
       <div className="mt-3 flex items-center justify-between border-t border-zinc-800 px-4 py-3">
         <span className="text-xs font-medium text-zinc-400">
-          {product.is_available ? "Na stanju" : "Nema na stanju"}
+          {product.is_available ? "In stock" : "Out of stock"}
         </span>
         <div className="flex items-center gap-2">
           <Switch
@@ -147,8 +147,8 @@ function ProductCard({
             onCheckedChange={onToggleAvailable}
             aria-label={
               product.is_available
-                ? `Označi ${product.name} kao nedostupan`
-                : `Označi ${product.name} kao dostupan`
+                ? `Mark ${product.name} as unavailable`
+                : `Mark ${product.name} as available`
             }
           />
           <button

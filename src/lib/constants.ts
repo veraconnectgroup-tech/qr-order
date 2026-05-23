@@ -55,8 +55,7 @@ function platformFeeParts(currency = "EUR") {
 }
 
 export function platformFeeDescription(currency = "EUR") {
-  const { small, large, threshold } = platformFeeParts(currency);
-  return `${small} po porudžbini ispod ${threshold}, ${large} po porudžbini od ${threshold} naviše`;
+  return platformFeeDescriptionEn(currency);
 }
 
 export function platformFeeDescriptionEn(currency = "EUR") {

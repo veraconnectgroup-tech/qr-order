@@ -53,9 +53,9 @@ export function OrderItemProductLine({
     setBusy(true);
     try {
       await setProductAvailability(item.product_id, false);
-      toast.success(`${item.product_name} označen kao nedostupan`);
+      toast.success(`${item.product_name} marked unavailable`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Greška");
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setBusy(false);
     }
@@ -103,7 +103,7 @@ export function OrderItemProductLine({
             onClick={() => void markUnavailable()}
             className="cursor-pointer text-sm focus:bg-zinc-800"
           >
-            Označi kao nedostupno
+            Mark unavailable
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

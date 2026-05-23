@@ -1,76 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { DashboardScreenShowcase } from "@/components/landing/dashboard-screen-showcase";
+import { Play } from "lucide-react";
 import {
   HeroItem,
   HeroStagger,
+  AnimateInView,
 } from "@/components/landing/animate-in-view";
+import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingContainer } from "@/components/landing/landing-primitives";
-import { ScaledDashboardPreview } from "@/components/landing/scaled-dashboard-preview";
-import { ShowcaseWindow } from "@/components/landing/showcase-frame";
 import { Button } from "@/components/ui/button";
 
 export function LandingHero() {
   return (
     <section className="landing-hero-dark landing-dot-grid landing-glow-top relative overflow-hidden pt-[72px]">
-      <LandingContainer wide className="relative pt-16 pb-8 sm:pt-20 sm:pb-12">
-        <HeroStagger className="mx-auto max-w-[780px] text-center">
-          <HeroItem>
-            <h1 className="font-display text-[clamp(2.75rem,6vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-white">
-              Your shortcut to every order.
-            </h1>
-          </HeroItem>
-          <HeroItem>
-            <p className="mx-auto mt-6 max-w-[540px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
-              A collection of powerful ordering tools — guest menus, live
-              operations, kitchen flow, and payments — all within one platform.
-              Fast, ergonomic, and reliable.
-            </p>
-          </HeroItem>
-          <HeroItem>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                asChild
-                className="landing-btn-accent h-11 rounded-full px-7 text-sm font-semibold"
-              >
-                <Link href="/signup">Request access</Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                asChild
-                className="h-11 rounded-full border-zinc-700 bg-transparent px-7 text-sm font-medium text-zinc-200 hover:bg-zinc-900 hover:text-white"
-              >
-                <Link href="/skyline-lounge/demo-table-8">Live demo</Link>
-              </Button>
-            </div>
-          </HeroItem>
-          <HeroItem>
-            <p className="mt-5 text-[13px] text-zinc-500">
-              No guest app · Stripe Connect · Multi-location ready
-            </p>
-          </HeroItem>
-        </HeroStagger>
+      <LandingContainer wide className="relative py-16 sm:py-20 lg:py-24">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-16">
+          <HeroStagger className="max-w-[620px] lg:max-w-none">
+            <HeroItem>
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-orange-500">
+                Hospitality OS
+              </p>
+            </HeroItem>
+            <HeroItem>
+              <h1 className="font-display text-[clamp(2.5rem,5.5vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-white">
+                The operating system for modern hospitality.
+              </h1>
+            </HeroItem>
+            <HeroItem>
+              <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
+                QR ordering, live kitchen ops, table management, and Stripe
+                payments — unified in one platform. Built for restaurants, bars,
+                and hotel F&amp;B in Germany.
+              </p>
+            </HeroItem>
+            <HeroItem>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  size="lg"
+                  asChild
+                  className="landing-btn-accent h-12 rounded-full px-8 text-sm font-semibold"
+                >
+                  <Link href="/signup">Start free</Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="h-12 rounded-full border-zinc-700 bg-transparent px-8 text-sm font-medium text-zinc-200 hover:bg-zinc-900 hover:text-white"
+                >
+                  <Link href="#product" className="inline-flex items-center gap-2">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-orange-500/15">
+                      <Play className="size-3.5 fill-orange-400 text-orange-400" />
+                    </span>
+                    Watch 60s demo
+                  </Link>
+                </Button>
+              </div>
+            </HeroItem>
+            <HeroItem>
+              <p className="mt-6 text-[13px] leading-relaxed text-zinc-500">
+                Used by early operators across Germany · 0€/month · Live in{" "}
+                <span className="text-zinc-400">&lt; 30 min</span>
+              </p>
+            </HeroItem>
+          </HeroStagger>
 
-        <div className="relative mx-auto mt-14 max-w-[920px] sm:mt-16 lg:mt-20">
-          <div className="landing-hero-stage pointer-events-none absolute -inset-6 rounded-[2rem] sm:-inset-10" aria-hidden />
-          <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-black p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:p-4">
-            <ShowcaseWindow
-              url="app.qr-order.com/dashboard/orders"
-              theme="dark"
-              className="border-0 shadow-none ring-0"
-            >
-              <ScaledDashboardPreview designHeight={520}>
-                <DashboardScreenShowcase
-                  screen="orders"
-                  variant="hero"
-                  theme="dark"
-                />
-              </ScaledDashboardPreview>
-            </ShowcaseWindow>
-          </div>
+          <AnimateInView className="relative lg:min-h-[460px]" delay={0.15}>
+            <LandingHeroVisual />
+          </AnimateInView>
         </div>
       </LandingContainer>
     </section>

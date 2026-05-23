@@ -32,7 +32,7 @@ export function PaymentStatusBadge({
           className
         )}
       >
-        Delimično refundiran
+        Partially refunded
       </span>
     );
   }
@@ -133,7 +133,7 @@ export function OrderDetailPanel({
 
       {!refunded && Number(order.tip_amount ?? 0) > 0 && (
         <p className="text-xs text-emerald-400/90">
-          Trinkgeld · {formatPrice(Number(order.tip_amount), currency)}
+          Tip · {formatPrice(Number(order.tip_amount), currency)}
           {order.tip_staff?.name ? ` · ${order.tip_staff.name}` : ""}
         </p>
       )}
@@ -148,13 +148,13 @@ export function OrderDetailPanel({
           )}
         >
           <p className="font-medium text-zinc-300">
-            Split račun ·{" "}
+            Split bill ·{" "}
             {
               (order.split_payments ?? []).filter(
                 (s) => s.payment_status === "paid"
               ).length
             }{" "}
-            od {(order.split_payments ?? []).length} delova plaćeno
+            of {(order.split_payments ?? []).length} parts paid
           </p>
           <ul className="mt-2 space-y-1">
             {(order.split_payments ?? []).map((split, i) => (

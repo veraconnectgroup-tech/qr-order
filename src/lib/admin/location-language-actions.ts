@@ -24,12 +24,12 @@ export async function updateLocationMenuLocale(menuLocale: MenuLocale) {
   const parsed = menuLocaleSchema.safeParse(menuLocale);
 
   if (!parsed.success || !isMenuLocale(parsed.data)) {
-    return { error: "Neispravan jezik menija." };
+    return { error: "Invalid menu language." };
   }
 
   const locationId = await getStaffLocationId(staff);
   if (!locationId) {
-    return { error: "Lokacija nije pronađena." };
+    return { error: "Location not found." };
   }
 
   const admin = createAdminClient();

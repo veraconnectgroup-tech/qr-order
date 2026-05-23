@@ -9,7 +9,7 @@ export function KitchenPrintButton({
   order,
   orgName,
   className,
-  label = "Štampaj",
+  label = "Print",
 }: {
   order: OrderWithDetails;
   orgName: string;

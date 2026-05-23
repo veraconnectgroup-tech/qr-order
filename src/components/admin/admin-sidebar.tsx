@@ -90,7 +90,7 @@ export function AdminSidebar() {
       <div className="border-t border-neutral-200 p-4">
         <form action={logoutAction}>
           <Button variant="outline" size="sm" className="w-full" type="submit">
-            Odjavi se
+            Sign out
           </Button>
         </form>
       </div>

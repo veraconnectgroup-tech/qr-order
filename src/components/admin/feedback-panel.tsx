@@ -10,10 +10,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const PERIOD_OPTIONS = [
-  { value: "7", label: "7 dana" },
-  { value: "30", label: "30 dana" },
-  { value: "90", label: "90 dana" },
-  { value: "all", label: "Sve" },
+  { value: "7", label: "7 days" },
+  { value: "30", label: "30 days" },
+  { value: "90", label: "90 days" },
+  { value: "all", label: "All time" },
 ] as const;
 
 type PeriodValue = (typeof PERIOD_OPTIONS)[number]["value"];
@@ -71,14 +71,14 @@ export function FeedbackPanel({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Ocene gostiju</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">Guest feedback</h1>
         <p className="mt-1 text-sm text-neutral-600">
-          Povratne informacije posle isporuke narudžbe.
+          Post-delivery ratings and comments from guests.
         </p>
       </div>
 
       <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-neutral-500">Prosečna ocena</p>
+        <p className="text-sm text-neutral-500">Average rating</p>
         <div className="mt-2 flex items-end gap-3">
           <p className="font-mono text-4xl font-bold text-neutral-900">
             {formatAverageRating(avg)}
@@ -86,7 +86,7 @@ export function FeedbackPanel({
           {avg != null && <StarRating rating={Math.round(avg)} size="lg" />}
         </div>
         <p className="mt-1 text-xs text-neutral-500">
-          {filtered.length} ocena u izabranom periodu
+          {filtered.length} ratings in selected period
         </p>
       </div>
 
@@ -108,10 +108,10 @@ export function FeedbackPanel({
           onChange={(e) => setRatingFilter(e.target.value)}
           className="h-10 rounded-md border border-neutral-200 bg-white px-3 text-sm"
         >
-          <option value="all">Sve ocene</option>
+          <option value="all">All ratings</option>
           {[5, 4, 3, 2, 1].map((value) => (
             <option key={value} value={String(value)}>
-              {value} zvezdica
+              {value} stars
             </option>
           ))}
         </select>
@@ -122,16 +122,16 @@ export function FeedbackPanel({
           <thead className="bg-neutral-50">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-neutral-600">
-                Datum
+                Date
               </th>
               <th className="px-4 py-3 text-left font-medium text-neutral-600">
-                Narudžba
+                Order
               </th>
               <th className="px-4 py-3 text-left font-medium text-neutral-600">
-                Ocena
+                Rating
               </th>
               <th className="px-4 py-3 text-left font-medium text-neutral-600">
-                Komentar
+                Comment
               </th>
             </tr>
           </thead>
@@ -142,14 +142,14 @@ export function FeedbackPanel({
                   colSpan={4}
                   className="px-4 py-8 text-center text-neutral-500"
                 >
-                  Nema ocena za izabrane filtere.
+                  No ratings match the selected filters.
                 </td>
               </tr>
             ) : (
               filtered.map((row) => (
                 <tr key={row.id} className="hover:bg-neutral-50/80">
                   <td className="whitespace-nowrap px-4 py-3 text-neutral-700">
-                    {new Date(row.created_at).toLocaleString("de-DE", {
+                    {new Date(row.created_at).toLocaleString("en-GB", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",

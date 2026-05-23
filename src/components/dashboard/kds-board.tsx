@@ -42,10 +42,10 @@ import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
 const KDS_COLUMNS = [
-  { id: "pending", title: "Novo", statuses: ["pending"] },
-  { id: "accepted", title: "Prihvaćeno", statuses: ["accepted"] },
-  { id: "preparing", title: "Priprema", statuses: ["preparing"] },
-  { id: "ready", title: "Spremno", statuses: ["ready", "delivered"] },
+  { id: "pending", title: "New", statuses: ["pending"] },
+  { id: "accepted", title: "Accepted", statuses: ["accepted"] },
+  { id: "preparing", title: "Preparing", statuses: ["preparing"] },
+  { id: "ready", title: "Ready", statuses: ["ready", "delivered"] },
 ] as const;
 
 function LiveClock() {
@@ -331,7 +331,7 @@ export function KdsBoard() {
             type="button"
             onClick={() => setSettingsOpen((open) => !open)}
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-900"
-            aria-label="Podešavanja"
+            aria-label="Settings"
           >
             <Settings2 className="size-5" />
           </button>
@@ -339,7 +339,7 @@ export function KdsBoard() {
             type="button"
             onClick={() => void toggleFullscreen()}
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-900"
-            aria-label={isFullscreen ? "Izađi iz fullscreen" : "Fullscreen"}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
             {isFullscreen ? (
               <Minimize2 className="size-5" />
@@ -353,7 +353,7 @@ export function KdsBoard() {
             className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-zinc-700 px-4 text-sm font-semibold text-zinc-200 hover:bg-zinc-900"
           >
             <X className="size-4" />
-            Izađi
+            Exit
           </button>
         </div>
       </header>
@@ -363,7 +363,7 @@ export function KdsBoard() {
           <div className="mx-auto flex max-w-4xl flex-wrap items-end gap-6">
             <label className="block space-y-1">
               <span className="text-sm text-zinc-400">
-                Timer upozorenje (min)
+                Timer warning (min)
               </span>
               <input
                 type="number"
@@ -388,7 +388,7 @@ export function KdsBoard() {
                 }}
                 className="size-5 rounded border-zinc-600"
               />
-              Zvučni alert
+              Sound alert
               {soundEnabled ? (
                 <Volume2 className="size-4 text-emerald-400" />
               ) : (
@@ -405,7 +405,7 @@ export function KdsBoard() {
                 }}
                 className="size-5 rounded border-zinc-600"
               />
-              Auto-štampaj kitchen ticket
+              Auto-print kitchen ticket
             </label>
           </div>
         </div>
@@ -419,7 +419,7 @@ export function KdsBoard() {
             onClick={() => refetch()}
             className="underline hover:text-red-200"
           >
-            Pokušaj ponovo
+            Try again
           </button>
         </div>
       )}

@@ -35,7 +35,7 @@ const tableSchema = z.object({
 export async function createCategory(formData: FormData) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
@@ -44,7 +44,7 @@ export async function createCategory(formData: FormData) {
     sort_order: formData.get("sort_order") || 0,
   });
 
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   const supabase = await createServerClient();
   const { error } = await supabase.from("categories").insert({
@@ -73,7 +73,7 @@ export async function deleteCategory(id: string) {
 export async function createProduct(formData: FormData) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const parsed = productSchema.safeParse({
     name: formData.get("name"),
@@ -84,7 +84,7 @@ export async function createProduct(formData: FormData) {
     prep_time_minutes: formData.get("prep_time_minutes") || null,
   });
 
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   const supabase = await createServerClient();
   const { error } = await supabase.from("products").insert({
@@ -114,7 +114,7 @@ export async function toggleProductAvailability(id: string, available: boolean) 
 export async function createTable(formData: FormData) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const parsed = tableSchema.safeParse({
     name: formData.get("name"),
@@ -122,7 +122,7 @@ export async function createTable(formData: FormData) {
     seats: formData.get("seats") || 4,
   });
 
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   const supabase = await createServerClient();
   const { error } = await supabase.from("tables").insert({
@@ -139,11 +139,11 @@ export async function createTable(formData: FormData) {
 export async function createZone(formData: FormData) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const nameRaw = formData.get("name");
   const parsedName = zSanitizedText(100).pipe(z.string().min(1)).safeParse(nameRaw);
-  if (!parsedName.success) return { error: "Unesite naziv zone." };
+  if (!parsedName.success) return { error: "Enter a zone name." };
 
   const supabase = await createServerClient();
   const { error } = await supabase.from("zones").insert({
@@ -159,7 +159,7 @@ export async function createZone(formData: FormData) {
 export async function assignTableStaff(tableId: string, staffId: string | null) {
   const adminStaff = await requireAdmin();
   const locationId = await getStaffLocationId(adminStaff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const supabase = await createServerClient();
   const { data: table } = await supabase
@@ -169,7 +169,7 @@ export async function assignTableStaff(tableId: string, staffId: string | null) 
     .single();
 
   if (!table || (table as { location_id: string }).location_id !== locationId) {
-    return { error: "Sto nije pronađen." };
+    return { error: "Table not found." };
   }
 
   const { error } = await supabase

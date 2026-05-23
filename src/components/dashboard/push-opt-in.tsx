@@ -129,7 +129,7 @@ export function PushOptIn({ className }: { className?: string }) {
         )}
       >
         <BellRing className="size-3" />
-        Obaveštenja aktivna
+        Notifications active
       </Badge>
     );
   }
@@ -151,7 +151,7 @@ export function PushOptIn({ className }: { className?: string }) {
       disabled={busy || state === "prompting"}
     >
       <Bell className="size-4" />
-      {busy || state === "prompting" ? "Uključujem…" : "Uključi obaveštenja"}
+      {busy || state === "prompting" ? "Enabling…" : "Enable notifications"}
     </Button>
   );
 }

@@ -81,7 +81,7 @@ function SortableRuleRow({
       </td>
       <td className="px-4 py-3">
         <span className={rule.is_active ? "text-green-600" : "text-neutral-400"}>
-          {rule.is_active ? "Aktivno" : "Neaktivno"}
+          {rule.is_active ? "Active" : "Inactive"}
         </span>
       </td>
       <td className="px-4 py-3">
@@ -133,12 +133,12 @@ function UpsellForm({
           defaultValue={defaultTriggerType}
           className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
         >
-          <option value="product">Proizvod u korpi</option>
-          <option value="category">Kategorija u korpi</option>
+          <option value="product">Product in cart</option>
+          <option value="category">Category in cart</option>
         </select>
       </div>
       <div>
-        <Label htmlFor="trigger_product_id">Trigger proizvod</Label>
+        <Label htmlFor="trigger_product_id">Trigger product</Label>
         <select
           id="trigger_product_id"
           name="trigger_product_id"
@@ -154,7 +154,7 @@ function UpsellForm({
         </select>
       </div>
       <div>
-        <Label htmlFor="trigger_category_id">Trigger kategorija</Label>
+        <Label htmlFor="trigger_category_id">Trigger category</Label>
         <select
           id="trigger_category_id"
           name="trigger_category_id"
@@ -170,7 +170,7 @@ function UpsellForm({
         </select>
       </div>
       <div>
-        <Label htmlFor="suggest_product_id">Predloži proizvod</Label>
+        <Label htmlFor="suggest_product_id">Suggest product</Label>
         <select
           id="suggest_product_id"
           name="suggest_product_id"
@@ -179,7 +179,7 @@ function UpsellForm({
           className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
         >
           <option value="" disabled>
-            Izaberi proizvod
+            Select product
           </option>
           {products.map((p) => (
             <option key={p.id} value={p.id}>
@@ -189,12 +189,12 @@ function UpsellForm({
         </select>
       </div>
       <div>
-        <Label htmlFor="message">Poruka (opciono)</Label>
+        <Label htmlFor="message">Message (optional)</Label>
         <Input
           id="message"
           name="message"
           defaultValue={rule?.message ?? ""}
-          placeholder="Dodaj pomfrit za samo 2,90€?"
+          placeholder="Add fries for only €2.90?"
           className="mt-1"
         />
       </div>
@@ -206,11 +206,11 @@ function UpsellForm({
           defaultChecked={rule?.is_active ?? true}
           className="size-4 rounded border-neutral-300"
         />
-        <Label htmlFor="is_active">Aktivno</Label>
+        <Label htmlFor="is_active">Active</Label>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Čuvanje..." : "Sačuvaj"}
+        {pending ? "Saving..." : "Save"}
       </Button>
     </form>
   );
@@ -245,10 +245,10 @@ export function UpsellManager({
 
   function triggerLabel(rule: UpsellRule) {
     if (rule.trigger_product_id) {
-      return productMap.get(rule.trigger_product_id)?.name ?? "Proizvod";
+      return productMap.get(rule.trigger_product_id)?.name ?? "Product";
     }
     if (rule.trigger_category_id) {
-      return categoryMap.get(rule.trigger_category_id)?.name ?? "Kategorija";
+      return categoryMap.get(rule.trigger_category_id)?.name ?? "Category";
     }
     return "—";
   }
@@ -281,7 +281,7 @@ export function UpsellManager({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Obrisati upsell pravilo?")) return;
+    if (!confirm("Delete this upsell rule?")) return;
     await deleteUpsellRule(id);
     router.refresh();
   }
@@ -301,21 +301,21 @@ export function UpsellManager({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Upsell pravila</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">Upsell rules</h1>
           <p className="mt-1 text-sm text-neutral-600">
-            Preporuke u korpi i checkout-u na osnovu sadržaja korpe
+            Cart and checkout recommendations based on cart contents
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" />
-              Novo pravilo
+              New rule
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Novo upsell pravilo</DialogTitle>
+              <DialogTitle>New upsell rule</DialogTitle>
             </DialogHeader>
             <UpsellForm
               products={products}
@@ -330,7 +330,7 @@ export function UpsellManager({
 
       {!rules.length ? (
         <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">Još nema upsell pravila.</p>
+          <p className="text-neutral-600">No upsell rules yet.</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
@@ -344,8 +344,8 @@ export function UpsellManager({
                 <tr>
                   <th className="w-10 px-2 py-3" />
                   <th className="px-4 py-3 font-medium">Trigger</th>
-                  <th className="px-4 py-3 font-medium">Predlog</th>
-                  <th className="px-4 py-3 font-medium">Poruka</th>
+                  <th className="px-4 py-3 font-medium">Suggestion</th>
+                  <th className="px-4 py-3 font-medium">Message</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium" />
                 </tr>
@@ -383,7 +383,7 @@ export function UpsellManager({
       <Dialog open={!!editRule} onOpenChange={(open) => !open && setEditRule(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Izmeni upsell pravilo</DialogTitle>
+            <DialogTitle>Edit upsell rule</DialogTitle>
           </DialogHeader>
           {editRule && (
             <UpsellForm

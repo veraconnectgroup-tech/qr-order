@@ -8,7 +8,7 @@ export default async function AdminFeedbackPage() {
   if (!locationId) {
     return (
       <div className="p-6">
-        <p className="text-neutral-600">Lokacija nije pronađena.</p>
+        <p className="text-neutral-600">Location not found.</p>
       </div>
     );
   }

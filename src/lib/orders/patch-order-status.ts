@@ -34,13 +34,13 @@ export function nextKdsStatus(
 export function kdsActionLabel(status: string): string | null {
   switch (status) {
     case "pending":
-      return "Prihvati";
+      return "Accept";
     case "accepted":
-      return "Počni pripremu";
+      return "Start preparing";
     case "preparing":
-      return "Spremno";
+      return "Ready";
     case "ready":
-      return "Dostavljeno";
+      return "Delivered";
     default:
       return null;
   }

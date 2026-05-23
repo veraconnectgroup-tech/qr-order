@@ -205,10 +205,10 @@ function PaymentCell({
     return <span className="text-green-400">Paid ✓</span>;
   }
   if (status === "refunded") {
-    return <span className="text-red-400">Refundiran</span>;
+    return <span className="text-red-400">Refunded</span>;
   }
   if (status === "partial_refund") {
-    return <span className="text-amber-400">Delimično refundiran</span>;
+    return <span className="text-amber-400">Partially refunded</span>;
   }
   if (status === "pending" && orderStatus === "delivered") {
     return (
@@ -481,7 +481,7 @@ export function OrderHistoryList() {
             compare: null,
           },
           {
-            label: "Ukupan Trinkgeld",
+            label: "Total tips",
             value: formatPrice(totalTips, currency),
             sub: null,
             compare: null,

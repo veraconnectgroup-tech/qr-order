@@ -36,20 +36,20 @@ export function LocationSettings({
       toast.error(result.error);
       return;
     }
-    toast.success("Jezik menija sačuvan");
+    toast.success("Menu language saved");
   }
 
   return (
     <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">Jezik menija</h2>
+      <h2 className="text-lg font-semibold">Menu language</h2>
       <p className="mt-1 text-sm text-neutral-500">
-        Gosti na{" "}
+        Guests at{" "}
         <span className="font-medium text-neutral-700">{locationName}</span>{" "}
-        biraju između ovog jezika i engleskog pri prvom otvaranju menija.
+        choose between this language and English on their first menu visit.
       </p>
 
       <div className="mt-5 space-y-2">
-        <Label htmlFor="menu-locale">Primarni jezik</Label>
+        <Label htmlFor="menu-locale">Primary language</Label>
         <Select
           value={menuLocale}
           onValueChange={(value) => setMenuLocale(value as MenuLocale)}
@@ -67,8 +67,8 @@ export function LocationSettings({
           </SelectContent>
         </Select>
         <p className="text-xs text-neutral-500">
-          Unosite nazive proizvoda na ovom jeziku u polju „
-          {LOCALE_LABELS[menuLocale]}“, a prevod na engleskom u polju „English“.
+          Enter product names in {LOCALE_LABELS[menuLocale]} in the primary field,
+          and the English translation in the English field.
         </p>
       </div>
 
@@ -79,7 +79,7 @@ export function LocationSettings({
           disabled={saving}
           onClick={handleSave}
         >
-          {saving ? "Čuvanje…" : "Sačuvaj"}
+          {saving ? "Saving…" : "Save"}
         </Button>
       )}
     </div>

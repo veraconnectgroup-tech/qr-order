@@ -39,16 +39,16 @@ function parsePromoForm(formData: FormData) {
 export async function createPromoCode(formData: FormData) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
-  if (!locationId) return { error: "Lokacija nije pronađena." };
+  if (!locationId) return { error: "Location not found." };
 
   const parsed = parsePromoForm(formData);
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   if (
     parsed.data.discount_type === "percent" &&
     parsed.data.discount_value > 100
   ) {
-    return { error: "Procenat popusta ne može biti veći od 100." };
+    return { error: "Discount percentage cannot exceed 100." };
   }
 
   const supabase = await createServerClient();
@@ -66,7 +66,7 @@ export async function createPromoCode(formData: FormData) {
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "Kod već postoji za ovu lokaciju." };
+      return { error: "Code already exists for this location." };
     }
     return { error: error.message };
   }
@@ -78,13 +78,13 @@ export async function createPromoCode(formData: FormData) {
 export async function updatePromoCode(id: string, formData: FormData) {
   await requireAdmin();
   const parsed = parsePromoForm(formData);
-  if (!parsed.success) return { error: "Neispravni podaci." };
+  if (!parsed.success) return { error: "Invalid data." };
 
   if (
     parsed.data.discount_type === "percent" &&
     parsed.data.discount_value > 100
   ) {
-    return { error: "Procenat popusta ne može biti veći od 100." };
+    return { error: "Discount percentage cannot exceed 100." };
   }
 
   const supabase = await createServerClient();
@@ -104,7 +104,7 @@ export async function updatePromoCode(id: string, formData: FormData) {
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "Kod već postoji za ovu lokaciju." };
+      return { error: "Code already exists for this location." };
     }
     return { error: error.message };
   }

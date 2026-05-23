@@ -77,7 +77,7 @@ export function PwaInstallBanner() {
       <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium leading-snug">
-            Instaliraj QR Order za brži pristup bez browser bara
+            Install QR Order for faster access without the browser bar
           </p>
           {isIos && <IosInstallHint />}
         </div>
@@ -92,7 +92,7 @@ export function PwaInstallBanner() {
               className="h-9 bg-white font-semibold text-blue-700 hover:bg-blue-50"
             >
               <Download className="mr-1.5 size-4" />
-              {installing ? "…" : "Instaliraj"}
+              {installing ? "…" : "Install"}
             </Button>
           )}
           <Button
@@ -102,13 +102,13 @@ export function PwaInstallBanner() {
             onClick={handleLater}
             className="h-9 text-white/90 hover:bg-white/15 hover:text-white"
           >
-            Kasnije
+            Later
           </Button>
           <button
             type="button"
             onClick={handleLater}
             className="rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white sm:hidden"
-            aria-label="Zatvori"
+            aria-label="Close"
           >
             <X className="size-4" />
           </button>

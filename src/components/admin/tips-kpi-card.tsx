@@ -28,12 +28,12 @@ export async function TipsKpiCard({ currency }: { currency: string }) {
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">Ukupan Trinkgeld (30 dana)</p>
+      <p className="text-sm text-neutral-500">Total tips (30 days)</p>
       <p className="mt-2 font-mono text-3xl font-bold text-neutral-900">
         {formatPrice(totalTips, currency)}
       </p>
       <p className="mt-1 text-xs text-neutral-500">
-        MwSt-frei · samo plaćene porudžbine
+        VAT-free · paid orders only
       </p>
     </div>
   );

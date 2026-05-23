@@ -1,44 +1,29 @@
 import { LandingContainer } from "@/components/landing/landing-primitives";
-import { cn } from "@/lib/utils";
-
-const badges = [
-  "🇩🇪 Made in Germany",
-  "KassenSichV / TSE",
-  "DSGVO konform",
-  "DATEV Export",
-  "Stripe Connect",
-];
+import {
+  TrustLogoList,
+  TrustLogoMarquee,
+} from "@/components/landing/trust-logos";
 
 export function LandingTrustStrip() {
   return (
     <section
-      aria-label="Platform trust signals"
-      className="border-y border-zinc-800 bg-zinc-950/80"
+      aria-label="Integrations and compliance"
+      className="border-y border-zinc-800 bg-zinc-950/90 py-6"
     >
       <LandingContainer wide>
-        <ul className="grid grid-cols-2 gap-3 py-5 md:flex md:flex-wrap md:items-center md:justify-center md:gap-1 md:py-5">
-          {badges.map((badge, index) => (
-            <li
-              key={badge}
-              className={cn(
-                "flex items-center justify-center md:px-3",
-                index === badges.length - 1 && "col-span-2 md:col-span-1"
-              )}
-            >
-              {index > 0 && (
-                <span
-                  aria-hidden
-                  className="mr-3 hidden text-zinc-700 md:inline"
-                >
-                  •
-                </span>
-              )}
-              <span className="text-center text-[12px] font-medium tracking-wide text-zinc-500 md:text-[13px]">
-                {badge}
-              </span>
-            </li>
-          ))}
+        <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+          Integrations &amp; compliance
+        </p>
+
+        {/* Desktop: static row */}
+        <ul className="mt-5 hidden flex-wrap items-center justify-center gap-3 md:flex">
+          <TrustLogoList />
         </ul>
+
+        {/* Mobile: marquee */}
+        <div className="landing-marquee-mask relative mt-5 overflow-hidden md:hidden">
+          <TrustLogoMarquee />
+        </div>
       </LandingContainer>
     </section>
   );

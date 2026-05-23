@@ -55,8 +55,8 @@ export function scheduleNewOrderPush(
 ) {
   schedulePushNotify({
     locationId,
-    title: `Nova narudžba #${String(orderNumber).padStart(3, "0")}`,
-    body: `Sto ${tableName}`,
+    title: `New order #${String(orderNumber).padStart(3, "0")}`,
+    body: `Table ${tableName}`,
     url: "/dashboard/orders",
   });
 }
@@ -64,8 +64,8 @@ export function scheduleNewOrderPush(
 export function scheduleWaiterCallPush(locationId: string, tableName: string) {
   schedulePushNotify({
     locationId,
-    title: "Poziv konobara",
-    body: `Sto ${tableName}`,
+    title: "Waiter call",
+    body: `Table ${tableName}`,
     url: "/dashboard/waiter-calls",
   });
 }
