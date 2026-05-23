@@ -5,8 +5,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/auth/session";
 import {
-  FEATURE_LABELS,
-  PLATFORM_FEATURES,
   parseFeatureFlags,
   type PlatformFeature,
 } from "@/lib/platform/feature-flags";
@@ -79,5 +77,3 @@ export async function toggleOrgFeature(orgId: string, flag: PlatformFeature, ena
   revalidatePath("/platform/orgs");
   return { success: true };
 }
-
-export { FEATURE_LABELS, PLATFORM_FEATURES };
