@@ -1,6 +1,7 @@
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { MenuCategory } from "@/components/guest/menu-grid";
 import type { AiSheetSelections } from "@/lib/ai/guest-sheet-preferences";
+import { inferMenuSection } from "@/lib/menu-section";
 
 const DEMO_REASONS: Record<string, string> = {
   leicht: "Leicht und erfrischend — passt gut zu deinem Wunsch.",
@@ -9,12 +10,50 @@ const DEMO_REASONS: Record<string, string> = {
   ueberraschung: "Unser Tipp — beliebt an der Bar und perfekt zum Probieren.",
 };
 
+export type DemoAiChatResponse = {
+  messageKey:
+    | "ai.demo.drinkReply"
+    | "ai.demo.foodReply"
+    | "ai.demo.veganReply"
+    | "ai.demo.dessertReply"
+    | "ai.demo.genericReply"
+    | "ai.chat.demoFollowUp";
+  recommendations: ProductRecommendation[];
+};
+
+function availableProducts(categories: MenuCategory[]) {
+  return categories.flatMap((category) => category.products).filter((p) => p.is_available);
+}
+
+function toRecommendation(
+  product: MenuCategory["products"][number],
+  reason: string
+): ProductRecommendation {
+  return {
+    productId: product.id,
+    name: product.name,
+    price: Number(product.price),
+    imageUrl: product.image_url,
+    reason,
+  };
+}
+
+function pickFromPool(
+  categories: MenuCategory[],
+  pool: MenuCategory["products"][number][],
+  reason: string,
+  limit = 2
+) {
+  const products = pool.length >= 1 ? pool : availableProducts(categories);
+  return products.slice(0, limit).map((product) => toRecommendation(product, reason));
+}
+
 /** Static AI picks for the public demo menu (no OpenAI / Supabase). */
 export function getDemoAiRecommendations(
   categories: MenuCategory[],
   selections: AiSheetSelections
 ): ProductRecommendation[] {
-  const products = categories.flatMap((c) => c.products).filter((p) => p.is_available);
+  const products = availableProducts(categories);
   const mood = selections.mood ?? "ueberraschung";
   const reason = DEMO_REASONS[mood] ?? DEMO_REASONS.ueberraschung;
 
@@ -27,11 +66,80 @@ export function getDemoAiRecommendations(
 
   const pool = picks.length >= 2 ? picks : products;
 
-  return pool.slice(0, 3).map((product) => ({
-    productId: product.id,
-    name: product.name,
-    price: Number(product.price),
-    imageUrl: product.image_url,
-    reason,
-  }));
+  return pool.slice(0, 3).map((product) => toRecommendation(product, reason));
+}
+
+/** Demo follow-up chat without OpenAI. */
+export function getDemoAiChatResponse(
+  message: string,
+  categories: MenuCategory[],
+  selections?: AiSheetSelections
+): DemoAiChatResponse {
+  const text = message.toLowerCase();
+  const mood = selections?.mood ?? "ueberraschung";
+  const reason = DEMO_REASONS[mood] ?? DEMO_REASONS.ueberraschung;
+  const products = availableProducts(categories);
+
+  const drinks = products.filter((product) => {
+    const category = categories.find((row) =>
+      row.products.some((item) => item.id === product.id)
+    );
+    return category ? inferMenuSection(category) === "drinks" : false;
+  });
+
+  const desserts = products.filter((product) => {
+    const category = categories.find((row) =>
+      row.products.some((item) => item.id === product.id)
+    );
+    return category ? inferMenuSection(category) === "desserts" : false;
+  });
+
+  if (/(getränk|drink|cocktail|wein|wine|bier|beer|aperol|negroni|spritz)/i.test(text)) {
+    return {
+      messageKey: "ai.demo.drinkReply",
+      recommendations: pickFromPool(categories, drinks, reason),
+    };
+  }
+
+  if (/(vegan|vegetar|pflanzlich|plant)/i.test(text)) {
+    const veganPool = products.filter(
+      (product) =>
+        product.tags?.some((tag) => /vegan|vegetar/i.test(tag)) ||
+        product.name.toLowerCase().includes("vegan")
+    );
+    return {
+      messageKey: "ai.demo.veganReply",
+      recommendations: pickFromPool(categories, veganPool, reason),
+    };
+  }
+
+  if (/(dessert|süß|suss|sweet|kuchen|cake|tiramisu)/i.test(text)) {
+    return {
+      messageKey: "ai.demo.dessertReply",
+      recommendations: pickFromPool(categories, desserts, reason),
+    };
+  }
+
+  if (/(pasta|risotto|burger|steak|salat|salad|essen|food|gericht|dish)/i.test(text)) {
+    const foodPool = products.filter((product) => !drinks.includes(product));
+    return {
+      messageKey: "ai.demo.foodReply",
+      recommendations: pickFromPool(categories, foodPool, reason, 3),
+    };
+  }
+
+  if (text.length < 3) {
+    return {
+      messageKey: "ai.chat.demoFollowUp",
+      recommendations: [],
+    };
+  }
+
+  return {
+    messageKey: "ai.demo.genericReply",
+    recommendations: getDemoAiRecommendations(categories, {
+      allergies: selections?.allergies ?? [],
+      mood: selections?.mood ?? "ueberraschung",
+    }).slice(0, 2),
+  };
 }

@@ -171,6 +171,16 @@ export function useDashboardOverview(initial?: OverviewInitial) {
     return () => window.clearInterval(id);
   }, [refresh]);
 
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refresh]);
+
   return {
     loading,
     sparkline,

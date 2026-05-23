@@ -12,7 +12,7 @@ import { Send, Sparkles, X, Check } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { MenuCategory } from "@/components/guest/menu-grid";
-import { getDemoAiRecommendations } from "@/lib/demo-ai";
+import { getDemoAiRecommendations, getDemoAiChatResponse } from "@/lib/demo-ai";
 import {
   AI_SHEET_ALLERGY_OPTIONS,
   AI_SHEET_MOOD_OPTIONS,
@@ -33,6 +33,7 @@ import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
 import type { MenuSection } from "@/lib/menu-section";
 import type { AllergenId } from "@/lib/allergens";
+import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
 import { useCart } from "@/hooks/use-cart";
 import { cn } from "@/lib/utils";
 
@@ -318,10 +319,16 @@ export type AiConciergeChatProps = {
     preferences: { allergies: string[]; mood: string };
     allergenIds: AllergenId[];
   }) => void;
+  /** @deprecated use scrollContext */
   getBrowsingContext?: () => string | null;
+  scrollContext?: () => string | null;
+  guestProfile?: GuestMemoryProfile;
+  isReturning?: boolean;
+  onAddToCart?: (rec: ProductRecommendation) => void;
+  /** Alias for onSetupComplete */
+  onRecommendations?: AiConciergeChatProps["onSetupComplete"];
   welcomeBackMessage?: string | null;
   knownAllergySelection?: AiSheetAllergyId[];
-  knownAllergies?: string[];
   onSaveAllergies?: (
     allergies: string[],
     sheetIds: AiSheetAllergyId[]
@@ -342,12 +349,29 @@ export function AiConciergeChat({
   productTaxRateById,
   onSetupComplete,
   getBrowsingContext,
+  scrollContext,
+  guestProfile,
+  isReturning = false,
+  onAddToCart,
+  onRecommendations,
   welcomeBackMessage,
   knownAllergySelection,
-  knownAllergies,
   onSaveAllergies,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
+  const resolveScrollContext = scrollContext ?? getBrowsingContext;
+  const handleRecommendations = onRecommendations ?? onSetupComplete;
+  const resolvedAllergySelection =
+    guestProfile?.allergySheetIds?.length
+      ? guestProfile.allergySheetIds
+      : (knownAllergySelection ?? []);
+  const resolvedWelcomeMessage = useMemo(() => {
+    if (welcomeBackMessage) return welcomeBackMessage;
+    if (!isReturning || !guestProfile?.lastVisitItems.length) return null;
+    return tUI("ai.memory.welcomeBack", {
+      items: guestProfile.lastVisitItems.slice(0, 4).join(", "),
+    });
+  }, [welcomeBackMessage, isReturning, guestProfile?.lastVisitItems, tUI]);
   const language = isEnglish ? "en" : menuLocale;
   const addItem = useCart((s) => s.addItem);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -393,10 +417,10 @@ export function AiConciergeChat({
   useEffect(() => {
     if (!open) return;
 
-    const hasKnownAllergies = (knownAllergySelection?.length ?? 0) > 0;
+    const hasKnownAllergies = resolvedAllergySelection.length > 0;
 
     if (hasKnownAllergies) {
-      const sheetIds = knownAllergySelection ?? [];
+      const sheetIds = resolvedAllergySelection;
       preferencesRef.current = apiPreferencesFromSheet({
         allergies: sheetIds,
         mood: null,
@@ -409,11 +433,11 @@ export function AiConciergeChat({
 
     if (hasKnownAllergies) {
       const initialMessages: ChatMessage[] = [];
-      if (welcomeBackMessage) {
+      if (resolvedWelcomeMessage) {
         initialMessages.push({
           id: nextId(),
           role: "assistant",
-          content: welcomeBackMessage,
+          content: resolvedWelcomeMessage,
         });
       }
       initialMessages.push({
@@ -428,12 +452,12 @@ export function AiConciergeChat({
       });
       setMessages(initialMessages);
       setPhase("mood");
-    } else if (welcomeBackMessage) {
+    } else if (resolvedWelcomeMessage) {
       setMessages([
         {
           id: nextId(),
           role: "assistant",
-          content: welcomeBackMessage,
+          content: resolvedWelcomeMessage,
         },
         {
           id: nextId(),
@@ -476,8 +500,8 @@ export function AiConciergeChat({
     tUI,
     allergyOptions,
     moodOptions,
-    welcomeBackMessage,
-    knownAllergySelection,
+    resolvedWelcomeMessage,
+    resolvedAllergySelection,
   ]);
 
   useEffect(() => {
@@ -505,7 +529,7 @@ export function AiConciergeChat({
           sessionId,
           preferences: prefs ?? preferencesRef.current,
           includeOrderContext: true,
-          browsingContext: getBrowsingContext?.() ?? undefined,
+          browsingContext: resolveScrollContext?.() ?? undefined,
         }),
       });
 
@@ -538,13 +562,20 @@ export function AiConciergeChat({
       tableId,
       language,
       tUI,
-      getBrowsingContext,
+      resolveScrollContext,
     ]
   );
 
   const handleAddRecommendation = useCallback(
     (rec: ProductRecommendation) => {
       if (orderingDisabled) return;
+
+      if (onAddToCart) {
+        hapticClick();
+        onAddToCart(rec);
+        setAddedIds((prev) => new Set(prev).add(rec.productId));
+        return;
+      }
 
       hapticClick();
       const section = menuSectionByProductId?.get(rec.productId) ?? "food";
@@ -581,6 +612,7 @@ export function AiConciergeChat({
       sessionToken,
       locationId,
       tableId,
+      onAddToCart,
     ]
   );
 
@@ -625,7 +657,7 @@ export function AiConciergeChat({
         }
 
         setPhase("chat");
-        onSetupComplete?.({
+        handleRecommendations?.({
           recommendations,
           sessionId,
           preferences: prefs,
@@ -651,7 +683,7 @@ export function AiConciergeChat({
       isDemo,
       menuCategories,
       callAiChat,
-      onSetupComplete,
+      handleRecommendations,
       tUI,
     ]
   );
@@ -758,12 +790,16 @@ export function AiConciergeChat({
 
     try {
       if (isDemo) {
+        const demo = getDemoAiChatResponse(text, menuCategories);
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: "assistant",
-            content: tUI("ai.chat.demoFollowUp"),
+            content: tUI(demo.messageKey),
+            recommendations: demo.recommendations.length
+              ? demo.recommendations
+              : undefined,
           },
         ]);
         return;
@@ -811,7 +847,7 @@ export function AiConciergeChat({
           type="button"
           onClick={() => onOpenChange(false)}
           className="touch-target inline-flex size-10 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-          aria-label={tUI("ai.proactive.dismiss")}
+          aria-label={tUI("ai.chat.close")}
         >
           <X className="size-5" />
         </button>
@@ -861,14 +897,14 @@ export function AiConciergeChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={!inputEnabled}
-            placeholder={tUI("ai.overlay.placeholder")}
+            placeholder={tUI("ai.chat.placeholder")}
             className="min-w-0 flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-600 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!inputEnabled || !input.trim()}
             className="flex size-12 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label={tUI("ai.overlay.send")}
+            aria-label={tUI("ai.chat.send")}
           >
             <Send className="size-5" />
           </button>

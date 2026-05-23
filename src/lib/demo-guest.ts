@@ -44,6 +44,7 @@ export function getDemoGuestMenuProps(slug: string, token: string) {
     orderingEnabled: true,
     acceptingOrders: true,
     aiConciergeEnabled: true,
+    googleReviewUrl: null,
     timezone: "Europe/Berlin",
   };
 }

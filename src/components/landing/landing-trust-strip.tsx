@@ -12,8 +12,8 @@ export function LandingTrustStrip() {
           Integrations &amp; compliance
         </p>
 
-        {/* Mobile: 2-column grid */}
-        <ul className="mt-5 grid grid-cols-2 gap-3 md:hidden">
+        {/* Mobile: horizontal scroll — avoids squashing wide payment marks */}
+        <ul className="mt-5 flex gap-3 overflow-x-auto pb-1 md:hidden">
           <TrustLogoList />
         </ul>
 

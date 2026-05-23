@@ -1,18 +1,45 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import type { MenuCategory } from "@/components/guest/menu-grid";
 
 const VIEW_THRESHOLD_MS = 1_500;
 const INTERSECTION_THRESHOLD = 0.55;
 
+type ProductNameSource = Map<string, string> | MenuCategory[];
+
+function resolveProductNames(
+  source: ProductNameSource,
+  tName?: (product: { id: string; name: string }) => string
+) {
+  if (source instanceof Map) return source;
+  const map = new Map<string, string>();
+  for (const category of source) {
+    for (const product of category.products) {
+      map.set(product.id, tName ? tName(product) : product.name);
+    }
+  }
+  return map;
+}
+
 export function useScrollIntelligence(
-  productNames: Map<string, string>,
+  source: ProductNameSource,
   options?: {
     enabled?: boolean;
     containerRef?: RefObject<HTMLElement | null>;
     hasOrdered?: boolean;
+    tName?: (product: { id: string; name: string }) => string;
+    formatContext?: (parts: {
+      minutes: number;
+      topSummary: string;
+      hasOrdered: boolean;
+    }) => string;
   }
 ) {
+  const productNames = useMemo(
+    () => resolveProductNames(source, options?.tName),
+    [source, options?.tName]
+  );
   const enabled = options?.enabled ?? true;
   const viewCountsRef = useRef<Map<string, number>>(new Map());
   const browseStartedRef = useRef(Date.now());
@@ -122,10 +149,20 @@ export function useScrollIntelligence(
             .join(", ")
         : "—";
 
-    const orderNote = options?.hasOrdered ? "Već je naručio." : "Nije naručio.";
+    const hasOrdered = options?.hasOrdered ?? false;
 
+    if (options?.formatContext) {
+      return options.formatContext({ minutes, topSummary, hasOrdered });
+    }
+
+    const orderNote = hasOrdered ? "Već je naručio." : "Nije naručio.";
     return `Gost gleda meni ${minutes} min. Najgledanije: ${topSummary}. ${orderNote}`;
-  }, [getBrowseMinutes, productNames, options?.hasOrdered]);
+  }, [
+    getBrowseMinutes,
+    productNames,
+    options?.hasOrdered,
+    options?.formatContext,
+  ]);
 
   return { getAiContext, browseMinutes };
 }

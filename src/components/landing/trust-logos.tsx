@@ -12,7 +12,7 @@ function LogoTile({
   return (
     <li
       className={cn(
-        "flex items-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3",
+        "flex shrink-0 items-center justify-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3",
         className
       )}
       aria-label={label}
@@ -22,22 +22,17 @@ function LogoTile({
   );
 }
 
+/** Lowercase wordmark — clearer than complex SVG at small sizes. */
 export function StripeLogo({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 60 25"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-[22px] w-auto", className)}
-      aria-hidden
+    <span
+      className={cn(
+        "whitespace-nowrap text-[17px] font-bold tracking-tight text-[#635BFF]",
+        className
+      )}
     >
-      <path
-        fill="#635BFF"
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M59.64 14.28h-8.06c0 1.68-.84 2.52-2.52 2.52-1.47 0-2.31-.63-2.31-1.68 0-1.05.84-1.68 2.73-1.89l3.78-.42c3.57-.42 5.46-2.1 5.46-5.25 0-3.57-2.94-5.67-7.77-5.67-4.83 0-7.77 2.31-8.06 6.51h8.06c0-1.47.84-2.31 2.31-2.31 1.26 0 2.1.63 2.1 1.47 0 .84-.63 1.26-2.31 1.47l-3.78.42c-3.78.42-5.67 2.1-5.67 5.46 0 3.57 2.94 5.88 7.98 5.88 5.04 0 8.19-2.31 8.48-6.93ZM40.74 5.04c-1.68 0-2.94.84-3.57 2.31l-.21-2.1h-7.35v19.53h8.06V13.44c0-1.68.84-2.52 2.31-2.52 1.26 0 2.1.63 2.52 1.68l7.56-1.47c-.63-3.57-3.15-6.09-7.32-6.09ZM25.62 5.04c-4.83 0-7.98 2.52-7.98 6.72 0 4.41 3.36 6.3 9.03 6.93l2.31.21c1.47.21 2.1.63 2.1 1.26 0 .84-.84 1.47-2.52 1.47-1.89 0-3.15-.84-3.36-2.31h-8.06c.42 4.62 3.99 7.14 11.21 7.14 6.72 0 10.92-2.73 10.92-7.14 0-4.41-3.36-6.3-9.03-6.93l-2.31-.21c-1.47-.21-2.1-.63-2.1-1.26 0-.84.84-1.47 2.31-1.47 1.68 0 2.73.63 2.94 1.89h8.06c-.42-4.2-3.78-6.51-9.03-6.51ZM0 5.25h8.06v19.53H0V5.25Z"
-      />
-    </svg>
+      stripe
+    </span>
   );
 }
 
@@ -47,7 +42,7 @@ export function ApplePayLogo({ className }: { className?: string }) {
       viewBox="0 0 50 20"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-[20px] w-auto", className)}
+      className={cn("h-5 w-[50px] shrink-0", className)}
       aria-hidden
     >
       <path
@@ -58,36 +53,44 @@ export function ApplePayLogo({ className }: { className?: string }) {
   );
 }
 
-export function GooglePayLogo({ className }: { className?: string }) {
+function GoogleGMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 60 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-[22px] w-auto", className)}
+      viewBox="0 0 24 24"
+      className={cn("size-5 shrink-0", className)}
       aria-hidden
     >
       <path
         fill="#4285F4"
-        d="M22.8 12.2v2.4h6.7c-.3 1.5-1.1 2.8-2.3 3.6v3h3.7c2.2-2 3.5-5 3.5-8.5 0-.8-.1-1.6-.2-2.5H22.8z"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
       />
       <path
         fill="#34A853"
-        d="M12 23.2c3.1 0 5.7-1 7.6-2.8l-3.7-3c-1 0.7-2.3 1.1-3.9 1.1-3 0-5.5-2-6.4-4.8H1.5v3.1C3.4 20.7 7.4 23.2 12 23.2z"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
       />
       <path
         fill="#FBBC05"
-        d="M5.6 14.7c-.2-.7-.3-1.4-.3-2.2s.1-1.5.3-2.2V7.2H1.5C.5 9.3 0 11.6 0 14.5s.5 5.2 1.5 7.3l4.1-3.1z"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
       />
       <path
         fill="#EA4335"
-        d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3C17.7 1.1 15.1 0 12 0 7.4 0 3.4 2.5 1.5 6.2l4.1 3.1c.9-2.8 3.4-4.8 6.4-4.8z"
-      />
-      <path
-        fill="#ffffff"
-        d="M35.5 6.5h2.1v11h-2.1V6.5Zm10.2 0c2.5 0 4.3 1.9 4.3 4.7v6.3h-2.1v-1.4h-.1c-.5.9-1.6 1.6-3 1.6-2.1 0-3.5-1.4-3.5-3.3 0-2.1 1.7-3.4 4.4-3.4h1.9v-.2c0-1.1-.7-1.8-1.9-1.8-1.1 0-1.8.5-2 1.3h-2c.2-1.8 1.7-3.2 4-3.2Zm-2.8 10.5c1.2 0 2.3-.7 2.7-1.7v-1.3h-1.9c-1.3 0-2 .5-2 1.2 0 .7.6 1.2 1.2 1.2Zm8.5-10.2h2.1v11h-2.1v-11Z"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
       />
     </svg>
+  );
+}
+
+export function GooglePayLogo({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap",
+        className
+      )}
+    >
+      <GoogleGMark />
+      <span className="text-sm font-semibold text-white">Pay</span>
+    </span>
   );
 }
 
@@ -100,7 +103,7 @@ export function KassenSichVSeal() {
       >
         ✓
       </span>
-      <span className="text-sm font-semibold tracking-wide text-zinc-300">
+      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-zinc-300">
         KassenSichV
       </span>
     </>
@@ -116,7 +119,7 @@ export function DsgvoBadge() {
       >
         EU
       </span>
-      <span className="text-sm font-semibold tracking-wide text-zinc-300">
+      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-zinc-300">
         DSGVO
       </span>
     </>
@@ -125,7 +128,9 @@ export function DsgvoBadge() {
 
 export function DatevLogo() {
   return (
-    <span className="font-bold tracking-tight text-green-500">DATEV</span>
+    <span className="whitespace-nowrap font-bold tracking-tight text-green-500">
+      DATEV
+    </span>
   );
 }
 

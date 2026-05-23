@@ -21,7 +21,7 @@ export function parseBrowsingContextToScrollContext(
   const views: ScrollContextView[] = [];
 
   const viewedMatch = text.match(
-    /(?:Najgledanije|Most viewed|Top views):\s*(.+?)(?:\.|$)/i
+    /(?:Najgledanije|Most viewed|Meist angesehen|Top views):\s*(.+?)(?:\.|$)/i
   );
   if (viewedMatch?.[1] && viewedMatch[1] !== "—") {
     for (const part of viewedMatch[1].matchAll(/(.+?)\s*\((\d+)x\)/g)) {
@@ -33,8 +33,8 @@ export function parseBrowsingContextToScrollContext(
   }
 
   const hasOrdered =
-    /(?:Već je naručio|Already ordered|ordered)/i.test(text) &&
-    !/(?:Nije naručio|Not ordered|not ordered)/i.test(text);
+    /(?:Već je naručio|Already ordered|Bereits bestellt|ordered)/i.test(text) &&
+    !/(?:Nije naručio|Not ordered|Noch nicht bestellt|not ordered)/i.test(text);
 
   return {
     browseMinutes: minutesMatch

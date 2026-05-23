@@ -13,6 +13,7 @@ import { OverviewLiveFeed } from "@/components/dashboard/overview-live-feed";
 import { OverviewPctChange } from "@/components/dashboard/overview-pct-change";
 import { OverviewQuickActions } from "@/components/dashboard/overview-quick-actions";
 import { OverviewSparkline } from "@/components/dashboard/overview-sparkline";
+import { AiIntelligenceCard } from "@/components/dashboard/ai-intelligence-card";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
@@ -128,6 +129,8 @@ export function DashboardOverview({
           tables={tableStatuses}
           loading={overviewLoading}
         />
+
+        <AiIntelligenceCard className="lg:col-span-2" />
       </div>
     </div>
   );

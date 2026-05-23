@@ -77,6 +77,7 @@ export default async function GuestMenuPage({
         accepting_orders,
         ordering_enabled,
         ai_concierge_enabled,
+        google_review_url,
         timezone,
         organization:organizations!inner(
           id,
@@ -107,6 +108,7 @@ export default async function GuestMenuPage({
       accepting_orders: boolean;
       ordering_enabled: boolean;
       ai_concierge_enabled: boolean;
+      google_review_url: string | null;
       timezone: string;
       organization: {
         id: string;
@@ -189,6 +191,7 @@ export default async function GuestMenuPage({
       orderingEnabled={table.location.ordering_enabled}
       acceptingOrders={table.location.accepting_orders}
       aiConciergeEnabled={table.location.ai_concierge_enabled}
+      googleReviewUrl={table.location.google_review_url}
     />
   );
 }

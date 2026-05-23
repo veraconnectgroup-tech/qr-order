@@ -85,6 +85,13 @@ const AiRecommendedSection = dynamic(
     })),
   { ssr: false }
 );
+const AiFeedbackPrompt = dynamic(
+  () =>
+    import("@/components/guest/ai-feedback-prompt").then((m) => ({
+      default: m.AiFeedbackPrompt,
+    })),
+  { ssr: false }
+);
 
 export function MenuView({
   slug,
@@ -104,6 +111,7 @@ export function MenuView({
   orderingEnabled = true,
   acceptingOrders = true,
   aiConciergeEnabled = false,
+  googleReviewUrl = null,
 }: {
   slug: string;
   token: string;
@@ -122,6 +130,7 @@ export function MenuView({
   orderingEnabled?: boolean;
   acceptingOrders?: boolean;
   aiConciergeEnabled?: boolean;
+  googleReviewUrl?: string | null;
 }) {
   const { tUI, tName, menuLocale, isEnglish } = useAppLocale();
   const router = useRouter();
@@ -385,20 +394,52 @@ export function MenuView({
   const language = isEnglish ? "en" : menuLocale;
 
   const {
-    profile: guestProfile,
+    profile,
     isReturning,
-    hasKnownAllergies,
-    knownAllergies,
-    knownAllergySelection,
     saveAllergies: saveGuestAllergies,
   } = useGuestMemory(locationId);
 
   const welcomeBackMessage = useMemo(() => {
-    if (!isReturning || !guestProfile.lastVisitItems.length) return null;
+    if (!isReturning || !profile.lastVisitItems.length) return null;
     return tUI("ai.memory.welcomeBack", {
-      items: guestProfile.lastVisitItems.slice(0, 4).join(", "),
+      items: profile.lastVisitItems.slice(0, 4).join(", "),
     });
-  }, [isReturning, guestProfile.lastVisitItems, tUI]);
+  }, [isReturning, profile.lastVisitItems, tUI]);
+
+  const { orders: sessionOrders } = useGuestTableOrders(
+    token,
+    sessionToken,
+    aiConciergeEnabled && !!sessionToken
+  );
+
+  const hasSessionOrders = sessionOrders.length > 0;
+
+  const { getAiContext, browseMinutes } = useScrollIntelligence(menuCategories, {
+    enabled: aiConciergeEnabled,
+    containerRef: menuMainRef,
+    hasOrdered: itemCount > 0 || hasSessionOrders,
+    tName,
+    formatContext: ({ minutes, topSummary, hasOrdered }) =>
+      tUI("ai.scroll.context", {
+        minutes,
+        items: topSummary,
+        orderNote: tUI(
+          hasOrdered ? "ai.scroll.ordered" : "ai.scroll.notOrdered"
+        ),
+      }),
+  });
+
+  const feedbackOrder = useMemo(() => {
+    return sessionOrders
+      .filter((order) => order.status === "delivered")
+      .sort(
+        (a, b) =>
+          new Date(b.delivered_at ?? b.created_at).getTime() -
+          new Date(a.delivered_at ?? a.created_at).getTime()
+      )[0];
+  }, [sessionOrders]);
+
+  const showFeedback = !!feedbackOrder && !!sessionToken;
 
   const productById = useMemo(() => {
     const map = new Map<string, ProductWithModifiers>();
@@ -434,28 +475,6 @@ export function MenuView({
     () => cartItems.some((item) => item.menuSection === "drinks"),
     [cartItems]
   );
-
-  const productNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const product of productById.values()) {
-      map.set(product.id, tName(product));
-    }
-    return map;
-  }, [productById, tName]);
-
-  const { orders: sessionOrders } = useGuestTableOrders(
-    token,
-    sessionToken,
-    aiConciergeEnabled && !!sessionToken
-  );
-
-  const hasSessionOrders = sessionOrders.length > 0;
-
-  const { getAiContext, browseMinutes } = useScrollIntelligence(productNames, {
-    enabled: aiConciergeEnabled,
-    containerRef: menuMainRef,
-    hasOrdered: itemCount > 0 || hasSessionOrders,
-  });
 
   const fetchPairingForNudge = useCallback(
     async (prompt: string) => {
@@ -611,6 +630,7 @@ export function MenuView({
       const product = productById.get(rec.productId);
       const section = menuSectionByProductIdAll.get(rec.productId) ?? "food";
 
+      hapticClick();
       addItem({
         productId: rec.productId,
         productName: rec.name,
@@ -621,6 +641,7 @@ export function MenuView({
         productTaxRate: product?.tax_rate ?? null,
         modifiers: [],
       });
+      toastAddedToCart(rec.name, rec.price, currency);
 
       const sid =
         aiSessionId ??
@@ -649,6 +670,7 @@ export function MenuView({
       tableId,
       hasDrinkInCart,
       fetchDrinkPairing,
+      currency,
     ]
   );
 
@@ -869,8 +891,23 @@ export function MenuView({
               />
             )}
 
-            <div className="mt-8 flex justify-center pb-4">
-              <CallWaiterButton token={token} tableName={tableName} />
+            <div className="mt-8 flex flex-col gap-4 pb-4">
+              {showFeedback && feedbackOrder && (
+                <div className="px-1">
+                  <p className="mb-2 text-center text-xs text-zinc-500">
+                    {tUI("ai.feedback.onMenuHint")}
+                  </p>
+                  <AiFeedbackPrompt
+                    orderId={feedbackOrder.id}
+                    sessionToken={sessionToken!}
+                    deliveredAt={feedbackOrder.delivered_at}
+                    googleReviewUrl={googleReviewUrl}
+                  />
+                </div>
+              )}
+              <div className="flex justify-center">
+                <CallWaiterButton token={token} tableName={tableName} />
+              </div>
             </div>
           </main>
 
@@ -934,13 +971,11 @@ export function MenuView({
                   ])
                 )
               }
-              onSetupComplete={handleAiChatSetupComplete}
-              getBrowsingContext={getAiContext}
-              welcomeBackMessage={welcomeBackMessage}
-              knownAllergySelection={
-                hasKnownAllergies ? knownAllergySelection : undefined
-              }
-              knownAllergies={hasKnownAllergies ? knownAllergies : undefined}
+              scrollContext={getAiContext}
+              guestProfile={profile}
+              isReturning={isReturning}
+              onAddToCart={handleAddAiRecommendation}
+              onRecommendations={handleAiChatSetupComplete}
               onSaveAllergies={saveGuestAllergies}
             />
           )}
