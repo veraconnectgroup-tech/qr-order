@@ -36,6 +36,8 @@ export function ProductRecommendationCard({
   orderingDisabled?: boolean;
   onOpenDetail?: () => void;
   className?: string;
+  /** @deprecated Use conversionContext.sessionId — kept for legacy callers */
+  aiSessionId?: string | null;
   conversionContext?: {
     sessionId: string;
     locationId: string;
