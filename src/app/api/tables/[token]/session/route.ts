@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import {
   getDemoGuestSession,
   isDemoGuestTableToken,
@@ -9,6 +8,7 @@ import {
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zTableToken } from "@/lib/security/zod-fields";
+import { findOrCreateTableSession } from "@/lib/sessions/find-or-create-table-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -60,54 +60,19 @@ export async function POST(
       location_id: string;
     };
 
-    const maxAge = SESSION_MAX_AGE_HOURS * 60 * 60 * 1000;
-    const cutoff = new Date(Date.now() - maxAge).toISOString();
+    const sessionResult = await findOrCreateTableSession(
+      admin,
+      tableRow.id,
+      tableRow.location_id
+    );
 
-    const { data: existing } = await admin
-      .from("table_sessions")
-      .select("*")
-      .eq("table_id", tableRow.id)
-      .eq("status", "active")
-      .gte("opened_at", cutoff)
-      .order("opened_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existing) {
-      const row = existing as { id: string; session_token: string };
-      return apiSuccess({
-        sessionId: row.id,
-        sessionToken: row.session_token,
-        tableId: tableRow.id,
-        tableName: tableRow.name,
-        locationId: tableRow.location_id,
-      });
+    if ("error" in sessionResult) {
+      return apiError(sessionResult.error, sessionResult.status);
     }
-
-    await admin
-      .from("table_sessions")
-      .update({ status: "closed", closed_at: new Date().toISOString() })
-      .eq("table_id", tableRow.id)
-      .eq("status", "active");
-
-    const { data: session, error } = await admin
-      .from("table_sessions")
-      .insert({
-        table_id: tableRow.id,
-        location_id: tableRow.location_id,
-      })
-      .select("id, session_token")
-      .single();
-
-    if (error || !session) {
-      return apiError("Session could not be created.", 500);
-    }
-
-    const sessionRow = session as { id: string; session_token: string };
 
     return apiSuccess({
-      sessionId: sessionRow.id,
-      sessionToken: sessionRow.session_token,
+      sessionId: sessionResult.sessionId,
+      sessionToken: sessionResult.sessionToken,
       tableId: tableRow.id,
       tableName: tableRow.name,
       locationId: tableRow.location_id,

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Settings, UtensilsCrossed, X } from "lucide-react";
+import { Menu, Plus, Settings, UtensilsCrossed, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 
 const links = [
+  { href: "/dashboard/new-order", label: "New Order", icon: Plus },
   { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

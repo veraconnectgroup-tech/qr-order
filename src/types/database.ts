@@ -212,6 +212,8 @@ type Tables = {
     is_split: boolean;
     promo_code_id: string | null;
     discount_amount: number;
+    created_by_staff_id: string | null;
+    order_source: "qr" | "staff" | "kiosk";
     created_at: string;
     updated_at: string;
   };

@@ -1,7 +1,13 @@
 import { Suspense } from "react";
-import { AdminAnalyticsCharts, AdminPaymentMethodsChart } from "@/components/admin/admin-analytics-charts";
-import { AnalyticsDateRangePicker } from "@/components/admin/analytics-date-range-picker";
-import { AnalyticsMetricCard } from "@/components/admin/analytics-metric-card";
+import { AnalyticsDateRangePicker } from "@/components/admin/analytics/date-range-picker";
+import { AvgTicketKpiCard } from "@/components/admin/analytics/avg-ticket-kpi-card";
+import { OrderSourceChart } from "@/components/admin/analytics/order-source-chart";
+import { OrdersByHourChart } from "@/components/admin/analytics/orders-by-hour-chart";
+import { OrdersKpiCard } from "@/components/admin/analytics/orders-kpi-card";
+import { PaymentMethodsChart } from "@/components/admin/analytics/payment-methods-chart";
+import { RevenueChart } from "@/components/admin/analytics/revenue-chart";
+import { RevenueKpiCard } from "@/components/admin/analytics/revenue-kpi-card";
+import { TopProductsChart } from "@/components/admin/analytics/top-products-chart";
 import { DatevExportPanel } from "@/components/admin/datev-export-panel";
 import { FeedbackRatingKpiCard } from "@/components/admin/feedback-rating-kpi-card";
 import { TipsKpiCard } from "@/components/admin/tips-kpi-card";
@@ -12,11 +18,12 @@ import {
 } from "@/lib/analytics/date-range";
 import { loadAdminAnalyticsSnapshot } from "@/lib/analytics/admin-analytics";
 import { requireAdmin } from "@/lib/auth/session";
-import { formatPrice } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function DateRangePickerFallback() {
-  return <div className="h-20 w-full max-w-xl animate-pulse rounded-lg bg-neutral-100" />;
+  return (
+    <div className="h-20 w-full max-w-xl animate-pulse rounded-lg bg-neutral-100" />
+  );
 }
 
 export default async function AdminAnalyticsPage({
@@ -59,40 +66,55 @@ export default async function AdminAnalyticsPage({
           No location assigned. Analytics require at least one location.
         </div>
       ) : (
-        <>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <AnalyticsMetricCard
-              label="Total revenue"
-              value={formatPrice(snapshot.kpis.revenue, currency)}
-              hint="Paid orders only"
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <RevenueKpiCard
+              currency={currency}
+              revenue={snapshot.kpis.revenue}
               changePct={snapshot.kpis.revenueChangePct}
             />
-            <AnalyticsMetricCard
-              label="Orders"
-              value={String(snapshot.kpis.ordersCount)}
-              hint="Excludes cancelled"
+            <OrdersKpiCard
+              ordersCount={snapshot.kpis.ordersCount}
               changePct={snapshot.kpis.ordersChangePct}
             />
-            <AnalyticsMetricCard
-              label="Average ticket"
-              value={formatPrice(snapshot.kpis.avgTicket, currency)}
-              hint="Revenue ÷ orders"
+            <AvgTicketKpiCard
+              currency={currency}
+              avgTicket={snapshot.kpis.avgTicket}
               changePct={snapshot.kpis.avgTicketChangePct}
             />
-            <TipsKpiCard currency={currency} />
-            <FeedbackRatingKpiCard />
+            <TipsKpiCard currency={currency} range={range} />
+            <FeedbackRatingKpiCard range={range} />
           </div>
 
-          <AdminAnalyticsCharts data={snapshot} currency={currency} />
-
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <AdminPaymentMethodsChart
-              paymentMethods={snapshot.paymentMethods}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-6">
+            <RevenueChart
+              data={snapshot.revenueSeries}
               currency={currency}
+              className="lg:col-span-6"
             />
-            <DatevExportPanel />
+            <TopProductsChart
+              data={snapshot.topItems}
+              currency={currency}
+              className="lg:col-span-3"
+            />
+            <OrdersByHourChart
+              data={snapshot.hourlyOrders}
+              className="lg:col-span-3"
+            />
+            <PaymentMethodsChart
+              data={snapshot.paymentMethods}
+              currency={currency}
+              className="lg:col-span-2"
+            />
+            <OrderSourceChart
+              data={snapshot.orderSources}
+              className="lg:col-span-2"
+            />
+            <div className="lg:col-span-2">
+              <DatevExportPanel />
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

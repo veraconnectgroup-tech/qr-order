@@ -6,6 +6,10 @@ export const DASHBOARD_PAGES: Record<
     title: "Live Orders",
     subtitle: "Real-time kanban board",
   },
+  "/dashboard/new-order": {
+    title: "New Order",
+    subtitle: "Staff order entry",
+  },
   "/dashboard/kitchen": {
     title: "Prep Display",
     subtitle: "Food & desserts only",

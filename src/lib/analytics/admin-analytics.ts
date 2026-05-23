@@ -9,6 +9,7 @@ export type AdminAnalyticsOrder = {
   status: string;
   payment_status: string;
   payment_method: string;
+  order_source: "qr" | "staff" | "kiosk";
   created_at: string;
   order_items: Array<{
     product_id: string | null;
@@ -42,6 +43,13 @@ export type PaymentMethodSlice = {
   percent: number;
 };
 
+export type OrderSourceSlice = {
+  key: "qr" | "staff" | "kiosk";
+  name: string;
+  count: number;
+  percent: number;
+};
+
 export type AdminKpiSnapshot = {
   revenue: number;
   revenueChangePct: number;
@@ -57,14 +65,22 @@ export type AdminAnalyticsSnapshot = {
   topItems: TopItemRow[];
   hourlyOrders: HourlyOrdersPoint[];
   paymentMethods: PaymentMethodSlice[];
+  orderSources: OrderSourceSlice[];
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
   online: "Online",
   at_bar: "Cash (bar)",
-  card_at_table: "Card terminal",
-  unset: "Unset",
+  card_at_table: "Card at table",
 };
+
+const ORDER_SOURCE_LABELS: Record<OrderSourceSlice["key"], string> = {
+  qr: "QR orders",
+  staff: "Staff orders",
+  kiosk: "Kiosk",
+};
+
+const PAYMENT_METHOD_KEYS = ["online", "at_bar", "card_at_table"] as const;
 
 function paidOrders(orders: AdminAnalyticsOrder[]) {
   return orders.filter((o) => o.payment_status === "paid");
@@ -248,7 +264,10 @@ export function computePaymentMethods(
   let grandTotal = 0;
 
   for (const order of paidOrders(orders)) {
-    const key = order.payment_method || "unset";
+    const key = order.payment_method;
+    if (!PAYMENT_METHOD_KEYS.includes(key as (typeof PAYMENT_METHOD_KEYS)[number])) {
+      continue;
+    }
     const amount = Number(order.total);
     totals.set(key, (totals.get(key) ?? 0) + amount);
     grandTotal += amount;
@@ -258,14 +277,46 @@ export function computePaymentMethods(
     return [];
   }
 
-  return Array.from(totals.entries())
-    .map(([key, total]) => ({
+  return PAYMENT_METHOD_KEYS.filter((key) => (totals.get(key) ?? 0) > 0).map(
+    (key) => {
+      const total = totals.get(key) ?? 0;
+      return {
+        key,
+        name: PAYMENT_LABELS[key],
+        total,
+        percent: (total / grandTotal) * 100,
+      };
+    }
+  );
+}
+
+export function computeOrderSources(
+  orders: AdminAnalyticsOrder[]
+): OrderSourceSlice[] {
+  const counts = new Map<OrderSourceSlice["key"], number>();
+  for (const key of ["qr", "staff", "kiosk"] as const) {
+    counts.set(key, 0);
+  }
+
+  for (const order of orders) {
+    const key = order.order_source ?? "qr";
+    if (key in ORDER_SOURCE_LABELS) {
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const total = orders.length;
+  if (total === 0) return [];
+
+  return (["qr", "staff", "kiosk"] as const)
+    .map((key) => ({
       key,
-      name: PAYMENT_LABELS[key] ?? key,
-      total,
-      percent: (total / grandTotal) * 100,
+      name: ORDER_SOURCE_LABELS[key],
+      count: counts.get(key) ?? 0,
+      percent: ((counts.get(key) ?? 0) / total) * 100,
     }))
-    .sort((a, b) => b.total - a.total);
+    .filter((slice) => slice.count > 0)
+    .sort((a, b) => b.count - a.count);
 }
 
 export function buildAdminAnalyticsSnapshot(
@@ -279,6 +330,7 @@ export function buildAdminAnalyticsSnapshot(
     topItems: computeTopItemsWithRevenue(orders),
     hourlyOrders: computeHourlyOrders(orders),
     paymentMethods: computePaymentMethods(orders),
+    orderSources: computeOrderSources(orders),
   };
 }
 
@@ -297,6 +349,7 @@ export async function loadAdminAnalyticsOrders(
       status,
       payment_status,
       payment_method,
+      order_source,
       created_at,
       order_items ( product_id, product_name, quantity, total )
     `
@@ -304,7 +357,7 @@ export async function loadAdminAnalyticsOrders(
     .eq("location_id", locationId)
     .gte("created_at", from.toISOString())
     .lte("created_at", to.toISOString())
-    .neq("status", "cancelled");
+    .not("status", "in", '("cancelled","rejected")');
 
   return (data ?? []) as unknown as AdminAnalyticsOrder[];
 }

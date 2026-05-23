@@ -15,6 +15,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { AnimatePresence } from "framer-motion";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
@@ -34,6 +35,7 @@ import { RefundOrderDialog } from "@/components/dashboard/refund-order-dialog";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { OrderStatus, OrderWithDetails } from "@/types";
 
@@ -432,8 +434,22 @@ export function OrderBoard() {
   return (
     <div>
       <SoundEnableBanner />
-      <div className="mb-3 flex items-center justify-end">
-        <LiveConnectionBadge mode={realtimeMode} />
+      <div className="mb-3 flex items-center justify-between gap-3">
+        {staffRole !== "kitchen" && (
+          <Button
+            asChild
+            size="sm"
+            className="bg-orange-500 text-white hover:bg-orange-600"
+          >
+            <Link href="/dashboard/new-order">
+              <Plus />
+              New Order
+            </Link>
+          </Button>
+        )}
+        <div className="ml-auto">
+          <LiveConnectionBadge mode={realtimeMode} />
+        </div>
       </div>
       <SetupChecklist
         stripeOnboarded={stripeOnboarded}

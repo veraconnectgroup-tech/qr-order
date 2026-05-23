@@ -19,6 +19,7 @@ import type { OrderWithDetails } from "@/types";
 
 type DateFilter = "today" | "yesterday" | "week" | "month" | "custom";
 type PaymentFilter = "all" | "paid" | "pending" | "refunded" | "partial_refund";
+type SourceFilter = "all" | "qr" | "staff" | "kiosk";
 
 const ORDER_SELECT =
   "*, order_items(*, order_item_modifiers(*)), tables(name), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log(action, amount, created_at)";
@@ -326,6 +327,7 @@ export function OrderHistoryList() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -360,8 +362,11 @@ export function OrderHistoryList() {
     if (paymentFilter !== "all") {
       list = list.filter((o) => o.payment_status === paymentFilter);
     }
+    if (sourceFilter !== "all") {
+      list = list.filter((o) => o.order_source === sourceFilter);
+    }
     return list;
-  }, [orders, range, paymentFilter]);
+  }, [orders, range, paymentFilter, sourceFilter]);
 
   const previousFiltered = useMemo(
     () => orders.filter((o) => inRange(o.created_at, previousRange)),
@@ -384,7 +389,7 @@ export function OrderHistoryList() {
 
   useEffect(() => {
     setPage(1);
-  }, [filter, customFrom, customTo, paymentFilter]);
+  }, [filter, customFrom, customTo, paymentFilter, sourceFilter]);
 
   const paymentFilters: { id: PaymentFilter; label: string }[] = [
     { id: "all", label: "All payments" },
@@ -392,6 +397,13 @@ export function OrderHistoryList() {
     { id: "pending", label: "Pending" },
     { id: "refunded", label: "Refunded" },
     { id: "partial_refund", label: "Partial refund" },
+  ];
+
+  const sourceFilters: { id: SourceFilter; label: string }[] = [
+    { id: "all", label: "All sources" },
+    { id: "qr", label: "QR" },
+    { id: "staff", label: "Staff" },
+    { id: "kiosk", label: "Kiosk" },
   ];
 
   const filters: { id: DateFilter; label: string }[] = [
@@ -536,6 +548,24 @@ export function OrderHistoryList() {
             />
           </div>
         )}
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {sourceFilters.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setSourceFilter(f.id)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm transition",
+              sourceFilter === f.id
+                ? "bg-zinc-700 text-zinc-100"
+                : "bg-zinc-800/80 text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">

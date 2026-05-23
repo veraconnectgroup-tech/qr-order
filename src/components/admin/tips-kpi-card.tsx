@@ -2,22 +2,28 @@ import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sumTips } from "@/lib/orders/tips";
 import { formatPrice } from "@/lib/format";
+import { formatAnalyticsRangeLabel, type AnalyticsDateRange } from "@/lib/analytics/date-range";
 
-export async function TipsKpiCard({ currency }: { currency: string }) {
+export async function TipsKpiCard({
+  currency,
+  range,
+}: {
+  currency: string;
+  range: AnalyticsDateRange;
+}) {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
   if (!locationId) return null;
 
   const admin = createAdminClient();
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
 
   const { data: orders } = await admin
     .from("orders")
     .select("tip_amount, payment_status")
     .eq("location_id", locationId)
-    .gte("created_at", since.toISOString())
-    .neq("status", "cancelled");
+    .gte("created_at", range.start.toISOString())
+    .lte("created_at", range.end.toISOString())
+    .not("status", "in", '("cancelled","rejected")');
 
   const paid = (orders ?? []).filter((o) =>
     ["paid", "partial_refund"].includes(
@@ -28,7 +34,9 @@ export async function TipsKpiCard({ currency }: { currency: string }) {
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">Total tips (30 days)</p>
+      <p className="text-sm text-neutral-500">
+        Total tips ({formatAnalyticsRangeLabel(range).toLowerCase()})
+      </p>
       <p className="mt-2 font-mono text-3xl font-bold text-neutral-900">
         {formatPrice(totalTips, currency)}
       </p>

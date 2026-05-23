@@ -8,6 +8,7 @@ import {
   ChefHat,
   Grid3X3,
   LayoutGrid,
+  Plus,
   Settings,
   Users,
   UtensilsCrossed,
@@ -19,6 +20,7 @@ import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
 const navItems = [
   { href: "/dashboard/orders", label: "Orders", icon: LayoutGrid, alertKey: "orders" as const },
+  { href: "/dashboard/new-order", label: "New Order", icon: Plus },
   { href: "/dashboard/kitchen", label: "Prep Display", icon: ChefHat },
   { href: "/dashboard/tables", label: "Tables", icon: Grid3X3, alertKey: "payments" as const },
   { href: "/dashboard/waiter-calls", label: "Waiter Calls", icon: Bell, alertKey: "calls" as const },

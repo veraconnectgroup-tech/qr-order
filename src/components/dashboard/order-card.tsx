@@ -268,6 +268,18 @@ export function OrderCard({
           <p className={cn("font-mono text-lg font-bold", light ? "text-zinc-900" : "text-zinc-50")}>
             {formatOrderNumber(order.order_number)}
           </p>
+          {order.order_source === "staff" && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                light
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-blue-500/15 text-blue-300"
+              )}
+            >
+              Staff
+            </span>
+          )}
         </div>
         <OrderTimer createdAt={order.created_at} />
       </div>
