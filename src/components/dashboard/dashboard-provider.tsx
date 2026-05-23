@@ -4,6 +4,8 @@ import { createContext, useContext } from "react";
 
 export type DashboardContextValue = {
   locationId: string;
+  locationName: string;
+  accessibleLocations: Array<{ id: string; name: string }>;
   orgId: string;
   orgName: string;
   orgSlug: string;

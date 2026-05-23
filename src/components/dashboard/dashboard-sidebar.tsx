@@ -14,6 +14,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LocationSwitcher } from "@/components/dashboard/location-switcher";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
@@ -32,7 +33,8 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const { orgName, staffName, staffRole } = useDashboard();
+  const { orgName, staffName, staffRole, accessibleLocations, locationId } =
+    useDashboard();
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
 
@@ -40,6 +42,10 @@ export function DashboardSidebar() {
     <aside className="hidden w-[260px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 md:flex">
       <div className="border-b border-zinc-800 p-5">
         <p className="truncate font-bold text-zinc-50">{orgName}</p>
+        <LocationSwitcher
+          locations={accessibleLocations}
+          currentLocationId={locationId}
+        />
         <div className="mt-2 flex items-center gap-2">
           <span className="size-2 rounded-full bg-emerald-500" />
           <span className="text-xs font-medium text-emerald-400">Open</span>

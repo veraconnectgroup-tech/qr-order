@@ -1,5 +1,9 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { getStaffLocationId, requireStaff } from "@/lib/auth/session";
+import {
+  getStaffAccessibleLocations,
+  getStaffLocationId,
+  requireStaff,
+} from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { sumOrderRevenue } from "@/lib/orders/revenue";
@@ -28,7 +32,10 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const staff = await requireStaff();
-  const locationId = await getStaffLocationId(staff);
+  const [locationId, accessibleLocations] = await Promise.all([
+    getStaffLocationId(staff),
+    getStaffAccessibleLocations(staff),
+  ]);
 
   if (!locationId) {
     return (
@@ -48,7 +55,7 @@ export default async function DashboardLayout({
       .single(),
     admin
       .from("locations")
-      .select("in_person_payment_location, menu_locale, default_locale")
+      .select("name, in_person_payment_location, menu_locale, default_locale")
       .eq("id", locationId)
       .single(),
     getTodayRevenue(locationId),
@@ -73,6 +80,7 @@ export default async function DashboardLayout({
   } | null;
 
   const locationRow = location as {
+    name: string;
     in_person_payment_location: "bar" | "counter" | "table";
     menu_locale: string | null;
     default_locale: string | null;
@@ -87,6 +95,8 @@ export default async function DashboardLayout({
     <DashboardShell
       context={{
         locationId,
+        locationName: locationRow?.name ?? "Location",
+        accessibleLocations,
         orgId: staff.org_id,
         orgName: orgRow?.name ?? "Restaurant",
         orgSlug: orgRow?.slug ?? "",

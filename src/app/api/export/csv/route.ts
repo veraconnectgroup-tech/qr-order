@@ -2,21 +2,17 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff, getStaffLocationId } from "@/lib/auth/session";
+import { formatAnalyticsIsoDate } from "@/lib/analytics/date-range";
 import {
   ordersCsvFilename,
   ordersToCsv,
 } from "@/lib/export/orders-csv";
 import {
-  applyHistoryFilters,
-  applyHistorySearch,
-  HISTORY_CSV_MAX_ROWS,
-  ORDER_HISTORY_SELECT,
+  fetchOrdersForCsvExport,
   parseHistoryFilters,
   type HistorySearchParams,
 } from "@/lib/orders/history-filters";
-import { formatAnalyticsIsoDate } from "@/lib/analytics/date-range";
 import { withRateLimit } from "@/lib/rate-limit";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type { OrderWithDetails } from "@/types";
 
 async function requireExportStaff() {
@@ -52,18 +48,7 @@ export const GET = withErrorHandler("export-csv-get", async (req, _ctx) => {
     q: sp.get("q") ?? undefined,
   } satisfies HistorySearchParams);
 
-  const admin = createAdminClient();
-  let query = admin
-    .from("orders")
-    .select(ORDER_HISTORY_SELECT)
-    .eq("location_id", locationId);
-
-  query = applyHistoryFilters(query, filters);
-  query = await applyHistorySearch(query, locationId, filters.search);
-
-  const { data, error } = await query
-    .order("created_at", { ascending: false })
-    .range(0, HISTORY_CSV_MAX_ROWS - 1);
+  const { data, error } = await fetchOrdersForCsvExport(locationId, filters);
 
   if (error) {
     return apiError(error.message, 500);

@@ -36,15 +36,6 @@ export type ParsedHistoryFilters = {
 export const ORDER_HISTORY_SELECT =
   "*, order_items(*, order_item_modifiers(*)), tables(name), table_sessions(guest_email), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log(action, amount, created_at)";
 
-// Supabase query builder typing is too strict for shared filter helpers.
-type HistoryQuery = {
-  gte: (column: string, value: string) => HistoryQuery;
-  lte: (column: string, value: string) => HistoryQuery;
-  eq: (column: string, value: string | number) => HistoryQuery;
-  in: (column: string, values: string[]) => HistoryQuery;
-  or: (filters: string) => HistoryQuery;
-};
-
 function parseEnum<T extends string>(
   value: string | undefined,
   allowed: readonly T[],
@@ -85,46 +76,13 @@ export function parseHistoryFilters(
   };
 }
 
-export function applyHistoryFilters<Q extends HistoryQuery>(
-  query: Q,
-  filters: ParsedHistoryFilters
-): Q {
-  let next = query
-    .gte("created_at", filters.range.start.toISOString())
-    .lte("created_at", filters.range.end.toISOString()) as Q;
-
-  if (filters.status === "completed") {
-    next = next.eq("status", "delivered") as Q;
-  } else if (filters.status === "cancelled") {
-    next = next.in("status", ["cancelled", "rejected"]) as Q;
-  } else if (filters.status === "refunded") {
-    next = next.in("payment_status", ["refunded", "partial_refund"]) as Q;
-  }
-
-  if (filters.payment !== "all") {
-    next = next.eq("payment_method", filters.payment) as Q;
-  }
-
-  if (filters.source === "guest") {
-    next = next.in("order_source", ["qr", "kiosk"]) as Q;
-  } else if (filters.source === "staff") {
-    next = next.eq("order_source", "staff") as Q;
-  }
-
-  return next;
-}
-
-export async function applyHistorySearch<Q extends HistoryQuery>(
-  query: Q,
-  locationId: string,
-  search: string
-): Promise<Q> {
+async function resolveSearchIds(locationId: string, search: string) {
   const q = search.trim();
-  if (!q) return query;
+  if (!q) return null;
 
   const numMatch = q.replace(/^#/, "").match(/^\d+$/);
   if (numMatch) {
-    return query.eq("order_number", Number.parseInt(numMatch[0], 10)) as Q;
+    return { orderNumber: Number.parseInt(numMatch[0], 10) };
   }
 
   const admin = createAdminClient();
@@ -147,14 +105,137 @@ export async function applyHistorySearch<Q extends HistoryQuery>(
   );
 
   if (!tableIds.length && !sessionIds.length) {
-    return query.eq("id", "00000000-0000-0000-0000-000000000000") as Q;
+    return { empty: true as const };
+  }
+
+  return { tableIds, sessionIds };
+}
+
+function applyStatusPaymentSourceFilters<
+  T extends {
+    eq: (column: string, value: string) => T;
+    in: (column: string, values: string[]) => T;
+  },
+>(query: T, filters: ParsedHistoryFilters): T {
+  let next = query;
+
+  if (filters.status === "completed") {
+    next = next.eq("status", "delivered");
+  } else if (filters.status === "cancelled") {
+    next = next.in("status", ["cancelled", "rejected"]);
+  } else if (filters.status === "refunded") {
+    next = next.in("payment_status", ["refunded", "partial_refund"]);
+  }
+
+  if (filters.payment !== "all") {
+    next = next.eq("payment_method", filters.payment);
+  }
+
+  if (filters.source === "guest") {
+    next = next.in("order_source", ["qr", "kiosk"]);
+  } else if (filters.source === "staff") {
+    next = next.eq("order_source", "staff");
+  }
+
+  return next;
+}
+
+function applySearchFilter<
+  T extends {
+    eq: (column: string, value: string | number) => T;
+    or: (filters: string) => T;
+  },
+>(
+  query: T,
+  search:
+    | { orderNumber: number }
+    | { tableIds: string[]; sessionIds: string[] }
+    | { empty: true }
+    | null
+): T {
+  if (!search) return query;
+  if ("orderNumber" in search) {
+    return query.eq("order_number", search.orderNumber);
+  }
+  if ("empty" in search) {
+    return query.eq("id", "00000000-0000-0000-0000-000000000000");
   }
 
   const parts: string[] = [];
-  if (tableIds.length) parts.push(`table_id.in.(${tableIds.join(",")})`);
-  if (sessionIds.length) parts.push(`session_id.in.(${sessionIds.join(",")})`);
+  if (search.tableIds.length) {
+    parts.push(`table_id.in.(${search.tableIds.join(",")})`);
+  }
+  if (search.sessionIds.length) {
+    parts.push(`session_id.in.(${search.sessionIds.join(",")})`);
+  }
+  return query.or(parts.join(","));
+}
 
-  return query.or(parts.join(",")) as Q;
+export async function fetchOrderHistoryPage(
+  locationId: string,
+  filters: ParsedHistoryFilters
+) {
+  const admin = createAdminClient();
+  const search = await resolveSearchIds(locationId, filters.search);
+
+  let query = admin
+    .from("orders")
+    .select(ORDER_HISTORY_SELECT, { count: "exact" })
+    .eq("location_id", locationId)
+    .gte("created_at", filters.range.start.toISOString())
+    .lte("created_at", filters.range.end.toISOString());
+
+  query = applyStatusPaymentSourceFilters(query, filters);
+  query = applySearchFilter(query, search);
+
+  const offset = (filters.page - 1) * HISTORY_PAGE_SIZE;
+  return query
+    .order("created_at", { ascending: false })
+    .range(offset, offset + HISTORY_PAGE_SIZE - 1);
+}
+
+export async function fetchOrderHistoryStats(
+  locationId: string,
+  filters: ParsedHistoryFilters
+) {
+  const admin = createAdminClient();
+  const search = await resolveSearchIds(locationId, filters.search);
+
+  let query = admin
+    .from("orders")
+    .select(ORDER_HISTORY_SELECT)
+    .eq("location_id", locationId)
+    .gte("created_at", filters.range.start.toISOString())
+    .lte("created_at", filters.range.end.toISOString());
+
+  query = applyStatusPaymentSourceFilters(query, filters);
+  query = applySearchFilter(query, search);
+
+  return query
+    .order("created_at", { ascending: false })
+    .range(0, HISTORY_STATS_MAX_ROWS - 1);
+}
+
+export async function fetchOrdersForCsvExport(
+  locationId: string,
+  filters: ParsedHistoryFilters
+) {
+  const admin = createAdminClient();
+  const search = await resolveSearchIds(locationId, filters.search);
+
+  let query = admin
+    .from("orders")
+    .select(ORDER_HISTORY_SELECT)
+    .eq("location_id", locationId)
+    .gte("created_at", filters.range.start.toISOString())
+    .lte("created_at", filters.range.end.toISOString());
+
+  query = applyStatusPaymentSourceFilters(query, filters);
+  query = applySearchFilter(query, search);
+
+  return query
+    .order("created_at", { ascending: false })
+    .range(0, HISTORY_CSV_MAX_ROWS - 1);
 }
 
 export function historyParamsToQueryString(

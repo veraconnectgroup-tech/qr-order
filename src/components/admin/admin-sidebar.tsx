@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   LayoutGrid,
+  MapPin,
   Megaphone,
   MessageSquare,
   QrCode,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/admin", label: "Overview", icon: BarChart3, exact: true },
+  { href: "/admin/locations", label: "Locations", icon: MapPin },
   { href: "/admin/menu", label: "Menu", icon: ShoppingBag },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/tables", label: "Tables", icon: LayoutGrid },
