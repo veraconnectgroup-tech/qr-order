@@ -72,6 +72,48 @@ function staffCanAccessLocation(
   return true;
 }
 
+function buildStaffRpcItems(
+  validatedItems: Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    notes: string;
+    menuSection: string;
+    taxRate: number;
+    modifiers: Array<{
+      modifierId: string;
+      modifierName: string;
+      price: number;
+    }>;
+    unitPrice: number;
+    itemTotal: number;
+  }>
+) {
+  return validatedItems.map((item) => ({
+    product_id: item.productId,
+    product_name: item.productName,
+    quantity: item.quantity,
+    unit_price:
+      item.unitPrice + item.modifiers.reduce((sum, mod) => sum + mod.price, 0),
+    notes: item.notes || null,
+    total: item.itemTotal,
+    menu_section: item.menuSection,
+    tax_rate: item.taxRate,
+    modifiers: item.modifiers.map((mod) => ({
+      modifier_id: mod.modifierId,
+      modifier_name: mod.modifierName,
+      price: mod.price,
+    })),
+  }));
+}
+
+type CreateStaffOrderRpcResult = {
+  order_id: string;
+  order_number: number;
+  total: number;
+  session_id: string;
+};
+
 export async function createStaffOrder(
   staff: Staff,
   input: CreateStaffOrderInput
@@ -353,107 +395,42 @@ export async function createStaffOrder(
     return { error: sessionResult.error, status: sessionResult.status };
   }
 
-  // 9. get_next_order_number RPC
-  const { data: orderNumber, error: numError } = await admin.rpc(
-    "get_next_order_number",
-    { p_location_id: locationRow.id }
-  );
-
-  if (numError || orderNumber == null) {
-    return { error: "Order number could not be generated.", status: 500 };
-  }
-
-  const now = new Date().toISOString();
-  const prepMinutes = 8;
   const sanitizedNotes = input.notes ? sanitizeOrderNotes(input.notes) : null;
 
-  // 10. Insert order: status='accepted', order_source='staff'
-  const { data: order, error: orderError } = await admin
-    .from("orders")
-    .insert({
-      location_id: locationRow.id,
-      table_id: tableRow.id,
-      session_id: sessionResult.sessionId,
-      order_number: orderNumber as number,
-      subtotal,
-      tax_percent: effectiveTaxPercent,
-      tax_amount: taxAmount,
-      total,
-      discount_amount: 0,
-      promo_code_id: null,
-      is_takeaway: input.isTakeaway,
-      notes: sanitizedNotes,
-      estimated_prep_minutes: prepMinutes,
-      status: "accepted",
-      accepted_at: now,
-      payment_status: "pending",
-      payment_method: input.paymentMethod,
-      tip_amount: 0,
-      tip_staff_id: null,
-      order_source: "staff",
-      created_by_staff_id: staff.id,
-    })
-    .select("id, order_number, total")
-    .single();
+  const { data: rpcData, error: rpcError } = await admin.rpc(
+    "create_staff_order_tx",
+    {
+      p_location_id: locationRow.id,
+      p_table_id: tableRow.id,
+      p_session_id: sessionResult.sessionId,
+      p_staff_id: staff.id,
+      p_order_payload: {
+        subtotal,
+        tax_percent: effectiveTaxPercent,
+        tax_amount: taxAmount,
+        total,
+        is_takeaway: input.isTakeaway,
+        notes: sanitizedNotes,
+        payment_method: input.paymentMethod,
+        estimated_prep_minutes: 8,
+      },
+      p_items: buildStaffRpcItems(validatedItems),
+    }
+  );
 
-  if (orderError || !order) {
+  if (rpcError || !rpcData) {
+    logger.error("create_staff_order_tx failed", {
+      tableId: tableRow.id,
+      staffId: staff.id,
+      error: rpcError?.message,
+    });
     return { error: "Order could not be created.", status: 500 };
   }
 
-  const orderRow = order as {
-    id: string;
-    order_number: number;
-    total: number;
-  };
+  const orderRow = rpcData as CreateStaffOrderRpcResult;
 
-  // 11. Insert order_items + order_item_modifiers
-  for (const item of validatedItems) {
-    const unitWithMods =
-      item.unitPrice + item.modifiers.reduce((sum, mod) => sum + mod.price, 0);
-
-    const { data: orderItem, error: itemError } = await admin
-      .from("order_items")
-      .insert({
-        order_id: orderRow.id,
-        product_id: item.productId,
-        product_name: item.productName,
-        quantity: item.quantity,
-        unit_price: unitWithMods,
-        notes: item.notes || null,
-        total: item.itemTotal,
-        menu_section: item.menuSection,
-        tax_rate: item.taxRate,
-      })
-      .select("id")
-      .single();
-
-    if (itemError || !orderItem) {
-      await admin.from("orders").delete().eq("id", orderRow.id);
-      return { error: "Order items could not be saved.", status: 500 };
-    }
-
-    if (item.modifiers.length) {
-      const { error: modError } = await admin
-        .from("order_item_modifiers")
-        .insert(
-          item.modifiers.map((mod) => ({
-            order_item_id: (orderItem as { id: string }).id,
-            modifier_id: mod.modifierId,
-            modifier_name: mod.modifierName,
-            price: mod.price,
-          }))
-        );
-
-      if (modError) {
-        await admin.from("orders").delete().eq("id", orderRow.id);
-        return { error: "Order modifiers could not be saved.", status: 500 };
-      }
-    }
-  }
-
-  // 12. Outbox + legacy side effects (A7/A8 remove direct calls)
   await persistOrderSideEffects(admin, {
-    orderId: orderRow.id,
+    orderId: orderRow.order_id,
     locationId: locationRow.id,
     orgId: staff.org_id,
     orderNumber: orderRow.order_number,
@@ -467,7 +444,7 @@ export async function createStaffOrder(
   });
 
   criticalPath.orderCreated({
-    orderId: orderRow.id,
+    orderId: orderRow.order_id,
     source: "staff",
     locationId: locationRow.id,
     total: orderRow.total,
@@ -475,17 +452,16 @@ export async function createStaffOrder(
   });
 
   logger.info("Staff order created", {
-    orderId: orderRow.id,
+    orderId: orderRow.order_id,
     orderNumber: orderRow.order_number,
     locationId: locationRow.id,
     staffId: staff.id,
     sessionId: sessionResult.sessionId,
   });
 
-  // 14. Return { orderId, orderNumber, total, tableName }
   return {
     data: {
-      orderId: orderRow.id,
+      orderId: orderRow.order_id,
       orderNumber: orderRow.order_number,
       total: orderRow.total,
       tableName: tableRow.name,

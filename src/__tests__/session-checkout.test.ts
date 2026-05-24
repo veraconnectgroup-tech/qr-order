@@ -88,7 +88,10 @@ describe("markSessionOrdersPaidOnline", () => {
       payment_status: "pos_online",
       payment_method: "pos_online",
     });
-    expect(orderUpdates).toContainEqual({ payment_method: "online" });
+    expect(orderUpdates).toContainEqual({
+      payment_status: "paid",
+      payment_method: "online",
+    });
 
     expect(outboxEvents).toHaveLength(1);
     expect(outboxEvents[0]).toMatchObject({

@@ -154,7 +154,7 @@ export async function createPosOrder(
   }));
 
   const { data: rpcData, error: rpcError } = await admin.rpc(
-    "create_pos_order_tx" as never,
+    "create_pos_order_tx",
     {
       p_pos_integration_id: row.id,
       p_location_id: row.location_id,
@@ -163,7 +163,7 @@ export async function createPosOrder(
       p_idempotency_key: idempotencyKey,
       p_order_payload: orderPayload,
       p_items: itemsPayload,
-    } as never
+    }
   );
 
   if (rpcError) {

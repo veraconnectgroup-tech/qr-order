@@ -29,7 +29,7 @@ export async function resolvePosTable(input: {
 
   if (externalKey) {
     const { data: mapping } = await admin
-      .from("pos_table_mappings" as never)
+      .from("pos_table_mappings")
       .select("table_id")
       .eq("location_id", input.locationId)
       .eq("provider", input.provider)

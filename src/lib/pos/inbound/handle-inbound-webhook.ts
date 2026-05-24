@@ -1,3 +1,4 @@
+import { cancelPosInboundOrder } from "@/lib/pos/inbound/cancel-pos-order";
 import { createPosOrder } from "@/lib/pos/inbound/create-pos-order";
 import { resolvePosTableForClose } from "@/lib/pos/inbound/resolve-table";
 import {
@@ -40,7 +41,7 @@ async function markSessionClosing(
 ) {
   await admin
     .from("table_sessions")
-    .update({ access_state: "closing" } as never)
+    .update({ access_state: "closing" })
     .eq("id", sessionId)
     .eq("status", "active");
 }
@@ -54,7 +55,7 @@ async function markSessionOrdersPaidAtPos(
     .update({
       payment_status: "paid",
       payment_method: "pos",
-    } as never)
+    })
     .eq("session_id", sessionId)
     .neq("payment_status", "paid")
     .not("status", "in", '("cancelled","rejected")');
@@ -107,7 +108,7 @@ async function handleTableClosed(
     .update({
       access_state: "closed",
       closed_by: "pos",
-    } as never)
+    })
     .eq("id", session.id);
 
   await touchPosIntegrationSync(admin, integration.id);
@@ -167,6 +168,19 @@ export async function handlePosInboundWebhook(
 
   const event = adapter.parseEvent(parsed, headers);
 
+  if (event.type === "reject") {
+    await recordPosInboundEvent({
+      posIntegrationId: integration.id,
+      eventType: "reject",
+      payloadHash,
+      processingStatus: "rejected",
+      httpStatus: 422,
+      errorMessage: event.reason,
+      durationMs: Date.now() - started,
+    });
+    return { ok: false, status: 422, message: event.reason };
+  }
+
   await recordPosInboundEvent({
     posIntegrationId: integration.id,
     eventType: event.type,
@@ -195,10 +209,44 @@ export async function handlePosInboundWebhook(
   }
 
   if (event.type === "order.cancelled") {
+    const cancelResult = await cancelPosInboundOrder(
+      integration.id,
+      event.externalOrderId
+    );
+
+    await recordPosInboundEvent({
+      posIntegrationId: integration.id,
+      eventType: event.type,
+      externalId: event.externalOrderId,
+      payloadHash,
+      processingStatus: cancelResult.ok ? "processed" : "rejected",
+      httpStatus: cancelResult.ok ? 200 : cancelResult.status,
+      errorMessage: cancelResult.ok ? null : cancelResult.message,
+      orderId: cancelResult.ok && cancelResult.orderId ? cancelResult.orderId : null,
+      durationMs: Date.now() - started,
+    });
+
+    if (!cancelResult.ok) {
+      return {
+        ok: false,
+        status: cancelResult.status,
+        message: cancelResult.message,
+      };
+    }
+
     return {
       ok: true,
       status: 200,
-      body: { message: "cancel_acknowledged", externalOrderId: event.externalOrderId },
+      body: {
+        message: cancelResult.orderId
+          ? cancelResult.alreadyCancelled
+            ? "cancel_already_applied"
+            : "order_cancelled"
+          : "cancel_acknowledged",
+        externalOrderId: event.externalOrderId,
+        orderId: cancelResult.orderId || undefined,
+        orderNumber: cancelResult.orderNumber || undefined,
+      },
     };
   }
 

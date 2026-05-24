@@ -26,7 +26,7 @@ export async function recordPosInboundEvent(input: {
 }): Promise<string | null> {
   const admin = createAdminClient();
   const { data, error } = await admin
-    .from("pos_inbound_events" as never)
+    .from("pos_inbound_events")
     .insert({
       pos_integration_id: input.posIntegrationId,
       event_type: input.eventType,
@@ -38,12 +38,12 @@ export async function recordPosInboundEvent(input: {
       order_id: input.orderId ?? null,
       session_id: input.sessionId ?? null,
       duration_ms: input.durationMs ?? null,
-    } as never)
+    })
     .select("id")
     .maybeSingle();
 
   if (error) return null;
-  return (data as { id: string } | null)?.id ?? null;
+  return data?.id ?? null;
 }
 
 export async function touchPosIntegrationSync(

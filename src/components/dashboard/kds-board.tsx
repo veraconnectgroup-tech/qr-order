@@ -242,7 +242,6 @@ export function KdsBoard() {
     optimisticUpdateStatus,
   } = useKdsOrders(locationId);
 
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [soundEnabled, setSoundEnabledState] = useState(true);
   const [autoPrint, setAutoPrintState] = useState(false);
@@ -555,7 +554,7 @@ export function KdsBoard() {
                           key={order.id}
                           order={order}
                           timerWarningMin={timerWarningMin}
-                          busy={busyId === order.id}
+                          busy={false}
                           orgName={orgName}
                           autoPrinted={autoPrintedIds.has(order.id)}
                           onAdvance={() => advanceOrder(order)}

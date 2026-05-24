@@ -35,6 +35,49 @@ describe("GenericInboundAdapter", () => {
     expect(event.order.paymentState).toBe("UNPAID");
   });
 
+  it("rejects order.created without externalOrderId", () => {
+    const event = adapter.parseEvent(
+      {
+        event: "order.created",
+        items: [{ name: "Espresso", quantity: 1, unitPrice: 3.5, total: 3.5 }],
+      },
+      new Headers()
+    );
+
+    expect(event.type).toBe("reject");
+    if (event.type !== "reject") return;
+    expect(event.reason).toContain("externalOrderId");
+  });
+
+  it("rejects order.created without items", () => {
+    const event = adapter.parseEvent(
+      {
+        event: "order.created",
+        externalOrderId: "POS-empty",
+        total: 0,
+      },
+      new Headers()
+    );
+
+    expect(event.type).toBe("reject");
+    if (event.type !== "reject") return;
+    expect(event.reason).toContain("item");
+  });
+
+  it("parses order.cancelled events", () => {
+    const event = adapter.parseEvent(
+      {
+        event: "order.cancelled",
+        externalOrderId: "POS-999",
+      },
+      new Headers()
+    );
+
+    expect(event.type).toBe("order.cancelled");
+    if (event.type !== "order.cancelled") return;
+    expect(event.externalOrderId).toBe("POS-999");
+  });
+
   it("parses table.closed events", () => {
     const event = adapter.parseEvent(
       {

@@ -494,7 +494,7 @@ export const POST = withErrorHandler(
         amountCents
       );
 
-      await admin.from("session_payment_intents" as never).upsert(
+      await admin.from("session_payment_intents").upsert(
         {
           session_id: session.id,
           stripe_payment_intent_id: intent.id,
@@ -502,7 +502,7 @@ export const POST = withErrorHandler(
           amount_cents: amountCents,
           status: "processing",
           updated_at: new Date().toISOString(),
-        } as never,
+        },
         { onConflict: "session_id,idempotency_key" }
       );
 

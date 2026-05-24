@@ -244,7 +244,7 @@ export async function closeTableSession(
       bill_status: billStatus,
       access_state: "closed",
       order_pin_hash: null,
-    } as never)
+    })
     .eq("id", sessionId);
 
   await revokeSessionDevices(admin, sessionId);

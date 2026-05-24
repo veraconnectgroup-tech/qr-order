@@ -70,7 +70,11 @@ function parseItems(raw: unknown): PosInboundOrderItem[] {
   return items;
 }
 
-function inferEventType(body: Record<string, unknown>): PosInboundEvent["type"] {
+type InferredEventType =
+  | PosInboundEvent["type"]
+  | "unknown";
+
+function inferEventType(body: Record<string, unknown>): InferredEventType {
   const explicit = readString(body.event ?? body.eventType ?? body.type);
   if (explicit === "order.created" || explicit === "order_created") {
     return "order.created";
@@ -82,15 +86,37 @@ function inferEventType(body: Record<string, unknown>): PosInboundEvent["type"] 
     return "table.closed";
   }
 
-  if (body.items !== undefined || body.order !== undefined) {
-    return "order.created";
-  }
-
   if (body.settlement !== undefined || body.externalTableId !== undefined) {
     return "table.closed";
   }
 
-  return "order.created";
+  const nestedOrder =
+    body.order && typeof body.order === "object"
+      ? (body.order as Record<string, unknown>)
+      : null;
+  const cancelId = readString(
+    body.externalOrderId ??
+      body.external_order_id ??
+      body.channelOrderId ??
+      body.orderId ??
+      nestedOrder?.externalOrderId ??
+      nestedOrder?.id
+  );
+  const hasCancelHint =
+    explicit === "cancel" ||
+    explicit === "cancelled" ||
+    body.cancelled === true ||
+    body.canceled === true;
+
+  if (hasCancelHint && cancelId) {
+    return "order.cancelled";
+  }
+
+  if (body.items !== undefined || body.order !== undefined) {
+    return "order.created";
+  }
+
+  return "unknown";
 }
 
 function parseOrderDraft(body: Record<string, unknown>): PosInboundOrderDraft {
@@ -175,6 +201,13 @@ export class GenericInboundAdapter implements PosInboundAdapter {
   ): PosInboundEvent {
     const eventType = inferEventType(rawBody);
 
+    if (eventType === "unknown") {
+      return {
+        type: "reject",
+        reason: "Unrecognized webhook payload — missing event type",
+      };
+    }
+
     if (eventType === "table.closed") {
       const nested =
         rawBody.table && typeof rawBody.table === "object"
@@ -207,9 +240,23 @@ export class GenericInboundAdapter implements PosInboundAdapter {
             rawBody.channelOrderId ??
             rawBody.orderId
         ) ?? "";
+      if (!externalOrderId) {
+        return {
+          type: "reject",
+          reason: "order.cancelled requires externalOrderId",
+        };
+      }
       return { type: "order.cancelled", externalOrderId };
     }
 
-    return { type: "order.created", order: parseOrderDraft(rawBody) };
+    const order = parseOrderDraft(rawBody);
+    if (!order.externalOrderId) {
+      return { type: "reject", reason: "order.created requires externalOrderId" };
+    }
+    if (!order.items.length) {
+      return { type: "reject", reason: "order.created requires at least one item" };
+    }
+
+    return { type: "order.created", order };
   }
 }

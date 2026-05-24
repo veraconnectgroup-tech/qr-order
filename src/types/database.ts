@@ -801,6 +801,17 @@ export interface Database {
         };
         Returns: Json;
       };
+      create_staff_order_tx: {
+        Args: {
+          p_location_id: string;
+          p_table_id: string;
+          p_session_id: string;
+          p_staff_id: string;
+          p_order_payload: Json;
+          p_items: Json;
+        };
+        Returns: Json;
+      };
       approve_order_access_tx: {
         Args: {
           p_order_id: string;

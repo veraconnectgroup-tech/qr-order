@@ -21,10 +21,7 @@ export async function markSessionOrdersPaidOnline(
     .select("id, order_source")
     .in("id", input.orderIds);
 
-  const orderRows = (orders ?? []) as Array<{
-    id: string;
-    order_source: string;
-  }>;
+  const orderRows = orders ?? [];
 
   for (const order of orderRows) {
     if (order.order_source === "pos") {
@@ -33,22 +30,25 @@ export async function markSessionOrdersPaidOnline(
         .update({
           payment_status: "pos_online",
           payment_method: "pos_online",
-        } as never)
+        })
         .eq("id", order.id);
     } else {
       await admin
         .from("orders")
-        .update({ payment_method: "online" } as never)
+        .update({
+          payment_status: "paid",
+          payment_method: "online",
+        })
         .eq("id", order.id);
     }
   }
 
   await admin
-    .from("session_payment_intents" as never)
+    .from("session_payment_intents")
     .update({
       status: "succeeded",
       updated_at: new Date().toISOString(),
-    } as never)
+    })
     .eq("stripe_payment_intent_id", input.paymentIntentId);
 
   const hasPosOrders = orderRows.some((order) => order.order_source === "pos");
@@ -63,12 +63,6 @@ export async function markSessionOrdersPaidOnline(
 
   if (!integration) return;
 
-  const integrationRow = integration as {
-    id: string;
-    provider: string;
-    status: string;
-  };
-
   const event: OutboxInsert = {
     aggregate_type: "session",
     aggregate_id: input.sessionId,
@@ -81,8 +75,8 @@ export async function markSessionOrdersPaidOnline(
       paymentIntentId: input.paymentIntentId,
       amountCents: input.amountCents,
       orderIds: input.orderIds,
-      posIntegrationId: integrationRow.id,
-      provider: integrationRow.provider,
+      posIntegrationId: integration.id,
+      provider: integration.provider,
     },
   };
 
