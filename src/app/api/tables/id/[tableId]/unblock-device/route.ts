@@ -31,7 +31,7 @@ const bodySchema = z.object({
 });
 
 export const POST = withErrorHandler(
-  "tables-tableId-unblock-device-post",
+  "tables-id-tableId-unblock-device-post",
   async (req, ctx) => {
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
