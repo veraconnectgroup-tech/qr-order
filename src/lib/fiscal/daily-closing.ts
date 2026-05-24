@@ -518,7 +518,7 @@ export async function listStandaloneLocations(
 
   for (const location of rows) {
     const { data: pos } = await admin
-      .from("pos_integrations" as never)
+      .from("pos_integrations")
       .select("id")
       .eq("location_id", location.id)
       .eq("status", "connected")

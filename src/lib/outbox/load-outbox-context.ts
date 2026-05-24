@@ -12,16 +12,13 @@ async function loadPosIntegration(
   locationId: string
 ): Promise<PosIntegrationContext | null> {
   const { data, error } = await admin
-    .from("pos_integrations" as never)
+    .from("pos_integrations")
     .select("id, provider, status")
     .eq("location_id", locationId)
     .eq("status", "connected")
     .maybeSingle();
 
   if (error) {
-    if (error.code === "42P01" || error.message.includes("does not exist")) {
-      return null;
-    }
     logger.warn("POS integration lookup failed", {
       locationId,
       error: error.message,

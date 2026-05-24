@@ -170,6 +170,23 @@ type Tables = {
     created_at: string;
     updated_at: string;
   };
+  pos_integrations: {
+    id: string;
+    location_id: string;
+    provider:
+      | "deliverect"
+      | "orderbird"
+      | "lightspeed"
+      | "ready2order"
+      | "custom";
+    status: "disconnected" | "connected" | "error";
+    config: Json;
+    external_location_id: string | null;
+    last_sync_at: string | null;
+    last_error: string | null;
+    created_at: string;
+    updated_at: string;
+  };
   products: {
     id: string;
     location_id: string;

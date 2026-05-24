@@ -73,8 +73,10 @@ export async function sendOrderReceipt(
 
   let html: string;
   let subjectPrefix: string;
+  let orgName = "Your venue";
 
   if (belegData) {
+    orgName = belegData.orgName;
     const belegUrl = row.beleg_token
       ? `${appUrl}/api/beleg/${row.beleg_token}`
       : undefined;
@@ -171,6 +173,8 @@ export async function sendOrderReceipt(
       currency: string;
     } | null;
 
+    orgName = org?.name ?? "Your venue";
+
     const { data: table } = row.table_id
       ? await admin
           .from("tables")
@@ -188,7 +192,7 @@ export async function sendOrderReceipt(
         : undefined;
 
     html = buildOrderReceiptHtml({
-      orgName: org?.name ?? "Your venue",
+      orgName,
       locationName: locationRow.name,
       tableName: tableRow?.name ?? null,
       orderNumber: row.order_number,
@@ -213,7 +217,7 @@ export async function sendOrderReceipt(
 
   const result = await sendEmail({
     to: guestEmail,
-    subject: `${subjectPrefix} ${belegData?.orgName ?? "Your venue"} — Order #${String(row.order_number).padStart(3, "0")}`.trim(),
+    subject: `${subjectPrefix} ${orgName} — Order #${String(row.order_number).padStart(3, "0")}`.trim(),
     html,
   });
 
