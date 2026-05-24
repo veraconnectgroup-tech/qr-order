@@ -1,0 +1,58 @@
+import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
+import { TagesabschlussPanel } from "@/components/admin/tagesabschluss-panel";
+import {
+  loadDailyClosingsForLocation,
+  yesterdayBusinessDate,
+} from "@/lib/fiscal/daily-closing";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export default async function AdminTagesabschlussPage() {
+  const staff = await requireAdmin();
+  const locationId = await getStaffLocationId(staff);
+
+  if (!locationId) {
+    return (
+      <div className="p-6">
+        <p className="text-neutral-600">Location not found.</p>
+      </div>
+    );
+  }
+
+  const admin = createAdminClient();
+
+  const [{ data: location }, { data: org }] = await Promise.all([
+    admin
+      .from("locations")
+      .select("timezone")
+      .eq("id", locationId)
+      .single(),
+    admin
+      .from("organizations")
+      .select("currency")
+      .eq("id", staff.org_id)
+      .single(),
+  ]);
+
+  const timezone =
+    (location as { timezone: string } | null)?.timezone ?? "Europe/Berlin";
+  const currency =
+    (org as { currency: string } | null)?.currency ?? "EUR";
+
+  const closings = await loadDailyClosingsForLocation(
+    admin,
+    locationId,
+    staff.org_id,
+    30
+  );
+
+  return (
+    <div className="p-6">
+      <TagesabschlussPanel
+        closings={closings}
+        locationId={locationId}
+        defaultBusinessDate={yesterdayBusinessDate(timezone)}
+        currency={currency}
+      />
+    </div>
+  );
+}

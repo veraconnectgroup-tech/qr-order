@@ -103,9 +103,10 @@ Svaka sesija u "operator mode":
 ✅ A8  ukloni direct TSE (outbox-only)
 ✅ B2  DATEV mixed-rate (mrtav resolveRevenueAccount uklonjen)
 ✅ B3  Proper Beleg template (fiscal.beleg → send_receipt chain)
+✅ B4  Z-Bon daily closing (00067, cron, dashboard, buildZBonHtml)
 ```
 
-**Track A: gotov.** **Track B3: gotov.** Sledeći: B4 (Z-Bon) ili Track C.
+**Track A: gotov.** **Track B3 + B4: gotov.** Sledeći: Track C.
 
 ---
 

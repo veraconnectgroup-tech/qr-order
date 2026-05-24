@@ -9,6 +9,7 @@ import {
   Megaphone,
   MessageSquare,
   QrCode,
+  ScrollText,
   Settings,
   ShoppingBag,
   Tags,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/admin/tables", label: "Tables", icon: LayoutGrid },
   { href: "/admin/staff", label: "Staff", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/tagesabschluss", label: "Tagesabschluss", icon: ScrollText },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

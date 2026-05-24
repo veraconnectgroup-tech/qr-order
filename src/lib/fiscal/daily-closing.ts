@@ -1,5 +1,6 @@
 import { addDays, format, parseISO } from "date-fns";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import QRCode from "qrcode";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type FiskalyReceiptSchema,
@@ -7,8 +8,10 @@ import {
   getFiskalyClient,
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
+import { formatPrice } from "@/lib/format";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
 import { logger } from "@/lib/logger";
+import { escapeHtml } from "@/lib/security/escape";
 import type { Json } from "@/types/database";
 
 export type VatSummaryEntry = {
@@ -32,6 +35,52 @@ export type DailyClosingData = {
   orderCount: number;
   refundCount: number;
   refundTotal: number;
+};
+
+export type DailyClosingRow = {
+  id: string;
+  org_id: string;
+  location_id: string;
+  business_date: string;
+  total_gross: number;
+  total_net: number;
+  total_tax: number;
+  total_cash: number;
+  total_non_cash: number;
+  total_tips: number;
+  vat_summary: VatSummaryEntry[];
+  order_count: number;
+  refund_count: number;
+  refund_total: number;
+  tse_closing_signature: string | null;
+  tse_closing_data: Json | null;
+  closed_at: string;
+};
+
+export type ZBonTseData = {
+  tss_serial?: string;
+  signature_counter?: number;
+  signature?: string;
+  qr_code_data?: string;
+};
+
+export type ZBonDisplayData = {
+  orgName: string;
+  locationName: string;
+  locationAddress: string | null;
+  steuernummer?: string | null;
+  ustIdNr?: string | null;
+  businessDate: string;
+  currency: string;
+  totalGross: number;
+  totalCash: number;
+  totalNonCash: number;
+  orderCount: number;
+  refundCount: number;
+  refundTotal: number;
+  vatSummary: VatSummaryEntry[];
+  tseSignature: string | null;
+  tseData: ZBonTseData | null;
 };
 
 const REVENUE_STATUS_LIST = [
@@ -485,6 +534,270 @@ export async function listStandaloneLocations(
   }
 
   return standalone;
+}
+
+function parseClosingTseData(raw: unknown): ZBonTseData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  return {
+    tss_serial: typeof row.tss_serial === "string" ? row.tss_serial : undefined,
+    signature_counter:
+      typeof row.signature_counter === "number"
+        ? row.signature_counter
+        : undefined,
+    signature: typeof row.signature === "string" ? row.signature : undefined,
+    qr_code_data:
+      typeof row.qr_code_data === "string" ? row.qr_code_data : undefined,
+  };
+}
+
+function formatBusinessDateDe(businessDate: string) {
+  return format(parseISO(`${businessDate}T12:00:00`), "dd.MM.yyyy");
+}
+
+async function buildTseQrDataUrl(qrPayload: string | undefined): Promise<string | null> {
+  const data = qrPayload?.trim();
+  if (!data) return null;
+  try {
+    return await QRCode.toDataURL(data, { width: 180, margin: 1 });
+  } catch {
+    return null;
+  }
+}
+
+export async function buildZBonHtml(data: ZBonDisplayData): Promise<string> {
+  const dateLabel = formatBusinessDateDe(data.businessDate);
+  const qrUrl = data.tseData?.qr_code_data
+    ? await buildTseQrDataUrl(data.tseData.qr_code_data)
+    : null;
+
+  const vatRows = data.vatSummary
+    .map(
+      (row) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #27272a;color:#fafafa;font-size:14px">
+            MwSt ${escapeHtml(String(row.rate))}%
+            <div style="color:#71717a;font-size:12px;margin-top:2px">
+              Netto ${formatPrice(row.net, data.currency)}
+            </div>
+          </td>
+          <td style="padding:10px 0;border-bottom:1px solid #27272a;text-align:right;color:#fafafa;white-space:nowrap;font-size:14px">
+            ${formatPrice(row.tax, data.currency)}
+          </td>
+        </tr>`
+    )
+    .join("");
+
+  const fiscalIdBlock = data.steuernummer
+    ? `<p style="margin:0 0 4px;color:#a1a1aa;font-size:13px">St.-Nr.: ${escapeHtml(data.steuernummer)}</p>`
+    : data.ustIdNr
+      ? `<p style="margin:0 0 24px;color:#a1a1aa;font-size:13px">USt-IdNr: ${escapeHtml(data.ustIdNr)}</p>`
+      : "";
+
+  const tseBlock =
+    data.tseSignature && data.tseData
+      ? `<div style="margin-top:20px;padding-top:16px;border-top:1px solid #27272a">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#4ade80;text-transform:uppercase;letter-spacing:0.06em">
+            TSE-signiert (KassenSichV)
+          </p>
+          ${
+            data.tseData.tss_serial
+              ? `<p style="margin:0 0 4px;font-size:12px;color:#a1a1aa">TSE-Seriennummer: ${escapeHtml(data.tseData.tss_serial)}</p>`
+              : ""
+          }
+          ${
+            data.tseData.signature_counter != null
+              ? `<p style="margin:0 0 4px;font-size:12px;color:#a1a1aa">Signaturzähler: ${escapeHtml(String(data.tseData.signature_counter))}</p>`
+              : ""
+          }
+          <p style="margin:0;font-size:11px;color:#71717a;word-break:break-all">Signatur: ${escapeHtml(data.tseSignature.slice(0, 32))}…</p>
+          ${
+            qrUrl
+              ? `<div style="margin-top:16px;text-align:center">
+                  <img src="${qrUrl}" alt="TSE QR-Code" width="180" height="180" style="background:#fff;border-radius:8px;padding:8px" />
+                </div>`
+              : ""
+          }
+        </div>`
+      : "";
+
+  const stornoRow =
+    data.refundCount > 0
+      ? `<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;color:#fbbf24">
+          <span>Stornos (${data.refundCount})</span>
+          <span>${formatPrice(data.refundTotal, data.currency)}</span>
+        </div>`
+      : "";
+
+  return `<!DOCTYPE html>
+<html lang="de">
+<body style="margin:0;padding:0;background:#09090b;font-family:Inter,system-ui,sans-serif">
+  <div style="max-width:520px;margin:0 auto;padding:32px 20px">
+    <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#71717a">Z-Bon / Tagesabschluss</p>
+    <h1 style="margin:0 0 8px;font-size:24px;color:#fafafa">${escapeHtml(data.orgName)}</h1>
+    <p style="margin:0 0 4px;color:#a1a1aa;font-size:14px">${escapeHtml(data.locationName)}</p>
+    ${
+      data.locationAddress
+        ? `<p style="margin:0 0 4px;color:#71717a;font-size:13px">${escapeHtml(data.locationAddress)}</p>`
+        : ""
+    }
+    ${fiscalIdBlock}
+    <p style="margin:0 0 24px;color:#a1a1aa;font-size:14px">Datum: ${escapeHtml(dateLabel)}</p>
+
+    <div style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:20px">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+        <thead>
+          <tr>
+            <th style="text-align:left;color:#71717a;font-size:12px;font-weight:600;padding-bottom:8px">MwSt</th>
+            <th style="text-align:right;color:#71717a;font-size:12px;font-weight:600;padding-bottom:8px">Betrag</th>
+          </tr>
+        </thead>
+        <tbody>${vatRows || `<tr><td colspan="2" style="color:#71717a;font-size:14px;padding:8px 0">Keine Umsätze</td></tr>`}</tbody>
+      </table>
+
+      <div style="border-top:1px solid #27272a;padding-top:16px;font-size:14px;color:#a1a1aa">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span>Bareinnahmen</span><span>${formatPrice(data.totalCash, data.currency)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span>Unbar</span><span>${formatPrice(data.totalNonCash, data.currency)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:18px;font-weight:700;color:#fafafa">
+          <span>Gesamtumsatz (brutto)</span><span>${formatPrice(data.totalGross, data.currency)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span>Anzahl Transaktionen</span><span>${escapeHtml(String(data.orderCount))}</span>
+        </div>
+        ${stornoRow}
+      </div>
+      ${tseBlock}
+    </div>
+
+    <p style="margin:32px 0 0;font-size:12px;color:#52525b;text-align:center">
+      Kassenabschluss gemäß KassenSichV · Powered by QR Order
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function loadDailyClosingsForLocation(
+  admin: SupabaseClient,
+  locationId: string,
+  orgId: string,
+  limit = 30
+): Promise<DailyClosingRow[]> {
+  const { data, error } = await admin
+    .from("daily_closings" as never)
+    .select("*")
+    .eq("location_id", locationId)
+    .eq("org_id", orgId)
+    .order("business_date", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Daily closings query failed: ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => {
+    const closing = row as Record<string, unknown>;
+    return {
+      ...closing,
+      vat_summary: (closing.vat_summary as VatSummaryEntry[]) ?? [],
+    } as DailyClosingRow;
+  });
+}
+
+export async function loadZBonDisplayData(
+  admin: SupabaseClient,
+  closingId: string,
+  orgId: string
+): Promise<ZBonDisplayData | null> {
+  const { data: closing, error } = await admin
+    .from("daily_closings" as never)
+    .select("*")
+    .eq("id", closingId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (error || !closing) return null;
+
+  const row = closing as DailyClosingRow;
+
+  const { data: location } = await admin
+    .from("locations")
+    .select("name, address, city, postal_code")
+    .eq("id", row.location_id)
+    .single();
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("name, currency, steuernummer, ust_id_nr")
+    .eq("id", orgId)
+    .single();
+
+  if (!location || !org) return null;
+
+  const locationRow = location as {
+    name: string;
+    address: string | null;
+    city: string | null;
+    postal_code: string | null;
+  };
+  const orgRow = org as {
+    name: string;
+    currency: string;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
+  };
+
+  const locationAddress = [
+    locationRow.address,
+    [locationRow.postal_code, locationRow.city].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    orgName: orgRow.name,
+    locationName: locationRow.name,
+    locationAddress: locationAddress || null,
+    steuernummer: orgRow.steuernummer,
+    ustIdNr: orgRow.ust_id_nr,
+    businessDate: row.business_date,
+    currency: orgRow.currency ?? "EUR",
+    totalGross: Number(row.total_gross),
+    totalCash: Number(row.total_cash),
+    totalNonCash: Number(row.total_non_cash),
+    orderCount: row.order_count,
+    refundCount: row.refund_count,
+    refundTotal: Number(row.refund_total),
+    vatSummary: row.vat_summary ?? [],
+    tseSignature: row.tse_closing_signature,
+    tseData: parseClosingTseData(row.tse_closing_data),
+  };
+}
+
+export async function runManualDailyClosing(
+  admin: SupabaseClient,
+  input: {
+    orgId: string;
+    locationId: string;
+    businessDate: string;
+    timezone: string;
+    closedBy?: string | null;
+  }
+): Promise<{ id: string; data: DailyClosingData }> {
+  const data = await computeDailyClosing(
+    admin,
+    input.orgId,
+    input.locationId,
+    input.businessDate,
+    input.timezone
+  );
+  const { id } = await saveDailyClosing(admin, data, input.closedBy);
+  await signDailyClosingTse(admin, id, input.orgId);
+  return { id, data };
 }
 
 export { REVENUE_STATUS_LIST };
