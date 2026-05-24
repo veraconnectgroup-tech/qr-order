@@ -72,6 +72,7 @@ describe("buildBelegHtml", () => {
     expect(html).toContain("MwSt 7%");
     expect(html).toContain("data:image/png;base64,");
     expect(html).toContain("KassenSichV");
+    expect(html).toContain("St.-Nr.: 12/345/67890");
   });
 
   it("shows Steuernummer when set, preferring it over USt-IdNr", async () => {
