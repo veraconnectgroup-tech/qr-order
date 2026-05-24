@@ -1,6 +1,10 @@
 import { AI_CONFIG, isOpenAiConfigured } from "@/lib/ai/config";
 import type { OpenAiCallResult, OpenAiChatMessage } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
+import {
+  resetCircuitBreakerForTests,
+  withCircuitBreaker,
+} from "@/lib/resilience/circuit-breaker";
 
 const OPENAI_CHAT_URL =
   process.env.OPENAI_API_URL?.trim() ||
@@ -23,38 +27,8 @@ export class AiOpenAiError extends Error {
   }
 }
 
-type CircuitState = {
-  consecutiveFailures: number;
-  openUntil: number;
-};
-
-const circuit: CircuitState = {
-  consecutiveFailures: 0,
-  openUntil: 0,
-};
-
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isCircuitOpen() {
-  return Date.now() < circuit.openUntil;
-}
-
-function recordSuccess() {
-  circuit.consecutiveFailures = 0;
-  circuit.openUntil = 0;
-}
-
-function recordFailure() {
-  circuit.consecutiveFailures += 1;
-  if (circuit.consecutiveFailures >= AI_CONFIG.circuitBreaker.failureThreshold) {
-    circuit.openUntil = Date.now() + AI_CONFIG.circuitBreaker.openDurationMs;
-    logger.warn("AI circuit breaker opened", {
-      failures: circuit.consecutiveFailures,
-      openMs: AI_CONFIG.circuitBreaker.openDurationMs,
-    });
-  }
 }
 
 type ChatCompletionResponse = {
@@ -121,18 +95,10 @@ async function callOpenAiOnce(
   };
 }
 
-export async function callOpenAiChat(
+async function callOpenAiWithRetries(
   messages: OpenAiChatMessage[],
   options?: { model?: string }
 ): Promise<OpenAiCallResult> {
-  if (!isOpenAiConfigured()) {
-    throw new AiOpenAiError("OpenAI is not configured.");
-  }
-
-  if (isCircuitOpen()) {
-    throw new AiCircuitOpenError();
-  }
-
   const primaryModel = options?.model ?? AI_CONFIG.model;
   const models = [primaryModel];
   if (primaryModel !== AI_CONFIG.fallbackModel) {
@@ -152,7 +118,6 @@ export async function callOpenAiChat(
           AbortSignal.timeout(AI_CONFIG.requestTimeoutMs)
         );
 
-        recordSuccess();
         logger.info("OpenAI chat completion", {
           model: result.model,
           tokensUsed: result.tokensUsed,
@@ -175,10 +140,6 @@ export async function callOpenAiChat(
           error: message,
         });
 
-        if (error instanceof AiCircuitOpenError) {
-          throw error;
-        }
-
         if (attempt < AI_CONFIG.maxRetryAttempts) {
           const delay =
             AI_CONFIG.retryBaseDelayMs * Math.pow(2, attempt - 1);
@@ -186,12 +147,6 @@ export async function callOpenAiChat(
         }
       }
     }
-  }
-
-  recordFailure();
-
-  if (lastError instanceof AiCircuitOpenError) {
-    throw lastError;
   }
 
   if (lastError instanceof AiOpenAiError) {
@@ -203,8 +158,24 @@ export async function callOpenAiChat(
   );
 }
 
+export async function callOpenAiChat(
+  messages: OpenAiChatMessage[],
+  options?: { model?: string }
+): Promise<OpenAiCallResult> {
+  if (!isOpenAiConfigured()) {
+    throw new AiOpenAiError("OpenAI is not configured.");
+  }
+
+  return withCircuitBreaker(
+    "openai",
+    () => callOpenAiWithRetries(messages, options),
+    () => {
+      throw new AiCircuitOpenError();
+    }
+  );
+}
+
 /** Test helper — resets in-process circuit breaker state. */
 export function resetAiCircuitBreakerForTests() {
-  circuit.consecutiveFailures = 0;
-  circuit.openUntil = 0;
+  resetCircuitBreakerForTests("openai");
 }

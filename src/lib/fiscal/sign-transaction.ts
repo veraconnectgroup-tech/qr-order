@@ -3,10 +3,18 @@ import {
   type FiskalyPaymentType,
   type FiskalyReceiptSchema,
   type FiskalyVatRate,
+  type FiskalyTransactionResponse,
   getFiskalyClient,
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
 import { logger } from "@/lib/logger";
+import {
+  isFiskalyDeferredSigningResult,
+  logFiskalyCircuitDeferred,
+  TseSigningDeferredError,
+  withCircuitBreaker,
+  type FiskalyDeferredSigningResult,
+} from "@/lib/resilience/circuit-breaker";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type TseSignatureResult = {
@@ -155,6 +163,28 @@ async function loadOrgFiskalyConfig(
   };
 }
 
+async function createFiskalyTransaction(
+  tssId: string,
+  data: Parameters<ReturnType<typeof getFiskalyClient>["createTransaction"]>[1],
+  orderId: string
+): Promise<FiskalyTransactionResponse> {
+  const client = getFiskalyClient();
+  const result = await withCircuitBreaker<
+    FiskalyTransactionResponse | FiskalyDeferredSigningResult
+  >(
+    "fiskaly",
+    () => client.createTransaction(tssId, data),
+    () => ({ signed: false as const, queued: true as const })
+  );
+
+  if (isFiskalyDeferredSigningResult(result)) {
+    logFiskalyCircuitDeferred(orderId);
+    throw new TseSigningDeferredError(orderId);
+  }
+
+  return result;
+}
+
 export async function signOrderTransaction(
   admin: SupabaseClient,
   order: OrderForTseSigning
@@ -168,19 +198,22 @@ export async function signOrderTransaction(
     return null;
   }
 
-  const client = getFiskalyClient();
   const schema = buildReceiptSchema(order);
 
-  const tx = await client.createTransaction(orgFiskaly.fiskaly_tss_id, {
-    tx_id: crypto.randomUUID(),
-    client_id: orgFiskaly.fiskaly_client_id,
-    schema,
-    metadata: {
-      order_id: order.id,
-      order_number: String(order.order_number),
-      organization_id: order.organizationId,
+  const tx = await createFiskalyTransaction(
+    orgFiskaly.fiskaly_tss_id,
+    {
+      tx_id: crypto.randomUUID(),
+      client_id: orgFiskaly.fiskaly_client_id,
+      schema,
+      metadata: {
+        order_id: order.id,
+        order_number: String(order.order_number),
+        organization_id: order.organizationId,
+      },
     },
-  });
+    order.id
+  );
 
   const result = toSignatureResult(tx);
 
@@ -225,24 +258,27 @@ export async function signOrderStornoTransaction(
     return null;
   }
 
-  const client = getFiskalyClient();
   const schema = buildReceiptSchema(
     order,
     "CANCELLATION",
     refundAmount ?? Number(order.total)
   );
 
-  const tx = await client.createTransaction(orgFiskaly.fiskaly_tss_id, {
-    tx_id: crypto.randomUUID(),
-    client_id: orgFiskaly.fiskaly_client_id,
-    schema,
-    metadata: {
-      order_id: order.id,
-      order_number: String(order.order_number),
-      organization_id: order.organizationId,
-      storno: "true",
+  const tx = await createFiskalyTransaction(
+    orgFiskaly.fiskaly_tss_id,
+    {
+      tx_id: crypto.randomUUID(),
+      client_id: orgFiskaly.fiskaly_client_id,
+      schema,
+      metadata: {
+        order_id: order.id,
+        order_number: String(order.order_number),
+        organization_id: order.organizationId,
+        storno: "true",
+      },
     },
-  });
+    order.id
+  );
 
   const result = toSignatureResult(tx);
 

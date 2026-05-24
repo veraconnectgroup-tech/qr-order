@@ -20,6 +20,10 @@ import { verifyTableOrderAccess } from "@/lib/orders/validate-table-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import {
+  handleStripeCircuitError,
+  withStripeCircuit,
+} from "@/lib/stripe/with-stripe-circuit";
 import { clampTipAmount } from "@/lib/orders/tips";
 
 const querySchema = z.object({
@@ -104,10 +108,12 @@ async function attachClientSecrets(
       split.payment_status !== "paid"
     ) {
       try {
-        const pi = await stripe.paymentIntents.retrieve(
-          split.stripe_payment_intent_id,
-          {},
-          { stripeAccount: stripeAccountId }
+        const pi = await withStripeCircuit(() =>
+          stripe.paymentIntents.retrieve(
+            split.stripe_payment_intent_id!,
+            {},
+            { stripeAccount: stripeAccountId }
+          )
         );
         clientSecret = pi.client_secret;
       } catch (err) {
@@ -154,21 +160,23 @@ async function createSplitPaymentIntent(
     feeFixed: params.org.platform_fee_fixed,
   });
 
-  const intent = await stripe.paymentIntents.create(
-    {
-      amount: amountCents,
-      currency: (params.org.currency ?? "eur").toLowerCase(),
-      automatic_payment_methods: { enabled: true },
-      application_fee_amount: applicationFee,
-      metadata: {
-        order_id: params.orderId,
-        split_payment_id: params.splitId,
-        session_id: params.sessionId,
-        tip_amount: String(params.tipAmount),
-        is_split: "true",
+  const intent = await withStripeCircuit(() =>
+    stripe.paymentIntents.create(
+      {
+        amount: amountCents,
+        currency: (params.org.currency ?? "eur").toLowerCase(),
+        automatic_payment_methods: { enabled: true },
+        application_fee_amount: applicationFee,
+        metadata: {
+          order_id: params.orderId,
+          split_payment_id: params.splitId,
+          session_id: params.sessionId,
+          tip_amount: String(params.tipAmount),
+          is_split: "true",
+        },
       },
-    },
-    { stripeAccount: params.org.stripe_account_id }
+      { stripeAccount: params.org.stripe_account_id! }
+    )
   );
 
   if (!intent.client_secret) {
@@ -215,13 +223,20 @@ export const GET = withErrorHandler(
   const orderTotal = Number(ctx.order.total);
   const orderTip = Number(ctx.order.tip_amount ?? 0);
 
-  const splitsWithSecrets = ctx.org.stripe_account_id
-    ? await attachClientSecrets(ctx.splits, ctx.org.stripe_account_id)
-    : ctx.splits.map((s) => ({
-        ...s,
-        chargeTotal: roundMoney(Number(s.amount) + Number(s.tip_amount)),
-        clientSecret: null as string | null,
-      }));
+  let splitsWithSecrets;
+  try {
+    splitsWithSecrets = ctx.org.stripe_account_id
+      ? await attachClientSecrets(ctx.splits, ctx.org.stripe_account_id)
+      : ctx.splits.map((s) => ({
+          ...s,
+          chargeTotal: roundMoney(Number(s.amount) + Number(s.tip_amount)),
+          clientSecret: null as string | null,
+        }));
+  } catch (error) {
+    const circuit = handleStripeCircuitError(error);
+    if (circuit) return circuit;
+    throw error;
+  }
 
   return apiSuccess(
     {
@@ -445,6 +460,8 @@ export const POST = withErrorHandler(
       });
     } catch (err) {
       await admin.from("split_payments").delete().eq("id", row.id);
+      const circuit = handleStripeCircuitError(err);
+      if (circuit) return circuit;
       return apiError(
         err instanceof Error ? err.message : "Payment could not be started.",
         500
@@ -462,7 +479,14 @@ export const POST = withErrorHandler(
     .eq("id", orderId);
 
   const allSplits = [...ctx.splits, ...createdSplits];
-  const enriched = await attachClientSecrets(allSplits, ctx.org.stripe_account_id!);
+  let enriched;
+  try {
+    enriched = await attachClientSecrets(allSplits, ctx.org.stripe_account_id!);
+  } catch (error) {
+    const circuit = handleStripeCircuitError(error);
+    if (circuit) return circuit;
+    throw error;
+  }
 
   return apiSuccess({
     splits: enriched,

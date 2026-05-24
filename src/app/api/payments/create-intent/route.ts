@@ -7,6 +7,10 @@ import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import {
+  handleStripeCircuitError,
+  withStripeCircuit,
+} from "@/lib/stripe/with-stripe-circuit";
 
 const schema = z.object({
   orderId: zUuid(),
@@ -105,59 +109,69 @@ export const POST = withErrorHandler(
 
     const stripe = getStripe();
 
-    if (orderRow.stripe_payment_intent_id) {
-      const existing = await stripe.paymentIntents.retrieve(
-        orderRow.stripe_payment_intent_id
-      );
-      const amountCents = Math.round(Number(orderRow.total) * 100);
+    try {
+      if (orderRow.stripe_payment_intent_id) {
+        const existing = await withStripeCircuit(() =>
+          stripe.paymentIntents.retrieve(orderRow.stripe_payment_intent_id!)
+        );
+        const amountCents = Math.round(Number(orderRow.total) * 100);
+        const platformFee = calcPlatformFee(Number(orderRow.total), {
+          feePercent: org.platform_fee_percent,
+          feeFixed: org.platform_fee_fixed,
+        });
+
+        if (existing.amount !== amountCents) {
+          await withStripeCircuit(() =>
+            stripe.paymentIntents.update(orderRow.stripe_payment_intent_id!, {
+              amount: amountCents,
+              application_fee_amount: platformFee,
+            })
+          );
+        }
+
+        if (existing.client_secret) {
+          return apiSuccess({
+            clientSecret: existing.client_secret,
+            stripeAccountId: org.stripe_account_id,
+          });
+        }
+      }
+
       const platformFee = calcPlatformFee(Number(orderRow.total), {
         feePercent: org.platform_fee_percent,
         feeFixed: org.platform_fee_fixed,
       });
 
-      if (existing.amount !== amountCents) {
-        await stripe.paymentIntents.update(orderRow.stripe_payment_intent_id, {
-          amount: amountCents,
+      const paymentIntent = await withStripeCircuit(() =>
+        stripe.paymentIntents.create({
+          amount: Math.round(Number(orderRow.total) * 100),
+          currency: org.currency.toLowerCase(),
           application_fee_amount: platformFee,
-        });
-      }
+          transfer_data: { destination: org.stripe_account_id! },
+          metadata: {
+            order_id: orderRow.id,
+            location_id: orderRow.location_id,
+          },
+          automatic_payment_methods: { enabled: true },
+        })
+      );
 
-      if (existing.client_secret) {
-        return apiSuccess({
-          clientSecret: existing.client_secret,
-          stripeAccountId: org.stripe_account_id,
-        });
-      }
+      await admin
+        .from("orders")
+        .update({
+          stripe_payment_intent_id: paymentIntent.id,
+          payment_status: "processing",
+        })
+        .eq("id", orderRow.id);
+
+      return apiSuccess({
+        clientSecret: paymentIntent.client_secret,
+        stripeAccountId: org.stripe_account_id,
+      });
+    } catch (error) {
+      const circuit = handleStripeCircuitError(error);
+      if (circuit) return circuit;
+      throw error;
     }
-
-    const platformFee = calcPlatformFee(Number(orderRow.total), {
-      feePercent: org.platform_fee_percent,
-      feeFixed: org.platform_fee_fixed,
-    });
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(orderRow.total) * 100),
-      currency: org.currency.toLowerCase(),
-      application_fee_amount: platformFee,
-      transfer_data: { destination: org.stripe_account_id },
-      metadata: {
-        order_id: orderRow.id,
-        location_id: orderRow.location_id,
-      },
-      automatic_payment_methods: { enabled: true },
-    });
-
-    await admin
-      .from("orders")
-      .update({
-        stripe_payment_intent_id: paymentIntent.id,
-        payment_status: "processing",
-      })
-      .eq("id", orderRow.id);
-
-    return apiSuccess({
-      clientSecret: paymentIntent.client_secret,
-      stripeAccountId: org.stripe_account_id,
-    });
   }
 );

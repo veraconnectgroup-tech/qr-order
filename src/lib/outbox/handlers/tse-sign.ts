@@ -2,6 +2,7 @@ import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { signOrderTransactionById } from "@/lib/fiscal/sign-transaction";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
+import { TseSigningDeferredError } from "@/lib/resilience/circuit-breaker";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function handleFiscalTseSign(
@@ -17,9 +18,20 @@ export async function handleFiscalTseSign(
       ? payload.guestEmail.trim()
       : null;
 
-  await signOrderTransactionById(orderId);
-
   const admin = createAdminClient();
+
+  try {
+    await signOrderTransactionById(orderId);
+  } catch (error) {
+    if (error instanceof TseSigningDeferredError) {
+      logger.warn("Outbox fiscal.tse_sign deferred — fiskaly circuit open", {
+        orderId,
+      });
+      throw error;
+    }
+    throw error;
+  }
+
   const { data: order } = await admin
     .from("orders")
     .select("tse_signature")

@@ -15,6 +15,10 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import {
+  handleStripeCircuitError,
+  withStripeCircuit,
+} from "@/lib/stripe/with-stripe-circuit";
 
 const schema = z.object({
   sessionToken: zSessionToken(),
@@ -161,8 +165,8 @@ export const POST = withErrorHandler(
     try {
       if (orderRow.stripe_payment_intent_id) {
         const stripe = getStripe();
-        const existing = await stripe.paymentIntents.retrieve(
-          orderRow.stripe_payment_intent_id
+        const existing = await withStripeCircuit(() =>
+          stripe.paymentIntents.retrieve(orderRow.stripe_payment_intent_id!)
         );
         if (existing.client_secret) {
           const { data: location } = await admin
@@ -218,15 +222,17 @@ export const POST = withErrorHandler(
         feeFixed: org.platform_fee_fixed,
       });
 
-      const intent = await stripe.paymentIntents.create(
-        {
-          amount: amountCents,
-          currency: (org.currency ?? "eur").toLowerCase(),
-          automatic_payment_methods: { enabled: true },
-          application_fee_amount: applicationFee,
-          metadata: { order_id: orderId },
-        },
-        { stripeAccount: org.stripe_account_id }
+      const intent = await withStripeCircuit(() =>
+        stripe.paymentIntents.create(
+          {
+            amount: amountCents,
+            currency: (org.currency ?? "eur").toLowerCase(),
+            automatic_payment_methods: { enabled: true },
+            application_fee_amount: applicationFee,
+            metadata: { order_id: orderId },
+          },
+          { stripeAccount: org.stripe_account_id! }
+        )
       );
 
       if (!intent.client_secret) {
@@ -248,6 +254,8 @@ export const POST = withErrorHandler(
       });
     } catch (stripeError) {
       await revertPaymentLock();
+      const circuit = handleStripeCircuitError(stripeError);
+      if (circuit) return circuit;
       throw stripeError;
     }
   }

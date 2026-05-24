@@ -28,7 +28,7 @@ export const AI_CONFIG = {
   fallbackMessage:
     "Entschuldigung, bitte versuchen Sie es erneut.",
   circuitBreakerMessage:
-    "AI Concierge ist momentan nicht verfügbar.",
+    "KI-Assistent ist gerade nicht verfügbar. Sie können normal bestellen.",
   /** Menu cache TTL in Redis */
   menuCacheTtlSeconds: 300,
   menuCacheKeyPrefix: "ai:menu:",
