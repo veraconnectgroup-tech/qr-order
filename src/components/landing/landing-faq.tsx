@@ -55,7 +55,7 @@ export function LandingFaq() {
   return (
     <section
       id="faq"
-      className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20"
+      className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 text-white md:py-20"
     >
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-2xl text-center">
@@ -75,7 +75,7 @@ export function LandingFaq() {
           {faqs.map((faq) => (
             <details
               key={faq.q}
-              className="group border-b border-zinc-800 py-4"
+              className="group border-b border-[#1e1e2e] py-4"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
                 <span className="text-left text-[15px] font-medium text-zinc-100">

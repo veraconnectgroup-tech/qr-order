@@ -215,7 +215,7 @@ export function LandingEnterprise({ fullPage = false }: LandingEnterpriseProps) 
               <Button
                 size="lg"
                 asChild
-                className="h-11 rounded-full bg-zinc-950 px-7 text-sm font-medium text-white hover:bg-zinc-800"
+                className="h-11 rounded-full bg-[#08080c] px-7 text-sm font-medium text-white hover:bg-zinc-800"
               >
                 <a href="mailto:hello@qrorder.app?subject=Enterprise%20inquiry">
                   Contact sales

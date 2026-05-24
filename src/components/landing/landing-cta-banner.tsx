@@ -6,19 +6,19 @@ import { Button } from "@/components/ui/button";
 
 export function LandingCtaBanner() {
   return (
-    <section className="landing-cta-banner relative w-full overflow-hidden border-y border-zinc-800 py-16 text-center sm:py-20">
+    <section className="landing-cta-banner relative w-full overflow-hidden border-y border-[#1e1e2e] py-16 text-center sm:py-20">
       <div className="landing-cta-banner-grid pointer-events-none absolute inset-0" aria-hidden />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
         {[0, 1, 2].map((ring) => (
           <div
             key={ring}
-            className="landing-cta-ripple absolute size-64 rounded-full border border-orange-500/25"
+            className="landing-cta-ripple absolute size-64 rounded-full border border-indigo-500/20"
             style={{ animationDelay: `${ring * 1.2}s` }}
           />
         ))}
       </div>
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-2/3 bg-[radial-gradient(ellipse_70%_55%_at_50%_0%,rgba(234,88,12,0.18),transparent_70%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-2/3 bg-[radial-gradient(ellipse_70%_55%_at_50%_0%,rgba(99,102,241,0.12),transparent_70%)]"
         aria-hidden
       />
 
@@ -48,7 +48,7 @@ export function LandingCtaBanner() {
             size="lg"
             variant="outline"
             asChild
-            className="h-12 min-w-[200px] rounded-full border-zinc-700 bg-transparent px-8 text-[15px] font-medium text-zinc-200 hover:bg-zinc-900 hover:text-white"
+            className="h-12 min-w-[200px] rounded-full border-[#2a2a3e] bg-transparent px-8 text-[15px] font-medium text-zinc-200 hover:bg-[#12121a] hover:text-white"
           >
             <Link href="/skyline-lounge/demo-table-8">Live-Demo ansehen</Link>
           </Button>

@@ -64,15 +64,14 @@ export function LandingNav() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200",
           scrolled
-            ? "landing-nav-gradient-border border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md"
+            ? "landing-nav-gradient-border border-[#1e1e2e]/80 bg-[#08080c]/90 backdrop-blur-xl"
             : "border-transparent bg-transparent"
         )}
       >
         <LandingContainer wide className="flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-[16px] font-bold tracking-[-0.03em] text-white">VERA</span>
-            <span className="ml-1.5 rounded-[4px] bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
-              Hospitality
+            <span className="text-[17px] font-bold tracking-[-0.04em] text-white">
+              vera
             </span>
           </Link>
 
@@ -90,7 +89,7 @@ export function LandingNav() {
               >
                 {link.label}
                 {link.sectionId && activeSection === link.sectionId && (
-                  <span className="absolute -bottom-[1.15rem] left-0 right-0 h-0.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                  <span className="absolute -bottom-[1.15rem] left-0 right-0 h-0.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
                 )}
               </Link>
             ))}
@@ -107,16 +106,16 @@ export function LandingNav() {
               variant="ghost"
               size="sm"
               asChild
-              className="hidden h-8 px-3 text-[13px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white sm:inline-flex"
+              className="hidden h-8 px-3 text-[13px] font-medium text-zinc-400 hover:bg-[#12121a] hover:text-white sm:inline-flex"
             >
-              <Link href="/login">Log in</Link>
+              <Link href="/login">Anmelden</Link>
             </Button>
             <Button
               size="sm"
               asChild
               className="landing-btn-accent hidden h-8 rounded-full px-4 text-[13px] font-semibold sm:inline-flex"
             >
-              <Link href="/signup">Request access</Link>
+              <Link href="/signup">Zugang anfordern</Link>
             </Button>
             <button
               type="button"
@@ -131,15 +130,15 @@ export function LandingNav() {
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-40 bg-zinc-950 lg:hidden">
-          <div className="flex h-14 items-center justify-between border-b border-zinc-800 px-6">
+        <div className="fixed inset-0 z-40 bg-[#08080c] lg:hidden">
+          <div className="flex h-14 items-center justify-between border-b border-[#1e1e2e] px-6">
             <span className="text-[14px] font-semibold text-white">Menu</span>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close">
               <X className="size-5 text-white" />
             </button>
           </div>
           <nav className="flex flex-col gap-1 px-6 py-6">
-            {[...navLinks, { href: "/login", label: "Log in", sectionId: null }].map(
+            {[...navLinks, { href: "/login", label: "Anmelden", sectionId: null }].map(
               (link) => (
                 <Link
                   key={link.href}
@@ -155,7 +154,7 @@ export function LandingNav() {
           <div className="px-6">
             <Button asChild className="landing-btn-accent h-11 w-full rounded-full">
               <Link href="/signup" onClick={() => setOpen(false)}>
-                Request access
+                Zugang anfordern
               </Link>
             </Button>
           </div>

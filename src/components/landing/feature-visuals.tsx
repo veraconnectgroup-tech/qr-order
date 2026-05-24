@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function DashboardOrderVisual() {
   return (
-    <div className="rounded-xl border border-zinc-800 border-l-2 border-l-orange-500 bg-zinc-950 p-5">
+    <div className="rounded-xl border border-[#1e1e2e] border-l-2 border-l-indigo-500 bg-[#08080c] p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-mono text-lg font-bold text-zinc-50">#047</p>
@@ -18,7 +18,7 @@ export function DashboardOrderVisual() {
           Ready
         </span>
       </div>
-      <ul className="mt-4 space-y-2 border-t border-zinc-800 pt-4 text-sm text-zinc-300">
+      <ul className="mt-4 space-y-2 border-t border-[#1e1e2e] pt-4 text-sm text-zinc-300">
         <li>2× Aperol Spritz</li>
         <li>1× Hugo Spritz</li>
         <li>1× Espresso Martini</li>
@@ -33,7 +33,7 @@ const PAYMENT_METHODS = [
   { name: "Apple Pay", className: "text-zinc-100 text-xs" },
   { name: "Google Pay", className: "text-zinc-100 text-xs" },
   { name: "Visa", className: "text-blue-400 italic" },
-  { name: "MC", className: "text-orange-400" },
+  { name: "MC", className: "text-indigo-400" },
 ];
 
 export function PaymentsVisual() {
@@ -45,7 +45,7 @@ export function PaymentsVisual() {
         {PAYMENT_METHODS.map((m) => (
           <span
             key={m.name}
-            className={`rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm font-semibold ${m.className}`}
+            className={`rounded-lg border border-[#1e1e2e] bg-[#08080c] px-3 py-2 text-sm font-semibold ${m.className}`}
           >
             {m.name}
           </span>
@@ -65,7 +65,7 @@ export function PaymentsVisual() {
           {amounts.map((amt) => (
             <span
               key={amt}
-              className="font-mono text-3xl font-bold text-orange-500"
+              className="font-mono text-3xl font-bold text-indigo-400"
             >
               {amt}
             </span>
@@ -113,7 +113,7 @@ export function KitchenVisual() {
       {KITCHEN_CARDS.map((card) => (
         <div
           key={card.table}
-          className="rounded-lg border border-zinc-800 bg-zinc-950 p-4"
+          className="rounded-lg border border-[#1e1e2e] bg-[#08080c] p-4"
         >
           <div className="flex items-center justify-between">
             <span className="text-base font-bold text-zinc-50">{card.table}</span>
@@ -157,18 +157,18 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative mx-auto h-[560px] w-[280px] rounded-[40px] border-2 border-zinc-600 bg-zinc-950 p-2 shadow-xl shadow-black/40",
+        "relative mx-auto h-[560px] w-[280px] rounded-[40px] border-2 border-zinc-600 bg-[#08080c] p-2 shadow-xl shadow-black/40",
         className
       )}
     >
-      <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-zinc-950" />
+      <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-[#08080c]" />
       <div className="flex h-full flex-col overflow-hidden rounded-[32px] bg-[#09090b] px-3 pb-3 pt-8">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-zinc-50">Skyline Lounge</p>
             <p className="text-[10px] text-zinc-500">Table 8</p>
           </div>
-          <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-medium text-orange-500">
+          <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-400">
             Live
           </span>
         </div>
@@ -179,7 +179,7 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
               key={cat}
               className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${
                 i === 0
-                  ? "bg-orange-500 text-white"
+                  ? "bg-indigo-500 text-white"
                   : "bg-zinc-800 text-zinc-400"
               }`}
             >
@@ -196,7 +196,7 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
           {PHONE_PRODUCTS.map((p) => (
             <div
               key={p.name}
-              className="flex flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
+              className="flex flex-col overflow-hidden rounded-lg border border-[#1e1e2e] bg-zinc-900"
             >
               <div
                 className={`flex h-16 items-center justify-center bg-gradient-to-br ${p.gradient}`}
@@ -210,10 +210,10 @@ export function PhoneMenuVisual({ className }: { className?: string }) {
                   {p.name}
                 </p>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-orange-500">
+                  <span className="text-[10px] font-semibold text-indigo-400">
                     {p.price}
                   </span>
-                  <span className="flex size-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">
                     +
                   </span>
                 </div>
@@ -247,7 +247,7 @@ export function FeatureCheck({
         className={cn(
           "mt-0.5 size-4 shrink-0",
           accent
-            ? "text-[var(--lp-accent,#ea580c)]"
+            ? "text-[var(--lp-accent,#818cf8)]"
             : light
               ? "text-zinc-500"
               : "text-zinc-500"

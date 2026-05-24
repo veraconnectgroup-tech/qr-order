@@ -25,7 +25,7 @@ const solutions = [
 
 export function LandingPhilosophy() {
   return (
-    <section className="border-b border-zinc-800 bg-zinc-950 py-16 md:py-20">
+    <section className="border-b border-[#1e1e2e] bg-[#08080c] py-20 md:py-28">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingEyebrow inverted>Das Problem</LandingEyebrow>
@@ -36,7 +36,7 @@ export function LandingPhilosophy() {
 
         <div className="relative mt-14 grid gap-8 lg:grid-cols-[1fr_auto_1fr] lg:items-start lg:gap-6">
           <StaggerInView>
-            <StaggerItem className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 sm:p-10">
+            <StaggerItem className="rounded-2xl border border-[#1e1e2e] bg-zinc-900/40 p-8 sm:p-10">
               <p className="font-display text-xl font-semibold tracking-[-0.02em] text-zinc-300 sm:text-2xl">
                 Der Status Quo kostet Sie Geld.
               </p>
@@ -47,7 +47,7 @@ export function LandingPhilosophy() {
                     className="flex items-start gap-3 text-[15px] leading-relaxed text-zinc-500"
                   >
                     <span
-                      className="mt-2 size-1.5 shrink-0 rounded-full bg-red-500/70"
+                      className="mt-2 size-1.5 shrink-0 rounded-full bg-[#5c5c72]"
                       aria-hidden
                     />
                     {item}
@@ -61,13 +61,13 @@ export function LandingPhilosophy() {
             className="flex items-center justify-center py-2 lg:py-16"
             delay={0.1}
           >
-            <div className="flex size-12 items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 shadow-[0_0_24px_rgba(234,88,12,0.2)]">
-              <ArrowDown className="size-5 text-orange-400 lg:rotate-[-90deg]" />
+            <div className="flex size-12 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10 shadow-[0_0_24px_rgba(99,102,241,0.2)]">
+              <ArrowDown className="size-5 text-indigo-400 lg:rotate-[-90deg]" />
             </div>
           </AnimateInView>
 
           <StaggerInView>
-            <StaggerItem className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/[0.08] to-zinc-900/60 p-8 sm:p-10">
+            <StaggerItem className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.06] to-[#0f0f14] p-8 sm:p-10">
               <p className="font-display text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">
                 Eine Plattform. Null Reibung.
               </p>

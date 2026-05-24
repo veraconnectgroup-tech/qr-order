@@ -17,28 +17,28 @@ const display = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "QR Order — Ordering & payments for hospitality",
-    template: "%s — QR Order",
+    default: "Vera — Die Plattform für Gastronomie",
+    template: "%s — Vera",
   },
   description:
-    "QR-based guest ordering, live kitchen operations, and Stripe payments for restaurants, bars, and hotel F&B. KassenSichV compliant. Made in Germany.",
+    "Bestellung, Küche, Zahlung und Analyse für Gastronomie in Deutschland. KassenSichV-konform. 0 € / Monat.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://qr-order-iota.vercel.app"
   ),
   manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "QR Order — Ordering & payments for hospitality",
+    title: "Vera — Die Plattform für Gastronomie",
     description:
-      "Scan. Order. Pay. Enterprise ordering infrastructure for hospitality venues.",
-    siteName: "QR Order",
-    locale: "en_US",
+      "Bestellung. Küche. Zahlung. Die All-in-One Plattform für Gastronomie.",
+    siteName: "Vera",
+    locale: "de_DE",
     type: "website",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "QR Order",
-    description: "Enterprise ordering & payments for hospitality",
+    title: "Vera",
+    description: "Die All-in-One Plattform für Gastronomie in Deutschland",
     images: ["/opengraph-image"],
   },
   robots: { index: true, follow: true },
@@ -64,7 +64,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="de"
       className={`${inter.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">

@@ -45,7 +45,7 @@ export function CountUpStat({
 
   return (
     <div ref={ref} className="text-center">
-      <p className="text-4xl font-bold text-orange-500">
+      <p className="text-4xl font-bold text-indigo-400">
         {prefix}
         {formatted}
         {suffix}
@@ -76,7 +76,7 @@ export function StatText({
         initial={{ opacity: 0, y: 10 }}
         animate={shown ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="text-4xl font-bold text-orange-500"
+        className="text-4xl font-bold text-indigo-400"
       >
         {display}
       </motion.p>

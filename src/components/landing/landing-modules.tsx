@@ -154,7 +154,7 @@ export function LandingModules() {
       : modules.filter((m) => m.category === category);
 
   return (
-    <section id="modules" className="scroll-mt-24 bg-zinc-950 py-16 text-white md:py-20">
+    <section id="modules" className="scroll-mt-24 bg-[#08080c] py-20 text-white md:py-28">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingHeadline inverted>
@@ -189,7 +189,7 @@ export function LandingModules() {
             <StaggerItem
               key={title}
               className={cn(
-                "landing-glow-border landing-module-card group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 transition duration-200 hover:border-orange-500/40 hover:bg-gradient-to-br hover:from-orange-500/[0.06] hover:to-transparent hover:shadow-[0_0_40px_rgba(234,88,12,0.12)]",
+                "landing-glow-border landing-module-card group overflow-hidden rounded-xl border border-[#1e1e2e] bg-zinc-900/50 transition duration-200 hover:border-indigo-500/30 hover:bg-gradient-to-br hover:from-indigo-500/[0.05] hover:to-transparent hover:shadow-[0_0_40px_rgba(99,102,241,0.1)]",
                 featured && "sm:col-span-2"
               )}
             >
@@ -197,9 +197,9 @@ export function LandingModules() {
                 <Preview />
               </div>
               <div className="p-5 pt-4">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-zinc-800 transition group-hover:bg-orange-500/15">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-zinc-800 transition group-hover:bg-indigo-500/15">
                   <Icon
-                    className="size-4 text-[var(--lp-accent)] transition group-hover:text-orange-400"
+                    className="size-4 text-[var(--lp-accent)] transition group-hover:text-indigo-400"
                     strokeWidth={1.75}
                   />
                 </div>

@@ -75,7 +75,7 @@ export function HeroGlow({ className }: { className?: string }) {
     <motion.div
       aria-hidden
       className={cn(
-        "pointer-events-none absolute rounded-full bg-orange-500/[0.07] blur-3xl",
+        "pointer-events-none absolute rounded-full bg-indigo-500/[0.07] blur-3xl",
         className
       )}
       animate={

@@ -33,7 +33,7 @@ const LandingProductTabs = dynamic(
   {
     loading: () => (
       <div
-        className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 md:py-20"
+        className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 md:py-20"
         aria-hidden
       >
         <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-zinc-900/40" />
@@ -95,7 +95,7 @@ const plans: Array<{
 
 export function LandingPage() {
   return (
-    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden bg-zinc-950 antialiased">
+    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden bg-[#08080c] antialiased">
       <LandingNav />
 
       <main className="relative z-[2]">
@@ -109,7 +109,7 @@ export function LandingPage() {
 
         <section
           id="pricing"
-          className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20"
+          className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 text-white md:py-20"
         >
           <LandingContainer wide>
             <AnimateInView className="max-w-[480px]">
@@ -131,11 +131,11 @@ export function LandingPage() {
                       "landing-glow-border relative flex h-full flex-col rounded-xl border p-8 sm:p-10",
                       plan.primary
                         ? "landing-pricing-border landing-pricing-glass ring-1 ring-white/10"
-                        : "border-zinc-800 bg-zinc-900/40"
+                        : "border-[#1e1e2e] bg-zinc-900/40"
                     )}
                   >
                     {plan.primary && (
-                      <span className="absolute -top-3 left-8 rounded-full bg-orange-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(234,88,12,0.4)]">
+                      <span className="absolute -top-3 left-8 rounded-full bg-indigo-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
                         Beliebteste Wahl
                       </span>
                     )}
@@ -158,7 +158,7 @@ export function LandingPage() {
                     <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
                       {plan.description}
                     </p>
-                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-zinc-800 pt-8">
+                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-[#1e1e2e] pt-8">
                       {plan.features.map((feat) => (
                         <FeatureCheck key={feat} accent>
                           {feat}
@@ -176,7 +176,7 @@ export function LandingPage() {
                         "mt-8 h-11 w-full rounded-full text-sm font-semibold",
                         plan.primary
                           ? "landing-btn-accent"
-                          : "border border-zinc-700 bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-white"
+                          : "border border-[#2a2a3e] bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-white"
                       )}
                       variant={plan.primary ? "default" : "outline"}
                     >

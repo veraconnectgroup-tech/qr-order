@@ -24,7 +24,7 @@ export function HeroWordRotation() {
       <span>Entwickelt für</span>
       <span className="relative inline-flex h-[1.4em] min-w-[9ch] overflow-hidden">
         {reduce ? (
-          <span className="font-medium text-orange-400">Gastronomie</span>
+          <span className="font-medium text-indigo-400">Gastronomie</span>
         ) : (
           <AnimatePresence mode="wait">
             <motion.span
@@ -33,7 +33,7 @@ export function HeroWordRotation() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -16, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute left-0 font-medium text-orange-400"
+              className="absolute left-0 font-medium text-indigo-400"
             >
               {word}
             </motion.span>

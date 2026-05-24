@@ -13,21 +13,21 @@ const complianceProof = [
   {
     title: "KassenSichV",
     badge: "✓",
-    badgeClass: "bg-green-500 text-white",
+    badgeClass: "bg-indigo-500 text-white",
     description:
       "TSE-gestützte Transaktionssignierung für die deutsche Fiskalpflicht — Belege und Prüfspur inklusive.",
   },
   {
     title: "DSGVO",
     badge: "EU",
-    badgeClass: "bg-blue-600 text-white",
+    badgeClass: "bg-indigo-500/80 text-white",
     description:
       "Minimale Gästepersonendaten by Design. EU-Hosting, Einwilligungsflows und datenschutzkonforme Sessions.",
   },
   {
     title: "DATEV-Export",
     badge: "↗",
-    badgeClass: "bg-emerald-600 text-white",
+    badgeClass: "bg-indigo-500/60 text-white",
     description:
       "Buchhaltungs-fertige CSV- und DATEV-kompatible Exporte — Kartenzahlungen ohne manuelle Nacharbeit.",
   },
@@ -35,7 +35,7 @@ const complianceProof = [
 
 export function LandingTestimonials() {
   return (
-    <section className="border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
+    <section className="border-t border-[#1e1e2e] bg-[#08080c] py-16 text-white md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[560px] text-center">
           <LandingHeadline inverted>Compliance ab Werk</LandingHeadline>
@@ -50,7 +50,7 @@ export function LandingTestimonials() {
           {complianceProof.map((item) => (
             <StaggerItem
               key={item.title}
-              className="landing-glow-border rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"
+              className="landing-glow-border rounded-2xl border border-[#1e1e2e] bg-zinc-900/50 p-6"
             >
               <div className="flex items-center gap-3">
                 <span

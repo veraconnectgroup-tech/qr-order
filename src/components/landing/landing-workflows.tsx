@@ -28,7 +28,7 @@ const steps = [
 
 export function LandingWorkflows() {
   return (
-    <section className="border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
+    <section className="border-t border-[#1e1e2e] bg-[#08080c] py-20 text-white md:py-28">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[560px] text-center">
           <LandingHeadline inverted>In drei Schritten live</LandingHeadline>
@@ -50,7 +50,7 @@ export function LandingWorkflows() {
                 "relative flex flex-1 flex-col items-center px-4 text-center"
               )}
             >
-              <div className="z-10 flex size-10 items-center justify-center rounded-full bg-orange-500 text-lg font-bold text-white">
+              <div className="z-10 flex size-10 items-center justify-center rounded-full bg-indigo-500 text-lg font-bold text-white">
                 {s.num}
               </div>
               <h3 className="mt-4 text-[16px] font-semibold text-white">

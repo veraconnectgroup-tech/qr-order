@@ -136,7 +136,7 @@ export function LandingProductTabs() {
   }, [activeIndex, selectTab]);
 
   return (
-    <section id="product" className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
+    <section id="product" className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-20 text-white md:py-28">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingSectionLabel>Produkttour</LandingSectionLabel>
@@ -174,8 +174,8 @@ export function LandingProductTabs() {
                 className={cn(
                   "rounded-full px-4 py-2 text-[13px] font-medium transition",
                   active === view.id
-                    ? "bg-orange-500 text-white shadow-[0_0_20px_rgba(234,88,12,0.35)]"
-                    : "border border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                    ? "bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.35)]"
+                    : "border border-[#1e1e2e] text-zinc-400 hover:border-[#2a2a3e] hover:text-zinc-200"
                 )}
               >
                 {view.label}
@@ -186,7 +186,7 @@ export function LandingProductTabs() {
             {!paused && (
               <div
                 key={`${active}-${progressKey}`}
-                className="landing-tab-progress h-full rounded-full bg-orange-500"
+                className="landing-tab-progress h-full rounded-full bg-indigo-500"
                 style={{ animationDuration: `${TAB_INTERVAL_MS}ms` }}
               />
             )}
@@ -207,11 +207,11 @@ export function LandingProductTabs() {
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.98, x: -24 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="relative overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-900/80 shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm"
+              className="relative overflow-hidden rounded-2xl border border-[#1e1e2e]/90 bg-zinc-900/80 shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm"
             >
               <div className="grid lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)]">
-                <div className="flex flex-col justify-center border-b border-zinc-800 p-8 sm:p-10 lg:border-b-0 lg:border-r">
-                  <p className="text-[12px] font-medium uppercase tracking-wider text-orange-500">
+                <div className="flex flex-col justify-center border-b border-[#1e1e2e] p-8 sm:p-10 lg:border-b-0 lg:border-r">
+                  <p className="text-[12px] font-medium uppercase tracking-wider text-indigo-400">
                     {current.label}
                   </p>
                   <h3 className="mt-2 font-display text-2xl font-semibold tracking-[-0.02em]">
@@ -228,7 +228,7 @@ export function LandingProductTabs() {
                 <div className="landing-product-visual flex min-h-[380px] items-center justify-center bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-8 sm:min-h-[460px] sm:p-10">
                   <div className="relative w-full max-w-[420px]">
                     <div
-                      className="pointer-events-none absolute -inset-8 rounded-full bg-orange-500/10 blur-3xl"
+                      className="pointer-events-none absolute -inset-8 rounded-full bg-indigo-500/10 blur-3xl"
                       aria-hidden
                     />
                     <div className="relative scale-[1.05] sm:scale-110">

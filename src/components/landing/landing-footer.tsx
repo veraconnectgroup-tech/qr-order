@@ -83,15 +83,12 @@ const builtWith = [
 
 export function LandingFooter() {
   return (
-    <footer className="relative z-[2] border-t border-zinc-800/60 bg-black py-16 text-zinc-400 sm:py-20">
+    <footer className="relative z-[2] border-t border-[#1e1e2e]/60 bg-black py-16 text-zinc-400 sm:py-20">
       <LandingContainer wide>
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Link href="/" className="inline-flex items-center gap-2">
-              <span className="text-[16px] font-bold tracking-[-0.03em] text-white">VERA</span>
-              <span className="rounded-[4px] bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
-                Hospitality
-              </span>
+              <span className="text-[16px] font-bold tracking-[-0.04em] text-white">vera</span>
             </Link>
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
               Die All-in-One Plattform für Gastronomie — Bestellung, Küche,
@@ -133,7 +130,7 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-6 flex flex-col gap-2 border-t border-zinc-800 pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border-t border-[#1e1e2e] pt-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px]">© 2026 Vera · Hamburg, Deutschland</p>
           <p className="text-[12px] text-zinc-500">
             Payments powered by Stripe Connect
