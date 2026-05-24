@@ -17,12 +17,20 @@ export default async function SetupPage() {
   }
 
   const admin = createAdminClient();
-  const [{ data: org }, { data: location }, { data: categories }, { data: products }, { data: tables }] =
-    await Promise.all([
+  const [
+    { data: org },
+    { data: location },
+    { data: categories },
+    { data: products },
+    { data: tables },
+    { count: productCount },
+    { count: categoryCount },
+    { count: tableCount },
+  ] = await Promise.all([
       admin
         .from("organizations")
         .select(
-          "name, slug, logo_url, currency, stripe_onboarded, stripe_account_id, onboarding_completed"
+          "name, slug, logo_url, currency, stripe_onboarded, stripe_account_id, onboarding_completed, fiskaly_tss_id, steuernummer, ust_id_nr"
         )
         .eq("id", staff.org_id)
         .single(),
@@ -50,6 +58,21 @@ export default async function SetupPage() {
         .eq("location_id", locationId)
         .is("deleted_at", null)
         .order("created_at", { ascending: true }),
+      admin
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .is("deleted_at", null),
+      admin
+        .from("categories")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .is("deleted_at", null),
+      admin
+        .from("tables")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .is("deleted_at", null),
     ]);
 
   const orgRow = org as {
@@ -60,6 +83,9 @@ export default async function SetupPage() {
     stripe_onboarded: boolean;
     stripe_account_id: string | null;
     onboarding_completed: boolean;
+    fiskaly_tss_id: string | null;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
   } | null;
 
   if (orgRow?.onboarding_completed) {
@@ -102,6 +128,12 @@ export default async function SetupPage() {
       stripeOnboarded={orgRow?.stripe_onboarded ?? false}
       stripeAccountId={orgRow?.stripe_account_id ?? null}
       stripePlatformReady={isStripePlatformConfigured()}
+      tssId={orgRow?.fiskaly_tss_id ?? null}
+      steuernummer={orgRow?.steuernummer ?? null}
+      ustIdNr={orgRow?.ust_id_nr ?? null}
+      productCount={productCount ?? 0}
+      categoryCount={categoryCount ?? 0}
+      tableCount={tableCount ?? 0}
       appUrl={getServerAppUrl()}
     />
   );

@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import QRCode from "qrcode";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import {
+  OnboardingFiscalStep,
+  OnboardingGoLiveStep,
+} from "@/components/dashboard/onboarding-fiscal-steps";
 import { toast } from "sonner";
 import { DashboardStripeConnect } from "@/components/dashboard/dashboard-stripe-connect";
 import { Button } from "@/components/ui/button";
@@ -11,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { guestTableUrl } from "@/lib/app-url";
 import {
   completeOnboarding,
+  saveOnboardingFiscal,
   saveOnboardingProducts,
   saveOnboardingTables,
   saveOnboardingVenue,
@@ -28,6 +33,7 @@ const STEPS = [
   "Menu setup",
   "Tables & QR",
   "Payment",
+  "Steuerliche Angaben",
   "Go live!",
 ] as const;
 
@@ -46,6 +52,12 @@ export function OnboardingWizard({
   stripeOnboarded,
   stripeAccountId,
   stripePlatformReady,
+  tssId,
+  steuernummer,
+  ustIdNr,
+  productCount,
+  categoryCount,
+  tableCount,
   appUrl,
 }: {
   orgName: string;
@@ -62,6 +74,12 @@ export function OnboardingWizard({
   stripeOnboarded: boolean;
   stripeAccountId: string | null;
   stripePlatformReady: boolean;
+  tssId: string | null;
+  steuernummer: string | null;
+  ustIdNr: string | null;
+  productCount: number;
+  categoryCount: number;
+  tableCount: number;
   appUrl: string;
 }) {
   const [step, setStep] = useState(0);
@@ -93,6 +111,10 @@ export function OnboardingWizard({
       ? initialTables.map((t) => t.name)
       : ["Table 1", "Table 2", "Table 3"]
   );
+  const [fiscal, setFiscal] = useState({
+    steuernummer: steuernummer ?? "",
+    ustIdNr: ustIdNr ?? "",
+  });
   const [previewTable, setPreviewTable] = useState<TableRow | null>(
     initialTables[0] ?? null
   );
@@ -133,6 +155,18 @@ export function OnboardingWizard({
         (p) => p.name.trim() && p.price.trim() && p.categoryId
       ),
     [products]
+  );
+
+  const summaryCounts = useMemo(
+    () => ({
+      products: Math.max(productCount, filledProducts.length),
+      categories: Math.max(
+        categoryCount,
+        new Set(filledProducts.map((p) => p.categoryId)).size
+      ),
+      tables: Math.max(tableCount, tableNames.filter(Boolean).length),
+    }),
+    [productCount, categoryCount, tableCount, filledProducts, tableNames]
   );
 
   function updateProduct(index: number, patch: Partial<ProductDraft>) {
@@ -183,6 +217,21 @@ export function OnboardingWizard({
           setPreviewTable(result.tables?.[0] ?? null);
         }
         setStep(3);
+      });
+      return;
+    }
+
+    if (step === 4) {
+      startTransition(async () => {
+        const result = await saveOnboardingFiscal(
+          fiscal.steuernummer,
+          fiscal.ustIdNr
+        );
+        if ("error" in result && result.error) {
+          toast.error(result.error);
+          return;
+        }
+        setStep(5);
       });
       return;
     }
@@ -434,25 +483,26 @@ export function OnboardingWizard({
         )}
 
         {step === 4 && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6 text-center">
-            <CheckCircle2 className="mx-auto size-12 text-emerald-400" />
-            <h2 className="mt-4 text-xl font-semibold text-zinc-50">
-              You&apos;re ready to go live!
-            </h2>
-            <p className="mt-2 text-sm text-zinc-400">
-              Guests can scan QR codes, browse your menu, and place orders.
-            </p>
-            <ul className="mt-4 space-y-1 text-left text-sm text-zinc-300">
-              <li>• {filledProducts.length || initialProducts.length} menu items</li>
-              <li>• {tableNames.filter(Boolean).length} tables with QR codes</li>
-              <li>
-                •{" "}
-                {stripeOnboarded
-                  ? "Stripe connected"
-                  : "Pay at bar enabled"}
-              </li>
-            </ul>
-          </div>
+          <OnboardingFiscalStep
+            tssId={tssId}
+            steuernummer={fiscal.steuernummer}
+            ustIdNr={fiscal.ustIdNr}
+            onChange={(patch) => setFiscal((f) => ({ ...f, ...patch }))}
+          />
+        )}
+
+        {step === 5 && (
+          <OnboardingGoLiveStep
+            venueName={venue.orgName}
+            venueAddress={venue.address}
+            venueCity={venue.city}
+            productCount={summaryCounts.products}
+            categoryCount={summaryCounts.categories}
+            tableCount={summaryCounts.tables}
+            stripeOnboarded={stripeOnboarded}
+            tssId={tssId}
+            steuernummer={fiscal.steuernummer}
+          />
         )}
       </div>
 
@@ -468,7 +518,7 @@ export function OnboardingWizard({
           Back
         </Button>
         <div className="flex-1" />
-        {step < 4 && step !== 0 && (
+        {step < 5 && step !== 0 && (
           <Button
             type="button"
             variant="ghost"
@@ -479,7 +529,7 @@ export function OnboardingWizard({
             Skip
           </Button>
         )}
-        {step < 4 ? (
+        {step < 5 ? (
           <Button
             type="button"
             onClick={goNext}
@@ -494,9 +544,9 @@ export function OnboardingWizard({
             type="button"
             onClick={finish}
             disabled={pending}
-            className={cn("bg-orange-500 hover:bg-orange-600")}
+            className={cn("bg-emerald-600 hover:bg-emerald-700")}
           >
-            {pending ? "Launching…" : "Go live!"}
+            {pending ? "Wird gestartet…" : "Jetzt starten"}
           </Button>
         )}
       </div>

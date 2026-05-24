@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getStaffLocationId, requireStaff } from "@/lib/auth/session";
+import { logger } from "@/lib/logger";
+import { notifyNewOrgGoingLive } from "@/lib/platform/notify-new-org";
 import {
   zOptionalSanitizedText,
   zSanitizedText,
@@ -231,6 +233,29 @@ export async function skipOnboardingPayment() {
   return { success: true };
 }
 
+export async function saveOnboardingFiscal(
+  steuernummer: string,
+  ustIdNr: string
+) {
+  const ctx = await getOwnerContext();
+  if ("error" in ctx) return ctx;
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organizations")
+    .update({
+      steuernummer: steuernummer.trim() || null,
+      ust_id_nr: ustIdNr.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", ctx.staff.org_id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/setup");
+  return { success: true };
+}
+
 export async function completeOnboarding() {
   const ctx = await getOwnerContext();
   if ("error" in ctx) return ctx;
@@ -255,6 +280,13 @@ export async function completeOnboarding() {
 
   if (orgError) return { error: orgError.message };
   if (locError) return { error: locError.message };
+
+  void notifyNewOrgGoingLive(ctx.staff.org_id, ctx.locationId).catch((error) => {
+    logger.warn("Platform new-org notification failed", {
+      orgId: ctx.staff.org_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 
   revalidatePath("/", "layout");
   redirect("/dashboard/orders");
