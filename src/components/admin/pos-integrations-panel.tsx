@@ -72,6 +72,7 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [provider, setProvider] = useState<PosProvider>("deliverect");
   const [apiKey, setApiKey] = useState("");
+  const [channelLinkId, setChannelLinkId] = useState("");
   const [externalLocationId, setExternalLocationId] = useState("");
   const [pending, setPending] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -107,18 +108,29 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
   function openConnect() {
     setProvider("deliverect");
     setApiKey("");
+    setChannelLinkId("");
     setExternalLocationId("");
     setDialogOpen(true);
   }
 
   async function handleConnect() {
     if (!apiKey.trim()) return;
+    if (provider === "deliverect" && !channelLinkId.trim()) {
+      toast.error("Channel Link ID ist für Deliverect erforderlich.");
+      return;
+    }
+
     setPending(true);
+    const config: Record<string, unknown> = { api_key: apiKey.trim() };
+    if (provider === "deliverect") {
+      config.channel_link_id = channelLinkId.trim();
+    }
+
     const result = await connectPosIntegration(
       locationId,
       provider,
       externalLocationId.trim() || null,
-      { api_key: apiKey.trim() }
+      config
     );
     setPending(false);
 
@@ -288,6 +300,17 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
                 autoComplete="off"
               />
             </div>
+            {provider === "deliverect" && (
+              <div className="space-y-2">
+                <Label htmlFor="posChannelLinkId">Channel Link ID</Label>
+                <Input
+                  id="posChannelLinkId"
+                  value={channelLinkId}
+                  onChange={(e) => setChannelLinkId(e.target.value)}
+                  placeholder="Deliverect channelLinkId"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -299,7 +322,11 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
             </Button>
             <Button
               type="button"
-              disabled={pending || !apiKey.trim()}
+              disabled={
+                pending ||
+                !apiKey.trim() ||
+                (provider === "deliverect" && !channelLinkId.trim())
+              }
               onClick={handleConnect}
             >
               {pending ? "Wird verbunden…" : "Speichern"}

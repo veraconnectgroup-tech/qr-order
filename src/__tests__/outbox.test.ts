@@ -119,6 +119,7 @@ describe("getOutboxHandler", () => {
       "@/lib/outbox/handlers/registry"
     );
     expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
+    expect(getOutboxHandler("fulfill.push_pos")).toBeDefined();
     expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
     expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
     expect(getOutboxHandler("unknown.event")).toBeUndefined();
