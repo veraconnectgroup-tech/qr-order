@@ -11,6 +11,10 @@ import { OrderItemProductLine } from "@/components/dashboard/order-item-product-
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
 import { KitchenPrintButton } from "@/components/dashboard/kitchen-print-button";
 import { ReceiptPrintButton } from "@/components/dashboard/receipt-print-button";
+import {
+  DeliveryStatusBadge,
+  TseStatusBadge,
+} from "@/components/dashboard/delivery-status-badge";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
 
@@ -148,6 +152,35 @@ function OrderTimer({ createdAt }: { createdAt: string }) {
   );
 }
 
+function OrderChannelBadges({
+  order,
+  light,
+  fiscalTssEnabled = false,
+}: {
+  order: OrderWithDetails;
+  light: boolean;
+  fiscalTssEnabled?: boolean;
+}) {
+  const hasDeliveries = (order.order_channel_deliveries?.length ?? 0) > 0;
+  if (!hasDeliveries && !fiscalTssEnabled) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {hasDeliveries && (
+        <DeliveryStatusBadge
+          deliveries={order.order_channel_deliveries}
+          light={light}
+        />
+      )}
+      <TseStatusBadge
+        belegToken={order.beleg_token}
+        fiscalTssEnabled={fiscalTssEnabled}
+        light={light}
+      />
+    </div>
+  );
+}
+
 export function OrderCard({
   order,
   currency,
@@ -165,6 +198,7 @@ export function OrderCard({
   interactive = true,
   inPersonPaymentLocation = "bar",
   appearance = "default",
+  fiscalTssEnabled = false,
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -182,6 +216,7 @@ export function OrderCard({
   interactive?: boolean;
   inPersonPaymentLocation?: InPersonPaymentLocation;
   appearance?: "default" | "light";
+  fiscalTssEnabled?: boolean;
 }) {
   const light = appearance === "light";
   const columnId = getOrderColumnId(order.status);
@@ -246,6 +281,11 @@ export function OrderCard({
           <span className="ml-auto shrink-0 font-mono font-semibold tabular-nums text-orange-500">
             {formatPrice(Number(order.total), currency)}
           </span>
+          <OrderChannelBadges
+            order={order}
+            light={light}
+            fiscalTssEnabled={fiscalTssEnabled}
+          />
         </div>
         <span
           className={cn(
@@ -369,10 +409,15 @@ export function OrderCard({
         />
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-base font-semibold text-orange-500">
           {formatPrice(Number(order.total), currency)}
         </span>
+        <OrderChannelBadges
+          order={order}
+          light={light}
+          fiscalTssEnabled={fiscalTssEnabled}
+        />
       </div>
 
       <div className="mt-2">

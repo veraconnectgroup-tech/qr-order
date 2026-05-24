@@ -46,7 +46,7 @@ import {
 import type { OrderStatus, OrderWithDetails } from "@/types";
 
 const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name)), tip_staff:tip_staff_id(name), split_payments(*)";
+  "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name)), tip_staff:tip_staff_id(name), split_payments(*), order_channel_deliveries(*)";
 
 function startOfTodayIso() {
   const d = new Date();
@@ -113,6 +113,7 @@ function DraggableOrderCard({
   onRefund,
   staffRole,
   inPersonPaymentLocation,
+  fiscalTssEnabled,
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -127,6 +128,7 @@ function DraggableOrderCard({
   onRefund?: () => void;
   staffRole: string;
   inPersonPaymentLocation: "bar" | "counter" | "table";
+  fiscalTssEnabled: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: order.id,
@@ -152,6 +154,7 @@ function DraggableOrderCard({
         staffRole={staffRole}
         dragHandleProps={{ ...attributes, ...listeners }}
         inPersonPaymentLocation={inPersonPaymentLocation}
+        fiscalTssEnabled={fiscalTssEnabled}
       />
     </div>
   );
@@ -180,6 +183,7 @@ export function OrderBoard() {
     hasMenuItems,
     staffRole,
     inPersonPaymentLocation,
+    fiscalTssEnabled,
   } = useDashboard();
   const { refreshAlerts } = useDashboardAlerts();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
@@ -523,6 +527,7 @@ export function OrderBoard() {
           currency={currency}
           orgName={orgName}
           inPersonPaymentLocation={inPersonPaymentLocation}
+          fiscalTssEnabled={fiscalTssEnabled}
           {...handlers}
         />
       );
@@ -535,6 +540,7 @@ export function OrderBoard() {
         currency={currency}
         orgName={orgName}
         inPersonPaymentLocation={inPersonPaymentLocation}
+        fiscalTssEnabled={fiscalTssEnabled}
         {...handlers}
       />
     );
@@ -714,6 +720,7 @@ export function OrderBoard() {
                 orgName={orgName}
                 busy={false}
                 inPersonPaymentLocation={inPersonPaymentLocation}
+                fiscalTssEnabled={fiscalTssEnabled}
                 onAccept={() => {}}
                 onReject={() => {}}
                 onStartPreparing={() => {}}

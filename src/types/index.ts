@@ -33,6 +33,14 @@ export type ProductWithModifiers = Product & {
   modifier_groups: (ModifierGroup & { modifiers: Modifier[] })[];
 };
 
+export type OrderChannelDeliverySummary = {
+  channel: string;
+  provider: string;
+  status: string;
+  external_id: string | null;
+  last_error: string | null;
+};
+
 export type OrderWithDetails = Order & {
   order_items: (OrderItem & {
     order_item_modifiers: OrderItemModifier[];
@@ -42,6 +50,7 @@ export type OrderWithDetails = Order & {
   refund_staff?: { name: string } | null;
   tip_staff?: { name: string } | null;
   split_payments?: SplitPayment[];
+  order_channel_deliveries?: OrderChannelDeliverySummary[];
   audit_log?: {
     action: string;
     amount: number | null;

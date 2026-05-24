@@ -24,6 +24,7 @@ export type DashboardContextValue = {
   impersonatedOrgName: string | null;
   inPersonPaymentLocation: "bar" | "counter" | "table";
   menuLocale: import("@/lib/i18n/translations").MenuLocale;
+  fiscalTssEnabled: boolean;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
