@@ -2,7 +2,13 @@ import { resilientFetch } from "@/lib/fetch/resilient-fetch";
 
 export async function patchOrderStatus(
   orderId: string,
-  status: "accepted" | "preparing" | "ready" | "delivered" | "rejected",
+  status:
+    | "accepted"
+    | "preparing"
+    | "ready"
+    | "delivered"
+    | "rejected"
+    | "cancelled",
   rejectionReason?: string
 ) {
   const { error } = await resilientFetch<{ data: unknown; error: string | null }>(

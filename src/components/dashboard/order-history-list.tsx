@@ -143,7 +143,9 @@ function StatusBadge({ status }: { status: string }) {
       ? "New"
       : status === "accepted"
         ? "Preparing"
-        : status.charAt(0).toUpperCase() + status.slice(1);
+        : status === "cancelled"
+          ? "Storniert"
+          : status.charAt(0).toUpperCase() + status.slice(1);
 
   const styles: Record<string, string> = {
     delivered: "bg-green-500/10 text-green-400",
@@ -243,10 +245,13 @@ function RefundCell({
   order: OrderWithDetails;
   currency: string;
 }) {
-  if (
-    order.payment_status !== "refunded" &&
-    order.payment_status !== "partial_refund"
-  ) {
+  const isStorno =
+    order.status === "cancelled" || order.status === "rejected";
+  const hasRefund =
+    order.payment_status === "refunded" ||
+    order.payment_status === "partial_refund";
+
+  if (!isStorno && !hasRefund) {
     return <span className="text-dash-text-disabled">—</span>;
   }
 
@@ -254,14 +259,22 @@ function RefundCell({
 
   return (
     <div className="text-xs text-dash-text-muted">
-      {amount != null && (
+      {isStorno && order.rejection_reason && (
+        <p
+          className="max-w-[180px] truncate text-red-400/90"
+          title={order.rejection_reason}
+        >
+          Storno: {order.rejection_reason}
+        </p>
+      )}
+      {hasRefund && amount != null && (
         <p className="font-mono text-dash-text-secondary">
           {formatPrice(amount, currency)}
         </p>
       )}
       {order.refund_reason && (
         <p className="mt-0.5 max-w-[180px] truncate" title={order.refund_reason}>
-          {order.refund_reason}
+          Refund: {order.refund_reason}
         </p>
       )}
       {order.refund_staff?.name && (
@@ -738,7 +751,9 @@ export function OrderHistoryList() {
                       </li>
                     )}
                     {(order.payment_status === "refunded" ||
-                      order.payment_status === "partial_refund") && (
+                      order.payment_status === "partial_refund" ||
+                      order.status === "cancelled" ||
+                      order.status === "rejected") && (
                       <li className="border-t border-dash-border pt-2">
                         <RefundCell order={order} currency={currency} />
                       </li>

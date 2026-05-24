@@ -24,7 +24,7 @@ export async function handleFulfillNotifyStaff(
   const result = await notifyLocationPush(locationId, {
     title: `New order ${formatOrderNumber(orderNumber)}`,
     body: `Table ${tableName}`,
-    url: "/dashboard/orders",
+    url: "/waiter/orders",
   });
 
   logger.info("Outbox fulfill.notify_staff delivered", {

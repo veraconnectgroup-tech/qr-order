@@ -15,6 +15,7 @@ import { usePostgresRealtime, reconnectAllRealtimeChannels } from "@/hooks/use-p
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { staffPaymentRequestToast } from "@/lib/payment-request-alert";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import { waiterUiT } from "@/lib/i18n/waiter-app-ui";
 
 import type { OrderStatus } from "@/types";
 
@@ -106,10 +107,13 @@ async function fetchLatestPaymentRequest(
 
 export function DashboardAlertsProvider({
   children,
+  variant = "dashboard",
 }: {
   children: React.ReactNode;
+  variant?: "dashboard" | "waiter";
 }) {
-  const { locationId, currency, inPersonPaymentLocation } = useDashboard();
+  const { locationId, currency, inPersonPaymentLocation, menuLocale } =
+    useDashboard();
   const { play } = useSoundAlert();
   const [pendingOrders, setPendingOrders] = useState(0);
   const [pendingWaiterCalls, setPendingWaiterCalls] = useState(0);
@@ -199,14 +203,23 @@ export function DashboardAlertsProvider({
     if (pendingOrders > prevPendingOrders.current) {
       const delta = pendingOrders - prevPendingOrders.current;
       play("new-order");
-      toast.info(
-        delta === 1
-          ? "New order — check Orders board"
-          : `${delta} new orders · ${pendingOrders} waiting`
-      );
+      const message =
+        variant === "waiter"
+          ? delta === 1
+            ? waiterUiT("toast.newOrder", menuLocale)
+            : waiterUiT("toast.newOrders", menuLocale, {
+                delta,
+                total: pendingOrders,
+              })
+          : delta === 1
+            ? "New order — check Orders board"
+            : `${delta} new orders · ${pendingOrders} waiting`;
+      toast.info(message, {
+        duration: variant === "waiter" ? 5000 : 4000,
+      });
     }
     prevPendingOrders.current = pendingOrders;
-  }, [pendingOrders, play, ready]);
+  }, [pendingOrders, play, ready, variant, menuLocale]);
 
   useEffect(() => {
     if (!ready) return;
@@ -214,14 +227,23 @@ export function DashboardAlertsProvider({
     if (pendingWaiterCalls > prevPendingCalls.current) {
       const delta = pendingWaiterCalls - prevPendingCalls.current;
       play("waiter-call");
-      toast.info(
-        delta === 1
-          ? "Waiter call from a table"
-          : `${delta} new waiter calls · ${pendingWaiterCalls} open`
-      );
+      const message =
+        variant === "waiter"
+          ? delta === 1
+            ? waiterUiT("toast.waiterCall", menuLocale)
+            : waiterUiT("toast.waiterCalls", menuLocale, {
+                delta,
+                total: pendingWaiterCalls,
+              })
+          : delta === 1
+            ? "Waiter call from a table"
+            : `${delta} new waiter calls · ${pendingWaiterCalls} open`;
+      toast.info(message, {
+        duration: variant === "waiter" ? 5000 : 4000,
+      });
     }
     prevPendingCalls.current = pendingWaiterCalls;
-  }, [pendingWaiterCalls, play, ready]);
+  }, [pendingWaiterCalls, play, ready, variant, menuLocale]);
 
   useEffect(() => {
     if (!ready) return;

@@ -26,6 +26,7 @@ import {
   distributeTipAcrossOrders,
 } from "@/lib/orders/tips";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
+import { schedulePaymentRequestPush } from "@/lib/push/schedule-notify";
 
 export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
   const tableToken = req.nextUrl.searchParams.get("tableToken");
@@ -348,6 +349,12 @@ export const POST = withErrorHandler(
       if (error) {
         return apiError(error.message, 500);
       }
+
+      schedulePaymentRequestPush(
+        locationId,
+        table.name,
+        table.id
+      );
 
       return apiSuccess({
         ok: true,

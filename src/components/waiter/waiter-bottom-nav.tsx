@@ -14,10 +14,12 @@ import { cn } from "@/lib/utils";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import { hapticLight } from "@/lib/haptics";
+import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
+import type { WaiterUiKey } from "@/lib/i18n/waiter-app-ui";
 
 type Tab = {
   href: string;
-  label: string;
+  labelKey: WaiterUiKey;
   icon: ComponentType<{ className?: string }>;
   exact?: boolean;
   alertKey?: "orders" | "calls" | "payments";
@@ -25,41 +27,42 @@ type Tab = {
 };
 
 const tabs: Tab[] = [
-  { href: "/waiter", label: "Home", icon: Home, exact: true },
+  { href: "/waiter", labelKey: "nav.home", icon: Home, exact: true },
   {
     href: "/waiter/orders",
-    label: "Orders",
+    labelKey: "nav.orders",
     icon: LayoutGrid,
     alertKey: "orders",
   },
   {
     href: "/waiter/new-order",
-    label: "New",
+    labelKey: "nav.new",
     icon: Plus,
     prominent: true,
   },
   {
     href: "/waiter/calls",
-    label: "Calls",
+    labelKey: "nav.calls",
     icon: Bell,
     alertKey: "calls",
   },
   {
     href: "/waiter/tables",
-    label: "Tables",
+    labelKey: "nav.tables",
     icon: Grid3X3,
     alertKey: "payments",
   },
 ];
 
-export function WaiterMobileNav() {
+export function WaiterBottomNav() {
   const pathname = usePathname();
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
+  const { t } = useWaiterI18n();
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom,0px))] border-t border-dash-border-subtle bg-dash-bg/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom,0px)]">
-      {tabs.map(({ href, label, icon: Icon, alertKey, exact, prominent }) => {
+      {tabs.map(({ href, labelKey, icon: Icon, alertKey, exact, prominent }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         const badgeCount =
           alertKey === "orders"
@@ -95,10 +98,13 @@ export function WaiterMobileNav() {
                 </span>
               )}
             </span>
-            {label}
+            {t(labelKey)}
           </Link>
         );
       })}
     </nav>
   );
 }
+
+/** @deprecated Use WaiterBottomNav */
+export const WaiterMobileNav = WaiterBottomNav;

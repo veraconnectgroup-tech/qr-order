@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, Plus, RefreshCw, ArrowRightLeft, X } from "lucide-react";
+import { Download, Plus, RefreshCw, ArrowRightLeft, Receipt, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
@@ -14,6 +14,8 @@ import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { TransferDialog } from "@/components/dashboard/transfer-dialog";
+import { TableBillPanel } from "@/components/dashboard/table-bill-panel";
+import { TableSessionHistory } from "@/components/dashboard/table-session-history";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +98,7 @@ export function TablesBoard() {
   const [tables, setTables] = useState<TableRow[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [activeZone, setActiveZone] = useState<string>("all");
+  const isHistoryView = activeZone === "history";
   const [selected, setSelected] = useState<TableRow | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,6 +106,7 @@ export function TablesBoard() {
   const [zonesOpen, setZonesOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [billOpen, setBillOpen] = useState(false);
   const [newTable, setNewTable] = useState({ name: "", zoneId: "", seats: 4 });
   const [newZoneName, setNewZoneName] = useState("");
 
@@ -514,7 +518,10 @@ ${qrItems
         <div className="flex gap-3 overflow-x-auto border-b border-dash-border pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-4 sm:overflow-visible">
           <button
             type="button"
-            onClick={() => setActiveZone("all")}
+            onClick={() => {
+              setActiveZone("all");
+              setSelected(null);
+            }}
             className={cn(
               "pb-2 text-sm font-medium transition",
               activeZone === "all"
@@ -528,7 +535,10 @@ ${qrItems
             <button
               key={zone.id}
               type="button"
-              onClick={() => setActiveZone(zone.id)}
+              onClick={() => {
+                setActiveZone(zone.id);
+                setSelected(null);
+              }}
               className={cn(
                 "pb-2 text-sm font-medium transition",
                 activeZone === zone.id
@@ -539,6 +549,21 @@ ${qrItems
               {zone.name} ({zone.count})
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveZone("history");
+              setSelected(null);
+            }}
+            className={cn(
+              "pb-2 text-sm font-medium transition",
+              activeZone === "history"
+                ? "border-b-2 border-dash-accent text-white"
+                : "text-dash-text-muted hover:text-white"
+            )}
+          >
+            Istorija
+          </button>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -572,6 +597,10 @@ ${qrItems
         </div>
       </div>
 
+      {isHistoryView ? (
+        <TableSessionHistory onReopened={load} />
+      ) : (
+        <>
       {zones.length === 0 && (
         <div className="mb-6 rounded-xl border border-dashed border-dash-surface-overlay bg-dash-surface/50 px-4 py-8 text-center">
           <p className="font-medium text-dash-text-secondary">No zones yet</p>
@@ -658,6 +687,8 @@ ${qrItems
           </div>
         </section>
       ))}
+        </>
+      )}
 
       <AnimatePresence>
         {selected && (
@@ -815,11 +846,22 @@ ${qrItems
                 </div>
               </div>
 
+              {selected.session && (
+                <button
+                  type="button"
+                  onClick={() => setBillOpen(true)}
+                  className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-dash-accent py-3 text-sm font-semibold text-white transition hover:bg-dash-accent-hover"
+                >
+                  <Receipt className="size-4" />
+                  Račun
+                </button>
+              )}
+
               {selected.activeOrders.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setTransferOpen(true)}
-                  className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-dash-surface-raised py-3 text-sm font-semibold text-dash-text transition hover:bg-dash-surface-overlay"
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-dash-surface-raised py-3 text-sm font-semibold text-dash-text transition hover:bg-dash-surface-overlay"
                 >
                   <ArrowRightLeft className="size-4" />
                   Transfer
@@ -830,7 +872,7 @@ ${qrItems
                 <button
                   type="button"
                   onClick={() => closeSession(selected.session!.id)}
-                  className="mt-8 w-full rounded-lg bg-red-600/90 py-3 text-sm font-semibold text-white transition hover:bg-red-600"
+                  className="mt-3 w-full rounded-lg bg-red-600/90 py-3 text-sm font-semibold text-white transition hover:bg-red-600"
                 >
                   Close Table Session
                 </button>
@@ -839,6 +881,20 @@ ${qrItems
           </>
         )}
       </AnimatePresence>
+
+      {selected && (
+        <TableBillPanel
+          open={billOpen}
+          onOpenChange={setBillOpen}
+          tableName={selected.name}
+          sessionId={selected.session?.id ?? null}
+          onSettled={() => {
+            setBillOpen(false);
+            setSelected(null);
+            load();
+          }}
+        />
+      )}
 
       {selected && (
         <TransferDialog

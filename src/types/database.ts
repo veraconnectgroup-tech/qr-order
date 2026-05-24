@@ -429,6 +429,8 @@ type Tables = {
     external_pos_order_id: string | null;
     beleg_token: string | null;
     beleg_snapshot: Json | null;
+    has_storno: boolean;
+    storno_total: number;
     created_at: string;
     updated_at: string;
   };
@@ -595,6 +597,24 @@ type Tables = {
     payment_status: string;
     paid_by_session_id: string | null;
     items: Json | null;
+    created_at: string;
+  };
+  storno_records: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    original_order_id: string;
+    storno_amount: number;
+    storno_reason: string;
+    storno_type: "full" | "partial";
+    performed_by: string;
+    tse_storno_signature: string | null;
+    tse_storno_data: Json | null;
+    tse_storno_tx_id: string | null;
+    original_tse_tx_id: string | null;
+    original_tse_signature: string | null;
+    stripe_refund_id: string | null;
+    refund_status: "pending" | "tse_signed" | "refunded" | "failed";
     created_at: string;
   };
   promo_codes: {

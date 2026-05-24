@@ -145,10 +145,19 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/waiter") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/platform")) &&
-    !user
+    !user &&
+    !pathname.startsWith("/waiter/login")
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = pathname.startsWith("/waiter") ? "/waiter/login" : "/login";
+    const redirect = NextResponse.redirect(url);
+    copyCookies(supabaseResponse, redirect);
+    return withResponseHeaders(redirect, false);
+  }
+
+  if (pathname === "/waiter/login" && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/waiter";
     const redirect = NextResponse.redirect(url);
     copyCookies(supabaseResponse, redirect);
     return withResponseHeaders(redirect, false);

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "QR Order",
-    short_name: "QR Order",
+    name: "Vera",
+    short_name: "Vera",
     description: "Scan, order, pay — no app needed",
     start_url: "/",
     display: "standalone",

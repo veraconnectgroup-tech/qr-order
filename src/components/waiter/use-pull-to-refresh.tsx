@@ -8,12 +8,18 @@ type Options = {
   onRefresh: () => Promise<void> | void;
   disabled?: boolean;
   threshold?: number;
+  hint?: string;
+  release?: string;
+  refreshingLabel?: string;
 };
 
 export function usePullToRefresh({
   onRefresh,
   disabled = false,
   threshold = 72,
+  hint = "Pull to refresh",
+  release = "Release to refresh",
+  refreshingLabel = "Refreshing…",
 }: Options) {
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,10 +82,10 @@ export function usePullToRefresh({
       aria-hidden
     >
       {refreshing
-        ? "Osvježavam…"
+        ? refreshingLabel
         : pullDistance >= threshold
-          ? "Pusti za osvježavanje"
-          : "Povuci za osvježavanje"}
+          ? release
+          : hint}
     </div>
   );
 

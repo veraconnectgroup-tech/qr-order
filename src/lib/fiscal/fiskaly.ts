@@ -7,6 +7,7 @@ export type FiskalyPaymentType = "CASH" | "NON_CASH";
 export type FiskalyReceiptSchema = {
   standard_v1: {
     receipt: {
+      // "CANCELLATION" = AVBelegabbruch (abort). For storno use "RECEIPT" with negative amounts.
       receipt_type: "RECEIPT" | "CANCELLATION";
       amounts_per_vat_rate: Array<{ vat_rate: FiskalyVatRate; amount: string }>;
       amounts_per_payment_type: Array<{

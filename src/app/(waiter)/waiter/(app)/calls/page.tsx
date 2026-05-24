@@ -1,5 +1,5 @@
 import { WaiterCallsBoard } from "@/components/dashboard/waiter-calls-board";
 
 export default function WaiterCallsPage() {
-  return <WaiterCallsBoard />;
+  return <WaiterCallsBoard variant="waiter" />;
 }

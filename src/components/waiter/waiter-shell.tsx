@@ -9,7 +9,12 @@ import {
 } from "@/components/dashboard/dashboard-provider";
 import { DashboardAlertsProvider } from "@/hooks/use-dashboard-alerts";
 import { SoundAlertProvider } from "@/hooks/use-sound-alert";
-import { WaiterMobileNav } from "@/components/waiter/waiter-mobile-nav";
+import { WaiterBottomNav } from "@/components/waiter/waiter-bottom-nav";
+import { PushOptIn } from "@/components/dashboard/push-opt-in";
+import {
+  WaiterDataPrefetch,
+  WaiterUxEffects,
+} from "@/components/waiter/waiter-ux-effects";
 
 type Props = {
   context: DashboardContextValue;
@@ -82,11 +87,14 @@ function WaiterFrame({
 }) {
   return (
     <div className="dashboard-theme flex min-h-dvh flex-col overflow-x-hidden bg-background text-foreground">
+      <PushOptIn variant="banner" />
       <WaiterStatusBar orgName={context.orgName} staffName={context.staffName} />
       <main className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]">
+        <WaiterDataPrefetch />
+        <WaiterUxEffects />
         {children}
       </main>
-      <WaiterMobileNav />
+      <WaiterBottomNav />
     </div>
   );
 }
@@ -96,7 +104,7 @@ export function WaiterShell({ context, children }: Props) {
     <DashboardProvider value={context}>
       <WaiterResilienceShell staffRole={context.staffRole}>
         <SoundAlertProvider>
-          <DashboardAlertsProvider>
+          <DashboardAlertsProvider variant="waiter">
             <WaiterFrame context={context}>{children}</WaiterFrame>
           </DashboardAlertsProvider>
         </SoundAlertProvider>

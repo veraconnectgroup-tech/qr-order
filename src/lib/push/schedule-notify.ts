@@ -6,7 +6,11 @@ import { logger } from "@/lib/logger";
 import { notifyLocationPush } from "@/lib/push/notify-location";
 import { getRedisClient } from "@/lib/redis/client";
 
-export type PushNotifyType = "new-order" | "waiter-call" | "order-ready";
+export type PushNotifyType =
+  | "new-order"
+  | "waiter-call"
+  | "order-ready"
+  | "payment-request";
 
 type PushNotifyPayload = {
   locationId: string;
@@ -107,7 +111,7 @@ export function scheduleWaiterCallPush(locationId: string, tableName: string) {
     type: "waiter-call",
     title: "Waiter call",
     body: `Table ${tableName}`,
-    url: "/dashboard/waiter-calls",
+    url: "/waiter/calls",
   });
 }
 
@@ -119,8 +123,22 @@ export function scheduleOrderReadyPush(
     locationId,
     type: "order-ready",
     title: `Order ${formatOrderNumber(orderNumber)} ready`,
-    body: "Ready for pickup",
-    url: "/dashboard/orders",
+    body: "Ready to serve",
+    url: "/waiter/orders",
+  });
+}
+
+export function schedulePaymentRequestPush(
+  locationId: string,
+  tableName: string,
+  tableId?: string
+) {
+  void schedulePushNotify({
+    locationId,
+    type: "payment-request",
+    title: "Payment requested",
+    body: `Table ${tableName}`,
+    url: tableId ? `/waiter/tables/${tableId}` : "/waiter",
   });
 }
 

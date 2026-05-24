@@ -300,6 +300,8 @@ function demoOrder(
     external_pos_order_id: null,
     beleg_token: null,
     beleg_snapshot: null,
+    has_storno: false,
+    storno_total: 0,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

@@ -1,40 +1,86 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { fetchWaiterTableRows } from "@/lib/dashboard/fetch-waiter-table-rows";
 import {
-  buildWaiterTableRows,
   getLastOrderAt,
   getWaiterTableVisualStatus,
-  sortWaiterTables,
-  startOfTodayIso,
-  WAITER_TABLE_STATUS_STYLES,
   type WaiterTableRow,
+  type WaiterTableVisualStatus,
 } from "@/lib/dashboard/waiter-table-data";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
-import type { Table, TableSession, Zone } from "@/types";
+import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
+import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
 
 type Props = {
   detailBasePath?: string;
   className?: string;
 };
 
+function tableStatusBorder(status: WaiterTableVisualStatus) {
+  switch (status) {
+    case "free":
+      return "border-dashed border-emerald-500/30 bg-dash-bg/50";
+    case "active":
+      return "border-yellow-500/50 ring-1 ring-yellow-500/20";
+    case "ready":
+      return "border-orange-500/60 ring-1 ring-orange-500/25";
+    case "call":
+      return "animate-pulse border-red-500 ring-1 ring-red-500/30";
+    case "pending_approval":
+      return "border-blue-500/60 ring-1 ring-blue-500/25";
+  }
+}
+
+function tableStatusDot(status: WaiterTableVisualStatus) {
+  switch (status) {
+    case "free":
+      return "bg-emerald-500";
+    case "active":
+      return "bg-yellow-400";
+    case "ready":
+      return "bg-orange-500";
+    case "call":
+      return "bg-red-500";
+    case "pending_approval":
+      return "bg-blue-500";
+  }
+}
+
+function tableStatusLabel(
+  status: WaiterTableVisualStatus,
+  t: ReturnType<typeof useWaiterI18n>["t"]
+) {
+  switch (status) {
+    case "free":
+      return t("status.free");
+    case "active":
+      return t("status.active");
+    case "ready":
+      return t("status.ready");
+    case "call":
+      return t("status.call");
+    case "pending_approval":
+      return t("status.pendingApproval");
+  }
+}
+
 export function WaiterTableGrid({
   detailBasePath = "/waiter/tables",
   className,
 }: Props) {
   const { locationId, currency } = useDashboard();
+  const { t, menuLocale } = useWaiterI18n();
   const waiterCallsResult = useRealtimeWaiterCalls(locationId);
   const [tables, setTables] = useState<WaiterTableRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,47 +96,8 @@ export function WaiterTableGrid({
   );
 
   const load = useCallback(async () => {
-    const supabase = createClient();
-
-    const { data: tablesData } = await supabase
-      .from("tables")
-      .select("*, zone:zones(*)")
-      .eq("location_id", locationId)
-      .eq("is_active", true)
-      .is("deleted_at", null)
-      .order("name");
-
-    const { data: sessions } = await supabase
-      .from("table_sessions")
-      .select("id, table_id, opened_at")
-      .eq("location_id", locationId)
-      .eq("status", "active");
-
-    const { data: orders } = await supabase
-      .from("orders")
-      .select(
-        "id, table_id, session_id, order_number, total, status, created_at, payment_requested_at, payment_status, payment_method"
-      )
-      .eq("location_id", locationId)
-      .gte("created_at", startOfTodayIso())
-      .neq("status", "rejected");
-
     setTables(
-      sortWaiterTables(
-        buildWaiterTableRows(
-          (tablesData ?? []) as unknown as Array<Table & { zone: Zone | null }>,
-          (sessions ?? []) as Array<
-            Pick<TableSession, "id" | "table_id" | "opened_at">
-          >,
-          (orders ?? []) as Array<
-            WaiterTableRow["activeOrders"][number] & {
-              table_id: string | null;
-              session_id: string | null;
-            }
-          >,
-          pendingCallTableIds
-        )
-      )
+      await fetchWaiterTableRows(locationId, pendingCallTableIds)
     );
     setLoading(false);
   }, [locationId, pendingCallTableIds]);
@@ -120,6 +127,9 @@ export function WaiterTableGrid({
   const { bind, indicator, refreshing } = usePullToRefresh({
     onRefresh: load,
     disabled: loading,
+    hint: t("pull.hint"),
+    release: t("pull.release"),
+    refreshingLabel: t("pull.refreshing"),
   });
 
   if (loading) {
@@ -138,7 +148,7 @@ export function WaiterTableGrid({
   if (tables.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-dash-border-subtle px-4 py-8 text-center text-sm text-dash-text-muted">
-        Nema konfigurisanih stolova.
+        {t("empty.noTables")}
       </p>
     );
   }
@@ -155,7 +165,6 @@ export function WaiterTableGrid({
       >
         {tables.map((table) => {
           const visualStatus = getWaiterTableVisualStatus(table);
-          const styles = WAITER_TABLE_STATUS_STYLES[visualStatus];
           const orderCount = table.activeOrders.length;
           const lastOrderAt = getLastOrderAt(table);
 
@@ -165,34 +174,38 @@ export function WaiterTableGrid({
               href={`${detailBasePath}/${table.id}`}
               onClick={() => hapticLight()}
               className={cn(
-                "flex min-h-[8.5rem] flex-col rounded-xl border bg-dash-surface p-4 transition active:scale-[0.98]",
-                styles.border
+                "flex min-h-[8.5rem] flex-col rounded-xl border bg-dash-surface p-4 active:scale-[0.98]",
+                tableStatusBorder(visualStatus)
               )}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-xl font-bold text-dash-text">
+                  <p className="truncate font-mono text-2xl font-bold text-dash-text">
                     {table.name}
                   </p>
                   <p className="truncate text-xs text-dash-text-muted">
-                    {table.zone?.name ?? "Bez zone"}
+                    {table.zone?.name ?? t("table.noZone")}
                   </p>
                 </div>
-                <span className={cn("mt-1 size-3 shrink-0 rounded-full", styles.dot)} />
+                <span
+                  className={cn(
+                    "mt-1 size-3 shrink-0 rounded-full",
+                    tableStatusDot(visualStatus)
+                  )}
+                />
               </div>
 
               <div className="mt-auto space-y-1 pt-3">
                 <p className="text-xs font-medium text-dash-text-secondary">
-                  {styles.label}
+                  {tableStatusLabel(visualStatus, t)}
                   {orderCount > 0 && (
                     <span className="text-dash-text-muted">
-                      {" "}
-                      · {orderCount} nar.
+                      {t("table.ordersCount", { count: orderCount })}
                     </span>
                   )}
                 </p>
                 {table.sessionTotal > 0 && (
-                  <p className="font-mono text-sm font-semibold text-dash-accent">
+                  <p className="font-mono text-lg font-semibold text-dash-accent">
                     {formatPrice(table.sessionTotal, currency)}
                   </p>
                 )}
@@ -200,13 +213,13 @@ export function WaiterTableGrid({
                   <p className="text-[11px] text-dash-text-disabled">
                     {formatDistanceToNow(new Date(lastOrderAt), {
                       addSuffix: true,
-                      locale: de,
+                      locale: dateFnsLocaleForMenu(menuLocale),
                     })}
                   </p>
                 )}
                 {table.hasPaymentRequest && (
                   <p className="text-[11px] font-medium text-amber-400">
-                    Plaćanje zatraženo
+                    {t("status.paymentRequested")}
                   </p>
                 )}
               </div>

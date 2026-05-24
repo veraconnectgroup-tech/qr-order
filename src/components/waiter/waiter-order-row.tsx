@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { patchOrderStatus } from "@/lib/orders/patch-order-status";
 import { cn } from "@/lib/utils";
-import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { hapticClick, hapticLight, hapticSuccess } from "@/lib/haptics";
+import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
+import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
 import type { OrderItem, OrderItemModifier } from "@/types";
 
 export type WaiterDetailOrder = {
@@ -21,6 +22,9 @@ export type WaiterDetailOrder = {
     OrderItem & { order_item_modifiers: OrderItemModifier[] }
   >;
 };
+
+const SWIPE_ACTION_WIDTH = 112;
+const SWIPE_THRESHOLD = 72;
 
 function statusBadgeClass(status: string) {
   switch (status) {
@@ -38,28 +42,7 @@ function statusBadgeClass(status: string) {
   }
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case "ready":
-      return "Spremno";
-    case "pending_approval":
-      return "Odobrenje";
-    case "accepted":
-      return "Prihvaćeno";
-    case "preparing":
-      return "Priprema";
-    case "delivered":
-      return "Dostavljeno";
-    case "pending":
-      return "Novo";
-    default:
-      return status;
-  }
-}
-
-function itemsSummary(
-  items: WaiterDetailOrder["order_items"]
-): string {
+function itemsSummary(items: WaiterDetailOrder["order_items"]) {
   return items
     .slice(0, 2)
     .map((item) => `${item.quantity}× ${item.product_name}`)
@@ -71,6 +54,7 @@ type Props = {
   currency: string;
   canUpdateStatus: boolean;
   onUpdated: () => void;
+  onOptimisticStatus?: (orderId: string, status: string) => void;
 };
 
 export function WaiterOrderRow({
@@ -78,65 +62,120 @@ export function WaiterOrderRow({
   currency,
   canUpdateStatus,
   onUpdated,
+  onOptimisticStatus,
 }: Props) {
+  const { t, menuLocale } = useWaiterI18n();
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [dragX, setDragX] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const touchStartRef = { x: 0, y: 0 };
+  const draggingRef = { horizontal: false };
 
-  const swipeAction =
-    order.status === "ready"
-      ? { label: "Dostavljeno", next: "delivered" as const }
-      : order.status === "preparing" || order.status === "accepted"
-        ? { label: "Spremno", next: "ready" as const }
-        : null;
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case "ready":
+        return t("order.status.ready");
+      case "pending_approval":
+        return t("order.status.pendingApproval");
+      case "accepted":
+        return t("order.status.accepted");
+      case "preparing":
+        return t("order.status.preparing");
+      case "delivered":
+        return t("order.status.delivered");
+      default:
+        return t("order.status.new");
+    }
+  };
 
-  async function applyStatus(
-    status: "ready" | "delivered"
-  ) {
+  const canDeliver = order.status === "ready";
+  const canMarkReady =
+    order.status === "preparing" || order.status === "accepted";
+
+  async function applyStatus(status: "ready" | "delivered") {
+    if (busy) return;
     setBusy(true);
+    hapticClick();
+    onOptimisticStatus?.(order.id, status);
+    setDragX(0);
+
     try {
       await patchOrderStatus(order.id, status);
       hapticSuccess();
       toast.success(
-        status === "delivered" ? "Narudžba dostavljena." : "Narudžba spremna."
+        status === "delivered" ? t("order.delivered") : t("order.ready"),
+        { duration: 3000 }
       );
       onUpdated();
     } catch (error) {
+      onUpdated();
       toast.error(
-        error instanceof Error ? error.message : "Status nije ažuriran."
+        error instanceof Error ? error.message : t("order.updateFailed")
       );
     } finally {
       setBusy(false);
-      setDragX(0);
     }
   }
 
+  function handleExpand() {
+    hapticLight();
+    setExpanded((value) => !value);
+    setDragX(0);
+  }
+
   return (
-    <div className="relative overflow-hidden rounded-xl border border-dash-border-subtle bg-dash-surface">
-      {swipeAction && canUpdateStatus && (
+    <div className="relative overflow-hidden rounded-xl border border-dash-border-subtle bg-dash-surface touch-manipulation">
+      {canDeliver && canUpdateStatus && (
         <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-center bg-dash-accent text-sm font-semibold text-white">
-          {swipeAction.label}
+          {t("action.deliver")}
         </div>
       )}
+      <div className="absolute inset-y-0 left-0 flex w-28 items-center justify-center bg-dash-surface-raised text-sm font-semibold text-dash-text-muted">
+        <ChevronDown className="size-5" />
+      </div>
 
       <div
-        className="relative bg-dash-surface transition-transform"
+        className="relative bg-dash-surface transition-transform duration-150"
         style={{ transform: `translateX(${dragX}px)` }}
         onTouchStart={(event) => {
-          if (!swipeAction || !canUpdateStatus) return;
-          setTouchStartX(event.touches[0]?.clientX ?? null);
+          touchStartRef.x = event.touches[0]?.clientX ?? 0;
+          touchStartRef.y = event.touches[0]?.clientY ?? 0;
+          draggingRef.horizontal = false;
         }}
         onTouchMove={(event) => {
-          if (touchStartX === null || !swipeAction || !canUpdateStatus) return;
-          const delta = (event.touches[0]?.clientX ?? touchStartX) - touchStartX;
-          setDragX(Math.max(-112, Math.min(0, delta)));
+          const x = event.touches[0]?.clientX ?? touchStartRef.x;
+          const y = event.touches[0]?.clientY ?? touchStartRef.y;
+          const deltaX = x - touchStartRef.x;
+          const deltaY = y - touchStartRef.y;
+
+          if (!draggingRef.horizontal && Math.abs(deltaX) > 10) {
+            draggingRef.horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+          }
+          if (!draggingRef.horizontal) return;
+
+          if (deltaX < 0 && canDeliver && canUpdateStatus) {
+            setDragX(Math.max(-SWIPE_ACTION_WIDTH, deltaX));
+            return;
+          }
+          if (deltaX > 0) {
+            setDragX(Math.min(SWIPE_ACTION_WIDTH, deltaX));
+          }
         }}
         onTouchEnd={async () => {
-          if (touchStartX === null || !swipeAction || !canUpdateStatus) return;
-          setTouchStartX(null);
-          if (dragX <= -72) {
-            await applyStatus(swipeAction.next);
+          if (dragX <= -SWIPE_THRESHOLD && canDeliver && canUpdateStatus) {
+            await applyStatus("delivered");
+            return;
+          }
+          if (dragX >= SWIPE_THRESHOLD) {
+            if (!expanded) {
+              hapticLight();
+              setExpanded(true);
+            }
+            setDragX(0);
+            return;
+          }
+          if (Math.abs(dragX) < 12) {
+            handleExpand();
             return;
           }
           setDragX(0);
@@ -144,20 +183,17 @@ export function WaiterOrderRow({
       >
         <button
           type="button"
-          className="flex w-full items-start gap-3 p-4 text-left"
-          onClick={() => {
-            hapticLight();
-            setExpanded((value) => !value);
-          }}
+          className="flex min-h-12 w-full items-start gap-3 p-4 text-left active:bg-dash-surface-raised"
+          onClick={handleExpand}
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-base font-bold text-dash-text">
+              <span className="font-mono text-xl font-bold text-dash-text">
                 {formatOrderNumber(order.order_number)}
               </span>
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                  "rounded-full px-2.5 py-0.5 text-xs font-semibold",
                   statusBadgeClass(order.status)
                 )}
               >
@@ -168,21 +204,21 @@ export function WaiterOrderRow({
               {itemsSummary(order.order_items)}
               {order.order_items.length > 2 ? "…" : ""}
             </p>
-            <p className="mt-1 text-[11px] text-dash-text-disabled">
+            <p className="mt-1 text-xs text-dash-text-disabled">
               {formatDistanceToNow(new Date(order.created_at), {
                 addSuffix: true,
-                locale: de,
+                locale: dateFnsLocaleForMenu(menuLocale),
               })}
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
-            <span className="font-mono text-sm font-semibold text-dash-accent">
+            <span className="font-mono text-lg font-semibold text-dash-accent">
               {formatPrice(Number(order.total), currency)}
             </span>
             {expanded ? (
-              <ChevronUp className="size-4 text-dash-text-muted" />
+              <ChevronUp className="size-5 text-dash-text-muted" />
             ) : (
-              <ChevronDown className="size-4 text-dash-text-muted" />
+              <ChevronDown className="size-5 text-dash-text-muted" />
             )}
           </div>
         </button>
@@ -195,7 +231,7 @@ export function WaiterOrderRow({
                   <span>
                     {item.quantity}× {item.product_name}
                   </span>
-                  <span className="font-mono text-dash-text-muted">
+                  <span className="font-mono text-base text-dash-text-muted">
                     {formatPrice(Number(item.unit_price) * item.quantity, currency)}
                   </span>
                 </div>
@@ -211,16 +247,28 @@ export function WaiterOrderRow({
           </ul>
         )}
 
-        {swipeAction && canUpdateStatus && (
-          <div className="border-t border-dash-border-subtle px-4 py-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void applyStatus(swipeAction.next)}
-              className="min-h-11 w-full rounded-lg bg-dash-accent text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {swipeAction.label}
-            </button>
+        {canUpdateStatus && (canMarkReady || canDeliver) && (
+          <div className="flex gap-2 border-t border-dash-border-subtle px-4 py-3">
+            {canMarkReady && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void applyStatus("ready")}
+                className="min-h-12 flex-1 rounded-lg bg-orange-500 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
+              >
+                {t("action.markReady")}
+              </button>
+            )}
+            {canDeliver && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void applyStatus("delivered")}
+                className="min-h-12 flex-1 rounded-lg bg-dash-accent text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
+              >
+                {t("action.deliver")}
+              </button>
+            )}
           </div>
         )}
       </div>

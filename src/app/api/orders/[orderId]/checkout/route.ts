@@ -21,6 +21,7 @@ import {
   handleStripeCircuitError,
   withStripeCircuit,
 } from "@/lib/stripe/with-stripe-circuit";
+import { schedulePaymentRequestPush } from "@/lib/push/schedule-notify";
 
 const schema = z.object({
   sessionToken: zSessionToken(),
@@ -95,7 +96,7 @@ export const POST = withErrorHandler(
     const { data: order } = await admin
       .from("orders")
       .select(
-        "id, total, payment_status, payment_method, stripe_payment_intent_id, location_id, status"
+        "id, total, payment_status, payment_method, stripe_payment_intent_id, location_id, status, table_id, tables(name)"
       )
       .eq("id", orderId)
       .single();
@@ -104,7 +105,7 @@ export const POST = withErrorHandler(
       return apiError("Order not found.", 404);
     }
 
-    const orderRow = order as {
+    const orderRow = order as unknown as {
       id: string;
       total: number;
       payment_status: string;
@@ -112,6 +113,8 @@ export const POST = withErrorHandler(
       stripe_payment_intent_id: string | null;
       location_id: string;
       status: string;
+      table_id: string | null;
+      tables: { name: string } | null;
     };
 
     if (orderRow.payment_status === "paid") {
@@ -138,6 +141,11 @@ export const POST = withErrorHandler(
       .eq("id", orderId);
 
     if (paymentMethod !== "online") {
+      schedulePaymentRequestPush(
+        orderRow.location_id,
+        orderRow.tables?.name ?? "Table",
+        orderRow.table_id ?? undefined
+      );
       return apiSuccess({ ok: true, paymentMethod });
     }
 

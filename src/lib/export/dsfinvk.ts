@@ -36,12 +36,20 @@ export type DsfinvkOrderRow = {
   tse_data: unknown;
   created_by_staff_id: string | null;
   order_source: string;
+  is_storno_beleg?: boolean;
   order_items: Array<{
     product_name: string;
     quantity: number;
     total: number;
     tax_rate: number | null;
   }>;
+};
+
+export type DsfinvkStornoRecordMeta = {
+  originalOrderId: string;
+  stornoAmount: number;
+  createdAt: string;
+  originalCreatedAt: string;
 };
 
 export type DsfinvkExportContext = {
@@ -57,6 +65,8 @@ export type DsfinvkExportContext = {
   closings: DsfinvkClosingRow[];
   closingNumberByDate: Map<string, number>;
   orders: DsfinvkOrderRow[];
+  stornoBonOrders: DsfinvkOrderRow[];
+  stornoRecords: Map<string, DsfinvkStornoRecordMeta>;
   staffNames: Map<string, string>;
 };
 
@@ -137,8 +147,54 @@ export function parseTseData(raw: unknown): ParsedTseData | null {
   };
 }
 
-export function isStornoOrder(order: Pick<DsfinvkOrderRow, "status">): boolean {
-  return order.status === "cancelled";
+export function isStornoOrder(
+  order: Pick<DsfinvkOrderRow, "status" | "is_storno_beleg">
+): boolean {
+  return order.is_storno_beleg === true || order.status === "cancelled";
+}
+
+export function allDsfinvkExportOrders(ctx: DsfinvkExportContext): DsfinvkOrderRow[] {
+  return [...ctx.orders, ...ctx.stornoBonOrders];
+}
+
+export function buildStornoBonOrder(
+  record: {
+    id: string;
+    original_order_id: string;
+    storno_amount: number;
+    created_at: string;
+    tse_storno_signature: string | null;
+    tse_storno_data: unknown;
+  },
+  original: DsfinvkOrderRow
+): DsfinvkOrderRow {
+  const stornoAmount = Number(record.storno_amount);
+  const originalTotal = Number(original.total);
+  const ratio = originalTotal > 0 ? stornoAmount / originalTotal : 1;
+
+  return {
+    ...original,
+    id: record.id,
+    subtotal: roundMoney(Number(original.subtotal) * ratio),
+    total: stornoAmount,
+    tax_amount: roundMoney(Number(original.tax_amount) * ratio),
+    created_at: record.created_at,
+    accepted_at: record.created_at,
+    delivered_at: record.created_at,
+    tse_signature: record.tse_storno_signature,
+    tse_data: record.tse_storno_data,
+    is_storno_beleg: true,
+    order_items: original.order_items.map((item) => ({
+      ...item,
+      total: roundMoney(Number(item.total) * ratio),
+    })),
+  };
+}
+
+export function dsfinvkStornoSign(
+  order: Pick<DsfinvkOrderRow, "status" | "is_storno_beleg">
+): number {
+  return isStornoOrder(order) ? -1 : 1;
 }
 
 export function orderBusinessDate(
@@ -242,13 +298,14 @@ export function buildTransactionsCsv(ctx: DsfinvkExportContext): string {
     "UMS_NETTO",
   ];
 
-  const rows = ctx.orders.map((order) => {
+  const rows = allDsfinvkExportOrders(ctx).map((order) => {
     const businessDate = orderBusinessDate(
       order.created_at,
       ctx.locationTimezone
     );
     const zNr = String(ctx.closingNumberByDate.get(businessDate) ?? "");
     const storno = isStornoOrder(order);
+    const sign = dsfinvkStornoSign(order);
     const tse = parseTseData(order.tse_data);
     const operator = operatorForOrder(order, ctx.staffNames);
     const bonStart = order.accepted_at ?? order.created_at;
@@ -259,7 +316,7 @@ export function buildTransactionsCsv(ctx: DsfinvkExportContext): string {
       zNr,
       order.id,
       String(order.order_number),
-      storno ? "Storno" : "Beleg",
+      "Beleg",
       storno ? "Stornobeleg" : "Kassenbeleg",
       tse?.client_id || ctx.fiskalyClientId,
       storno ? "1" : "0",
@@ -267,8 +324,8 @@ export function buildTransactionsCsv(ctx: DsfinvkExportContext): string {
       berlinTimestamp(bonEnd),
       operator.id,
       operator.name,
-      formatDsfinvkAmount(Number(order.total)),
-      formatDsfinvkAmount(Number(order.subtotal)),
+      formatDsfinvkAmount(Number(order.total) * sign),
+      formatDsfinvkAmount(Number(order.subtotal) * sign),
     ];
   });
 
@@ -295,7 +352,7 @@ export function buildTransactionsTseCsv(ctx: DsfinvkExportContext): string {
 
   const rows: string[][] = [];
 
-  for (const order of ctx.orders) {
+  for (const order of allDsfinvkExportOrders(ctx)) {
     const tse = parseTseData(order.tse_data);
     if (!tse) continue;
 
@@ -346,12 +403,13 @@ export function buildLinesCsv(ctx: DsfinvkExportContext): string {
 
   const rows: string[][] = [];
 
-  for (const order of ctx.orders) {
+  for (const order of allDsfinvkExportOrders(ctx)) {
     const businessDate = orderBusinessDate(
       order.created_at,
       ctx.locationTimezone
     );
     const zNr = String(ctx.closingNumberByDate.get(businessDate) ?? "");
+    const sign = dsfinvkStornoSign(order);
     const terminalId = parseTseData(order.tse_data)?.client_id || ctx.fiskalyClientId;
     const inhaus = order.is_takeaway ? "0" : "1";
 
@@ -370,10 +428,10 @@ export function buildLinesCsv(ctx: DsfinvkExportContext): string {
         "Umsatz",
         "Umsatz",
         inhaus,
-        String(item.quantity),
-        formatDsfinvkAmount(gross),
-        formatDsfinvkAmount(net),
-        formatDsfinvkAmount(ust),
+        String(Number(item.quantity) * sign),
+        formatDsfinvkAmount(gross * sign),
+        formatDsfinvkAmount(net * sign),
+        formatDsfinvkAmount(ust * sign),
       ]);
     });
   }
@@ -396,12 +454,13 @@ export function buildLinesVatCsv(ctx: DsfinvkExportContext): string {
 
   const rows: string[][] = [];
 
-  for (const order of ctx.orders) {
+  for (const order of allDsfinvkExportOrders(ctx)) {
     const businessDate = orderBusinessDate(
       order.created_at,
       ctx.locationTimezone
     );
     const zNr = String(ctx.closingNumberByDate.get(businessDate) ?? "");
+    const sign = dsfinvkStornoSign(order);
 
     order.order_items.forEach((item, index) => {
       const rate = Number(item.tax_rate ?? 19);
@@ -414,9 +473,9 @@ export function buildLinesVatCsv(ctx: DsfinvkExportContext): string {
         String(index + 1),
         String(mapUstSchluessel(rate)),
         mapUstSatz(rate),
-        formatDsfinvkAmount(gross),
-        formatDsfinvkAmount(net),
-        formatDsfinvkAmount(ust),
+        formatDsfinvkAmount(gross * sign),
+        formatDsfinvkAmount(net * sign),
+        formatDsfinvkAmount(ust * sign),
       ]);
     });
   }
@@ -436,14 +495,15 @@ export function buildPaymentCsv(ctx: DsfinvkExportContext): string {
     "BASISWAEH_BETRAG",
   ];
 
-  const rows = ctx.orders.map((order) => {
+  const rows = allDsfinvkExportOrders(ctx).map((order) => {
     const businessDate = orderBusinessDate(
       order.created_at,
       ctx.locationTimezone
     );
     const zNr = String(ctx.closingNumberByDate.get(businessDate) ?? "");
     const payment = mapPaymentDsfinvk(order.payment_method);
-    const amount = formatDsfinvkAmount(Number(order.total));
+    const sign = dsfinvkStornoSign(order);
+    const amount = formatDsfinvkAmount(Number(order.total) * sign);
 
     return [
       ctx.kasseId,
@@ -478,12 +538,13 @@ export function buildBusinesscasesCsv(ctx: DsfinvkExportContext): string {
 
   const rows: string[][] = [];
 
-  for (const order of ctx.orders) {
+  for (const order of allDsfinvkExportOrders(ctx)) {
     const businessDate = orderBusinessDate(
       order.created_at,
       ctx.locationTimezone
     );
     const zNr = String(ctx.closingNumberByDate.get(businessDate) ?? "");
+    const sign = dsfinvkStornoSign(order);
 
     order.order_items.forEach((item, index) => {
       const rate = Number(item.tax_rate ?? 19);
@@ -499,9 +560,9 @@ export function buildBusinesscasesCsv(ctx: DsfinvkExportContext): string {
         "0",
         String(mapUstSchluessel(rate)),
         mapUstSatz(rate),
-        formatDsfinvkAmount(gross),
-        formatDsfinvkAmount(net),
-        formatDsfinvkAmount(ust),
+        formatDsfinvkAmount(gross * sign),
+        formatDsfinvkAmount(net * sign),
+        formatDsfinvkAmount(ust * sign),
       ]);
     });
   }
@@ -567,8 +628,9 @@ export function buildStammTseCsv(ctx: DsfinvkExportContext): string {
   ];
 
   const sampleTse =
-    ctx.orders.map((order) => parseTseData(order.tse_data)).find(Boolean) ??
-    null;
+    allDsfinvkExportOrders(ctx)
+      .map((order) => parseTseData(order.tse_data))
+      .find(Boolean) ?? null;
 
   const tseSerial = sampleTse?.tss_serial ?? ctx.fiskalyTssId;
 
@@ -587,6 +649,53 @@ export function buildStammTseCsv(ctx: DsfinvkExportContext): string {
   ]);
 }
 
+export function buildReferencesCsv(ctx: DsfinvkExportContext): string {
+  const headers = [
+    "Z_KASSE_ID",
+    "Z_NR",
+    "BON_ID",
+    "POS_ZEILE",
+    "REF_TYP",
+    "REF_NAME",
+    "REF_DATUM",
+    "REF_Z_KASSE_ID",
+    "REF_Z_NR",
+    "REF_BON_ID",
+  ];
+
+  const rows: string[][] = [];
+
+  for (const [stornoId, storno] of ctx.stornoRecords) {
+    const stornoBusinessDate = orderBusinessDate(
+      storno.createdAt,
+      ctx.locationTimezone
+    );
+    const originalBusinessDate = orderBusinessDate(
+      storno.originalCreatedAt,
+      ctx.locationTimezone
+    );
+    const zNr = String(ctx.closingNumberByDate.get(stornoBusinessDate) ?? "");
+    const refZNr = String(
+      ctx.closingNumberByDate.get(originalBusinessDate) ?? ""
+    );
+
+    rows.push([
+      ctx.kasseId,
+      zNr,
+      stornoId,
+      "",
+      "Transaktion",
+      "Stornierung",
+      berlinTimestamp(storno.createdAt),
+      ctx.kasseId,
+      refZNr,
+      storno.originalOrderId,
+    ]);
+  }
+
+  return rowsToCsv(headers, rows);
+}
+
 export function buildDsfinvkCsvFiles(ctx: DsfinvkExportContext): Record<string, string> {
   return {
     "cashpointclosing.csv": buildCashpointClosingCsv(ctx),
@@ -596,6 +705,7 @@ export function buildDsfinvkCsvFiles(ctx: DsfinvkExportContext): Record<string, 
     "lines_vat.csv": buildLinesVatCsv(ctx),
     "payment.csv": buildPaymentCsv(ctx),
     "businesscases.csv": buildBusinesscasesCsv(ctx),
+    "bon_referenzen.csv": buildReferencesCsv(ctx),
     "stamm_kassen.csv": buildStammKassenCsv(ctx),
     "stamm_orte.csv": buildStammOrteCsv(ctx),
     "stamm_tse.csv": buildStammTseCsv(ctx),
@@ -699,6 +809,8 @@ export async function generateDsfinvkExport(
       closings: [],
       closingNumberByDate,
       orders: [],
+      stornoBonOrders: [],
+      stornoRecords: new Map(),
       staffNames: new Map(),
     };
     return zipDsfinvkCsvFiles(buildDsfinvkCsvFiles(ctx));
@@ -730,17 +842,83 @@ export async function generateDsfinvkExport(
   }
 
   const timezone = locationRow.timezone || BERLIN_TZ;
-  const filteredOrders = ((orders ?? []) as unknown as DsfinvkOrderRow[]).filter(
+  const revenueOrders = ((orders ?? []) as unknown as DsfinvkOrderRow[]).filter(
     (order) => {
       const businessDate = orderBusinessDate(order.created_at, timezone);
       if (!closingDates.has(businessDate)) return false;
-      return countsTowardRevenue(order.status) || isStornoOrder(order);
+      return countsTowardRevenue(order.status);
     }
   );
 
+  const { data: stornoRowsRaw, error: stornoError } = await admin
+    .from("storno_records")
+    .select(
+      "id, original_order_id, storno_amount, created_at, tse_storno_signature, tse_storno_data"
+    )
+    .eq("location_id", locationId)
+    .eq("org_id", organizationId)
+    .gte("created_at", rangeStart)
+    .lte("created_at", rangeEnd)
+    .order("created_at", { ascending: true });
+
+  if (stornoError) {
+    throw new Error("Storno records could not be loaded.");
+  }
+
+  type StornoRecordRow = {
+    id: string;
+    original_order_id: string;
+    storno_amount: number;
+    created_at: string;
+    tse_storno_signature: string | null;
+    tse_storno_data: unknown;
+  };
+
+  const stornoRows = (stornoRowsRaw ?? []) as StornoRecordRow[];
+  const stornoRecords = new Map<string, DsfinvkStornoRecordMeta>();
+  const stornoBonOrders: DsfinvkOrderRow[] = [];
+
+  const originalOrderIds = [
+    ...new Set(stornoRows.map((row) => row.original_order_id)),
+  ];
+
+  const originalOrdersById = new Map<string, DsfinvkOrderRow>();
+  if (originalOrderIds.length > 0) {
+    const { data: originalOrdersRaw, error: originalOrdersError } = await admin
+      .from("orders")
+      .select(
+        "id, order_number, subtotal, total, tax_amount, payment_method, payment_status, status, created_at, accepted_at, delivered_at, is_takeaway, tse_signature, tse_data, created_by_staff_id, order_source, order_items(product_name, quantity, total, tax_rate)"
+      )
+      .in("id", originalOrderIds);
+
+    if (originalOrdersError) {
+      throw new Error("Original storno orders could not be loaded.");
+    }
+
+    for (const order of (originalOrdersRaw ?? []) as unknown as DsfinvkOrderRow[]) {
+      originalOrdersById.set(order.id, order);
+    }
+  }
+
+  for (const record of stornoRows) {
+    const stornoBusinessDate = orderBusinessDate(record.created_at, timezone);
+    if (!closingDates.has(stornoBusinessDate)) continue;
+
+    const original = originalOrdersById.get(record.original_order_id);
+    if (!original) continue;
+
+    stornoRecords.set(record.id, {
+      originalOrderId: record.original_order_id,
+      stornoAmount: Number(record.storno_amount),
+      createdAt: record.created_at,
+      originalCreatedAt: original.created_at,
+    });
+    stornoBonOrders.push(buildStornoBonOrder(record, original));
+  }
+
   const staffIds = [
     ...new Set(
-      filteredOrders
+      [...revenueOrders, ...stornoBonOrders]
         .map((order) => order.created_by_staff_id)
         .filter((id): id is string => Boolean(id))
     ),
@@ -778,7 +956,9 @@ export async function generateDsfinvkExport(
     fiskalyTssId: orgRow.fiskaly_tss_id ?? "",
     closings: closingRows,
     closingNumberByDate,
-    orders: filteredOrders,
+    orders: revenueOrders,
+    stornoBonOrders,
+    stornoRecords,
     staffNames,
   };
 

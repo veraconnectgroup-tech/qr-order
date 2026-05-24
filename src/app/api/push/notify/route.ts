@@ -8,10 +8,10 @@ import { isPushConfigured } from "@/lib/push/vapid";
 
 const notifySchema = z.object({
   locationId: z.string().uuid(),
-  type: z.enum(["new-order", "waiter-call", "order-ready"]).optional(),
+  type: z.enum(["new-order", "waiter-call", "order-ready", "payment-request"]).optional(),
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(500),
-  url: z.string().url().max(2048).optional(),
+  url: z.string().max(2048).optional(),
 });
 
 export const POST = withErrorHandler("push-notify-post", async (req, _ctx) => {

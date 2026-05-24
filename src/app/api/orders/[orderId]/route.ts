@@ -16,6 +16,9 @@ import { createServerClient } from "@/lib/supabase/server";
 import { scheduleOrderReadyPush } from "@/lib/push/schedule-notify";
 import { processRefund } from "@/lib/stripe/refund";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
+import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
+import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
+import type { PaymentMethod } from "@/lib/constants";
 
 function parseSessionToken(value: string | null) {
   return zSessionToken().safeParse(value ?? "");
@@ -104,9 +107,35 @@ export const GET = withErrorHandler(
 );
 
 const statusSchema = z.object({
-  status: z.enum(["accepted", "preparing", "ready", "delivered", "rejected"]),
+  status: z.enum([
+    "accepted",
+    "preparing",
+    "ready",
+    "delivered",
+    "rejected",
+    "cancelled",
+  ]),
   rejectionReason: zOrderNotesOptional(),
 });
+
+const paymentMethodSchema = z.object({
+  payment_method: z.enum([
+    "online",
+    "at_bar",
+    "card_at_table",
+    "card_terminal",
+  ]),
+});
+
+const patchSchema = z
+  .object({
+    status: statusSchema.shape.status.optional(),
+    rejectionReason: statusSchema.shape.rejectionReason,
+    payment_method: paymentMethodSchema.shape.payment_method.optional(),
+  })
+  .refine((body) => body.status !== undefined || body.payment_method !== undefined, {
+    message: "No updates.",
+  });
 
 type StaffAccess = {
   order: {
@@ -120,6 +149,7 @@ type StaffAccess = {
     total: number;
     tip_amount: number | null;
     created_at: string;
+    tse_signature: string | null;
   };
   staff: {
     id: string;
@@ -144,7 +174,7 @@ async function verifyStaffOrderAccess(
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, location_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, tip_amount, created_at"
+      "id, location_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, tip_amount, created_at, tse_signature"
     )
     .eq("id", orderId)
     .single();
@@ -189,10 +219,10 @@ async function verifyStaffOrderAccess(
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending: ["accepted", "rejected"],
-  accepted: ["preparing", "rejected"],
-  preparing: ["ready", "rejected"],
-  ready: ["delivered", "rejected"],
-  delivered: [],
+  accepted: ["preparing", "rejected", "cancelled"],
+  preparing: ["ready", "rejected", "cancelled"],
+  ready: ["delivered", "rejected", "cancelled"],
+  delivered: ["cancelled"],
   rejected: [],
   cancelled: [],
 };
@@ -220,13 +250,105 @@ export const PATCH = withErrorHandler(
       return apiError("Invalid JSON.", 400);
     }
 
-    const parsed = statusSchema.safeParse(body);
+    const parsed = patchSchema.safeParse(body);
 
     if (!parsed.success) {
-      return apiError("Invalid status.", 400);
+      return apiError("Invalid request body.", 400);
     }
 
-    const { status, rejectionReason } = parsed.data;
+    const { status, rejectionReason, payment_method: paymentMethod } =
+      parsed.data;
+
+    const admin = createAdminClient();
+
+    if (paymentMethod !== undefined) {
+      if (access.order.payment_status === "paid") {
+        return apiError("Cannot change payment method on a paid order.", 409);
+      }
+
+      if (
+        access.order.status === "cancelled" ||
+        access.order.status === "rejected"
+      ) {
+        return apiError(
+          "Cannot change payment method on a cancelled order.",
+          409
+        );
+      }
+
+      if (access.order.payment_method === paymentMethod) {
+        return apiSuccess({ ok: true });
+      }
+
+      const [{ data: location }, { data: org }] = await Promise.all([
+        admin
+          .from("locations")
+          .select(
+            "payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+          )
+          .eq("id", access.order.location_id)
+          .single(),
+        admin
+          .from("organizations")
+          .select("stripe_onboarded")
+          .eq("id", access.staff.org_id)
+          .single(),
+      ]);
+
+      if (!location || !org) {
+        return apiError("Location not found.", 404);
+      }
+
+      const locationRow = location as {
+        payment_online_enabled: boolean;
+        payment_at_bar_enabled: boolean;
+        payment_card_at_table_enabled: boolean;
+      };
+      const orgRow = org as { stripe_onboarded: boolean };
+
+      if (
+        !isPaymentMethodAllowed(
+          paymentMethod as PaymentMethod,
+          locationRow,
+          orgRow
+        )
+      ) {
+        return apiError("Payment method not enabled for this location.", 400);
+      }
+
+      const { error: paymentError } = await admin
+        .from("orders")
+        .update({ payment_method: paymentMethod } as never)
+        .eq("id", orderId);
+
+      if (paymentError) {
+        return apiError(paymentError.message, 500);
+      }
+
+      await auditLog({
+        orgId: access.staff.org_id,
+        userId: access.staff.user_id,
+        action: "update",
+        entityType: "order",
+        entityId: orderId,
+        oldValue: { payment_method: access.order.payment_method },
+        newValue: { payment_method: paymentMethod },
+        request: req,
+      });
+
+      if (status === undefined) {
+        return apiSuccess({ ok: true });
+      }
+    }
+
+    if (status === undefined) {
+      return apiSuccess({ ok: true });
+    }
+
+    const parsedStatus = statusSchema.safeParse({ status, rejectionReason });
+    if (!parsedStatus.success) {
+      return apiError("Invalid status.", 400);
+    }
 
     if (access.order.status === status) {
       return apiSuccess({ ok: true });
@@ -240,7 +362,6 @@ export const PATCH = withErrorHandler(
       );
     }
 
-    const admin = createAdminClient();
     const now = new Date().toISOString();
 
     const updates: Partial<{
@@ -281,6 +402,44 @@ export const PATCH = withErrorHandler(
         if ("error" in refundResult) {
           return apiError(refundResult.error, 400);
         }
+      }
+    }
+
+    if (status === "cancelled") {
+      if (
+        access.order.status === "delivered" &&
+        !["owner", "manager"].includes(access.staff.role)
+      ) {
+        return apiError(
+          "Only owner/manager can cancel delivered orders.",
+          403
+        );
+      }
+
+      updates.rejection_reason =
+        rejectionReason ?? "Order cancelled by staff";
+
+      if (
+        access.order.payment_status === "paid" &&
+        access.order.stripe_payment_intent_id
+      ) {
+        const refundResult = await processRefund(
+          access.order,
+          access.staff.id,
+          rejectionReason ?? "Order cancelled by staff",
+          { skipWindowCheck: false }
+        );
+
+        if ("error" in refundResult) {
+          logger.warn("Refund skipped on cancel", {
+            orderId,
+            reason: refundResult.error,
+          });
+        }
+      }
+
+      if (access.order.tse_signature) {
+        scheduleOrderTseStorno(orderId, Number(access.order.total));
       }
     }
 
@@ -335,7 +494,7 @@ export const PATCH = withErrorHandler(
       status,
     });
 
-    if (status === "rejected") {
+    if (status === "rejected" || status === "cancelled") {
       dispatchOrgWebhook(access.staff.org_id, "order.cancelled", {
         order_id: orderId,
         status,

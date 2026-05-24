@@ -101,7 +101,13 @@ async function loadPushConfig(): Promise<{
   }
 }
 
-export function PushOptIn({ className }: { className?: string }) {
+export function PushOptIn({
+  className,
+  variant = "topbar",
+}: {
+  className?: string;
+  variant?: "topbar" | "banner";
+}) {
   const { locationId } = useDashboard();
   const [state, setState] = useState<PushState>("default");
   const [busy, setBusy] = useState(false);
@@ -297,6 +303,7 @@ export function PushOptIn({ className }: { className?: string }) {
   }
 
   if (!vapidPublicKey) {
+    if (variant === "banner") return null;
     return (
       <span
         className={cn("hidden text-xs text-amber-500/90 sm:inline", className)}
@@ -308,6 +315,7 @@ export function PushOptIn({ className }: { className?: string }) {
   }
 
   if (!serverConfigured) {
+    if (variant === "banner") return null;
     return (
       <span
         className={cn("hidden text-xs text-amber-500/90 sm:inline", className)}
@@ -319,6 +327,7 @@ export function PushOptIn({ className }: { className?: string }) {
   }
 
   if (state === "active") {
+    if (variant === "banner") return null;
     return (
       <button
         type="button"
@@ -338,6 +347,19 @@ export function PushOptIn({ className }: { className?: string }) {
   }
 
   if (state === "denied") {
+    if (variant === "banner") {
+      return (
+        <div
+          className={cn(
+            "sticky top-0 z-50 border-b border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-200",
+            className
+          )}
+        >
+          Obavijesti su blokirane u postavkama browsera.
+        </div>
+      );
+    }
+
     return (
       <span
         className={cn(
@@ -348,6 +370,41 @@ export function PushOptIn({ className }: { className?: string }) {
       >
         Notifications blocked
       </span>
+    );
+  }
+
+  if (variant === "banner") {
+    return (
+      <div
+        role="region"
+        aria-label="Enable push notifications"
+        className={cn(
+          "sticky top-0 z-50 border-b border-blue-500/30 bg-gradient-to-r from-blue-600/90 to-orange-500/80 px-4 py-3 text-white shadow-sm",
+          className
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <Bell className="size-5 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Uključi push obavijesti</p>
+            <p className="text-xs text-white/85">
+              Narudžbe, pozivi i računi — odmah na telefon.
+            </p>
+            {lastError && !busy && (
+              <p className="mt-1 text-[11px] text-red-200">{lastError}</p>
+            )}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={busy}
+            onClick={() => void enablePush()}
+            className="h-10 shrink-0 bg-white font-semibold text-blue-700 hover:bg-blue-50"
+          >
+            {busy ? "…" : "Uključi"}
+          </Button>
+        </div>
+      </div>
     );
   }
 

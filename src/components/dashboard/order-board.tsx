@@ -32,12 +32,14 @@ import {
   type OrderColumnDef,
 } from "@/components/dashboard/order-card";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
+import { StornoOrderDialog } from "@/components/dashboard/storno-order-dialog";
 import { RefundOrderDialog } from "@/components/dashboard/refund-order-dialog";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { LiveConnectionBadge } from "@/components/dashboard/live-connection-badge";
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { canStornoOrder } from "@/lib/orders/storno";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import {
   buildTransferSourceMap,
@@ -114,6 +116,8 @@ function DraggableOrderCard({
   staffRole,
   inPersonPaymentLocation,
   fiscalTssEnabled,
+  onPaymentMethodChange,
+  onStorno,
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -129,6 +133,8 @@ function DraggableOrderCard({
   staffRole: string;
   inPersonPaymentLocation: "bar" | "counter" | "table";
   fiscalTssEnabled: boolean;
+  onPaymentMethodChange?: (method: string) => void;
+  onStorno?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: order.id,
@@ -155,6 +161,8 @@ function DraggableOrderCard({
         dragHandleProps={{ ...attributes, ...listeners }}
         inPersonPaymentLocation={inPersonPaymentLocation}
         fiscalTssEnabled={fiscalTssEnabled}
+        onPaymentMethodChange={onPaymentMethodChange}
+        onStorno={onStorno}
       />
     </div>
   );
@@ -192,6 +200,9 @@ export function OrderBoard() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<OrderWithDetails | null>(
+    null
+  );
+  const [stornoTarget, setStornoTarget] = useState<OrderWithDetails | null>(
     null
   );
   const [refundTarget, setRefundTarget] = useState<OrderWithDetails | null>(
@@ -316,7 +327,7 @@ export function OrderBoard() {
       let snapshot: OrderWithDetails[] = [];
       setOrders((prev) => {
         snapshot = prev;
-        return status === "rejected"
+        return status === "rejected" || status === "cancelled"
           ? prev.filter((o) => o.id !== orderId)
           : prev.map((o) => (o.id === orderId ? { ...o, status } : o));
       });
@@ -330,6 +341,9 @@ export function OrderBoard() {
         const json = await res.json();
         if (!res.ok) {
           throw new Error(json.error ?? "Update failed");
+        }
+        if (status === "cancelled") {
+          toast.success("Order storniert");
         }
         await refreshAlerts();
       } catch (e) {
@@ -347,6 +361,19 @@ export function OrderBoard() {
       }
     },
     [fetchOrders, refreshAlerts]
+  );
+
+  const patchPaymentMethod = useCallback(
+    (orderId: string, paymentMethod: string) => {
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId
+            ? { ...order, payment_method: paymentMethod as OrderWithDetails["payment_method"] }
+            : order
+        )
+      );
+    },
+    []
   );
 
   const approveAccess = useCallback(
@@ -526,6 +553,11 @@ export function OrderBoard() {
       onMarkDelivered: () => patchOrder(order.id, "delivered"),
       onRefund: canRefund ? () => setRefundTarget(order) : undefined,
       staffRole,
+      onPaymentMethodChange: (method: string) =>
+        patchPaymentMethod(order.id, method),
+      onStorno: canStornoOrder(order, staffRole)
+        ? () => setStornoTarget(order)
+        : undefined,
     };
 
     if (draggable) {
@@ -759,6 +791,16 @@ export function OrderBoard() {
         onConfirm={async (reason) => {
           if (!rejectTarget) return;
           await patchOrder(rejectTarget.id, "rejected", reason);
+        }}
+      />
+
+      <StornoOrderDialog
+        open={!!stornoTarget}
+        orderNumber={stornoTarget?.order_number ?? 0}
+        onClose={() => setStornoTarget(null)}
+        onConfirm={async (reason) => {
+          if (!stornoTarget) return;
+          await patchOrder(stornoTarget.id, "cancelled", reason);
         }}
       />
 

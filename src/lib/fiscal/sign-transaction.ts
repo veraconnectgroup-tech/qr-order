@@ -24,6 +24,9 @@ export type TseSignatureResult = {
   start_time: number;
   end_time: number;
   qr_code_data: string;
+  tx_id?: string;
+  tss_id?: string;
+  client_id?: string;
 };
 
 export type OrderForTseSigning = {
@@ -36,6 +39,8 @@ export type OrderForTseSigning = {
   payment_method: string;
   currency?: string;
   order_items?: Array<{ total: number; tax_rate: number }>;
+  /** Original Fiskaly tx_id from the paid order — required for DSFinV-K storno reference. */
+  originalTseTxId?: string;
 };
 
 type OrgFiskalyConfig = {
@@ -46,6 +51,8 @@ type OrgFiskalyConfig = {
 function formatFiskalyAmount(value: number): string {
   return value.toFixed(2);
 }
+
+export { formatFiskalyAmount };
 
 function mapVatRate(taxRate: number): FiskalyVatRate {
   if (taxRate === 7) return "REDUCED_1";
@@ -66,12 +73,14 @@ function mapPaymentType(paymentMethod: string): FiskalyPaymentType {
 
 function buildReceiptSchema(
   order: OrderForTseSigning,
-  receiptType: "RECEIPT" | "CANCELLATION" = "RECEIPT",
-  amountOverride?: number
+  receiptType: "RECEIPT" = "RECEIPT",
+  amountOverride?: number,
+  isStorno = false
 ): FiskalyReceiptSchema {
   const currency = order.currency ?? "EUR";
   const items = order.order_items ?? [];
   const grossTotal = amountOverride ?? Number(order.total);
+  const signed = (amount: number) => (isStorno ? amount * -1 : amount);
 
   const grossByRate = new Map<number, number>();
   for (const item of items) {
@@ -95,7 +104,7 @@ function buildReceiptSchema(
   const amounts_per_vat_rate = [...grossByRate.entries()].map(
     ([rate, amount]) => ({
       vat_rate: mapVatRate(rate),
-      amount: formatFiskalyAmount(amount),
+      amount: formatFiskalyAmount(signed(amount)),
     })
   );
 
@@ -107,7 +116,7 @@ function buildReceiptSchema(
         amounts_per_payment_type: [
           {
             payment_type: mapPaymentType(order.payment_method),
-            amount: formatFiskalyAmount(grossTotal),
+            amount: formatFiskalyAmount(signed(grossTotal)),
             currency_code: currency,
           },
         ],
@@ -264,9 +273,20 @@ export async function signOrderStornoTransaction(
 
   const schema = buildReceiptSchema(
     order,
-    "CANCELLATION",
-    refundAmount ?? Number(order.total)
+    "RECEIPT",
+    refundAmount ?? Number(order.total),
+    true
   );
+
+  const metadata: Record<string, string> = {
+    order_id: order.id,
+    order_number: String(order.order_number),
+    organization_id: order.organizationId,
+    storno: "true",
+  };
+  if (order.originalTseTxId) {
+    metadata.original_tse_tx_id = order.originalTseTxId;
+  }
 
   const tx = await createFiskalyTransaction(
     orgFiskaly.fiskaly_tss_id,
@@ -274,12 +294,7 @@ export async function signOrderStornoTransaction(
       tx_id: crypto.randomUUID(),
       client_id: orgFiskaly.fiskaly_client_id,
       schema,
-      metadata: {
-        order_id: order.id,
-        order_number: String(order.order_number),
-        organization_id: order.organizationId,
-        storno: "true",
-      },
+      metadata,
     },
     order.id
   );
@@ -293,7 +308,12 @@ export async function signOrderStornoTransaction(
     refundAmount: refundAmount ?? order.total,
   });
 
-  return result;
+  return {
+    ...result,
+    tx_id: tx._id,
+    tss_id: orgFiskaly.fiskaly_tss_id,
+    client_id: orgFiskaly.fiskaly_client_id,
+  };
 }
 
 export async function signOrderStornoById(
@@ -305,7 +325,7 @@ export async function signOrderStornoById(
   const { data: order, error: orderError } = await admin
     .from("orders")
     .select(
-      "id, order_number, subtotal, tax_amount, total, payment_method, location_id, tse_signature"
+      "id, order_number, subtotal, tax_amount, total, payment_method, location_id, tse_signature, tse_data"
     )
     .eq("id", orderId)
     .single();
@@ -323,6 +343,7 @@ export async function signOrderStornoById(
     payment_method: string;
     location_id: string;
     tse_signature: string | null;
+    tse_data: { tx_id?: string } | null;
   };
 
   if (!row.tse_signature) {
@@ -361,6 +382,7 @@ export async function signOrderStornoById(
       total: Number(row.total),
       payment_method: row.payment_method,
       currency: (org as { currency: string } | null)?.currency,
+      originalTseTxId: row.tse_data?.tx_id,
       order_items: ((items ?? []) as Array<{ total: number; tax_rate: number }>).map(
         (item) => ({
           total: Number(item.total),

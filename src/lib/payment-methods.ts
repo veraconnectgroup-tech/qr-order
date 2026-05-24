@@ -165,6 +165,34 @@ export type SelectablePaymentMethod = Exclude<
   "unset" | "pos" | "pos_online" | "card_terminal"
 >;
 
+export type StaffSelectablePaymentMethod = Exclude<
+  PaymentMethod,
+  "unset" | "pos" | "pos_online"
+>;
+
+export function getStaffSelectablePaymentMethods(input: {
+  stripeOnboarded: boolean;
+  paymentOnlineEnabled: boolean;
+  paymentAtBarEnabled: boolean;
+  paymentCardAtTableEnabled: boolean;
+}): StaffSelectablePaymentMethod[] {
+  const methods: StaffSelectablePaymentMethod[] = [];
+
+  if (input.paymentAtBarEnabled) methods.push("at_bar");
+  if (input.paymentCardAtTableEnabled) methods.push("card_at_table");
+  if (input.paymentCardAtTableEnabled && input.stripeOnboarded) {
+    methods.push("card_terminal");
+  }
+  if (
+    input.stripeOnboarded &&
+    input.paymentOnlineEnabled
+  ) {
+    methods.push("online");
+  }
+
+  return methods.length > 0 ? methods : ["at_bar"];
+}
+
 export function getAvailablePaymentMethods(input: {
   stripeOnboarded: boolean;
   stripePublishableKey: boolean;

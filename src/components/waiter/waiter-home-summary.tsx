@@ -1,24 +1,26 @@
 "use client";
 
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
+import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 
 export function WaiterHomeSummary() {
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
+  const { t } = useWaiterI18n();
 
   const chips = [
     {
-      label: "Orders",
+      label: t("summary.orders"),
       count: pendingOrders + pendingPaymentRequests,
       tone: "text-dash-accent",
     },
     {
-      label: "Calls",
+      label: t("summary.calls"),
       count: pendingWaiterCalls,
       tone: "text-red-400",
     },
     {
-      label: "Payments",
+      label: t("summary.payments"),
       count: pendingPaymentRequests,
       tone: "text-amber-400",
     },

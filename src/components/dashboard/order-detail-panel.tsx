@@ -1,7 +1,9 @@
 "use client";
 
 import { formatPrice } from "@/lib/format";
+import { OrderPaymentMethodSelect } from "@/components/dashboard/order-payment-method-select";
 import { cn } from "@/lib/utils";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 import type { OrderWithDetails } from "@/types";
 
 export function PaymentStatusBadge({
@@ -60,6 +62,9 @@ export function OrderDetailPanel({
   busy,
   onRefund,
   light = false,
+  inPersonPaymentLocation = "bar",
+  onPaymentMethodChange,
+  showPaymentMethodSelect = false,
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -67,6 +72,10 @@ export function OrderDetailPanel({
   busy?: boolean;
   onRefund?: () => void;
   light?: boolean;
+  inPersonPaymentLocation?: InPersonPaymentLocation;
+  onPaymentMethodChange?: (method: string) => void;
+  /** When true, renders payment method select (card renders it separately by default). */
+  showPaymentMethodSelect?: boolean;
 }) {
   const paid = order.payment_status === "paid";
   const refunded =
@@ -82,6 +91,19 @@ export function OrderDetailPanel({
 
   return (
     <div className={cn("space-y-2", light ? "text-dash-text-disabled" : "text-dash-text-secondary")}>
+      {showPaymentMethodSelect && (
+        <OrderPaymentMethodSelect
+          orderId={order.id}
+          paymentMethod={order.payment_method ?? "unset"}
+          paymentStatus={order.payment_status}
+          orderStatus={order.status}
+          inPersonPaymentLocation={inPersonPaymentLocation}
+          disabled={busy}
+          light={light}
+          onOptimisticChange={onPaymentMethodChange}
+        />
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <PaymentStatusBadge paymentStatus={order.payment_status} />
         {canRefund && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CreditCard, Loader2 } from "lucide-react";
+import { Banknote, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -13,14 +13,35 @@ import { Button } from "@/components/ui/button";
 import { TerminalPayment } from "@/components/dashboard/terminal-payment";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { formatPrice } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
-import { hapticLight } from "@/lib/haptics";
-import type { Order } from "@/types";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { cn } from "@/lib/utils";
 
-type BillOrder = Pick<
-  Order,
-  "id" | "order_number" | "total" | "tip_amount" | "payment_status" | "status"
->;
+type BillOrder = {
+  id: string;
+  order_number: number;
+  status: string;
+  total: number;
+  tip_amount: number;
+  payment_method: string;
+  payment_status: string;
+  created_at: string;
+  order_items: Array<{
+    name: string;
+    quantity: number;
+    unit_price: number;
+  }>;
+};
+
+type SessionBill = {
+  session_id: string;
+  orders: BillOrder[];
+  subtotal: number;
+  tips: number;
+  grand_total: number;
+  paid_count: number;
+  unpaid_count: number;
+  all_paid: boolean;
+};
 
 type Props = {
   open: boolean;
@@ -37,46 +58,83 @@ export function WaiterTableBillSheet({
   sessionId,
   onPaid,
 }: Props) {
-  const { locationId, currency, stripeOnboarded } = useDashboard();
+  const { currency, stripeOnboarded, inPersonPaymentLocation } = useDashboard();
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState<BillOrder[]>([]);
+  const [settling, setSettling] = useState(false);
+  const [bill, setBill] = useState<SessionBill | null>(null);
   const [terminalOpen, setTerminalOpen] = useState(false);
 
-  const unpaidOrders = orders.filter(
-    (order) =>
-      order.payment_status !== "paid" &&
-      order.payment_status !== "pos_online" &&
-      !["rejected", "cancelled"].includes(order.status)
-  );
+  const unpaidOrders =
+    bill?.orders.filter((order) => order.payment_status !== "paid") ?? [];
 
   const sessionTotal = unpaidOrders.reduce(
-    (sum, order) => sum + Number(order.total) + Number(order.tip_amount ?? 0),
+    (sum, order) => sum + order.total + order.tip_amount,
     0
   );
 
   const load = useCallback(async () => {
     if (!sessionId) {
-      setOrders([]);
+      setBill(null);
       return;
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("orders")
-      .select("id, order_number, total, tip_amount, payment_status, status")
-      .eq("session_id", sessionId)
-      .eq("location_id", locationId)
-      .neq("status", "rejected");
-
-    setOrders((data ?? []) as BillOrder[]);
-    setLoading(false);
-  }, [locationId, sessionId]);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/bill`);
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? "Could not load bill");
+      }
+      setBill(json.data as SessionBill);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not load bill"
+      );
+      setBill(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     if (!open) return;
     void load();
   }, [open, load]);
+
+  async function settleBill(paymentMethod: "at_bar" | "card_terminal") {
+    if (!sessionId) return;
+
+    setSettling(true);
+    hapticLight();
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/bill`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_method: paymentMethod }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? "Could not settle bill");
+      }
+      hapticSuccess();
+      toast.success("Račun naplaćen, sesija zatvorena.");
+      onOpenChange(false);
+      onPaid?.();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not settle bill"
+      );
+    } finally {
+      setSettling(false);
+    }
+  }
+
+  const barLabel =
+    inPersonPaymentLocation === "counter"
+      ? "Naplati na šanku"
+      : inPersonPaymentLocation === "table"
+        ? "Naplati za stolom"
+        : "Naplati na baru";
 
   return (
     <>
@@ -99,45 +157,124 @@ export function WaiterTableBillSheet({
             <div className="mt-8 flex justify-center">
               <Loader2 className="size-6 animate-spin text-dash-accent" />
             </div>
-          ) : unpaidOrders.length === 0 ? (
+          ) : !bill || bill.orders.length === 0 ? (
             <p className="mt-6 text-sm text-dash-text-muted">
-              Sve narudžbe su već plaćene.
+              Nema narudžbi na ovoj sesiji.
             </p>
           ) : (
             <div className="mt-4 space-y-4">
-              <ul className="space-y-2">
-                {unpaidOrders.map((order) => (
+              <ul className="space-y-3">
+                {bill.orders.map((order) => (
                   <li
                     key={order.id}
-                    className="flex items-center justify-between text-sm text-dash-text-secondary"
+                    className="rounded-xl border border-dash-border-subtle bg-dash-surface px-3 py-2.5"
                   >
-                    <span className="font-mono font-semibold">
-                      #{order.order_number}
-                    </span>
-                    <span className="font-mono text-dash-accent">
-                      {formatPrice(Number(order.total), currency)}
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-semibold text-dash-text">
+                        #{order.order_number}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-medium",
+                          order.payment_status === "paid"
+                            ? "text-emerald-400"
+                            : "text-amber-400"
+                        )}
+                      >
+                        {order.payment_status === "paid" ? "Paid" : "Unpaid"}
+                      </span>
+                      <span className="font-mono text-sm font-semibold text-dash-accent">
+                        {formatPrice(order.total + order.tip_amount, currency)}
+                      </span>
+                    </div>
+                    {order.order_items.length > 0 && (
+                      <ul className="mt-2 space-y-0.5 text-xs text-dash-text-muted">
+                        {order.order_items.map((item, index) => (
+                          <li key={`${order.id}-${index}`}>
+                            {item.quantity}× {item.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>
 
-              <p className="border-t border-dash-border-subtle pt-4 font-mono text-xl font-bold text-dash-accent">
-                Ukupno: {formatPrice(sessionTotal, currency)}
-              </p>
+              <div className="space-y-1 border-t border-dash-border-subtle pt-4 text-sm text-dash-text-secondary">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="font-mono">
+                    {formatPrice(bill.subtotal, currency)}
+                  </span>
+                </div>
+                {bill.tips > 0 && (
+                  <div className="flex justify-between">
+                    <span>Tips</span>
+                    <span className="font-mono">
+                      {formatPrice(bill.tips, currency)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-semibold text-dash-text">
+                  <span>Total</span>
+                  <span className="font-mono text-dash-accent">
+                    {formatPrice(bill.grand_total, currency)}
+                  </span>
+                </div>
+              </div>
 
-              {stripeOnboarded && (
-                <Button
-                  type="button"
-                  className="min-h-12 w-full bg-dash-accent text-base font-semibold hover:bg-dash-accent/90"
-                  onClick={() => {
-                    hapticLight();
-                    setTerminalOpen(true);
-                  }}
-                >
-                  <CreditCard className="mr-2 size-5" />
-                  Plati karticom (terminal)
-                </Button>
+              {bill.all_paid ? (
+                <p className="text-sm text-emerald-400">
+                  Sve narudžbe su plaćene ({bill.paid_count}/{bill.orders.length}
+                  ).
+                </p>
+              ) : (
+                <p className="text-sm text-dash-text-muted">
+                  {bill.unpaid_count} unpaid ·{" "}
+                  {formatPrice(sessionTotal, currency)} due
+                </p>
               )}
+
+              <div className="grid gap-2">
+                {unpaidOrders.length > 0 && (
+                  <Button
+                    type="button"
+                    disabled={settling}
+                    className="min-h-12 w-full bg-dash-accent text-base font-semibold active:scale-[0.98]"
+                    onClick={() => void settleBill("at_bar")}
+                  >
+                    <Banknote className="mr-2 size-5" />
+                    {settling ? "Naplata…" : barLabel}
+                  </Button>
+                )}
+
+                {stripeOnboarded && unpaidOrders.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={settling}
+                    className="min-h-12 w-full border-dash-border-subtle text-base font-semibold active:scale-[0.98]"
+                    onClick={() => {
+                      hapticLight();
+                      setTerminalOpen(true);
+                    }}
+                  >
+                    <CreditCard className="mr-2 size-5" />
+                    Plati karticom (terminal)
+                  </Button>
+                )}
+
+                {bill.all_paid && (
+                  <Button
+                    type="button"
+                    disabled={settling}
+                    className="min-h-12 w-full bg-emerald-600 text-base font-semibold active:scale-[0.98]"
+                    onClick={() => void settleBill("at_bar")}
+                  >
+                    {settling ? "Zatvaranje…" : "Zatvori sesiju"}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </SheetContent>
@@ -153,9 +290,8 @@ export function WaiterTableBillSheet({
           onClose={() => setTerminalOpen(false)}
           onSuccess={() => {
             setTerminalOpen(false);
-            onOpenChange(false);
-            onPaid?.();
-            toast.success("Plaćanje uspješno.");
+            void load();
+            toast.success("Terminal plaćanje uspješno.");
           }}
         />
       )}

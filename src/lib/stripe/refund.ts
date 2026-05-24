@@ -20,6 +20,7 @@ export type OrderForRefund = {
 export type ProcessRefundOptions = {
   amount?: number;
   skipWindowCheck?: boolean;
+  skipTseStorno?: boolean;
 };
 
 export async function processRefund(
@@ -43,11 +44,9 @@ export async function processRefund(
     return { error: "No payment to refund" };
   }
 
-  if (
-    order.payment_method !== "online" &&
-    order.payment_method !== "pos_online"
-  ) {
-    return { error: "Refunds are only available for online payments" };
+  const refundableMethods = ["online", "card_terminal", "pos_online"];
+  if (!refundableMethods.includes(order.payment_method)) {
+    return { error: "Refunds only for electronic payments" };
   }
 
   if (!options.skipWindowCheck) {
@@ -127,7 +126,7 @@ export async function processRefund(
     reason,
   } as never);
 
-  if (order.tse_signature) {
+  if (order.tse_signature && !options.skipTseStorno) {
     scheduleOrderTseStorno(order.id, refundAmount);
   }
 

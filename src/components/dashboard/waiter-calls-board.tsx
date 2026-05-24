@@ -13,6 +13,9 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
+import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
+import { hapticClick, hapticSuccess } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 function formatTimeAgo(iso: string) {
@@ -35,12 +38,14 @@ function PendingCallCard({
   onDismiss,
   onAcknowledge,
   tick,
+  t,
 }: {
   call: WaiterCallWithTable;
   staffFirstName: string;
   onDismiss: () => void;
   onAcknowledge: () => void;
   tick: number;
+  t: ReturnType<typeof useWaiterI18n>["t"];
 }) {
   void tick;
   const tableName = call.tables?.name ?? "Table";
@@ -79,17 +84,23 @@ function PendingCallCard({
       <div className="mt-4 flex gap-3">
         <button
           type="button"
-          onClick={onDismiss}
-          className="rounded-lg bg-dash-surface-raised px-4 py-2.5 text-sm text-dash-text-secondary transition hover:bg-dash-surface-overlay"
+          onClick={() => {
+            hapticClick();
+            onDismiss();
+          }}
+          className="min-h-12 rounded-lg bg-dash-surface-raised px-4 py-2.5 text-sm text-dash-text-secondary active:bg-dash-surface-overlay"
         >
-          Dismiss
+          {t("calls.dismiss")}
         </button>
         <button
           type="button"
-          onClick={onAcknowledge}
-          className="rounded-lg bg-dash-accent px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-dash-accent-hover"
+          onClick={() => {
+            hapticClick();
+            onAcknowledge();
+          }}
+          className="min-h-12 rounded-lg bg-dash-accent px-6 py-2.5 text-sm font-semibold text-white active:scale-[0.98]"
         >
-          On my way ► ({staffFirstName})
+          {t("calls.onMyWay", { name: staffFirstName })}
         </button>
       </div>
     </motion.div>
@@ -100,10 +111,12 @@ function HandledCallCard({
   call,
   staffName,
   tick,
+  t,
 }: {
   call: WaiterCallWithTable;
   staffName: string;
   tick: number;
+  t: ReturnType<typeof useWaiterI18n>["t"];
 }) {
   void tick;
   const tableName = call.tables?.name ?? "Table";
@@ -126,17 +139,25 @@ function HandledCallCard({
           )}
         </p>
         <p className="text-sm text-dash-text-disabled">
-          Handled by {staffName} · {formatTimeAgo(handledAt)}
+          {t("calls.handledBy", {
+            name: staffName,
+            time: formatTimeAgo(handledAt),
+          })}
         </p>
       </div>
     </motion.div>
   );
 }
 
-export function WaiterCallsBoard() {
+export function WaiterCallsBoard({
+  variant = "dashboard",
+}: {
+  variant?: "dashboard" | "waiter";
+}) {
   const { locationId, staffName } = useDashboard();
   const { refreshAlerts } = useDashboardAlerts();
-  const { calls, loading } = useRealtimeWaiterCalls(locationId);
+  const { calls, loading, refetch } = useRealtimeWaiterCalls(locationId);
+  const { t } = useWaiterI18n();
   const [tick, setTick] = useState(0);
 
   const staffFirstName = staffName.split(" ")[0] ?? staffName;
@@ -196,8 +217,17 @@ export function WaiterCallsBoard() {
       toast.error(error.message);
       return;
     }
+    hapticSuccess();
     await refreshAlerts();
   }
+
+  const { bind, indicator, refreshing } = usePullToRefresh({
+    onRefresh: refetch,
+    disabled: loading,
+    hint: t("pull.hint"),
+    release: t("pull.release"),
+    refreshingLabel: t("pull.refreshing"),
+  });
 
   if (loading) {
     return (
@@ -213,12 +243,12 @@ export function WaiterCallsBoard() {
     );
   }
 
-  return (
+  const board = (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
         {pending.length > 0 && (
           <span className="rounded-full bg-red-500/15 px-3 py-1 text-sm font-semibold text-red-400">
-            {pending.length} pending
+            {t("calls.pending", { count: pending.length })}
           </span>
         )}
         <SoundToggle />
@@ -227,10 +257,8 @@ export function WaiterCallsBoard() {
       {calls.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Bell className="size-16 text-dash-text-disabled" />
-          <p className="mt-4 text-xl text-dash-text-disabled">No waiter calls</p>
-          <p className="mt-1 text-dash-text-disabled">
-            Calls appear here when guests request a waiter
-          </p>
+          <p className="mt-4 text-xl text-dash-text-disabled">{t("calls.empty")}</p>
+          <p className="mt-1 text-dash-text-disabled">{t("calls.emptyHint")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -243,6 +271,7 @@ export function WaiterCallsBoard() {
                 tick={tick}
                 onDismiss={() => updateCall(call.id, "resolved")}
                 onAcknowledge={() => updateCall(call.id, "acknowledged")}
+                t={t}
               />
             ))}
           </AnimatePresence>
@@ -250,7 +279,7 @@ export function WaiterCallsBoard() {
           {pending.length > 0 && handled.length > 0 && (
             <div className="my-6 border-t border-dash-border pt-6">
               <p className="text-xs uppercase tracking-wider text-dash-text-disabled">
-                Handled
+                {t("calls.handled")}
               </p>
             </div>
           )}
@@ -262,6 +291,7 @@ export function WaiterCallsBoard() {
                 call={call}
                 staffName={staffFirstName}
                 tick={tick}
+                t={t}
               />
             ))}
           </AnimatePresence>
@@ -269,4 +299,17 @@ export function WaiterCallsBoard() {
       )}
     </div>
   );
+
+  if (variant === "waiter") {
+    return (
+      <div {...bind}>
+        {indicator}
+        <div className={cn(refreshing && "opacity-70 transition-opacity")}>
+          {board}
+        </div>
+      </div>
+    );
+  }
+
+  return board;
 }

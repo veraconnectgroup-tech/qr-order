@@ -9,6 +9,7 @@ import { paymentMethodLabel } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
+import { OrderPaymentMethodSelect } from "@/components/dashboard/order-payment-method-select";
 import { KitchenPrintButton } from "@/components/dashboard/kitchen-print-button";
 import { ReceiptPrintButton } from "@/components/dashboard/receipt-print-button";
 import {
@@ -16,6 +17,7 @@ import {
   TseStatusBadge,
 } from "@/components/dashboard/delivery-status-badge";
 import { cn } from "@/lib/utils";
+import { canStornoOrder } from "@/lib/orders/storno";
 import type { OrderWithDetails } from "@/types";
 
 export type OrderColumnDef = {
@@ -199,6 +201,8 @@ export function OrderCard({
   inPersonPaymentLocation = "bar",
   appearance = "default",
   fiscalTssEnabled = false,
+  onPaymentMethodChange,
+  onStorno,
 }: {
   order: OrderWithDetails;
   currency: string;
@@ -217,6 +221,8 @@ export function OrderCard({
   inPersonPaymentLocation?: InPersonPaymentLocation;
   appearance?: "default" | "light";
   fiscalTssEnabled?: boolean;
+  onPaymentMethodChange?: (method: string) => void;
+  onStorno?: () => void;
 }) {
   const light = appearance === "light";
   const columnId = getOrderColumnId(order.status);
@@ -232,6 +238,38 @@ export function OrderCard({
     (order as { payment_method?: string }).payment_method ?? "online",
     inPersonPaymentLocation
   );
+  const showStorno =
+    Boolean(onStorno) &&
+    canStornoOrder(order, staffRole ?? "staff") &&
+    interactive;
+
+  if (order.status === "cancelled") {
+    return (
+      <motion.article
+        layout={interactive}
+        className={cn(
+          "relative rounded-lg border p-3",
+          light
+            ? "border-zinc-200 bg-zinc-50"
+            : "border-dash-border bg-dash-surface/60"
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-mono font-semibold">
+            {formatOrderNumber(order.order_number)}
+          </span>
+          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-400">
+            Storniert
+          </span>
+          {order.rejection_reason && (
+            <span className="text-xs text-dash-text-muted">
+              {order.rejection_reason}
+            </span>
+          )}
+        </div>
+      </motion.article>
+    );
+  }
 
   if (columnId === "delivered") {
     const deliveredAgeMs = getDeliveredAgeMs(order);
@@ -302,6 +340,16 @@ export function OrderCard({
             currency={currency}
             light={light}
           />
+        )}
+        {showStorno && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onStorno}
+            className="shrink-0 rounded-lg bg-red-600/15 px-2.5 py-1.5 text-xs font-semibold text-red-400 active:scale-[0.98] disabled:opacity-50"
+          >
+            Storno
+          </button>
         )}
       </motion.article>
     );
@@ -396,6 +444,21 @@ export function OrderCard({
         </div>
       )}
 
+      {!paid && order.status !== "rejected" && (
+        <div className="mt-2">
+          <OrderPaymentMethodSelect
+            orderId={order.id}
+            paymentMethod={(order as { payment_method?: string }).payment_method ?? "unset"}
+            paymentStatus={order.payment_status}
+            orderStatus={order.status}
+            inPersonPaymentLocation={inPersonPaymentLocation}
+            disabled={busy || !interactive}
+            light={light}
+            onOptimisticChange={onPaymentMethodChange}
+          />
+        </div>
+      )}
+
       <ul className={cn("mt-3 space-y-1 text-sm", light ? "text-zinc-700" : "text-dash-text-secondary")}>
         {order.order_items?.map((item) => (
           <OrderItemProductLine
@@ -440,6 +503,8 @@ export function OrderCard({
           busy={busy}
           onRefund={onRefund}
           light={light}
+          inPersonPaymentLocation={inPersonPaymentLocation}
+          onPaymentMethodChange={onPaymentMethodChange}
         />
       </div>
 
@@ -530,6 +595,17 @@ export function OrderCard({
           className="mt-3 w-full rounded-lg bg-dash-accent py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-dash-accent-hover hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Mark Delivered
+        </button>
+      )}
+
+      {showStorno && (
+        <button
+          type="button"
+          disabled={busy || !interactive}
+          onClick={onStorno}
+          className="mt-2 w-full rounded-lg border border-red-500/40 bg-red-500/10 py-2.5 text-sm font-semibold text-red-400 transition active:scale-[0.98] disabled:opacity-50 touch-manipulation"
+        >
+          Storno
         </button>
       )}
     </motion.article>
