@@ -40,7 +40,7 @@ export default async function DashboardLayout({
 
   if (!locationId) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+      <div className="dashboard-theme flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         No location found for this account.
       </div>
     );

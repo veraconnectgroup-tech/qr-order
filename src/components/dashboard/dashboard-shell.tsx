@@ -31,7 +31,7 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
   return (
     <SoundAlertProvider>
       <DashboardAlertsProvider>
-        <div className="flex min-h-dvh overflow-x-hidden bg-zinc-950 text-zinc-50">
+        <div className="dashboard-theme flex min-h-dvh overflow-x-hidden bg-background text-foreground">
           <DashboardSidebar />
         <div className="flex min-h-dvh min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
           <DashboardBanners />
@@ -61,13 +61,13 @@ export function DashboardShell({
   return (
     <DashboardProvider value={context}>
       {isSetup ? (
-        <div className="min-h-dvh overflow-x-hidden bg-zinc-950 text-zinc-50">
+        <div className="dashboard-theme min-h-dvh overflow-x-hidden bg-background text-foreground">
           {children}
         </div>
       ) : isKitchen ? (
         <SoundAlertProvider>
           <DashboardAlertsProvider>
-            <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-50 md:min-h-dvh">
+            <div className="dashboard-theme min-h-screen overflow-x-hidden bg-background text-foreground md:min-h-dvh">
               <DashboardBanners />
               {children}
             </div>

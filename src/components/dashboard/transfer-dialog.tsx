@@ -168,9 +168,9 @@ export function TransferDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-dash-border bg-dash-surface text-dash-text sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-zinc-50">
+          <DialogTitle className="text-dash-text">
             Transfer from {fromTable.name}
           </DialogTitle>
         </DialogHeader>
@@ -178,13 +178,13 @@ export function TransferDialog({
         <div className="space-y-6 py-2">
           <section>
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
                 Select orders
               </p>
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="text-xs font-medium text-orange-400 hover:text-orange-300"
+                className="text-xs font-medium text-dash-accent hover:text-dash-accent"
               >
                 {allSelected ? "Clear all" : "Select all"}
               </button>
@@ -198,21 +198,21 @@ export function TransferDialog({
                       className={cn(
                         "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition",
                         checked
-                          ? "border-orange-500/50 bg-orange-500/10"
-                          : "border-zinc-800 bg-zinc-950"
+                          ? "border-dash-accent/50 bg-dash-accent-muted"
+                          : "border-dash-border bg-dash-bg"
                       )}
                     >
                       <Checkbox
                         checked={checked}
                         onCheckedChange={() => toggleOrder(order.id)}
                       />
-                      <span className="font-mono text-sm font-semibold text-zinc-100">
+                      <span className="font-mono text-sm font-semibold text-dash-text">
                         {formatOrderNumber(order.order_number)}
                       </span>
-                      <span className="ml-auto text-sm text-zinc-400">
+                      <span className="ml-auto text-sm text-dash-text-muted">
                         {formatPrice(Number(order.total), currency)}
                       </span>
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs text-dash-text-disabled">
                         {orderStatusLabel(order.status)}
                       </span>
                     </label>
@@ -223,13 +223,13 @@ export function TransferDialog({
           </section>
 
           <section>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
               Destination table
             </p>
             <div className="space-y-4">
               {groupedTables.map((group) => (
                 <div key={group.zoneName}>
-                  <p className="mb-2 text-xs font-medium text-zinc-500">
+                  <p className="mb-2 text-xs font-medium text-dash-text-disabled">
                     {group.zoneName}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -244,14 +244,14 @@ export function TransferDialog({
                           className={cn(
                             "rounded-lg border px-3 py-2.5 text-left transition",
                             selected
-                              ? "border-orange-500 bg-orange-500/15"
-                              : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                              ? "border-dash-accent bg-dash-accent/15"
+                              : "border-dash-border bg-dash-bg hover:border-dash-surface-overlay"
                           )}
                         >
-                          <p className="text-sm font-semibold text-zinc-100">
+                          <p className="text-sm font-semibold text-dash-text">
                             {table.name}
                           </p>
-                          <p className="mt-0.5 text-xs text-zinc-500">
+                          <p className="mt-0.5 text-xs text-dash-text-disabled">
                             {occupied ? "Occupied" : "Free"}
                           </p>
                         </button>
@@ -264,7 +264,7 @@ export function TransferDialog({
           </section>
 
           <label className="block space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
               Note (optional)
             </span>
             <input
@@ -272,13 +272,13 @@ export function TransferDialog({
               onChange={(event) => setNote(event.target.value)}
               placeholder="Reason for transfer…"
               maxLength={500}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             />
           </label>
         </div>
 
         <DialogFooter className="flex-col gap-3 sm:flex-col sm:items-stretch">
-          <p className="text-center text-sm text-zinc-400">
+          <p className="text-center text-sm text-dash-text-muted">
             {selectedOrderIds.length > 0 && targetTable
               ? `Transfer ${selectedOrderIds.length} order${selectedOrderIds.length === 1 ? "" : "s"} → ${targetTable.name}`
               : "Select orders and a destination table"}
@@ -291,7 +291,7 @@ export function TransferDialog({
               !targetTableId
             }
             onClick={handleConfirm}
-            className="h-11 w-full bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+            className="h-11 w-full bg-dash-accent-hover text-white hover:bg-dash-accent-hover disabled:opacity-50"
           >
             {submitting ? (
               <>

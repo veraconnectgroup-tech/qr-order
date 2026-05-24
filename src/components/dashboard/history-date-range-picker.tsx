@@ -104,15 +104,15 @@ export function HistoryDateRangePicker() {
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 justify-start gap-2 border-zinc-700 bg-zinc-900 font-normal text-zinc-200 hover:bg-zinc-800"
+          className="min-h-11 justify-start gap-2 border-dash-surface-overlay bg-dash-surface font-normal text-dash-text-secondary hover:bg-dash-surface-raised"
         >
-          <CalendarIcon className="size-4 text-zinc-400" />
+          <CalendarIcon className="size-4 text-dash-text-muted" />
           {formatAnalyticsRangeLabel(range)}
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-auto border-zinc-700 bg-zinc-900 p-3 text-zinc-100"
+        className="w-auto border-dash-surface-overlay bg-dash-surface p-3 text-dash-text"
       >
         <div className="flex flex-wrap gap-1.5">
           {PRESETS.map((preset) => (
@@ -122,10 +122,10 @@ export function HistoryDateRangePicker() {
               size="sm"
               variant="outline"
               className={cn(
-                "border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-800",
+                "border-dash-surface-overlay bg-dash-bg text-dash-text-secondary hover:bg-dash-surface-raised",
                 (activePreset === preset.id ||
                   (preset.id === "custom" && customMode)) &&
-                  "border-orange-500 bg-orange-500 text-white hover:bg-orange-600"
+                  "border-dash-accent bg-dash-accent text-white hover:bg-dash-accent-hover"
               )}
               onClick={() => selectPreset(preset.id)}
             >
@@ -141,12 +141,12 @@ export function HistoryDateRangePicker() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="min-w-[120px] justify-start gap-2 border-zinc-700 bg-zinc-950 font-normal text-zinc-200"
+                  className="min-w-[120px] justify-start gap-2 border-dash-surface-overlay bg-dash-bg font-normal text-dash-text-secondary"
                 >
                   {customFrom ? format(customFrom, "dd MMM yyyy") : "From"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto border-zinc-700 bg-zinc-900 p-0">
+              <PopoverContent className="w-auto border-dash-surface-overlay bg-dash-surface p-0">
                 <Calendar
                   mode="single"
                   selected={customFrom}
@@ -160,19 +160,19 @@ export function HistoryDateRangePicker() {
               </PopoverContent>
             </Popover>
 
-            <span className="text-sm text-zinc-500">–</span>
+            <span className="text-sm text-dash-text-disabled">–</span>
 
             <Popover open={toOpen} onOpenChange={setToOpen}>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
-                  className="min-w-[120px] justify-start gap-2 border-zinc-700 bg-zinc-950 font-normal text-zinc-200"
+                  className="min-w-[120px] justify-start gap-2 border-dash-surface-overlay bg-dash-bg font-normal text-dash-text-secondary"
                 >
                   {customTo ? format(customTo, "dd MMM yyyy") : "To"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto border-zinc-700 bg-zinc-900 p-0">
+              <PopoverContent className="w-auto border-dash-surface-overlay bg-dash-surface p-0">
                 <Calendar
                   mode="single"
                   selected={customTo}
@@ -194,7 +194,7 @@ export function HistoryDateRangePicker() {
               size="sm"
               disabled={!customFrom || !customTo}
               onClick={applyCustomRange}
-              className="bg-orange-500 text-white hover:bg-orange-600"
+              className="bg-dash-accent text-white hover:bg-dash-accent-hover"
             >
               Apply
             </Button>

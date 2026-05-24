@@ -626,13 +626,13 @@ export function StaffOrderEntry() {
       <div className="grid gap-6 lg:grid-cols-[1fr,380px]">
         <section className="min-w-0 space-y-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-dash-text-disabled" />
             <Input
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search menu..."
-              className="h-11 border-zinc-800 bg-zinc-900 pl-10 text-zinc-100 placeholder:text-zinc-500"
+              className="h-11 border-dash-border bg-dash-surface pl-10 text-dash-text placeholder:text-dash-text-disabled"
             />
           </div>
 
@@ -654,8 +654,8 @@ export function StaffOrderEntry() {
 
           {filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
-              <UtensilsCrossed className="mb-3 size-10 text-zinc-600" />
-              <p className="text-sm text-zinc-500">No items found</p>
+              <UtensilsCrossed className="mb-3 size-10 text-dash-text-disabled" />
+              <p className="text-sm text-dash-text-disabled">No items found</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -666,7 +666,7 @@ export function StaffOrderEntry() {
                     key={product.id}
                     type="button"
                     onClick={() => handleProductClick(product, menuSection)}
-                    className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-left transition hover:border-zinc-700 active:scale-[0.98]"
+                    className="overflow-hidden rounded-xl border border-dash-border bg-dash-surface p-3 text-left transition hover:border-dash-surface-overlay active:scale-[0.98]"
                   >
                     {product.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -676,18 +676,18 @@ export function StaffOrderEntry() {
                         className="aspect-square w-full rounded-lg object-cover"
                       />
                     ) : (
-                      <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-zinc-800">
-                        <UtensilsCrossed className="size-8 text-zinc-600" />
+                      <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-dash-surface-raised">
+                        <UtensilsCrossed className="size-8 text-dash-text-disabled" />
                       </div>
                     )}
-                    <p className="mt-3 line-clamp-2 text-sm font-medium text-zinc-100">
+                    <p className="mt-3 line-clamp-2 text-sm font-medium text-dash-text">
                       {product.name}
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-orange-400">
+                    <p className="mt-1 text-sm font-semibold text-dash-accent">
                       {formatPrice(Number(product.price), currency)}
                     </p>
                     {hasOptions && (
-                      <p className="mt-1 text-xs text-zinc-500">+ options</p>
+                      <p className="mt-1 text-xs text-dash-text-disabled">+ options</p>
                     )}
                   </button>
                 );
@@ -705,11 +705,11 @@ export function StaffOrderEntry() {
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/30 transition hover:bg-orange-600 active:scale-95 lg:hidden"
+          className="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-dash-accent text-white shadow-lg shadow-dash-accent/30 transition hover:bg-dash-accent-hover active:scale-95 lg:hidden"
           aria-label="Open order"
         >
           <ShoppingCart className="size-6" />
-          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-zinc-950 text-xs font-bold">
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-dash-bg text-xs font-bold">
             {cartCount}
           </span>
         </button>
@@ -718,10 +718,10 @@ export function StaffOrderEntry() {
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-zinc-800 bg-zinc-950 px-4 pb-safe text-zinc-100 lg:hidden"
+          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-dash-border bg-dash-bg px-4 pb-safe text-dash-text lg:hidden"
         >
           <SheetHeader className="px-0 pt-2">
-            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-zinc-700" />
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-dash-surface-overlay" />
             <SheetTitle className="text-left text-base font-semibold">
               Current order
             </SheetTitle>
@@ -764,8 +764,8 @@ function CategoryPill({
       className={cn(
         "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition",
         active
-          ? "bg-orange-500 text-white"
-          : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          ? "bg-dash-accent text-white"
+          : "bg-dash-surface-raised text-dash-text-secondary hover:bg-dash-surface-overlay"
       )}
     >
       {label}
@@ -828,19 +828,19 @@ function StaffOrderCartPanel({
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+    <div className="rounded-2xl border border-dash-border bg-dash-surface p-4">
       <div className="mb-4">
-        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-dash-text-disabled">
           Table
         </label>
         <Select value={selectedTable} onValueChange={onTableChange}>
-          <SelectTrigger className="h-11 w-full border-zinc-700 bg-zinc-950 text-zinc-100">
+          <SelectTrigger className="h-11 w-full border-dash-surface-overlay bg-dash-bg text-dash-text">
             <SelectValue placeholder="Select table" />
           </SelectTrigger>
-          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+          <SelectContent className="border-dash-surface-overlay bg-dash-surface text-dash-text">
             {[...tablesByZone.entries()].map(([zoneKey, group]) => (
               <SelectGroup key={zoneKey}>
-                <SelectLabel className="text-zinc-500">
+                <SelectLabel className="text-dash-text-disabled">
                   {group.zoneName}
                 </SelectLabel>
                 {group.tables.map((table) => (
@@ -855,12 +855,12 @@ function StaffOrderCartPanel({
       </div>
 
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-100">Order summary</h2>
-        <span className="text-xs text-zinc-500">{cartCount} items</span>
+        <h2 className="text-sm font-semibold text-dash-text">Order summary</h2>
+        <span className="text-xs text-dash-text-disabled">{cartCount} items</span>
       </div>
 
       {cart.length === 0 ? (
-        <p className="py-8 text-center text-sm text-zinc-500">
+        <p className="py-8 text-center text-sm text-dash-text-disabled">
           Tap products to add them to the order.
         </p>
       ) : (
@@ -868,27 +868,27 @@ function StaffOrderCartPanel({
           {cart.map((item) => (
             <li
               key={item.id}
-              className="rounded-xl bg-zinc-900 p-3 ring-1 ring-zinc-800"
+              className="rounded-xl bg-dash-surface p-3 ring-1 ring-dash-border"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-zinc-100">
+                  <p className="truncate text-sm font-semibold text-dash-text">
                     {item.productName}
                   </p>
                   {item.modifiers.length > 0 && (
-                    <p className="mt-0.5 text-xs text-zinc-500">
+                    <p className="mt-0.5 text-xs text-dash-text-disabled">
                       {item.modifiers
                         .map((mod) => mod.modifierName)
                         .join(", ")}
                     </p>
                   )}
                   {item.notes && (
-                    <p className="mt-0.5 text-xs italic text-zinc-600">
+                    <p className="mt-0.5 text-xs italic text-dash-text-disabled">
                       {item.notes}
                     </p>
                   )}
                 </div>
-                <p className="shrink-0 text-right text-sm font-semibold text-zinc-200">
+                <p className="shrink-0 text-right text-sm font-semibold text-dash-text-secondary">
                   {formatPrice(item.lineTotal, currency)}
                 </p>
               </div>
@@ -897,18 +897,18 @@ function StaffOrderCartPanel({
                   <button
                     type="button"
                     onClick={() => onUpdateQuantity(item.id, -1)}
-                    className="flex size-7 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                    className="flex size-7 items-center justify-center rounded-lg border border-dash-surface-overlay text-dash-text-secondary hover:bg-dash-surface-raised"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="size-3.5" />
                   </button>
-                  <span className="min-w-[1.25rem] text-center text-sm font-semibold text-zinc-100">
+                  <span className="min-w-[1.25rem] text-center text-sm font-semibold text-dash-text">
                     {item.quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => onUpdateQuantity(item.id, 1)}
-                    className="flex size-7 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                    className="flex size-7 items-center justify-center rounded-lg border border-dash-surface-overlay text-dash-text-secondary hover:bg-dash-surface-raised"
                     aria-label="Increase quantity"
                   >
                     <Plus className="size-3.5" />
@@ -928,8 +928,8 @@ function StaffOrderCartPanel({
         </ul>
       )}
 
-      <div className="mt-4 space-y-4 border-t border-zinc-800 pt-4">
-        <label className="flex cursor-pointer items-center gap-3 text-sm text-zinc-300">
+      <div className="mt-4 space-y-4 border-t border-dash-border pt-4">
+        <label className="flex cursor-pointer items-center gap-3 text-sm text-dash-text-secondary">
           <Checkbox
             checked={isTakeaway}
             onCheckedChange={(checked) => onTakeawayChange(checked === true)}
@@ -938,7 +938,7 @@ function StaffOrderCartPanel({
         </label>
 
         <div>
-          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-dash-text-disabled">
             Payment
           </label>
           <Select
@@ -947,10 +947,10 @@ function StaffOrderCartPanel({
               onPaymentMethodChange(value as PaymentMethodOption)
             }
           >
-            <SelectTrigger className="w-full border-zinc-700 bg-zinc-950 text-zinc-100">
+            <SelectTrigger className="w-full border-dash-surface-overlay bg-dash-bg text-dash-text">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+            <SelectContent className="border-dash-surface-overlay bg-dash-surface text-dash-text">
               {availablePaymentMethods.map((method) => (
                 <SelectItem key={method} value={method}>
                   {paymentLabels[method]}
@@ -963,7 +963,7 @@ function StaffOrderCartPanel({
         <div>
           <label
             htmlFor="staff-order-notes"
-            className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500"
+            className="mb-2 block text-xs font-medium uppercase tracking-wide text-dash-text-disabled"
           >
             Order notes
           </label>
@@ -973,13 +973,13 @@ function StaffOrderCartPanel({
             onChange={(event) => onOrderNotesChange(event.target.value)}
             placeholder="Optional notes for kitchen or service…"
             rows={2}
-            className="resize-none border-zinc-700 bg-zinc-950 text-zinc-100"
+            className="resize-none border-dash-surface-overlay bg-dash-bg text-dash-text"
           />
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-zinc-300">Total</span>
-          <span className="text-lg font-bold text-zinc-50">
+          <span className="text-sm font-bold text-dash-text-secondary">Total</span>
+          <span className="text-lg font-bold text-dash-text">
             {formatPrice(orderTotal, currency)}
           </span>
         </div>
@@ -988,7 +988,7 @@ function StaffOrderCartPanel({
           type="button"
           disabled={!canSubmit}
           onClick={onSubmit}
-          className="h-12 w-full bg-orange-600 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
+          className="h-12 w-full bg-dash-accent-hover text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {submitting ? (
             <>

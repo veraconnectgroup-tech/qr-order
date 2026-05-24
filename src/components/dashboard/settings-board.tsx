@@ -178,48 +178,48 @@ export function SettingsBoard({
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-0 sm:space-y-6">
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
-        <h2 className="text-lg font-semibold text-zinc-50">Restaurant</h2>
+      <section className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6">
+        <h2 className="text-lg font-semibold text-dash-text">Restaurant</h2>
         {canEdit ? (
           <form action={handleSave} className="mt-4 space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Name</span>
+              <span className="text-sm text-dash-text-muted">Name</span>
               <input
                 name="name"
                 defaultValue={org.name}
                 required
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Email</span>
+              <span className="text-sm text-dash-text-muted">Email</span>
               <input
                 name="email"
                 type="email"
                 defaultValue={org.email ?? ""}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Phone</span>
+              <span className="text-sm text-dash-text-muted">Phone</span>
               <input
                 name="phone"
                 defaultValue={org.phone ?? ""}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Description</span>
+              <span className="text-sm text-dash-text-muted">Description</span>
               <textarea
                 name="description"
                 rows={3}
                 defaultValue={org.description ?? ""}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1.5">
-                <span className="text-sm text-zinc-400">Tax rate (%)</span>
+                <span className="text-sm text-dash-text-muted">Tax rate (%)</span>
                 <input
                   name="default_tax_percent"
                   type="number"
@@ -227,25 +227,25 @@ export function SettingsBoard({
                   max="100"
                   step="0.01"
                   defaultValue={org.default_tax_percent}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                  className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
                 />
               </label>
               <div className="space-y-1.5">
-                <span className="text-sm text-zinc-400">Currency</span>
-                <p className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-500">
+                <span className="text-sm text-dash-text-muted">Currency</span>
+                <p className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2 text-sm text-dash-text-disabled">
                   {org.currency}
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-4 text-sm text-zinc-500">
+            <div className="flex flex-wrap gap-4 text-sm text-dash-text-disabled">
               <span>
                 Slug:{" "}
-                <span className="font-mono text-zinc-400">{org.slug}</span>
+                <span className="font-mono text-dash-text-muted">{org.slug}</span>
               </span>
               {location && (
                 <span>
                   Location:{" "}
-                  <span className="text-zinc-400">
+                  <span className="text-dash-text-muted">
                     {location.name}
                     {location.city ? ` · ${location.city}` : ""}
                   </span>
@@ -255,7 +255,7 @@ export function SettingsBoard({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+              className="rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>
@@ -271,39 +271,39 @@ export function SettingsBoard({
               ["Slug", org.slug],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between gap-4">
-                <dt className="text-zinc-500">{label}</dt>
-                <dd className="text-right text-zinc-200">{value}</dd>
+                <dt className="text-dash-text-disabled">{label}</dt>
+                <dd className="text-right text-dash-text-secondary">{value}</dd>
               </div>
             ))}
           </dl>
         )}
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
-        <h2 className="text-lg font-semibold text-zinc-50">Guest menu link</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+      <section className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6">
+        <h2 className="text-lg font-semibold text-dash-text">Guest menu link</h2>
+        <p className="mt-1 text-sm text-dash-text-disabled">
           Share or test the QR guest experience for one of your tables
         </p>
         {guestMenuUrl ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <code className="flex-1 break-all rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-400">
+            <code className="flex-1 break-all rounded-lg border border-dash-border bg-dash-bg px-3 py-2 text-xs text-dash-text-muted">
               {guestMenuUrl.replace(/^https?:\/\//, "")}
             </code>
             <button
               type="button"
               onClick={copyGuestUrl}
-              className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-dash-surface-raised px-3 py-2 text-sm text-dash-text-secondary hover:bg-dash-surface-overlay"
             >
               <Copy className="size-4" />
               Copy
             </button>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-zinc-400">
+          <p className="mt-4 text-sm text-dash-text-muted">
             Add a table on the{" "}
             <Link
               href="/dashboard/tables"
-              className="text-orange-400 hover:underline"
+              className="text-dash-accent hover:underline"
             >
               Tables
             </Link>{" "}
@@ -313,17 +313,17 @@ export function SettingsBoard({
       </section>
 
       {canEdit && location && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
+        <section className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-zinc-50">
+              <h2 className="text-lg font-semibold text-dash-text">
                 Guest ordering
               </h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-dash-text-disabled">
                 Pause new orders during breaks or when the kitchen is closed.
                 Waiter calls still work.
               </p>
-              <p className="mt-2 text-xs text-zinc-600">
+              <p className="mt-2 text-xs text-dash-text-disabled">
                 Status:{" "}
                 <span
                   className={
@@ -344,17 +344,17 @@ export function SettingsBoard({
       )}
 
       {canEdit && location && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-zinc-50">Payment methods</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+        <section className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-dash-text">Payment methods</h2>
+          <p className="mt-1 text-sm text-dash-text-disabled">
             Choose which options guests see at checkout
           </p>
-          <div className="mt-4 divide-y divide-zinc-800 rounded-lg border border-zinc-800">
+          <div className="mt-4 divide-y divide-dash-border rounded-lg border border-dash-border">
             <div className="px-4 py-3.5">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-zinc-200">Pay in person</p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-sm font-medium text-dash-text-secondary">Pay in person</p>
+                  <p className="text-xs text-dash-text-disabled">
                     Guest orders now and pays later on site
                   </p>
                 </div>
@@ -368,7 +368,7 @@ export function SettingsBoard({
               </div>
               {paymentAtBar && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-xs font-medium text-zinc-400">
+                  <p className="text-xs font-medium text-dash-text-muted">
                     Where do guests pay?
                   </p>
                   <div className="grid gap-2 sm:grid-cols-3">
@@ -383,14 +383,14 @@ export function SettingsBoard({
                           className={cn(
                             "rounded-lg border px-3 py-2.5 text-left transition",
                             selected
-                              ? "border-orange-500 bg-orange-500/10"
-                              : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                              ? "border-dash-accent bg-dash-accent-muted"
+                              : "border-dash-border bg-dash-bg hover:border-dash-surface-overlay"
                           )}
                         >
-                          <span className="block text-sm font-medium text-zinc-200">
+                          <span className="block text-sm font-medium text-dash-text-secondary">
                             {option.label}
                           </span>
-                          <span className="mt-0.5 block text-xs text-zinc-500">
+                          <span className="mt-0.5 block text-xs text-dash-text-disabled">
                             {option.hint}
                           </span>
                         </button>
@@ -402,8 +402,8 @@ export function SettingsBoard({
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <p className="text-sm font-medium text-zinc-200">Card</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-sm font-medium text-dash-text-secondary">Card</p>
+                <p className="text-xs text-dash-text-disabled">
                   Card payment — staff brings a terminal to the table
                 </p>
               </div>
@@ -417,8 +417,8 @@ export function SettingsBoard({
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <p className="text-sm font-medium text-zinc-200">Pay online</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-sm font-medium text-dash-text-secondary">Pay online</p>
+                <p className="text-xs text-dash-text-disabled">
                   Apple Pay, Google Pay, and cards via Stripe
                   {!org.stripe_onboarded && " — connect Stripe below first"}
                 </p>
@@ -438,7 +438,7 @@ export function SettingsBoard({
       {canEdit && (
         <Suspense
           fallback={
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-sm text-zinc-500">
+            <div className="rounded-xl border border-dash-border bg-dash-surface p-6 text-sm text-dash-text-disabled">
               Loading payments…
             </div>
           }
@@ -452,14 +452,14 @@ export function SettingsBoard({
         </Suspense>
       )}
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
+      <section className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-50">
-              <Volume2 className="size-5 text-zinc-400" />
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-dash-text">
+              <Volume2 className="size-5 text-dash-text-muted" />
               Sound alerts
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-dash-text-disabled">
               Play sounds for new orders and waiter calls on this device
             </p>
           </div>
@@ -467,27 +467,27 @@ export function SettingsBoard({
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
-        <h2 className="text-lg font-semibold text-zinc-50">Your account</h2>
+      <section className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6">
+        <h2 className="text-lg font-semibold text-dash-text">Your account</h2>
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-zinc-500">Name</dt>
-            <dd className="text-zinc-200">{staffName}</dd>
+            <dt className="text-dash-text-disabled">Name</dt>
+            <dd className="text-dash-text-secondary">{staffName}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-zinc-500">Role</dt>
-            <dd className="capitalize text-zinc-200">{staffRole}</dd>
+            <dt className="text-dash-text-disabled">Role</dt>
+            <dd className="capitalize text-dash-text-secondary">{staffRole}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-zinc-500">Email</dt>
-            <dd className="text-zinc-200">{staffEmail ?? "—"}</dd>
+            <dt className="text-dash-text-disabled">Email</dt>
+            <dd className="text-dash-text-secondary">{staffEmail ?? "—"}</dd>
           </div>
         </dl>
         <form action={logoutAction} className="mt-6">
           <button
             type="submit"
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100"
+              "inline-flex items-center gap-2 rounded-lg border border-dash-surface-overlay px-4 py-2 text-sm text-dash-text-secondary transition hover:bg-dash-surface-raised hover:text-dash-text"
             )}
           >
             <LogOut className="size-4" />

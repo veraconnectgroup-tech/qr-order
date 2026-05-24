@@ -65,12 +65,12 @@ export function OrderItemProductLine({
     <>
       {item.quantity}× {item.product_name}
       {modifiers?.map((m) => (
-        <span key={m.id} className="ml-4 block text-xs text-zinc-500">
+        <span key={m.id} className="ml-4 block text-xs text-dash-text-disabled">
           + {m.modifier_name}
         </span>
       ))}
       {notes && (
-        <span className="ml-4 block text-xs italic text-zinc-500">→ {notes}</span>
+        <span className="ml-4 block text-xs italic text-dash-text-disabled">→ {notes}</span>
       )}
     </>
   );
@@ -87,7 +87,7 @@ export function OrderItemProductLine({
             type="button"
             disabled={busy}
             className={cn(
-              "text-left transition hover:text-orange-400 disabled:opacity-50",
+              "text-left transition hover:text-dash-accent disabled:opacity-50",
               nameClassName
             )}
           >
@@ -96,12 +96,12 @@ export function OrderItemProductLine({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="border-zinc-800 bg-zinc-950 text-zinc-100"
+          className="border-dash-border bg-dash-bg text-dash-text"
         >
           <DropdownMenuItem
             disabled={busy}
             onClick={() => void markUnavailable()}
-            className="cursor-pointer text-sm focus:bg-zinc-800"
+            className="cursor-pointer text-sm focus:bg-dash-surface-raised"
           >
             Mark unavailable
           </DropdownMenuItem>

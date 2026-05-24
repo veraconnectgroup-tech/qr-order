@@ -25,8 +25,8 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
-      <h3 className="mb-4 text-sm font-medium text-zinc-400">{title}</h3>
+    <div className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-5">
+      <h3 className="mb-4 text-sm font-medium text-dash-text-muted">{title}</h3>
       {children}
     </div>
   );
@@ -68,7 +68,7 @@ export function AnalyticsCharts({
 
   if (!orders.length) {
     return (
-      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900/50 py-12 text-center text-zinc-500">
+      <div className="mb-8 rounded-xl border border-dash-border bg-dash-surface/50 py-12 text-center text-dash-text-disabled">
         No data for charts in this period
       </div>
     );

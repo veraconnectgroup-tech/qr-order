@@ -115,7 +115,7 @@ function Comparison({
       : current - previous;
 
   if (diff === 0 && previous === 0 && current === 0) {
-    return <span className="text-sm text-zinc-500">—</span>;
+    return <span className="text-sm text-dash-text-disabled">—</span>;
   }
 
   const positive = diff >= 0;
@@ -150,16 +150,16 @@ function StatusBadge({ status }: { status: string }) {
     preparing: "bg-yellow-500/10 text-yellow-400",
     accepted: "bg-yellow-500/10 text-yellow-400",
     rejected: "bg-red-500/10 text-red-400",
-    pending: "bg-orange-500/10 text-orange-400",
+    pending: "bg-dash-accent-muted text-dash-accent",
     ready: "bg-green-500/10 text-green-400",
-    cancelled: "bg-zinc-500/10 text-zinc-400",
+    cancelled: "bg-dash-text-muted/10 text-dash-text-muted",
   };
 
   return (
     <span
       className={cn(
         "rounded-md px-2 py-0.5 text-xs font-medium capitalize",
-        styles[status] ?? "bg-zinc-800 text-zinc-400"
+        styles[status] ?? "bg-dash-surface-raised text-dash-text-muted"
       )}
     >
       {label}
@@ -211,7 +211,7 @@ function PaymentCell({
   }
   if (status === "pending" && orderStatus === "delivered") {
     return (
-      <span className="text-zinc-400">
+      <span className="text-dash-text-muted">
         {unpaidPaymentHint(paymentMethod ?? "at_bar", inPersonPaymentLocation)}
       </span>
     );
@@ -247,15 +247,15 @@ function RefundCell({
     order.payment_status !== "refunded" &&
     order.payment_status !== "partial_refund"
   ) {
-    return <span className="text-zinc-600">—</span>;
+    return <span className="text-dash-text-disabled">—</span>;
   }
 
   const amount = getRefundAmount(order);
 
   return (
-    <div className="text-xs text-zinc-400">
+    <div className="text-xs text-dash-text-muted">
       {amount != null && (
-        <p className="font-mono text-zinc-300">
+        <p className="font-mono text-dash-text-secondary">
           {formatPrice(amount, currency)}
         </p>
       )}
@@ -268,7 +268,7 @@ function RefundCell({
         <p className="mt-0.5">{order.refund_staff.name}</p>
       )}
       {order.refunded_at && (
-        <p className="mt-0.5 text-zinc-500">
+        <p className="mt-0.5 text-dash-text-disabled">
           {new Date(order.refunded_at).toLocaleString("de-DE", {
             day: "2-digit",
             month: "2-digit",
@@ -309,7 +309,7 @@ function OrderRowActions({
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-dash-text-muted hover:bg-dash-surface-raised hover:text-dash-text-secondary"
           aria-label="Order actions"
         >
           <MoreHorizontal className="size-4" />
@@ -317,12 +317,12 @@ function OrderRowActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="border-zinc-700 bg-zinc-900 text-zinc-100"
+        className="border-dash-surface-overlay bg-dash-surface text-dash-text"
         onClick={(e) => e.stopPropagation()}
       >
         {canRefund ? (
           <DropdownMenuItem
-            className="cursor-pointer focus:bg-zinc-800 focus:text-zinc-50"
+            className="cursor-pointer focus:bg-dash-surface-raised focus:text-dash-text"
             onClick={onRefund}
           >
             <RotateCcw className="mr-2 size-4" />
@@ -331,7 +331,7 @@ function OrderRowActions({
         ) : null}
         {canResend ? (
           <DropdownMenuItem
-            className="cursor-pointer focus:bg-zinc-800 focus:text-zinc-50"
+            className="cursor-pointer focus:bg-dash-surface-raised focus:text-dash-text"
             onClick={onResent}
           >
             <Mail className="mr-2 size-4" />
@@ -346,13 +346,13 @@ function OrderRowActions({
 export function OrderHistoryListSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-11 w-full max-w-4xl rounded-lg bg-zinc-800" />
+      <Skeleton className="h-11 w-full max-w-4xl rounded-lg bg-dash-surface-raised" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
+          <Skeleton key={i} className="h-28 rounded-xl bg-dash-surface-raised" />
         ))}
       </div>
-      <Skeleton className="h-64 rounded-xl bg-zinc-800" />
+      <Skeleton className="h-64 rounded-xl bg-dash-surface-raised" />
     </div>
   );
 }
@@ -514,10 +514,10 @@ export function OrderHistoryList() {
           value={searchParams.get("status") ?? "all"}
           onValueChange={(value) => updateParams({ status: value === "all" ? null : value })}
         >
-          <SelectTrigger className="min-h-11 w-full border-zinc-700 bg-zinc-900 text-zinc-200 sm:w-[140px]">
+          <SelectTrigger className="min-h-11 w-full border-dash-surface-overlay bg-dash-surface text-dash-text-secondary sm:w-[140px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+          <SelectContent className="border-dash-surface-overlay bg-dash-surface text-dash-text">
             <SelectItem value="all">All status</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -531,10 +531,10 @@ export function OrderHistoryList() {
             updateParams({ payment: value === "all" ? null : value })
           }
         >
-          <SelectTrigger className="min-h-11 w-full border-zinc-700 bg-zinc-900 text-zinc-200 sm:w-[150px]">
+          <SelectTrigger className="min-h-11 w-full border-dash-surface-overlay bg-dash-surface text-dash-text-secondary sm:w-[150px]">
             <SelectValue placeholder="Payment" />
           </SelectTrigger>
-          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+          <SelectContent className="border-dash-surface-overlay bg-dash-surface text-dash-text">
             <SelectItem value="all">All payment</SelectItem>
             <SelectItem value="online">Online</SelectItem>
             <SelectItem value="at_bar">At bar</SelectItem>
@@ -548,10 +548,10 @@ export function OrderHistoryList() {
             updateParams({ source: value === "all" ? null : value })
           }
         >
-          <SelectTrigger className="min-h-11 w-full border-zinc-700 bg-zinc-900 text-zinc-200 sm:w-[130px]">
+          <SelectTrigger className="min-h-11 w-full border-dash-surface-overlay bg-dash-surface text-dash-text-secondary sm:w-[130px]">
             <SelectValue placeholder="Source" />
           </SelectTrigger>
-          <SelectContent className="border-zinc-700 bg-zinc-900 text-zinc-100">
+          <SelectContent className="border-dash-surface-overlay bg-dash-surface text-dash-text">
             <SelectItem value="all">All sources</SelectItem>
             <SelectItem value="guest">Guest</SelectItem>
             <SelectItem value="staff">Staff</SelectItem>
@@ -559,20 +559,20 @@ export function OrderHistoryList() {
         </Select>
 
         <div className="relative min-h-11 flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-dash-text-disabled" />
           <input
             type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Order #, table, email…"
-            className="h-11 w-full rounded-lg border border-zinc-700 bg-zinc-900 py-2 pl-10 pr-3 text-sm text-zinc-200 outline-none focus:border-orange-500"
+            className="h-11 w-full rounded-lg border border-dash-surface-overlay bg-dash-surface py-2 pl-10 pr-3 text-sm text-dash-text-secondary outline-none focus:border-dash-accent"
           />
         </div>
 
         {canExport ? (
           <a
             href={`/api/export/csv?${queryString.replace(/(^|&)page=[^&]*/g, "").replace(/^&/, "")}`}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700 touch-manipulation"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-dash-surface-raised px-4 py-2 text-sm text-dash-text-secondary transition hover:bg-dash-surface-overlay touch-manipulation"
           >
             <Download className="size-4" />
             Export CSV
@@ -623,7 +623,7 @@ export function OrderHistoryList() {
             value: stats.topItem,
             sub:
               stats.topCount > 0 ? (
-                <span className="text-sm font-normal text-zinc-500">
+                <span className="text-sm font-normal text-dash-text-disabled">
                   ({stats.topCount})
                 </span>
               ) : null,
@@ -638,9 +638,9 @@ export function OrderHistoryList() {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6"
+            className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-6"
           >
-            <p className="mb-1 text-sm text-zinc-400">{card.label}</p>
+            <p className="mb-1 text-sm text-dash-text-muted">{card.label}</p>
             <p className="font-mono text-2xl font-bold text-white sm:text-3xl">
               {card.value}
               {card.sub}
@@ -654,7 +654,7 @@ export function OrderHistoryList() {
 
       <div className="space-y-3 md:hidden">
         {orders.length === 0 ? (
-          <p className="rounded-xl border border-zinc-800 bg-zinc-900/50 py-12 text-center text-zinc-500">
+          <p className="rounded-xl border border-dash-border bg-dash-surface/50 py-12 text-center text-dash-text-disabled">
             No orders match these filters
           </p>
         ) : (
@@ -666,7 +666,7 @@ export function OrderHistoryList() {
             return (
               <div
                 key={order.id}
-                className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50"
+                className="overflow-hidden rounded-xl border border-dash-border bg-dash-surface/50"
               >
                 <div className="flex items-start gap-2 p-4">
                   <button
@@ -676,10 +676,10 @@ export function OrderHistoryList() {
                     }
                     className="min-w-0 flex-1 text-left"
                   >
-                    <p className="font-mono font-semibold text-zinc-50">
+                    <p className="font-mono font-semibold text-dash-text">
                       {formatOrderNumber(order.order_number)}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-400">
+                    <p className="mt-1 text-sm text-dash-text-muted">
                       {order.tables?.name ?? "—"} · {itemCount} items
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -694,10 +694,10 @@ export function OrderHistoryList() {
                     </div>
                   </button>
                   <div className="shrink-0 text-right">
-                    <p className="font-mono font-semibold text-zinc-200">
+                    <p className="font-mono font-semibold text-dash-text-secondary">
                       {formatPrice(Number(order.total), currency)}
                     </p>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-dash-text-disabled">
                       {new Date(order.created_at).toLocaleTimeString("de-DE", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -712,22 +712,22 @@ export function OrderHistoryList() {
                   />
                 </div>
                 {isExpanded && (
-                  <ul className="space-y-2 border-t border-zinc-800 px-4 py-3">
+                  <ul className="space-y-2 border-t border-dash-border px-4 py-3">
                     {order.order_items?.map((item) => (
                       <li
                         key={item.id}
-                        className="flex justify-between gap-3 text-sm text-zinc-300"
+                        className="flex justify-between gap-3 text-sm text-dash-text-secondary"
                       >
                         <span className="min-w-0">
                           {item.quantity}× {item.product_name}
                         </span>
-                        <span className="shrink-0 font-mono text-zinc-400">
+                        <span className="shrink-0 font-mono text-dash-text-muted">
                           {formatPrice(Number(item.total), currency)}
                         </span>
                       </li>
                     ))}
                     {(order.order_items?.length ?? 0) > 0 && (
-                      <li className="border-t border-zinc-800 pt-2">
+                      <li className="border-t border-dash-border pt-2">
                         <TaxBreakdownLines
                           items={(order.order_items ?? []).map((item) => ({
                             total: Number(item.total),
@@ -739,7 +739,7 @@ export function OrderHistoryList() {
                     )}
                     {(order.payment_status === "refunded" ||
                       order.payment_status === "partial_refund") && (
-                      <li className="border-t border-zinc-800 pt-2">
+                      <li className="border-t border-dash-border pt-2">
                         <RefundCell order={order} currency={currency} />
                       </li>
                     )}
@@ -751,10 +751,10 @@ export function OrderHistoryList() {
         )}
       </div>
 
-      <div className="hidden overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 md:block">
+      <div className="hidden overflow-hidden rounded-xl border border-dash-border bg-dash-surface/50 md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-zinc-800/50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <tr className="bg-dash-surface-raised/50 text-left text-xs font-semibold uppercase tracking-wider text-dash-text-muted">
               <th className="px-4 py-3">#</th>
               <th className="px-4 py-3">Table</th>
               <th className="px-4 py-3">Items</th>
@@ -771,7 +771,7 @@ export function OrderHistoryList() {
               <tr>
                 <td
                   colSpan={9}
-                  className="px-4 py-12 text-center text-zinc-500"
+                  className="px-4 py-12 text-center text-dash-text-disabled"
                 >
                   No orders match these filters
                 </td>
@@ -789,16 +789,16 @@ export function OrderHistoryList() {
                       onClick={() =>
                         setExpandedId(isExpanded ? null : order.id)
                       }
-                      className="cursor-pointer border-b border-zinc-800/50 transition hover:bg-zinc-800/30"
+                      className="cursor-pointer border-b border-dash-border transition hover:bg-dash-surface-raised/30"
                     >
-                      <td className="px-4 py-3 font-mono font-semibold text-zinc-50">
+                      <td className="px-4 py-3 font-mono font-semibold text-dash-text">
                         {formatOrderNumber(order.order_number)}
                       </td>
-                      <td className="px-4 py-3 text-zinc-300">
+                      <td className="px-4 py-3 text-dash-text-secondary">
                         {order.tables?.name ?? "—"}
                       </td>
-                      <td className="px-4 py-3 text-zinc-300">{itemCount}</td>
-                      <td className="px-4 py-3 font-mono text-zinc-300">
+                      <td className="px-4 py-3 text-dash-text-secondary">{itemCount}</td>
+                      <td className="px-4 py-3 font-mono text-dash-text-secondary">
                         {formatPrice(Number(order.total), currency)}
                       </td>
                       <td className="px-4 py-3">
@@ -820,7 +820,7 @@ export function OrderHistoryList() {
                       <td className="px-4 py-3">
                         <RefundCell order={order} currency={currency} />
                       </td>
-                      <td className="px-4 py-3 text-zinc-500">
+                      <td className="px-4 py-3 text-dash-text-disabled">
                         {new Date(order.created_at).toLocaleTimeString(
                           "de-DE",
                           { hour: "2-digit", minute: "2-digit" }
@@ -836,26 +836,26 @@ export function OrderHistoryList() {
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr className="border-b border-zinc-800/50 bg-zinc-950/50">
+                      <tr className="border-b border-dash-border bg-dash-bg/50">
                         <td colSpan={9} className="px-6 py-4">
                           <ul className="space-y-2">
                             {order.order_items?.map((item) => (
                               <li
                                 key={item.id}
-                                className="flex justify-between text-sm text-zinc-300"
+                                className="flex justify-between text-sm text-dash-text-secondary"
                               >
                                 <span>
                                   {item.quantity}× {item.product_name}
                                   {item.order_item_modifiers?.map((m) => (
                                     <span
                                       key={m.id}
-                                      className="block pl-4 text-zinc-500"
+                                      className="block pl-4 text-dash-text-disabled"
                                     >
                                       + {m.modifier_name}
                                     </span>
                                   ))}
                                 </span>
-                                <span className="font-mono text-zinc-400">
+                                <span className="font-mono text-dash-text-muted">
                                   {formatPrice(Number(item.total), currency)}
                                 </span>
                               </li>
@@ -868,7 +868,7 @@ export function OrderHistoryList() {
                                 tax_rate: Number(item.tax_rate ?? 19),
                               }))}
                               currency={currency}
-                              className="mt-3 border-t border-zinc-800 pt-3"
+                              className="mt-3 border-t border-dash-border pt-3"
                             />
                           )}
                         </td>
@@ -884,7 +884,7 @@ export function OrderHistoryList() {
 
       {total > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-dash-text-disabled">
             Showing {rangeStart}-{rangeEnd} of {total}
           </p>
           <div className="flex gap-2">
@@ -892,7 +892,7 @@ export function OrderHistoryList() {
               type="button"
               disabled={safePage <= 1}
               onClick={() => updateParams({ page: String(safePage - 1) }, false)}
-              className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 disabled:opacity-50"
+              className="rounded-lg bg-dash-surface-raised px-3 py-1.5 text-sm text-dash-text-secondary disabled:opacity-50"
             >
               Prev
             </button>
@@ -900,7 +900,7 @@ export function OrderHistoryList() {
               type="button"
               disabled={safePage >= totalPages}
               onClick={() => updateParams({ page: String(safePage + 1) }, false)}
-              className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 disabled:opacity-50"
+              className="rounded-lg bg-dash-surface-raised px-3 py-1.5 text-sm text-dash-text-secondary disabled:opacity-50"
             >
               Next
             </button>

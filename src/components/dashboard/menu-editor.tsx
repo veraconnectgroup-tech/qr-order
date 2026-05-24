@@ -91,8 +91,8 @@ function ProductCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:border-zinc-700",
-        !product.is_available && "border-zinc-700 bg-zinc-800/80 opacity-80"
+        "overflow-hidden rounded-xl border border-dash-border bg-dash-surface transition hover:border-dash-surface-overlay",
+        !product.is_available && "border-dash-surface-overlay bg-dash-surface-raised/80 opacity-80"
       )}
     >
       <div className="relative h-[140px] w-full">
@@ -115,31 +115,31 @@ function ProductCard({
               productGradient(product.name)
             )}
           >
-            <UtensilsCrossed className="size-8 text-zinc-700" />
+            <UtensilsCrossed className="size-8 text-dash-text-disabled" />
           </div>
         )}
       </div>
 
       <p className="px-4 pt-3 text-sm font-semibold text-white">{product.name}</p>
       {product.description && (
-        <p className="mt-0.5 line-clamp-1 px-4 text-xs text-zinc-500">
+        <p className="mt-0.5 line-clamp-1 px-4 text-xs text-dash-text-disabled">
           {product.description}
         </p>
       )}
 
       <div className="mt-2 flex items-center justify-between px-4">
-        <span className="font-mono text-sm font-semibold text-orange-500">
+        <span className="font-mono text-sm font-semibold text-dash-accent">
           {formatPrice(Number(product.price), currency)}
         </span>
         {product.prep_time_minutes != null && (
-          <span className="text-xs text-zinc-600">
+          <span className="text-xs text-dash-text-disabled">
             Prep: {product.prep_time_minutes} min
           </span>
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-zinc-800 px-4 py-3">
-        <span className="text-xs font-medium text-zinc-400">
+      <div className="mt-3 flex items-center justify-between border-t border-dash-border px-4 py-3">
+        <span className="text-xs font-medium text-dash-text-muted">
           {product.is_available ? "In stock" : "Out of stock"}
         </span>
         <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ function ProductCard({
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+            className="rounded-lg p-2 text-dash-text-muted transition hover:bg-dash-surface-raised hover:text-dash-text"
             aria-label={`Edit ${product.name}`}
           >
             <Pencil className="size-4" />
@@ -194,14 +194,14 @@ function SortableCategoryItem({
       className={cn(
         "flex items-center gap-2 rounded-lg px-2 py-2 transition",
         selected
-          ? "border-l-2 border-orange-500 bg-zinc-800/80 pl-[6px]"
-          : "border-l-2 border-transparent hover:bg-zinc-800/40",
+          ? "border-l-2 border-dash-accent bg-dash-surface-raised/80 pl-[6px]"
+          : "border-l-2 border-transparent hover:bg-dash-surface-raised/40",
         isDragging && "opacity-60"
       )}
     >
       <button
         type="button"
-        className="cursor-grab touch-none text-zinc-600 active:cursor-grabbing"
+        className="cursor-grab touch-none text-dash-text-disabled active:cursor-grabbing"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
@@ -213,10 +213,10 @@ function SortableCategoryItem({
         onClick={onSelect}
         className="min-w-0 flex-1 text-left"
       >
-        <p className="truncate text-sm font-medium text-zinc-100">
+        <p className="truncate text-sm font-medium text-dash-text">
           {category.name}
         </p>
-        <p className="text-xs text-zinc-500">{category.productCount} items</p>
+        <p className="text-xs text-dash-text-disabled">{category.productCount} items</p>
         {formatScheduleBadge(category) && (
           <p className="mt-0.5 text-[10px] leading-tight text-amber-400/90">
             {formatScheduleBadge(category)}
@@ -226,7 +226,7 @@ function SortableCategoryItem({
       <button
         type="button"
         onClick={onEdit}
-        className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+        className="rounded-lg p-1.5 text-dash-text-disabled transition hover:bg-dash-surface-raised hover:text-dash-text-secondary"
         aria-label={`Edit ${category.name}`}
       >
         <Pencil className="size-3.5" />
@@ -339,24 +339,24 @@ function ProductForm({
       />
 
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Name ({primaryLang})</span>
+        <span className="text-sm text-dash-text-muted">Name ({primaryLang})</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Name (English)</span>
+        <span className="text-sm text-dash-text-muted">Name (English)</span>
         <input
           value={nameEn}
           onChange={(e) => setNameEn(e.target.value)}
           placeholder="Aperol Spritz"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">
+        <span className="text-sm text-dash-text-muted">
           Ingredients ({primaryLang}, comma-separated)
         </span>
         <textarea
@@ -364,11 +364,11 @@ function ProductForm({
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           placeholder="Prosecco, Aperol, soda, orange slice"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">
+        <span className="text-sm text-dash-text-muted">
           Ingredients (English, optional)
         </span>
         <textarea
@@ -376,28 +376,28 @@ function ProductForm({
           onChange={(e) => setDescriptionEn(e.target.value)}
           rows={2}
           placeholder="Prosecco, Aperol, soda, orange slice"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">AI Beschreibung</span>
+        <span className="text-sm text-dash-text-muted">AI Beschreibung</span>
         <textarea
           value={aiDescription}
           onChange={(e) => setAiDescription(e.target.value)}
           rows={3}
           placeholder="Beschreiben Sie Zubereitung, Zutaten, Empfehlungen fuer den AI Concierge"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <div className="space-y-2">
-        <span className="text-sm text-zinc-400">Allergens (EU 14)</span>
+        <span className="text-sm text-dash-text-muted">Allergens (EU 14)</span>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {EU_ALLERGENS.map((allergen) => {
             const checked = allergens.has(allergen.id);
             return (
               <label
                 key={allergen.id}
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-sm text-zinc-200"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-dash-border bg-dash-bg/50 px-3 py-2 text-sm text-dash-text-secondary"
               >
                 <input
                   type="checkbox"
@@ -410,7 +410,7 @@ function ProductForm({
                       return next;
                     });
                   }}
-                  className="size-4 rounded border-zinc-600"
+                  className="size-4 rounded border-dash-surface-overlay"
                 />
                 <span aria-hidden>{allergen.emoji}</span>
                 <span>{allergen.label}</span>
@@ -420,53 +420,53 @@ function ProductForm({
         </div>
       </div>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Price ({currency})</span>
+        <span className="text-sm text-dash-text-muted">Price ({currency})</span>
         <input
           type="number"
           min="0"
           step="0.01"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">Prep time (minutes)</span>
+        <span className="text-sm text-dash-text-muted">Prep time (minutes)</span>
         <input
           type="number"
           min="1"
           value={prepTime}
           onChange={(e) => setPrepTime(e.target.value)}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>
       <label className="block space-y-1.5">
-        <span className="text-sm text-zinc-400">MwSt-Satz</span>
+        <span className="text-sm text-dash-text-muted">MwSt-Satz</span>
         <select
           value={isDrinksCategory ? "19" : taxSetting}
           onChange={(e) =>
             setTaxSetting(e.target.value as "default" | "7" | "19")
           }
           disabled={isDrinksCategory}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           <option value="default">Org default (19%)</option>
           <option value="7">Ermäßigt (7%)</option>
           <option value="19">Standard (19%)</option>
         </select>
         {isDrinksCategory && (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-dash-text-disabled">
             Drinks are always taxed at 19%.
           </p>
         )}
       </label>
-      <label className="flex items-center gap-2 text-sm text-zinc-300">
+      <label className="flex items-center gap-2 text-sm text-dash-text-secondary">
         <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
         Available on guest menu
       </label>
 
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4 space-y-3">
-        <label className="flex items-center gap-2 text-sm text-zinc-300">
+      <div className="rounded-lg border border-dash-border bg-dash-bg/50 p-4 space-y-3">
+        <label className="flex items-center gap-2 text-sm text-dash-text-secondary">
           <Switch
             checked={requiresServeSize}
             onCheckedChange={setRequiresServeSize}
@@ -476,17 +476,17 @@ function ProductForm({
         {requiresServeSize && (
           <>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">
+              <span className="text-sm text-dash-text-muted">
                 Preset sizes in liters (comma-separated)
               </span>
               <input
                 value={serveSizePresetsText}
                 onChange={(e) => setServeSizePresetsText(e.target.value)}
                 placeholder="0.2, 0.3, 0.5"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
-            <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <label className="flex items-center gap-2 text-sm text-dash-text-secondary">
               <Switch
                 checked={allowCustomServeSize}
                 onCheckedChange={setAllowCustomServeSize}
@@ -497,11 +497,11 @@ function ProductForm({
         )}
       </div>
 
-      <DialogFooter className="border-zinc-800 bg-transparent pt-2">
+      <DialogFooter className="border-dash-border bg-transparent pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+          className="rounded-lg px-4 py-2 text-sm text-dash-text-muted hover:text-dash-text-secondary"
         >
           Cancel
         </button>
@@ -529,7 +529,7 @@ function ProductForm({
               ai_description: aiDescription.trim(),
             })
           }
-          className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          className="rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -847,23 +847,23 @@ export function MenuEditor() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] flex-col gap-0 overflow-hidden rounded-xl border border-zinc-800 md:min-h-[520px] md:flex-row">
-        <Skeleton className="h-24 rounded-none bg-zinc-900 md:h-full md:w-[280px]" />
-        <Skeleton className="h-full flex-1 rounded-none bg-zinc-950" />
+      <div className="flex min-h-[420px] flex-col gap-0 overflow-hidden rounded-xl border border-dash-border md:min-h-[520px] md:flex-row">
+        <Skeleton className="h-24 rounded-none bg-dash-surface md:h-full md:w-[280px]" />
+        <Skeleton className="h-full flex-1 rounded-none bg-dash-bg" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 md:min-h-[calc(100dvh-10rem)] md:flex-row">
+    <div className="flex min-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-xl border border-dash-border md:min-h-[calc(100dvh-10rem)] md:flex-row">
       {/* Mobile category pills */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 p-3 md:hidden">
+      <div className="border-b border-dash-border bg-dash-surface/50 p-3 md:hidden">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-200">Categories</h2>
+          <h2 className="text-sm font-semibold text-dash-text-secondary">Categories</h2>
           <button
             type="button"
             onClick={openNewCategoryDialog}
-            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
+            className="rounded-lg p-1.5 text-dash-text-muted transition hover:bg-dash-surface-raised hover:text-dash-accent"
             aria-label="Add category"
           >
             <Plus className="size-4" />
@@ -878,8 +878,8 @@ export function MenuEditor() {
               className={cn(
                 "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium",
                 category.id === selectedCategoryId
-                  ? "bg-orange-500 text-white"
-                  : "bg-zinc-800 text-zinc-400"
+                  ? "bg-dash-accent text-white"
+                  : "bg-dash-surface-raised text-dash-text-muted"
               )}
             >
               {category.name} ({category.productCount})
@@ -888,13 +888,13 @@ export function MenuEditor() {
         </div>
       </div>
 
-      <aside className="hidden w-[280px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900/50 p-4 md:flex">
+      <aside className="hidden w-[280px] shrink-0 flex-col border-r border-dash-border bg-dash-surface/50 p-4 md:flex">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-200">Categories</h2>
+          <h2 className="text-sm font-semibold text-dash-text-secondary">Categories</h2>
           <button
             type="button"
             onClick={openNewCategoryDialog}
-            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
+            className="rounded-lg p-1.5 text-dash-text-muted transition hover:bg-dash-surface-raised hover:text-dash-accent"
             aria-label="Add category"
           >
             <Plus className="size-4" />
@@ -902,7 +902,7 @@ export function MenuEditor() {
         </div>
 
         {categories.length === 0 ? (
-          <p className="text-sm text-zinc-600">No categories yet.</p>
+          <p className="text-sm text-dash-text-disabled">No categories yet.</p>
         ) : (
           <DndContext
             sensors={sensors}
@@ -932,17 +932,17 @@ export function MenuEditor() {
         )}
       </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col bg-zinc-950">
-        <div className="flex flex-col gap-3 border-b border-zinc-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+      <section className="flex min-w-0 flex-1 flex-col bg-dash-bg">
+        <div className="flex flex-col gap-3 border-b border-dash-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-zinc-50 sm:text-lg">
+            <h2 className="truncate text-base font-semibold text-dash-text sm:text-lg">
               {selectedCategory?.name ?? "Select a category"}
             </h2>
-            <p className="text-xs text-zinc-500 sm:text-sm">
+            <p className="text-xs text-dash-text-disabled sm:text-sm">
               {categoryProducts.length} product
               {categoryProducts.length !== 1 ? "s" : ""}
               {selectedCategory && !selectedCategory.is_active && (
-                <span className="ml-2 text-orange-400">· Hidden from menu</span>
+                <span className="ml-2 text-dash-accent">· Hidden from menu</span>
               )}
               {selectedCategory && formatScheduleBadge(selectedCategory) && (
                 <span className="ml-2 text-amber-400">
@@ -956,7 +956,7 @@ export function MenuEditor() {
               <button
                 type="button"
                 onClick={() => openEditCategoryDialog(selectedCategory)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-zinc-800"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-dash-surface-overlay px-4 py-2 text-sm font-medium text-dash-text-secondary transition hover:bg-dash-surface-raised"
               >
                 <Pencil className="size-4" />
                 Edit Category
@@ -969,7 +969,7 @@ export function MenuEditor() {
               setEditingProduct(null);
               setProductDialogOpen(true);
             }}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-dash-accent-hover disabled:opacity-50 sm:w-auto"
           >
             <Plus className="size-4" />
             Add Product
@@ -979,11 +979,11 @@ export function MenuEditor() {
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-4">
           {!selectedCategoryId ? (
-            <p className="py-12 text-center text-zinc-600">
+            <p className="py-12 text-center text-dash-text-disabled">
               Create a category to start adding products.
             </p>
           ) : categoryProducts.length === 0 ? (
-            <p className="py-12 text-center text-zinc-600">
+            <p className="py-12 text-center text-dash-text-disabled">
               No products in this category yet.
             </p>
           ) : (
@@ -1008,38 +1008,38 @@ export function MenuEditor() {
       </section>
 
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-        <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+        <DialogContent className="border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-zinc-50">
+            <DialogTitle className="text-dash-text">
               {editingCategoryId ? "Edit Category" : "New Category"}
             </DialogTitle>
           </DialogHeader>
           <label className="block space-y-1.5 py-2">
-            <span className="text-sm text-zinc-400">Name</span>
+            <span className="text-sm text-dash-text-muted">Name</span>
             <input
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Cocktails"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             />
           </label>
           <label className="block space-y-1.5 pb-2">
-            <span className="text-sm text-zinc-400">Name (English, optional)</span>
+            <span className="text-sm text-dash-text-muted">Name (English, optional)</span>
             <input
               value={newCategoryNameEn}
               onChange={(e) => setNewCategoryNameEn(e.target.value)}
               placeholder="Cocktails"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             />
           </label>
           <label className="block space-y-1.5 pb-2">
-            <span className="text-sm text-zinc-400">Section</span>
+            <span className="text-sm text-dash-text-muted">Section</span>
             <select
               value={newCategorySection}
               onChange={(e) =>
                 setNewCategorySection(e.target.value as MenuSection)
               }
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             >
               {MENU_SECTIONS.map((section) => (
                 <option key={section} value={section}>
@@ -1049,13 +1049,13 @@ export function MenuEditor() {
             </select>
           </label>
           <label className="block space-y-1.5 pb-2">
-            <span className="text-sm text-zinc-400">Printer</span>
+            <span className="text-sm text-dash-text-muted">Printer</span>
             <select
               value={newCategoryPrinterTarget}
               onChange={(e) =>
                 setNewCategoryPrinterTarget(e.target.value as "kitchen" | "bar")
               }
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             >
               <option value="kitchen">Kitchen</option>
               <option value="bar">Bar</option>
@@ -1065,14 +1065,14 @@ export function MenuEditor() {
             value={categorySchedule}
             onChange={setCategorySchedule}
           />
-          <DialogFooter className="border-zinc-800 bg-transparent">
+          <DialogFooter className="border-dash-border bg-transparent">
             <button
               type="button"
               onClick={() => {
                 setCategoryDialogOpen(false);
                 setEditingCategoryId(null);
               }}
-              className="rounded-lg px-4 py-2 text-sm text-zinc-400"
+              className="rounded-lg px-4 py-2 text-sm text-dash-text-muted"
             >
               Cancel
             </button>
@@ -1080,7 +1080,7 @@ export function MenuEditor() {
               type="button"
               disabled={saving || !newCategoryName.trim()}
               onClick={saveCategory}
-              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+              className="rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {saving ? "Saving…" : editingCategoryId ? "Save" : "Add Category"}
             </button>
@@ -1095,9 +1095,9 @@ export function MenuEditor() {
           if (!open) setEditingProduct(null);
         }}
       >
-        <DialogContent className="max-h-[92vh] overflow-y-auto border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+        <DialogContent className="max-h-[92vh] overflow-y-auto border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-zinc-50">
+            <DialogTitle className="text-dash-text">
               {editingProduct ? "Edit Product" : "New Product"}
             </DialogTitle>
           </DialogHeader>

@@ -20,21 +20,21 @@ export function OverviewKpiCard({
   loading?: boolean;
 }) {
   if (loading) {
-    return <Skeleton className="h-[108px] rounded-xl bg-zinc-800" />;
+    return <Skeleton className="h-[108px] rounded-xl bg-dash-surface-raised" />;
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-xs font-medium uppercase tracking-wider text-dash-text-disabled">
           {label}
         </p>
-        <Icon className="size-4 text-zinc-600" />
+        <Icon className="size-4 text-dash-text-disabled" />
       </div>
       <p
         className={cn(
           "mt-2 text-2xl font-bold tabular-nums",
-          highlight ? "text-orange-400" : "text-zinc-50"
+          highlight ? "text-dash-accent" : "text-dash-text"
         )}
       >
         {value}

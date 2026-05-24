@@ -19,7 +19,7 @@ export function LiveConnectionBadge({ mode }: { mode: RealtimeMode }) {
         mode === "polling" &&
           "border-amber-500/30 bg-amber-500/10 text-amber-200",
         mode === "connecting" &&
-          "border-zinc-700 bg-zinc-800/80 text-zinc-400"
+          "border-dash-surface-overlay bg-dash-surface-raised/80 text-dash-text-muted"
       )}
       title={
         mode === "live"
@@ -34,7 +34,7 @@ export function LiveConnectionBadge({ mode }: { mode: RealtimeMode }) {
           "size-1.5 rounded-full",
           mode === "live" && "bg-emerald-400 animate-pulse",
           mode === "polling" && "bg-amber-400",
-          mode === "connecting" && "bg-zinc-500 animate-pulse"
+          mode === "connecting" && "bg-dash-text-muted animate-pulse"
         )}
       />
       {labels[mode]}

@@ -19,7 +19,7 @@ export function KdsConnectionBadge({ mode }: { mode: RealtimeMode }) {
         mode === "polling" &&
           "border-amber-500/40 bg-amber-500/15 text-amber-200",
         mode === "connecting" &&
-          "border-zinc-600 bg-zinc-800/80 text-zinc-400"
+          "border-dash-surface-overlay bg-dash-surface-raised/80 text-dash-text-muted"
       )}
     >
       <span
@@ -27,7 +27,7 @@ export function KdsConnectionBadge({ mode }: { mode: RealtimeMode }) {
           "size-2 rounded-full",
           mode === "live" && "animate-pulse bg-emerald-400",
           mode === "polling" && "bg-amber-400",
-          mode === "connecting" && "animate-pulse bg-zinc-500"
+          mode === "connecting" && "animate-pulse bg-dash-text-muted"
         )}
       />
       {labels[mode]}

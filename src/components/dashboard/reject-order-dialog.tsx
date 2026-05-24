@@ -43,14 +43,14 @@ export function RejectOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+      <DialogContent className="border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-zinc-50">
+          <DialogTitle className="text-dash-text">
             Reject order #{String(orderNumber).padStart(3, "0")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-dash-text-muted">
             Paid orders will be refunded automatically when Stripe is connected.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -64,8 +64,8 @@ export function RejectOrderDialog({
                 }}
                 className={`rounded-lg px-3 py-1.5 text-sm transition ${
                   reason === r && !custom
-                    ? "bg-orange-500 text-white"
-                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                    ? "bg-dash-accent text-white"
+                    : "bg-dash-surface-raised text-dash-text-secondary hover:bg-dash-surface-overlay"
                 }`}
               >
                 {r}
@@ -76,14 +76,14 @@ export function RejectOrderDialog({
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             placeholder="Custom reason (optional)"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+            className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
           />
         </div>
-        <DialogFooter className="border-zinc-800 bg-transparent">
+        <DialogFooter className="border-dash-border bg-transparent">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+            className="rounded-lg px-4 py-2 text-sm text-dash-text-muted hover:text-dash-text-secondary"
           >
             Cancel
           </button>

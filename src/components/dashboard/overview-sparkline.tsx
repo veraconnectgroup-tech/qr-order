@@ -21,14 +21,14 @@ export function OverviewSparkline({
   loading?: boolean;
 }) {
   if (loading) {
-    return <Skeleton className="h-[200px] w-full rounded-lg bg-zinc-800" />;
+    return <Skeleton className="h-[200px] w-full rounded-lg bg-dash-surface-raised" />;
   }
 
   const hasData = data.some((d) => d.revenue > 0);
 
   if (!hasData) {
     return (
-      <p className="flex h-[200px] items-center justify-center text-sm text-zinc-500">
+      <p className="flex h-[200px] items-center justify-center text-sm text-dash-text-disabled">
         No revenue in the last 7 days
       </p>
     );
@@ -44,9 +44,9 @@ export function OverviewSparkline({
               if (!active || !payload?.length) return null;
               const row = payload[0]?.payload as OverviewSparklinePoint;
               return (
-                <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs shadow-lg">
-                  <p className="text-zinc-400">{row.label}</p>
-                  <p className="font-mono font-semibold text-orange-400">
+                <div className="rounded-lg border border-dash-surface-overlay bg-dash-surface px-2.5 py-1.5 text-xs shadow-lg">
+                  <p className="text-dash-text-muted">{row.label}</p>
+                  <p className="font-mono font-semibold text-dash-accent">
                     {formatPrice(row.revenue, currency)}
                   </p>
                 </div>

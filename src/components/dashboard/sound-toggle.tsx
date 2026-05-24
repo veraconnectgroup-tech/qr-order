@@ -14,7 +14,7 @@ export function SoundToggle({ className }: { className?: string }) {
       variant="ghost"
       size="icon"
       className={cn(
-        "size-9 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50",
+        "size-9 text-dash-text-muted hover:bg-dash-surface-raised hover:text-dash-text",
         className
       )}
       onClick={toggle}

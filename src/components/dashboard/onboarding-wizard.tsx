@@ -267,19 +267,19 @@ export function OnboardingWizard({
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 py-6 md:py-10">
       <div className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-orange-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-dash-accent">
           Setup wizard
         </p>
-        <h1 className="mt-1 text-2xl font-semibold text-zinc-50">
+        <h1 className="mt-1 text-2xl font-semibold text-dash-text">
           {STEPS[step]}
         </h1>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800">
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-dash-surface-raised">
           <div
-            className="h-full rounded-full bg-orange-500 transition-all duration-300"
+            className="h-full rounded-full bg-dash-accent transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-dash-text-disabled">
           Step {step + 1} of {STEPS.length}
         </p>
       </div>
@@ -295,7 +295,7 @@ export function OnboardingWizard({
                 onChange={(e) =>
                   setVenue((v) => ({ ...v, orgName: e.target.value }))
                 }
-                className="mt-1.5 border-zinc-700 bg-zinc-900"
+                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
               />
             </div>
             <div>
@@ -306,7 +306,7 @@ export function OnboardingWizard({
                 onChange={(e) =>
                   setVenue((v) => ({ ...v, address: e.target.value }))
                 }
-                className="mt-1.5 border-zinc-700 bg-zinc-900"
+                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -318,7 +318,7 @@ export function OnboardingWizard({
                   onChange={(e) =>
                     setVenue((v) => ({ ...v, city: e.target.value }))
                   }
-                  className="mt-1.5 border-zinc-700 bg-zinc-900"
+                  className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
                 />
               </div>
               <div>
@@ -329,7 +329,7 @@ export function OnboardingWizard({
                   onChange={(e) =>
                     setVenue((v) => ({ ...v, postalCode: e.target.value }))
                   }
-                  className="mt-1.5 border-zinc-700 bg-zinc-900"
+                  className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
                 />
               </div>
             </div>
@@ -341,7 +341,7 @@ export function OnboardingWizard({
                 onChange={(e) =>
                   setVenue((v) => ({ ...v, timezone: e.target.value }))
                 }
-                className="mt-1.5 border-zinc-700 bg-zinc-900"
+                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
               />
             </div>
             <div>
@@ -353,22 +353,22 @@ export function OnboardingWizard({
                   setVenue((v) => ({ ...v, logoUrl: e.target.value }))
                 }
                 placeholder="https://…"
-                className="mt-1.5 border-zinc-700 bg-zinc-900"
+                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
               />
             </div>
-            <p className="text-xs text-zinc-500">Changes save automatically.</p>
+            <p className="text-xs text-dash-text-disabled">Changes save automatically.</p>
           </div>
         )}
 
         {step === 1 && (
           <div className="space-y-4">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-dash-text-muted">
               Add 3–5 products to get started. You can edit the full menu later.
             </p>
             {products.map((product, index) => (
               <div
                 key={index}
-                className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 sm:grid-cols-[1fr_120px_140px]"
+                className="grid gap-3 rounded-xl border border-dash-border bg-dash-surface/60 p-4 sm:grid-cols-[1fr_120px_140px]"
               >
                 <div>
                   <Label>Name</Label>
@@ -377,7 +377,7 @@ export function OnboardingWizard({
                     onChange={(e) =>
                       updateProduct(index, { name: e.target.value })
                     }
-                    className="mt-1 border-zinc-700 bg-zinc-900"
+                    className="mt-1 border-dash-surface-overlay bg-dash-surface"
                   />
                 </div>
                 <div>
@@ -390,7 +390,7 @@ export function OnboardingWizard({
                     onChange={(e) =>
                       updateProduct(index, { price: e.target.value })
                     }
-                    className="mt-1 border-zinc-700 bg-zinc-900"
+                    className="mt-1 border-dash-surface-overlay bg-dash-surface"
                   />
                 </div>
                 <div>
@@ -400,7 +400,7 @@ export function OnboardingWizard({
                     onChange={(e) =>
                       updateProduct(index, { categoryId: e.target.value })
                     }
-                    className="mt-1 h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-100"
+                    className="mt-1 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
                   >
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
@@ -416,7 +416,7 @@ export function OnboardingWizard({
                 type="button"
                 variant="outline"
                 onClick={addProductRow}
-                className="border-zinc-700"
+                className="border-dash-surface-overlay"
               >
                 + Add product
               </Button>
@@ -426,7 +426,7 @@ export function OnboardingWizard({
 
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-dash-text-muted">
               Name your tables. QR codes are generated automatically.
             </p>
             {tableNames.map((name, index) => (
@@ -439,7 +439,7 @@ export function OnboardingWizard({
                       rows.map((row, i) => (i === index ? e.target.value : row))
                     )
                   }
-                  className="mt-1 border-zinc-700 bg-zinc-900"
+                  className="mt-1 border-dash-surface-overlay bg-dash-surface"
                 />
               </div>
             ))}
@@ -448,21 +448,21 @@ export function OnboardingWizard({
                 type="button"
                 variant="outline"
                 onClick={() => setTableNames((rows) => [...rows, `Table ${rows.length + 1}`])}
-                className="border-zinc-700"
+                className="border-dash-surface-overlay"
               >
                 + Add table
               </Button>
             )}
             {qrDataUrl && previewTable && (
-              <div className="mt-6 flex flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-sm font-medium text-zinc-200">QR preview</p>
+              <div className="mt-6 flex flex-col items-center rounded-xl border border-dash-border bg-dash-surface/60 p-4">
+                <p className="text-sm font-medium text-dash-text-secondary">QR preview</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qrDataUrl}
                   alt={`QR code for ${previewTable.name}`}
                   className="mt-3 size-[180px] rounded-lg bg-white p-2"
                 />
-                <p className="mt-2 text-xs text-zinc-500">{previewTable.name}</p>
+                <p className="mt-2 text-xs text-dash-text-disabled">{previewTable.name}</p>
               </div>
             )}
           </div>
@@ -470,7 +470,7 @@ export function OnboardingWizard({
 
         {step === 3 && (
           <div className="space-y-4">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-dash-text-muted">
               Connect Stripe for card payments, or skip to accept pay-at-bar only.
             </p>
             <DashboardStripeConnect
@@ -506,13 +506,13 @@ export function OnboardingWizard({
         )}
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-zinc-800 pt-6">
+      <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-dash-border pt-6">
         <Button
           type="button"
           variant="outline"
           onClick={goBack}
           disabled={step === 0 || pending}
-          className="border-zinc-700"
+          className="border-dash-surface-overlay"
         >
           <ArrowLeft className="me-2 size-4" />
           Back
@@ -524,7 +524,7 @@ export function OnboardingWizard({
             variant="ghost"
             onClick={skipStep}
             disabled={pending}
-            className="text-zinc-400"
+            className="text-dash-text-muted"
           >
             Skip
           </Button>
@@ -534,7 +534,7 @@ export function OnboardingWizard({
             type="button"
             onClick={goNext}
             disabled={pending}
-            className="bg-orange-500 hover:bg-orange-600"
+            className="bg-dash-accent hover:bg-dash-accent-hover"
           >
             Continue
             <ArrowRight className="ms-2 size-4" />

@@ -52,27 +52,27 @@ export default async function BillingPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-50">Billing</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h1 className="text-2xl font-semibold text-dash-text">Billing</h1>
+        <p className="mt-1 text-sm text-dash-text-muted">
           Plan, Testphase und Upgrades verwalten.
         </p>
       </div>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6">
-        <h2 className="text-lg font-semibold text-zinc-100">Aktueller Plan</h2>
+      <section className="rounded-xl border border-dash-border bg-dash-surface/60 p-6">
+        <h2 className="text-lg font-semibold text-dash-text">Aktueller Plan</h2>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-2xl font-bold text-zinc-50">
+            <p className="text-2xl font-bold text-dash-text">
               {currentPlan?.name ?? "Starter"}
             </p>
             {currentPlan && (
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-dash-text-muted">
                 {formatPrice(fromCents(currentPlan.price_cents), currentPlan.currency)}
                 /{currentPlan.interval === "year" ? "Jahr" : "Monat"}
               </p>
             )}
           </div>
-          <div className="text-right text-sm text-zinc-400">
+          <div className="text-right text-sm text-dash-text-muted">
             <p className="capitalize">Status: {subscriptionStatus}</p>
             {isTrialing && (
               <p className="mt-1 text-amber-300">
@@ -88,7 +88,7 @@ export default async function BillingPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-zinc-100">Pläne vergleichen</h2>
+        <h2 className="text-lg font-semibold text-dash-text">Pläne vergleichen</h2>
         <div className="grid gap-4 lg:grid-cols-3">
           {plans.map((plan) => {
             const isCurrent = plan.id === currentPlanId;
@@ -100,21 +100,21 @@ export default async function BillingPage() {
                 className={cn(
                   "flex flex-col rounded-xl border p-6",
                   isCurrent
-                    ? "border-orange-500/40 bg-orange-500/5"
-                    : "border-zinc-800 bg-zinc-900/60"
+                    ? "border-dash-accent/40 bg-dash-accent/5"
+                    : "border-dash-border bg-dash-surface/60"
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-lg font-semibold text-zinc-100">{plan.name}</h3>
+                  <h3 className="text-lg font-semibold text-dash-text">{plan.name}</h3>
                   {isCurrent && (
-                    <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-400">
+                    <span className="rounded-full bg-dash-accent/15 px-2 py-0.5 text-xs font-medium text-dash-accent">
                       Aktuell
                     </span>
                   )}
                 </div>
-                <p className="mt-2 font-mono text-2xl font-bold text-zinc-50">
+                <p className="mt-2 font-mono text-2xl font-bold text-dash-text">
                   {formatPrice(fromCents(plan.price_cents), plan.currency)}
-                  <span className="text-sm font-normal text-zinc-500">
+                  <span className="text-sm font-normal text-dash-text-disabled">
                     /{plan.interval === "year" ? "Jahr" : "Mo."}
                   </span>
                 </p>
@@ -122,7 +122,7 @@ export default async function BillingPage() {
                   {plan.features.map((feature) => (
                     <li
                       key={feature}
-                      className="flex items-start gap-2 text-sm text-zinc-300"
+                      className="flex items-start gap-2 text-sm text-dash-text-secondary"
                     >
                       <Check className="mt-0.5 size-4 shrink-0 text-emerald-400" />
                       {feature}
@@ -131,18 +131,18 @@ export default async function BillingPage() {
                 </ul>
                 <div className="mt-6">
                   {isCurrent ? (
-                    <span className="block rounded-lg border border-zinc-700 px-4 py-2.5 text-center text-sm text-zinc-400">
+                    <span className="block rounded-lg border border-dash-surface-overlay px-4 py-2.5 text-center text-sm text-dash-text-muted">
                       Ihr aktueller Plan
                     </span>
                   ) : canUpgrade ? (
                     <a
                       href={upgradeMailto(orgRow?.name ?? "Restaurant", plan.name)}
-                      className="block rounded-lg bg-orange-500 px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-orange-600"
+                      className="block rounded-lg bg-dash-accent px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-dash-accent-hover"
                     >
                       Upgrade
                     </a>
                   ) : (
-                    <span className="block rounded-lg border border-zinc-700 px-4 py-2.5 text-center text-sm text-zinc-500">
+                    <span className="block rounded-lg border border-dash-surface-overlay px-4 py-2.5 text-center text-sm text-dash-text-disabled">
                       Enthalten in höherem Plan
                     </span>
                   )}

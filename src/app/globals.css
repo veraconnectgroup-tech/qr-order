@@ -56,6 +56,33 @@
   --color-status-warning: #eab308;
   --color-status-error: #ef4444;
   --color-status-info: #3b82f6;
+
+  --color-dash-bg: var(--dash-bg);
+  --color-dash-surface: var(--dash-surface);
+  --color-dash-surface-raised: var(--dash-surface-raised);
+  --color-dash-surface-overlay: var(--dash-surface-overlay);
+  --color-dash-border: var(--dash-border);
+  --color-dash-border-subtle: var(--dash-border-subtle);
+  --color-dash-text: var(--dash-text);
+  --color-dash-text-secondary: var(--dash-text-secondary);
+  --color-dash-text-muted: var(--dash-text-muted);
+  --color-dash-text-disabled: var(--dash-text-disabled);
+  --color-dash-accent: var(--dash-accent);
+  --color-dash-accent-hover: var(--dash-accent-hover);
+  --color-dash-accent-muted: var(--dash-accent-muted);
+  --color-dash-accent-subtle: var(--dash-accent-subtle);
+  --color-status-new: var(--status-new);
+  --color-status-new-bg: var(--status-new-bg);
+  --color-status-new-text: var(--status-new-text);
+  --color-status-preparing: var(--status-preparing);
+  --color-status-preparing-bg: var(--status-preparing-bg);
+  --color-status-preparing-text: var(--status-preparing-text);
+  --color-status-ready: var(--status-ready);
+  --color-status-ready-bg: var(--status-ready-bg);
+  --color-status-ready-text: var(--status-ready-text);
+  --color-status-delivered: var(--status-delivered);
+  --color-status-delivered-bg: var(--status-delivered-bg);
+  --color-status-delivered-text: var(--status-delivered-text);
 }
 
 :root {
@@ -91,6 +118,84 @@
   --sidebar-accent-foreground: #0a0a0a;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #2563eb;
+}
+
+.dashboard-theme {
+  /* ── Surfaces ─────────────────────────────────── */
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #131316;
+  --card-foreground: #fafafa;
+  --popover: #1c1c21;
+  --popover-foreground: #fafafa;
+  --primary: #f97316;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c21;
+  --secondary-foreground: #d4d4d8;
+  --muted: #1c1c21;
+  --muted-foreground: #71717a;
+  --accent: #1c1c21;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --border: #232329;
+  --input: #2a2a32;
+  --ring: #f97316;
+  --radius: 0.625rem;
+
+  /* ── Dashboard semantic ───────────────────────── */
+  --dash-bg: #09090b;
+  --dash-surface: #131316;
+  --dash-surface-raised: #1c1c21;
+  --dash-surface-overlay: #2a2a32;
+  --dash-border: #232329;
+  --dash-border-subtle: #1a1a1f;
+  --dash-text: #fafafa;
+  --dash-text-secondary: #d4d4d8;
+  --dash-text-muted: #71717a;
+  --dash-text-disabled: #52525b;
+  --dash-accent: #f97316;
+  --dash-accent-hover: #ea580c;
+  --dash-accent-muted: rgba(249, 115, 22, 0.15);
+  --dash-accent-subtle: rgba(249, 115, 22, 0.07);
+
+  /* ── Status — JEDINI izvor istine ─────────────── */
+  --status-new: #f97316;
+  --status-new-bg: rgba(249, 115, 22, 0.12);
+  --status-new-text: #fb923c;
+  --status-preparing: #3b82f6;
+  --status-preparing-bg: rgba(59, 130, 246, 0.12);
+  --status-preparing-text: #60a5fa;
+  --status-ready: #22c55e;
+  --status-ready-bg: rgba(34, 197, 94, 0.12);
+  --status-ready-text: #4ade80;
+  --status-delivered: #71717a;
+  --status-delivered-bg: rgba(113, 113, 122, 0.10);
+  --status-delivered-text: #a1a1aa;
+
+  /* ── Sidebar ──────────────────────────────────── */
+  --sidebar: #0c0c0f;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-primary: #f97316;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(249, 115, 22, 0.12);
+  --sidebar-accent-foreground: #f97316;
+  --sidebar-border: #1a1a1f;
+  --sidebar-ring: #f97316;
+
+  /* ── Shadows ──────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.25);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  /* ── Charts ───────────────────────────────────── */
+  --chart-1: #f97316;
+  --chart-2: #3b82f6;
+  --chart-3: #22c55e;
+  --chart-4: #8b5cf6;
+  --chart-5: #ef4444;
 }
 
 .guest-theme {

@@ -59,34 +59,34 @@ function StripeCallbackContent() {
   }, [searchParams, router]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-dash-bg px-4 text-center">
       {status === "loading" && (
         <>
-          <Loader2 className="size-10 animate-spin text-orange-500" />
-          <p className="mt-4 text-sm text-zinc-400">Verifying Stripe account…</p>
+          <Loader2 className="size-10 animate-spin text-dash-accent" />
+          <p className="mt-4 text-sm text-dash-text-muted">Verifying Stripe account…</p>
         </>
       )}
       {status === "done" && (
         <>
           <CheckCircle2 className="size-12 text-green-400" />
-          <p className="mt-4 text-xl font-semibold text-zinc-50">
+          <p className="mt-4 text-xl font-semibold text-dash-text">
             {onboarded ? "Successfully connected!" : "Stripe setup saved"}
           </p>
-          <p className="mt-2 max-w-sm text-sm text-zinc-400">
+          <p className="mt-2 max-w-sm text-sm text-dash-text-muted">
             {onboarded
               ? "Card payments are active. Payouts go to your bank account."
               : "Finish any remaining steps in Stripe when you're ready."}
           </p>
-          <p className="mt-6 text-xs text-zinc-600">Closing window…</p>
+          <p className="mt-6 text-xs text-dash-text-disabled">Closing window…</p>
         </>
       )}
       {status === "error" && (
         <>
           <XCircle className="size-12 text-red-400" />
-          <p className="mt-4 text-lg font-semibold text-zinc-50">
+          <p className="mt-4 text-lg font-semibold text-dash-text">
             Connection failed
           </p>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 text-sm text-dash-text-muted">
             Close this window and try again.
           </p>
         </>
@@ -99,8 +99,8 @@ export default function StripeCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-zinc-950">
-          <Loader2 className="size-10 animate-spin text-orange-500" />
+        <div className="flex min-h-screen items-center justify-center bg-dash-bg">
+          <Loader2 className="size-10 animate-spin text-dash-accent" />
         </div>
       }
     >

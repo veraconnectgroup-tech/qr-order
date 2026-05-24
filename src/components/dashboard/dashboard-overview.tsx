@@ -50,10 +50,10 @@ export function DashboardOverview({
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-xs font-medium uppercase tracking-wider text-dash-text-disabled">
           Operations overview
         </p>
-        <h2 className="mt-1 text-xl font-bold text-zinc-50 sm:text-2xl">
+        <h2 className="mt-1 text-xl font-bold text-dash-text sm:text-2xl">
           {locationName}
         </h2>
       </div>
@@ -114,8 +114,8 @@ export function DashboardOverview({
         <OverviewLiveFeed initialOrders={initialData.liveFeed} />
         <OverviewQuickActions />
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-          <h3 className="mb-4 text-sm font-semibold text-zinc-200">
+        <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
+          <h3 className="mb-4 text-sm font-semibold text-dash-text-secondary">
             Revenue · last 7 days
           </h3>
           <OverviewSparkline

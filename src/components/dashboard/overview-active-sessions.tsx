@@ -15,12 +15,12 @@ export function OverviewActiveSessions({
   const activeCount = tables.filter((t) => t.status !== "available").length;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-zinc-200">Active sessions</h3>
+        <h3 className="text-sm font-semibold text-dash-text-secondary">Active sessions</h3>
         <Link
           href="/dashboard/tables"
-          className="text-xs font-medium text-orange-400 hover:text-orange-300"
+          className="text-xs font-medium text-dash-accent hover:text-dash-accent"
         >
           Floor plan →
         </Link>
@@ -29,17 +29,17 @@ export function OverviewActiveSessions({
       {loading ? (
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton key={i} className="size-3 rounded-full bg-zinc-800" />
+            <Skeleton key={i} className="size-3 rounded-full bg-dash-surface-raised" />
           ))}
         </div>
       ) : !tables.length ? (
-        <p className="py-4 text-center text-sm text-zinc-500">
+        <p className="py-4 text-center text-sm text-dash-text-disabled">
           No tables configured
         </p>
       ) : (
         <>
-          <p className="mb-4 text-sm text-zinc-400">
-            <span className="font-semibold text-zinc-200">{activeCount}</span>{" "}
+          <p className="mb-4 text-sm text-dash-text-muted">
+            <span className="font-semibold text-dash-text-secondary">{activeCount}</span>{" "}
             {activeCount === 1 ? "table" : "tables"} active
           </p>
           <div className="flex flex-wrap gap-2">

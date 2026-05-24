@@ -16,7 +16,7 @@ export function NavNotificationBadge({
   return (
     <span
       className={cn(
-        "inline-flex min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white",
+        "inline-flex min-w-5 items-center justify-center rounded-full bg-dash-accent px-1.5 py-0.5 text-[10px] font-bold leading-none text-white",
         className
       )}
       aria-label={`${count} notifications`}

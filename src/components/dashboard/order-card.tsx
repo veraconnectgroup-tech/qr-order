@@ -30,29 +30,29 @@ export const ORDER_COLUMNS: OrderColumnDef[] = [
   {
     id: "new",
     label: "New",
-    border: "border-t-orange-500",
-    badge: "bg-orange-500 text-white",
+    border: "border-t-[var(--status-new)]",
+    badge: "bg-[var(--status-new)] text-white",
     statuses: ["pending", "pending_approval"],
   },
   {
     id: "preparing",
     label: "Preparing",
-    border: "border-t-yellow-500",
-    badge: "bg-yellow-500 text-zinc-950",
+    border: "border-t-[var(--status-preparing)]",
+    badge: "bg-[var(--status-preparing)] text-white",
     statuses: ["preparing", "accepted"],
   },
   {
     id: "ready",
     label: "Ready",
-    border: "border-t-green-500",
-    badge: "bg-green-500 text-white",
+    border: "border-t-[var(--status-ready)]",
+    badge: "bg-[var(--status-ready)] text-white",
     statuses: ["ready"],
   },
   {
     id: "delivered",
     label: "Delivered",
-    border: "border-t-zinc-600",
-    badge: "bg-zinc-700 text-zinc-300",
+    border: "border-t-[var(--status-delivered)]",
+    badge: "bg-[var(--status-delivered)] text-zinc-200",
     statuses: ["delivered"],
   },
 ];
@@ -67,26 +67,26 @@ function timerColor(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   if (minutes >= 20) return "text-red-400";
   if (minutes >= 10) return "text-amber-400";
-  return "text-zinc-500";
+  return "text-dash-text-muted";
 }
 
 function statusStripClass(columnId: OrderColumnDef["id"]) {
   return cn(
-    "absolute bottom-0 left-0 top-0 w-1 rounded-l-xl",
-    columnId === "new" && "bg-orange-500",
-    columnId === "preparing" && "bg-blue-500",
-    columnId === "ready" && "bg-emerald-500",
-    columnId === "delivered" && "bg-zinc-600"
+    "absolute inset-y-0 left-0 w-[3px] rounded-l-xl",
+    columnId === "new" && "bg-[var(--status-new)]",
+    columnId === "preparing" && "bg-[var(--status-preparing)]",
+    columnId === "ready" && "bg-[var(--status-ready)]",
+    columnId === "delivered" && "bg-[var(--status-delivered)]"
   );
 }
 
 function statusPillClass(columnId: OrderColumnDef["id"]) {
   return cn(
     "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-    columnId === "new" && "bg-orange-500/15 text-orange-400",
-    columnId === "preparing" && "bg-blue-500/15 text-blue-400",
-    columnId === "ready" && "bg-emerald-500/15 text-emerald-400",
-    columnId === "delivered" && "bg-zinc-700/50 text-zinc-400"
+    columnId === "new" && "bg-[var(--status-new-bg)] text-[var(--status-new-text)]",
+    columnId === "preparing" && "bg-[var(--status-preparing-bg)] text-[var(--status-preparing-text)]",
+    columnId === "ready" && "bg-[var(--status-ready-bg)] text-[var(--status-ready-text)]",
+    columnId === "delivered" && "bg-[var(--status-delivered-bg)] text-[var(--status-delivered-text)]"
   );
 }
 
@@ -251,10 +251,10 @@ export function OrderCard({
             : undefined
         }
         className={cn(
-          "relative flex items-center justify-between gap-2 rounded-lg border p-2.5 transition",
+          "relative flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-all duration-150",
           light
             ? "border-zinc-200 bg-white"
-            : "border-zinc-800 bg-zinc-900",
+            : "border-dash-border bg-dash-surface shadow-[var(--shadow-xs)]",
           deliveredAgeMs >= DELIVERED_BOARD_FADE_AGE_MS
             ? "opacity-40"
             : "opacity-60"
@@ -265,7 +265,7 @@ export function OrderCard({
           <span
             className={cn(
               "shrink-0 font-mono font-semibold tabular-nums",
-              light ? "text-zinc-900" : "text-zinc-50"
+              light ? "text-zinc-900" : "text-dash-text"
             )}
           >
             {formatOrderNumber(order.order_number)}
@@ -273,12 +273,12 @@ export function OrderCard({
           <span
             className={cn(
               "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
-              light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300"
+              light ? "bg-zinc-100 text-zinc-700" : "bg-dash-surface-raised text-dash-text-secondary"
             )}
           >
             {tableName}
           </span>
-          <span className="ml-auto shrink-0 font-mono font-semibold tabular-nums text-orange-500">
+          <span className="ml-auto shrink-0 font-mono font-semibold tabular-nums text-dash-accent">
             {formatPrice(Number(order.total), currency)}
           </span>
           <OrderChannelBadges
@@ -290,7 +290,7 @@ export function OrderCard({
         <span
           className={cn(
             "shrink-0 font-mono text-xs tabular-nums",
-            light ? "text-zinc-500" : "text-zinc-500"
+            light ? "text-zinc-500" : "text-dash-text-muted"
           )}
         >
           {formatOrderClockTime(timeIso)}
@@ -320,10 +320,10 @@ export function OrderCard({
           : undefined
       }
       className={cn(
-        "relative rounded-xl border p-4 transition",
+        "relative overflow-hidden rounded-xl border p-4 transition-all duration-150",
         light
-          ? "border-zinc-200 bg-white hover:border-zinc-300"
-          : "border-zinc-800 bg-zinc-900 hover:border-zinc-700",
+          ? "border-zinc-200 bg-white shadow-sm hover:border-zinc-300 hover:shadow-md"
+          : "border-dash-border bg-dash-surface shadow-[var(--shadow-card)] hover:border-dash-surface-raised hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-px",
         paymentRequested && "ring-2 ring-amber-500/60"
       )}
     >
@@ -333,14 +333,14 @@ export function OrderCard({
           {dragHandleProps && (
             <button
               type="button"
-              className="cursor-grab touch-none text-zinc-600 active:cursor-grabbing"
+              className="cursor-grab touch-none text-dash-text-disabled active:cursor-grabbing"
               aria-label="Drag order"
               {...dragHandleProps}
             >
               ⠿
             </button>
           )}
-          <p className={cn("font-mono text-lg font-bold", light ? "text-zinc-900" : "text-zinc-50")}>
+          <p className={cn("font-mono text-lg font-bold", light ? "text-zinc-900" : "text-dash-text")}>
             {formatOrderNumber(order.order_number)}
           </p>
           <span className={statusPillClass(columnId)}>{columnId}</span>
@@ -360,7 +360,7 @@ export function OrderCard({
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                light ? "text-zinc-500" : "text-zinc-500"
+                light ? "text-zinc-500" : "text-dash-text-muted"
               )}
             >
               Transferred from {order.transferred_from_table_name}
@@ -371,10 +371,10 @@ export function OrderCard({
       </div>
 
       <div className="mt-2 flex items-center gap-2">
-        <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-200")}>
+        <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", light ? "bg-zinc-100 text-zinc-700" : "bg-dash-surface-raised text-dash-text-secondary")}>
           {tableName}
         </span>
-        {zoneName && <span className="text-xs text-zinc-500">{zoneName}</span>}
+        {zoneName && <span className="text-xs text-dash-text-muted">{zoneName}</span>}
       </div>
 
       {paymentRequested && (
@@ -384,19 +384,19 @@ export function OrderCard({
         </div>
       )}
 
-      <ul className={cn("mt-3 space-y-1 text-sm", light ? "text-zinc-700" : "text-zinc-300")}>
+      <ul className={cn("mt-3 space-y-1 text-sm", light ? "text-zinc-700" : "text-dash-text-secondary")}>
         {order.order_items?.map((item) => (
           <OrderItemProductLine
             key={item.id}
             item={item}
             modifiers={item.order_item_modifiers}
             allowMarkUnavailable
-            nameClassName={light ? "text-zinc-700" : "text-zinc-300"}
+            nameClassName={light ? "text-zinc-700" : "text-dash-text-secondary"}
           />
         ))}
       </ul>
 
-      <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")} />
+      <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-dash-border")} />
 
       {(order.order_items?.length ?? 0) > 0 && (
         <TaxBreakdownLines
@@ -405,12 +405,12 @@ export function OrderCard({
             tax_rate: Number(item.tax_rate ?? 19),
           }))}
           currency={currency}
-          className={cn("mb-2", light ? "text-zinc-600" : "text-zinc-500")}
+          className={cn("mb-2", light ? "text-zinc-600" : "text-dash-text-muted")}
         />
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-base font-semibold text-orange-500">
+        <span className="font-mono text-base font-semibold text-dash-accent">
           {formatPrice(Number(order.total), currency)}
         </span>
         <OrderChannelBadges
@@ -452,7 +452,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive}
             onClick={onReject}
-            className="flex-1 rounded-lg bg-zinc-800 px-3 py-3 text-sm text-zinc-400 transition hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg border border-dash-border bg-transparent px-3 py-3 text-sm font-medium text-dash-text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
           >
             Reject
           </button>
@@ -460,7 +460,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive || !onApproveAccess}
             onClick={onApproveAccess}
-            className="flex-1 rounded-lg bg-orange-500 px-3 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg bg-emerald-600 px-3 py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-emerald-500 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
           >
             Approve order ►
           </button>
@@ -473,7 +473,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive}
             onClick={onReject}
-            className="flex-1 rounded-lg bg-zinc-800 px-3 py-3 text-sm text-zinc-400 transition hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg border border-dash-border bg-transparent px-3 py-3 text-sm font-medium text-dash-text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
           >
             Reject
           </button>
@@ -481,7 +481,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive}
             onClick={onAccept}
-            className="flex-1 rounded-lg bg-orange-500 px-3 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg bg-emerald-600 px-3 py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-emerald-500 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
           >
             Accept ►
           </button>
@@ -493,7 +493,7 @@ export function OrderCard({
           type="button"
           disabled={busy || !interactive}
           onClick={onStartPreparing}
-          className="mt-3 w-full rounded-lg bg-yellow-600 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-yellow-500 disabled:opacity-50 touch-manipulation sm:py-2"
+          className="mt-3 w-full rounded-lg bg-[var(--status-preparing)] py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:brightness-110 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Start Preparing
         </button>
@@ -504,7 +504,7 @@ export function OrderCard({
           type="button"
           disabled={busy || !interactive}
           onClick={onMarkReady}
-          className="mt-3 w-full rounded-lg bg-green-600 py-3 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50 touch-manipulation sm:py-2"
+          className="mt-3 w-full rounded-lg bg-[var(--status-ready)] py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:brightness-110 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Mark Ready
         </button>
@@ -515,7 +515,7 @@ export function OrderCard({
           type="button"
           disabled={busy || !interactive}
           onClick={onMarkDelivered}
-          className="mt-3 w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 touch-manipulation sm:py-2"
+          className="mt-3 w-full rounded-lg bg-dash-accent py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-dash-accent-hover hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
         >
           Mark Delivered
         </button>

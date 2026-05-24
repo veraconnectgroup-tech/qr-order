@@ -341,7 +341,7 @@ export function PushOptIn({ className }: { className?: string }) {
     return (
       <span
         className={cn(
-          "hidden text-xs text-zinc-500 sm:inline",
+          "hidden text-xs text-dash-text-disabled sm:inline",
           className
         )}
         title="Enable notifications in browser settings"
@@ -357,7 +357,7 @@ export function PushOptIn({ className }: { className?: string }) {
         type="button"
         variant="ghost"
         size="sm"
-        className="h-9 gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+        className="h-9 gap-1.5 text-dash-text-muted hover:bg-dash-surface-raised hover:text-dash-text"
         onClick={() => void enablePush()}
         disabled={busy}
       >

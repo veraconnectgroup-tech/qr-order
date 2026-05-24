@@ -88,10 +88,10 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-0 flex-1 flex-col rounded-xl bg-zinc-900/30 p-3 md:min-w-[300px]",
+        "flex min-w-0 flex-1 flex-col rounded-xl bg-dash-surface/30 p-3 md:min-w-[300px]",
         "border-t-2",
         column.border,
-        isOver && "ring-2 ring-orange-500/40"
+        isOver && "ring-2 ring-dash-accent/40 bg-dash-accent-subtle"
       )}
     >
       {children}
@@ -166,7 +166,7 @@ function ColumnSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-[200px] animate-pulse rounded-xl bg-zinc-800"
+          className="h-[200px] animate-pulse rounded-xl bg-dash-surface-raised"
         />
       ))}
     </>
@@ -553,7 +553,7 @@ export function OrderBoard() {
         <button
           type="button"
           onClick={() => fetchOrders()}
-          className="mt-4 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
+          className="mt-4 rounded-lg bg-dash-surface-raised px-4 py-2 text-sm text-dash-text-secondary hover:bg-dash-surface-overlay"
         >
           Retry
         </button>
@@ -569,7 +569,7 @@ export function OrderBoard() {
           <Button
             asChild
             size="sm"
-            className="bg-orange-500 text-white hover:bg-orange-600"
+            className="bg-dash-accent text-white hover:bg-dash-accent-hover"
           >
             <Link href="/dashboard/new-order">
               <Plus />
@@ -599,10 +599,10 @@ export function OrderBoard() {
                 type="button"
                 onClick={() => setMobileColumn(column.id)}
                 className={cn(
-                  "shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition touch-manipulation sm:px-3 sm:py-1.5",
+                  "shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-all touch-manipulation sm:px-3 sm:py-1.5",
                   active
-                    ? "bg-orange-500 text-white"
-                    : "bg-zinc-800 text-zinc-400"
+                    ? "bg-dash-accent text-white shadow-[var(--shadow-sm)]"
+                    : "bg-dash-surface-raised text-dash-text-muted hover:text-dash-text-secondary"
                 )}
               >
                 {column.label} ({totalCount})
@@ -626,7 +626,7 @@ export function OrderBoard() {
               const { visible, hiddenCount } = getColumnBoardOrders(column);
               if (visible.length === 0) {
                 return (
-                  <p className="py-12 text-center text-sm text-zinc-500">
+                  <p className="py-12 text-center text-sm text-dash-text-disabled">
                     No orders
                   </p>
                 );
@@ -637,7 +637,7 @@ export function OrderBoard() {
                   {hiddenCount > 0 && (
                     <Link
                       href="/dashboard/history"
-                      className="block py-2 text-center text-sm text-zinc-500 transition hover:text-orange-400"
+                      className="block py-2 text-center text-sm text-dash-text-muted transition hover:text-dash-accent"
                     >
                       +{hiddenCount} more · View in History
                     </Link>
@@ -664,7 +664,7 @@ export function OrderBoard() {
             return (
               <DroppableColumn key={column.id} column={column}>
                 <div className="mb-3 flex items-center justify-between px-1">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-text-muted">
                     {column.label}
                   </h3>
                   <span
@@ -687,7 +687,7 @@ export function OrderBoard() {
                   {loading ? (
                     <ColumnSkeleton />
                   ) : visible.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-zinc-500">
+                    <p className="py-8 text-center text-sm text-dash-text-disabled">
                       No orders
                     </p>
                   ) : (
@@ -698,7 +698,7 @@ export function OrderBoard() {
                       {hiddenCount > 0 && (
                         <Link
                           href="/dashboard/history"
-                          className="py-2 text-center text-sm text-zinc-500 transition hover:text-orange-400"
+                          className="py-2 text-center text-sm text-dash-text-muted transition hover:text-dash-accent"
                         >
                           +{hiddenCount} more · View in History
                         </Link>

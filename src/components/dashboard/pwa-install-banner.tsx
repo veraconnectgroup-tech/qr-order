@@ -26,7 +26,7 @@ function IosInstallHint() {
         className="flex shrink-0 flex-col items-center gap-0.5 text-blue-200"
         aria-hidden
       >
-        <div className="flex size-9 items-center justify-center rounded-lg border border-orange-400/40 bg-orange-500/20">
+        <div className="flex size-9 items-center justify-center rounded-lg border border-dash-accent/40 bg-dash-accent/20">
           <span className="text-lg leading-none">+</span>
         </div>
         <span className="text-[10px] leading-none">Home</span>

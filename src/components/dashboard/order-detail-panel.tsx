@@ -81,7 +81,7 @@ export function OrderDetailPanel({
   const refundStaff = order.refund_staff;
 
   return (
-    <div className={cn("space-y-2", light ? "text-zinc-700" : "text-zinc-300")}>
+    <div className={cn("space-y-2", light ? "text-dash-text-disabled" : "text-dash-text-secondary")}>
       <div className="flex flex-wrap items-center gap-2">
         <PaymentStatusBadge paymentStatus={order.payment_status} />
         {canRefund && (
@@ -102,29 +102,29 @@ export function OrderDetailPanel({
             "rounded-lg border px-3 py-2 text-xs",
             light
               ? "border-zinc-200 bg-zinc-50 text-zinc-600"
-              : "border-zinc-800 bg-zinc-950/50 text-zinc-400"
+              : "border-dash-border bg-dash-bg/50 text-dash-text-muted"
           )}
         >
           {order.refund_reason && (
             <p>
-              <span className="font-medium text-zinc-300">Razlog:</span>{" "}
+              <span className="font-medium text-dash-text-secondary">Razlog:</span>{" "}
               {order.refund_reason}
             </p>
           )}
           {refundStaff?.name && (
             <p className="mt-1">
-              <span className="font-medium text-zinc-300">Odobrio:</span>{" "}
+              <span className="font-medium text-dash-text-secondary">Odobrio:</span>{" "}
               {refundStaff.name}
             </p>
           )}
           {order.refunded_at && (
             <p className="mt-1">
-              <span className="font-medium text-zinc-300">Datum:</span>{" "}
+              <span className="font-medium text-dash-text-secondary">Datum:</span>{" "}
               {new Date(order.refunded_at).toLocaleString("de-DE")}
             </p>
           )}
           {order.refund_id && (
-            <p className="mt-1 font-mono text-[10px] text-zinc-500">
+            <p className="mt-1 font-mono text-[10px] text-dash-text-disabled">
               {order.refund_id}
             </p>
           )}
@@ -144,10 +144,10 @@ export function OrderDetailPanel({
             "rounded-lg border px-3 py-2 text-xs",
             light
               ? "border-zinc-200 bg-zinc-50 text-zinc-600"
-              : "border-zinc-800 bg-zinc-950/50 text-zinc-400"
+              : "border-dash-border bg-dash-bg/50 text-dash-text-muted"
           )}
         >
-          <p className="font-medium text-zinc-300">
+          <p className="font-medium text-dash-text-secondary">
             Split bill ·{" "}
             {
               (order.split_payments ?? []).filter(
@@ -176,7 +176,7 @@ export function OrderDetailPanel({
       )}
 
       {!refunded && paid && (
-        <div className={cn("space-y-1", light ? "text-zinc-500" : "text-zinc-500")}>
+        <div className={cn("space-y-1", light ? "text-zinc-600" : "text-dash-text-muted")}>
           <p className="text-xs">
             Online payment · {formatPrice(Number(order.total), currency)}
           </p>

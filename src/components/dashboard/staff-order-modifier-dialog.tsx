@@ -140,10 +140,10 @@ export function StaffOrderModifierDialog({
         onClick={close}
       />
 
-      <div className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-zinc-100 shadow-xl">
+      <div className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-dash-border bg-dash-bg p-5 text-dash-text shadow-xl">
         <div className="mb-5">
-          <h2 className="text-lg font-semibold text-zinc-50">{product.name}</h2>
-          <p className="mt-1 font-semibold text-orange-400">
+          <h2 className="text-lg font-semibold text-dash-text">{product.name}</h2>
+          <p className="mt-1 font-semibold text-dash-accent">
             {formatPrice(Number(product.price), currency)}
           </p>
         </div>
@@ -152,7 +152,7 @@ export function StaffOrderModifierDialog({
           {groups.map((group) => (
             <div key={group.id}>
               <div className="mb-2 flex items-center gap-2">
-                <p className="text-sm font-semibold text-zinc-200">
+                <p className="text-sm font-semibold text-dash-text-secondary">
                   {group.name}
                 </p>
                 {group.is_required && (
@@ -174,13 +174,13 @@ export function StaffOrderModifierDialog({
                       className={cn(
                         "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition",
                         isSelected
-                          ? "border-orange-500 bg-orange-500/10 text-orange-100"
-                          : "border-zinc-800 bg-zinc-800 text-zinc-300 hover:border-zinc-700"
+                          ? "border-dash-accent bg-dash-accent-muted text-dash-accent"
+                          : "border-dash-border bg-dash-surface-raised text-dash-text-secondary hover:border-dash-surface-overlay"
                       )}
                     >
                       <span>{modifier.name}</span>
                       {Number(modifier.price) > 0 && (
-                        <span className="text-zinc-400">
+                        <span className="text-dash-text-muted">
                           +{formatPrice(Number(modifier.price), currency)}
                         </span>
                       )}
@@ -194,7 +194,7 @@ export function StaffOrderModifierDialog({
           <div>
             <label
               htmlFor="staff-item-notes"
-              className="mb-2 block text-sm font-semibold text-zinc-200"
+              className="mb-2 block text-sm font-semibold text-dash-text-secondary"
             >
               Item notes
             </label>
@@ -204,7 +204,7 @@ export function StaffOrderModifierDialog({
               maxLength={200}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="e.g. no onions"
-              className="border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500"
+              className="border-dash-surface-overlay bg-dash-surface text-dash-text placeholder:text-dash-text-disabled"
             />
           </div>
         </div>
@@ -213,7 +213,7 @@ export function StaffOrderModifierDialog({
           <Button
             type="button"
             variant="outline"
-            className="flex-1 border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-900"
+            className="flex-1 border-dash-surface-overlay bg-transparent text-dash-text-secondary hover:bg-dash-surface"
             onClick={close}
           >
             Cancel
@@ -221,7 +221,7 @@ export function StaffOrderModifierDialog({
           <Button
             type="button"
             disabled={invalidSelection}
-            className="flex-1 bg-orange-500 text-white hover:bg-orange-600"
+            className="flex-1 bg-dash-accent text-white hover:bg-dash-accent-hover"
             onClick={handleAdd}
           >
             Add to order

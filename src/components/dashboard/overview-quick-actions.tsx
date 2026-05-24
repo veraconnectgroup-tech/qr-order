@@ -53,15 +53,15 @@ export function OverviewQuickActions() {
     <div className="grid grid-cols-2 gap-3">
       {actions.map(({ href, label, description, icon: Icon, external }) => {
         const className =
-          "flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-orange-500/30 hover:bg-zinc-800/50";
+          "flex items-center gap-3 rounded-xl border border-dash-border bg-dash-surface/50 p-4 transition hover:border-dash-accent/30 hover:bg-dash-surface-raised/50";
         const inner = (
           <>
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-              <Icon className="size-5 text-orange-500" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-dash-accent-muted">
+              <Icon className="size-5 text-dash-accent" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-zinc-200">{label}</p>
-              <p className="text-xs text-zinc-500">{description}</p>
+              <p className="text-sm font-medium text-dash-text-secondary">{label}</p>
+              <p className="text-xs text-dash-text-disabled">{description}</p>
             </div>
           </>
         );

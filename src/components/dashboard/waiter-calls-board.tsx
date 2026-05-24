@@ -61,17 +61,17 @@ function PendingCallCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-2 text-lg font-bold text-zinc-50">
+          <p className="flex flex-wrap items-center gap-2 text-lg font-bold text-dash-text">
             <Bell className="size-5 shrink-0 text-red-400" />
             <span>{tableName.toUpperCase()}</span>
             {zoneName && (
-              <span className="text-base font-normal text-zinc-400">
+              <span className="text-base font-normal text-dash-text-muted">
                 — {zoneName}
               </span>
             )}
           </p>
         </div>
-        <p className="shrink-0 text-sm text-zinc-500">
+        <p className="shrink-0 text-sm text-dash-text-disabled">
           {formatTimeAgo(call.created_at)}
         </p>
       </div>
@@ -80,14 +80,14 @@ function PendingCallCard({
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-lg bg-zinc-800 px-4 py-2.5 text-sm text-zinc-300 transition hover:bg-zinc-700"
+          className="rounded-lg bg-dash-surface-raised px-4 py-2.5 text-sm text-dash-text-secondary transition hover:bg-dash-surface-overlay"
         >
           Dismiss
         </button>
         <button
           type="button"
           onClick={onAcknowledge}
-          className="rounded-lg bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+          className="rounded-lg bg-dash-accent px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-dash-accent-hover"
         >
           On my way ► ({staffFirstName})
         </button>
@@ -116,16 +116,16 @@ function HandledCallCard({
       layout
       initial={{ opacity: 0 }}
       animate={{ opacity: 0.6 }}
-      className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 opacity-50"
+      className="rounded-xl border border-dash-border bg-dash-surface/30 p-4 opacity-50"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-base font-semibold text-zinc-400">
+        <p className="text-base font-semibold text-dash-text-muted">
           {tableName}
           {zoneName && (
-            <span className="font-normal text-zinc-600"> — {zoneName}</span>
+            <span className="font-normal text-dash-text-disabled"> — {zoneName}</span>
           )}
         </p>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-dash-text-disabled">
           Handled by {staffName} · {formatTimeAgo(handledAt)}
         </p>
       </div>
@@ -203,11 +203,11 @@ export function WaiterCallsBoard() {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48 bg-zinc-800" />
-          <Skeleton className="h-8 w-24 bg-zinc-800" />
+          <Skeleton className="h-8 w-48 bg-dash-surface-raised" />
+          <Skeleton className="h-8 w-24 bg-dash-surface-raised" />
         </div>
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
+          <Skeleton key={i} className="h-28 rounded-xl bg-dash-surface-raised" />
         ))}
       </div>
     );
@@ -226,9 +226,9 @@ export function WaiterCallsBoard() {
 
       {calls.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <Bell className="size-16 text-zinc-700" />
-          <p className="mt-4 text-xl text-zinc-500">No waiter calls</p>
-          <p className="mt-1 text-zinc-600">
+          <Bell className="size-16 text-dash-text-disabled" />
+          <p className="mt-4 text-xl text-dash-text-disabled">No waiter calls</p>
+          <p className="mt-1 text-dash-text-disabled">
             Calls appear here when guests request a waiter
           </p>
         </div>
@@ -248,8 +248,8 @@ export function WaiterCallsBoard() {
           </AnimatePresence>
 
           {pending.length > 0 && handled.length > 0 && (
-            <div className="my-6 border-t border-zinc-800 pt-6">
-              <p className="text-xs uppercase tracking-wider text-zinc-600">
+            <div className="my-6 border-t border-dash-border pt-6">
+              <p className="text-xs uppercase tracking-wider text-dash-text-disabled">
                 Handled
               </p>
             </div>

@@ -206,9 +206,9 @@ export function DashboardStripeConnect({
   const isConnected = connected || showSuccess;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="text-lg font-semibold text-zinc-50">Payments</h2>
-      <p className="mt-1 text-sm text-zinc-500">
+    <div className="rounded-xl border border-dash-border bg-dash-surface p-6">
+      <h2 className="text-lg font-semibold text-dash-text">Payments</h2>
+      <p className="mt-1 text-sm text-dash-text-disabled">
         Connect your restaurant&apos;s Stripe account — payouts go to your bank
       </p>
 
@@ -230,7 +230,7 @@ export function DashboardStripeConnect({
         <div className="mt-4 space-y-3">
           <Button
             variant="outline"
-            className="border-zinc-700 bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
+            className="border-dash-surface-overlay bg-dash-bg text-dash-text-secondary hover:bg-dash-surface-raised"
             onClick={handleConnect}
             disabled={busy}
           >
@@ -248,18 +248,18 @@ export function DashboardStripeConnect({
           )}
           {!isConnected && platformReady && (
             <>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-dash-text-muted">
                 Connect your account so guests can pay by card. Funds go directly
                 to your bank.
               </p>
-              <ul className="space-y-1 text-xs text-zinc-500">
+              <ul className="space-y-1 text-xs text-dash-text-disabled">
                 <li>Platform fee: {feeLabel}</li>
                 <li>Visa, Mastercard, Apple Pay, Google Pay</li>
               </ul>
             </>
           )}
           <Button
-            className="bg-orange-500 hover:bg-orange-600"
+            className="bg-dash-accent hover:bg-dash-accent-hover"
             onClick={handleConnect}
             disabled={busy || !platformReady}
           >

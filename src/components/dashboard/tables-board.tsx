@@ -496,12 +496,12 @@ ${qrItems
       <div className="space-y-6">
         <div className="flex gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-24 rounded-lg bg-zinc-800" />
+            <Skeleton key={i} className="h-8 w-24 rounded-lg bg-dash-surface-raised" />
           ))}
         </div>
         <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
           {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
+            <Skeleton key={i} className="h-28 rounded-xl bg-dash-surface-raised" />
           ))}
         </div>
       </div>
@@ -511,15 +511,15 @@ ${qrItems
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex gap-3 overflow-x-auto border-b border-zinc-800 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-4 sm:overflow-visible">
+        <div className="flex gap-3 overflow-x-auto border-b border-dash-border pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-4 sm:overflow-visible">
           <button
             type="button"
             onClick={() => setActiveZone("all")}
             className={cn(
               "pb-2 text-sm font-medium transition",
               activeZone === "all"
-                ? "border-b-2 border-orange-500 text-white"
-                : "text-zinc-400 hover:text-white"
+                ? "border-b-2 border-dash-accent text-white"
+                : "text-dash-text-muted hover:text-white"
             )}
           >
             All ({tables.length})
@@ -532,8 +532,8 @@ ${qrItems
               className={cn(
                 "pb-2 text-sm font-medium transition",
                 activeZone === zone.id
-                  ? "border-b-2 border-orange-500 text-white"
-                  : "text-zinc-400 hover:text-white"
+                  ? "border-b-2 border-dash-accent text-white"
+                  : "text-dash-text-muted hover:text-white"
               )}
             >
               {zone.name} ({zone.count})
@@ -548,7 +548,7 @@ ${qrItems
               setNewZoneName("");
               setZonesOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800 sm:gap-2 sm:px-4 sm:text-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dash-surface-overlay bg-dash-surface px-3 py-2 text-xs font-medium text-dash-text-secondary transition hover:border-dash-surface-overlay hover:bg-dash-surface-raised sm:gap-2 sm:px-4 sm:text-sm"
           >
             <Plus className="size-4" />
             Zones
@@ -556,7 +556,7 @@ ${qrItems
           <button
             type="button"
             onClick={downloadAllQrCodes}
-            className="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-300 transition hover:bg-zinc-700 sm:px-4 sm:text-sm"
+            className="rounded-lg bg-dash-surface-raised px-3 py-2 text-xs text-dash-text-secondary transition hover:bg-dash-surface-overlay sm:px-4 sm:text-sm"
           >
             <span className="hidden sm:inline">Download All QR Codes</span>
             <span className="sm:hidden">All QR</span>
@@ -564,7 +564,7 @@ ${qrItems
           <button
             type="button"
             onClick={openAddTable}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 sm:gap-2 sm:px-4 sm:text-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-dash-accent px-3 py-2 text-xs font-semibold text-white transition hover:bg-dash-accent-hover sm:gap-2 sm:px-4 sm:text-sm"
           >
             <Plus className="size-4" />
             Add Table
@@ -573,15 +573,15 @@ ${qrItems
       </div>
 
       {zones.length === 0 && (
-        <div className="mb-6 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-4 py-8 text-center">
-          <p className="font-medium text-zinc-200">No zones yet</p>
-          <p className="mt-1 text-sm text-zinc-500">
+        <div className="mb-6 rounded-xl border border-dashed border-dash-surface-overlay bg-dash-surface/50 px-4 py-8 text-center">
+          <p className="font-medium text-dash-text-secondary">No zones yet</p>
+          <p className="mt-1 text-sm text-dash-text-disabled">
             Add areas like Terrace, Bar, or Zone 1–5, then assign tables to each zone.
           </p>
           <button
             type="button"
             onClick={() => setZonesOpen(true)}
-            className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+            className="mt-4 rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover"
           >
             Add your first zone
           </button>
@@ -591,10 +591,10 @@ ${qrItems
       {groupedTables.map((group) => (
         <section key={group.zoneId ?? "unassigned"} className="mb-8 last:mb-0">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-zinc-200">
+            <h3 className="text-sm font-semibold text-dash-text-secondary">
               {group.zoneName}
             </h3>
-            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-400">
+            <span className="rounded-full bg-dash-surface-raised px-2 py-0.5 text-[10px] font-semibold tabular-nums text-dash-text-muted">
               {group.tables.length}
             </span>
           </div>
@@ -609,9 +609,9 @@ ${qrItems
                   type="button"
                   onClick={() => setSelected(table)}
                   className={cn(
-                    "cursor-pointer rounded-xl border bg-zinc-900 p-3 text-center transition hover:border-zinc-600 sm:p-5",
+                    "cursor-pointer rounded-xl border bg-dash-surface p-3 text-center transition hover:border-dash-surface-overlay sm:p-5",
                     status === "available" &&
-                      "border-dashed border-zinc-700 bg-zinc-950/50",
+                      "border-dashed border-dash-surface-overlay bg-dash-bg/50",
                     status === "attention" &&
                       "animate-pulse border-red-500 ring-1 ring-emerald-500/30",
                     status === "payment" &&
@@ -620,10 +620,10 @@ ${qrItems
                       "border-emerald-500/40 ring-1 ring-emerald-500/30 animate-pulse"
                   )}
                 >
-                  <p className="font-mono text-base font-bold text-zinc-50 sm:text-xl">
+                  <p className="font-mono text-base font-bold text-dash-text sm:text-xl">
                     {table.name}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500">{table.seats} seats</p>
+                  <p className="mt-1 text-sm text-dash-text-disabled">{table.seats} seats</p>
                   {table.session && <TableSessionTimer openedAt={table.session.opened_at} />}
                   {status === "attention" ? (
                     <p className="mt-2 text-sm text-red-400">
@@ -642,13 +642,13 @@ ${qrItems
                         Occupied
                       </p>
                       {table.sessionTotal > 0 && (
-                        <p className="mt-1 font-mono text-orange-500">
+                        <p className="mt-1 font-mono text-dash-accent">
                           {formatPrice(table.sessionTotal, currency)}
                         </p>
                       )}
                     </>
                   ) : (
-                    <p className="mt-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    <p className="mt-2 text-xs font-medium uppercase tracking-wider text-dash-text-disabled">
                       Available
                     </p>
                   )}
@@ -676,7 +676,7 @@ ${qrItems
               animate={{ y: 0, x: 0 }}
               exit={{ y: "100%", x: 0 }}
               transition={{ type: "spring", stiffness: 380, damping: 36 }}
-              className="fixed inset-x-0 bottom-0 top-auto z-50 flex max-h-[92vh] w-full flex-col overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-900 p-4 text-zinc-50 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(100%,400px)] sm:rounded-none sm:border-l sm:border-t-0 sm:p-6"
+              className="fixed inset-x-0 bottom-0 top-auto z-50 flex max-h-[92vh] w-full flex-col overflow-y-auto rounded-t-2xl border-t border-dash-border bg-dash-surface p-4 text-dash-text sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(100%,400px)] sm:rounded-none sm:border-l sm:border-t-0 sm:p-6"
             >
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-2xl font-bold uppercase tracking-wide">
@@ -685,13 +685,13 @@ ${qrItems
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
-                  className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+                  className="rounded-lg p-1.5 text-dash-text-muted transition hover:bg-dash-surface-raised hover:text-dash-text"
                 >
                   <X className="size-5" />
                 </button>
               </div>
 
-              <p className="mt-3 text-sm text-zinc-400">
+              <p className="mt-3 text-sm text-dash-text-muted">
                 Zone: {selected.zone?.name ?? "—"} · {selected.seats} seats ·
                 Status:{" "}
                 {tableStatus(selected) === "attention" ||
@@ -708,7 +708,7 @@ ${qrItems
               )}
 
               {selected.session && (
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="mt-2 text-sm text-dash-text-disabled">
                   Session started:{" "}
                   {new Date(selected.session.opened_at).toLocaleTimeString(
                     "de-DE",
@@ -719,25 +719,25 @@ ${qrItems
               )}
 
               <div className="mt-6">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
                   Active Orders
                 </p>
                 {selected.activeOrders.length === 0 ? (
-                  <p className="text-sm text-zinc-600">No active orders</p>
+                  <p className="text-sm text-dash-text-disabled">No active orders</p>
                 ) : (
                   <ul className="space-y-2">
                     {selected.activeOrders.map((order) => (
                       <li
                         key={order.id}
-                        className="flex items-center justify-between text-sm text-zinc-300"
+                        className="flex items-center justify-between text-sm text-dash-text-secondary"
                       >
                         <span className="font-mono font-semibold">
                           {formatOrderNumber(order.order_number)}
                         </span>
-                        <span className="text-zinc-500">
+                        <span className="text-dash-text-disabled">
                           {formatPrice(Number(order.total), currency)}
                         </span>
-                        <span className="text-zinc-400">
+                        <span className="text-dash-text-muted">
                           {orderStatusLabel(order.status)}
                         </span>
                       </li>
@@ -745,15 +745,15 @@ ${qrItems
                   </ul>
                 )}
                 {selected.sessionTotal > 0 && (
-                  <p className="mt-4 font-mono text-lg font-semibold text-orange-500">
+                  <p className="mt-4 font-mono text-lg font-semibold text-dash-accent">
                     Session Total:{" "}
                     {formatPrice(selected.sessionTotal, currency)}
                   </p>
                 )}
               </div>
 
-              <div className="mt-8 border-t border-zinc-800 pt-6">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              <div className="mt-8 border-t border-dash-border pt-6">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
                   QR Code
                 </p>
                 {guestUrlUnsafe && (
@@ -779,9 +779,9 @@ ${qrItems
                       className="size-[200px] rounded-lg"
                     />
                   ) : (
-                    <Skeleton className="size-[200px] rounded-lg bg-zinc-800" />
+                    <Skeleton className="size-[200px] rounded-lg bg-dash-surface-raised" />
                   )}
-                  <p className="break-all text-center text-xs text-zinc-500">
+                  <p className="break-all text-center text-xs text-dash-text-disabled">
                     {guestTableUrl(
                       resolvedOrgSlug,
                       selected.qr_token,
@@ -798,7 +798,7 @@ ${qrItems
                         a.download = `qr-${selected.name.replace(/\s+/g, "-")}.png`;
                         a.click();
                       }}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-dash-surface-raised px-3 py-2 text-sm text-dash-text-secondary transition hover:bg-dash-surface-overlay"
                     >
                       <Download className="size-4" />
                       Download QR
@@ -806,7 +806,7 @@ ${qrItems
                     <button
                       type="button"
                       onClick={() => regenerateToken(selected.id)}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:bg-zinc-700"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-dash-surface-raised px-3 py-2 text-sm text-dash-text-secondary transition hover:bg-dash-surface-overlay"
                     >
                       <RefreshCw className="size-4" />
                       Regenerate Token
@@ -819,7 +819,7 @@ ${qrItems
                 <button
                   type="button"
                   onClick={() => setTransferOpen(true)}
-                  className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-zinc-700"
+                  className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-dash-surface-raised py-3 text-sm font-semibold text-dash-text transition hover:bg-dash-surface-overlay"
                 >
                   <ArrowRightLeft className="size-4" />
                   Transfer
@@ -856,30 +856,30 @@ ${qrItems
       )}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+        <DialogContent className="border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-zinc-50">Add Table</DialogTitle>
+            <DialogTitle className="text-dash-text">Add Table</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Name</span>
+              <span className="text-sm text-dash-text-muted">Name</span>
               <input
                 value={newTable.name}
                 onChange={(e) =>
                   setNewTable((t) => ({ ...t, name: e.target.value }))
                 }
                 placeholder="Table 9"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Zone</span>
+              <span className="text-sm text-dash-text-muted">Zone</span>
               {zones.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-zinc-700 px-3 py-2 text-sm text-zinc-500">
+                <p className="rounded-lg border border-dashed border-dash-surface-overlay px-3 py-2 text-sm text-dash-text-disabled">
                   No zones —{" "}
                   <button
                     type="button"
-                    className="text-orange-400 underline"
+                    className="text-dash-accent underline"
                     onClick={() => {
                       setAddOpen(false);
                       setZonesOpen(true);
@@ -894,7 +894,7 @@ ${qrItems
                   onChange={(e) =>
                     setNewTable((t) => ({ ...t, zoneId: e.target.value }))
                   }
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                  className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
                 >
                   {zones.map((zone) => (
                     <option key={zone.id} value={zone.id}>
@@ -905,7 +905,7 @@ ${qrItems
               )}
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Seats</span>
+              <span className="text-sm text-dash-text-muted">Seats</span>
               <input
                 type="number"
                 min={1}
@@ -917,16 +917,16 @@ ${qrItems
                     seats: Number(e.target.value) || 1,
                   }))
                 }
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
           </div>
-          <DialogFooter className="border-zinc-800 bg-transparent">
+          <DialogFooter className="border-dash-border bg-transparent">
             <button
               type="button"
               disabled={saving}
               onClick={() => setAddOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+              className="rounded-lg px-4 py-2 text-sm text-dash-text-muted hover:text-dash-text-secondary"
             >
               Cancel
             </button>
@@ -934,7 +934,7 @@ ${qrItems
               type="button"
               disabled={saving || zones.length === 0}
               onClick={addTable}
-              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+              className="rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
             >
               {saving ? "Saving…" : "Add Table"}
             </button>
@@ -943,11 +943,11 @@ ${qrItems
       </Dialog>
 
       <Dialog open={zonesOpen} onOpenChange={setZonesOpen}>
-        <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+        <DialogContent className="border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-zinc-50">Zones</DialogTitle>
+            <DialogTitle className="text-dash-text">Zones</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-dash-text-disabled">
             Name each area of your venue — e.g. Terrace, Bar, Main Hall, Zone 1.
           </p>
 
@@ -962,32 +962,32 @@ ${qrItems
                   addZone();
                 }
               }}
-              className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="min-w-0 flex-1 rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             />
             <button
               type="button"
               disabled={saving || !newZoneName.trim()}
               onClick={addZone}
-              className="shrink-0 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+              className="shrink-0 rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
             >
               Add
             </button>
           </div>
 
           {zones.length > 0 ? (
-            <ul className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-zinc-800 p-2">
+            <ul className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-dash-border p-2">
               {zones.map((zone) => {
                 const count = tables.filter((t) => t.zone_id === zone.id).length;
                 return (
                   <li
                     key={zone.id}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-zinc-950 px-3 py-2"
+                    className="flex items-center justify-between gap-3 rounded-lg bg-dash-bg px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-zinc-100">
+                      <p className="truncate font-medium text-dash-text">
                         {zone.name}
                       </p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-dash-text-disabled">
                         {count} {count === 1 ? "table" : "tables"}
                       </p>
                     </div>
@@ -1006,19 +1006,19 @@ ${qrItems
               })}
             </ul>
           ) : (
-            <p className="py-4 text-center text-sm text-zinc-600">
+            <p className="py-4 text-center text-sm text-dash-text-disabled">
               No zones yet — add one above.
             </p>
           )}
 
-          <DialogFooter className="border-zinc-800 bg-transparent">
+          <DialogFooter className="border-dash-border bg-transparent">
             <button
               type="button"
               onClick={() => {
                 setZonesOpen(false);
                 if (zones.length > 0) openAddTable();
               }}
-              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
+              className="rounded-lg bg-dash-surface-raised px-4 py-2 text-sm text-dash-text-secondary hover:bg-dash-surface-overlay"
             >
               {zones.length > 0 ? "Add table to zone" : "Close"}
             </button>

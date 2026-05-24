@@ -29,7 +29,7 @@ export function DashboardMobileNav() {
     useDashboardAlerts();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom,0px))] border-t border-zinc-800 bg-zinc-950 pb-[env(safe-area-inset-bottom,0px)] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom,0px))] border-t border-dash-border-subtle bg-dash-bg/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom,0px)] md:hidden">
       {tabs.map(({ href, label, icon: Icon, alertKey, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         const badgeCount =
@@ -47,7 +47,7 @@ export function DashboardMobileNav() {
             href={href}
             className={cn(
               "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium",
-              active ? "text-orange-500" : "text-zinc-500"
+              active ? "text-dash-accent" : "text-dash-text-muted"
             )}
           >
             <span className="relative">

@@ -23,7 +23,7 @@ export function DashboardMobileMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100 md:hidden"
+        className="rounded-lg p-2 text-dash-text-muted transition hover:bg-dash-surface-raised hover:text-dash-text md:hidden"
         aria-label="Open menu"
       >
         <Menu className="size-5" />
@@ -37,16 +37,16 @@ export function DashboardMobileMenu() {
             className="fixed inset-0 z-50 bg-black/60 md:hidden"
             onClick={() => setOpen(false)}
           />
-          <div className="fixed inset-x-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950 p-4 shadow-xl md:hidden">
+          <div className="fixed inset-x-0 top-0 z-50 border-b border-dash-border bg-dash-bg p-4 shadow-xl md:hidden">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate font-semibold text-zinc-100">{orgName}</p>
-                <p className="truncate text-sm text-zinc-500">{staffName}</p>
+                <p className="truncate font-semibold text-dash-text">{orgName}</p>
+                <p className="truncate text-sm text-dash-text-disabled">{staffName}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+                className="rounded-lg p-2 text-dash-text-muted hover:bg-dash-surface-raised"
               >
                 <X className="size-5" />
               </button>
@@ -62,8 +62,8 @@ export function DashboardMobileMenu() {
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium",
                       active
-                        ? "bg-zinc-800 text-orange-500"
-                        : "text-zinc-300 hover:bg-zinc-900"
+                        ? "bg-dash-surface-raised text-dash-accent"
+                        : "text-dash-text-secondary hover:bg-dash-surface"
                     )}
                   >
                     <Icon className="size-4 shrink-0" />

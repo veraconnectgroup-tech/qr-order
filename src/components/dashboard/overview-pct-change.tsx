@@ -13,7 +13,7 @@ export function OverviewPctChange({
   const diff = pctChange(current, previous);
 
   if (diff === 0 && previous === 0 && current === 0) {
-    return <p className="mt-1 text-xs text-zinc-500">vs yesterday —</p>;
+    return <p className="mt-1 text-xs text-dash-text-disabled">vs yesterday —</p>;
   }
 
   const positive = diff >= 0;

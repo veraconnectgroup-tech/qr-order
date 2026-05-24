@@ -58,11 +58,11 @@ export function ProductImageUpload({
 
   return (
     <div className="space-y-2">
-      <span className="text-sm text-zinc-400">Photo</span>
+      <span className="text-sm text-dash-text-muted">Photo</span>
 
       <div
         className={cn(
-          "overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950",
+          "overflow-hidden rounded-xl border border-dash-surface-overlay bg-dash-bg",
           disabled && "opacity-60"
         )}
       >
@@ -79,7 +79,7 @@ export function ProductImageUpload({
                 type="button"
                 onClick={handleRemove}
                 disabled={uploading}
-                className="absolute right-2 top-2 rounded-lg bg-zinc-950/80 p-2 text-zinc-300 backdrop-blur-sm transition hover:bg-red-950/80 hover:text-red-300"
+                className="absolute right-2 top-2 rounded-lg bg-dash-bg/80 p-2 text-dash-text-secondary backdrop-blur-sm transition hover:bg-red-950/80 hover:text-red-300"
                 aria-label="Remove photo"
               >
                 <Trash2 className="size-4" />
@@ -87,13 +87,13 @@ export function ProductImageUpload({
             )}
           </div>
         ) : (
-          <div className="flex h-32 flex-col items-center justify-center gap-2 text-zinc-500">
-            <ImagePlus className="size-8 text-zinc-600" />
+          <div className="flex h-32 flex-col items-center justify-center gap-2 text-dash-text-disabled">
+            <ImagePlus className="size-8 text-dash-text-disabled" />
             <p className="text-xs">No photo yet</p>
           </div>
         )}
 
-        <div className="border-t border-zinc-800 p-3">
+        <div className="border-t border-dash-border p-3">
           <input
             ref={inputRef}
             type="file"
@@ -109,7 +109,7 @@ export function ProductImageUpload({
             type="button"
             disabled={disabled || uploading}
             onClick={() => inputRef.current?.click()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800 disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dash-surface-overlay bg-dash-surface px-3 py-2 text-sm font-medium text-dash-text-secondary transition hover:border-dash-surface-overlay hover:bg-dash-surface-raised disabled:opacity-50"
           >
             {uploading ? (
               <>
@@ -122,7 +122,7 @@ export function ProductImageUpload({
               "Upload photo"
             )}
           </button>
-          <p className="mt-2 text-center text-[11px] text-zinc-600">
+          <p className="mt-2 text-center text-[11px] text-dash-text-disabled">
             JPG, PNG or WebP · max 5 MB
           </p>
         </div>

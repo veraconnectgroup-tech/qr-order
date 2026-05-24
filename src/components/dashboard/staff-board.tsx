@@ -70,36 +70,36 @@ export function StaffBoard({
   return (
     <div className="space-y-8">
       {canManage && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
+        <section className="rounded-xl border border-dash-border bg-dash-surface p-5 sm:p-6">
           <div className="mb-4 flex items-center gap-2">
-            <UserPlus className="size-5 text-orange-500" />
-            <h2 className="text-lg font-semibold text-zinc-50">Invite staff</h2>
+            <UserPlus className="size-5 text-dash-accent" />
+            <h2 className="text-lg font-semibold text-dash-text">Invite staff</h2>
           </div>
 
           <form onSubmit={handleInvite} className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5 sm:col-span-2">
-              <span className="text-sm text-zinc-400">Full name</span>
+              <span className="text-sm text-dash-text-muted">Full name</span>
               <input
                 name="name"
                 required
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Email</span>
+              <span className="text-sm text-dash-text-muted">Email</span>
               <input
                 name="email"
                 type="email"
                 required
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-zinc-400">Role</span>
+              <span className="text-sm text-dash-text-muted">Role</span>
               <select
                 name="role"
                 defaultValue="staff"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+                className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
               >
                 {STAFF_ROLES.filter((r) => r !== "owner").map((role) => (
                   <option key={role} value={role}>
@@ -112,7 +112,7 @@ export function StaffBoard({
               <button
                 type="submit"
                 disabled={pending}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                className="rounded-lg bg-dash-accent px-4 py-2 text-sm font-semibold text-white hover:bg-dash-accent-hover disabled:opacity-50"
               >
                 {pending ? "Sending…" : "Send invite"}
               </button>
@@ -120,14 +120,14 @@ export function StaffBoard({
           </form>
 
           {lastLink && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-              <code className="min-w-0 flex-1 truncate text-xs text-zinc-400">
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-dash-border bg-dash-bg p-3">
+              <code className="min-w-0 flex-1 truncate text-xs text-dash-text-muted">
                 {lastLink}
               </code>
               <button
                 type="button"
                 onClick={() => copyLink(lastLink)}
-                className="shrink-0 rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                className="shrink-0 rounded-lg p-2 text-dash-text-muted hover:bg-dash-surface-raised hover:text-dash-text-secondary"
                 aria-label="Copy invite link"
               >
                 <Copy className="size-4" />
@@ -139,18 +139,18 @@ export function StaffBoard({
 
       {invites.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-dash-text-disabled">
             Pending invites
           </h2>
           <div className="space-y-2">
             {invites.map((invite) => (
                 <div
                   key={invite.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dash-border bg-dash-surface/50 px-4 py-3"
                 >
                   <div>
-                    <p className="font-medium text-zinc-100">{invite.name}</p>
-                    <p className="text-sm text-zinc-500">
+                    <p className="font-medium text-dash-text">{invite.name}</p>
+                    <p className="text-sm text-dash-text-disabled">
                       {invite.email} · {invite.role}
                     </p>
                   </div>
@@ -159,7 +159,7 @@ export function StaffBoard({
                       <button
                         type="button"
                         onClick={() => copyLink(invite.link)}
-                        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+                        className="rounded-lg border border-dash-surface-overlay px-3 py-1.5 text-xs text-dash-text-secondary hover:bg-dash-surface-raised"
                       >
                         Copy link
                       </button>
@@ -186,16 +186,16 @@ export function StaffBoard({
 
       <section>
         <div className="mb-3 flex items-center gap-2">
-          <Users className="size-4 text-zinc-500" />
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          <Users className="size-4 text-dash-text-disabled" />
+          <h2 className="text-sm font-medium uppercase tracking-wide text-dash-text-disabled">
             Team ({staff.length})
           </h2>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-zinc-800">
+        <div className="overflow-hidden rounded-xl border border-dash-border">
           <div className="overflow-x-auto">
           <table className="w-full min-w-[480px] text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-500">
+            <thead className="border-b border-dash-border bg-dash-surface text-dash-text-disabled">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="hidden px-4 py-3 font-medium sm:table-cell">Email</th>
@@ -208,20 +208,20 @@ export function StaffBoard({
                 <tr
                   key={member.id}
                   className={cn(
-                    "border-b border-zinc-800/80 last:border-0",
+                    "border-b border-dash-border/80 last:border-0",
                     !member.is_active && "opacity-50"
                   )}
                 >
-                  <td className="px-4 py-3 font-medium text-zinc-100">
+                  <td className="px-4 py-3 font-medium text-dash-text">
                     {member.name}
                     {member.id === currentStaffId && (
-                      <span className="ml-2 text-xs text-zinc-500">(you)</span>
+                      <span className="ml-2 text-xs text-dash-text-disabled">(you)</span>
                     )}
                   </td>
-                  <td className="hidden px-4 py-3 text-zinc-400 sm:table-cell">
+                  <td className="hidden px-4 py-3 text-dash-text-muted sm:table-cell">
                     {member.email ?? "—"}
                   </td>
-                  <td className="px-4 py-3 capitalize text-zinc-400">
+                  <td className="px-4 py-3 capitalize text-dash-text-muted">
                     {member.role}
                   </td>
                   {canManage && (

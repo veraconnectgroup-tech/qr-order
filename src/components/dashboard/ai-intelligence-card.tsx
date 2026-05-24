@@ -23,14 +23,14 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
 
   if (loading && !data) {
     return (
-      <Skeleton className={cn("h-[360px] rounded-xl bg-zinc-800", className)} />
+      <Skeleton className={cn("h-[360px] rounded-xl bg-dash-surface-raised", className)} />
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <p className="text-sm text-zinc-400">{error}</p>
+      <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
+        <p className="text-sm text-dash-text-muted">{error}</p>
       </div>
     );
   }
@@ -46,17 +46,17 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
   const conversionPct = Math.round(summary.conversionRate * 100);
 
   return (
-    <section className={cn("rounded-xl border border-zinc-800 bg-zinc-900/50 p-4", className)}>
+    <section className={cn("rounded-xl border border-dash-border bg-dash-surface/50 p-4", className)}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Brain className="size-4 text-orange-400" />
-          <h3 className="text-sm font-semibold text-zinc-100">AI Intelligence</h3>
+          <Brain className="size-4 text-dash-accent" />
+          <h3 className="text-sm font-semibold text-dash-text">AI Intelligence</h3>
         </div>
         <label className="relative">
           <select
             value={range}
             onChange={(e) => setRange(e.target.value as AiInsightsRange)}
-            className="appearance-none rounded-lg border border-zinc-700 bg-zinc-950 py-1.5 pe-8 ps-3 text-xs font-medium text-zinc-200 outline-none focus:border-orange-500/50"
+            className="appearance-none rounded-lg border border-dash-surface-overlay bg-dash-bg py-1.5 pe-8 ps-3 text-xs font-medium text-dash-text-secondary outline-none focus:border-dash-accent/50"
           >
             {RANGE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -64,32 +64,32 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute end-2 top-1/2 size-3.5 -translate-y-1/2 text-zinc-500" />
+          <ChevronDown className="pointer-events-none absolute end-2 top-1/2 size-3.5 -translate-y-1/2 text-dash-text-disabled" />
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 text-xs sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 rounded-lg border border-dash-border bg-dash-bg/60 p-3 text-xs sm:grid-cols-4">
         <div>
-          <p className="text-zinc-500">AI-Umsatz</p>
-          <p className="mt-1 text-base font-bold tabular-nums text-zinc-50">
+          <p className="text-dash-text-disabled">AI-Umsatz</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-dash-text">
             {formatPrice(summary.aiRevenue, currency)}
           </p>
         </div>
         <div>
-          <p className="text-zinc-500">Konversion</p>
-          <p className="mt-1 text-base font-bold tabular-nums text-orange-400">
+          <p className="text-dash-text-disabled">Konversion</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-dash-accent">
             {conversionPct}%
           </p>
         </div>
         <div>
-          <p className="text-zinc-500">Empfehlungen</p>
-          <p className="mt-1 text-base font-bold tabular-nums text-zinc-50">
+          <p className="text-dash-text-disabled">Empfehlungen</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-dash-text">
             {summary.addedCount}/{summary.recommendedCount} hinzugefügt
           </p>
         </div>
         <div>
-          <p className="text-zinc-500">Bewertung</p>
-          <p className="mt-1 text-base font-bold tabular-nums text-zinc-50">
+          <p className="text-dash-text-disabled">Bewertung</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-dash-text">
             {summary.averageRating != null
               ? `${summary.averageRating.toFixed(1)}★`
               : "—"}
@@ -99,17 +99,17 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
 
       <div className="mt-4 space-y-4">
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
             🚨 Menu Gaps
           </p>
           {menuGaps.length === 0 ? (
-            <p className="text-sm text-zinc-500">Keine Lücken erkannt.</p>
+            <p className="text-sm text-dash-text-disabled">Keine Lücken erkannt.</p>
           ) : (
             <ul className="space-y-1.5">
               {menuGaps.map((gap) => (
                 <li
                   key={gap.term}
-                  className="text-sm text-zinc-300 before:me-2 before:text-zinc-600 before:content-['•']"
+                  className="text-sm text-dash-text-secondary before:me-2 before:text-dash-text-disabled before:content-['•']"
                 >
                   &quot;{gap.term}&quot; — {guestLabel(gap.count)}
                 </li>
@@ -119,20 +119,20 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
             📊 Top AI-Verkäufe
           </p>
           {topProducts.length === 0 ? (
-            <p className="text-sm text-zinc-500">Noch keine AI-Conversions.</p>
+            <p className="text-sm text-dash-text-disabled">Noch keine AI-Conversions.</p>
           ) : (
             <ol className="space-y-1.5">
               {topProducts.map((product, index) => (
                 <li
                   key={product.productId}
-                  className="text-sm text-zinc-300"
+                  className="text-sm text-dash-text-secondary"
                 >
                   {index + 1}. {product.name}{" "}
-                  <span className="text-zinc-500">({product.count}x)</span>
+                  <span className="text-dash-text-disabled">({product.count}x)</span>
                 </li>
               ))}
             </ol>
@@ -140,11 +140,11 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
             ⚠️ Hinweise
           </p>
           {alerts.length === 0 ? (
-            <p className="text-sm text-zinc-500">Alles im grünen Bereich.</p>
+            <p className="text-sm text-dash-text-disabled">Alles im grünen Bereich.</p>
           ) : (
             <ul className="space-y-1.5">
               {alerts.map((alert) => (
@@ -156,7 +156,7 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
                       ? "text-red-300 before:text-red-400"
                       : alert.severity === "warning"
                         ? "text-amber-200 before:text-amber-400"
-                        : "text-zinc-300 before:text-zinc-600"
+                        : "text-dash-text-secondary before:text-dash-text-disabled"
                   )}
                 >
                   {alert.label}: {alert.detail}

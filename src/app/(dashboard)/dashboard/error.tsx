@@ -11,11 +11,11 @@ export default function DashboardError({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center bg-zinc-950 px-6 py-16 text-center text-zinc-100">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center bg-dash-bg px-6 py-16 text-center text-dash-text">
       <h1 className="text-xl font-semibold tracking-tight">
         Something went wrong
       </h1>
-      <p className="mt-3 max-w-md text-sm text-zinc-400">
+      <p className="mt-3 max-w-md text-sm text-dash-text-muted">
         {process.env.NODE_ENV === "production"
           ? "An unexpected error occurred. Please try again."
           : error.message}
@@ -24,11 +24,11 @@ export default function DashboardError({
         <Button
           type="button"
           onClick={reset}
-          className="bg-orange-500 hover:bg-orange-600"
+          className="bg-dash-accent hover:bg-dash-accent-hover"
         >
           Try again
         </Button>
-        <Button variant="outline" asChild className="border-zinc-700 bg-transparent text-zinc-200 hover:bg-zinc-900 hover:text-white">
+        <Button variant="outline" asChild className="border-dash-surface-overlay bg-transparent text-dash-text-secondary hover:bg-dash-surface hover:text-white">
           <Link href="/dashboard">Back to dashboard</Link>
         </Button>
       </div>

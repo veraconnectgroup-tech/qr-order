@@ -49,13 +49,13 @@ export function KdsPrinterStatus({
       ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
       : status === "failed"
         ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
-        : "bg-zinc-500";
+        : "bg-dash-text-muted";
 
   return (
     <Link
       href="/admin/settings"
       title={`${label} — open printer settings`}
-      className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 transition hover:bg-zinc-900"
+      className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-dash-surface-overlay px-3 text-sm text-dash-text-secondary transition hover:bg-dash-surface"
     >
       <span
         className={cn("size-2.5 rounded-full", dotClass)}

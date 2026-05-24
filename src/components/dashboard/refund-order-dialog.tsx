@@ -59,22 +59,22 @@ export function RefundOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-50 sm:max-w-md">
+      <DialogContent className="border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-zinc-50">
+          <DialogTitle className="text-dash-text">
             Refund order #{String(orderNumber).padStart(3, "0")}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-dash-text-muted">
             Full order total:{" "}
-            <span className="font-mono text-zinc-200">
+            <span className="font-mono text-dash-text-secondary">
               {formatPrice(orderTotal, currency)}
             </span>
             . Leave amount empty for a full refund.
           </p>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+            <label className="mb-1.5 block text-xs font-medium text-dash-text-muted">
               Reason (required)
             </label>
             <textarea
@@ -82,11 +82,11 @@ export function RefundOrderDialog({
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               placeholder="Guest request, wrong item, etc."
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+            <label className="mb-1.5 block text-xs font-medium text-dash-text-muted">
               Amount (optional)
             </label>
             <input
@@ -95,15 +95,15 @@ export function RefundOrderDialog({
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
               placeholder={formatPrice(orderTotal, currency)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500"
+              className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
             />
           </div>
         </div>
-        <DialogFooter className="border-zinc-800 bg-transparent">
+        <DialogFooter className="border-dash-border bg-transparent">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+            className="rounded-lg px-4 py-2 text-sm text-dash-text-muted hover:text-dash-text-secondary"
           >
             Cancel
           </button>

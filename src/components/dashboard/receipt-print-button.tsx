@@ -44,7 +44,7 @@ export function ReceiptPrintButton({
         "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition disabled:opacity-50 touch-manipulation",
         light
           ? "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-          : "border-zinc-700 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800",
+          : "border-dash-surface-overlay text-dash-text-secondary hover:border-dash-surface-overlay hover:bg-dash-surface-raised",
         className
       )}
     >
