@@ -34,6 +34,7 @@ const sampleBeleg = {
     },
   ],
   tseSignature: "abc123signaturevalue",
+  steuernummer: "12/345/67890",
   tseData: {
     tss_serial: "TSS-1234567890",
     signature_counter: 42,
@@ -71,5 +72,20 @@ describe("buildBelegHtml", () => {
     expect(html).toContain("MwSt 7%");
     expect(html).toContain("data:image/png;base64,");
     expect(html).toContain("KassenSichV");
+  });
+
+  it("shows Steuernummer when set, preferring it over USt-IdNr", async () => {
+    const html = await buildBelegHtml(sampleBeleg);
+    expect(html).toContain("St.-Nr.: 12/345/67890");
+  });
+
+  it("shows USt-IdNr when Steuernummer is absent", async () => {
+    const html = await buildBelegHtml({
+      ...sampleBeleg,
+      steuernummer: null,
+      ustIdNr: "DE123456789",
+    });
+    expect(html).toContain("USt-IdNr: DE123456789");
+    expect(html).not.toContain("St.-Nr.:");
   });
 });

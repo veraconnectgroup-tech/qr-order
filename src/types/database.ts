@@ -25,6 +25,8 @@ type Tables = {
     website: string | null;
     fiskaly_tss_id: string | null;
     fiskaly_client_id: string | null;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
     onboarding_completed: boolean;
     trial_ends_at: string | null;
     feature_flags: Json;

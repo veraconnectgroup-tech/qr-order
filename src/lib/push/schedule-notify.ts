@@ -4,6 +4,7 @@
 import { formatOrderNumber } from "@/lib/format";
 import { logger } from "@/lib/logger";
 import { notifyLocationPush } from "@/lib/push/notify-location";
+import { getRedisClient } from "@/lib/redis/client";
 
 export type PushNotifyType = "new-order" | "waiter-call" | "order-ready";
 
@@ -15,21 +16,52 @@ type PushNotifyPayload = {
   url?: string;
 };
 
-const DEBOUNCE_MS = 10_000;
-const lastSentAt = new Map<string, number>();
+const DEBOUNCE_SECONDS = 10;
+const KEY_PREFIX = "push-debounce:";
 
-function isDebounced(locationId: string, type: PushNotifyType) {
-  const key = `${locationId}:${type}`;
-  const now = Date.now();
-  const last = lastSentAt.get(key) ?? 0;
-  if (now - last < DEBOUNCE_MS) return true;
-  lastSentAt.set(key, now);
+/** Dev-only fallback when Upstash is not configured locally. */
+const devMemoryCache = new Map<string, number>();
+
+function isDevMemoryFallbackEnabled(): boolean {
+  return process.env.NODE_ENV !== "production" && !getRedisClient();
+}
+
+function debounceKey(locationId: string, type: PushNotifyType) {
+  return `${KEY_PREFIX}${locationId}:${type}`;
+}
+
+/** Returns true when a recent notify for this location+type should be skipped. */
+async function isDebounced(
+  locationId: string,
+  type: PushNotifyType
+): Promise<boolean> {
+  const key = debounceKey(locationId, type);
+  const redis = getRedisClient();
+
+  if (redis) {
+    const acquired = await redis.set(key, "1", {
+      nx: true,
+      ex: DEBOUNCE_SECONDS,
+    });
+    return acquired === null;
+  }
+
+  if (isDevMemoryFallbackEnabled()) {
+    const now = Date.now();
+    const last = devMemoryCache.get(key) ?? 0;
+    if (now - last < DEBOUNCE_SECONDS * 1000) return true;
+    devMemoryCache.set(key, now);
+    return false;
+  }
+
+  logger.error("Push debounce skipped — Redis not configured", {
+    locationId,
+    type,
+  });
   return false;
 }
 
-function notifyDirect(payload: PushNotifyPayload) {
-  if (isDebounced(payload.locationId, payload.type)) return;
-
+async function deliverPush(payload: PushNotifyPayload) {
   void notifyLocationPush(payload.locationId, {
     title: payload.title,
     body: payload.body,
@@ -44,13 +76,17 @@ function notifyDirect(payload: PushNotifyPayload) {
 }
 
 export function schedulePushNotify(payload: PushNotifyPayload) {
-  if (isDebounced(payload.locationId, payload.type)) return;
+  void runSchedulePushNotify(payload);
+}
+
+async function runSchedulePushNotify(payload: PushNotifyPayload) {
+  if (await isDebounced(payload.locationId, payload.type)) return;
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const secret = process.env.CRON_SECRET;
 
   if (!secret) {
-    notifyDirect(payload);
+    await deliverPush(payload);
     return;
   }
 
@@ -91,4 +127,9 @@ export function scheduleOrderReadyPush(
     body: "Ready for pickup",
     url: "/dashboard/orders",
   });
+}
+
+/** Test helper — dev memory fallback only. */
+export function clearPushDebounceMemoryCache() {
+  devMemoryCache.clear();
 }

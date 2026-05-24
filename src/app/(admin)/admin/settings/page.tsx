@@ -23,7 +23,7 @@ export default async function AdminSettingsPage() {
     admin
       .from("organizations")
       .select(
-        "stripe_account_id, stripe_onboarded, name, email, currency, default_tax_percent, fiskaly_tss_id, fiskaly_client_id"
+        "stripe_account_id, stripe_onboarded, name, email, currency, default_tax_percent, fiskaly_tss_id, fiskaly_client_id, steuernummer, ust_id_nr"
       )
       .eq("id", staff.org_id)
       .single(),
@@ -78,6 +78,8 @@ export default async function AdminSettingsPage() {
     default_tax_percent: number;
     fiskaly_tss_id: string | null;
     fiskaly_client_id: string | null;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
   } | null;
 
   const locationRow = location as {
@@ -166,6 +168,8 @@ export default async function AdminSettingsPage() {
         <TseSettingsPanel
           tssId={orgRow?.fiskaly_tss_id ?? null}
           clientId={orgRow?.fiskaly_client_id ?? null}
+          steuernummer={orgRow?.steuernummer ?? null}
+          ustIdNr={orgRow?.ust_id_nr ?? null}
           platformConfigured={isFiskalyConfigured()}
         />
 

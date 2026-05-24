@@ -30,6 +30,8 @@ export type BelegData = {
   orgName: string;
   locationName: string;
   locationAddress?: string | null;
+  steuernummer?: string | null;
+  ustIdNr?: string | null;
   tableName: string | null;
   orderNumber: number;
   createdAt: string;
@@ -152,6 +154,12 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
       </div>`
     : "";
 
+  const fiscalIdBlock = data.steuernummer
+    ? `<p style="margin:0 0 24px;color:#71717a;font-size:13px">St.-Nr.: ${escapeHtml(data.steuernummer)}</p>`
+    : data.ustIdNr
+      ? `<p style="margin:0 0 24px;color:#71717a;font-size:13px">USt-IdNr: ${escapeHtml(data.ustIdNr)}</p>`
+      : "";
+
   return `<!DOCTYPE html>
 <html lang="de">
 <body style="margin:0;padding:0;background:#09090b;font-family:Inter,system-ui,sans-serif">
@@ -161,9 +169,10 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
     <p style="margin:0 0 4px;color:#a1a1aa;font-size:14px">${escapeHtml(data.locationName)}</p>
     ${
       data.locationAddress
-        ? `<p style="margin:0 0 24px;color:#71717a;font-size:13px">${escapeHtml(data.locationAddress)}</p>`
-        : `<div style="margin-bottom:24px"></div>`
+        ? `<p style="margin:0 0 4px;color:#71717a;font-size:13px">${escapeHtml(data.locationAddress)}</p>`
+        : ""
     }
+    ${fiscalIdBlock || `<div style="margin-bottom:24px"></div>`}
 
     <div style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:20px">
       <div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:14px;color:#a1a1aa">

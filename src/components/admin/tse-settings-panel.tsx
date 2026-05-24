@@ -2,22 +2,34 @@
 
 import { useState } from "react";
 import { ShieldCheck, ShieldOff } from "lucide-react";
+import { updateOrgFiscalFields } from "@/lib/admin/fiscal-settings-actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function TseSettingsPanel({
   tssId,
   clientId,
+  steuernummer: initialSteuernummer,
+  ustIdNr: initialUstIdNr,
   platformConfigured,
 }: {
   tssId: string | null;
   clientId: string | null;
+  steuernummer: string | null;
+  ustIdNr: string | null;
   platformConfigured: boolean;
 }) {
   const [activeTssId, setActiveTssId] = useState(tssId);
   const [activeClientId, setActiveClientId] = useState(clientId);
+  const [steuernummer, setSteuernummer] = useState(initialSteuernummer ?? "");
+  const [ustIdNr, setUstIdNr] = useState(initialUstIdNr ?? "");
   const [loading, setLoading] = useState(false);
+  const [savingFiscal, setSavingFiscal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fiscalError, setFiscalError] = useState<string | null>(null);
+  const [fiscalSuccess, setFiscalSuccess] = useState<string | null>(null);
 
   const isActive = Boolean(activeTssId && activeClientId);
 
@@ -51,6 +63,26 @@ export function TseSettingsPanel({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSaveFiscalFields() {
+    setSavingFiscal(true);
+    setFiscalError(null);
+    setFiscalSuccess(null);
+
+    const formData = new FormData();
+    formData.set("steuernummer", steuernummer.trim());
+    formData.set("ust_id_nr", ustIdNr.trim());
+
+    const result = await updateOrgFiscalFields(formData);
+
+    if (result?.error) {
+      setFiscalError(result.error);
+    } else {
+      setFiscalSuccess("Fiskaldaten gespeichert.");
+    }
+
+    setSavingFiscal(false);
   }
 
   return (
@@ -143,6 +175,59 @@ export function TseSettingsPanel({
           {success}
         </p>
       )}
+
+      <div className="mt-6 border-t border-neutral-200 pt-6">
+        <h3 className="text-sm font-semibold text-neutral-900">
+          Fiskaldaten für Kassenbeleg
+        </h3>
+        <p className="mt-1 text-sm text-neutral-600">
+          Steuernummer oder USt-IdNr erscheint auf dem gesetzlichen Beleg (§14
+          UStG).
+        </p>
+
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="steuernummer">Steuernummer</Label>
+            <Input
+              id="steuernummer"
+              value={steuernummer}
+              onChange={(e) => setSteuernummer(e.target.value)}
+              placeholder="12/345/67890"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ust_id_nr">USt-IdNr</Label>
+            <Input
+              id="ust_id_nr"
+              value={ustIdNr}
+              onChange={(e) => setUstIdNr(e.target.value)}
+              placeholder="DE123456789"
+            />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={savingFiscal}
+            onClick={handleSaveFiscalFields}
+          >
+            {savingFiscal ? "Speichern…" : "Fiskaldaten speichern"}
+          </Button>
+        </div>
+
+        {fiscalError && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {fiscalError}
+          </p>
+        )}
+
+        {fiscalSuccess && (
+          <p className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+            {fiscalSuccess}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

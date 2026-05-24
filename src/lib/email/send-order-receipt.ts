@@ -108,7 +108,9 @@ export async function sendOrderReceipt(
 
   const { data: location } = await admin
     .from("locations")
-    .select("name, org_id, address, city, in_person_payment_location")
+    .select(
+      "name, org_id, address, city, postal_code, in_person_payment_location"
+    )
     .eq("id", row.location_id)
     .single();
 
@@ -126,6 +128,7 @@ export async function sendOrderReceipt(
     org_id: string;
     address: string | null;
     city: string | null;
+    postal_code: string | null;
     in_person_payment_location: "table" | "counter" | "bar";
   } | null;
   if (!locationRow) {
@@ -134,11 +137,17 @@ export async function sendOrderReceipt(
 
   const { data: orgData } = await admin
     .from("organizations")
-    .select("name, slug, currency")
+    .select("name, slug, currency, steuernummer, ust_id_nr")
     .eq("id", locationRow.org_id)
     .single();
 
-  const org = orgData as { name: string; slug: string; currency: string } | null;
+  const org = orgData as {
+    name: string;
+    slug: string;
+    currency: string;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
+  } | null;
   const tableRow = table as { name: string; qr_token: string } | null;
 
   const orderItems = itemRows.map((item) => ({
@@ -156,7 +165,10 @@ export async function sendOrderReceipt(
       ? `${appUrl}/${org.slug}/${tableRow.qr_token}/order/${orderId}`
       : undefined;
 
-  const locationAddress = [locationRow.address, locationRow.city]
+  const locationAddress = [
+    locationRow.address,
+    [locationRow.postal_code, locationRow.city].filter(Boolean).join(" "),
+  ]
     .filter(Boolean)
     .join(", ");
 
@@ -168,6 +180,8 @@ export async function sendOrderReceipt(
         orgName: org?.name ?? "Your venue",
         locationName: locationRow.name,
         locationAddress: locationAddress || null,
+        steuernummer: org?.steuernummer ?? null,
+        ustIdNr: org?.ust_id_nr ?? null,
         tableName: tableRow?.name ?? null,
         orderNumber: row.order_number,
         createdAt: row.created_at,
