@@ -102,6 +102,9 @@ function mapAiChatError(
   if (status === 401 || error?.includes("Session expired")) {
     return tUI("ai.overlay.sessionExpired");
   }
+  if (status === 403 && error?.includes("Session does not match")) {
+    return tUI("ai.overlay.sessionExpired");
+  }
   if (status === 429) {
     return tUI("ai.overlay.rateLimited");
   }
@@ -848,7 +851,23 @@ export function AiConciergeChat({
         const data = await callAiChat(trimmed);
         applyCartActions(data.cartActions);
 
-        const followUpMessages: ChatMessage[] = [
+        if (data.submitOrder && data.sessionId) {
+          const submitMessage = await trySubmitOrder(data.sessionId);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content:
+                submitMessage ??
+                tUI("ai.order.submitFailed"),
+            },
+          ]);
+          return;
+        }
+
+        setMessages((prev) => [
+          ...prev,
           {
             id: nextId(),
             role: "assistant",
@@ -858,20 +877,7 @@ export function AiConciergeChat({
               ? data.quickReplies
               : undefined,
           },
-        ];
-
-        if (data.submitOrder && data.sessionId) {
-          const submitMessage = await trySubmitOrder(data.sessionId);
-          if (submitMessage) {
-            followUpMessages.push({
-              id: nextId(),
-              role: "assistant",
-              content: submitMessage,
-            });
-          }
-        }
-
-        setMessages((prev) => [...prev, ...followUpMessages]);
+        ]);
       } catch (err) {
         setMessages((prev) => [
           ...prev,
@@ -1106,6 +1112,13 @@ export function AiConciergeChat({
         const label =
           moodOptions.find((o) => o.id === moodId)?.label ?? ids[0] ?? "";
 
+        const prefs = apiPreferencesFromSheet({
+          allergies: allergySelectionRef.current,
+          mood: moodId ?? null,
+        });
+        preferencesRef.current = prefs;
+        onSaveAllergies?.(prefs.allergies, allergySelectionRef.current);
+
         setMessages((prev) =>
           prev
             .map((m) =>
@@ -1116,17 +1129,20 @@ export function AiConciergeChat({
                   }
                 : m
             )
-            .concat({
-              id: nextId(),
-              role: "user",
-              content: label,
-            })
+            .concat(
+              {
+                id: nextId(),
+                role: "user",
+                content: label,
+              },
+              {
+                id: nextId(),
+                role: "assistant",
+                content: tUI("ai.chat.welcome"),
+              }
+            )
         );
-
-        void fetchInitialRecommendations({
-          allergies: allergySelectionRef.current,
-          mood: moodId ?? null,
-        });
+        setPhase("chat");
       }
     },
     [

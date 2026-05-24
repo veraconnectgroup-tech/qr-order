@@ -126,6 +126,15 @@ function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
   return langBlock(blocks, lang);
 }
 
+function conversationStyleBlock(): string {
+  return `CONVERSATION STYLE (critical):
+- Do NOT suggest, recommend, or show menu item cards unless the guest explicitly asks (e.g. "what do you recommend", "what do you have", "show me beers", or a single category word like "pivo" / "burger" as a browse question).
+- Default: recommendations = [] and keep the reply short.
+- When the guest orders something specific ("one burger", "jedan burger", "nachos please"): intent "order", fill proposedItems, recommendations = [].
+- Do NOT proactively upsell after adding items. Only ask "anything else?" in text — no extra cards.
+- Apply common sense: burgers, fries, nachos, salads are FOOD — never ask for 0.3L or 0.5L volumes on food.`;
+}
+
 function orderingRulesBlock(
   lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
 ): string {
@@ -141,18 +150,21 @@ function orderingRulesBlock(
 - proposedItems: quantity, modifierIds (UUIDs), serveSize wenn nötig, notes für Sonderwünsche.`,
     en: `ORDERING RULES:
 - You can take orders. Map guest requests to exact productId and modifierIds from the menu.
-- If serve_sizes (required) or required modifiers are missing: intent "clarify", ask, set quickReplies.
-- When complete: intent "order", fill proposedItems.
+- serveSize 0.3L/0.5L ONLY for drinks (menu section: drinks). NEVER volume sizes for food (burger, fries, nachos).
+- Food portion sizes (Regular, Large) only if serve_sizes in menu lists them as words — not liters.
+- If required modifiers missing: intent "clarify", ask, set quickReplies. If guest orders "one burger" and nothing is missing, intent "order" immediately.
+- When complete: intent "order", fill proposedItems. recommendations = [] unless guest asked to browse.
 - submitOrder true ONLY when guest explicitly confirms ("yes", "send", "place order").
 - Never set submitOrder true without explicit guest confirmation.
-- proposedItems: quantity, modifierIds (UUIDs), serveSize when needed, notes for special requests.`,
+- proposedItems: quantity, modifierIds (UUIDs), serveSize when needed (drinks only for volumes), notes for special requests.`,
     sr: `PRAVILA PORUČIVANJA:
 - Možeš da primiš porudžbine. Mapiraj zahtev gosta na tačan productId i modifierIds iz menija.
-- Ako nedostaje serve_sizes (required) ili obavezan modifikator: intent "clarify", pitaj, postavi quickReplies.
-- Kad je sve jasno: intent "order", popuni proposedItems.
+- serveSize 0.3L/0.5L SAMO za pića (section: drinks). NIKAD litraže za hranu (burger, pomfrit, nachos).
+- Porcije (Regular, Large) samo ako su u meniju kao serve_sizes — ne litri.
+- Ako nedostaje obavezan modifikator: intent "clarify", pitaj, quickReplies. "Jedan burger" bez izbora → odmah intent "order".
+- Kad je sve jasno: intent "order", proposedItems. recommendations = [] osim ako gost traži pregled menija.
 - submitOrder true SAMO kad gost eksplicitno potvrdi ("da", "pošalji", "naruči").
-- Nikad submitOrder true bez eksplicitne potvrde.
-- proposedItems: quantity, modifierIds (UUID), serveSize ako treba, notes za posebne zahteve.`,
+- proposedItems: quantity, modifierIds (UUID), serveSize samo kad treba, notes za posebne zahteve.`,
     hr: `PRAVILA NARUDŽBE:
 - Možeš primati narudžbe. Mapiraj zahtjev gosta na točan productId i modifierIds iz jelovnika.
 - Ako nedostaje serve_sizes (required) ili obavezan modifikator: intent "clarify", pitaj, postavi quickReplies.
@@ -371,6 +383,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
 
   return [
     multilingualPolicyBlock(input.language),
+    conversationStyleBlock(),
     identityBlock(input.orgName, lang),
     rulesBlock(lang),
     orderingBlock,

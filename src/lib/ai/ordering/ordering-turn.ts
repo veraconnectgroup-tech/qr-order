@@ -69,9 +69,7 @@ export function processOrderingTurn(input: {
       quickReplies: [],
       intent: "order",
       skippedLlm: true,
-      confirmationMessage: summary
-        ? `Dodato u korpu: ${summary}.`
-        : undefined,
+      confirmationMessage: summary ? `Added to cart: ${summary}.` : undefined,
     };
   }
   if (quickResolved) {

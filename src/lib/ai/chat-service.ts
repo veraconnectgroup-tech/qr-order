@@ -8,8 +8,9 @@ import {
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
   buildBrowseMessage,
+  guestAskedForSuggestions,
+  isExplicitBrowseQuery,
   isLikelyBrowseQuery,
-  isSimpleBrowseQuery,
   mergeBrowseRecommendations,
   searchCatalogProducts,
 } from "@/lib/ai/catalog/catalog-search";
@@ -220,7 +221,8 @@ async function resolveStructuredResponse(
 
     return {
       structured: {
-        message: AI_CONFIG.fallbackMessage,
+        message:
+          "Sorry, I didn't catch that — could you try again?",
         recommendations: [] as { productId: string; reason: string }[],
         proposedItems: [],
         quickReplies: [],
@@ -444,8 +446,9 @@ export async function handleAiChat(body: unknown) {
   if (
     preTurn.cartActions.length === 0 &&
     !workingDraft.pending &&
-    isSimpleBrowseQuery(input.message) &&
-    browseMatches.length >= 2
+    isExplicitBrowseQuery(input.message) &&
+    browseMatches.length >= 2 &&
+    preTurn.quickReplies.length === 0
   ) {
     const recommendations = mergeBrowseRecommendations(
       browseMatches,
@@ -678,14 +681,19 @@ export async function handleAiChat(body: unknown) {
   });
   workingDraft = orderingResult.draft;
 
+  const guestWantsSuggestions = guestAskedForSuggestions(input.message);
+
   const shouldEnrichBrowse =
+    guestWantsSuggestions &&
     isLikelyBrowseQuery(input.message) &&
-    browseMatches.length > 0 &&
+    browseMatches.length >= 2 &&
+    !workingDraft.pending &&
     orderingResult.cartActions.length === 0 &&
     !structured.structured.submitOrder &&
-    ["menu_info", "recommend", "clarify", "chat"].includes(
-      structured.structured.intent
-    );
+    orderingResult.quickReplies.length === 0 &&
+    structured.structured.intent !== "clarify" &&
+    structured.structured.intent !== "confirm" &&
+    ["menu_info", "recommend", "chat"].includes(structured.structured.intent);
 
   const finalRecommendations = shouldEnrichBrowse
     ? mergeBrowseRecommendations(
@@ -695,6 +703,16 @@ export async function handleAiChat(body: unknown) {
         structured.recommendations
       )
     : structured.recommendations;
+
+  const displayRecommendations =
+    !guestWantsSuggestions &&
+    structured.structured.intent !== "menu_info"
+      ? []
+      : (structured.structured.intent === "clarify" ||
+            structured.structured.intent === "confirm") &&
+          orderingResult.quickReplies.length > 0
+        ? []
+        : finalRecommendations;
 
   logger.info("AI chat token usage", {
     sessionId: sessionRow?.id ?? "new",
@@ -725,7 +743,7 @@ export async function handleAiChat(body: unknown) {
     role: "assistant",
     content: assistantContent(
       structured.structured.message,
-      finalRecommendations
+      displayRecommendations
     ),
     timestamp: new Date().toISOString(),
   };
@@ -734,7 +752,7 @@ export async function handleAiChat(body: unknown) {
   const recommendedIds = [
     ...new Set([
       ...(sessionRow?.products_recommended ?? []),
-      ...finalRecommendations.map((item) => item.productId),
+      ...displayRecommendations.map((item) => item.productId),
     ]),
   ];
 
@@ -803,7 +821,7 @@ export async function handleAiChat(body: unknown) {
 
   return apiSuccess({
     message: structured.structured.message,
-    recommendations: finalRecommendations,
+    recommendations: displayRecommendations,
     cartActions: orderingResult.cartActions,
     quickReplies: orderingResult.quickReplies,
     intent: orderingResult.intent,

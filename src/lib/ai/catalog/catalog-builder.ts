@@ -135,8 +135,10 @@ export function buildAiCatalog(
       );
 
       if (requiresServeSize) {
+        const sizeLabel =
+          menuSection === "drinks" ? "volume (drinks only)" : "portion";
         lines.push(
-          `  serve_sizes (required): ${serveSizePresets.join(", ")}`
+          `  serve_sizes (${sizeLabel}): ${serveSizePresets.join(", ")}`
         );
       }
 

@@ -5,7 +5,13 @@ import type {
   AiProposedItem,
   ValidatedCartAction,
 } from "@/lib/ai/ordering/draft-types";
-import { formatServeSize, isValidServeSize } from "@/lib/serve-size";
+import { isValidServeSize } from "@/lib/serve-size";
+import {
+  formatServeSizeOption,
+  isVolumeServeSize,
+  sanitizeServeSizeForProduct,
+  shouldAskForServeSize,
+} from "@/lib/ai/ordering/serve-size-logic";
 
 export type ItemValidationResult =
   | { ok: true; action: ValidatedCartAction }
@@ -13,22 +19,26 @@ export type ItemValidationResult =
 
 function normalizeServeSize(value: string | null | undefined, product: AiCatalogProduct) {
   if (!value?.trim()) return null;
-  const formatted = formatServeSize(value.trim());
-  const presets = product.serveSizePresets.map((p) => formatServeSize(p));
+  const sanitized = sanitizeServeSizeForProduct(product, value);
+  if (!sanitized) return null;
+
+  const formatted = formatServeSizeOption(value.trim());
+  const presets = product.serveSizePresets.map((p) => formatServeSizeOption(p));
 
   const exact = presets.find(
     (p) => p.toLowerCase() === formatted.toLowerCase()
   );
   if (exact) return exact;
 
-  const numeric = formatted.replace(/l$/i, "").trim();
-  const byNumeric = presets.find(
-    (p) => p.replace(/l$/i, "").trim() === numeric
-  );
-  if (byNumeric) return byNumeric;
-
-  if (product.allowCustomServeSize && isValidServeSize(formatted)) {
-    return formatted;
+  if (isVolumeServeSize(formatted)) {
+    const numeric = formatted.replace(/l$/i, "").trim();
+    const byNumeric = presets.find(
+      (p) => p.replace(/l$/i, "").trim() === numeric
+    );
+    if (byNumeric) return byNumeric;
+    if (product.allowCustomServeSize && isValidServeSize(formatted)) {
+      return formatServeSizeOption(formatted);
+    }
   }
 
   return null;
@@ -41,10 +51,10 @@ function findMissingChoices(
 ): AiPendingMissing[] {
   const missing: AiPendingMissing[] = [];
 
-  if (product.requiresServeSize && !serveSize) {
+  if (shouldAskForServeSize(product) && !serveSize) {
     missing.push({
       kind: "serveSize",
-      options: product.serveSizePresets.map((p) => formatServeSize(p)),
+      options: product.serveSizePresets.map((p) => formatServeSizeOption(p)),
     });
   }
 
@@ -139,11 +149,17 @@ export function validateProposedItem(
     }
   }
 
-  const serveSize = product.requiresServeSize
-    ? normalizeServeSize(item.serveSize, product)
-    : item.serveSize
-      ? normalizeServeSize(item.serveSize, product)
-      : null;
+  let serveSize: string | null = null;
+  if (item.serveSize?.trim()) {
+    const sanitized = sanitizeServeSizeForProduct(product, item.serveSize);
+    if (sanitized) {
+      serveSize = product.requiresServeSize || shouldAskForServeSize(product)
+        ? normalizeServeSize(sanitized, product)
+        : null;
+    }
+  } else if (product.requiresServeSize && shouldAskForServeSize(product)) {
+    serveSize = null;
+  }
 
   const missing = findMissingChoices(product, validModifierIds, serveSize);
   if (missing.length > 0) {

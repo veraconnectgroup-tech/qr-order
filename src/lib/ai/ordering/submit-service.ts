@@ -23,7 +23,7 @@ export async function handleAiOrderSubmit(input: {
   const guestContext = await verifyAiGuestContext(admin, {
     locationId: input.locationId,
     tableId: input.tableId,
-    sessionToken: input.sessionToken ?? input.tableToken,
+    sessionToken: input.tableToken,
   });
 
   if ("error" in guestContext) {
