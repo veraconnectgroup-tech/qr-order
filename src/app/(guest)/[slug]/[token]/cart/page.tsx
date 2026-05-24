@@ -28,7 +28,12 @@ export default async function CartPage({
     );
   }
 
-  const supabase = await createServerClient();
+  let supabase;
+  try {
+    supabase = await createServerClient();
+  } catch {
+    notFound();
+  }
 
   const { data: orgData } = await supabase
     .from("organizations")

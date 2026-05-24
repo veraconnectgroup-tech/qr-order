@@ -130,6 +130,7 @@ export function OrderStatusTracker({
   const addItem = useCart((s) => s.addItem);
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [showPlacedOverlay, setShowPlacedOverlay] = useState(
@@ -156,6 +157,7 @@ export function OrderStatusTracker({
         }
 
         if (res.status === 401) {
+          setSessionExpired(true);
           return null;
         }
 
@@ -249,6 +251,20 @@ export function OrderStatusTracker({
   }
 
   if (!order) {
+    if (sessionExpired) {
+      return (
+        <div className="px-4 py-20 text-center text-zinc-400">
+          <p>{tUI("ai.overlay.sessionExpired")}</p>
+          <Link
+            href={`/${slug}/${token}`}
+            className="mt-4 inline-block font-semibold text-orange-400 underline underline-offset-2"
+          >
+            {tUI("cart.viewMenu")}
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div className="px-4 py-20 text-center text-zinc-400">
         {tUI("order.notFound")}

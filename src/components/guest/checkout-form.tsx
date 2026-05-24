@@ -26,6 +26,10 @@ import {
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { fetchWithRetry, isServerErrorStatus } from "@/lib/payment/fetch-with-retry";
 import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
+import {
+  enqueueOfflineOrder,
+  registerOrderSync,
+} from "@/lib/pwa/offline-order-queue";
 import type { TaxBreakdownLine } from "@/lib/tax/vat";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Button } from "@/components/ui/button";
@@ -127,6 +131,7 @@ export function CheckoutForm({
   taxPercent,
   currency,
   isDemo = false,
+  acceptingOrders = true,
 }: {
   slug: string;
   token: string;
@@ -134,6 +139,7 @@ export function CheckoutForm({
   taxPercent: number;
   currency: string;
   isDemo?: boolean;
+  acceptingOrders?: boolean;
 }) {
   const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
@@ -263,6 +269,11 @@ export function CheckoutForm({
   async function handlePlaceOrder() {
     if (!isOnline) return;
 
+    if (!acceptingOrders) {
+      setError(tUI("menu.orderingPaused"));
+      return;
+    }
+
     if (
       !isDemo &&
       context?.capabilities.needsPin &&
@@ -276,10 +287,13 @@ export function CheckoutForm({
     setProcessing(true);
     setError(null);
 
+    let activeSessionToken: string | undefined;
+
     try {
-      const activeSessionToken = isDemo
+      activeSessionToken = isDemo
         ? (sessionToken ??
-          (await ensureTableSession(slug, token, tableId ?? undefined)))
+          (await ensureTableSession(slug, token, tableId ?? undefined)) ??
+          undefined)
         : (context?.sessionToken ?? sessionToken ?? undefined);
 
       const result = await submitOrder(activeSessionToken ?? undefined);
@@ -315,6 +329,28 @@ export function CheckoutForm({
         return;
       }
       if (!navigator.onLine || e instanceof TypeError) {
+        const resolvedTableId = context?.tableId ?? tableId ?? "";
+        const deviceFingerprint = getOrCreateDeviceFingerprint();
+        const deviceToken = resolvedTableId
+          ? getStoredDeviceToken(locationId, resolvedTableId)
+          : null;
+
+        enqueueOfflineOrder({
+          sessionToken: activeSessionToken ?? sessionToken ?? "",
+          tableToken: token,
+          payload: {
+            sessionToken: activeSessionToken ?? sessionToken ?? undefined,
+            tableToken: token,
+            deviceFingerprint,
+            deviceToken: deviceToken ?? undefined,
+            items,
+            guestEmail: guestEmail.trim() || undefined,
+            isTakeaway,
+            paymentMethod: "unset",
+            promoCodeId: appliedPromo?.promoCodeId,
+          },
+        });
+        void registerOrderSync();
         toast.success(tUI("offline.orderQueued"));
         setProcessing(false);
         return;
@@ -328,6 +364,22 @@ export function CheckoutForm({
     return (
       <div className="py-6">
         <CheckoutSkeleton />
+      </div>
+    );
+  }
+
+  if (!isDemo && !context && !contextLoading) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center">
+        <p className="text-sm text-red-200">{tUI("error.networkRetry")}</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 border-zinc-700"
+          onClick={() => void refreshContext()}
+        >
+          Try again
+        </Button>
       </div>
     );
   }
@@ -383,6 +435,12 @@ export function CheckoutForm({
 
       {!showPinGate && !showDeviceBlocked && (
         <>
+      {!acceptingOrders && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-sm text-amber-200">
+          {tUI("menu.orderingPaused")}
+        </div>
+      )}
+
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -449,7 +507,7 @@ export function CheckoutForm({
 
       <Button
         type="button"
-        disabled={processing || !isOnline}
+        disabled={processing || !isOnline || !acceptingOrders}
         onClick={handlePlaceOrder}
         className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600 disabled:animate-pulse"
       >

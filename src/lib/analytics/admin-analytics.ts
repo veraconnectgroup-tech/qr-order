@@ -103,9 +103,11 @@ function computeKpis(
   const prevRevenue = sumPaidRevenue(previousOrders);
   const ordersCount = orders.length;
   const prevOrdersCount = previousOrders.length;
-  const avgTicket = ordersCount > 0 ? revenue / ordersCount : 0;
+  const paidOrdersCount = paidOrders(orders).length;
+  const prevPaidOrdersCount = paidOrders(previousOrders).length;
+  const avgTicket = paidOrdersCount > 0 ? revenue / paidOrdersCount : 0;
   const prevAvgTicket =
-    prevOrdersCount > 0 ? prevRevenue / prevOrdersCount : 0;
+    prevPaidOrdersCount > 0 ? prevRevenue / prevPaidOrdersCount : 0;
 
   return {
     revenue,

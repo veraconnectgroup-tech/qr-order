@@ -107,6 +107,9 @@ function mapAiChatError(
   if (status === 429) {
     return tUI("ai.overlay.rateLimited");
   }
+  if (status === 502 || status === 503) {
+    return tUI("ai.overlay.unavailable");
+  }
   return error ?? tUI("ai.overlay.error");
 }
 

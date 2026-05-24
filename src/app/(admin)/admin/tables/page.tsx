@@ -6,19 +6,27 @@ import type { Staff, Table, Zone } from "@/types";
 export default async function AdminTablesPage() {
   const staff = await requireAdmin();
   const locationId = await getStaffLocationId(staff);
+  if (!locationId) {
+    return (
+      <div className="p-6 text-sm text-neutral-600">
+        No location assigned to this account.
+      </div>
+    );
+  }
+
   const supabase = await createServerClient();
 
   const [{ data: tables }, { data: zones }, { data: staffRows }] = await Promise.all([
     supabase
       .from("tables")
       .select("*")
-      .eq("location_id", locationId!)
+      .eq("location_id", locationId)
       .is("deleted_at", null)
       .order("name"),
     supabase
       .from("zones")
       .select("*")
-      .eq("location_id", locationId!)
+      .eq("location_id", locationId)
       .order("sort_order"),
     supabase
       .from("staff")

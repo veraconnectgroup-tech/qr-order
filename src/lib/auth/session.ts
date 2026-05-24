@@ -94,7 +94,13 @@ export async function requirePlatformAdmin() {
 
 export async function getEffectiveStaff(): Promise<EffectiveStaff> {
   const staff = await getCurrentStaff();
-  if (!staff) redirect("/login");
+  if (!staff) {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    redirect(user ? "/login?error=no_access" : "/login");
+  }
 
   const impersonatedOrgId = await getImpersonatedOrgId();
   if (!impersonatedOrgId || !staff.is_platform_admin) {

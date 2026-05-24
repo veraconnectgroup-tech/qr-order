@@ -47,25 +47,35 @@ async function enrichCalls(
 export function useRealtimeWaiterCalls(locationId: string) {
   const [calls, setCalls] = useState<WaiterCallWithTable[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCalls = useCallback(async () => {
     const supabase = createClient();
 
-    const { data: active } = await supabase
-      .from("waiter_calls")
-      .select("*")
-      .eq("location_id", locationId)
-      .in("status", ["pending", "acknowledged"])
-      .order("created_at", { ascending: false });
+    const [{ data: active, error: activeError }, { data: resolved, error: resolvedError }] =
+      await Promise.all([
+        supabase
+          .from("waiter_calls")
+          .select("*")
+          .eq("location_id", locationId)
+          .in("status", ["pending", "acknowledged"])
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("waiter_calls")
+          .select("*")
+          .eq("location_id", locationId)
+          .eq("status", "resolved")
+          .gte("created_at", startOfTodayIso())
+          .order("created_at", { ascending: false }),
+      ]);
 
-    const { data: resolved } = await supabase
-      .from("waiter_calls")
-      .select("*")
-      .eq("location_id", locationId)
-      .eq("status", "resolved")
-      .gte("created_at", startOfTodayIso())
-      .order("created_at", { ascending: false });
+    if (activeError || resolvedError) {
+      setError(activeError?.message ?? resolvedError?.message ?? "Failed to load calls");
+      setLoading(false);
+      return;
+    }
 
+    setError(null);
     const merged = [
       ...((active as WaiterCall[]) ?? []),
       ...((resolved as WaiterCall[]) ?? []),
@@ -94,5 +104,5 @@ export function useRealtimeWaiterCalls(locationId: string) {
     enabled: Boolean(locationId),
   });
 
-  return { calls, loading, realtimeMode };
+  return { calls, loading, error, realtimeMode, refetch: fetchCalls };
 }

@@ -143,6 +143,7 @@ export default async function GuestMenuPage({
       schedule_end: cat.schedule_end ?? null,
       schedule_days: cat.schedule_days ?? [1, 2, 3, 4, 5, 6, 0],
       products: (cat.products ?? [])
+        .filter((p) => !p.deleted_at)
         .sort((a, b) => a.sort_order - b.sort_order)
         .map(
           (p): ProductWithModifiers => ({

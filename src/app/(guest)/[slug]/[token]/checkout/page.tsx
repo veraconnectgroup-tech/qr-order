@@ -38,6 +38,7 @@ export default async function CheckoutPage({
       location_id,
       location:locations!inner(
         ordering_enabled,
+        accepting_orders,
         organization:organizations!inner(
           default_tax_percent,
           currency,
@@ -57,6 +58,7 @@ export default async function CheckoutPage({
     location_id: string;
     location: {
       ordering_enabled: boolean;
+      accepting_orders: boolean;
       organization: {
         slug: string;
         default_tax_percent: number;
@@ -81,6 +83,7 @@ export default async function CheckoutPage({
         locationId={table.location_id}
         taxPercent={Number(org.default_tax_percent)}
         currency={org.currency}
+        acceptingOrders={table.location.accepting_orders}
       />
     </div>
   );

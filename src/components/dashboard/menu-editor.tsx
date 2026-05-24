@@ -634,7 +634,7 @@ export function MenuEditor() {
     setCategories(reordered);
 
     const supabase = createClient();
-    await Promise.all(
+    const results = await Promise.all(
       reordered.map((cat, index) =>
         supabase
           .from("categories")
@@ -642,6 +642,11 @@ export function MenuEditor() {
           .eq("id", cat.id)
       )
     );
+    if (results.some((result) => result.error)) {
+      toast.error("Could not update category order");
+      void load();
+      return;
+    }
     toast.success("Category order updated");
   }
 

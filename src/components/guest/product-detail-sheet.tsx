@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { useCart } from "@/hooks/use-cart";
@@ -45,6 +45,14 @@ export function ProductDetailSheet({
   const [notes, setNotes] = useState("");
   const [serveSize, setServeSize] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!open || !product) return;
+    setQuantity(1);
+    setNotes("");
+    setServeSize(null);
+    setSelected({});
+  }, [product?.id, open]);
 
   const groups = product?.modifier_groups ?? [];
   const showServeSize = product ? productHasServeSize(product) : false;

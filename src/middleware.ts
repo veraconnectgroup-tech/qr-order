@@ -125,11 +125,24 @@ export async function middleware(request: NextRequest) {
   }
 
   if ((pathname === "/login" || pathname === "/signup") && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    const redirect = NextResponse.redirect(url);
-    copyCookies(supabaseResponse, redirect);
-    return withResponseHeaders(redirect, false);
+    const { data: staff } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (staff) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      const redirect = NextResponse.redirect(url);
+      copyCookies(supabaseResponse, redirect);
+      return withResponseHeaders(redirect, false);
+    }
+
+    if (pathname === "/login") {
+      return withResponseHeaders(supabaseResponse, false);
+    }
   }
 
   return withResponseHeaders(supabaseResponse, false);

@@ -19,28 +19,36 @@ const FEED_STATUSES = [
 export function useLiveOrdersFeed(initial?: OverviewLiveFeedOrder[]) {
   const { locationId } = useDashboard();
   const [loading, setLoading] = useState(!initial);
+  const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OverviewLiveFeedOrder[]>(initial ?? []);
 
   const refresh = useCallback(async () => {
     const supabase = createClient();
     const todayStart = startOfTodayIso();
 
-    const [{ data: feedRows }, { data: tablesRows }] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("id, order_number, total, status, created_at, table_id")
-        .eq("location_id", locationId)
-        .gte("created_at", todayStart)
-        .in("status", [...FEED_STATUSES])
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("tables")
-        .select("id, name")
-        .eq("location_id", locationId)
-        .is("deleted_at", null),
-    ]);
+    const [{ data: feedRows, error: feedError }, { data: tablesRows, error: tablesError }] =
+      await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, order_number, total, status, created_at, table_id")
+          .eq("location_id", locationId)
+          .gte("created_at", todayStart)
+          .in("status", [...FEED_STATUSES])
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("tables")
+          .select("id, name")
+          .eq("location_id", locationId)
+          .is("deleted_at", null),
+      ]);
 
+    if (feedError || tablesError) {
+      setError(feedError?.message ?? tablesError?.message ?? "Failed to load feed");
+      return;
+    }
+
+    setError(null);
     const tableNames = new Map(
       ((tablesRows ?? []) as Array<{ id: string; name: string }>).map((t) => [
         t.id,
@@ -100,7 +108,7 @@ export function useLiveOrdersFeed(initial?: OverviewLiveFeedOrder[]) {
     backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
 
-  return { loading, orders, realtimeMode, refresh };
+  return { loading, error, orders, realtimeMode, refresh };
 }
 
 export type { OverviewLiveFeedOrder as LiveFeedOrder };

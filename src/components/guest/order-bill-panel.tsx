@@ -98,11 +98,17 @@ function StripePayForm({
 
     if (
       paymentIntent &&
-      (paymentIntent.status === "requires_action" ||
-        paymentIntent.status === "processing")
+      paymentIntent.status === "requires_action"
     ) {
       setError(tUI("bill.processing"));
       setProcessing(false);
+      return;
+    }
+
+    if (paymentIntent?.status === "processing") {
+      hapticSuccess();
+      toast.success(tUI("bill.processing"));
+      onSuccess();
       return;
     }
 
@@ -168,6 +174,7 @@ export function OrderBillPanel({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [billLoadError, setBillLoadError] = useState<string | null>(null);
   const [chargeTotal, setChargeTotal] = useState<number | null>(null);
   const [selectedTip, setSelectedTip] = useState(0);
   const [splitProgress, setSplitProgress] = useState<SplitProgress | null>(null);
@@ -190,13 +197,21 @@ export function OrderBillPanel({
   );
 
   const loadBill = useCallback(async () => {
-    const res = await fetch(
-      `/api/sessions/bill?sessionToken=${encodeURIComponent(sessionToken)}&tableToken=${encodeURIComponent(token)}`
-    );
-    if (!res.ok) return;
-    const json = await res.json();
-    setBill(json.data as SessionBill);
-  }, [sessionToken, token]);
+    setBillLoadError(null);
+    try {
+      const res = await fetch(
+        `/api/sessions/bill?sessionToken=${encodeURIComponent(sessionToken)}&tableToken=${encodeURIComponent(token)}`
+      );
+      if (!res.ok) {
+        setBillLoadError(tUI("error.generic"));
+        return;
+      }
+      const json = await res.json();
+      setBill(json.data as SessionBill);
+    } catch {
+      setBillLoadError(tUI("error.networkRetry"));
+    }
+  }, [sessionToken, token, tUI]);
 
   const loadSplitProgress = useCallback(async () => {
     if (!orderId) return;
@@ -328,6 +343,22 @@ export function OrderBillPanel({
   }
 
   if (!bill) {
+    if (billLoadError) {
+      return (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-center">
+          <p className="text-sm text-red-200">{billLoadError}</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 border-zinc-700"
+            onClick={() => void loadBill()}
+          >
+            Try again
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <div className="animate-pulse rounded-xl bg-zinc-900 p-5">
         <div className="h-6 w-32 rounded bg-zinc-800" />

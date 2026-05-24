@@ -8,6 +8,7 @@ import { hapticClick } from "@/lib/haptics";
 import { useCart } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { AllergenBadges } from "@/components/guest/allergen-badges";
+import { productHasServeSize } from "@/lib/serve-size";
 import { cn } from "@/lib/utils";
 import type { MenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
@@ -32,6 +33,8 @@ export function ProductCard({
   const displayName = tName(product);
   const displayDescription = tDescription(product);
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
+  const needsConfiguration =
+    hasModifiers || productHasServeSize(product);
   const outOfStock = !product.is_available;
   const cannotOrder = outOfStock || orderingDisabled;
 
@@ -42,7 +45,7 @@ export function ProductCard({
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
     if (cannotOrder) return;
-    if (hasModifiers) {
+    if (needsConfiguration) {
       onOpenDetail();
       return;
     }
@@ -77,11 +80,8 @@ export function ProductCard({
         price: formatPrice(Number(product.price), currency),
       })}
       className={cn(
-        "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition",
-        outOfStock && "bg-zinc-900/60 opacity-70",
-        cannotOrder && !outOfStock
-          ? "pointer-events-none opacity-40"
-          : "cursor-pointer hover:border-zinc-700 active:scale-[0.98]"
+        "cursor-pointer overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:border-zinc-700 active:scale-[0.98]",
+        outOfStock && "bg-zinc-900/60 opacity-70"
       )}
       data-product-id={product.id}
     >

@@ -15,8 +15,9 @@ import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 export function DashboardTopBar() {
   const pathname = usePathname();
   const { title } = getDashboardPageMeta(pathname);
-  const { currency } = useDashboard();
-  const { todayRevenue } = useDashboardStats();
+  const { currency, todayRevenue: contextRevenue } = useDashboard();
+  const { todayRevenue, loading: statsLoading } = useDashboardStats();
+  const displayRevenue = statsLoading ? contextRevenue : todayRevenue;
   const { pendingOrders, pendingPaymentRequests, totalPendingAlerts } =
     useDashboardAlerts();
   const isOrdersPage = pathname.startsWith("/dashboard/orders");
@@ -42,7 +43,7 @@ export function DashboardTopBar() {
         <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-1.5">
           <TrendingUp className="size-3.5 text-emerald-500" />
           <span className="font-mono text-sm font-bold text-orange-500">
-            {formatPrice(todayRevenue, currency)}
+            {formatPrice(displayRevenue, currency)}
           </span>
           <span className="hidden text-xs text-zinc-500 sm:inline">today</span>
         </div>
