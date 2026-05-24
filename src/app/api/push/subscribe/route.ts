@@ -94,8 +94,6 @@ export const POST = withErrorHandler(
       endpoint: subscription.endpoint,
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
-      keys_p256dh: subscription.keys.p256dh,
-      keys_auth: subscription.keys.auth,
     };
     const userAgent = req.headers.get("user-agent")?.slice(0, 512);
     if (userAgent) upsertRow.user_agent = userAgent;

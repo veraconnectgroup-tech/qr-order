@@ -6,13 +6,32 @@ import { toast } from "sonner";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  registerAppServiceWorker,
+  ServiceWorkerUnavailableError,
+} from "@/lib/pwa/register-service-worker";
 import { urlBase64ToUint8Array } from "@/lib/push/vapid-client";
 import { cn } from "@/lib/utils";
 
-type PushState = "unsupported" | "default" | "prompting" | "active" | "denied";
+type PushState = "unsupported" | "default" | "active" | "denied";
 
 function getVapidPublicKey() {
   return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? "";
+}
+
+function pushErrorMessage(error: unknown): string {
+  if (error instanceof ServiceWorkerUnavailableError) {
+    return error.message;
+  }
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError") {
+      return "Notifications were blocked.";
+    }
+    if (error.name === "AbortError") {
+      return "Notification setup was cancelled.";
+    }
+  }
+  return "Failed to enable notifications.";
 }
 
 export function PushOptIn({ className }: { className?: string }) {
@@ -26,7 +45,8 @@ export function PushOptIn({ className }: { className?: string }) {
       typeof window === "undefined" ||
       !vapidKey ||
       !("Notification" in window) ||
-      !("serviceWorker" in navigator)
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window)
     ) {
       setState("unsupported");
       return;
@@ -38,7 +58,7 @@ export function PushOptIn({ className }: { className?: string }) {
     }
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await registerAppServiceWorker();
       const existing = await registration.pushManager.getSubscription();
 
       if (existing && Notification.permission === "granted") {
@@ -63,7 +83,6 @@ export function PushOptIn({ className }: { className?: string }) {
     }
 
     setBusy(true);
-    setState("prompting");
 
     try {
       const permission = await Notification.requestPermission();
@@ -75,7 +94,7 @@ export function PushOptIn({ className }: { className?: string }) {
         return;
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await registerAppServiceWorker();
       let subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
@@ -107,17 +126,21 @@ export function PushOptIn({ className }: { className?: string }) {
         }),
       });
 
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
       if (!res.ok) {
         setState("default");
-        toast.error("Could not save notification subscription");
+        toast.error(body?.error ?? "Could not save notification subscription");
         return;
       }
 
       setState("active");
       toast.success("Push notifications enabled");
-    } catch {
+    } catch (error) {
       setState("default");
-      toast.error("Failed to enable notifications");
+      toast.error(pushErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -126,7 +149,7 @@ export function PushOptIn({ className }: { className?: string }) {
   async function disablePush() {
     setBusy(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await registerAppServiceWorker();
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         const endpoint = subscription.endpoint;
@@ -193,10 +216,10 @@ export function PushOptIn({ className }: { className?: string }) {
         className
       )}
       onClick={() => void enablePush()}
-      disabled={busy || state === "prompting"}
+      disabled={busy}
     >
       <Bell className="size-4" />
-      {busy || state === "prompting" ? "Enabling…" : "Enable notifications"}
+      {busy ? "Enabling…" : "Enable notifications"}
     </Button>
   );
 }

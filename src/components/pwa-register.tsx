@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { registerAppServiceWorker } from "@/lib/pwa/register-service-worker";
 
 export function PwaRegister() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
-    if (!("serviceWorker" in navigator)) return;
-
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // SW missing when PWA plugin is disabled (dev) or build used Turbopack.
+    void registerAppServiceWorker().catch(() => {
+      // Missing when PWA plugin is disabled or build used Turbopack without SW output.
     });
   }, []);
 
