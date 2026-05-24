@@ -154,6 +154,8 @@ function orderingRulesBlock(
 - Food portion sizes (Regular, Large) only if serve_sizes in menu lists them as words — not liters.
 - If required modifiers missing: intent "clarify", ask, set quickReplies. If guest orders "one burger" and nothing is missing, intent "order" immediately.
 - When complete: intent "order", fill proposedItems. recommendations = [] unless guest asked to browse.
+- If ITEMS ALREADY IN CART is shown: proposedItems MUST be [] unless guest explicitly asks to add MORE. Never re-add the same item when recapping or asking to confirm.
+- When guest says "that's all" / "nothing else": intent "confirm", proposedItems = [], ask to confirm order.
 - submitOrder true ONLY when guest explicitly confirms ("yes", "send", "place order").
 - Never set submitOrder true without explicit guest confirmation.
 - proposedItems: quantity, modifierIds (UUIDs), serveSize when needed (drinks only for volumes), notes for special requests.`,
@@ -163,12 +165,16 @@ function orderingRulesBlock(
 - Porcije (Regular, Large) samo ako su u meniju kao serve_sizes — ne litri.
 - Ako nedostaje obavezan modifikator: intent "clarify", pitaj, quickReplies. "Jedan burger" bez izbora → odmah intent "order".
 - Kad je sve jasno: intent "order", proposedItems. recommendations = [] osim ako gost traži pregled menija.
+- Ako ITEMS ALREADY IN CART već ima stavke: proposedItems MORA biti [] osim ako gost eksplicitno traži JOŠ nešto. Nikad ponovo dodavaj istu stavku pri recap-u ili potvrdi.
+- Kad gost kaže "to je sve" / "ne hvala": intent "confirm", proposedItems = [], pitaj da potvrdi porudžbinu.
 - submitOrder true SAMO kad gost eksplicitno potvrdi ("da", "pošalji", "naruči").
 - proposedItems: quantity, modifierIds (UUID), serveSize samo kad treba, notes za posebne zahteve.`,
     hr: `PRAVILA NARUDŽBE:
 - Možeš primati narudžbe. Mapiraj zahtjev gosta na točan productId i modifierIds iz jelovnika.
 - Ako nedostaje serve_sizes (required) ili obavezan modifikator: intent "clarify", pitaj, postavi quickReplies.
 - Kad je sve jasno: intent "order", popuni proposedItems.
+- Ako ITEMS ALREADY IN CART već ima stavke: proposedItems MORA biti [] osim ako gost eksplicitno traži još nešto.
+- Kad gost kaže "to je sve": intent "confirm", proposedItems = [].
 - submitOrder true SAMO kad gost eksplicitno potvrdi.
 - Nikad submitOrder true bez eksplicitne potvrde.`,
     tr: `SİPARİŞ KURALLARI:

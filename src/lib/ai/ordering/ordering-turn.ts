@@ -89,12 +89,22 @@ export function processOrderingTurn(input: {
   let cartActions: ValidatedCartAction[] = [];
   let quickReplies = input.structured.quickReplies;
 
-  if (input.structured.proposedItems.length > 0) {
+  const shouldApplyProposedItems =
+    input.structured.proposedItems.length > 0 &&
+    !input.structured.submitOrder &&
+    input.structured.intent !== "confirm" &&
+    input.structured.intent !== "status" &&
+    input.structured.intent !== "chat" &&
+    input.structured.intent !== "menu_info" &&
+    input.structured.intent !== "recommend";
+
+  if (shouldApplyProposedItems) {
     try {
       const processed = processProposedItems(
         draft,
         input.catalog,
-        input.structured.proposedItems
+        input.structured.proposedItems,
+        { userMessage: input.userMessage }
       );
       draft = processed.draft;
       cartActions = processed.cartActions;

@@ -63,6 +63,90 @@ function draftItemFromAction(action: ValidatedCartAction) {
   };
 }
 
+function modifierKey(ids: string[]) {
+  return [...ids].sort().join(",");
+}
+
+function draftItemMatchesAction(
+  item: AiOrderDraft["items"][number],
+  action: ValidatedCartAction
+) {
+  return (
+    item.productId === action.productId &&
+    (item.serveSize ?? null) === (action.serveSize ?? null) &&
+    item.notes === action.notes &&
+    modifierKey(item.modifierIds) ===
+      modifierKey(action.modifiers.map((m) => m.modifierId))
+  );
+}
+
+function unitLineTotal(action: ValidatedCartAction) {
+  return action.lineTotal / action.quantity;
+}
+
+function isExplicitAddMoreMessage(message: string) {
+  return /jo[šs]\s+(jedn|one)|another|eine\s+weitere|one\s+more|dodaj|add\s+more|plus\s+one|\+1/i.test(
+    message
+  );
+}
+
+export function applyCartActionsToDraft(
+  draft: AiOrderDraft,
+  cartActions: ValidatedCartAction[],
+  options?: { userMessage?: string }
+): { draft: AiOrderDraft; appliedActions: ValidatedCartAction[] } {
+  if (!cartActions.length) {
+    return { draft, appliedActions: [] };
+  }
+
+  const addMore = options?.userMessage
+    ? isExplicitAddMoreMessage(options.userMessage)
+    : false;
+  let items = [...draft.items];
+  const appliedActions: ValidatedCartAction[] = [];
+
+  for (const action of cartActions) {
+    const idx = items.findIndex((item) => draftItemMatchesAction(item, action));
+
+    if (idx >= 0) {
+      const existing = items[idx];
+      let nextQuantity = action.quantity;
+
+      if (addMore) {
+        nextQuantity = existing.quantity + action.quantity;
+      } else if (action.quantity <= existing.quantity) {
+        continue;
+      }
+
+      const unitTotal = unitLineTotal(action);
+      items[idx] = {
+        ...existing,
+        quantity: nextQuantity,
+        lineTotal: unitTotal * nextQuantity,
+      };
+      appliedActions.push({ ...action, quantity: nextQuantity, lineTotal: unitTotal * nextQuantity });
+      continue;
+    }
+
+    items.push(draftItemFromAction(action));
+    appliedActions.push(action);
+  }
+
+  if (!appliedActions.length) {
+    return { draft, appliedActions: [] };
+  }
+
+  return {
+    draft: {
+      ...draft,
+      items,
+      cartRevision: draft.cartRevision + 1,
+      updatedAt: new Date().toISOString(),
+    },
+    appliedActions,
+  };
+}
+
 export function initDraftFromStorage(value: unknown): AiOrderDraft {
   return parseOrderDraft(value) ?? emptyOrderDraft();
 }
@@ -135,7 +219,8 @@ export function tryResolveQuickReply(
 export function processProposedItems(
   draft: AiOrderDraft,
   catalog: AiCatalog,
-  proposedItems: AiProposedItem[]
+  proposedItems: AiProposedItem[],
+  options?: { userMessage?: string }
 ): {
   draft: AiOrderDraft;
   cartActions: ValidatedCartAction[];
@@ -146,20 +231,18 @@ export function processProposedItems(
   }
 
   const { cartActions, pending } = validateProposedItems(catalog, proposedItems);
+  const merged = applyCartActionsToDraft(draft, cartActions, options);
 
   const nextDraft: AiOrderDraft = {
-    ...draft,
-    items: [
-      ...draft.items,
-      ...cartActions.map((action) => draftItemFromAction(action)),
-    ],
+    ...merged.draft,
     pending: pending ?? draft.pending,
-    cartRevision:
-      cartActions.length > 0 ? draft.cartRevision + 1 : draft.cartRevision,
-    updatedAt: new Date().toISOString(),
   };
 
-  return { draft: nextDraft, cartActions, pending: nextDraft.pending };
+  return {
+    draft: nextDraft,
+    cartActions: merged.appliedActions,
+    pending: nextDraft.pending,
+  };
 }
 
 export function formatDraftForPrompt(draft: AiOrderDraft | null): string | null {
