@@ -44,7 +44,7 @@ export async function createOrderFromCart(
 
   const modeResult = isDemo
     ? ok({ kind: "demo" as const, sessionId: demoSessionId! })
-    : await assertOrderAccess(admin, input, context, false);
+    : await assertOrderAccess(admin, input, context);
   if (!modeResult.ok) return toApi(modeResult.error);
 
   const draft: OrderDraft = {

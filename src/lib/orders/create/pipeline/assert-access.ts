@@ -24,32 +24,8 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 export async function assertOrderAccess(
   admin: AdminClient,
   input: CreateOrderInput,
-  ctx: ResolvedContext,
-  isDemo: boolean
+  ctx: ResolvedContext
 ): Promise<Result<OrderCreateMode, OrderCreateError>> {
-  if (isDemo) {
-    if (!input.sessionToken) {
-      return err(orderError("session_required", "Session required.", 401));
-    }
-
-    const sessionResult = await validateTableSession(
-      admin,
-      input.tableToken,
-      input.sessionToken
-    );
-
-    if ("error" in sessionResult) {
-      return err(
-        sessionValidationError(sessionResult.error, sessionResult.status)
-      );
-    }
-
-    return ok({
-      kind: "demo",
-      sessionId: sessionResult.data.session.id,
-    });
-  }
-
   const blockCheck = await assertDeviceNotBlocked(
     admin,
     ctx.table.id,
