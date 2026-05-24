@@ -107,23 +107,77 @@ export function resolveAiPromptLanguage(language: string): (typeof AI_SUPPORTED_
   return "en";
 }
 
-/** Infer response language from guest text; falls back to venue menu language. */
+export type GuestLanguageDetection = {
+  detected: (typeof AI_SUPPORTED_LANGUAGES)[number] | "unknown";
+  confidence: "high" | "low";
+};
+
+const LATIN_BALKAN_PATTERN =
+  /\b(jedn[auo]|molim|hvala|naru[čc]|poru[čc]|potvrd|donesi|donij|imam|alergij|pivo|cola|kola|jo[sš]|sve|nema|mo[žz]e|želim|ho[ćc]u|imate|zdravo|dobar)\b/i;
+
+const LATIN_ENGLISH_PATTERN =
+  /\b(please|thanks|thank you|could i|can i|i want|i'd like|allergies|order|hello|hi)\b/i;
+
+const LATIN_ITALIAN_PATTERN =
+  /\b(ciao|grazie|vorrei|per favore|acqua|birra|prego)\b/i;
+
+const UNSUPPORTED_SCRIPT_PATTERN =
+  /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0900-\u097F]/;
+
+/** Infer guest language from message text; venue language is the default. */
+export function detectGuestMessageLanguage(
+  guestMessage: string,
+  menuLanguage: string
+): GuestLanguageDetection {
+  const text = guestMessage.trim();
+  const venue = resolveAiPromptLanguage(menuLanguage);
+
+  if (!text) {
+    return { detected: venue, confidence: "high" };
+  }
+
+  if (UNSUPPORTED_SCRIPT_PATTERN.test(text)) {
+    return { detected: "unknown", confidence: "high" };
+  }
+
+  if (/[\u0600-\u06FF]/.test(text)) return { detected: "ar", confidence: "high" };
+  if (/[ђЂјЈљЉњЊћЋ]/.test(text)) {
+    return { detected: venue === "hr" ? "hr" : "sr", confidence: "high" };
+  }
+  if (/[\u0400-\u04FF]/.test(text)) return { detected: "ru", confidence: "high" };
+  if (/[ğüşöçıİĞÜŞÖÇ]/.test(text)) return { detected: "tr", confidence: "high" };
+  if (/[äöüßÄÖÜ]/.test(text)) return { detected: "de", confidence: "high" };
+  if (/[àâçéèêëïîôùûüœæ]/i.test(text)) return { detected: "fr", confidence: "high" };
+  if (/[ñ¿¡]/i.test(text)) return { detected: "es", confidence: "high" };
+
+  const lower = text.toLowerCase();
+  if (LATIN_BALKAN_PATTERN.test(lower)) {
+    if (venue === "hr") return { detected: "hr", confidence: "high" };
+    if (venue === "sr") return { detected: "sr", confidence: "high" };
+    return { detected: "sr", confidence: "high" };
+  }
+
+  if (LATIN_ITALIAN_PATTERN.test(lower)) {
+    return { detected: "it", confidence: "high" };
+  }
+
+  if (LATIN_ENGLISH_PATTERN.test(lower)) {
+    return { detected: "en", confidence: "high" };
+  }
+
+  return { detected: venue, confidence: "low" };
+}
+
+/** @deprecated Prefer detectGuestMessageLanguage for confidence-aware handling. */
 export function resolveGuestMessageLanguage(
   guestMessage: string,
   menuLanguage: string
 ): (typeof AI_SUPPORTED_LANGUAGES)[number] {
-  const text = guestMessage.trim();
-  if (!text) return resolveAiPromptLanguage(menuLanguage);
-
-  if (/[\u0600-\u06FF]/.test(text)) return "ar";
-  if (/[ђЂјЈљЉњЊћЋ]/.test(text)) return "sr";
-  if (/[\u0400-\u04FF]/.test(text)) return "ru";
-  if (/[ğüşöçıİĞÜŞÖÇ]/.test(text)) return "tr";
-  if (/[äöüßÄÖÜ]/.test(text)) return "de";
-  if (/[àâçéèêëïîôùûüœæ]/i.test(text)) return "fr";
-  if (/[ñ¿¡]/i.test(text)) return "es";
-
-  return resolveAiPromptLanguage(menuLanguage);
+  const { detected } = detectGuestMessageLanguage(guestMessage, menuLanguage);
+  if (detected === "unknown") {
+    return resolveAiPromptLanguage(menuLanguage);
+  }
+  return detected;
 }
 
 export function isOpenAiConfigured(): boolean {

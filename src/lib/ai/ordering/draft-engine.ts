@@ -102,7 +102,7 @@ export function applyCartActionsToDraft(
   const addMore = options?.userMessage
     ? isExplicitAddMoreMessage(options.userMessage)
     : false;
-  let items = [...draft.items];
+  const items = [...draft.items];
   const appliedActions: ValidatedCartAction[] = [];
 
   for (const action of cartActions) {

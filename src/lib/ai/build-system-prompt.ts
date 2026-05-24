@@ -1,11 +1,44 @@
 import {
   AI_CONFIG,
+  detectGuestMessageLanguage,
+  menuLanguageLabel,
   resolveAiPromptLanguage,
-  resolveGuestMessageLanguage,
   type AI_SUPPORTED_LANGUAGES,
 } from "@/lib/ai/config";
 import { multilingualPolicyBlock } from "@/lib/ai/multilingual-policy";
 import type { AiGuestPreferences, BuildSystemPromptInput } from "@/lib/ai/types";
+
+function formatGuestLanguageHint(
+  guestMessage: string | null | undefined,
+  menuLanguage: string,
+  venueLang: (typeof AI_SUPPORTED_LANGUAGES)[number]
+): string {
+  const venueLabel = menuLanguageLabel(menuLanguage);
+
+  if (!guestMessage?.trim()) {
+    return `\n\nGUEST LANGUAGE HINT: no guest message yet — reply in venue language ${venueLabel}.`;
+  }
+
+  const detection = detectGuestMessageLanguage(guestMessage, menuLanguage);
+
+  if (detection.detected === "unknown") {
+    return `\n\nGUEST LANGUAGE HINT: detected=unknown, confidence=high, venue=${venueLang}.
+Guest language is NOT supported — reply ONLY in ${venueLabel}. Ask politely if you may continue in ${venueLabel}.`;
+  }
+
+  if (detection.confidence === "low") {
+    return `\n\nGUEST LANGUAGE HINT: detected=${detection.detected}, confidence=low, venue=${venueLang}.
+Language unclear — reply in ${venueLabel} (venue default). You may ask which language they prefer.`;
+  }
+
+  if (detection.detected !== venueLang) {
+    return `\n\nGUEST LANGUAGE HINT: detected=${detection.detected}, confidence=high, venue=${venueLang}.
+Guest writes clearly in ${menuLanguageLabel(detection.detected)} — reply in that language.`;
+  }
+
+  return `\n\nGUEST LANGUAGE HINT: detected=${detection.detected}, confidence=high, venue=${venueLang}.
+Guest matches venue language — reply in ${venueLabel}.`;
+}
 
 function langBlock(
   blocks: Partial<Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>> & {
@@ -383,9 +416,11 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const playbookBlock = input.playbookContext?.trim()
     ? `\n\n${input.playbookContext.trim()}`
     : "";
-  const guestLangHint = input.guestMessage?.trim()
-    ? `\n\nGUEST LANGUAGE HINT: ${resolveGuestMessageLanguage(input.guestMessage, input.language)} (from latest message; still follow LANGUAGE POLICY).`
-    : "";
+  const guestLangHint = formatGuestLanguageHint(
+    input.guestMessage,
+    input.language,
+    lang
+  );
 
   return [
     multilingualPolicyBlock(input.language),
