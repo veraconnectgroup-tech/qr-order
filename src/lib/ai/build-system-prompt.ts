@@ -175,6 +175,51 @@ function orderingRulesBlock(
   return blocks[lang];
 }
 
+function browseRulesBlock(
+  lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
+): string {
+  const max = AI_CONFIG.maxBrowseRecommendations;
+  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+    de: `MENÜ-BROWSE:
+- Bei vagen Anfragen ("Burger", "Bier", "kleines Bier"): intent "menu_info".
+- recommendations: ALLE passenden Menüpunkte (bis ${max}), reason = nur Preis.
+- message: kurz, z.B. "Wir haben Weizen und Pils — wähle unten."
+- Keine proposedItems beim Browse — Gast tippt + auf die Karte.`,
+    en: `MENU BROWSE:
+- For vague requests ("burger", "beer", "small beer"): intent "menu_info".
+- recommendations: ALL matching menu items (up to ${max}), reason = price only.
+- message: brief, e.g. "We have Weizen and Pils — pick below."
+- No proposedItems for browse — guest taps + on the card.`,
+    sr: `PREGLED MENIJA:
+- Kad gost pita opšte ("burger", "pivo", "malo pivo", "salata"): intent "menu_info".
+- recommendations: SVE odgovarajuće stavke iz menija (do ${max}), reason = samo cena.
+- message: kratko, npr. "Imamo Weizen i Pils — izaberi ispod."
+- Bez proposedItems za browse — gost bira klikom na +.`,
+    hr: `PREGLED JELovnika:
+- Kad gost pita općenito ("burger", "pivo", "malo pivo"): intent "menu_info".
+- recommendations: SVE odgovarajuće stavke (do ${max}), reason = samo cijena.
+- message: kratko, npr. "Imamo Weizen i Pils — odaberi ispod."
+- Bez proposedItems za browse — gost bira klikom na +.`,
+    tr: `MENÜ GEZİNTİSİ:
+- Belirsiz isteklerde ("burger", "bira"): intent "menu_info".
+- recommendations: eşleşen TÜM ürünler (en fazla ${max}), reason = yalnızca fiyat.
+- message: kısa; misafir + ile seçer.`,
+    fr: `PARCOURS MENU:
+- Demandes vagues ("burger", "bière"): intent "menu_info".
+- recommendations: TOUS les articles correspondants (jusqu'à ${max}), reason = prix seul.
+- message: bref; le client choisit avec +.`,
+    es: `EXPLORAR MENÚ:
+- Peticiones vagas ("burger", "cerveza"): intent "menu_info".
+- recommendations: TODOS los ítems coincidentes (hasta ${max}), reason = solo precio.
+- message: breve; el cliente elige con +.`,
+    it: `SCORRI MENU:
+- Richieste vaghe ("burger", "birra"): intent "menu_info".
+- recommendations: TUTTI gli articoli corrispondenti (fino a ${max}), reason = solo prezzo.
+- message: breve; l'ospite sceglie con +.`,
+  };
+  return blocks[lang];
+}
+
 function outputFormatBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
   const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
     de: `AUSGABEFORMAT (strikt JSON, kein Markdown):
@@ -294,7 +339,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const orderBlock = input.orderContext?.trim()
     ? `\n\n${input.orderContext.trim()}`
     : "";
-  const browseBlock = input.browsingContext?.trim()
+  const scrollBrowseBlock = input.browsingContext?.trim()
     ? `\n\nBROWSE-KONTEXT:\n${input.browsingContext.trim()}`
     : "";
   const draftBlock = input.orderDraftContext?.trim()
@@ -302,6 +347,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     : "";
   const orderingBlock =
     input.allowOrdering !== false ? orderingRulesBlock(lang) : "";
+  const menuBrowseRulesBlock = browseRulesBlock(lang);
   const playbookBlock = input.playbookContext?.trim()
     ? `\n\n${input.playbookContext.trim()}`
     : "";
@@ -310,12 +356,13 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     identityBlock(input.orgName, lang),
     rulesBlock(lang),
     orderingBlock,
+    menuBrowseRulesBlock,
     outputFormatBlock(lang),
     guestContext,
     playbookBlock,
     orderBlock,
     draftBlock,
-    browseBlock,
+    scrollBrowseBlock,
     "\n\nMENU:\n",
     input.menuText,
   ]

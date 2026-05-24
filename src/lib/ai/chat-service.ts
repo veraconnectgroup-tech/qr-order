@@ -5,6 +5,13 @@ import {
   resolveAiPromptLanguage,
 } from "@/lib/ai/config";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
+import {
+  buildBrowseMessage,
+  isLikelyBrowseQuery,
+  isSimpleBrowseQuery,
+  mergeBrowseRecommendations,
+  searchCatalogProducts,
+} from "@/lib/ai/catalog/catalog-search";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
 import { moderateGuestInput } from "@/lib/ai/moderation";
@@ -431,6 +438,102 @@ export async function handleAiChat(body: unknown) {
   });
   workingDraft = preTurn.draft;
 
+  const browseMatches = searchCatalogProducts(catalog.catalog, input.message);
+
+  if (
+    preTurn.cartActions.length === 0 &&
+    !workingDraft.pending &&
+    isSimpleBrowseQuery(input.message) &&
+    browseMatches.length >= 2
+  ) {
+    const recommendations = mergeBrowseRecommendations(
+      browseMatches,
+      catalog.productMap,
+      catalog.currency
+    );
+    const assistantText = buildBrowseMessage(browseMatches, language);
+
+    const assistantMessage: StoredMessage = {
+      role: "assistant",
+      content: assistantContent(assistantText, recommendations),
+      timestamp: new Date().toISOString(),
+    };
+    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
+    const scrollContext = input.browsingContext
+      ? parseBrowsingContextToScrollContext(input.browsingContext)
+      : null;
+
+    let sessionId = sessionRow?.id;
+    const recommendedIds = [
+      ...new Set([
+        ...(sessionRow?.products_recommended ?? []),
+        ...recommendations.map((item) => item.productId),
+      ]),
+    ];
+    const sessionPatch = {
+      messages: updatedMessages,
+      language,
+      guest_preferences: guestPrefs as import("@/types/database").Json,
+      order_draft: workingDraft as unknown as import("@/types/database").Json,
+      products_recommended: recommendedIds,
+      ...(scrollContext ? { scroll_context: scrollContext } : {}),
+    };
+
+    if (sessionRow) {
+      const { error: updateError } = await admin
+        .from("ai_sessions")
+        .update(sessionPatch)
+        .eq("id", sessionRow.id);
+      if (updateError) {
+        logger.error("AI session update failed", { error: updateError.message });
+        return apiError("Could not update session.", 500);
+      }
+    } else {
+      const { data: inserted, error: insertError } = await admin
+        .from("ai_sessions")
+        .insert({
+          org_id: orgId,
+          location_id: input.locationId,
+          table_id: input.tableId,
+          session_token: input.sessionToken,
+          messages: updatedMessages,
+          tokens_used: 0,
+          credits_used: 0,
+          products_recommended: recommendedIds,
+          products_added: [],
+          conversion_count: 0,
+          status: "active",
+          order_draft: workingDraft as unknown as import("@/types/database").Json,
+          language,
+          guest_preferences: guestPrefs,
+          ...(scrollContext ? { scroll_context: scrollContext } : {}),
+        })
+        .select("id")
+        .single();
+      if (insertError || !inserted) {
+        return apiError("Could not create session.", 500);
+      }
+      sessionId = (inserted as { id: string }).id;
+    }
+
+    const { data: creditsRow } = await admin
+      .from("ai_credits")
+      .select("balance")
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    return apiSuccess({
+      message: assistantText,
+      recommendations,
+      cartActions: [],
+      quickReplies: [],
+      intent: "menu_info",
+      submitOrder: false,
+      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      sessionId,
+    });
+  }
+
   if (preTurn.skippedLlm && preTurn.cartActions.length > 0) {
     const assistantText =
       preTurn.confirmationMessage ??
@@ -569,6 +672,24 @@ export async function handleAiChat(body: unknown) {
   });
   workingDraft = orderingResult.draft;
 
+  const shouldEnrichBrowse =
+    isLikelyBrowseQuery(input.message) &&
+    browseMatches.length > 0 &&
+    orderingResult.cartActions.length === 0 &&
+    !structured.structured.submitOrder &&
+    ["menu_info", "recommend", "clarify", "chat"].includes(
+      structured.structured.intent
+    );
+
+  const finalRecommendations = shouldEnrichBrowse
+    ? mergeBrowseRecommendations(
+        browseMatches,
+        menuPayload.productMap,
+        catalog.currency,
+        structured.recommendations
+      )
+    : structured.recommendations;
+
   logger.info("AI chat token usage", {
     sessionId: sessionRow?.id ?? "new",
     promptTokens: openAiResult.promptTokens,
@@ -598,7 +719,7 @@ export async function handleAiChat(body: unknown) {
     role: "assistant",
     content: assistantContent(
       structured.structured.message,
-      structured.recommendations
+      finalRecommendations
     ),
     timestamp: new Date().toISOString(),
   };
@@ -607,7 +728,7 @@ export async function handleAiChat(body: unknown) {
   const recommendedIds = [
     ...new Set([
       ...(sessionRow?.products_recommended ?? []),
-      ...structured.recommendations.map((item) => item.productId),
+      ...finalRecommendations.map((item) => item.productId),
     ]),
   ];
 
@@ -676,7 +797,7 @@ export async function handleAiChat(body: unknown) {
 
   return apiSuccess({
     message: structured.structured.message,
-    recommendations: structured.recommendations,
+    recommendations: finalRecommendations,
     cartActions: orderingResult.cartActions,
     quickReplies: orderingResult.quickReplies,
     intent: orderingResult.intent,

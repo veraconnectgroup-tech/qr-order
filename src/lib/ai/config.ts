@@ -9,8 +9,10 @@ export const AI_CONFIG = {
   temperature: 0.4,
   /** Credits debited per concierge turn (API layer) */
   creditsPerMessage: 1,
-  /** Max recommendations the model may return */
+  /** Max curated recommendations (personal picks) */
   maxRecommendations: 3,
+  /** Max menu items shown as tappable browse list in chat */
+  maxBrowseRecommendations: 12,
   /** OpenAI request timeout */
   requestTimeoutMs: 10_000,
   /** Initial attempt + retries (3 attempts = 2 retries) */

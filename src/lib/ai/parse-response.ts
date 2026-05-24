@@ -31,7 +31,7 @@ const aiResponseSchema = z.object({
         reason: z.string().trim().min(1).max(500),
       })
     )
-    .max(AI_CONFIG.maxRecommendations)
+    .max(AI_CONFIG.maxBrowseRecommendations)
     .optional()
     .default([]),
   proposedItems: z.array(proposedItemSchema).max(10).optional().default([]),

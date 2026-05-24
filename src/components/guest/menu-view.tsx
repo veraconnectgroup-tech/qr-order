@@ -462,6 +462,19 @@ export function MenuView({
     return map;
   }, [menuCategories]);
 
+  const customizableProductIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const product of productById.values()) {
+      if (
+        (product.modifier_groups?.length ?? 0) > 0 ||
+        product.requires_serve_size
+      ) {
+        ids.add(product.id);
+      }
+    }
+    return ids;
+  }, [productById]);
+
   const aiReasonByProductId = useMemo(() => {
     if (!aiActive) return undefined;
     const map = new Map<string, string>();
@@ -982,6 +995,11 @@ export function MenuView({
               guestProfile={profile}
               isReturning={isReturning}
               onAddToCart={handleAddAiRecommendation}
+              customizableProductIds={customizableProductIds}
+              onOpenProductDetail={(productId) => {
+                const product = productById.get(productId);
+                if (product) openProductDetail(product);
+              }}
               onRecommendations={handleAiChatSetupComplete}
               onSaveAllergies={saveGuestAllergies}
             />

@@ -8,7 +8,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Send, Sparkles, X, Check } from "lucide-react";
+import { Send, Sparkles, X, Check, Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { MenuCategory } from "@/components/guest/menu-grid";
@@ -242,35 +242,31 @@ function ChatQuickReplies({
   );
 }
 
-function ChatRecommendationCards({
+function ChatMenuPickList({
   recommendations,
   currency,
   orderingDisabled,
   addedIds,
   onAdd,
-  addLabel,
-  addedLabel,
 }: {
   recommendations: ProductRecommendation[];
   currency: string;
   orderingDisabled: boolean;
   addedIds: Set<string>;
   onAdd: (rec: ProductRecommendation) => void;
-  addLabel: string;
-  addedLabel: string;
 }) {
   if (!recommendations.length) return null;
 
   return (
-    <div className="-mx-1 mt-3 flex gap-3 overflow-x-auto px-1 pb-1 snap-x snap-mandatory">
+    <div className="mt-3 space-y-2">
       {recommendations.map((rec) => {
         const added = addedIds.has(rec.productId);
         return (
           <div
             key={rec.productId}
-            className="w-44 shrink-0 snap-start overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
+            className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/90 p-2"
           >
-            <div className="relative h-20 w-full bg-zinc-800">
+            <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-zinc-800">
               {rec.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -280,43 +276,32 @@ function ChatRecommendationCards({
                 />
               ) : (
                 <div className="flex size-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                  <Sparkles className="size-5 text-zinc-600" />
+                  <Sparkles className="size-4 text-zinc-600" />
                 </div>
               )}
             </div>
-            <div className="space-y-2 p-2.5">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-100">
                 {rec.name}
               </p>
               <p className="text-xs font-bold text-orange-500">
                 {formatPrice(rec.price, currency)}
               </p>
-              {rec.reason && (
-                <p className="line-clamp-2 text-[11px] leading-snug text-zinc-500">
-                  {rec.reason}
-                </p>
-              )}
-              <button
-                type="button"
-                disabled={orderingDisabled || added}
-                onClick={() => onAdd(rec)}
-                className={cn(
-                  "flex w-full items-center justify-center gap-1 rounded-lg py-2 text-xs font-semibold transition",
-                  added
-                    ? "bg-zinc-800 text-zinc-400"
-                    : "bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
-                )}
-              >
-                {added ? (
-                  <>
-                    <Check className="size-3.5" />
-                    {addedLabel}
-                  </>
-                ) : (
-                  addLabel
-                )}
-              </button>
             </div>
+            <button
+              type="button"
+              disabled={orderingDisabled || added}
+              onClick={() => onAdd(rec)}
+              aria-label={rec.name}
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-full transition active:scale-95",
+                added
+                  ? "bg-zinc-800 text-zinc-400"
+                  : "bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+              )}
+            >
+              {added ? <Check className="size-4" /> : <Plus className="size-4" />}
+            </button>
           </div>
         );
       })}
@@ -333,8 +318,6 @@ function ChatBubble({
   onQuickReply,
   onAddRecommendation,
   continueLabel,
-  addLabel,
-  addedLabel,
 }: {
   message: ChatMessage;
   currency: string;
@@ -344,8 +327,6 @@ function ChatBubble({
   onQuickReply?: (messageId: string, label: string) => void;
   onAddRecommendation: (rec: ProductRecommendation) => void;
   continueLabel: string;
-  addLabel: string;
-  addedLabel: string;
 }) {
   const isUser = message.role === "user";
 
@@ -384,14 +365,12 @@ function ChatBubble({
           />
         )}
         {message.recommendations && (
-          <ChatRecommendationCards
+          <ChatMenuPickList
             recommendations={message.recommendations}
             currency={currency}
             orderingDisabled={orderingDisabled}
             addedIds={addedIds}
             onAdd={onAddRecommendation}
-            addLabel={addLabel}
-            addedLabel={addedLabel}
           />
         )}
       </div>
@@ -425,6 +404,8 @@ export type AiConciergeChatProps = {
   guestProfile?: GuestMemoryProfile;
   isReturning?: boolean;
   onAddToCart?: (rec: ProductRecommendation) => void;
+  customizableProductIds?: Set<string>;
+  onOpenProductDetail?: (productId: string) => void;
   /** Alias for onSetupComplete */
   onRecommendations?: AiConciergeChatProps["onSetupComplete"];
   welcomeBackMessage?: string | null;
@@ -454,6 +435,8 @@ export function AiConciergeChat({
   guestProfile,
   isReturning = false,
   onAddToCart,
+  customizableProductIds,
+  onOpenProductDetail,
   onRecommendations,
   welcomeBackMessage,
   knownAllergySelection,
@@ -933,6 +916,15 @@ export function AiConciergeChat({
     (rec: ProductRecommendation) => {
       if (orderingDisabled) return;
 
+      if (
+        customizableProductIds?.has(rec.productId) &&
+        onOpenProductDetail
+      ) {
+        hapticClick();
+        onOpenProductDetail(rec.productId);
+        return;
+      }
+
       if (onAddToCart) {
         hapticClick();
         onAddToCart(rec);
@@ -976,6 +968,8 @@ export function AiConciergeChat({
       locationId,
       tableId,
       onAddToCart,
+      customizableProductIds,
+      onOpenProductDetail,
     ]
   );
 
@@ -1199,8 +1193,6 @@ export function AiConciergeChat({
                 : undefined
             }
             onAddRecommendation={handleAddRecommendation}
-            addLabel={tUI("ai.recommendation.add")}
-            addedLabel={tUI("ai.recommendation.added")}
           />
         ))}
         {isTyping && (
