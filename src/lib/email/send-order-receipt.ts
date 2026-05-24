@@ -1,3 +1,4 @@
+import { buildBelegHtml, parseBelegTseData } from "@/lib/fiscal/beleg";
 import { buildOrderReceiptHtml } from "@/lib/email/order-receipt-html";
 import { sendEmail } from "@/lib/email/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -34,6 +35,9 @@ export async function sendOrderReceipt(
     receipt_sent_at: string | null;
     location_id: string;
     table_id: string | null;
+    tse_signature: string | null;
+    tse_data: unknown;
+    payment_method: string;
   };
 
   if (row.receipt_sent_at && !options?.force) {
@@ -67,7 +71,7 @@ export async function sendOrderReceipt(
 
   const { data: items } = await admin
     .from("order_items")
-    .select("id, product_name, quantity, total, notes")
+    .select("id, product_name, quantity, total, notes, tax_rate")
     .eq("order_id", orderId);
 
   const itemRows = (items ?? []) as Array<{
@@ -76,6 +80,7 @@ export async function sendOrderReceipt(
     quantity: number;
     total: number;
     notes: string | null;
+    tax_rate: number;
   }>;
 
   const itemIds = itemRows.map((i) => i.id);
@@ -103,7 +108,7 @@ export async function sendOrderReceipt(
 
   const { data: location } = await admin
     .from("locations")
-    .select("name, org_id")
+    .select("name, org_id, address, city, in_person_payment_location")
     .eq("id", row.location_id)
     .single();
 
@@ -116,7 +121,13 @@ export async function sendOrderReceipt(
         .single()
     : { data: null };
 
-  const locationRow = location as { name: string; org_id: string } | null;
+  const locationRow = location as {
+    name: string;
+    org_id: string;
+    address: string | null;
+    city: string | null;
+    in_person_payment_location: "table" | "counter" | "bar";
+  } | null;
   if (!locationRow) {
     return { sent: false, error: "Location not found." };
   }
@@ -134,6 +145,7 @@ export async function sendOrderReceipt(
     product_name: item.product_name,
     quantity: item.quantity,
     total: Number(item.total),
+    tax_rate: Number(item.tax_rate ?? row.tax_percent),
     notes: item.notes,
     modifiers: modifiersByItem.get(item.id) ?? [],
   }));
@@ -144,25 +156,53 @@ export async function sendOrderReceipt(
       ? `${appUrl}/${org.slug}/${tableRow.qr_token}/order/${orderId}`
       : undefined;
 
-  const html = buildOrderReceiptHtml({
-    orgName: org?.name ?? "Your venue",
-    locationName: locationRow.name,
-    tableName: tableRow?.name ?? null,
-    orderNumber: row.order_number,
-    createdAt: row.created_at,
-    subtotal: Number(row.subtotal),
-    taxPercent: Number(row.tax_percent),
-    taxAmount: Number(row.tax_amount),
-    total: Number(row.total),
-    currency: org?.currency ?? "EUR",
-    paymentStatus: row.payment_status,
-    items: orderItems,
-    orderUrl,
-  });
+  const locationAddress = [locationRow.address, locationRow.city]
+    .filter(Boolean)
+    .join(", ");
 
+  const tseData = parseBelegTseData(row.tse_data);
+  const useFiscalBeleg = Boolean(row.tse_signature && tseData);
+
+  const html = useFiscalBeleg
+    ? await buildBelegHtml({
+        orgName: org?.name ?? "Your venue",
+        locationName: locationRow.name,
+        locationAddress: locationAddress || null,
+        tableName: tableRow?.name ?? null,
+        orderNumber: row.order_number,
+        createdAt: row.created_at,
+        subtotal: Number(row.subtotal),
+        taxAmount: Number(row.tax_amount),
+        total: Number(row.total),
+        currency: org?.currency ?? "EUR",
+        paymentMethod: row.payment_method,
+        paymentStatus: row.payment_status,
+        inPersonPaymentLocation: locationRow.in_person_payment_location,
+        items: orderItems,
+        tseSignature: row.tse_signature!,
+        tseData: tseData!,
+        orderUrl,
+      })
+    : buildOrderReceiptHtml({
+        orgName: org?.name ?? "Your venue",
+        locationName: locationRow.name,
+        tableName: tableRow?.name ?? null,
+        orderNumber: row.order_number,
+        createdAt: row.created_at,
+        subtotal: Number(row.subtotal),
+        taxPercent: Number(row.tax_percent),
+        taxAmount: Number(row.tax_amount),
+        total: Number(row.total),
+        currency: org?.currency ?? "EUR",
+        paymentStatus: row.payment_status,
+        items: orderItems.map(({ tax_rate: _taxRate, ...item }) => item),
+        orderUrl,
+      });
+
+  const subjectPrefix = useFiscalBeleg ? "Kassenbeleg" : "Receipt";
   const result = await sendEmail({
     to: guestEmail,
-    subject: `Receipt ${org?.name ?? ""} — Order #${String(row.order_number).padStart(3, "0")}`.trim(),
+    subject: `${subjectPrefix} ${org?.name ?? ""} — Order #${String(row.order_number).padStart(3, "0")}`.trim(),
     html,
   });
 

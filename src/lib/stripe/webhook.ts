@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { logger } from "@/lib/logger";
-import { enqueue } from "@/lib/queue/client";
+import { enqueueFiscalSendReceipt } from "@/lib/outbox/enqueue-events";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { orgIdForOrder } from "@/lib/webhooks/org-context";
@@ -371,8 +371,8 @@ async function verifyAndMarkSessionPaid(
       sessionCheckout: true,
     });
 
-    void enqueue("/api/jobs/send-receipt", { orderId: order.id }).catch((err) =>
-      logger.error("Receipt enqueue failed", {
+    void enqueueFiscalSendReceipt(admin, order.id).catch((err) =>
+      logger.error("Receipt outbox enqueue failed", {
         orderId: order.id,
         error: err instanceof Error ? err.message : String(err),
       })
@@ -424,8 +424,8 @@ async function verifyAndMarkPaid(
     paymentIntentId: pi.id,
   });
 
-  void enqueue("/api/jobs/send-receipt", { orderId: order.id }).catch((err) =>
-    logger.error("Receipt enqueue failed", {
+  void enqueueFiscalSendReceipt(admin, order.id).catch((err) =>
+    logger.error("Receipt outbox enqueue failed", {
       orderId: order.id,
       error: err instanceof Error ? err.message : String(err),
     })
@@ -508,12 +508,11 @@ async function verifyAndMarkSplitPaid(
       })
       .eq("id", row.order_id);
 
-    void enqueue("/api/jobs/send-receipt", { orderId: row.order_id }).catch(
-      (err) =>
-        logger.error("Receipt enqueue failed", {
-          orderId: row.order_id,
-          error: err instanceof Error ? err.message : String(err),
-        })
+    void enqueueFiscalSendReceipt(admin, row.order_id).catch((err) =>
+      logger.error("Receipt outbox enqueue failed", {
+        orderId: row.order_id,
+        error: err instanceof Error ? err.message : String(err),
+      })
     );
   }
 

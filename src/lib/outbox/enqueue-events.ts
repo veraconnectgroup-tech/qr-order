@@ -3,6 +3,21 @@ import type { OutboxInsert } from "@/lib/outbox/types";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export async function enqueueFiscalSendReceipt(
+  admin: ReturnType<typeof createAdminClient>,
+  orderId: string,
+  guestEmail?: string | null
+): Promise<number> {
+  return enqueueOutboxEvents(admin, [
+    {
+      aggregate_id: orderId,
+      domain: "fiscal",
+      event_type: "fiscal.send_receipt",
+      payload: { orderId, guestEmail: guestEmail ?? null },
+    },
+  ]);
+}
+
 export async function enqueueOutboxEvents(
   admin: ReturnType<typeof createAdminClient>,
   events: OutboxInsert[]

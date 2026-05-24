@@ -102,9 +102,10 @@ Svaka sesija u "operator mode":
 ✅ A7  ukloni direct push (outbox-only)
 ✅ A8  ukloni direct TSE (outbox-only)
 ✅ B2  DATEV mixed-rate (mrtav resolveRevenueAccount uklonjen)
+✅ B3  Proper Beleg template (fiscal.beleg → send_receipt chain)
 ```
 
-**Track A: gotov.** Sledeći: Track B3+ (Beleg, Z-Bon) ili Track C.
+**Track A: gotov.** **Track B3: gotov.** Sledeći: B4 (Z-Bon) ili Track C.
 
 ---
 

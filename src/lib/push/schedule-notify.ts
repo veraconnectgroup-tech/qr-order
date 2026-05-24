@@ -70,20 +70,6 @@ export function schedulePushNotify(payload: PushNotifyPayload) {
   });
 }
 
-export function scheduleNewOrderPush(
-  locationId: string,
-  orderNumber: number,
-  tableName: string
-) {
-  schedulePushNotify({
-    locationId,
-    type: "new-order",
-    title: `New order ${formatOrderNumber(orderNumber)}`,
-    body: `Table ${tableName}`,
-    url: "/dashboard/orders",
-  });
-}
-
 export function scheduleWaiterCallPush(locationId: string, tableName: string) {
   schedulePushNotify({
     locationId,

@@ -58,3 +58,5 @@ Approved architecture: `docs/architecture/ADR-001-universal-ordering-platform.md
 **Safe Supabase rollout:** `docs/architecture/ADR-001-safe-rollout.md` — **read before any db push**
 
 Track A: one PR per step (A1→A8). Never rewrite `create-order.ts` from scratch.
+
+**Pre-commit rules (side effects, dead code, serverless):** `.cursor/rules/commit-checklist.mdc`

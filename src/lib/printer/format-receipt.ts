@@ -1,4 +1,5 @@
 import { formatOrderNumber, formatPrice } from "@/lib/format";
+import { appendBelegTseEscPos, parseBelegTseData } from "@/lib/fiscal/beleg";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import {
   EscPosBuilder,
@@ -101,7 +102,18 @@ export function buildReceiptEscPos(
     .newline()
     .bold(false)
     .text(`Payment: ${paymentLabel}${paidSuffix}`)
-    .newline()
+    .newline();
+
+  const tseData = parseBelegTseData(order.tse_data);
+  if (order.tse_signature && tseData) {
+    appendBelegTseEscPos(
+      builder,
+      { tseSignature: order.tse_signature, tseData },
+      paperWidth
+    );
+  }
+
+  builder
     .text(separatorLine(paperWidth))
     .newline()
     .align("center")

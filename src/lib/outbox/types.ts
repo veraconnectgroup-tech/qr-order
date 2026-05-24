@@ -5,6 +5,7 @@ export type OutboxEventType =
   | "fulfill.push_pos"
   | "fulfill.cloud_print"
   | "fiscal.tse_sign"
+  | "fiscal.beleg"
   | "fiscal.send_receipt"
   | "integration.webhook";
 

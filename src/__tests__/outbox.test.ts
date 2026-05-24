@@ -34,12 +34,14 @@ describe("buildOutboxEvents", () => {
     ]);
   });
 
-  it("adds fiscal.send_receipt when guest email is set in standalone mode", () => {
+  it("passes guestEmail in fiscal.tse_sign payload for chained beleg/receipt", () => {
     const events = buildOutboxEvents(
       baseContext({ guestEmail: "guest@example.com" }),
       "created"
     );
-    expect(events.map((e) => e.event_type)).toContain("fiscal.send_receipt");
+    const tseEvent = events.find((e) => e.event_type === "fiscal.tse_sign");
+    expect(tseEvent?.payload.guestEmail).toBe("guest@example.com");
+    expect(events.map((e) => e.event_type)).not.toContain("fiscal.send_receipt");
   });
 
   it("skips fiscal events in vorsystem mode and adds fulfill.push_pos", () => {
@@ -118,6 +120,7 @@ describe("getOutboxHandler", () => {
     );
     expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
     expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
+    expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
     expect(getOutboxHandler("unknown.event")).toBeUndefined();
   });
 });

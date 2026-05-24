@@ -1,0 +1,103 @@
+---
+description: Pre-commit checklist — side effects, dead code, serverless, migrations
+globs:
+alwaysApply: true
+---
+
+# QR Order — Pre-Commit Rules
+
+Read this before every commit.
+
+## 1. Never duplicate side effects
+
+When adding a new invocation path (e.g. outbox), **delete the old path in the same commit**.
+
+```
+persistOrderSideEffects()   ← new outbox
+scheduleOrderTseSign()      ← old fire-and-forget  ❌ DELETE
+scheduleNewOrderPush()      ← old fire-and-forget  ❌ DELETE
+= TSE signed twice, push sent twice
+```
+
+Whenever you see a `schedule*` or fire-and-forget call that outbox replaces — remove it.
+
+```bash
+grep -rn "functionName" src/
+```
+
+## 2. Search all call sites before changing a function
+
+Before editing any function:
+
+```bash
+grep -rn "functionName" src/
+grep -rn "importName" src/
+```
+
+These were called from **multiple files** — fix all or half the system stays on the old path:
+- `scheduleOrderTseSign`, `scheduleNewOrderPush`
+- `storePinReveal`, `consumePinReveal`
+
+## 3. No dead code
+
+When a new function replaces an old one:
+- Delete the old function
+- Delete all imports of the old function
+- If the file is empty — delete the file
+
+Example: `resolveRevenueAccount()` replaced by inline logic in `orderToDatevRows()` — remove the old function.
+
+## 4. In-memory = bug on serverless
+
+Vercel serverless: each request may hit a different instance.
+
+**Never use for cross-request state:**
+- `new Map()` / `new Set()` at module level for session/cache data
+- Global variables for mutable cache
+
+**Always use:**
+- Redis (Upstash — already in project)
+- PostgreSQL / Supabase
+
+In-memory is OK only for **read-only constants** (e.g. feature flags, static allergen maps) or **React component/hook local state**.
+
+Dev-only fallbacks (`NODE_ENV !== 'production'`) must be explicitly gated and documented.
+
+## 5. One transaction = one atomic block
+
+If two SQL writes must succeed together:
+- Put them in one PostgreSQL function (RPC), or
+- Use Supabase `.rpc()` inside a transaction
+
+Never:
+```typescript
+await admin.from('orders').update(...)      // commit 1
+await admin.from('order_items').insert(...) // if this fails, 1 is already committed
+```
+
+## 6. Pre-commit checklist
+
+- [ ] `grep -rn` old functions — removed everywhere?
+- [ ] `grep -rn "new Map\|new Set" src/lib/` — module-level mutable state?
+- [ ] Removed stale imports for replaced functions?
+- [ ] New and old path do the same thing? If yes — delete old.
+- [ ] Related SQL writes in same transaction/RPC?
+- [ ] `pnpm test:run` — pass?
+- [ ] `pnpm type-check` — pass?
+- [ ] `pnpm lint` — pass (0 errors)?
+- [ ] `pnpm build` — pass?
+
+## 7. One PR = one track step
+
+No mega PRs. A1, A2, A3… each PR must:
+- Work standalone
+- Not break existing behavior
+- Pass build + type-check + lint
+
+## 8. Migrations are sacred
+
+- Sequential numbers only (`00061`, `00062`, …)
+- Never edit a migration already pushed to remote
+- Fixes → new migration file
+- RLS on new tables immediately
+- Never `db reset` on production remote; see `supabase-migration-baseline.md`

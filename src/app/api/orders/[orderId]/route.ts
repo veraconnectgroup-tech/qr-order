@@ -5,7 +5,7 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
-import { enqueue } from "@/lib/queue/client";
+import { enqueueFiscalSendReceipt } from "@/lib/outbox/enqueue-events";
 import { withRateLimit, withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
@@ -298,8 +298,8 @@ export const PATCH = withErrorHandler(
     }
 
     if (status === "delivered") {
-      void enqueue("/api/jobs/send-receipt", { orderId }).catch((err) =>
-        logger.error("Receipt enqueue failed", {
+      void enqueueFiscalSendReceipt(admin, orderId).catch((err) =>
+        logger.error("Receipt outbox enqueue failed", {
           orderId,
           error: err instanceof Error ? err.message : String(err),
         })

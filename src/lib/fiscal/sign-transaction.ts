@@ -7,7 +7,6 @@ import {
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
 import { logger } from "@/lib/logger";
-import { enqueue } from "@/lib/queue/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type TseSignatureResult = {
@@ -414,14 +413,5 @@ export async function signOrderTransactionById(
         tax_rate: Number(item.tax_rate),
       })
     ),
-  });
-}
-
-export function scheduleOrderTseSign(orderId: string) {
-  void enqueue("/api/jobs/tse-sign", { orderId }).catch((err) => {
-    logger.error("TSE sign enqueue failed", {
-      orderId,
-      error: err instanceof Error ? err.message : String(err),
-    });
   });
 }

@@ -67,20 +67,11 @@ export function buildOutboxEvents(
       aggregate_id: ctx.orderId,
       domain: "fiscal",
       event_type: "fiscal.tse_sign",
-      payload: { orderId: ctx.orderId },
+      payload: {
+        orderId: ctx.orderId,
+        guestEmail: ctx.guestEmail ?? null,
+      },
     });
-
-    if (ctx.guestEmail) {
-      events.push({
-        aggregate_id: ctx.orderId,
-        domain: "fiscal",
-        event_type: "fiscal.send_receipt",
-        payload: {
-          orderId: ctx.orderId,
-          guestEmail: ctx.guestEmail,
-        },
-      });
-    }
   }
 
   for (const webhook of ctx.activeWebhooks) {

@@ -1,4 +1,5 @@
 import { handleFulfillCloudPrint, handleFulfillPushPos } from "@/lib/outbox/handlers/stubs";
+import { handleFiscalBeleg } from "@/lib/outbox/handlers/beleg";
 import { handleFulfillNotifyStaff } from "@/lib/outbox/handlers/notify-staff";
 import { handleFiscalSendReceipt } from "@/lib/outbox/handlers/send-receipt";
 import { handleFiscalTseSign } from "@/lib/outbox/handlers/tse-sign";
@@ -14,6 +15,7 @@ const handlers: Record<OutboxEventType, OutboxHandler> = {
   "fulfill.push_pos": handleFulfillPushPos,
   "fulfill.cloud_print": handleFulfillCloudPrint,
   "fiscal.tse_sign": handleFiscalTseSign,
+  "fiscal.beleg": handleFiscalBeleg,
   "fiscal.send_receipt": handleFiscalSendReceipt,
   "integration.webhook": handleIntegrationWebhook,
 };

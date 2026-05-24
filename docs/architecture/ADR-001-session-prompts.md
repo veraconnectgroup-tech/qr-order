@@ -18,8 +18,9 @@
 | A4 idempotency header | ✅ urađeno |
 | A5 PIN → Redis GETDEL | ✅ urađeno |
 | A6 approve/reject RPC | ✅ urađeno (`00065`) |
-| A7/A8 ukloni direct TSE/push | ⬜ sledeći (dual-write još aktivan) |
+| A7/A8 ukloni direct TSE/push | ✅ outbox-only |
 | B2 DATEV mixed-rate | ✅ |
+| B3 Proper Beleg template | ✅ |
 
 ---
 

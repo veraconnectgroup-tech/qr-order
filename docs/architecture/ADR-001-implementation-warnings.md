@@ -149,7 +149,7 @@ Document clearly in admin UI for restaurant owners.
 [ ] create-order.ts not rewritten wholesale
 [ ] Outbox handlers idempotent
 [ ] PIN uses Redis GETDEL (when A5 done)
-[ ] scheduleOrderTseSign / scheduleNewOrderPush removed from direct calls (when A7/A8 done)
+[ ] scheduleOrderTseSign / scheduleNewOrderPush removed from direct calls — ✅ done (A7/A8)
 [ ] Tests from §9 where applicable
 [ ] pnpm build && pnpm lint pass
 ```
