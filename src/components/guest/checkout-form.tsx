@@ -8,10 +8,14 @@ import { hapticSuccess } from "@/lib/haptics";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { useGuestSessionToken } from "@/hooks/use-guest-session-token";
 import { useGuestSession } from "@/hooks/use-guest-session";
+import { useTableContext } from "@/hooks/use-table-context";
+import { ApprovalWaiting } from "@/components/guest/approval-waiting";
+import { TablePinGate } from "@/components/guest/table-pin-gate";
 import {
-  ensureTableSession,
-  isSessionExpiredError,
-} from "@/lib/guest/ensure-table-session";
+  getOrCreateDeviceFingerprint,
+  getStoredDeviceToken,
+} from "@/lib/guest/device-storage";
+import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -22,10 +26,6 @@ import {
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { fetchWithRetry, isServerErrorStatus } from "@/lib/payment/fetch-with-retry";
 import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
-import {
-  enqueueOfflineOrder,
-  registerOrderSync,
-} from "@/lib/pwa/offline-order-queue";
 import type { TaxBreakdownLine } from "@/lib/tax/vat";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { Button } from "@/components/ui/button";
@@ -139,6 +139,9 @@ export function CheckoutForm({
   const items = useCart((s) => s.items);
   const { sessionToken, hydrated: sessionHydrated } = useGuestSessionToken();
   const tableId = useGuestSession((s) => s.tableId);
+  const tableName = useGuestSession((s) => s.tableName);
+  const { context, loading: contextLoading, refresh: refreshContext } =
+    useTableContext(isDemo ? "" : token);
   const subtotal = useCart((s) => s.subtotal());
   const taxBreakdown = useCart((s) => s.taxBreakdown);
   const taxAmount = useCart((s) => s.taxAmount);
@@ -160,6 +163,8 @@ export function CheckoutForm({
   const [guestEmail, setGuestEmail] = useState("");
   const [isTakeaway, setIsTakeaway] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+  const [approvalOrderId, setApprovalOrderId] = useState<string | null>(null);
+  const [pinVerified, setPinVerified] = useState(false);
 
   const breakdown = taxBreakdown(isTakeaway, taxPercent);
   const computedTax = taxAmount(isTakeaway, taxPercent);
@@ -178,31 +183,30 @@ export function CheckoutForm({
   }, []);
 
   useEffect(() => {
-    if (!storeReady || orderPlacedRef.current || isDemo) return;
+    if (!storeReady || orderPlacedRef.current) return;
     if (!items.length) {
       router.replace(`/${slug}/${token}/cart`);
       return;
     }
-
-    let cancelled = false;
-
-    (async () => {
-      const freshToken = await ensureTableSession(slug, token, tableId);
-      if (cancelled) return;
-      if (!freshToken && !sessionToken) {
-        router.replace(`/${slug}/${token}`);
-        return;
-      }
+    if (isDemo) {
       setReady(true);
-    })();
+      return;
+    }
+    if (!contextLoading) {
+      setReady(true);
+    }
+  }, [storeReady, items.length, isDemo, slug, token, router, contextLoading]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [storeReady, items.length, sessionToken, isDemo, slug, token, tableId, router]);
+  async function submitOrder(activeSessionToken?: string) {
+    if (activeSessionToken && guestEmail.trim()) {
+      await saveGuestEmail(activeSessionToken, guestEmail);
+    }
 
-  async function submitOrder(activeSessionToken: string) {
-    await saveGuestEmail(activeSessionToken, guestEmail);
+    const resolvedTableId = context?.tableId ?? tableId ?? "";
+    const deviceFingerprint = getOrCreateDeviceFingerprint();
+    const deviceToken = resolvedTableId
+      ? getStoredDeviceToken(locationId, resolvedTableId)
+      : null;
 
     const res = await fetchWithRetry("/api/orders", {
       method: "POST",
@@ -210,6 +214,8 @@ export function CheckoutForm({
       body: JSON.stringify({
         sessionToken: activeSessionToken,
         tableToken: token,
+        deviceFingerprint,
+        deviceToken: deviceToken ?? undefined,
         items,
         guestEmail: guestEmail.trim() || undefined,
         isTakeaway,
@@ -225,7 +231,7 @@ export function CheckoutForm({
     const parsed = await readJsonResponse<{
       error?: string;
       details?: { products?: string[] };
-      data?: { orderId: string };
+      data?: { orderId: string; awaitingApproval?: boolean };
     }>(res);
 
     if (!parsed.ok) {
@@ -234,6 +240,9 @@ export function CheckoutForm({
 
     const json = parsed.data;
     if (!res.ok || !json.data?.orderId) {
+      if (json.error === "pin_required") {
+        throw new Error("pin_required");
+      }
       if (
         json.error === "unavailable_products" &&
         Array.isArray(json.details?.products)
@@ -245,59 +254,58 @@ export function CheckoutForm({
       throw new Error(json.error ?? tUI("error.orderFailed"));
     }
 
-    return json.data.orderId;
+    return json.data;
   }
 
   async function handlePlaceOrder() {
     if (!isOnline) return;
+
+    if (
+      !isDemo &&
+      context?.capabilities.needsPin &&
+      !context.capabilities.canPlaceOrders &&
+      !pinVerified
+    ) {
+      setError(tUI("session.pinRequiredBeforeOrder"));
+      return;
+    }
+
     setProcessing(true);
     setError(null);
 
     try {
-      let activeSessionToken =
-        sessionToken ?? (await ensureTableSession(slug, token, tableId));
-      if (!activeSessionToken) {
-        throw new Error(tUI("error.orderFailed"));
+      const activeSessionToken = isDemo
+        ? (sessionToken ??
+          (await ensureTableSession(slug, token, tableId ?? undefined)))
+        : (context?.sessionToken ?? sessionToken ?? undefined);
+
+      const result = await submitOrder(activeSessionToken ?? undefined);
+
+      if (result.awaitingApproval) {
+        orderPlacedRef.current = true;
+        setApprovalOrderId(result.orderId);
+        clearCart();
+        setProcessing(false);
+        return;
       }
 
-      let orderId: string;
-      try {
-        orderId = await submitOrder(activeSessionToken);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "";
-        if (!isSessionExpiredError(message)) throw e;
-
-        const refreshed = await ensureTableSession(slug, token, tableId);
-        if (!refreshed) throw e;
-        activeSessionToken = refreshed;
-        orderId = await submitOrder(activeSessionToken);
+      if (activeSessionToken && guestEmail.trim()) {
+        await saveGuestEmail(activeSessionToken, guestEmail);
       }
 
       orderPlacedRef.current = true;
       recordGuestOrderPlaced();
       hapticSuccess();
-      router.replace(`/${slug}/${token}/order/${orderId}?placed=1`);
+      router.replace(`/${slug}/${token}/order/${result.orderId}?placed=1`);
       clearCart();
     } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      if (message === "pin_required") {
+        setError(tUI("session.pinRequiredBeforeOrder"));
+        setProcessing(false);
+        return;
+      }
       if (!navigator.onLine || e instanceof TypeError) {
-        const fallbackToken =
-          sessionToken ?? (await ensureTableSession(slug, token, tableId));
-        if (fallbackToken) {
-          enqueueOfflineOrder({
-            sessionToken: fallbackToken,
-            tableToken: token,
-            payload: {
-              sessionToken: fallbackToken,
-              tableToken: token,
-              items,
-              guestEmail: guestEmail.trim() || undefined,
-              isTakeaway,
-              paymentMethod: "unset",
-              promoCodeId: appliedPromo?.promoCodeId,
-            },
-          });
-        }
-        void registerOrderSync();
         toast.success(tUI("offline.orderQueued"));
         setProcessing(false);
         return;
@@ -307,7 +315,7 @@ export function CheckoutForm({
     }
   }
 
-  if (!ready) {
+  if (!ready || (!isDemo && contextLoading)) {
     return (
       <div className="py-6">
         <CheckoutSkeleton />
@@ -315,8 +323,43 @@ export function CheckoutForm({
     );
   }
 
+  if (approvalOrderId && (context || tableId)) {
+    return (
+      <ApprovalWaiting
+        slug={slug}
+        token={token}
+        orderId={approvalOrderId}
+        tableId={context?.tableId ?? tableId ?? ""}
+        tableName={context?.tableName ?? tableName ?? ""}
+        locationId={context?.locationId ?? locationId}
+      />
+    );
+  }
+
+  const showPinGate =
+    !isDemo &&
+    context?.sessionStatus === "active" &&
+    context.capabilities.needsPin &&
+    !pinVerified;
+
   return (
     <div className="space-y-6">
+      {showPinGate && (
+        <TablePinGate
+          slug={slug}
+          tableToken={token}
+          tableId={context.tableId}
+          locationId={context.locationId}
+          tableName={context.tableName}
+          onVerified={() => {
+            setPinVerified(true);
+            void refreshContext();
+          }}
+        />
+      )}
+
+      {!showPinGate && (
+        <>
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -397,6 +440,8 @@ export function CheckoutForm({
                 amount: formatPrice(computedTotal, currency),
               })}
       </Button>
+        </>
+      )}
     </div>
   );
 }

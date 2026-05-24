@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { type PaymentMethod } from "@/lib/constants";
-import { validateTableSession } from "@/lib/orders/validate-table-session";
+import { isDemoGuestTableToken } from "@/lib/demo-guest";
+import { assertGuestCanPlaceOrder } from "@/lib/orders/guest-order-access";
+import {
+  resolveTableForOrdering,
+  validateTableSession,
+} from "@/lib/orders/validate-table-session";
+import {
+  getActiveTableSession,
+  getPendingApprovalOrder,
+} from "@/lib/sessions/session-devices";
 import {
   MAX_ITEMS_PER_ORDER,
   MAX_QUANTITY_PER_ITEM,
@@ -50,8 +59,14 @@ const cartItemSchema = z.object({
 });
 
 export const createOrderSchema = z.object({
-  sessionToken: zSessionToken(),
+  sessionToken: zSessionToken().optional(),
   tableToken: zTableToken(),
+  deviceFingerprint: z.string().min(8).max(128),
+  deviceToken: z.string().min(16).max(256).optional(),
+  tablePin: z
+    .string()
+    .regex(/^\d{4}$/)
+    .optional(),
   items: z.array(cartItemSchema).min(1).max(MAX_ITEMS_PER_ORDER),
   notes: zOrderNotesOptional(500),
   guestEmail: zOptionalEmailNormalized(),
@@ -142,19 +157,64 @@ function isPaymentMethodAllowed(
 
 export async function createOrderFromCart(input: CreateOrderInput) {
   const admin = createAdminClient();
+  const isDemo = isDemoGuestTableToken(input.tableToken);
 
-  const sessionResult = await validateTableSession(
-    admin,
-    input.tableToken,
-    input.sessionToken
-  );
+  let tableRow: {
+    id: string;
+    name: string;
+    location_id: string;
+    zone_id: string | null;
+    assigned_staff_id: string | null;
+  };
+  let orgRow: {
+    id: string;
+    default_tax_percent: number;
+    currency: string;
+    stripe_account_id: string | null;
+    stripe_onboarded: boolean;
+  };
+  let locationRow: {
+    id: string;
+    org_id: string;
+    accepting_orders: boolean;
+    ordering_enabled: boolean;
+    payment_online_enabled: boolean;
+    payment_at_bar_enabled: boolean;
+    payment_card_at_table_enabled: boolean;
+  };
+  let sessionRow!: {
+    id: string;
+    session_token: string;
+    table_id: string;
+    location_id: string;
+  };
 
-  if ("error" in sessionResult) {
-    return { error: sessionResult.error, status: sessionResult.status };
+  if (isDemo) {
+    if (!input.sessionToken) {
+      return { error: "Session required.", status: 401 };
+    }
+    const sessionResult = await validateTableSession(
+      admin,
+      input.tableToken,
+      input.sessionToken
+    );
+    if ("error" in sessionResult) {
+      return { error: sessionResult.error, status: sessionResult.status };
+    }
+    tableRow = sessionResult.data.table;
+    sessionRow = sessionResult.data.session;
+    orgRow = sessionResult.data.org;
+    locationRow = sessionResult.data.location;
+  } else {
+    const tableResult = await resolveTableForOrdering(admin, input.tableToken);
+    if ("error" in tableResult) {
+      return { error: tableResult.error, status: tableResult.status };
+    }
+    tableRow = tableResult.data.table;
+    orgRow = tableResult.data.org;
+    locationRow = tableResult.data.location;
   }
 
-  const { table: tableRow, session: sessionRow, org: orgRow, location: locationRow } =
-    sessionResult.data;
   const taxPercent = Number(orgRow.default_tax_percent ?? 19);
   const currency = orgRow.currency ?? "EUR";
 
@@ -178,24 +238,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   if (itemsError) {
     return { error: itemsError, status: 400 };
   }
-
-  const { data: pendingOrder } = await admin
-    .from("orders")
-    .select("id, subtotal, tax_percent, payment_status, stripe_payment_intent_id")
-    .eq("session_id", sessionRow.id)
-    .eq("status", "pending")
-    .in("payment_status", ["pending", "processing"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const pendingRow = pendingOrder as {
-    id: string;
-    subtotal: number;
-    tax_percent: number;
-    payment_status: string;
-    stripe_payment_intent_id: string | null;
-  } | null;
 
   const productIds = [...new Set(input.items.map((i) => i.productId))];
   const modifierIds = [
@@ -448,6 +490,142 @@ export async function createOrderFromCart(input: CreateOrderInput) {
 
     return null;
   }
+
+  if (!isDemo) {
+    const activeSession = await getActiveTableSession(admin, tableRow.id);
+
+    if (!activeSession) {
+      const existingPending = await getPendingApprovalOrder(admin, tableRow.id);
+      if (existingPending) {
+        return { error: "awaiting_approval", status: 409 };
+      }
+
+      const { data: approvalOrderNumber, error: approvalNumError } =
+        await admin.rpc("get_next_order_number", {
+          p_location_id: tableRow.location_id,
+        });
+
+      if (approvalNumError || approvalOrderNumber == null) {
+        return { error: "Order number could not be generated.", status: 500 };
+      }
+
+      const prepMinutes = 8;
+      const sanitizedNotes = input.notes
+        ? sanitizeOrderNotes(input.notes)
+        : null;
+
+      const { data: approvalOrder, error: approvalOrderError } = await admin
+        .from("orders")
+        .insert({
+          location_id: tableRow.location_id,
+          table_id: tableRow.id,
+          session_id: null,
+          order_number: approvalOrderNumber as number,
+          subtotal,
+          tax_percent: effectiveTaxPercent,
+          tax_amount: taxAmount,
+          total: finalTotal,
+          discount_amount: discountAmount,
+          promo_code_id: promoCodeId,
+          is_takeaway: input.isTakeaway,
+          notes: sanitizedNotes,
+          estimated_prep_minutes: prepMinutes,
+          status: "pending_approval",
+          requires_session_open: true,
+          device_fingerprint: input.deviceFingerprint,
+          payment_status: "pending",
+          payment_method: input.paymentMethod,
+          tip_amount: 0,
+          tip_staff_id: null,
+          order_source: "qr",
+        })
+        .select("id, order_number, total, tax_percent")
+        .single();
+
+      if (approvalOrderError || !approvalOrder) {
+        return { error: "Order could not be created.", status: 500 };
+      }
+
+      const approvalRow = approvalOrder as {
+        id: string;
+        order_number: number;
+        total: number;
+        tax_percent: number;
+      };
+
+      const saveApprovalError = await saveOrderItems(approvalRow.id);
+      if (saveApprovalError) {
+        await admin.from("orders").delete().eq("id", approvalRow.id);
+        return { error: saveApprovalError.error, status: 500 };
+      }
+
+      logger.info("Order awaiting staff approval", {
+        orderId: approvalRow.id,
+        orderNumber: approvalRow.order_number,
+        locationId: tableRow.location_id,
+      });
+
+      return {
+        data: {
+          orderId: approvalRow.id,
+          orderNumber: approvalRow.order_number,
+          total: approvalRow.total,
+          taxPercent: approvalRow.tax_percent,
+          tableName: tableRow.name,
+          currency,
+          orgId: orgRow.id,
+          locationId: tableRow.location_id,
+          awaitingApproval: true as const,
+        },
+      };
+    }
+
+    if (!input.sessionToken) {
+      return { error: "Session required.", status: 401 };
+    }
+
+    const access = await assertGuestCanPlaceOrder(admin, {
+      tableToken: input.tableToken,
+      sessionToken: input.sessionToken,
+      deviceFingerprint: input.deviceFingerprint,
+      deviceToken: input.deviceToken,
+      tablePin: input.tablePin,
+    });
+
+    if (!access.ok) {
+      return { error: access.error, status: access.status };
+    }
+
+    const sessionResult = await validateTableSession(
+      admin,
+      input.tableToken,
+      input.sessionToken
+    );
+
+    if ("error" in sessionResult) {
+      return { error: sessionResult.error, status: sessionResult.status };
+    }
+
+    sessionRow = sessionResult.data.session;
+  }
+
+  const { data: pendingOrder } = await admin
+    .from("orders")
+    .select("id, subtotal, tax_percent, payment_status, stripe_payment_intent_id")
+    .eq("session_id", sessionRow.id)
+    .eq("status", "pending")
+    .in("payment_status", ["pending", "processing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const pendingRow = pendingOrder as {
+    id: string;
+    subtotal: number;
+    tax_percent: number;
+    payment_status: string;
+    stripe_payment_intent_id: string | null;
+  } | null;
 
   if (pendingRow) {
     const { error: clearError } = await admin

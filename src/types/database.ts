@@ -202,9 +202,24 @@ type Tables = {
     location_id: string;
     session_token: string;
     status: "active" | "closed";
+    bill_status: "open" | "settled" | "void";
+    order_pin_hash: string | null;
+    order_pin_set_at: string | null;
+    approved_by_staff_id: string | null;
     opened_at: string;
     closed_at: string | null;
     guest_email: string | null;
+  };
+  session_devices: {
+    id: string;
+    session_id: string;
+    device_fingerprint: string;
+    device_token: string;
+    pin_verified_at: string;
+    last_seen_at: string;
+    revoked_at: string | null;
+    user_agent: string | null;
+    created_at: string;
   };
   orders: {
     id: string;
@@ -213,6 +228,7 @@ type Tables = {
     session_id: string | null;
     order_number: number;
     status:
+      | "pending_approval"
       | "pending"
       | "accepted"
       | "preparing"
@@ -256,6 +272,8 @@ type Tables = {
     discount_amount: number;
     created_by_staff_id: string | null;
     order_source: "qr" | "staff" | "kiosk";
+    device_fingerprint: string | null;
+    requires_session_open: boolean;
     created_at: string;
     updated_at: string;
   };
@@ -322,6 +340,8 @@ type Tables = {
     id: string;
     action: string;
     order_id: string | null;
+    session_id: string | null;
+    table_id: string | null;
     staff_id: string | null;
     amount: number | null;
     reason: string | null;

@@ -106,6 +106,7 @@ function DraggableOrderCard({
   busy,
   onAccept,
   onReject,
+  onApproveAccess,
   onStartPreparing,
   onMarkReady,
   onMarkDelivered,
@@ -119,6 +120,7 @@ function DraggableOrderCard({
   busy: boolean;
   onAccept: () => void;
   onReject: () => void;
+  onApproveAccess?: () => void;
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onMarkDelivered: () => void;
@@ -142,6 +144,7 @@ function DraggableOrderCard({
         busy={busy}
         onAccept={onAccept}
         onReject={onReject}
+        onApproveAccess={onApproveAccess}
         onStartPreparing={onStartPreparing}
         onMarkReady={onMarkReady}
         onMarkDelivered={onMarkDelivered}
@@ -209,6 +212,7 @@ export function OrderBoard() {
       .eq("location_id", locationId)
       .gte("created_at", startOfTodayIso())
       .in("status", [
+        "pending_approval",
         "pending",
         "accepted",
         "preparing",
@@ -314,6 +318,53 @@ export function OrderBoard() {
       }
     },
     [fetchOrders, refreshAlerts]
+  );
+
+  const approveAccess = useCallback(
+    async (orderId: string) => {
+      setBusyId(orderId);
+      try {
+        const res = await fetch(`/api/orders/${orderId}/approve-access`, {
+          method: "POST",
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error ?? "Approval failed");
+        }
+        toast.success("Table opened — order sent to kitchen");
+        await fetchOrders();
+        await refreshAlerts();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Approval failed");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [fetchOrders, refreshAlerts]
+  );
+
+  const rejectAccess = useCallback(
+    async (orderId: string, rejectionReason?: string) => {
+      setBusyId(orderId);
+      try {
+        const res = await fetch(`/api/orders/${orderId}/approve-access`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rejectionReason }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error ?? "Reject failed");
+        }
+        toast.success("Order declined");
+        await fetchOrders();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Reject failed");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [fetchOrders]
   );
 
   const refundOrder = useCallback(
@@ -424,7 +475,14 @@ export function OrderBoard() {
     const handlers = {
       busy: busyId === order.id,
       onAccept: () => patchOrder(order.id, "accepted"),
-      onReject: () => setRejectTarget(order),
+      onReject: () =>
+        order.status === "pending_approval"
+          ? rejectAccess(order.id)
+          : setRejectTarget(order),
+      onApproveAccess:
+        order.status === "pending_approval"
+          ? () => approveAccess(order.id)
+          : undefined,
       onStartPreparing: () => patchOrder(order.id, "preparing"),
       onMarkReady: () => patchOrder(order.id, "ready"),
       onMarkDelivered: () => patchOrder(order.id, "delivered"),

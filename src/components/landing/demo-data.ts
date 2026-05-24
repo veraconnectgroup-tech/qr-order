@@ -293,6 +293,8 @@ function demoOrder(
     discount_amount: 0,
     created_by_staff_id: null,
     order_source: "qr",
+    device_fingerprint: null,
+    requires_session_open: false,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

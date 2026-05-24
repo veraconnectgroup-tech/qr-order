@@ -1,4 +1,3 @@
-import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type AdminClient = SupabaseClient;
@@ -34,6 +33,73 @@ export type ValidatedTableSession = {
     stripe_onboarded: boolean;
   };
 };
+
+export async function resolveTableForOrdering(
+  admin: AdminClient,
+  tableToken: string
+): Promise<{ data: ValidatedTableSession } | { error: string; status: number }> {
+  const { data: table } = await admin
+    .from("tables")
+    .select("id, name, location_id, zone_id, assigned_staff_id")
+    .eq("qr_token", tableToken)
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .single();
+
+  if (!table) {
+    return { error: "Invalid QR code", status: 404 };
+  }
+
+  const tableRow = table as ValidatedTableSession["table"];
+
+  const { data: location } = await admin
+    .from("locations")
+    .select(
+      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+    )
+    .eq("id", tableRow.location_id)
+    .single();
+
+  if (!location) {
+    return { error: "Location not found", status: 404 };
+  }
+
+  const locationRow = location as ValidatedTableSession["location"];
+
+  if (!locationRow.ordering_enabled) {
+    return { error: "Online ordering is not available.", status: 403 };
+  }
+
+  if (!locationRow.accepting_orders) {
+    return { error: "Ordering is temporarily paused.", status: 403 };
+  }
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select(
+      "id, default_tax_percent, currency, stripe_account_id, stripe_onboarded"
+    )
+    .eq("id", locationRow.org_id)
+    .single();
+
+  if (!org) {
+    return { error: "Organization not found", status: 404 };
+  }
+
+  return {
+    data: {
+      table: tableRow,
+      session: {
+        id: "",
+        session_token: "",
+        table_id: tableRow.id,
+        location_id: tableRow.location_id,
+      },
+      location: locationRow,
+      org: org as ValidatedTableSession["org"],
+    },
+  };
+}
 
 export async function validateTableSession(
   admin: AdminClient,
@@ -88,15 +154,12 @@ export async function validateTableSession(
     return { error: "Organization not found", status: 404 };
   }
 
-  const maxAgeMs = SESSION_MAX_AGE_HOURS * 60 * 60 * 1000;
-  const sessionCutoff = new Date(Date.now() - maxAgeMs).toISOString();
-
   const { data: session } = await admin
     .from("table_sessions")
-    .select("id, session_token, table_id, location_id, opened_at, status")
+    .select("id, session_token, table_id, location_id, opened_at, status, bill_status")
     .eq("session_token", sessionToken)
     .eq("status", "active")
-    .gte("opened_at", sessionCutoff)
+    .eq("bill_status", "open")
     .maybeSingle();
 
   if (!session) {

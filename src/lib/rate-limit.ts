@@ -17,6 +17,7 @@ export type RateLimitScope =
   | "waiter-calls"
   | "feedback"
   | "push"
+  | "pin-verify"
   | "default";
 
 const SCOPE_BY_USER = new Set<RateLimitScope>(["export", "fiscal"]);
@@ -55,6 +56,7 @@ const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
   "waiter-calls": createScopeLimiter("waiter-calls", 3, "1 m"),
   feedback: createScopeLimiter("feedback", 5, "1 m"),
   push: createScopeLimiter("push", 10, "1 m"),
+  "pin-verify": createScopeLimiter("pin-verify", 5, "15 m"),
   default: createScopeLimiter("default", 60, "1 m"),
 };
 
@@ -76,6 +78,7 @@ const MEMORY_SCOPE_CONFIG: Record<
   "waiter-calls": { limit: 3, windowMs: 60 * 1000 },
   feedback: { limit: 5, windowMs: 60 * 1000 },
   push: { limit: 10, windowMs: 60 * 1000 },
+  "pin-verify": { limit: 5, windowMs: 15 * 60 * 1000 },
   default: { limit: 60, windowMs: 60 * 1000 },
 };
 

@@ -12,7 +12,7 @@ import {
   zOrderNotesOptional,
   zUuid,
 } from "@/lib/security/zod-fields";
-import { findOrCreateTableSession } from "@/lib/sessions/find-or-create-table-session";
+import { createActiveSessionWithPin } from "@/lib/sessions/session-devices";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   calculateOrderTaxFromItems,
@@ -340,12 +340,12 @@ export async function createStaffOrder(
     return { error: totalError, status: 400 };
   }
 
-  // 8. Find or create table_session
-  const sessionResult = await findOrCreateTableSession(
-    admin,
-    tableRow.id,
-    locationRow.id
-  );
+  // 8. Open shared table session (staff bypasses guest approval)
+  const sessionResult = await createActiveSessionWithPin(admin, {
+    tableId: tableRow.id,
+    locationId: locationRow.id,
+    approvedByStaffId: staff.id,
+  });
 
   if ("error" in sessionResult) {
     return { error: sessionResult.error, status: sessionResult.status };

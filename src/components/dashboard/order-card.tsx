@@ -28,7 +28,7 @@ export const ORDER_COLUMNS: OrderColumnDef[] = [
     label: "New",
     border: "border-t-orange-500",
     badge: "bg-orange-500 text-white",
-    statuses: ["pending"],
+    statuses: ["pending", "pending_approval"],
   },
   {
     id: "preparing",
@@ -89,7 +89,7 @@ function statusPillClass(columnId: OrderColumnDef["id"]) {
 export function getOrderColumnId(
   status: string
 ): OrderColumnDef["id"] {
-  if (status === "pending") return "new";
+  if (status === "pending" || status === "pending_approval") return "new";
   if (status === "preparing" || status === "accepted") return "preparing";
   if (status === "ready") return "ready";
   return "delivered";
@@ -155,6 +155,7 @@ export function OrderCard({
   busy,
   onAccept,
   onReject,
+  onApproveAccess,
   onStartPreparing,
   onMarkReady,
   onMarkDelivered,
@@ -171,6 +172,7 @@ export function OrderCard({
   busy: boolean;
   onAccept: () => void;
   onReject: () => void;
+  onApproveAccess?: () => void;
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onMarkDelivered: () => void;
@@ -399,7 +401,28 @@ export function OrderCard({
         </div>
       )}
 
-      {columnId === "new" && (
+      {columnId === "new" && order.status === "pending_approval" && (
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            disabled={busy || !interactive}
+            onClick={onReject}
+            className="flex-1 rounded-lg bg-zinc-800 px-3 py-3 text-sm text-zinc-400 transition hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            disabled={busy || !interactive || !onApproveAccess}
+            onClick={onApproveAccess}
+            className="flex-1 rounded-lg bg-orange-500 px-3 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 touch-manipulation sm:py-2"
+          >
+            Approve table ►
+          </button>
+        </div>
+      )}
+
+      {columnId === "new" && order.status === "pending" && (
         <div className="mt-3 flex gap-2">
           <button
             type="button"

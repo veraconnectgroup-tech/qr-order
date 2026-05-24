@@ -9,13 +9,24 @@ export type TableSessionPayload = {
   locationId: string;
 };
 
+export type TableSessionResponse =
+  | ({
+      sessionStatus: "active";
+    } & TableSessionPayload)
+  | {
+      sessionStatus: "none";
+      tableId: string;
+      tableName: string;
+      locationId: string;
+    };
+
 export function isSessionExpiredError(message: string) {
   return /session expired or invalid/i.test(message);
 }
 
 export async function fetchTableSession(
   tableToken: string
-): Promise<TableSessionPayload | null> {
+): Promise<TableSessionResponse | null> {
   const res = await fetch(
     `/api/tables/${encodeURIComponent(tableToken)}/session`,
     {
@@ -27,7 +38,7 @@ export async function fetchTableSession(
 
   if (!res.ok) return null;
 
-  const json = (await res.json()) as { data?: TableSessionPayload };
+  const json = (await res.json()) as { data?: TableSessionResponse };
   return json.data ?? null;
 }
 
@@ -50,14 +61,14 @@ export function syncTableSessionStores(
     .setSession(slug, tableToken, data.tableName, data.sessionToken);
 }
 
-/** Resolve or create an active table session and sync guest + cart stores. */
+/** Sync stores when an active session already exists (never creates one). */
 export async function ensureTableSession(
   slug: string,
   tableToken: string,
   tableId?: string | null
 ): Promise<string | null> {
   const data = await fetchTableSession(tableToken);
-  if (!data) return null;
+  if (!data || data.sessionStatus !== "active") return null;
 
   syncTableSessionStores(slug, tableToken, data, tableId);
   return data.sessionToken;

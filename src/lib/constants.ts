@@ -1,6 +1,7 @@
 export const APP_NAME = "QR Order";
 
 export const ORDER_STATUSES = [
+  "pending_approval",
   "pending",
   "accepted",
   "preparing",

@@ -5,15 +5,16 @@ import {
   getDemoGuestSession,
   isDemoGuestTableToken,
 } from "@/lib/demo-guest";
+import { getActiveTableSession } from "@/lib/sessions/session-devices";
 import { withRateLimit } from "@/lib/rate-limit";
 import { zTableToken } from "@/lib/security/zod-fields";
-import { findOrCreateTableSession } from "@/lib/sessions/find-or-create-table-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
   tableToken: zTableToken(),
 });
 
+/** Returns existing active session only — never auto-creates. */
 export const POST = withErrorHandler(
   "tables-token-session-post",
   async (req, ctx) => {
@@ -57,19 +58,21 @@ export const POST = withErrorHandler(
       location_id: string;
     };
 
-    const sessionResult = await findOrCreateTableSession(
-      admin,
-      tableRow.id,
-      tableRow.location_id
-    );
+    const session = await getActiveTableSession(admin, tableRow.id);
 
-    if ("error" in sessionResult) {
-      return apiError(sessionResult.error, sessionResult.status);
+    if (!session) {
+      return apiSuccess({
+        sessionStatus: "none" as const,
+        tableId: tableRow.id,
+        tableName: tableRow.name,
+        locationId: tableRow.location_id,
+      });
     }
 
     return apiSuccess({
-      sessionId: sessionResult.sessionId,
-      sessionToken: sessionResult.sessionToken,
+      sessionStatus: "active" as const,
+      sessionId: session.id,
+      sessionToken: session.session_token,
       tableId: tableRow.id,
       tableName: tableRow.name,
       locationId: tableRow.location_id,
