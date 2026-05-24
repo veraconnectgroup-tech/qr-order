@@ -1,0 +1,81 @@
+import type { MenuSection } from "@/lib/menu-section";
+import type { CreateOrderInput } from "@/lib/orders/create-order";
+
+export type OrderCreateMode =
+  | { kind: "normal"; sessionId: string }
+  | { kind: "approval"; deviceFingerprint: string }
+  | { kind: "demo"; sessionId: string };
+
+export type ResolvedContext = {
+  table: {
+    id: string;
+    name: string;
+    location_id: string;
+    zone_id: string | null;
+    assigned_staff_id: string | null;
+  };
+  location: {
+    id: string;
+    org_id: string;
+    accepting_orders: boolean;
+    ordering_enabled: boolean;
+    payment_online_enabled: boolean;
+    payment_at_bar_enabled: boolean;
+    payment_card_at_table_enabled: boolean;
+  };
+  org: {
+    id: string;
+    default_tax_percent: number;
+    currency: string;
+    stripe_onboarded: boolean;
+    stripe_account_id: string | null;
+  };
+};
+
+export type ValidatedLineItemModifier = {
+  modifierId: string;
+  modifierName: string;
+  price: number;
+};
+
+export type ValidatedLineItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  notes: string;
+  menuSection: MenuSection;
+  productTaxRate: number | null;
+  taxRate: number;
+  modifiers: ValidatedLineItemModifier[];
+  itemTotal: number;
+};
+
+export type OrderPricing = {
+  subtotal: number;
+  taxAmount: number;
+  effectiveTaxPercent: number;
+  discountAmount: number;
+  finalTotal: number;
+  promoCodeId: string | null;
+};
+
+export type OrderDraft = {
+  context: ResolvedContext;
+  lineItems: ValidatedLineItem[];
+  pricing: OrderPricing;
+  mode: OrderCreateMode;
+  input: CreateOrderInput;
+};
+
+export type CreateOrderSuccess = {
+  orderId: string;
+  orderNumber: number;
+  total: number;
+  taxPercent: number;
+  tableName: string;
+  currency: string;
+  orgId: string;
+  locationId: string;
+  awaitingApproval?: true;
+};

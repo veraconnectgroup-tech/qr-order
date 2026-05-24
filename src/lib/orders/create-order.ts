@@ -1,24 +1,21 @@
 import { z } from "zod";
 import { type PaymentMethod } from "@/lib/constants";
 import { isDemoGuestTableToken } from "@/lib/demo-guest";
-import { assertGuestCanPlaceOrder } from "@/lib/orders/guest-order-access";
-import {
-  resolveTableForOrdering,
-  validateTableSession,
-} from "@/lib/orders/validate-table-session";
-import { assertDeviceNotBlocked } from "@/lib/sessions/order-blocks";
-import {
-  getActiveTableSession,
-  getPendingApprovalOrder,
-} from "@/lib/sessions/session-devices";
+import { assertOrderAccess } from "@/lib/orders/create/pipeline/assert-access";
+import { computeOrderPricing } from "@/lib/orders/create/pipeline/compute-pricing";
+import { emitOrderSideEffects } from "@/lib/orders/create/pipeline/emit-side-effects";
+import { toLegacyOrderError } from "@/lib/orders/create/pipeline/errors";
+import { persistOrder } from "@/lib/orders/create/pipeline/persist-order";
+import { resolveOrderContext } from "@/lib/orders/create/pipeline/resolve-context";
+import { validateOrderCart } from "@/lib/orders/create/pipeline/validate-cart";
+import type { OrderCreateMode, OrderDraft, ResolvedContext } from "@/lib/orders/create/types";
+import { err, ok, type Result } from "@/lib/orders/create/result";
+import type { OrderCreateError } from "@/lib/orders/create/result";
+import { validateTableSession } from "@/lib/orders/validate-table-session";
 import {
   MAX_ITEMS_PER_ORDER,
   MAX_QUANTITY_PER_ITEM,
-  PRICE_EPSILON,
-  validateOrderItems,
-  validateOrderTotal,
 } from "@/lib/security/order-limits";
-import { sanitizeOrderNotes } from "@/lib/security/sanitize";
 import {
   zOptionalEmailNormalized,
   zOrderNotesNullish,
@@ -26,23 +23,9 @@ import {
   zSessionToken,
   zTableToken,
 } from "@/lib/security/zod-fields";
-import { serveSizeOrderNote } from "@/lib/serve-size";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  calculateOrderTaxFromItems,
-  resolveItemTaxRate,
-} from "@/lib/tax/vat";
 import { logger } from "@/lib/logger";
-import {
-  findOrderByIdempotencyKey,
-  isIdempotencyUniqueViolation,
-} from "@/lib/orders/idempotency";
-import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
-import {
-  validatePromoCode,
-  type PromoCodeRow,
-  type PromoErrorCode,
-} from "@/lib/promo/validate-promo";
+import type { IdempotentOrderData } from "@/lib/orders/idempotency";
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -82,65 +65,6 @@ export const createOrderSchema = z.object({
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
-const PROMO_ERROR_MESSAGES: Record<PromoErrorCode, string> = {
-  not_found: "Invalid promo code.",
-  inactive: "This promo code is not active.",
-  not_yet_valid: "This promo code is not valid yet.",
-  expired: "This promo code has expired.",
-  min_order: "Order total does not meet the minimum for this promo code.",
-  max_uses: "This promo code has reached its usage limit.",
-};
-
-async function resolvePromoDiscount(
-  admin: ReturnType<typeof createAdminClient>,
-  promoCodeId: string | undefined,
-  locationId: string,
-  preDiscountTotal: number
-): Promise<
-  | { discountAmount: number; promoCodeId: string | null }
-  | { error: string; status: number }
-> {
-  if (!promoCodeId) {
-    return { discountAmount: 0, promoCodeId: null };
-  }
-
-  const { data: promo } = await admin
-    .from("promo_codes")
-    .select("*")
-    .eq("id", promoCodeId)
-    .eq("location_id", locationId)
-    .maybeSingle();
-
-  const result = validatePromoCode(promo as PromoCodeRow | null, preDiscountTotal);
-  if (!result.valid) {
-    return {
-      error: PROMO_ERROR_MESSAGES[result.error],
-      status: 400,
-    };
-  }
-
-  return {
-    discountAmount: result.discountAmount,
-    promoCodeId: result.promoCodeId,
-  };
-}
-
-async function consumePromoCode(
-  admin: ReturnType<typeof createAdminClient>,
-  promoCodeId: string
-) {
-  const { data, error } = await admin.rpc("increment_promo_used_count", {
-    p_promo_id: promoCodeId,
-  });
-
-  if (error || !data) {
-    logger.warn("Promo code usage increment failed", {
-      promoCodeId,
-      error: error?.message,
-    });
-  }
-}
-
 function isPaymentMethodAllowed(
   method: PaymentMethod,
   location: {
@@ -158,48 +82,46 @@ function isPaymentMethodAllowed(
   return location.payment_card_at_table_enabled;
 }
 
+export type CreateOrderResult =
+  | { data: IdempotentOrderData; error?: never }
+  | {
+      data?: never;
+      error: string;
+      status: number;
+      products?: string[];
+      blockedUntil?: string;
+    };
+
+async function resolveCreateMode(
+  admin: ReturnType<typeof createAdminClient>,
+  input: CreateOrderInput,
+  context: ResolvedContext,
+  isDemo: boolean,
+  demoSessionId?: string
+): Promise<Result<OrderCreateMode, OrderCreateError>> {
+  if (isDemo) {
+    return ok({ kind: "demo", sessionId: demoSessionId! });
+  }
+
+  return assertOrderAccess(admin, input, context, isDemo);
+}
+
 export async function createOrderFromCart(
   input: CreateOrderInput,
   options?: { idempotencyKey?: string | null }
-) {
+): Promise<CreateOrderResult> {
   const admin = createAdminClient();
   const idempotencyKey = options?.idempotencyKey ?? null;
   const isDemo = isDemoGuestTableToken(input.tableToken);
 
-  let tableRow: {
-    id: string;
-    name: string;
-    location_id: string;
-    zone_id: string | null;
-    assigned_staff_id: string | null;
-  };
-  let orgRow: {
-    id: string;
-    default_tax_percent: number;
-    currency: string;
-    stripe_account_id: string | null;
-    stripe_onboarded: boolean;
-  };
-  let locationRow: {
-    id: string;
-    org_id: string;
-    accepting_orders: boolean;
-    ordering_enabled: boolean;
-    payment_online_enabled: boolean;
-    payment_at_bar_enabled: boolean;
-    payment_card_at_table_enabled: boolean;
-  };
-  let sessionRow!: {
-    id: string;
-    session_token: string;
-    table_id: string;
-    location_id: string;
-  };
+  let orderContext: ResolvedContext;
+  let demoSessionId: string | undefined;
 
   if (isDemo) {
     if (!input.sessionToken) {
       return { error: "Session required.", status: 401 };
     }
+
     const sessionResult = await validateTableSession(
       admin,
       input.tableToken,
@@ -208,549 +130,81 @@ export async function createOrderFromCart(
     if ("error" in sessionResult) {
       return { error: sessionResult.error, status: sessionResult.status };
     }
-    tableRow = sessionResult.data.table;
-    sessionRow = sessionResult.data.session;
-    orgRow = sessionResult.data.org;
-    locationRow = sessionResult.data.location;
+
+    orderContext = {
+      table: sessionResult.data.table,
+      location: sessionResult.data.location,
+      org: sessionResult.data.org,
+    };
+    demoSessionId = sessionResult.data.session.id;
   } else {
-    const tableResult = await resolveTableForOrdering(admin, input.tableToken);
-    if ("error" in tableResult) {
-      return { error: tableResult.error, status: tableResult.status };
+    const contextResult = await resolveOrderContext(admin, input.tableToken);
+    if (!contextResult.ok) {
+      return toLegacyOrderError(contextResult.error);
     }
-    tableRow = tableResult.data.table;
-    orgRow = tableResult.data.org;
-    locationRow = tableResult.data.location;
+    orderContext = contextResult.value;
   }
 
-  const taxPercent = Number(orgRow.default_tax_percent ?? 19);
-  const currency = orgRow.currency ?? "EUR";
+  const { table: tableRow, location: locationRow, org: orgRow } = orderContext;
 
-  if (
-    !isPaymentMethodAllowed(
-      input.paymentMethod,
-      locationRow,
-      orgRow
-    )
-  ) {
+  if (!isPaymentMethodAllowed(input.paymentMethod, locationRow, orgRow)) {
     return { error: "This payment method is not available.", status: 400 };
   }
 
-  const itemsError = validateOrderItems(
-    input.items.map((i) => ({
-      productId: i.productId,
-      quantity: i.quantity,
-      productName: i.productName,
-    }))
-  );
-  if (itemsError) {
-    return { error: itemsError, status: 400 };
+  const cartResult = await validateOrderCart(admin, input, orderContext);
+  if (!cartResult.ok) {
+    return toLegacyOrderError(cartResult.error);
   }
 
-  const productIds = [...new Set(input.items.map((i) => i.productId))];
-  const modifierIds = [
-    ...new Set(input.items.flatMap((i) => i.modifiers.map((m) => m.modifierId))),
-  ];
-
-  const { data: products } = await admin
-    .from("products")
-    .select("id, name, price, is_available, location_id, category_id, tax_rate")
-    .in("id", productIds)
-    .eq("location_id", tableRow.location_id)
-    .is("deleted_at", null);
-
-  const allProducts = (products ?? []) as Array<{
-    id: string;
-    name: string;
-    price: number;
-    is_available: boolean;
-    location_id: string;
-    category_id: string;
-    tax_rate: number | null;
-  }>;
-
-  const unavailableNames = productIds
-    .map((id) => allProducts.find((p) => p.id === id))
-    .filter((p) => !p || !p.is_available)
-    .map((p) => p?.name ?? "Unknown product");
-
-  if (unavailableNames.length > 0) {
-    return {
-      error: "unavailable_products",
-      status: 400,
-      products: unavailableNames,
-    };
-  }
-
-  const productMap = new Map(allProducts.map((p) => [p.id, p]));
-
-  if (productMap.size !== productIds.length) {
-    return { error: "One or more products are unavailable.", status: 400 };
-  }
-
-  const categoryIds = [
-    ...new Set([...productMap.values()].map((p) => p.category_id)),
-  ];
-
-  const { data: categories } = await admin
-    .from("categories")
-    .select("id, menu_section")
-    .in("id", categoryIds)
-    .is("deleted_at", null);
-
-  const categorySectionMap = new Map(
-    (categories ?? []).map((c) => [
-      (c as { id: string }).id,
-      (c as { menu_section: string }).menu_section as
-        | "drinks"
-        | "food"
-        | "desserts",
-    ])
-  );
-
-  let modifierMap = new Map<
-    string,
-    { id: string; name: string; price: number; is_available: boolean }
-  >();
-
-  if (modifierIds.length > 0) {
-    const { data: modifiers } = await admin
-      .from("modifiers")
-      .select("id, name, price, is_available, group_id")
-      .in("id", modifierIds)
-      .eq("is_available", true);
-
-    const groupIds = [
-      ...new Set(
-        (modifiers ?? []).map((m) => (m as { group_id: string }).group_id)
-      ),
-    ];
-
-    const { data: groups } = await admin
-      .from("modifier_groups")
-      .select("id, product_id")
-      .in("id", groupIds);
-
-    const allowedGroupIds = new Set(
-      (groups ?? [])
-        .filter((g) =>
-          productIds.includes((g as { product_id: string }).product_id)
-        )
-        .map((g) => (g as { id: string }).id)
-    );
-
-    const validModifiers = (modifiers ?? []).filter((m) =>
-      allowedGroupIds.has((m as { group_id: string }).group_id)
-    );
-
-    modifierMap = new Map(
-      validModifiers.map((m) => [
-        (m as { id: string }).id,
-        m as { id: string; name: string; price: number; is_available: boolean },
-      ])
-    );
-
-    if (modifierMap.size !== modifierIds.length) {
-      return { error: "One or more modifiers are unavailable.", status: 400 };
-    }
-  }
-
-  for (const item of input.items) {
-    const product = productMap.get(item.productId)!;
-    const serverUnitPrice = Number(product.price);
-
-    if (Math.abs(item.unitPrice - serverUnitPrice) > PRICE_EPSILON) {
-      return {
-        error: "Price mismatch detected. Please refresh the menu.",
-        status: 400,
-      };
-    }
-
-    for (const mod of item.modifiers) {
-      const serverMod = modifierMap.get(mod.modifierId);
-      if (!serverMod) continue;
-      if (Math.abs(mod.price - Number(serverMod.price)) > PRICE_EPSILON) {
-        return {
-          error: "Modifier price mismatch detected. Please refresh the menu.",
-          status: 400,
-        };
-      }
-    }
-  }
-
-  const validatedItems = input.items.map((item) => {
-    const product = productMap.get(item.productId)!;
-    const mods = item.modifiers.map((m) => {
-      const mod = modifierMap.get(m.modifierId)!;
-      return {
-        modifierId: mod.id,
-        modifierName: mod.name,
-        price: Number(mod.price),
-      };
-    });
-    const unitWithMods =
-      Number(product.price) + mods.reduce((s, m) => s + m.price, 0);
-    const itemTotal = unitWithMods * item.quantity;
-
-    const serveNote = serveSizeOrderNote(item.serveSize);
-    const combinedNotes = [serveNote, item.notes ? sanitizeOrderNotes(item.notes) : ""]
-      .filter(Boolean)
-      .join(" · ");
-
-    const menuSection =
-      categorySectionMap.get(product.category_id) ?? ("food" as const);
-    const productTaxRate =
-      product.tax_rate != null ? Number(product.tax_rate) : null;
-    const taxRate = resolveItemTaxRate({
-      productTaxRate,
-      menuSection,
-      isTakeaway: input.isTakeaway,
-      orgDefaultRate: taxPercent,
-    });
-
-    return {
-      ...item,
-      notes: combinedNotes,
-      productName: product.name,
-      menuSection,
-      productTaxRate,
-      taxRate,
-      modifiers: mods,
-      unitPrice: Number(product.price),
-      itemTotal,
-    };
+  const pricingResult = await computeOrderPricing(admin, {
+    lineItems: cartResult.value,
+    promoCodeId: input.promoCodeId,
+    locationId: tableRow.location_id,
+    orgDefaultTaxPercent: orgRow.default_tax_percent,
   });
-
-  const subtotal = validatedItems.reduce((s, i) => s + i.itemTotal, 0);
-  const taxResult = calculateOrderTaxFromItems(
-    validatedItems.map((item) => ({
-      lineTotal: item.itemTotal,
-      taxRate: item.taxRate,
-    }))
-  );
-  const taxAmount = taxResult.taxAmount;
-  const effectiveTaxPercent = taxResult.effectiveTaxPercent || taxPercent;
-  const total = taxResult.total;
-
-  const totalError = validateOrderTotal(total);
-  if (totalError) {
-    return { error: totalError, status: 400 };
+  if (!pricingResult.ok) {
+    return toLegacyOrderError(pricingResult.error);
   }
 
-  const promoResult = await resolvePromoDiscount(
+  const modeResult = await resolveCreateMode(
     admin,
-    input.promoCodeId,
-    tableRow.location_id,
-    total
+    input,
+    orderContext,
+    isDemo,
+    demoSessionId
   );
-  if ("error" in promoResult) {
-    return { error: promoResult.error, status: promoResult.status };
+  if (!modeResult.ok) {
+    return toLegacyOrderError(modeResult.error);
   }
 
-  const discountAmount = promoResult.discountAmount;
-  const promoCodeId = promoResult.promoCodeId;
-  const finalTotal = Math.max(0, Math.round((total - discountAmount) * 100) / 100);
-
-  async function saveOrderItems(orderId: string) {
-    for (const item of validatedItems) {
-      const unitWithMods =
-        item.unitPrice + item.modifiers.reduce((s, m) => s + m.price, 0);
-
-      const { data: orderItem, error: itemError } = await admin
-        .from("order_items")
-        .insert({
-          order_id: orderId,
-          product_id: item.productId,
-          product_name: item.productName,
-          quantity: item.quantity,
-          unit_price: unitWithMods,
-          notes: item.notes || null,
-          total: item.itemTotal,
-          menu_section: item.menuSection,
-          tax_rate: item.taxRate,
-        })
-        .select("id")
-        .single();
-
-      if (itemError || !orderItem) {
-        return { error: "Order items could not be saved." as const };
-      }
-
-      const oi = orderItem as { id: string };
-
-      if (item.modifiers.length) {
-        const { error: modError } = await admin
-          .from("order_item_modifiers")
-          .insert(
-            item.modifiers.map((m) => ({
-              order_item_id: oi.id,
-              modifier_id: m.modifierId,
-              modifier_name: m.modifierName,
-              price: m.price,
-            }))
-          );
-
-        if (modError) {
-          return { error: "Order modifiers could not be saved." as const };
-        }
-      }
-    }
-
-    return null;
-  }
-
-  if (!isDemo) {
-    const blockCheck = await assertDeviceNotBlocked(
-      admin,
-      tableRow.id,
-      input.deviceFingerprint
-    );
-    if (!blockCheck.ok) {
-      return {
-        error: "device_blocked",
-        status: 403,
-        blockedUntil: blockCheck.blockedUntil,
-      };
-    }
-
-    const activeSession = await getActiveTableSession(admin, tableRow.id);
-
-    if (!activeSession) {
-      const existingPending = await getPendingApprovalOrder(admin, tableRow.id);
-      if (existingPending) {
-        return { error: "awaiting_approval", status: 409 };
-      }
-
-      const { data: approvalOrderNumber, error: approvalNumError } =
-        await admin.rpc("get_next_order_number", {
-          p_location_id: tableRow.location_id,
-        });
-
-      if (approvalNumError || approvalOrderNumber == null) {
-        return { error: "Order number could not be generated.", status: 500 };
-      }
-
-      const prepMinutes = 8;
-      const sanitizedNotes = input.notes
-        ? sanitizeOrderNotes(input.notes)
-        : null;
-
-      const { data: approvalOrder, error: approvalOrderError } = await admin
-        .from("orders")
-        .insert({
-          location_id: tableRow.location_id,
-          table_id: tableRow.id,
-          session_id: null,
-          order_number: approvalOrderNumber as number,
-          subtotal,
-          tax_percent: effectiveTaxPercent,
-          tax_amount: taxAmount,
-          total: finalTotal,
-          discount_amount: discountAmount,
-          promo_code_id: promoCodeId,
-          is_takeaway: input.isTakeaway,
-          notes: sanitizedNotes,
-          estimated_prep_minutes: prepMinutes,
-          status: "pending_approval",
-          requires_session_open: true,
-          device_fingerprint: input.deviceFingerprint,
-          payment_status: "pending",
-          payment_method: input.paymentMethod,
-          tip_amount: 0,
-          tip_staff_id: null,
-          order_source: "qr",
-          ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
-        })
-        .select("id, order_number, total, tax_percent")
-        .single();
-
-      if (approvalOrderError || !approvalOrder) {
-        if (
-          idempotencyKey &&
-          isIdempotencyUniqueViolation(approvalOrderError)
-        ) {
-          const existing = await findOrderByIdempotencyKey(
-            admin,
-            idempotencyKey
-          );
-          if (existing) return { data: existing };
-        }
-        return { error: "Order could not be created.", status: 500 };
-      }
-
-      const approvalRow = approvalOrder as {
-        id: string;
-        order_number: number;
-        total: number;
-        tax_percent: number;
-      };
-
-      const saveApprovalError = await saveOrderItems(approvalRow.id);
-      if (saveApprovalError) {
-        await admin.from("orders").delete().eq("id", approvalRow.id);
-        return { error: saveApprovalError.error, status: 500 };
-      }
-
-      await persistOrderSideEffects(admin, {
-        orderId: approvalRow.id,
-        locationId: tableRow.location_id,
-        orgId: orgRow.id,
-        orderNumber: approvalRow.order_number,
-        tableName: tableRow.name,
-        total: approvalRow.total,
-        paymentStatus: "pending",
-        orderSource: "qr",
-        phase: "approval_requested",
-      });
-
-      logger.info("Order awaiting staff approval", {
-        orderId: approvalRow.id,
-        orderNumber: approvalRow.order_number,
-        locationId: tableRow.location_id,
-      });
-
-      return {
-        data: {
-          orderId: approvalRow.id,
-          orderNumber: approvalRow.order_number,
-          total: approvalRow.total,
-          taxPercent: approvalRow.tax_percent,
-          tableName: tableRow.name,
-          currency,
-          orgId: orgRow.id,
-          locationId: tableRow.location_id,
-          awaitingApproval: true as const,
-        },
-      };
-    }
-
-    if (!input.sessionToken) {
-      return { error: "Session required.", status: 401 };
-    }
-
-    const access = await assertGuestCanPlaceOrder(admin, {
-      tableToken: input.tableToken,
-      sessionToken: input.sessionToken,
-      deviceFingerprint: input.deviceFingerprint,
-      deviceToken: input.deviceToken,
-      tablePin: input.tablePin,
-    });
-
-    if (!access.ok) {
-      return { error: access.error, status: access.status };
-    }
-
-    const sessionResult = await validateTableSession(
-      admin,
-      input.tableToken,
-      input.sessionToken
-    );
-
-    if ("error" in sessionResult) {
-      return { error: sessionResult.error, status: sessionResult.status };
-    }
-
-    sessionRow = sessionResult.data.session;
-  }
-
-  const { data: orderNumber, error: numError } = await admin.rpc(
-    "get_next_order_number",
-    { p_location_id: tableRow.location_id }
-  );
-
-  if (numError || orderNumber == null) {
-    return { error: "Order number could not be generated.", status: 500 };
-  }
-
-  const prepMinutes = 8;
-  const sanitizedNotes = input.notes ? sanitizeOrderNotes(input.notes) : null;
-
-  const { data: order, error: orderError } = await admin
-    .from("orders")
-    .insert({
-      location_id: tableRow.location_id,
-      table_id: tableRow.id,
-      session_id: sessionRow.id,
-      order_number: orderNumber as number,
-      subtotal,
-      tax_percent: effectiveTaxPercent,
-      tax_amount: taxAmount,
-      total: finalTotal,
-      discount_amount: discountAmount,
-      promo_code_id: promoCodeId,
-      is_takeaway: input.isTakeaway,
-      notes: sanitizedNotes,
-      estimated_prep_minutes: prepMinutes,
-      status: "pending",
-      payment_status: "pending",
-      payment_method: input.paymentMethod,
-      tip_amount: 0,
-      tip_staff_id: null,
-      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
-    })
-    .select("id, order_number, total, tax_percent")
-    .single();
-
-  if (orderError || !order) {
-    if (idempotencyKey && isIdempotencyUniqueViolation(orderError)) {
-      const existing = await findOrderByIdempotencyKey(admin, idempotencyKey);
-      if (existing) return { data: existing };
-    }
-    return { error: "Order could not be created.", status: 500 };
-  }
-
-  const orderRow = order as {
-    id: string;
-    order_number: number;
-    total: number;
-    tax_percent: number;
+  const draft: OrderDraft = {
+    context: orderContext,
+    lineItems: cartResult.value,
+    pricing: pricingResult.value,
+    mode: modeResult.value,
+    input,
   };
 
-  const saveError = await saveOrderItems(orderRow.id);
-  if (saveError) {
-    await admin.from("orders").delete().eq("id", orderRow.id);
-    return { error: saveError.error, status: 500 };
+  const persistResult = await persistOrder(admin, draft, { idempotencyKey });
+  if (!persistResult.ok) {
+    return toLegacyOrderError(persistResult.error);
   }
 
-  if (input.guestEmail) {
-    await admin
-      .from("table_sessions")
-      .update({ guest_email: input.guestEmail })
-      .eq("id", sessionRow.id);
-  }
+  await emitOrderSideEffects(admin, draft, persistResult.value);
 
-  await persistOrderSideEffects(admin, {
-    orderId: orderRow.id,
-    locationId: tableRow.location_id,
-    orgId: orgRow.id,
-    orderNumber: orderRow.order_number,
-    tableName: tableRow.name,
-    total: orderRow.total,
-    paymentStatus: "pending",
-    guestEmail: input.guestEmail,
-    orderSource: "qr",
-    phase: "created",
-  });
-
-  if (promoCodeId) {
-    await consumePromoCode(admin, promoCodeId);
-  }
-
-  logger.info("Order created", {
-    orderId: orderRow.id,
-    orderNumber: orderRow.order_number,
-    locationId: tableRow.location_id,
-  });
-
-  return {
-    data: {
-      orderId: orderRow.id,
-      orderNumber: orderRow.order_number,
-      total: orderRow.total,
-      taxPercent: orderRow.tax_percent,
-      tableName: tableRow.name,
-      currency,
-      orgId: orgRow.id,
+  if (draft.mode.kind === "approval") {
+    logger.info("Order awaiting staff approval", {
+      orderId: persistResult.value.orderId,
+      orderNumber: persistResult.value.orderNumber,
       locationId: tableRow.location_id,
-    },
-  };
+    });
+  } else {
+    logger.info("Order created", {
+      orderId: persistResult.value.orderId,
+      orderNumber: persistResult.value.orderNumber,
+      locationId: tableRow.location_id,
+    });
+  }
+
+  return { data: persistResult.value };
 }
