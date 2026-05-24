@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
-import type { OrgTrialStatus, PlatformOrgRow } from "@/lib/platform/platform-stats";
+import {
+  orgComplianceStatus,
+  type OrgTrialStatus,
+  type OrgComplianceStatus,
+  type PlatformOrgRow,
+} from "@/lib/platform/platform-stats";
 import { formatPrice } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -22,6 +27,18 @@ const STATUS_COLORS: Record<OrgTrialStatus, string> = {
   expired: "bg-red-100 text-red-800",
   setup: "bg-neutral-100 text-neutral-700",
 };
+
+const COMPLIANCE_COLORS: Record<OrgComplianceStatus, string> = {
+  compliant: "bg-emerald-500",
+  partial: "bg-amber-400",
+  critical: "bg-red-500",
+};
+
+function truncateSteuernummer(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.length <= 12) return trimmed;
+  return `${trimmed.slice(0, 10)}…`;
+}
 
 export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
   const router = useRouter();
@@ -81,20 +98,41 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Orders</th>
               <th className="px-4 py-3">Revenue</th>
+              <th className="px-4 py-3">TSE</th>
+              <th className="px-4 py-3">St-Nr</th>
               <th className="px-4 py-3">Stripe</th>
             </tr>
           </thead>
           <tbody>
-            {orgs.map((org) => (
+            {orgs.map((org) => {
+              const compliance = orgComplianceStatus(org);
+              return (
               <tr key={org.id} className="border-b border-neutral-100 last:border-0">
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/platform/orgs/${org.id}`}
-                    className="font-medium text-violet-700 hover:underline"
-                  >
-                    {org.name}
-                  </Link>
-                  <p className="text-xs text-neutral-500">{org.slug}</p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "size-2 shrink-0 rounded-full",
+                        COMPLIANCE_COLORS[compliance]
+                      )}
+                      title={
+                        compliance === "compliant"
+                          ? "TSE, Steuernummer, Stripe"
+                          : compliance === "partial"
+                            ? "Missing Steuernummer or Stripe"
+                            : "TSE not configured"
+                      }
+                    />
+                    <div>
+                      <Link
+                        href={`/platform/orgs/${org.id}`}
+                        className="font-medium text-violet-700 hover:underline"
+                      >
+                        {org.name}
+                      </Link>
+                      <p className="text-xs text-neutral-500">{org.slug}</p>
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -111,6 +149,20 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                   {formatPrice(org.revenue, org.currency)}
                 </td>
                 <td className="px-4 py-3">
+                  <span
+                    className={cn(
+                      "inline-block size-2.5 rounded-full",
+                      org.fiskaly_tss_id ? "bg-emerald-500" : "bg-red-500"
+                    )}
+                    title={org.fiskaly_tss_id ? "TSE aktiv" : "TSE nicht eingerichtet"}
+                  />
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-600">
+                  {org.steuernummer?.trim()
+                    ? truncateSteuernummer(org.steuernummer)
+                    : "—"}
+                </td>
+                <td className="px-4 py-3">
                   {org.stripe_onboarded ? (
                     <span className="text-emerald-600">Connected</span>
                   ) : (
@@ -118,7 +170,8 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                   )}
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
         {orgs.length === 0 && (

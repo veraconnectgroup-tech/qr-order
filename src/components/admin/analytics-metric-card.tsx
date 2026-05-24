@@ -6,19 +6,40 @@ export function AnalyticsMetricCard({
   value,
   hint,
   changePct,
+  tone = "default",
 }: {
   label: string;
   value: string;
   hint?: string;
   changePct?: number;
+  tone?: "default" | "warning";
 }) {
   const hasChange = changePct !== undefined && Number.isFinite(changePct);
   const positive = (changePct ?? 0) >= 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <p className="mt-2 font-mono text-3xl font-bold text-neutral-900">
+    <div
+      className={cn(
+        "rounded-lg border bg-white p-6 shadow-sm",
+        tone === "warning"
+          ? "border-amber-200 bg-amber-50/50"
+          : "border-neutral-200"
+      )}
+    >
+      <p
+        className={cn(
+          "text-sm",
+          tone === "warning" ? "text-amber-700" : "text-neutral-500"
+        )}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 font-mono text-3xl font-bold",
+          tone === "warning" ? "text-amber-900" : "text-neutral-900"
+        )}
+      >
         {value}
       </p>
       {hasChange && (

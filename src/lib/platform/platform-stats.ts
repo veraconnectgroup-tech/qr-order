@@ -3,6 +3,8 @@ import type { RevenueSeriesPoint } from "@/lib/analytics/admin-analytics";
 
 export type OrgTrialStatus = "active" | "trial" | "expired" | "setup";
 
+export type OrgComplianceStatus = "compliant" | "partial" | "critical";
+
 export type PlatformOrgRow = {
   id: string;
   name: string;
@@ -13,11 +15,24 @@ export type PlatformOrgRow = {
   onboarding_completed: boolean;
   trial_ends_at: string | null;
   created_at: string;
+  fiskaly_tss_id: string | null;
+  steuernummer: string | null;
   location_count: number;
   order_count: number;
   revenue: number;
   trial_status: OrgTrialStatus;
 };
+
+export function orgComplianceStatus(org: {
+  fiskaly_tss_id: string | null;
+  steuernummer: string | null;
+  stripe_onboarded: boolean;
+}): OrgComplianceStatus {
+  if (!org.fiskaly_tss_id) return "critical";
+  const hasSteuer = Boolean(org.steuernummer?.trim());
+  if (hasSteuer && org.stripe_onboarded) return "compliant";
+  return "partial";
+}
 
 function orgTrialStatus(org: {
   onboarding_completed: boolean;
@@ -38,7 +53,9 @@ export async function loadPlatformOverview() {
   const [{ data: orgs }, { data: orders }] = await Promise.all([
     admin
       .from("organizations")
-      .select("id, created_at, onboarding_completed, trial_ends_at")
+      .select(
+        "id, created_at, onboarding_completed, trial_ends_at, fiskaly_tss_id, steuernummer"
+      )
       .order("created_at", { ascending: true }),
     admin
       .from("orders")
@@ -51,17 +68,25 @@ export async function loadPlatformOverview() {
   const now = Date.now();
   let activeOrgs = 0;
   let trialOrgs = 0;
+  let tseActiveOrgs = 0;
+  let missingSteuernummer = 0;
 
   for (const org of orgRows) {
     const row = org as {
       onboarding_completed: boolean;
       trial_ends_at: string | null;
+      fiskaly_tss_id: string | null;
+      steuernummer: string | null;
     };
+    if (row.fiskaly_tss_id) tseActiveOrgs += 1;
     if (!row.onboarding_completed) continue;
-    if (row.trial_ends_at && new Date(row.trial_ends_at).getTime() > now) {
+    const inTrial =
+      row.trial_ends_at && new Date(row.trial_ends_at).getTime() > now;
+    if (inTrial) {
       trialOrgs += 1;
     } else {
       activeOrgs += 1;
+      if (!row.steuernummer?.trim()) missingSteuernummer += 1;
     }
   }
 
@@ -89,6 +114,8 @@ export async function loadPlatformOverview() {
     totalOrgs: orgRows.length,
     activeOrgs,
     trialOrgs,
+    tseActiveOrgs,
+    missingSteuernummer,
     revenue30,
     signupsSeries,
   };
@@ -101,7 +128,7 @@ export async function loadPlatformOrgs(filter?: OrgTrialStatus, search?: string)
     admin
       .from("organizations")
       .select(
-        "id, name, slug, email, currency, stripe_onboarded, onboarding_completed, trial_ends_at, created_at"
+        "id, name, slug, email, currency, stripe_onboarded, onboarding_completed, trial_ends_at, created_at, fiskaly_tss_id, steuernummer"
       )
       .order("created_at", { ascending: false }),
     admin.from("locations").select("id, org_id").eq("is_active", true),
@@ -141,6 +168,8 @@ export async function loadPlatformOrgs(filter?: OrgTrialStatus, search?: string)
     const stats = statsByOrg.get(o.id) ?? { orders: 0, revenue: 0 };
     return {
       ...o,
+      fiskaly_tss_id: o.fiskaly_tss_id ?? null,
+      steuernummer: o.steuernummer ?? null,
       location_count: locByOrg.get(o.id) ?? 0,
       order_count: stats.orders,
       revenue: stats.revenue,
@@ -200,19 +229,77 @@ export async function loadPlatformOrgDetail(orgId: string) {
   const locationIds = ((locations ?? []) as Array<{ id: string }>).map((l) => l.id);
   let orderCount = 0;
   let revenue = 0;
+  let posIntegrations: Array<{
+    provider: string;
+    status: string;
+    external_location_id: string | null;
+  }> = [];
+  let printers: Array<{
+    id: string;
+    name: string;
+    type: string;
+    auto_print: boolean;
+    pending_jobs: number;
+  }> = [];
+  let pendingPrintJobs = 0;
 
   if (locationIds.length) {
-    const { data: orders } = await admin
-      .from("orders")
-      .select("total, payment_status")
-      .in("location_id", locationIds)
-      .eq("payment_status", "paid");
+    const [{ data: orders }, { data: posRows }, { data: printerRows }, { count: pendingCount }] =
+      await Promise.all([
+        admin
+          .from("orders")
+          .select("total, payment_status")
+          .in("location_id", locationIds)
+          .eq("payment_status", "paid"),
+        admin
+          .from("pos_integrations")
+          .select("provider, status, external_location_id")
+          .in("location_id", locationIds),
+        admin
+          .from("printer_configs")
+          .select("id, name, type, auto_print")
+          .in("location_id", locationIds),
+        admin
+          .from("print_jobs")
+          .select("id", { count: "exact", head: true })
+          .in("location_id", locationIds)
+          .eq("status", "pending"),
+      ]);
 
     orderCount = orders?.length ?? 0;
     revenue = (orders ?? []).reduce(
       (sum, o) => sum + Number((o as { total: number }).total),
       0
     );
+
+    posIntegrations = (posRows ?? []) as typeof posIntegrations;
+    pendingPrintJobs = pendingCount ?? 0;
+
+    const printerIds = ((printerRows ?? []) as Array<{ id: string }>).map((p) => p.id);
+    const pendingByPrinter = new Map<string, number>();
+
+    if (printerIds.length) {
+      const { data: pendingJobs } = await admin
+        .from("print_jobs")
+        .select("printer_id")
+        .in("printer_id", printerIds)
+        .eq("status", "pending");
+
+      for (const job of pendingJobs ?? []) {
+        const printerId = (job as { printer_id: string }).printer_id;
+        pendingByPrinter.set(printerId, (pendingByPrinter.get(printerId) ?? 0) + 1);
+      }
+    }
+
+    printers = ((printerRows ?? []) as Array<{
+      id: string;
+      name: string;
+      type: string;
+      auto_print: boolean;
+    }>).map((p) => ({
+      ...p,
+      pending_jobs: pendingByPrinter.get(p.id) ?? 0,
+    }));
   }
 
   return {
@@ -223,6 +310,9 @@ export async function loadPlatformOrgDetail(orgId: string) {
     orderCount,
     revenue,
     trial_status: orgTrialStatus(org as { onboarding_completed: boolean; trial_ends_at: string | null }),
+    posIntegrations,
+    printers,
+    pendingPrintJobs,
   };
 }
 

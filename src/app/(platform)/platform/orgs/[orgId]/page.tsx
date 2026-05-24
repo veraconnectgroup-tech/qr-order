@@ -2,12 +2,27 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { FeatureFlagToggles } from "@/components/platform/feature-flag-toggles";
+import { CopyableText } from "@/components/platform/copyable-text";
 import { AnalyticsMetricCard } from "@/components/admin/analytics-metric-card";
 import { Button } from "@/components/ui/button";
 import { loadPlatformOrgDetail } from "@/lib/platform/platform-stats";
 import { impersonateOrgAction } from "@/lib/platform/platform-actions";
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Json } from "@/types/database";
+
+function posStatusLabel(status: string) {
+  if (status === "connected") return { label: "Aktiv", className: "text-emerald-600" };
+  if (status === "error") return { label: "Fehler", className: "text-red-600" };
+  return { label: "Inaktiv", className: "text-neutral-500" };
+}
+
+function printerTypeLabel(type: string) {
+  if (type === "usb") return "USB";
+  if (type === "lan") return "LAN";
+  if (type === "cloud") return "Cloud";
+  return type;
+}
 
 export default async function PlatformOrgDetailPage({
   params,
@@ -18,8 +33,19 @@ export default async function PlatformOrgDetailPage({
   const detail = await loadPlatformOrgDetail(orgId);
   if (!detail) notFound();
 
-  const { org, owner, locationCount, staffCount, orderCount, revenue, trial_status } =
-    detail;
+  const {
+    org,
+    owner,
+    locationCount,
+    staffCount,
+    orderCount,
+    revenue,
+    trial_status,
+    posIntegrations,
+    printers,
+    pendingPrintJobs,
+  } = detail;
+
   const orgRow = org as {
     id: string;
     name: string;
@@ -31,7 +57,12 @@ export default async function PlatformOrgDetailPage({
     trial_ends_at: string | null;
     feature_flags: Json;
     created_at: string;
+    fiskaly_tss_id: string | null;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
   };
+
+  const tseActive = Boolean(orgRow.fiskaly_tss_id);
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -69,6 +100,110 @@ export default async function PlatformOrgDetailPage({
             ? `Connected (${orgRow.stripe_account_id ?? "account linked"})`
             : "Not connected"}
         </p>
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-neutral-900">Fiscal / TSE</h2>
+        <dl className="mt-4 space-y-4 text-sm">
+          <div>
+            <dt className="font-medium text-neutral-500">TSE Status</dt>
+            <dd className="mt-1">
+              <span
+                className={cn(
+                  "font-medium",
+                  tseActive ? "text-emerald-600" : "text-red-600"
+                )}
+              >
+                {tseActive ? "Aktiv" : "Nicht eingerichtet"}
+              </span>
+            </dd>
+          </div>
+          {orgRow.fiskaly_tss_id && (
+            <div>
+              <dt className="font-medium text-neutral-500">TSS ID</dt>
+              <dd>
+                <CopyableText value={orgRow.fiskaly_tss_id} />
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="font-medium text-neutral-500">Steuernummer</dt>
+            <dd className="mt-1 text-neutral-800">
+              {orgRow.steuernummer?.trim() || "Nicht hinterlegt"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium text-neutral-500">USt-IdNr</dt>
+            <dd className="mt-1 text-neutral-800">
+              {orgRow.ust_id_nr?.trim() || "Nicht hinterlegt"}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-neutral-900">POS-Integration</h2>
+        {posIntegrations.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-600">
+            Keine POS-Integration (Standalone-Modus)
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {posIntegrations.map((pos, index) => {
+              const status = posStatusLabel(pos.status);
+              return (
+                <li
+                  key={`${pos.provider}-${index}`}
+                  className="rounded-md border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium capitalize text-neutral-900">
+                      {pos.provider}
+                    </span>
+                    <span className={cn("font-medium", status.className)}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-mono text-xs text-neutral-500">
+                    {pos.external_location_id ?? "—"}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-neutral-900">Drucker</h2>
+        {printers.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-600">Keine Drucker konfiguriert</p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-neutral-600">
+              {pendingPrintJobs} ausstehende Druckaufträge
+            </p>
+            <ul className="mt-4 space-y-3">
+              {printers.map((printer) => (
+                <li
+                  key={printer.id}
+                  className="rounded-md border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-neutral-900">{printer.name}</span>
+                    <span className="text-neutral-600">
+                      {printerTypeLabel(printer.type)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    {printer.auto_print ? "Auto-Druck aktiv" : "Manuell"} ·{" "}
+                    {printer.pending_jobs} pending
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
 
       <section className="rounded-lg border border-neutral-200 bg-white p-6">
