@@ -309,19 +309,20 @@ export async function handleAiChat(body: unknown) {
         .eq("id", input.tableId)
         .maybeSingle();
       const qrToken = (table as { qr_token: string } | null)?.qr_token;
-      const tokensEquivalent =
-        qrToken != null &&
-        (row.session_token === qrToken || input.sessionToken === qrToken);
 
-      if (!tokensEquivalent) {
+      if (qrToken && input.sessionToken === qrToken) {
+        if (row.session_token !== qrToken) {
+          await admin
+            .from("ai_sessions")
+            .update({ session_token: qrToken })
+            .eq("id", row.id);
+          row.session_token = qrToken;
+        }
+      } else if (qrToken && row.session_token === qrToken) {
+        // Legacy client sent a table session token; stored row already uses QR.
+      } else {
         return apiError("Unauthorized.", 401);
       }
-
-      await admin
-        .from("ai_sessions")
-        .update({ session_token: input.sessionToken })
-        .eq("id", row.id);
-      row.session_token = input.sessionToken;
     }
 
     if (row.status !== "active") {

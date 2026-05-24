@@ -39,7 +39,7 @@ export async function loadGuestOrdersForAi(
   tableId: string,
   sessionToken: string
 ): Promise<AiGuestOrder[]> {
-  const { data: tableSession } = await admin
+  const { data: tableSessionByToken } = await admin
     .from("table_sessions")
     .select("id")
     .eq("session_token", sessionToken)
@@ -47,9 +47,22 @@ export async function loadGuestOrdersForAi(
     .eq("status", "active")
     .maybeSingle();
 
-  if (!tableSession) return [];
+  let sessionId = (tableSessionByToken as { id: string } | null)?.id ?? null;
 
-  const sessionId = (tableSession as { id: string }).id;
+  if (!sessionId) {
+    const { data: activeOnTable } = await admin
+      .from("table_sessions")
+      .select("id")
+      .eq("table_id", tableId)
+      .eq("status", "active")
+      .order("opened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    sessionId = (activeOnTable as { id: string } | null)?.id ?? null;
+  }
+
+  if (!sessionId) return [];
 
   const { data: orders, error } = await admin
     .from("orders")

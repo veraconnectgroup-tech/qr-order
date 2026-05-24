@@ -24,14 +24,14 @@ import {
   type AiSheetSelections,
 } from "@/lib/ai/guest-sheet-preferences";
 import {
-  clearAiSessionId,
-  trackAiConversion,
-  writeAiSessionId,
-} from "@/lib/ai/guest-session-storage";
-import {
-  readAiSessionIdWithMigration,
+  clearAiSessionIdForGuest,
+  readAiSessionIdForGuest,
   resolveGuestAiContextToken,
+  writeAiSessionIdForGuest,
 } from "@/lib/ai/guest-ai-token";
+import {
+  trackAiConversion,
+} from "@/lib/ai/guest-session-storage";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
@@ -535,12 +535,8 @@ export function AiConciergeChat({
     setInput("");
     setAddedIds(new Set());
     setAiSessionId(
-      (sessionToken ?? token)
-        ? readAiSessionIdWithMigration(
-            locationId,
-            resolveGuestAiContextToken(token, sessionToken),
-            token
-          )
+      token
+        ? readAiSessionIdForGuest(locationId, token, [sessionToken])
         : null
     );
   }, [
@@ -575,7 +571,7 @@ export function AiConciergeChat({
       const sessionId = retryWithoutSession
         ? undefined
         : (aiSessionId ??
-          readAiSessionIdWithMigration(locationId, aiContextToken, token) ??
+          readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
           undefined);
 
       const controller = new AbortController();
@@ -627,10 +623,7 @@ export function AiConciergeChat({
           (res.status === 401 || res.status === 404) &&
           sessionId
         ) {
-          clearAiSessionId(locationId, aiContextToken);
-          if (token !== aiContextToken) {
-            clearAiSessionId(locationId, token);
-          }
+          clearAiSessionIdForGuest(locationId, token, [sessionToken, aiContextToken]);
           setAiSessionId(null);
           return callAiChat(message, prefs, true);
         }
@@ -643,7 +636,7 @@ export function AiConciergeChat({
       const data = json.data!;
 
       if (data.sessionId) {
-        writeAiSessionId(locationId, aiContextToken, data.sessionId);
+        writeAiSessionIdForGuest(locationId, token, data.sessionId);
         setAiSessionId(data.sessionId);
       }
 
@@ -687,13 +680,13 @@ export function AiConciergeChat({
       toastAddedToCart(rec.name, rec.price, currency);
       setAddedIds((prev) => new Set(prev).add(rec.productId));
 
-      if (aiSessionId && sessionToken) {
+      if (aiSessionId) {
         void trackAiConversion({
           sessionId: aiSessionId,
           productId: rec.productId,
           locationId,
           tableId,
-          sessionToken,
+          sessionToken: resolveGuestAiContextToken(token, sessionToken),
         });
       }
     },

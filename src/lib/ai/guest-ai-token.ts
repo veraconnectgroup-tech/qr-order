@@ -4,29 +4,56 @@ import {
   writeAiSessionId,
 } from "@/lib/ai/guest-session-storage";
 
-/** Token sent to /api/ai/chat — table session when seated, otherwise QR browse token. */
+/**
+ * QR table token is always valid for AI (browse + seated).
+ * Avoids "session expired" when a stale table session token is still in local storage.
+ */
 export function resolveGuestAiContextToken(
   qrToken: string,
-  tableSessionToken: string | null
+  _tableSessionToken?: string | null
 ): string {
-  return tableSessionToken ?? qrToken;
+  return qrToken;
 }
 
-/** Read stored AI session id, migrating from QR browse token to table session token. */
-export function readAiSessionIdWithMigration(
+/** AI session ids are stored under the stable QR token for this table. */
+export function readAiSessionIdForGuest(
   locationId: string,
-  contextToken: string,
-  qrToken: string
+  qrToken: string,
+  legacyTokens: Array<string | null | undefined> = []
 ): string | null {
-  const direct = readAiSessionId(locationId, contextToken);
-  if (direct) return direct;
-
-  if (contextToken === qrToken) return null;
-
   const fromQr = readAiSessionId(locationId, qrToken);
-  if (!fromQr) return null;
+  if (fromQr) return fromQr;
 
-  writeAiSessionId(locationId, contextToken, fromQr);
+  for (const legacy of legacyTokens) {
+    if (!legacy || legacy === qrToken) continue;
+    const id = readAiSessionId(locationId, legacy);
+    if (id) {
+      writeAiSessionId(locationId, qrToken, id);
+      clearAiSessionId(locationId, legacy);
+      return id;
+    }
+  }
+
+  return null;
+}
+
+export function writeAiSessionIdForGuest(
+  locationId: string,
+  qrToken: string,
+  sessionId: string
+) {
+  writeAiSessionId(locationId, qrToken, sessionId);
+}
+
+export function clearAiSessionIdForGuest(
+  locationId: string,
+  qrToken: string,
+  legacyTokens: Array<string | null | undefined> = []
+) {
   clearAiSessionId(locationId, qrToken);
-  return fromQr;
+  for (const legacy of legacyTokens) {
+    if (legacy && legacy !== qrToken) {
+      clearAiSessionId(locationId, legacy);
+    }
+  }
 }

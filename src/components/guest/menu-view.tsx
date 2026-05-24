@@ -41,10 +41,10 @@ import {
   buildDrinkPairingPrompt,
 } from "@/lib/ai/guest-sheet-preferences";
 import {
-  readAiSessionId,
-  trackAiConversion,
-  writeAiSessionId,
-} from "@/lib/ai/guest-session-storage";
+  readAiSessionIdForGuest,
+  resolveGuestAiContextToken,
+} from "@/lib/ai/guest-ai-token";
+import { trackAiConversion } from "@/lib/ai/guest-session-storage";
 import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
@@ -478,14 +478,14 @@ export function MenuView({
 
   const fetchPairingForNudge = useCallback(
     async (prompt: string) => {
-      const aiContextToken = sessionToken ?? token;
+      const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken || hasDrinkInCart || isDemoGuestRoute(slug, token)) {
         return null;
       }
 
       const sessionId =
         aiSessionId ??
-        readAiSessionId(locationId, aiContextToken) ??
+        readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
         undefined;
 
       try {
@@ -513,6 +513,7 @@ export function MenuView({
       }
     },
     [
+      token,
       sessionToken,
       hasDrinkInCart,
       slug,
@@ -585,12 +586,12 @@ export function MenuView({
 
   const fetchDrinkPairing = useCallback(
     async (dishName: string) => {
-      const aiContextToken = sessionToken ?? token;
+      const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken || hasDrinkInCart) return;
 
       const sessionId =
         aiSessionId ??
-        readAiSessionId(locationId, aiContextToken) ??
+        readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
         undefined;
 
       try {
@@ -651,14 +652,14 @@ export function MenuView({
 
       const sid =
         aiSessionId ??
-        (sessionToken ? readAiSessionId(locationId, sessionToken) : null);
-      if (sid && sessionToken) {
+        readAiSessionIdForGuest(locationId, token, [sessionToken]);
+      if (sid) {
         void trackAiConversion({
           sessionId: sid,
           productId: rec.productId,
           locationId,
           tableId,
-          sessionToken,
+          sessionToken: resolveGuestAiContextToken(token, sessionToken),
         });
       }
 
@@ -703,14 +704,14 @@ export function MenuView({
 
     const sid =
       aiSessionId ??
-      (sessionToken ? readAiSessionId(locationId, sessionToken) : null);
-    if (sid && sessionToken) {
+      readAiSessionIdForGuest(locationId, token, [sessionToken]);
+    if (sid) {
       void trackAiConversion({
         sessionId: sid,
         productId: rec.productId,
         locationId,
         tableId,
-        sessionToken,
+        sessionToken: resolveGuestAiContextToken(token, sessionToken),
       });
     }
   }, [

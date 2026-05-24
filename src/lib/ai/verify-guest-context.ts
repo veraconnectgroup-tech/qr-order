@@ -74,6 +74,11 @@ export async function verifyAiGuestContext(
     tableSessionToken: input.sessionToken,
   };
 
+  // QR token is always valid for this table (browse + seated).
+  if (tableRow.qr_token === input.sessionToken) {
+    return { data: guestContext };
+  }
+
   const maxAgeMs = SESSION_MAX_AGE_HOURS * 60 * 60 * 1000;
   const sessionCutoff = new Date(Date.now() - maxAgeMs).toISOString();
 
@@ -99,11 +104,6 @@ export async function verifyAiGuestContext(
       return { error: "Session location mismatch.", status: 403 };
     }
 
-    return { data: guestContext };
-  }
-
-  // Browse mode: guest scans QR but table session is not open yet — token is qr_token.
-  if (tableRow.qr_token === input.sessionToken) {
     return { data: guestContext };
   }
 
