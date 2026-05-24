@@ -121,5 +121,11 @@ export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistrat
     }
   }
 
+  if (!registration) {
+    throw new ServiceWorkerUnavailableError(
+      "Service worker is not available."
+    );
+  }
+
   return waitForRegistrationReady(registration, ACTIVATION_TIMEOUT_MS);
 }
