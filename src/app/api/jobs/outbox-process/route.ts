@@ -2,6 +2,7 @@ export const maxDuration = 60;
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { ensureOutboxQStashSchedule } from "@/lib/outbox/ensure-qstash-schedule";
 import { processOutboxBatch } from "@/lib/outbox/processor";
 import { verifyQStashSignature } from "@/lib/queue/verify";
 import { withRateLimit } from "@/lib/rate-limit";
@@ -27,6 +28,8 @@ export const POST = withErrorHandler(
       return apiError("Unauthorized", 401);
     }
 
+    ensureOutboxQStashSchedule();
+
     const result = await processOutboxBatch();
 
     return apiSuccess(result);
@@ -43,6 +46,8 @@ export const GET = withErrorHandler(
     if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
       return apiError("Unauthorized", 401);
     }
+
+    ensureOutboxQStashSchedule();
 
     const result = await processOutboxBatch();
     return apiSuccess(result);
