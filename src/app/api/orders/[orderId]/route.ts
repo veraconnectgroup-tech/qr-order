@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { auditLog } from "@/lib/audit/log";
 import { safeJsonParse } from "@/lib/api/safe-json";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { apiError, apiSuccess } from "@/lib/api-response";
@@ -120,6 +121,7 @@ type StaffAccess = {
   };
   staff: {
     id: string;
+    user_id: string;
     org_id: string;
     location_id: string | null;
     role: string;
@@ -151,7 +153,7 @@ async function verifyStaffOrderAccess(
 
   const { data: staff } = await supabase
     .from("staff")
-    .select("id, org_id, location_id, role")
+    .select("id, user_id, org_id, location_id, role")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -290,6 +292,17 @@ export const PATCH = withErrorHandler(
     if (error) {
       return apiError(error.message, 500);
     }
+
+    await auditLog({
+      orgId: access.staff.org_id,
+      userId: access.staff.user_id,
+      action: "update",
+      entityType: "order",
+      entityId: orderId,
+      oldValue: { status: access.order.status },
+      newValue: { status, rejectionReason: rejectionReason ?? null },
+      request: req,
+    });
 
     if (status === "ready") {
       scheduleOrderReadyPush(

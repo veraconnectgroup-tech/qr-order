@@ -2,7 +2,8 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withGuestRateLimits } from "@/lib/rate-limit";
+import { resolveOrgIdFromOrderId, resolveOrgIdFromTableToken } from "@/lib/rate-limit/org-context";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
@@ -21,7 +22,17 @@ const schema = z.object({
 export const POST = withErrorHandler(
   "payments-create-intent-post",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "payments");
+    let orgId: string | null = null;
+    try {
+      const peek = (await req.clone().json()) as { orderId?: string };
+      if (typeof peek.orderId === "string") {
+        orgId = await resolveOrgIdFromOrderId(peek.orderId);
+      }
+    } catch {
+      orgId = null;
+    }
+
+    const limited = await withGuestRateLimits(req, "payments", orgId);
     if (limited) return limited;
 
     const body = await req.json();

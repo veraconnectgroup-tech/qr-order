@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auditLog } from "@/lib/audit/log";
 import { getStaffLocationId, requireAdmin, requireStaff } from "@/lib/auth/session";
 import {
   zEmailNormalized,
@@ -34,6 +35,12 @@ export async function updateOrganizationSettings(formData: FormData) {
   }
 
   const admin = createAdminClient();
+  const { data: beforeOrg } = await admin
+    .from("organizations")
+    .select("name, email, phone, description, default_tax_percent")
+    .eq("id", staff.org_id)
+    .single();
+
   const { error } = await admin
     .from("organizations")
     .update({
@@ -47,6 +54,16 @@ export async function updateOrganizationSettings(formData: FormData) {
     .eq("id", staff.org_id);
 
   if (error) return { error: error.message };
+
+  await auditLog({
+    orgId: staff.org_id,
+    userId: staff.user_id,
+    action: "update",
+    entityType: "organization",
+    entityId: staff.org_id,
+    oldValue: beforeOrg ?? undefined,
+    newValue: parsed.data,
+  });
 
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");

@@ -34,7 +34,7 @@ export type ParsedHistoryFilters = {
 };
 
 export const ORDER_HISTORY_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name), table_sessions(guest_email), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log(action, amount, created_at)";
+  "*, order_items(*, order_item_modifiers(*)), tables(name), table_sessions(guest_email), refund_staff:refunded_by(name), tip_staff:tip_staff_id(name), split_payments(*), audit_log_legacy_pre_g3(action, amount, created_at)";
 
 function parseEnum<T extends string>(
   value: string | undefined,

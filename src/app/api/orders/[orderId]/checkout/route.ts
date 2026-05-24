@@ -5,7 +5,8 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withGuestRateLimits } from "@/lib/rate-limit";
+import { resolveOrgIdFromOrderId } from "@/lib/rate-limit/org-context";
 import { isUuid } from "@/lib/security/sanitize";
 import { zSessionToken } from "@/lib/security/zod-fields";
 import {
@@ -63,10 +64,10 @@ async function loadPaymentOptions(locationId: string) {
 export const POST = withErrorHandler(
   "orders-orderId-checkout-post",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders-guest");
-    if (limited) return limited;
-
     const { orderId } = await ctx.params;
+    const orgId = await resolveOrgIdFromOrderId(orderId);
+    const limited = await withGuestRateLimits(req, "payments", orgId);
+    if (limited) return limited;
 
     if (!isUuid(orderId)) {
       return apiError("Invalid order id.", 400);

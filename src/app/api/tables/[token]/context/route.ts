@@ -5,21 +5,25 @@ import {
   isDemoGuestTableToken,
 } from "@/lib/demo-guest";
 import { resolveTableGuestContext } from "@/lib/sessions/resolve-table-context";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withGuestRateLimits } from "@/lib/rate-limit";
+import { resolveOrgIdFromTableToken } from "@/lib/rate-limit/org-context";
 import { zTableToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const GET = withErrorHandler(
   "tables-token-context-get",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "sessions");
-    if (limited) return limited;
-
     const { token } = await ctx.params;
     const tokenParsed = zTableToken().safeParse(token);
     if (!tokenParsed.success) {
       return apiError("Invalid request.", 400);
     }
+
+    const orgId = isDemoGuestTableToken(tokenParsed.data)
+      ? null
+      : await resolveOrgIdFromTableToken(tokenParsed.data);
+    const limited = await withGuestRateLimits(req, "sessions", orgId);
+    if (limited) return limited;
 
     if (isDemoGuestTableToken(tokenParsed.data)) {
       const demo = getDemoGuestSession();

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { auditLog } from "@/lib/audit/log";
 import { scheduleFiskalyTssProvision } from "@/lib/fiscal/provision-tss";
 import { sanitizeSlug } from "@/lib/security/sanitize";
 import { zEmailNormalized, zSanitizedText } from "@/lib/security/zod-fields";
@@ -35,6 +36,30 @@ export async function loginAction(formData: FormData) {
 
   if (error) {
     return { error: "Invalid email or password." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const admin = createAdminClient();
+    const { data: staffRow } = await admin
+      .from("staff")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (staffRow) {
+      await auditLog({
+        orgId: (staffRow as { org_id: string }).org_id,
+        userId: user.id,
+        action: "login",
+        entityType: "auth",
+      });
+    }
   }
 
   revalidatePath("/", "layout");

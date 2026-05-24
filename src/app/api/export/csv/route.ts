@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { auditLog } from "@/lib/audit/log";
 import { getCurrentStaff, getStaffLocationId } from "@/lib/auth/session";
 import { formatAnalyticsIsoDate } from "@/lib/analytics/date-range";
 import {
@@ -59,6 +60,19 @@ export const GET = withErrorHandler("export-csv-get", async (req, _ctx) => {
     formatAnalyticsIsoDate(filters.range.start),
     formatAnalyticsIsoDate(filters.range.end)
   );
+
+  await auditLog({
+    orgId: staff.org_id,
+    userId: staff.user_id,
+    action: "export",
+    entityType: "orders_csv",
+    newValue: {
+      filename,
+      from: formatAnalyticsIsoDate(filters.range.start),
+      to: formatAnalyticsIsoDate(filters.range.end),
+    },
+    request: req,
+  });
 
   return new NextResponse(csv, {
     status: 200,

@@ -9,6 +9,7 @@ import {
   zInviteToken,
   zSanitizedText,
 } from "@/lib/security/zod-fields";
+import { auditLog } from "@/lib/audit/log";
 import { requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STAFF_ROLES } from "@/lib/constants";
@@ -103,6 +104,15 @@ export async function createStaffInvite(formData: FormData) {
 <p>This link expires in 7 days.</p>`,
   });
 
+  await auditLog({
+    orgId: staff.org_id,
+    userId: staff.user_id,
+    action: "create",
+    entityType: "staff_invite",
+    entityId: token,
+    newValue: { email, name, role },
+  });
+
   revalidatePath("/dashboard/staff");
   return { data: { link } };
 }
@@ -147,6 +157,16 @@ export async function setStaffActive(staffId: string, active: boolean) {
   if (error) {
     return { error: "Could not update staff member." };
   }
+
+  await auditLog({
+    orgId: staff.org_id,
+    userId: staff.user_id,
+    action: "update",
+    entityType: "staff",
+    entityId: staffId,
+    oldValue: { is_active: !active, role: targetRow.role },
+    newValue: { is_active: active },
+  });
 
   revalidatePath("/dashboard/staff");
   return { data: { ok: true } };

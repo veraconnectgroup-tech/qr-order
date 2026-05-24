@@ -3,7 +3,8 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withGuestRateLimits } from "@/lib/rate-limit";
+import { resolveOrgIdFromOrderId } from "@/lib/rate-limit/org-context";
 import { isUuid } from "@/lib/security/sanitize";
 import { zSessionToken, zTableToken } from "@/lib/security/zod-fields";
 import {
@@ -199,10 +200,11 @@ export const GET = withErrorHandler(
   "orders-orderId-split-get",
   async (req, routeCtx) => {
   const cacheHeaders = noCache();
-  const limited = await withRateLimit(req, "orders-guest");
+  const { orderId } = await routeCtx.params;
+  const orgId = await resolveOrgIdFromOrderId(orderId);
+  const limited = await withGuestRateLimits(req, "orders-guest", orgId);
   if (limited) return limited;
 
-  const { orderId } = await routeCtx.params;
   if (!isUuid(orderId)) {
     return apiError("Invalid order id.", 400, undefined, cacheHeaders);
   }
@@ -281,10 +283,11 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   "orders-orderId-split-post",
   async (req, routeCtx) => {
-  const limited = await withRateLimit(req, "orders-guest");
+  const { orderId } = await routeCtx.params;
+  const orgId = await resolveOrgIdFromOrderId(orderId);
+  const limited = await withGuestRateLimits(req, "orders-guest", orgId);
   if (limited) return limited;
 
-  const { orderId } = await routeCtx.params;
   if (!isUuid(orderId)) {
     return apiError("Invalid order id.", 400);
   }

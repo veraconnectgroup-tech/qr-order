@@ -384,6 +384,19 @@ type Tables = {
     resolved_at: string | null;
     resolved_by: string | null;
   };
+  audit_log: {
+    id: number;
+    org_id: string;
+    user_id: string | null;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    old_value: Json | null;
+    new_value: Json | null;
+    ip_address: string | null;
+    user_agent: string | null;
+    created_at: string;
+  };
   order_channel_deliveries: {
     id: string;
     order_id: string;
@@ -476,7 +489,7 @@ type Tables = {
     payload: Json | null;
     status: "processing" | "completed" | "failed";
   };
-  audit_log: {
+  audit_log_legacy_pre_g3: {
     id: string;
     action: string;
     order_id: string | null;

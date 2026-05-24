@@ -116,7 +116,7 @@ export async function processRefund(
     } as never)
     .eq("id", order.id);
 
-  await admin.from("audit_log").insert({
+  await admin.from("audit_log_legacy_pre_g3").insert({
     action: "refund",
     order_id: order.id,
     staff_id: staffId,

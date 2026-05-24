@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { auditLog } from "@/lib/audit/log";
 import { requirePlatformAdmin } from "@/lib/auth/session";
 import { retryDeadLetterQueueItem } from "@/lib/outbox/dead-letter-queue";
 import {
@@ -80,8 +81,14 @@ export async function toggleOrgFeature(orgId: string, flag: PlatformFeature, ena
 }
 
 export async function updateOrgPlanAction(orgId: string, planId: string) {
-  await requirePlatformAdmin();
+  const staff = await requirePlatformAdmin();
   const admin = createAdminClient();
+
+  const { data: beforeOrg } = await admin
+    .from("organizations")
+    .select("plan_id")
+    .eq("id", orgId)
+    .maybeSingle();
 
   const { data: plan } = await admin
     .from("plans")
@@ -101,6 +108,16 @@ export async function updateOrgPlanAction(orgId: string, planId: string) {
     .eq("id", orgId);
 
   if (error) return { error: error.message };
+
+  await auditLog({
+    orgId,
+    userId: staff.user_id,
+    action: "update",
+    entityType: "subscription_plan",
+    entityId: orgId,
+    oldValue: beforeOrg ?? undefined,
+    newValue: { plan_id: planId },
+  });
 
   revalidatePath(`/platform/orgs/${orgId}`);
   revalidatePath("/platform/orgs");

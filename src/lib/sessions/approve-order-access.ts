@@ -107,7 +107,7 @@ async function runPostApprovalSideEffects(
       actorId: input.staffId,
     });
 
-    await admin.from("audit_log").insert({
+    await admin.from("audit_log_legacy_pre_g3").insert({
       action: "session.approved",
       order_id: input.orderId,
       session_id: input.sessionId,
@@ -301,7 +301,7 @@ export async function rejectOrderAccess(
 
   if (!rejectResult.data.alreadyRejected) {
     try {
-      await admin.from("audit_log").insert({
+      await admin.from("audit_log_legacy_pre_g3").insert({
         action: "order.access_rejected",
         order_id: orderId,
         table_id: orderRow.table_id,

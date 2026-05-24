@@ -87,7 +87,7 @@ export const POST = withErrorHandler(
       return apiError("No active block for this device.", 404);
     }
 
-    await admin.from("audit_log").insert({
+    await admin.from("audit_log_legacy_pre_g3").insert({
       action: "device.order_block_lifted",
       table_id: tableRow.id,
       staff_id: staff.id,

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auditLog } from "@/lib/audit/log";
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import {
   normalizeAllergenId,
@@ -255,12 +256,25 @@ export async function createProduct(formData: FormData) {
   if (!parsed.success) return { error: "Invalid data." };
 
   const supabase = await createServerClient();
-  const { error } = await supabase.from("products").insert({
-    location_id: locationId,
-    ...parsed.data,
-  });
+  const { data: created, error } = await supabase
+    .from("products")
+    .insert({
+      location_id: locationId,
+      ...parsed.data,
+    })
+    .select("id, name, price")
+    .single();
 
   if (error) return { error: error.message };
+
+  await auditLog({
+    orgId: staff.org_id,
+    userId: staff.user_id,
+    action: "create",
+    entityType: "product",
+    entityId: (created as { id: string }).id,
+    newValue: created,
+  });
 
   revalidatePath("/admin/menu");
   return { success: true };
@@ -446,6 +460,13 @@ export async function updateProduct(id: string, formData: FormData) {
   const product = await assertProductInLocation(id, ctx.locationId);
   if (!product) return { error: "Product not found." };
 
+  const supabase = await createServerClient();
+  const { data: beforeRow } = await supabase
+    .from("products")
+    .select("id, name, price, is_available, tax_rate, category_id")
+    .eq("id", id)
+    .single();
+
   const parsed = productUpdateSchema.safeParse({
     name: formData.get("name") || undefined,
     description: formData.get("description") || undefined,
@@ -499,9 +520,27 @@ export async function updateProduct(id: string, formData: FormData) {
   if (allergens !== undefined) patch.allergens = allergens;
   if (parsed.data.image_url !== undefined) patch.image_url = parsed.data.image_url;
 
-  const supabase = await createServerClient();
   const { error } = await supabase.from("products").update(patch).eq("id", id);
   if (error) return { error: error.message };
+
+  const before = beforeRow as {
+    id: string;
+    name: string;
+    price: number;
+    is_available: boolean;
+    tax_rate: number | null;
+    category_id: string | null;
+  } | null;
+
+  await auditLog({
+    orgId: ctx.staff.org_id,
+    userId: ctx.staff.user_id,
+    action: "update",
+    entityType: "product",
+    entityId: id,
+    oldValue: before ?? undefined,
+    newValue: patch,
+  });
 
   revalidatePath("/admin/menu");
   return { success: true };
@@ -515,6 +554,12 @@ export async function deleteProduct(id: string) {
   if (!product) return { error: "Product not found." };
 
   const supabase = await createServerClient();
+  const { data: beforeRow } = await supabase
+    .from("products")
+    .select("id, name, price")
+    .eq("id", id)
+    .single();
+
   const { data: groups } = await supabase
     .from("modifier_groups")
     .select("id")
@@ -535,6 +580,16 @@ export async function deleteProduct(id: string) {
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  await auditLog({
+    orgId: ctx.staff.org_id,
+    userId: ctx.staff.user_id,
+    action: "delete",
+    entityType: "product",
+    entityId: id,
+    oldValue: beforeRow ?? undefined,
+  });
+
   revalidatePath("/admin/menu");
   return { success: true };
 }

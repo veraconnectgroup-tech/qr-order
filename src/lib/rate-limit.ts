@@ -22,6 +22,16 @@ export type RateLimitScope =
   | "pin-verify"
   | "default";
 
+const ORG_TENANT_SCOPES = new Set<RateLimitScope>([
+  "orders-guest",
+  "bill",
+  "payments",
+  "sessions",
+]);
+
+const ORG_RATE_LIMIT = 100;
+const ORG_RATE_WINDOW_MS = 60 * 1000;
+
 const SCOPE_BY_USER = new Set<RateLimitScope>([
   "export",
   "fiscal",
@@ -60,6 +70,22 @@ const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
   push: createScopeLimiter("push", 10, "1 m"),
   "pin-verify": createScopeLimiter("pin-verify", 5, "15 m"),
   default: createScopeLimiter("default", 60, "1 m"),
+};
+
+function createOrgScopeLimiter(scope: RateLimitScope): Ratelimit | null {
+  if (!redis || !ORG_TENANT_SCOPES.has(scope)) return null;
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(ORG_RATE_LIMIT, "1 m"),
+    prefix: `rl:org:${scope}`,
+  });
+}
+
+const orgLimiters: Partial<Record<RateLimitScope, Ratelimit | null>> = {
+  "orders-guest": createOrgScopeLimiter("orders-guest"),
+  bill: createOrgScopeLimiter("bill"),
+  payments: createOrgScopeLimiter("payments"),
+  sessions: createOrgScopeLimiter("sessions"),
 };
 
 // In-memory fallback for local dev without Redis
@@ -167,6 +193,56 @@ export async function withStaffRateLimit(
   }
 
   return withRateLimit(req, "orders-guest");
+}
+
+export async function withOrgRateLimit(
+  orgId: string,
+  scope: RateLimitScope
+): Promise<NextResponse | null> {
+  if (!ORG_TENANT_SCOPES.has(scope)) return null;
+
+  if (
+    process.env.LOAD_TEST === "true" &&
+    LOAD_TEST_SCOPES.has(scope)
+  ) {
+    return null;
+  }
+
+  const key = orgId;
+  const limiter = orgLimiters[scope];
+
+  if (useRedis && limiter) {
+    try {
+      const result = await limiter.limit(key);
+      if (!result.success) {
+        const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
+        return tooManyRequests(retryAfter);
+      }
+      return null;
+    } catch (error) {
+      logRedisDegradation(`rate-limit:org:${scope}`, error);
+      return null;
+    }
+  }
+
+  const memoryKey = `org:${scope}:${orgId}`;
+  if (!checkRateLimit(memoryKey, ORG_RATE_LIMIT, ORG_RATE_WINDOW_MS)) {
+    return tooManyRequests(Math.ceil(ORG_RATE_WINDOW_MS / 1000));
+  }
+
+  return null;
+}
+
+export async function withGuestRateLimits(
+  req: NextRequest,
+  scope: RateLimitScope,
+  orgId?: string | null
+): Promise<NextResponse | null> {
+  if (orgId) {
+    const orgLimited = await withOrgRateLimit(orgId, scope);
+    if (orgLimited) return orgLimited;
+  }
+  return withRateLimit(req, scope);
 }
 
 export async function withRateLimit(

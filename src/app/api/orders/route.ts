@@ -9,11 +9,25 @@ import {
   cacheOrderIdempotency,
   getCachedOrderIdempotency,
 } from "@/lib/resilience/idempotency";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withGuestRateLimits } from "@/lib/rate-limit";
+import { resolveOrgIdFromTableToken } from "@/lib/rate-limit/org-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+async function resolveOrgIdFromOrdersRequest(req: Request): Promise<string | null> {
+  try {
+    const body = (await req.clone().json()) as { tableToken?: string };
+    if (typeof body.tableToken === "string") {
+      return resolveOrgIdFromTableToken(body.tableToken);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export const POST = withErrorHandler("orders-post", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "orders-guest");
+  const orgId = await resolveOrgIdFromOrdersRequest(req);
+  const limited = await withGuestRateLimits(req, "orders-guest", orgId);
   if (limited) return limited;
 
   const idempotencyKey = parseIdempotencyKey(

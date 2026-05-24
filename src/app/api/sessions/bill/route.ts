@@ -5,7 +5,8 @@ import { safeJsonParse } from "@/lib/api/safe-json";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withGuestRateLimits } from "@/lib/rate-limit";
+import { resolveOrgIdFromTableToken } from "@/lib/rate-limit/org-context";
 import { zSessionToken, zTableToken } from "@/lib/security/zod-fields";
 import {
   getAvailablePaymentMethods,
@@ -25,7 +26,12 @@ import {
 } from "@/lib/orders/tips";
 
 export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "bill");
+  const tableToken = req.nextUrl.searchParams.get("tableToken");
+  const orgId =
+    typeof tableToken === "string"
+      ? await resolveOrgIdFromTableToken(tableToken)
+      : null;
+  const limited = await withGuestRateLimits(req, "bill", orgId);
   if (limited) return limited;
 
     const sessionToken = req.nextUrl.searchParams.get("sessionToken");
@@ -33,7 +39,6 @@ export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
       return apiError("Unauthorized.", 401);
     }
 
-    const tableToken = req.nextUrl.searchParams.get("tableToken");
     if (!tableToken) {
       return apiError("Invalid table.", 400);
     }
@@ -153,15 +158,21 @@ async function loadPaymentOptions(locationId: string) {
 export const POST = withErrorHandler(
   "sessions-bill-post",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "bill");
-    if (limited) return limited;
-
     const body = await safeJsonParse(req);
     if (!body) {
       return apiError("Invalid JSON.", 400);
     }
 
-    const parsed = checkoutSchema.safeParse(body);
+    const parsedPeek = checkoutSchema.safeParse(body);
+    const orgId =
+      parsedPeek.success && parsedPeek.data.tableToken
+        ? await resolveOrgIdFromTableToken(parsedPeek.data.tableToken)
+        : null;
+
+    const limited = await withGuestRateLimits(req, "bill", orgId);
+    if (limited) return limited;
+
+    const parsed = parsedPeek;
     if (!parsed.success) {
       return apiError("Invalid input.", 400);
     }

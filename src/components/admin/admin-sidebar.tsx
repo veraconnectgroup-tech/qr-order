@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  ClipboardList,
   LayoutGrid,
   MapPin,
   Megaphone,
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/admin/staff", label: "Staff", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/tagesabschluss", label: "Tagesabschluss", icon: ScrollText },
+  { href: "/admin/audit-log", label: "Audit log", icon: ClipboardList },
   { href: "/admin/pos-integrations", label: "POS-Integration", icon: Monitor },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },

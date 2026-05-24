@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { auditLog } from "@/lib/audit/log";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { runManualDailyClosing } from "@/lib/fiscal/daily-closing";
 import { logger } from "@/lib/logger";
@@ -61,6 +62,20 @@ export const POST = withErrorHandler(
         businessDate: parsed.data.businessDate,
         timezone: locationRow.timezone || "Europe/Berlin",
         closedBy: staff.user_id,
+      });
+
+      await auditLog({
+        orgId: locationRow.org_id,
+        userId: staff.user_id,
+        action: "fiscal",
+        entityType: "daily_closing",
+        entityId: result.id,
+        newValue: {
+          businessDate: result.data.businessDate,
+          orderCount: result.data.orderCount,
+          totalGross: result.data.totalGross,
+        },
+        request: req,
       });
 
       return apiSuccess({
