@@ -1,4 +1,4 @@
-export { AI_CONFIG, AI_BLOCKED_PATTERNS, AI_SUPPORTED_LANGUAGES, isOpenAiConfigured, resolveAiPromptLanguage } from "@/lib/ai/config";
+export { AI_CONFIG, AI_BLOCKED_PATTERNS, AI_SUPPORTED_LANGUAGES, isOpenAiConfigured, menuLanguageLabel, resolveAiPromptLanguage, resolveGuestMessageLanguage } from "@/lib/ai/config";
 export { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 export { getCachedMenuForLocation, invalidateMenuCache } from "@/lib/ai/menu-cache";
 export { moderateGuestInput } from "@/lib/ai/moderation";

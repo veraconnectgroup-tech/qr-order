@@ -77,7 +77,27 @@ export const AI_SUPPORTED_LANGUAGES = [
   "fr",
   "es",
   "it",
+  "ru",
+  "ar",
 ] as const;
+
+const MENU_LANGUAGE_LABELS: Record<string, string> = {
+  de: "German",
+  en: "English",
+  sr: "Serbian",
+  hr: "Croatian",
+  tr: "Turkish",
+  fr: "French",
+  es: "Spanish",
+  it: "Italian",
+  ru: "Russian",
+  ar: "Arabic",
+};
+
+export function menuLanguageLabel(language: string): string {
+  const code = language.trim().toLowerCase().slice(0, 2);
+  return MENU_LANGUAGE_LABELS[code] ?? "English";
+}
 
 export function resolveAiPromptLanguage(language: string): (typeof AI_SUPPORTED_LANGUAGES)[number] {
   const normalized = language.trim().toLowerCase().slice(0, 2);
@@ -85,6 +105,25 @@ export function resolveAiPromptLanguage(language: string): (typeof AI_SUPPORTED_
     return normalized as (typeof AI_SUPPORTED_LANGUAGES)[number];
   }
   return "en";
+}
+
+/** Infer response language from guest text; falls back to venue menu language. */
+export function resolveGuestMessageLanguage(
+  guestMessage: string,
+  menuLanguage: string
+): (typeof AI_SUPPORTED_LANGUAGES)[number] {
+  const text = guestMessage.trim();
+  if (!text) return resolveAiPromptLanguage(menuLanguage);
+
+  if (/[\u0600-\u06FF]/.test(text)) return "ar";
+  if (/[ђЂјЈљЉњЊћЋ]/.test(text)) return "sr";
+  if (/[\u0400-\u04FF]/.test(text)) return "ru";
+  if (/[ğüşöçıİĞÜŞÖÇ]/.test(text)) return "tr";
+  if (/[äöüßÄÖÜ]/.test(text)) return "de";
+  if (/[àâçéèêëïîôùûüœæ]/i.test(text)) return "fr";
+  if (/[ñ¿¡]/i.test(text)) return "es";
+
+  return resolveAiPromptLanguage(menuLanguage);
 }
 
 export function isOpenAiConfigured(): boolean {

@@ -59,12 +59,15 @@ export type AiPromptLanguage =
   | "tr"
   | "fr"
   | "es"
-  | "it";
+  | "it"
+  | "ru"
+  | "ar";
 
 export type BuildSystemPromptInput = {
   orgName: string;
   menuText: string;
   language: string;
+  guestMessage?: string | null;
   guestPrefs?: AiGuestPreferences | null;
   orderContext?: string | null;
   browsingContext?: string | null;

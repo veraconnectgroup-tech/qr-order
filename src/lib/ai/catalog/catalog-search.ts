@@ -152,6 +152,54 @@ export function buildBrowseMessage(
         ? `Wir haben ${lead} und ${rest} weitere. Wähle unten.`
         : `Wir haben ${lead}. Wähle unten.`;
     },
+    fr: (n, rest) => {
+      if (n.length === 1) return `Nous avons ${n[0]}. Appuyez sur + pour ajouter.`;
+      if (n.length === 2) return `Nous avons ${n[0]} et ${n[1]}. Choisissez ci-dessous.`;
+      const lead = `${n[0]}, ${n[1]} et ${n[2]}`;
+      return rest > 0
+        ? `Nous avons ${lead} et ${rest} de plus. Choisissez ci-dessous.`
+        : `Nous avons ${lead}. Choisissez ci-dessous.`;
+    },
+    es: (n, rest) => {
+      if (n.length === 1) return `Tenemos ${n[0]}. Pulsa + para añadir.`;
+      if (n.length === 2) return `Tenemos ${n[0]} y ${n[1]}. Elige abajo.`;
+      const lead = `${n[0]}, ${n[1]} y ${n[2]}`;
+      return rest > 0
+        ? `Tenemos ${lead} y ${rest} más. Elige abajo.`
+        : `Tenemos ${lead}. Elige abajo.`;
+    },
+    it: (n, rest) => {
+      if (n.length === 1) return `Abbiamo ${n[0]}. Tocca + per aggiungere.`;
+      if (n.length === 2) return `Abbiamo ${n[0]} e ${n[1]}. Scegli sotto.`;
+      const lead = `${n[0]}, ${n[1]} e ${n[2]}`;
+      return rest > 0
+        ? `Abbiamo ${lead} e altri ${rest}. Scegli sotto.`
+        : `Abbiamo ${lead}. Scegli sotto.`;
+    },
+    tr: (n, rest) => {
+      if (n.length === 1) return `${n[0]} var. Eklemek için + dokunun.`;
+      if (n.length === 2) return `${n[0]} ve ${n[1]} var. Aşağıdan seçin.`;
+      const lead = `${n[0]}, ${n[1]} ve ${n[2]}`;
+      return rest > 0
+        ? `${lead} ve ${rest} tane daha var. Aşağıdan seçin.`
+        : `${lead} var. Aşağıdan seçin.`;
+    },
+    ru: (n, rest) => {
+      if (n.length === 1) return `У нас есть ${n[0]}. Нажмите +, чтобы добавить.`;
+      if (n.length === 2) return `У нас есть ${n[0]} и ${n[1]}. Выберите ниже.`;
+      const lead = `${n[0]}, ${n[1]} и ${n[2]}`;
+      return rest > 0
+        ? `У нас есть ${lead} и ещё ${rest}. Выберите ниже.`
+        : `У нас есть ${lead}. Выберите ниже.`;
+    },
+    ar: (n, rest) => {
+      if (n.length === 1) return `لدينا ${n[0]}. اضغط + للإضافة.`;
+      if (n.length === 2) return `لدينا ${n[0]} و${n[1]}. اختر أدناه.`;
+      const lead = `${n[0]} و${n[1]} و${n[2]}`;
+      return rest > 0
+        ? `لدينا ${lead} و${rest} أخرى. اختر أدناه.`
+        : `لدينا ${lead}. اختر أدناه.`;
+    },
   };
 
   const lang = language.slice(0, 2);

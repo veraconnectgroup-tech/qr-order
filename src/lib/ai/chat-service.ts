@@ -3,6 +3,7 @@ import {
   AI_CONFIG,
   isOpenAiConfigured,
   resolveAiPromptLanguage,
+  resolveGuestMessageLanguage,
 } from "@/lib/ai/config";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
@@ -451,7 +452,11 @@ export async function handleAiChat(body: unknown) {
       catalog.productMap,
       catalog.currency
     );
-    const assistantText = buildBrowseMessage(browseMatches, language);
+    const responseLanguage = resolveGuestMessageLanguage(
+      input.message,
+      language
+    );
+    const assistantText = buildBrowseMessage(browseMatches, responseLanguage);
 
     const assistantMessage: StoredMessage = {
       role: "assistant",
@@ -617,6 +622,7 @@ export async function handleAiChat(body: unknown) {
     orgName,
     menuText: menuPayload.menuText,
     language,
+    guestMessage: input.message,
     guestPrefs,
     orderContext,
     browsingContext: input.browsingContext ?? null,

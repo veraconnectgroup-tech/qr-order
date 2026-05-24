@@ -1,20 +1,20 @@
 import {
   AI_CONFIG,
   resolveAiPromptLanguage,
+  resolveGuestMessageLanguage,
   type AI_SUPPORTED_LANGUAGES,
 } from "@/lib/ai/config";
+import { multilingualPolicyBlock } from "@/lib/ai/multilingual-policy";
 import type { AiGuestPreferences, BuildSystemPromptInput } from "@/lib/ai/types";
 
-const LANGUAGE_LABELS: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
-  de: "German",
-  en: "English",
-  sr: "Serbian",
-  hr: "Croatian",
-  tr: "Turkish",
-  fr: "French",
-  es: "Spanish",
-  it: "Italian",
-};
+function langBlock(
+  blocks: Partial<Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>> & {
+    en: string;
+  },
+  lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
+): string {
+  return blocks[lang] ?? blocks.en;
+}
 
 function formatGuestContext(
   prefs: AiGuestPreferences | null | undefined,
@@ -37,7 +37,7 @@ function formatGuestContext(
       es: `REGLA ESTRICTA DE ALERGIAS: Alergias del cliente: ${allergies.join(", ")}. NUNCA recomiendes platos que puedan contenerlas. Si dudas, excluye el plato.`,
       it: `REGOLA ALLERGIE RIGIDA: Allergie dell'ospite: ${allergies.join(", ")}. Non consigliare MAI piatti che possano contenerle. In dubbio, escludi il piatto.`,
     };
-    lines.push(allergyLine[lang]);
+    lines.push(allergyLine[lang] ?? allergyLine.en);
   }
 
   if (mood) {
@@ -51,7 +51,7 @@ function formatGuestContext(
       es: `Estado de ánimo/preferencia: "${mood}". Adapta el tono y las recomendaciones.`,
       it: `Umore/preferenza dell'ospite: "${mood}". Adatta tono e consigli.`,
     };
-    lines.push(moodLine[lang]);
+    lines.push(moodLine[lang] ?? moodLine.en);
   }
 
   return lines.length ? `\n\n${lines.join("\n")}` : "";
@@ -64,60 +64,60 @@ function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
 - Empfehle NUR Gerichte aus dem untenstehenden Menü.
 - Maximal ${max} Empfehlungen pro Antwort.
 - Nenne immer den exakten Preis aus dem Menü.
-- Antworte ausschließlich auf ${LANGUAGE_LABELS[lang]}.
+- Follow LANGUAGE POLICY for all guest-facing text.
 - Verwende productId exakt wie im Menü in eckigen Klammern.
 - Keine Gerichte erfinden, keine medizinischen oder rechtlichen Ratschläge.`,
     en: `RULES:
 - Recommend ONLY items from the menu below.
 - Maximum ${max} recommendations per response.
 - Always include the exact price from the menu.
-- Reply exclusively in ${LANGUAGE_LABELS[lang]}.
+- Follow LANGUAGE POLICY for all guest-facing text.
 - Use productId exactly as shown in square brackets in the menu.
 - Do not invent dishes or give medical/legal advice.`,
     sr: `PRAVILA:
 - Preporučuj SAMO stavke iz menija ispod.
 - Maksimalno ${max} preporuke po odgovoru.
 - Uvek navedi tačnu cenu iz menija.
-- Odgovaraj isključivo na ${LANGUAGE_LABELS[lang]}.
+- Prati LANGUAGE POLICY za sav tekst prema gostu.
 - Koristi productId tačno kao u meniju u uglastim zagradama.
 - Ne izmišljaj jela i ne daj medicinske/pravne savete.`,
     hr: `PRAVILA:
 - Preporučuj SAMO stavke iz jelovnika ispod.
 - Maksimalno ${max} preporuke po odgovoru.
 - Uvijek navedi točnu cijenu iz jelovnika.
-- Odgovaraj isključivo na ${LANGUAGE_LABELS[lang]}.
+- Prati LANGUAGE POLICY za sav tekst prema gostu.
 - Koristi productId točno kao u jelovniku u uglastim zagradama.
 - Ne izmišljaj jela i ne daj medicinske/pravne savjete.`,
     tr: `KURALLAR:
 - Yalnızca aşağıdaki menüden öner.
 - Yanıt başına en fazla ${max} öneri.
 - Menüdeki tam fiyatı her zaman belirt.
-- Yalnızca ${LANGUAGE_LABELS[lang]} yanıt ver.
+- LANGUAGE POLICY'ye uy — misafire dönük tüm metinler misafirin dilinde.
 - productId değerini menüdeki köşeli parantezlerle aynen kullan.
 - Yemek uydurma; tıbbi/hukuki tavsiye verme.`,
     fr: `RÈGLES:
 - Recommande UNIQUEMENT des plats du menu ci-dessous.
 - Maximum ${max} recommandations par réponse.
 - Indique toujours le prix exact du menu.
-- Réponds exclusivement en ${LANGUAGE_LABELS[lang]}.
+- Suis LANGUAGE POLICY pour tout texte destiné au client.
 - Utilise productId exactement comme entre crochets dans le menu.
 - N'invente pas de plats; pas de conseils médicaux/juridiques.`,
     es: `REGLAS:
 - Recomienda SOLO platos del menú siguiente.
 - Máximo ${max} recomendaciones por respuesta.
 - Indica siempre el precio exacto del menú.
-- Responde exclusivamente en ${LANGUAGE_LABELS[lang]}.
+- Sigue LANGUAGE POLICY para todo texto al cliente.
 - Usa productId exactamente como aparece entre corchetes.
 - No inventes platos ni des consejos médicos/legales.`,
     it: `REGOLE:
 - Consiglia SOLO piatti dal menu sotto.
 - Massimo ${max} consigli per risposta.
 - Indica sempre il prezzo esatto dal menu.
-- Rispondi esclusivamente in ${LANGUAGE_LABELS[lang]}.
+- Segui LANGUAGE POLICY per tutto il testo verso l'ospite.
 - Usa productId esattamente come tra parentesi quadre nel menu.
 - Non inventare piatti; niente consigli medici/legali.`,
   };
-  return blocks[lang];
+  return langBlock(blocks, lang);
 }
 
 function orderingRulesBlock(
@@ -172,7 +172,7 @@ function orderingRulesBlock(
 - Quando completo: intent "order", proposedItems.
 - submitOrder true SOLO con conferma esplicita dell'ospite.`,
   };
-  return blocks[lang];
+  return langBlock(blocks, lang);
 }
 
 function browseRulesBlock(
@@ -217,7 +217,7 @@ function browseRulesBlock(
 - recommendations: TUTTI gli articoli corrispondenti (fino a ${max}), reason = solo prezzo.
 - message: breve; l'ospite sceglie con +.`,
   };
-  return blocks[lang];
+  return langBlock(blocks, lang);
 }
 
 function outputFormatBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
@@ -313,7 +313,7 @@ function outputFormatBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): strin
   "message": "messaggio all'ospite"
 }`,
   };
-  return blocks[lang];
+  return langBlock(blocks, lang);
 }
 
 function identityBlock(
@@ -330,7 +330,7 @@ function identityBlock(
     es: `Eres el AI Concierge de "${orgName}" — guía digital cálido y experto.`,
     it: `Sei l'AI Concierge di "${orgName}" — guida digitale calorosa ed esperta.`,
   };
-  return blocks[lang];
+  return langBlock(blocks, lang);
 }
 
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
@@ -351,14 +351,19 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const playbookBlock = input.playbookContext?.trim()
     ? `\n\n${input.playbookContext.trim()}`
     : "";
+  const guestLangHint = input.guestMessage?.trim()
+    ? `\n\nGUEST LANGUAGE HINT: ${resolveGuestMessageLanguage(input.guestMessage, input.language)} (from latest message; still follow LANGUAGE POLICY).`
+    : "";
 
   return [
+    multilingualPolicyBlock(input.language),
     identityBlock(input.orgName, lang),
     rulesBlock(lang),
     orderingBlock,
     menuBrowseRulesBlock,
     outputFormatBlock(lang),
     guestContext,
+    guestLangHint,
     playbookBlock,
     orderBlock,
     draftBlock,
