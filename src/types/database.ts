@@ -372,6 +372,18 @@ type Tables = {
     created_at: string;
     processed_at: string | null;
   };
+  dead_letter_queue: {
+    id: string;
+    org_id: string;
+    job_type: string;
+    payload: Json;
+    error_message: string | null;
+    attempts: number;
+    max_attempts: number;
+    created_at: string;
+    resolved_at: string | null;
+    resolved_by: string | null;
+  };
   order_channel_deliveries: {
     id: string;
     order_id: string;

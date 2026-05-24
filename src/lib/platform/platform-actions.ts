@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/auth/session";
+import { retryDeadLetterQueueItem } from "@/lib/outbox/dead-letter-queue";
 import {
   parseFeatureFlags,
   type PlatformFeature,
@@ -102,6 +103,19 @@ export async function updateOrgPlanAction(orgId: string, planId: string) {
   if (error) return { error: error.message };
 
   revalidatePath(`/platform/orgs/${orgId}`);
+  revalidatePath("/platform/orgs");
+  return { success: true };
+}
+
+export async function retryDlqItemAction(dlqId: string) {
+  const staff = await requirePlatformAdmin();
+  const result = await retryDeadLetterQueueItem(dlqId, staff.user_id);
+  if (result.error) return { error: result.error };
+
+  revalidatePath("/platform");
+  if (result.orgId) {
+    revalidatePath(`/platform/orgs/${result.orgId}`);
+  }
   revalidatePath("/platform/orgs");
   return { success: true };
 }

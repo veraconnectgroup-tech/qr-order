@@ -20,6 +20,7 @@ import { verifyTableOrderAccess } from "@/lib/orders/validate-table-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import { buildPaymentIdempotencyKey } from "@/lib/resilience/idempotency";
 import {
   handleStripeCircuitError,
   withStripeCircuit,
@@ -138,6 +139,7 @@ async function createSplitPaymentIntent(
     orderId: string;
     splitId: string;
     sessionId: string;
+    orgId: string;
     amount: number;
     tipAmount: number;
     org: {
@@ -175,7 +177,14 @@ async function createSplitPaymentIntent(
           is_split: "true",
         },
       },
-      { stripeAccount: params.org.stripe_account_id! }
+      {
+        stripeAccount: params.org.stripe_account_id!,
+        idempotencyKey: buildPaymentIdempotencyKey(
+          params.orgId,
+          params.splitId,
+          amountCents
+        ),
+      }
     )
   );
 
@@ -440,6 +449,7 @@ export const POST = withErrorHandler(
         orderId,
         splitId: row.id,
         sessionId: ctx.session.id,
+        orgId: ctx.org.id,
         amount: split.amount,
         tipAmount: split.tip_amount,
         org: ctx.org,

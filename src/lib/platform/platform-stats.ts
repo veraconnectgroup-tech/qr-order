@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { countUnresolvedDlq, loadOrgDeadLetterQueue } from "@/lib/outbox/dead-letter-queue";
 import { loadActivePlans } from "@/lib/billing/plans";
 import type { RevenueSeriesPoint } from "@/lib/analytics/admin-analytics";
 
@@ -51,7 +52,7 @@ export async function loadPlatformOverview() {
   const since30 = new Date();
   since30.setDate(since30.getDate() - 30);
 
-  const [{ data: orgs }, { data: orders }] = await Promise.all([
+  const [{ data: orgs }, { data: orders }, failedJobs] = await Promise.all([
     admin
       .from("organizations")
       .select(
@@ -63,6 +64,7 @@ export async function loadPlatformOverview() {
       .select("total, payment_status, created_at")
       .eq("payment_status", "paid")
       .gte("created_at", since30.toISOString()),
+    countUnresolvedDlq(),
   ]);
 
   const orgRows = orgs ?? [];
@@ -118,6 +120,7 @@ export async function loadPlatformOverview() {
     tseActiveOrgs,
     missingSteuernummer,
     revenue30,
+    failedJobs,
     signupsSeries,
   };
 }
@@ -305,6 +308,7 @@ export async function loadPlatformOrgDetail(orgId: string) {
 
   const plans = await loadActivePlans();
   const orgPlanId = (org as { plan_id?: string | null }).plan_id ?? "starter";
+  const failedJobs = await loadOrgDeadLetterQueue(orgId);
 
   return {
     org,
@@ -317,6 +321,7 @@ export async function loadPlatformOrgDetail(orgId: string) {
     posIntegrations,
     printers,
     pendingPrintJobs,
+    failedJobs,
     plans,
     currentPlan: plans.find((plan) => plan.id === orgPlanId) ?? null,
   };

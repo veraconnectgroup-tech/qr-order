@@ -1,4 +1,5 @@
 import { getOutboxHandler } from "@/lib/outbox/handlers/registry";
+import { moveToDeadLetterQueue } from "@/lib/outbox/dead-letter-queue";
 import { computeOutboxNextRetryAt } from "@/lib/outbox/retry-delay";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -144,6 +145,7 @@ export async function processOutboxBatch(
       });
 
       if (event.attempts >= event.max_attempts) {
+        await moveToDeadLetterQueue(admin, event, message);
         result.deadLetter += 1;
         logger.error("Outbox event dead-lettered", {
           outboxId: event.id,

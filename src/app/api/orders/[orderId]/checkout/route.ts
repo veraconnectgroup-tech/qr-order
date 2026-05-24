@@ -15,6 +15,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import { buildPaymentIdempotencyKey } from "@/lib/resilience/idempotency";
 import {
   handleStripeCircuitError,
   withStripeCircuit,
@@ -231,7 +232,14 @@ export const POST = withErrorHandler(
             application_fee_amount: applicationFee,
             metadata: { order_id: orderId },
           },
-          { stripeAccount: org.stripe_account_id! }
+          {
+            stripeAccount: org.stripe_account_id!,
+            idempotencyKey: buildPaymentIdempotencyKey(
+              (location as { org_id: string }).org_id,
+              orderId,
+              amountCents
+            ),
+          }
         )
       );
 

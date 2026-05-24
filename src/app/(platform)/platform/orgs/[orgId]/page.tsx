@@ -11,6 +11,7 @@ import { formatPrice, fromCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/types/database";
 import { PlatformPlanSelector } from "@/components/platform/platform-plan-selector";
+import { DlqRetryButton } from "@/components/platform/dlq-retry-button";
 
 function posStatusLabel(status: string) {
   if (status === "connected") return { label: "Aktiv", className: "text-emerald-600" };
@@ -45,6 +46,7 @@ export default async function PlatformOrgDetailPage({
     posIntegrations,
     printers,
     pendingPrintJobs,
+    failedJobs,
     plans,
     currentPlan,
   } = detail;
@@ -259,6 +261,35 @@ export default async function PlatformOrgDetailPage({
               ))}
             </ul>
           </>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-neutral-900">Failed jobs</h2>
+        {failedJobs.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-600">No unresolved failed jobs.</p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {failedJobs.map((job) => (
+              <li
+                key={job.id}
+                className="rounded-md border border-red-100 bg-red-50 px-4 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-neutral-900">{job.job_type}</p>
+                    <p className="mt-1 text-xs text-neutral-600">
+                      {new Date(job.created_at).toLocaleString()}
+                    </p>
+                    {job.error_message && (
+                      <p className="mt-2 text-xs text-red-700">{job.error_message}</p>
+                    )}
+                  </div>
+                  <DlqRetryButton dlqId={job.id} />
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

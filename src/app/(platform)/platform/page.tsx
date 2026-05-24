@@ -15,7 +15,7 @@ export default async function PlatformOverviewPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <AnalyticsMetricCard label="Total orgs" value={String(data.totalOrgs)} />
         <AnalyticsMetricCard label="Active orgs" value={String(data.activeOrgs)} />
         <AnalyticsMetricCard label="On trial" value={String(data.trialOrgs)} />
@@ -27,6 +27,11 @@ export default async function PlatformOverviewPage() {
           label="Ohne St-Nr"
           value={String(data.missingSteuernummer)}
           tone={data.missingSteuernummer > 0 ? "warning" : "default"}
+        />
+        <AnalyticsMetricCard
+          label="Failed jobs"
+          value={String(data.failedJobs)}
+          tone={data.failedJobs > 0 ? "warning" : "default"}
         />
         <AnalyticsMetricCard
           label="Revenue (30d)"

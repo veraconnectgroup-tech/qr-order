@@ -7,6 +7,7 @@ import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
+import { buildPaymentIdempotencyKey } from "@/lib/resilience/idempotency";
 import {
   handleStripeCircuitError,
   withStripeCircuit,
@@ -142,18 +143,30 @@ export const POST = withErrorHandler(
         feeFixed: org.platform_fee_fixed,
       });
 
+      const amountCents = Math.round(Number(orderRow.total) * 100);
+      const orgId = (location as { org_id: string }).org_id;
+
       const paymentIntent = await withStripeCircuit(() =>
-        stripe.paymentIntents.create({
-          amount: Math.round(Number(orderRow.total) * 100),
-          currency: org.currency.toLowerCase(),
-          application_fee_amount: platformFee,
-          transfer_data: { destination: org.stripe_account_id! },
-          metadata: {
-            order_id: orderRow.id,
-            location_id: orderRow.location_id,
+        stripe.paymentIntents.create(
+          {
+            amount: amountCents,
+            currency: org.currency.toLowerCase(),
+            application_fee_amount: platformFee,
+            transfer_data: { destination: org.stripe_account_id! },
+            metadata: {
+              order_id: orderRow.id,
+              location_id: orderRow.location_id,
+            },
+            automatic_payment_methods: { enabled: true },
           },
-          automatic_payment_methods: { enabled: true },
-        })
+          {
+            idempotencyKey: buildPaymentIdempotencyKey(
+              orgId,
+              orderRow.id,
+              amountCents
+            ),
+          }
+        )
       );
 
       await admin

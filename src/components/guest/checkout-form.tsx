@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { Loader2 } from "lucide-react";
 import { hapticSuccess } from "@/lib/haptics";
+import { buildGuestOrderIdempotencyKey } from "@/lib/resilience/idempotency";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { useGuestSessionToken } from "@/hooks/use-guest-session-token";
 import { useGuestSession } from "@/hooks/use-guest-session";
@@ -214,9 +216,15 @@ export function CheckoutForm({
       ? getStoredDeviceToken(locationId, resolvedTableId)
       : null;
 
+    const sessionId =
+      context?.sessionId ?? activeSessionToken ?? sessionToken ?? "unknown";
+
     const res = await fetchWithRetry("/api/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": buildGuestOrderIdempotencyKey(sessionId, items),
+      },
       body: JSON.stringify({
         sessionToken: activeSessionToken,
         tableToken: token,
@@ -267,7 +275,7 @@ export function CheckoutForm({
   }
 
   async function handlePlaceOrder() {
-    if (!isOnline) return;
+    if (!isOnline || processing) return;
 
     if (!acceptingOrders) {
       setError(tUI("menu.orderingPaused"));
@@ -509,17 +517,22 @@ export function CheckoutForm({
         type="button"
         disabled={processing || !isOnline || !acceptingOrders}
         onClick={handlePlaceOrder}
-        className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600 disabled:animate-pulse"
+        className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600 disabled:opacity-80"
       >
-        {processing
-          ? tUI("checkout.placingOrderWithTotal", {
+        {processing ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+            {tUI("checkout.placingOrderWithTotal", {
               amount: formatPrice(computedTotal, currency),
-            })
-          : !isOnline
-            ? tUI("offline.banner")
-            : tUI("checkout.placeOrderWithTotal", {
-                amount: formatPrice(computedTotal, currency),
-              })}
+            })}
+          </span>
+        ) : !isOnline ? (
+          tUI("offline.banner")
+        ) : (
+          tUI("checkout.placeOrderWithTotal", {
+            amount: formatPrice(computedTotal, currency),
+          })
+        )}
       </Button>
         </>
       )}
