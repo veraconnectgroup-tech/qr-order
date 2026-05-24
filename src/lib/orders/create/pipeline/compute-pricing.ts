@@ -6,13 +6,16 @@ import {
 } from "@/lib/orders/create/result";
 import { orderError } from "@/lib/orders/create/pipeline/errors";
 import type { OrderPricing, ValidatedLineItem } from "@/lib/orders/create/types";
+import {
+  applyOrderDiscount,
+  computeOrderTaxTotals,
+} from "@/lib/orders/shared/compute-totals";
 import { validateOrderTotal } from "@/lib/security/order-limits";
 import {
   validatePromoCode,
   type PromoCodeRow,
   type PromoErrorCode,
 } from "@/lib/promo/validate-promo";
-import { calculateOrderTaxFromItems } from "@/lib/tax/vat";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -65,19 +68,8 @@ export async function computeOrderPricing(
     orgDefaultTaxPercent: number;
   }
 ): Promise<Result<OrderPricing, OrderCreateError>> {
-  const taxPercent = Number(input.orgDefaultTaxPercent ?? 19);
-  const subtotal = input.lineItems.reduce((sum, item) => sum + item.itemTotal, 0);
-
-  const taxResult = calculateOrderTaxFromItems(
-    input.lineItems.map((item) => ({
-      lineTotal: item.itemTotal,
-      taxRate: item.taxRate,
-    }))
-  );
-
-  const taxAmount = taxResult.taxAmount;
-  const effectiveTaxPercent = taxResult.effectiveTaxPercent || taxPercent;
-  const total = taxResult.total;
+  const { subtotal, taxAmount, effectiveTaxPercent, total } =
+    computeOrderTaxTotals(input.lineItems, input.orgDefaultTaxPercent);
 
   const totalError = validateOrderTotal(total);
   if (totalError) {
@@ -96,17 +88,13 @@ export async function computeOrderPricing(
   }
 
   const { discountAmount, promoCodeId } = promoResult.value;
-  const finalTotal = Math.max(
-    0,
-    Math.round((total - discountAmount) * 100) / 100
-  );
 
   return ok({
     subtotal,
     taxAmount,
     effectiveTaxPercent,
     discountAmount,
-    finalTotal,
+    finalTotal: applyOrderDiscount(total, discountAmount),
     promoCodeId,
   });
 }

@@ -1,4 +1,4 @@
-import type { CreateOrderInput } from "@/lib/orders/create-order";
+import type { CreateOrderInput } from "@/lib/orders/create/schema";
 import type { MenuSection } from "@/lib/menu-section";
 import {
   err,
@@ -10,12 +10,13 @@ import { orderError } from "@/lib/orders/create/pipeline/errors";
 import { loadModifierMap } from "@/lib/orders/create/pipeline/modifier-catalog";
 import type { ResolvedContext, ValidatedLineItem } from "@/lib/orders/create/types";
 import {
+  buildValidatedLineItems,
+  type CatalogProduct,
+} from "@/lib/orders/shared/build-line-items";
+import {
   PRICE_EPSILON,
   validateOrderItems,
 } from "@/lib/security/order-limits";
-import { sanitizeOrderNotes } from "@/lib/security/sanitize";
-import { serveSizeOrderNote } from "@/lib/serve-size";
-import { resolveItemTaxRate } from "@/lib/tax/vat";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -54,15 +55,9 @@ export async function validateOrderCart(
     loadModifierMap(admin, modifierIds, productIds),
   ]);
 
-  const allProducts = (productsRes.data ?? []) as Array<{
-    id: string;
-    name: string;
-    price: number;
-    is_available: boolean;
-    location_id: string;
-    category_id: string;
-    tax_rate: number | null;
-  }>;
+  const allProducts = (productsRes.data ?? []) as Array<
+    CatalogProduct & { is_available: boolean }
+  >;
 
   const unavailableNames = productIds
     .map((id) => allProducts.find((product) => product.id === id))
@@ -116,8 +111,6 @@ export async function validateOrderCart(
     );
   }
 
-  const taxPercent = Number(ctx.org.default_tax_percent ?? 19);
-
   for (const item of input.items) {
     const product = productMap.get(item.productId)!;
     const serverUnitPrice = Number(product.price);
@@ -147,52 +140,14 @@ export async function validateOrderCart(
     }
   }
 
-  const lineItems: ValidatedLineItem[] = input.items.map((item) => {
-    const product = productMap.get(item.productId)!;
-    const mods = item.modifiers.map((mod) => {
-      const serverMod = modifierMap.get(mod.modifierId)!;
-      return {
-        modifierId: serverMod.id,
-        modifierName: serverMod.name,
-        price: Number(serverMod.price),
-      };
-    });
-    const unitWithMods =
-      Number(product.price) + mods.reduce((sum, mod) => sum + mod.price, 0);
-    const itemTotal = unitWithMods * item.quantity;
-
-    const serveNote = serveSizeOrderNote(item.serveSize);
-    const combinedNotes = [
-      serveNote,
-      item.notes ? sanitizeOrderNotes(item.notes) : "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
-
-    const menuSection =
-      categorySectionMap.get(product.category_id) ?? ("food" as MenuSection);
-    const productTaxRate =
-      product.tax_rate != null ? Number(product.tax_rate) : null;
-    const taxRate = resolveItemTaxRate({
-      productTaxRate,
-      menuSection,
+  return ok(
+    buildValidatedLineItems({
+      items: input.items,
+      productMap,
+      modifierMap,
+      categorySectionMap,
       isTakeaway: input.isTakeaway,
-      orgDefaultRate: taxPercent,
-    });
-
-    return {
-      productId: item.productId,
-      productName: product.name,
-      quantity: item.quantity,
-      unitPrice: Number(product.price),
-      notes: combinedNotes,
-      menuSection,
-      productTaxRate,
-      taxRate,
-      modifiers: mods,
-      itemTotal,
-    };
-  });
-
-  return ok(lineItems);
+      orgDefaultTaxPercent: ctx.org.default_tax_percent,
+    })
+  );
 }

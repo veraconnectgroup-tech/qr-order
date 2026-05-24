@@ -1,4 +1,4 @@
-import type { CreateOrderInput } from "@/lib/orders/create-order";
+import type { CreateOrderInput } from "@/lib/orders/create/schema";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { assertGuestCanPlaceOrder } from "@/lib/orders/guest-order-access";
 import {

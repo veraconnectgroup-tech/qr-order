@@ -20,6 +20,8 @@ export function toLegacyOrderError(error: OrderCreateError) {
   };
 }
 
+export const toApi = toLegacyOrderError;
+
 export function sessionValidationError(
   error: string,
   status: number

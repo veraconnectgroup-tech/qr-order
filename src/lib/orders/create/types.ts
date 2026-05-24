@@ -1,5 +1,6 @@
 import type { MenuSection } from "@/lib/menu-section";
-import type { CreateOrderInput } from "@/lib/orders/create-order";
+import type { IdempotentOrderData } from "@/lib/orders/idempotency";
+import type { CreateOrderInput } from "@/lib/orders/create/schema";
 
 export type OrderCreateMode =
   | { kind: "normal"; sessionId: string }
@@ -79,3 +80,13 @@ export type CreateOrderSuccess = {
   locationId: string;
   awaitingApproval?: true;
 };
+
+export type CreateOrderResult =
+  | { data: IdempotentOrderData; error?: never }
+  | {
+      data?: never;
+      error: string;
+      status: number;
+      products?: string[];
+      blockedUntil?: string;
+    };

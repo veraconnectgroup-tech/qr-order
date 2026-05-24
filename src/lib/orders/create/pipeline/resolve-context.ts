@@ -1,9 +1,56 @@
-import type { ResolvedContext } from "@/lib/orders/create/types";
+import { isDemoGuestTableToken } from "@/lib/demo-guest";
+import type { CreateOrderInput } from "@/lib/orders/create/schema";
+import { orderError, sessionValidationError } from "@/lib/orders/create/pipeline/errors";
 import { err, ok, type OrderCreateError, type Result } from "@/lib/orders/create/result";
-import { orderError } from "@/lib/orders/create/pipeline/errors";
+import type { ResolvedContext } from "@/lib/orders/create/types";
+import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+export type GuestContextResult = {
+  context: ResolvedContext;
+  demoSessionId?: string;
+};
+
+export async function resolveGuestOrderContext(
+  admin: AdminClient,
+  input: Pick<CreateOrderInput, "tableToken" | "sessionToken">
+): Promise<Result<GuestContextResult, OrderCreateError>> {
+  if (isDemoGuestTableToken(input.tableToken)) {
+    if (!input.sessionToken) {
+      return err(orderError("session_required", "Session required.", 401));
+    }
+
+    const sessionResult = await validateTableSession(
+      admin,
+      input.tableToken,
+      input.sessionToken
+    );
+
+    if ("error" in sessionResult) {
+      return err(
+        sessionValidationError(sessionResult.error, sessionResult.status)
+      );
+    }
+
+    return ok({
+      context: {
+        table: sessionResult.data.table,
+        location: sessionResult.data.location,
+        org: sessionResult.data.org,
+      },
+      demoSessionId: sessionResult.data.session.id,
+    });
+  }
+
+  const contextResult = await resolveOrderContext(admin, input.tableToken);
+  if (!contextResult.ok) {
+    return err(contextResult.error);
+  }
+
+  return ok({ context: contextResult.value });
+}
 
 export async function resolveOrderContext(
   admin: AdminClient,
