@@ -1,4 +1,5 @@
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
+import { closeTableSession } from "@/lib/sessions/session-devices";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { orgIdForLocation } from "@/lib/webhooks/org-context";
 import type { createAdminClient } from "@/lib/supabase/admin";
@@ -38,7 +39,6 @@ async function dedupeActiveSessions(
   tableId: string,
   locationId: string
 ) {
-  const now = new Date().toISOString();
   const { data: allActive } = await admin
     .from("table_sessions")
     .select("id, session_token, opened_at")
@@ -59,10 +59,7 @@ async function dedupeActiveSessions(
   const duplicates = rows.slice(1);
 
   for (const dup of duplicates) {
-    await admin
-      .from("table_sessions")
-      .update({ status: "closed", closed_at: now })
-      .eq("id", dup.id);
+    await closeTableSession(admin, dup.id, "void");
 
     const orgId = await orgIdForLocation(locationId);
     if (orgId) {
@@ -93,11 +90,15 @@ export async function findOrCreateTableSession(
   const existing = await resolveActiveSession(admin, tableId, cutoff);
   if (existing) return existing;
 
-  await admin
+  const { data: staleActive } = await admin
     .from("table_sessions")
-    .update({ status: "closed", closed_at: new Date().toISOString() })
+    .select("id")
     .eq("table_id", tableId)
     .eq("status", "active");
+
+  for (const row of staleActive ?? []) {
+    await closeTableSession(admin, (row as { id: string }).id, "void");
+  }
 
   const { data: session, error } = await admin
     .from("table_sessions")

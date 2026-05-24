@@ -208,12 +208,14 @@ export function TablesBoard() {
         (sum, o) => sum + Number(o.total),
         0
       );
-      const hasPaymentRequest = activeOrders.some(
-        (o) =>
-          o.payment_status !== "paid" &&
-          o.payment_requested_at != null &&
-          o.payment_method !== "unset"
-      );
+      const hasPaymentRequest =
+        session != null &&
+        activeOrders.some(
+          (o) =>
+            o.payment_status !== "paid" &&
+            o.payment_requested_at != null &&
+            o.payment_method !== "unset"
+        );
       return {
         ...t,
         zone: t.zone,
@@ -335,17 +337,14 @@ export function TablesBoard() {
   }
 
   async function closeSession(sessionId: string) {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("table_sessions")
-      .update({
-        status: "closed",
-        closed_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId)
-      .eq("status", "active");
-    if (error) {
-      toast.error(error.message);
+    const res = await fetch(`/api/sessions/${sessionId}/close`, {
+      method: "POST",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(
+        (json as { error?: string }).error ?? "Could not close table session"
+      );
       return;
     }
     toast.success("Table session closed");

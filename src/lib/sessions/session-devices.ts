@@ -215,11 +215,25 @@ export async function createActiveSessionWithPin(
   };
 }
 
+export async function clearSessionPaymentRequests(
+  admin: AdminClient,
+  sessionId: string
+) {
+  await admin
+    .from("orders")
+    .update({ payment_requested_at: null })
+    .eq("session_id", sessionId)
+    .neq("payment_status", "paid")
+    .not("payment_requested_at", "is", null);
+}
+
 export async function closeTableSession(
   admin: AdminClient,
   sessionId: string,
   billStatus: "settled" | "void" = "settled"
 ) {
+  await clearSessionPaymentRequests(admin, sessionId);
+
   const now = new Date().toISOString();
   await admin
     .from("table_sessions")

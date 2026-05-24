@@ -107,8 +107,7 @@ function ChatQuickPicks({
     });
   }
 
-  const canContinue =
-    mode === "multi" ? selected.length > 0 : selected.length === 1;
+  const canContinue = mode === "multi" || selected.length === 1;
 
   return (
     <div className="mt-3 space-y-3">
@@ -141,7 +140,15 @@ function ChatQuickPicks({
         <button
           type="button"
           disabled={!canContinue}
-          onClick={() => onConfirm(selected)}
+          onClick={() =>
+            onConfirm(
+              selected.length > 0
+                ? selected
+                : mode === "multi"
+                  ? ["keine"]
+                  : selected
+            )
+          }
           className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {continueLabel}
@@ -338,6 +345,7 @@ export type AiConciergeChatProps = {
 export function AiConciergeChat({
   open,
   onOpenChange,
+  token,
   locationId,
   tableId,
   sessionToken,
@@ -375,6 +383,7 @@ export function AiConciergeChat({
   const language = isEnglish ? "en" : menuLocale;
   const addItem = useCart((s) => s.addItem);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chatInitKeyRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("allergies");
   const [isTyping, setIsTyping] = useState(false);
@@ -415,7 +424,14 @@ export function AiConciergeChat({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      chatInitKeyRef.current = null;
+      return;
+    }
+
+    const initKey = `${locationId}:${sessionToken ?? token ?? ""}`;
+    if (chatInitKeyRef.current === initKey) return;
+    chatInitKeyRef.current = initKey;
 
     const hasKnownAllergies = resolvedAllergySelection.length > 0;
 
@@ -491,11 +507,14 @@ export function AiConciergeChat({
     setInput("");
     setAddedIds(new Set());
     setAiSessionId(
-      sessionToken ? readAiSessionId(locationId, sessionToken) : null
+      (sessionToken ?? token)
+        ? readAiSessionId(locationId, sessionToken ?? token)
+        : null
     );
   }, [
     open,
     locationId,
+    token,
     sessionToken,
     tUI,
     allergyOptions,
@@ -504,34 +523,56 @@ export function AiConciergeChat({
     resolvedAllergySelection,
   ]);
 
+  const CHAT_FETCH_TIMEOUT_MS = 45_000;
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
   const callAiChat = useCallback(
     async (message: string, prefs?: { allergies: string[]; mood: string }) => {
-      if (!sessionToken) {
+      const aiContextToken = sessionToken ?? token;
+      if (!aiContextToken) {
         throw new Error(tUI("ai.overlay.unavailable"));
       }
 
       const sessionId =
-        aiSessionId ?? readAiSessionId(locationId, sessionToken) ?? undefined;
+        aiSessionId ??
+        readAiSessionId(locationId, aiContextToken) ??
+        undefined;
 
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locationId,
-          tableId,
-          sessionToken,
-          message,
-          language,
-          sessionId,
-          preferences: prefs ?? preferencesRef.current,
-          includeOrderContext: true,
-          browsingContext: resolveScrollContext?.() ?? undefined,
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        CHAT_FETCH_TIMEOUT_MS
+      );
+
+      let res: Response;
+      try {
+        res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            locationId,
+            tableId,
+            sessionToken: aiContextToken,
+            message,
+            language,
+            sessionId,
+            preferences: prefs ?? preferencesRef.current,
+            includeOrderContext: true,
+            browsingContext: resolveScrollContext?.() ?? undefined,
+          }),
+        });
+      } catch (fetchError) {
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          throw new Error(tUI("ai.overlay.error"));
+        }
+        throw fetchError;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       const json = await res.json();
       if (!res.ok) {
@@ -549,7 +590,7 @@ export function AiConciergeChat({
       };
 
       if (data.sessionId) {
-        writeAiSessionId(locationId, sessionToken, data.sessionId);
+        writeAiSessionId(locationId, aiContextToken, data.sessionId);
         setAiSessionId(data.sessionId);
       }
 
@@ -557,6 +598,7 @@ export function AiConciergeChat({
     },
     [
       sessionToken,
+      token,
       aiSessionId,
       locationId,
       tableId,
@@ -622,6 +664,7 @@ export function AiConciergeChat({
       try {
         const prefs = apiPreferencesFromSheet(selections);
         preferencesRef.current = prefs;
+        onSaveAllergies?.(prefs.allergies, selections.allergies);
 
         let recommendations: ProductRecommendation[] = [];
         let sessionId: string | null = aiSessionId;
@@ -684,6 +727,7 @@ export function AiConciergeChat({
       menuCategories,
       callAiChat,
       handleRecommendations,
+      onSaveAllergies,
       tUI,
     ]
   );
@@ -698,7 +742,6 @@ export function AiConciergeChat({
           mood: null,
         });
         preferencesRef.current = prefs;
-        onSaveAllergies?.(prefs.allergies, selection);
         const labels = selection
           .map(
             (id) =>
@@ -772,7 +815,6 @@ export function AiConciergeChat({
       moodOptions,
       tUI,
       fetchInitialRecommendations,
-      onSaveAllergies,
     ]
   );
 
@@ -897,12 +939,16 @@ export function AiConciergeChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={!inputEnabled}
-            placeholder={tUI("ai.chat.placeholder")}
+            placeholder={
+              phase === "chat"
+                ? tUI("ai.chat.placeholder")
+                : tUI("ai.chat.setupHint")
+            }
             className="min-w-0 flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-600 disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={!inputEnabled || !input.trim()}
+            disabled={!canSend}
             className="flex size-12 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label={tUI("ai.chat.send")}
           >

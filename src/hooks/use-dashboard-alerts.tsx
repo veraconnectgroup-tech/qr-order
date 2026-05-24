@@ -41,10 +41,22 @@ async function countPaymentRequests(
   supabase: ReturnType<typeof createClient>,
   locationId: string
 ) {
+  const { data: activeSessions } = await supabase
+    .from("table_sessions")
+    .select("id")
+    .eq("location_id", locationId)
+    .eq("status", "active");
+
+  const activeSessionIds = (activeSessions ?? []).map(
+    (row) => (row as { id: string }).id
+  );
+  if (activeSessionIds.length === 0) return 0;
+
   const { data } = await supabase
     .from("orders")
     .select("session_id")
     .eq("location_id", locationId)
+    .in("session_id", activeSessionIds)
     .not("payment_requested_at", "is", null)
     .neq("payment_status", "paid")
     .in("status", OPEN_ORDER_STATUSES);
@@ -61,10 +73,22 @@ async function fetchLatestPaymentRequest(
   supabase: ReturnType<typeof createClient>,
   locationId: string
 ) {
+  const { data: activeSessions } = await supabase
+    .from("table_sessions")
+    .select("id")
+    .eq("location_id", locationId)
+    .eq("status", "active");
+
+  const activeSessionIds = (activeSessions ?? []).map(
+    (row) => (row as { id: string }).id
+  );
+  if (activeSessionIds.length === 0) return null;
+
   const { data } = await supabase
     .from("orders")
     .select("total, payment_method, payment_requested_at, tables(name)")
     .eq("location_id", locationId)
+    .in("session_id", activeSessionIds)
     .not("payment_requested_at", "is", null)
     .neq("payment_status", "paid")
     .in("status", OPEN_ORDER_STATUSES)

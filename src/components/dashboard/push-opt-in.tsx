@@ -23,6 +23,12 @@ function pushErrorMessage(error: unknown): string {
   if (error instanceof ServiceWorkerUnavailableError) {
     return error.message;
   }
+  if (error instanceof Error && error.message === "permission_timeout") {
+    return "Browser did not respond to the notification prompt. Check site permissions and try again.";
+  }
+  if (error instanceof Error && error.message === "subscribe_timeout") {
+    return "Push subscription timed out. Reload the page and try again.";
+  }
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError") {
       return "Notifications were blocked.";
@@ -32,6 +38,19 @@ function pushErrorMessage(error: unknown): string {
     }
   }
   return "Failed to enable notifications.";
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  timeoutError: string
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error(timeoutError)), ms);
+    }),
+  ]);
 }
 
 export function PushOptIn({ className }: { className?: string }) {
@@ -85,7 +104,11 @@ export function PushOptIn({ className }: { className?: string }) {
     setBusy(true);
 
     try {
-      const permission = await Notification.requestPermission();
+      const permission = await withTimeout(
+        Notification.requestPermission(),
+        30_000,
+        "permission_timeout"
+      );
       if (permission !== "granted") {
         setState(permission === "denied" ? "denied" : "default");
         if (permission === "denied") {
@@ -98,10 +121,14 @@ export function PushOptIn({ className }: { className?: string }) {
       let subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
-        });
+        subscription = await withTimeout(
+          registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          }),
+          15_000,
+          "subscribe_timeout"
+        );
       }
 
       const json = subscription.toJSON();
@@ -169,8 +196,19 @@ export function PushOptIn({ className }: { className?: string }) {
     }
   }
 
-  if (state === "unsupported" || !getVapidPublicKey()) {
+  if (state === "unsupported") {
     return null;
+  }
+
+  if (!getVapidPublicKey()) {
+    return (
+      <span
+        className={cn("hidden text-xs text-amber-500/90 sm:inline", className)}
+        title="Set NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY"
+      >
+        Push not configured
+      </span>
+    );
   }
 
   if (state === "active") {

@@ -478,12 +478,15 @@ export function MenuView({
 
   const fetchPairingForNudge = useCallback(
     async (prompt: string) => {
-      if (!sessionToken || hasDrinkInCart || isDemoGuestRoute(slug, token)) {
+      const aiContextToken = sessionToken ?? token;
+      if (!aiContextToken || hasDrinkInCart || isDemoGuestRoute(slug, token)) {
         return null;
       }
 
       const sessionId =
-        aiSessionId ?? readAiSessionId(locationId, sessionToken) ?? undefined;
+        aiSessionId ??
+        readAiSessionId(locationId, aiContextToken) ??
+        undefined;
 
       try {
         const res = await fetch("/api/ai/chat", {
@@ -492,7 +495,7 @@ export function MenuView({
           body: JSON.stringify({
             locationId,
             tableId,
-            sessionToken,
+            sessionToken: aiContextToken,
             message: prompt,
             language,
             sessionId,
@@ -582,10 +585,13 @@ export function MenuView({
 
   const fetchDrinkPairing = useCallback(
     async (dishName: string) => {
-      if (!sessionToken || hasDrinkInCart) return;
+      const aiContextToken = sessionToken ?? token;
+      if (!aiContextToken || hasDrinkInCart) return;
 
       const sessionId =
-        aiSessionId ?? readAiSessionId(locationId, sessionToken) ?? undefined;
+        aiSessionId ??
+        readAiSessionId(locationId, aiContextToken) ??
+        undefined;
 
       try {
         const res = await fetch("/api/ai/chat", {
@@ -594,7 +600,7 @@ export function MenuView({
           body: JSON.stringify({
             locationId,
             tableId,
-            sessionToken,
+            sessionToken: aiContextToken,
             message: buildDrinkPairingPrompt(dishName),
             language,
             sessionId,

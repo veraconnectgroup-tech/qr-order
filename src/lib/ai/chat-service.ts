@@ -225,7 +225,9 @@ export async function handleAiChat(body: unknown) {
   }
 
   if (!isOpenAiConfigured()) {
-    return apiError("AI Concierge is not configured.", 503);
+    return apiError("AI Concierge is not configured.", 503, {
+      code: "not_configured",
+    });
   }
 
   const admin = createAdminClient();
@@ -250,7 +252,7 @@ export async function handleAiChat(body: unknown) {
 
   const balance = (creditsRow as { balance: number } | null)?.balance ?? 0;
   if (balance < AI_CONFIG.creditsPerMessage) {
-    return apiError("No credits", 402);
+    return apiError("insufficient_credits", 402);
   }
 
   const language = resolveAiPromptLanguage(input.language);
@@ -443,7 +445,7 @@ export async function handleAiChat(body: unknown) {
   }
 
   if (newBalance === -1) {
-    return apiError("No credits", 402);
+    return apiError("insufficient_credits", 402);
   }
 
   const assistantMessage: StoredMessage = {

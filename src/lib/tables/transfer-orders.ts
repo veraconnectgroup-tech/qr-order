@@ -1,4 +1,5 @@
 import { findOrCreateTableSession } from "@/lib/sessions/find-or-create-table-session";
+import { closeTableSession } from "@/lib/sessions/session-devices";
 import { logger } from "@/lib/logger";
 import { sanitizeOrderNotes } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -189,14 +190,7 @@ export async function transferOrders(
       .not("status", "in", ACTIVE_ORDER_FILTER);
 
     if (!countError && (count ?? 0) === 0) {
-      await admin
-        .from("table_sessions")
-        .update({
-          status: "closed",
-          closed_at: new Date().toISOString(),
-        })
-        .eq("id", fromSessionId)
-        .eq("status", "active");
+      await closeTableSession(admin, fromSessionId);
     }
   }
 

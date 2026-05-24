@@ -20,7 +20,9 @@
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
     "db:push": "supabase db push",
-    "db:types:remote": "supabase gen types typescript --linked > src/types/database.ts"
+    "db:types:remote": "supabase gen types typescript --linked > src/types/database.ts",
+    "ai:grant-credits": "node scripts/grant-ai-credits.mjs",
+    "push:generate-keys": "node scripts/generate-vapid-keys.mjs"
   },
   "dependencies": {
     "@babel/core": "^7.29.0",

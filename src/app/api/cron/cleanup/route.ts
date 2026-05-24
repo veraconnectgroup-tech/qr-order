@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { logger } from "@/lib/logger";
+import { closeTableSession } from "@/lib/sessions/session-devices";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const STALE_SESSION_HOURS = 24;
@@ -39,22 +40,18 @@ export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {
   let sessionsClosed = 0;
 
   if (staleIds.length > 0) {
-    const { error: closeError } = await admin
-      .from("table_sessions")
-      .update({
-        status: "closed",
-        closed_at: now.toISOString(),
-      })
-      .in("id", staleIds);
-
-    if (closeError) {
-      logger.error("Cron session cleanup update failed", {
-        error: closeError.message,
-      });
-      return apiError("Session cleanup failed", 500);
+    for (const sessionId of staleIds) {
+      try {
+        await closeTableSession(admin, sessionId, "void");
+        sessionsClosed += 1;
+      } catch (error) {
+        logger.error("Cron session cleanup close failed", {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return apiError("Session cleanup failed", 500);
+      }
     }
-
-    sessionsClosed = staleIds.length;
   }
 
   const webhookCutoff = new Date(
