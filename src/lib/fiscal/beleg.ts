@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import {
@@ -162,6 +163,18 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
 
   return `<!DOCTYPE html>
 <html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kassenbeleg — ${escapeHtml(data.orgName)}</title>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff !important; }
+      * { color: #000 !important; }
+    }
+  </style>
+</head>
 <body style="margin:0;padding:0;background:#09090b;font-family:Inter,system-ui,sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:32px 20px">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#71717a">Kassenbeleg</p>
@@ -221,6 +234,13 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
     </div>
 
     ${trackLink}
+
+    <div style="margin:24px 0 0;text-align:center" class="no-print">
+      <button onclick="window.print()"
+        style="background:#27272a;color:#fafafa;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer">
+        Beleg drucken
+      </button>
+    </div>
 
     <p style="margin:32px 0 0;font-size:12px;color:#52525b;text-align:center">
       Dieser Beleg entspricht den Anforderungen der KassenSichV · Powered by QR Order
@@ -288,5 +308,156 @@ export function parseBelegTseData(raw: unknown): BelegTseData | null {
     signature: typeof row.signature === "string" ? row.signature : undefined,
     qr_code_data:
       typeof row.qr_code_data === "string" ? row.qr_code_data : undefined,
+  };
+}
+
+export async function loadBelegData(
+  admin: SupabaseClient,
+  orderId: string
+): Promise<BelegData | null> {
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, payment_status, subtotal, tax_amount, total, created_at, payment_method, tse_signature, tse_data, location_id, table_id, session_id, tax_percent"
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) return null;
+
+  const row = order as {
+    id: string;
+    order_number: number;
+    payment_status: string;
+    subtotal: number;
+    tax_amount: number;
+    total: number;
+    created_at: string;
+    payment_method: string;
+    tse_signature: string | null;
+    tse_data: unknown;
+    location_id: string;
+    table_id: string | null;
+    tax_percent: number;
+  };
+
+  const tseData = parseBelegTseData(row.tse_data);
+  if (!row.tse_signature || !tseData) return null;
+
+  const { data: location, error: locationError } = await admin
+    .from("locations")
+    .select(
+      "name, org_id, address, city, postal_code, in_person_payment_location"
+    )
+    .eq("id", row.location_id)
+    .single();
+
+  if (locationError || !location) return null;
+
+  const locationRow = location as {
+    name: string;
+    org_id: string;
+    address: string | null;
+    city: string | null;
+    postal_code: string | null;
+    in_person_payment_location: "table" | "counter" | "bar";
+  };
+
+  const { data: orgData, error: orgError } = await admin
+    .from("organizations")
+    .select("name, currency, steuernummer, ust_id_nr")
+    .eq("id", locationRow.org_id)
+    .single();
+
+  if (orgError || !orgData) return null;
+
+  const org = orgData as {
+    name: string;
+    currency: string;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
+  };
+
+  const { data: table } = row.table_id
+    ? await admin
+        .from("tables")
+        .select("name")
+        .eq("id", row.table_id)
+        .is("deleted_at", null)
+        .single()
+    : { data: null };
+
+  const tableRow = table as { name: string } | null;
+
+  const { data: items } = await admin
+    .from("order_items")
+    .select("id, product_name, quantity, total, notes, tax_rate")
+    .eq("order_id", orderId);
+
+  const itemRows = (items ?? []) as Array<{
+    id: string;
+    product_name: string;
+    quantity: number;
+    total: number;
+    notes: string | null;
+    tax_rate: number;
+  }>;
+
+  const itemIds = itemRows.map((i) => i.id);
+  const modifiersByItem = new Map<
+    string,
+    Array<{ modifier_name: string; price: number }>
+  >();
+
+  if (itemIds.length > 0) {
+    const { data: modifiers } = await admin
+      .from("order_item_modifiers")
+      .select("order_item_id, modifier_name, price")
+      .in("order_item_id", itemIds);
+
+    for (const mod of (modifiers ?? []) as Array<{
+      order_item_id: string;
+      modifier_name: string;
+      price: number;
+    }>) {
+      const list = modifiersByItem.get(mod.order_item_id) ?? [];
+      list.push({ modifier_name: mod.modifier_name, price: Number(mod.price) });
+      modifiersByItem.set(mod.order_item_id, list);
+    }
+  }
+
+  const locationAddress = [
+    locationRow.address,
+    [locationRow.postal_code, locationRow.city].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    orgName: org.name,
+    locationName: locationRow.name,
+    locationAddress: locationAddress || null,
+    steuernummer: org.steuernummer,
+    ustIdNr: org.ust_id_nr,
+    tableName: tableRow?.name ?? null,
+    orderNumber: row.order_number,
+    createdAt: row.created_at,
+    subtotal: Number(row.subtotal),
+    taxAmount: Number(row.tax_amount),
+    total: Number(row.total),
+    currency: org.currency ?? "EUR",
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    inPersonPaymentLocation: locationRow.in_person_payment_location,
+    items: itemRows.map((item) => ({
+      product_name: item.product_name,
+      quantity: item.quantity,
+      total: Number(item.total),
+      tax_rate: Number(item.tax_rate ?? row.tax_percent),
+      notes: item.notes,
+      modifiers: modifiersByItem.get(item.id) ?? [],
+    })),
+    tseSignature: row.tse_signature,
+    tseData,
   };
 }

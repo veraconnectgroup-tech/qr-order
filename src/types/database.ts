@@ -293,6 +293,7 @@ type Tables = {
     requires_session_open: boolean;
     idempotency_key: string | null;
     beleg_token: string | null;
+    beleg_snapshot: Json | null;
     created_at: string;
     updated_at: string;
   };

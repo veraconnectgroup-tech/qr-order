@@ -1,7 +1,9 @@
 import { randomUUID } from "crypto";
+import { loadBelegData } from "@/lib/fiscal/beleg";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
+import type { Json } from "@/types/database";
 
 export async function handleFiscalBeleg(
   payload: Record<string, unknown>
@@ -14,7 +16,7 @@ export async function handleFiscalBeleg(
   const admin = createAdminClient();
   const { data: order, error } = await admin
     .from("orders")
-    .select("tse_signature, beleg_token")
+    .select("tse_signature, beleg_token, beleg_snapshot")
     .eq("id", orderId)
     .single();
 
@@ -25,24 +27,53 @@ export async function handleFiscalBeleg(
   const existing = order as {
     tse_signature: string | null;
     beleg_token: string | null;
+    beleg_snapshot: Json | null;
   };
 
   if (!existing.tse_signature) {
     throw new Error("fiscal.beleg requires TSE signature");
   }
 
-  if (!existing.beleg_token) {
-    const belegToken = randomUUID();
-    const { error: tokenError } = await admin
-      .from("orders")
-      .update({ beleg_token: belegToken } as never)
-      .eq("id", orderId);
+  const needsToken = !existing.beleg_token;
+  const needsSnapshot = !existing.beleg_snapshot;
 
-    if (tokenError) {
-      throw new Error(`fiscal.beleg beleg_token save failed: ${tokenError.message}`);
+  if (needsToken || needsSnapshot) {
+    const update: {
+      beleg_token?: string;
+      beleg_snapshot?: Json;
+    } = {};
+
+    if (needsToken) {
+      update.beleg_token = randomUUID();
     }
 
-    logger.info("Outbox fiscal.beleg issued beleg_token", { orderId });
+    if (needsSnapshot) {
+      const snapshot = await loadBelegData(admin, orderId);
+      if (snapshot) {
+        const { orderUrl: _, ...snapshotData } = snapshot;
+        update.beleg_snapshot = snapshotData as unknown as Json;
+      }
+    }
+
+    if (Object.keys(update).length > 0) {
+      const { error: updateError } = await admin
+        .from("orders")
+        .update(update as never)
+        .eq("id", orderId);
+
+      if (updateError) {
+        throw new Error(
+          `fiscal.beleg save failed: ${updateError.message}`
+        );
+      }
+
+      if (needsToken) {
+        logger.info("Outbox fiscal.beleg issued beleg_token", { orderId });
+      }
+      if (needsSnapshot && update.beleg_snapshot) {
+        logger.info("Outbox fiscal.beleg saved beleg_snapshot", { orderId });
+      }
+    }
   }
 
   const guestEmail =

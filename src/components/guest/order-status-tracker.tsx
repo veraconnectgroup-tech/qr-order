@@ -90,7 +90,10 @@ function formatTime(iso: string | null) {
 
 function shouldStopPolling(order: OrderData) {
   if (CLOSED_STATUSES.has(order.status)) return true;
-  return order.payment_status === "paid" && order.status === "delivered";
+  if (order.payment_status === "paid" && order.status === "delivered") {
+    return !!order.beleg_token;
+  }
+  return false;
 }
 
 export function OrderStatusTracker({
