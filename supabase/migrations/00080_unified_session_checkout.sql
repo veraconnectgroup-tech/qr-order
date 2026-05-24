@@ -28,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_session_payment_intents_session
 
 ALTER TABLE session_payment_intents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "staff_select_session_payment_intents" ON session_payment_intents;
 CREATE POLICY "staff_select_session_payment_intents" ON session_payment_intents
   FOR SELECT
   USING (
@@ -39,6 +40,7 @@ CREATE POLICY "staff_select_session_payment_intents" ON session_payment_intents
     )
   );
 
+DROP TRIGGER IF EXISTS trg_session_payment_intents_updated_at ON session_payment_intents;
 CREATE TRIGGER trg_session_payment_intents_updated_at
   BEFORE UPDATE ON session_payment_intents
   FOR EACH ROW
@@ -59,6 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_pos_outbound_events_integration
 
 ALTER TABLE pos_outbound_events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "staff_select_pos_outbound_events" ON pos_outbound_events;
 CREATE POLICY "staff_select_pos_outbound_events" ON pos_outbound_events
   FOR SELECT
   USING (

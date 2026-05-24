@@ -1,60 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function LandingCtaBanner() {
   return (
-    <section className="landing-cta-banner relative w-full overflow-hidden border-y border-[#1e1e2e] py-16 text-center sm:py-20">
-      <div className="landing-cta-banner-grid pointer-events-none absolute inset-0" aria-hidden />
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
-        {[0, 1, 2].map((ring) => (
-          <div
-            key={ring}
-            className="landing-cta-ripple absolute size-64 rounded-full border border-indigo-500/20"
-            style={{ animationDelay: `${ring * 1.2}s` }}
-          />
-        ))}
-      </div>
+    <section className="relative overflow-hidden py-16 text-center sm:py-24">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-2/3 bg-[radial-gradient(ellipse_70%_55%_at_50%_0%,rgba(99,102,241,0.12),transparent_70%)]"
+        className="pointer-events-none absolute inset-x-0 top-[-50%] left-1/2 h-[500px] w-[800px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,var(--lp-accent-glow),transparent_65%)] opacity-50"
         aria-hidden
       />
 
       <div className="relative z-10 px-6">
-        <h2 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-semibold leading-tight tracking-[-0.03em]">
+        <h2 className="font-display text-[clamp(2rem,4vw,3rem)] leading-[1.1] tracking-[-0.02em]">
           <span className="landing-gradient-text">
-            Ihre Gäste sind bereit. Sind Sie es auch?
+            Ihre Gäste sind bereit.
+            <br />
+            Sind Sie es auch?
           </span>
         </h2>
-        <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-zinc-400">
+        <p className="mx-auto mt-4 max-w-[480px] text-[16px] leading-relaxed text-[var(--lp-muted)]">
           Starten Sie unser Pilotprogramm — keine Kreditkarte nötig. In unter 30
           Minuten live.
         </p>
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
           <Button
             size="lg"
             asChild
-            className="landing-btn-accent h-12 min-w-[200px] rounded-full px-8 text-[15px] font-semibold"
+            className="landing-btn-accent h-[52px] min-w-[200px] rounded-full px-8 text-[15px] font-semibold"
           >
-            <Link href="/signup">
-              Kostenlos starten
-              <ArrowRight className="ml-1.5 size-4" />
-            </Link>
+            <Link href="/signup">Kostenlos starten</Link>
           </Button>
           <Button
             size="lg"
             variant="outline"
             asChild
-            className="h-12 min-w-[200px] rounded-full border-[#2a2a3e] bg-transparent px-8 text-[15px] font-medium text-zinc-200 hover:bg-[#12121a] hover:text-white"
+            className="h-[52px] min-w-[200px] rounded-full border-[var(--lp-border)] bg-transparent px-8 text-[15px] font-medium text-[var(--lp-ink)] hover:bg-[var(--lp-surface)]"
           >
             <Link href="/skyline-lounge/demo-table-8">Live-Demo ansehen</Link>
           </Button>
         </div>
 
-        <p className="mt-5 text-xs text-zinc-500">🇩🇪 Entwickelt in Hamburg</p>
+        <p className="mt-5 text-[13px] text-[var(--lp-dim)]">🇩🇪 Entwickelt in Hamburg</p>
       </div>
     </section>
   );

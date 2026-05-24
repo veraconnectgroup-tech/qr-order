@@ -8,7 +8,6 @@ import {
   HeroStagger,
   AnimateInView,
 } from "@/components/landing/animate-in-view";
-import { HeroWordRotation } from "@/components/landing/hero-word-rotation";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 
@@ -21,65 +20,60 @@ const LandingHeroVisual = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="aspect-[4/3] w-full animate-pulse rounded-2xl border border-[#1e1e2e] bg-zinc-900/60 lg:min-h-[460px]"
+        className="aspect-[4/3] w-full animate-pulse rounded-2xl border border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] lg:min-h-[460px]"
         aria-hidden
       />
     ),
   }
 );
 
-function HeroAuroraOrbs() {
+function HeroGlow() {
   const reduce = useReducedMotion();
-
   if (reduce) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <motion.div
-        className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-indigo-500/20 blur-[120px]"
-        animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -left-[10%] top-[-10%] h-[600px] w-[900px] -translate-x-1/2 bg-[radial-gradient(ellipse_70%_55%_at_50%_30%,var(--lp-accent-glow),transparent_70%)] opacity-60"
+        style={{ left: "50%" }}
+        animate={{ opacity: [0.45, 0.65, 0.45] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
-      <motion.div
-        className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-violet-500/12 blur-[120px]"
-        animate={{ x: [0, -35, 25, 0], y: [0, 25, -15, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      />
-      <motion.div
-        className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-indigo-400/10 blur-[120px]"
-        animate={{ x: [0, 30, -25, 0], y: [0, -20, 30, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-      />
+      <div className="absolute -bottom-[20%] -right-[10%] h-[500px] w-[600px] bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.06),transparent_60%)]" />
     </div>
   );
 }
 
 export function LandingHero() {
   return (
-    <section className="landing-hero-dark landing-dot-grid landing-glow-top relative overflow-hidden pt-20 pb-12">
-      <HeroAuroraOrbs />
+    <section className="landing-glow-top relative flex min-h-[90vh] items-center overflow-hidden pt-[140px] pb-20">
+      <HeroGlow />
       <LandingContainer wide className="relative z-[2]">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
           <HeroStagger className="max-w-[620px] lg:max-w-none">
             <HeroItem>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-indigo-400">
-                Die Plattform für Gastronomie
+              <p className="mb-5 flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--lp-accent)]">
+                <span className="h-px w-6 bg-[var(--lp-accent)] opacity-60" aria-hidden />
+                Enterprise Hospitality Platform
               </p>
             </HeroItem>
             <HeroItem>
-              <h1 className="font-display text-[clamp(2.5rem,5.5vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.045em]">
+              <h1 className="font-display text-[clamp(2.8rem,5vw,4rem)] leading-[1.05] tracking-[-0.02em]">
                 <span className="landing-gradient-text">
-                  Alles in einer Plattform.
+                  Ein System für
+                  <br />
+                  jeden Tisch.
                 </span>
               </h1>
             </HeroItem>
             <HeroItem>
-              <HeroWordRotation />
-            </HeroItem>
-            <HeroItem>
-              <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
-                Bestellung, Küchendisplay, Tischverwaltung, Kartenzahlung und
-                DATEV-Export — ein System statt fünf.
+              <p className="mt-5 max-w-[500px] text-[18px] leading-[1.7] text-[var(--lp-muted)]">
+                Bestellung, Küchendisplay, Kartenzahlung und DATEV-Export — ein System
+                statt fünf. Entwickelt für{" "}
+                <span className="font-medium text-[var(--lp-accent-light)]">
+                  Restaurants
+                </span>{" "}
+                in Deutschland.
               </p>
             </HeroItem>
             <HeroItem>
@@ -87,7 +81,7 @@ export function LandingHero() {
                 <Button
                   size="lg"
                   asChild
-                  className="landing-btn-accent h-12 rounded-full px-8 text-sm font-semibold"
+                  className="landing-btn-accent h-[52px] rounded-full px-8 text-[15px] font-semibold"
                 >
                   <Link href="/signup">Kostenlos starten</Link>
                 </Button>
@@ -95,7 +89,7 @@ export function LandingHero() {
                   size="lg"
                   variant="outline"
                   asChild
-                  className="h-12 rounded-full border-[#2a2a3e] bg-transparent px-8 text-sm font-medium text-zinc-200 hover:bg-[#12121a] hover:text-white"
+                  className="h-[52px] rounded-full border-[var(--lp-border)] bg-transparent px-8 text-[15px] font-medium text-[var(--lp-ink)] hover:bg-[var(--lp-surface)] hover:text-[var(--lp-ink)]"
                 >
                   <Link href="/skyline-lounge/demo-table-8">
                     Live-Demo ansehen →
@@ -104,9 +98,13 @@ export function LandingHero() {
               </div>
             </HeroItem>
             <HeroItem>
-              <p className="mt-6 text-[13px] leading-relaxed text-zinc-500">
-                0 € / Monat · KassenSichV-konform · Live in unter 30 Minuten
-              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-4 text-[13px] text-[var(--lp-dim)]">
+                <span>0 €/Monat</span>
+                <span className="size-[3px] rounded-full bg-[var(--lp-dim)]" />
+                <span>KassenSichV-konform</span>
+                <span className="size-[3px] rounded-full bg-[var(--lp-dim)]" />
+                <span>30 Min Setup</span>
+              </div>
             </HeroItem>
           </HeroStagger>
 

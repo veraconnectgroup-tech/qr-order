@@ -81,7 +81,7 @@ export function LandingHeadline({
   return (
     <h2
       className={cn(
-        "font-display text-[clamp(1.875rem,3.8vw,2.75rem)] font-medium leading-[1.08] tracking-[-0.035em]",
+        "font-display text-[clamp(1.875rem,3.8vw,2.8rem)] font-normal leading-[1.1] tracking-[-0.015em]",
         inverted ? "text-white" : "text-[var(--lp-ink)]",
         className
       )}
