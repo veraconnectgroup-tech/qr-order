@@ -338,6 +338,10 @@ const de: TranslationMap = {
   "bill.processing": "Wird verarbeitet…",
   "bill.secureStripe": "Sichere Zahlung über Stripe",
   "bill.paymentSuccess": "Zahlung erfolgreich!",
+  "bill.includesPosOrders":
+    "Deine Rechnung enthält Bestellungen von der Kasse — du kannst alles gemeinsam bezahlen.",
+  "bill.posBadge": "Kasse",
+  "bill.payAllTogether": "Gesamten Tisch bezahlen",
 
   "split.title": "Rechnung teilen",
   "split.subtitle": "Teile die Rechnung gleichmäßig oder nach Artikeln",
@@ -671,6 +675,10 @@ const en: TranslationMap = {
   "bill.processing": "Processing…",
   "bill.secureStripe": "Secure payment via Stripe",
   "bill.paymentSuccess": "Payment successful!",
+  "bill.includesPosOrders":
+    "Your bill includes orders from the register — you can pay everything together.",
+  "bill.posBadge": "Register",
+  "bill.payAllTogether": "Pay full table bill",
 
   "split.title": "Split bill",
   "split.subtitle": "Split equally or by items",
@@ -893,6 +901,10 @@ const sr: TranslationMap = {
   "bill.processing": "Obrada…",
   "bill.secureStripe": "Sigurno plaćanje preko Stripe-a",
   "bill.paymentSuccess": "Plaćanje uspešno!",
+  "bill.includesPosOrders":
+    "Vaš račun uključuje narudžbine sa kase — možete platiti sve zajedno.",
+  "bill.posBadge": "Kasa",
+  "bill.payAllTogether": "Plati ceo račun stola",
 
   "tip.title": "Napojnica",
   "tip.hint": "Opciono — ide vašem konobaru (bez PDV-a)",
@@ -1038,6 +1050,10 @@ const tr: TranslationMap = {
   "bill.processing": "İşleniyor…",
   "bill.secureStripe": "Stripe ile güvenli ödeme",
   "bill.paymentSuccess": "Ödeme başarılı!",
+  "bill.includesPosOrders":
+    "Hesabınız kasadan gelen siparişleri içeriyor — hepsini birlikte ödeyebilirsiniz.",
+  "bill.posBadge": "Kasa",
+  "bill.payAllTogether": "Tüm masa hesabını öde",
 
   "tip.title": "Bahşiş",
   "tip.hint": "İsteğe bağlı — garsonunuza gider (KDV'siz)",
@@ -1184,6 +1200,10 @@ const hr: TranslationMap = {
   "bill.processing": "Obrada…",
   "bill.secureStripe": "Sigurno plaćanje putem Stripe-a",
   "bill.paymentSuccess": "Plaćanje uspješno!",
+  "bill.includesPosOrders":
+    "Vaš račun uključuje narudžbine sa kase — možete platiti sve zajedno.",
+  "bill.posBadge": "Kasa",
+  "bill.payAllTogether": "Plati cijeli račun stola",
 
   "tip.title": "Napojnica",
   "tip.hint": "Opcionalno — ide vašem konobaru (bez PDV-a)",

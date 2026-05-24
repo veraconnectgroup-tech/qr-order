@@ -377,7 +377,8 @@ type Tables = {
       | "paid"
       | "refunded"
       | "partial_refund"
-      | "failed";
+      | "failed"
+      | "pos_online";
     payment_method:
       | "online"
       | "at_bar"

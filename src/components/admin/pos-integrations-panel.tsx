@@ -1,22 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Monitor, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Monitor, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   connectPosIntegration,
   deletePosIntegration,
-  deletePosTableMapping,
   disconnectPosIntegration,
-  getLocationTablesForPosMapping,
   getPosIntegrations,
-  getPosTableMappings,
-  upsertPosTableMapping,
   type PosIntegrationRow,
   type PosProvider,
-  type PosTableMappingRow,
 } from "@/lib/pos/pos-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,166 +65,6 @@ function statusBadge(status: PosIntegrationRow["status"]) {
 function formatSyncAt(iso: string | null) {
   if (!iso) return "—";
   return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: de });
-}
-
-function PosTableMappingsSection({
-  integrationId,
-  locationId,
-}: {
-  integrationId: string;
-  locationId: string;
-}) {
-  const [mappings, setMappings] = useState<PosTableMappingRow[]>([]);
-  const [tables, setTables] = useState<Array<{ id: string; name: string }>>([]);
-  const [externalKey, setExternalKey] = useState("");
-  const [tableId, setTableId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [pending, setPending] = useState(false);
-
-  const reload = useCallback(async () => {
-    const [mappingRows, tableRows] = await Promise.all([
-      getPosTableMappings(integrationId),
-      getLocationTablesForPosMapping(locationId),
-    ]);
-    setMappings(mappingRows);
-    setTables(tableRows);
-  }, [integrationId, locationId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(async () => {
-      try {
-        await reload();
-      } catch (error) {
-        if (!cancelled) {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Tisch-Mappings konnten nicht geladen werden."
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
-
-  async function handleAddMapping() {
-    if (!externalKey.trim() || !tableId) return;
-    setPending(true);
-    const result = await upsertPosTableMapping(
-      integrationId,
-      externalKey.trim(),
-      tableId
-    );
-    setPending(false);
-
-    if ("error" in result && result.error) {
-      toast.error(result.error);
-      return;
-    }
-
-    setExternalKey("");
-    setTableId("");
-    toast.success("Tisch-Mapping gespeichert");
-    await reload();
-  }
-
-  async function handleDeleteMapping(mappingId: string) {
-    setPending(true);
-    const result = await deletePosTableMapping(mappingId);
-    setPending(false);
-
-    if ("error" in result && result.error) {
-      toast.error(result.error);
-      return;
-    }
-
-    toast.success("Mapping entfernt");
-    await reload();
-  }
-
-  return (
-    <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-        Tisch-Mapping (POS → Vera)
-      </p>
-      {loading ? (
-        <p className="mt-2 text-xs text-neutral-500">Wird geladen…</p>
-      ) : (
-        <>
-          {mappings.length === 0 ? (
-            <p className="mt-2 text-xs text-neutral-500">
-              Keine Mappings — POS-Tischname muss exakt mit Vera übereinstimmen
-              oder hier hinterlegt werden.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-1 text-xs text-neutral-700">
-              {mappings.map((mapping) => (
-                <li
-                  key={mapping.id}
-                  className="flex items-center justify-between gap-2"
-                >
-                  <span>
-                    <span className="font-mono">{mapping.external_table_key}</span>
-                    {" → "}
-                    {mapping.table_name}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-neutral-500"
-                    disabled={pending}
-                    onClick={() => handleDeleteMapping(mapping.id)}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-[120px] flex-1 space-y-1">
-              <Label className="text-xs">POS Tischname</Label>
-              <Input
-                value={externalKey}
-                onChange={(e) => setExternalKey(e.target.value)}
-                placeholder="z.B. Tisch 5"
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="min-w-[120px] flex-1 space-y-1">
-              <Label className="text-xs">Vera Tisch</Label>
-              <Select value={tableId} onValueChange={setTableId}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tables.map((table) => (
-                    <SelectItem key={table.id} value={table.id}>
-                      {table.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending || !externalKey.trim() || !tableId}
-              onClick={handleAddMapping}
-            >
-              Hinzufügen
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
 
 export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
@@ -400,10 +236,23 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
                     <p className="mt-2 text-sm text-red-600">{row.last_error}</p>
                   )}
                   {row.status === "connected" && (
-                    <PosTableMappingsSection
-                      integrationId={row.id}
-                      locationId={locationId}
-                    />
+                    <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+                      <p className="text-xs text-neutral-600">
+                        Tisch-Mappings für eingehende POS-Bestellungen
+                      </p>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="mt-1 h-auto px-0 text-blue-600"
+                        asChild
+                      >
+                        <Link href="/admin/table-mappings">
+                          POS Tisch-Mapping verwalten
+                          <ArrowRight className="ml-1 size-3.5" />
+                        </Link>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

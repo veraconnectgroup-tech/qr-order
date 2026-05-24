@@ -9,7 +9,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { Lock, Receipt } from "lucide-react";
+import { Lock, Receipt, Store } from "lucide-react";
 import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
 import { formatPrice } from "@/lib/format";
@@ -29,6 +29,11 @@ import {
   getStripeConfirmErrorMessage,
 } from "@/lib/payment/stripe-errors";
 import { Button } from "@/components/ui/button";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
+import {
+  BillOrderSourceBadge,
+  isPosOrderSource,
+} from "@/components/guest/bill-order-source-badge";
 
 type SplitProgress = {
   paid: number;
@@ -211,6 +216,19 @@ export function OrderBillPanel({
       paymentAtBarEnabled,
       paymentCardAtTableEnabled,
     ]
+  );
+
+  const unpaidOrders = useMemo(
+    () =>
+      (bill?.orders ?? []).filter(
+        (order) => !isPaidPaymentStatus(order.paymentStatus)
+      ),
+    [bill?.orders]
+  );
+
+  const hasPosOrders = useMemo(
+    () => unpaidOrders.some((order) => isPosOrderSource(order.orderSource)),
+    [unpaidOrders]
   );
 
   const loadBill = useCallback(async () => {
@@ -423,26 +441,39 @@ export function OrderBillPanel({
         </p>
       )}
 
-      {(bill.orders ?? []).filter((o) => o.paymentStatus !== "paid").length >
-        0 && (
+      {hasPosOrders && (
+        <div
+          className="mt-4 flex gap-3 rounded-lg border border-purple-500/25 bg-purple-500/10 px-3 py-3"
+          role="note"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-300">
+            <Store className="size-4" aria-hidden />
+          </span>
+          <p className="text-sm leading-snug text-purple-100/90">
+            {tUI("bill.includesPosOrders")}
+          </p>
+        </div>
+      )}
+
+      {unpaidOrders.length > 0 && (
         <ul className="mt-4 space-y-2 border-t border-zinc-800 pt-4">
-          {(bill.orders ?? [])
-            .filter((order) => order.paymentStatus !== "paid")
-            .map((order) => (
+          {unpaidOrders.map((order) => (
               <li
                 key={order.id}
-                className="rounded-lg bg-zinc-950 px-3 py-2 text-sm"
+                className={
+                  isPosOrderSource(order.orderSource)
+                    ? "rounded-lg border border-purple-500/20 border-l-[3px] border-l-purple-400/70 bg-zinc-950 px-3 py-2 text-sm"
+                    : "rounded-lg bg-zinc-950 px-3 py-2 text-sm"
+                }
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-zinc-200">
-                    #{String(order.orderNumber).padStart(3, "0")}
-                    {order.orderSource === "pos" && (
-                      <span className="ml-2 rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-purple-300">
-                        POS
-                      </span>
-                    )}
+                  <span className="flex min-w-0 flex-wrap items-center gap-2 font-medium text-zinc-200">
+                    <span>
+                      #{String(order.orderNumber).padStart(3, "0")}
+                    </span>
+                    <BillOrderSourceBadge orderSource={order.orderSource} />
                   </span>
-                  <span className="tabular-nums text-zinc-300">
+                  <span className="shrink-0 tabular-nums text-zinc-300">
                     {formatPrice(order.total, currency)}
                   </span>
                 </div>
@@ -538,7 +569,9 @@ export function OrderBillPanel({
                 {processing
                   ? tUI("bill.processing")
                   : paymentMethod === "online"
-                    ? tUI("bill.continueCard")
+                    ? hasPosOrders
+                      ? tUI("bill.payAllTogether")
+                      : tUI("bill.continueCard")
                     : tUI("bill.confirmMethod")}
               </Button>
             )}

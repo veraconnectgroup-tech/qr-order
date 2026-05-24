@@ -113,6 +113,10 @@ export const fr: TranslationMap = {
   "bill.processing": "Traitement en cours…",
   "bill.secureStripe": "Paiement sécurisé via Stripe",
   "bill.paymentSuccess": "Paiement réussi !",
+  "bill.includesPosOrders":
+    "Votre addition inclut des commandes de la caisse — vous pouvez tout payer ensemble.",
+  "bill.posBadge": "Caisse",
+  "bill.payAllTogether": "Payer toute l'addition",
 
   "tip.title": "Pourboire",
   "tip.hint": "Facultatif — revient à votre serveur (hors TVA)",

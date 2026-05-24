@@ -5,7 +5,7 @@ import {
 } from "@/lib/pos/outbound/notify-payment";
 import type { Json } from "@/types/database";
 
-type NotifyPosPaymentPayload = {
+type SessionPaidOnlinePayload = {
   sessionId?: string;
   locationId?: string;
   orgId?: string;
@@ -16,10 +16,10 @@ type NotifyPosPaymentPayload = {
   provider?: string;
 };
 
-export async function handleFulfillNotifyPosPayment(
+export async function handleSessionPaidOnline(
   payload: Record<string, unknown>
 ): Promise<void> {
-  const data = payload as NotifyPosPaymentPayload;
+  const data = payload as SessionPaidOnlinePayload;
 
   if (
     !data.sessionId ||
@@ -29,7 +29,7 @@ export async function handleFulfillNotifyPosPayment(
     !data.provider ||
     !Array.isArray(data.orderIds)
   ) {
-    throw new Error("fulfill.notify_pos_payment missing required fields");
+    throw new Error("session.paid_online missing required fields");
   }
 
   const admin = createAdminClient();
@@ -41,7 +41,7 @@ export async function handleFulfillNotifyPosPayment(
     .single();
 
   if (error || !integration) {
-    throw new Error("POS integration not found for payment notify");
+    throw new Error("POS integration not found for session.paid_online");
   }
 
   const row = integration as {

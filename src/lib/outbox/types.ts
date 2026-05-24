@@ -1,9 +1,9 @@
-export type OutboxDomain = "fulfillment" | "fiscal" | "integration";
+export type OutboxDomain = "fulfillment" | "fiscal" | "integration" | "session";
 
 export type OutboxEventType =
   | "fulfill.notify_staff"
   | "fulfill.push_pos"
-  | "fulfill.notify_pos_payment"
+  | "session.paid_online"
   | "fulfill.cloud_print"
   | "fiscal.tse_sign"
   | "fiscal.beleg"
@@ -11,7 +11,7 @@ export type OutboxEventType =
   | "integration.webhook";
 
 export type OutboxInsert = {
-  aggregate_type?: "order";
+  aggregate_type?: "order" | "session";
   aggregate_id: string;
   domain: OutboxDomain;
   event_type: OutboxEventType;

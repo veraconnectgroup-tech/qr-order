@@ -113,6 +113,10 @@ export const ru: TranslationMap = {
   "bill.processing": "Обработка…",
   "bill.secureStripe": "Безопасная оплата через Stripe",
   "bill.paymentSuccess": "Оплата прошла успешно!",
+  "bill.includesPosOrders":
+    "Ваш счёт включает заказы с кассы — можно оплатить всё вместе.",
+  "bill.posBadge": "Касса",
+  "bill.payAllTogether": "Оплатить весь стол",
 
   "tip.title": "Чаевые",
   "tip.hint": "Необязательно — получает ваш официант (без НДС)",

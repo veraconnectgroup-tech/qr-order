@@ -25,6 +25,7 @@ import {
   clampTipAmount,
   distributeTipAcrossOrders,
 } from "@/lib/orders/tips";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 
 export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
   const tableToken = req.nextUrl.searchParams.get("tableToken");
@@ -131,7 +132,7 @@ export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
         created_at: string;
       }> | null) ?? [];
 
-    const unpaid = rows.filter((o) => o.payment_status !== "paid");
+    const unpaid = rows.filter((o) => !isPaidPaymentStatus(o.payment_status));
     const amountDue = unpaid.reduce((sum, o) => sum + Number(o.total), 0);
     const tipAmount = unpaid.reduce(
       (sum, o) => sum + Number(o.tip_amount ?? 0),
@@ -276,7 +277,7 @@ export const POST = withErrorHandler(
         "id, total, tip_amount, location_id, stripe_payment_intent_id, payment_status, is_split, order_source"
       )
       .eq("session_id", session.id)
-      .neq("payment_status", "paid")
+      .not("payment_status", "in", '("paid","pos_online")')
       .not("status", "in", '("rejected","cancelled")');
 
     const unpaidOrders =

@@ -6,6 +6,7 @@ import {
   BarChart3,
   ClipboardList,
   LayoutGrid,
+  Link2,
   MapPin,
   Megaphone,
   MessageSquare,
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/admin/tagesabschluss", label: "Tagesabschluss", icon: ScrollText },
   { href: "/admin/audit-log", label: "Audit log", icon: ClipboardList },
   { href: "/admin/pos-integrations", label: "POS-Integration", icon: Monitor },
+  { href: "/admin/table-mappings", label: "POS Tisch-Mapping", icon: Link2 },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

@@ -121,6 +121,10 @@ export const ar: TranslationMap = {
   "bill.processing": "جارٍ المعالجة…",
   "bill.secureStripe": "دفع آمن عبر Stripe",
   "bill.paymentSuccess": "تم الدفع بنجاح!",
+  "bill.includesPosOrders":
+    "تتضمن فاتورتك طلبات من الكاشير — يمكنك دفع كل شيء معًا.",
+  "bill.posBadge": "كاشير",
+  "bill.payAllTogether": "دفع فاتورة الطاولة كاملة",
 
   "tip.title": "إكرامية",
   "tip.hint": "اختياري — تذهب إلى النادل (معفاة من الضريبة)",

@@ -21,15 +21,26 @@ export async function markSessionOrdersPaidOnline(
     .select("id, order_source")
     .in("id", input.orderIds);
 
-  for (const order of (orders ?? []) as Array<{
+  const orderRows = (orders ?? []) as Array<{
     id: string;
     order_source: string;
-  }>) {
-    const paymentMethod = order.order_source === "pos" ? "pos_online" : "online";
-    await admin
-      .from("orders")
-      .update({ payment_method: paymentMethod } as never)
-      .eq("id", order.id);
+  }>;
+
+  for (const order of orderRows) {
+    if (order.order_source === "pos") {
+      await admin
+        .from("orders")
+        .update({
+          payment_status: "pos_online",
+          payment_method: "pos_online",
+        } as never)
+        .eq("id", order.id);
+    } else {
+      await admin
+        .from("orders")
+        .update({ payment_method: "online" } as never)
+        .eq("id", order.id);
+    }
   }
 
   await admin
@@ -39,6 +50,9 @@ export async function markSessionOrdersPaidOnline(
       updated_at: new Date().toISOString(),
     } as never)
     .eq("stripe_payment_intent_id", input.paymentIntentId);
+
+  const hasPosOrders = orderRows.some((order) => order.order_source === "pos");
+  if (!hasPosOrders) return;
 
   const { data: integration } = await admin
     .from("pos_integrations")
@@ -56,9 +70,10 @@ export async function markSessionOrdersPaidOnline(
   };
 
   const event: OutboxInsert = {
+    aggregate_type: "session",
     aggregate_id: input.sessionId,
-    domain: "fulfillment",
-    event_type: "fulfill.notify_pos_payment",
+    domain: "session",
+    event_type: "session.paid_online",
     payload: {
       sessionId: input.sessionId,
       locationId: input.locationId,
@@ -74,7 +89,7 @@ export async function markSessionOrdersPaidOnline(
   try {
     await enqueueOutboxEvents(admin, [event]);
   } catch (error) {
-    logger.error("Failed to enqueue POS payment notify", {
+    logger.error("Failed to enqueue session.paid_online", {
       sessionId: input.sessionId,
       error: error instanceof Error ? error.message : String(error),
     });

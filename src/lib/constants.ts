@@ -15,6 +15,7 @@ export const PAYMENT_STATUSES = [
   "pending",
   "processing",
   "paid",
+  "pos_online",
   "refunded",
   "partial_refund",
   "failed",

@@ -142,6 +142,7 @@ export async function connectPosIntegration(
   }
 
   revalidatePath("/admin/pos-integrations");
+  revalidatePath("/admin/table-mappings");
   return {
     success: true as const,
     webhookSecret: configWithDefaults.webhook_secret as string,
@@ -167,6 +168,7 @@ export async function disconnectPosIntegration(integrationId: string) {
   }
 
   revalidatePath("/admin/pos-integrations");
+  revalidatePath("/admin/table-mappings");
   return { success: true as const };
 }
 
@@ -185,6 +187,7 @@ export async function deletePosIntegration(integrationId: string) {
   }
 
   revalidatePath("/admin/pos-integrations");
+  revalidatePath("/admin/table-mappings");
   return { success: true as const };
 }
 
@@ -307,6 +310,7 @@ export async function upsertPosTableMapping(
   }
 
   revalidatePath("/admin/pos-integrations");
+  revalidatePath("/admin/table-mappings");
   return { success: true as const };
 }
 
@@ -339,7 +343,154 @@ export async function deletePosTableMapping(mappingId: string) {
   }
 
   revalidatePath("/admin/pos-integrations");
+  revalidatePath("/admin/table-mappings");
   return { success: true as const };
+}
+
+export async function getPosTableMappingsForLocation(
+  locationId: string,
+  provider?: PosProvider
+): Promise<PosTableMappingRow[]> {
+  const staff = await requireAdmin();
+  await assertLocationAccess(locationId, staff.org_id);
+
+  const admin = createAdminClient();
+  let query = admin
+    .from("pos_table_mappings" as never)
+    .select("id, location_id, provider, external_table_key, table_id")
+    .eq("location_id", locationId)
+    .order("provider")
+    .order("external_table_key");
+
+  if (provider) {
+    query = query.eq("provider", provider);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    location_id: string;
+    provider: PosProvider;
+    external_table_key: string;
+    table_id: string;
+  }>;
+
+  if (!rows.length) return [];
+
+  const tableIds = [...new Set(rows.map((row) => row.table_id))];
+  const { data: tables } = await admin
+    .from("tables")
+    .select("id, name")
+    .in("id", tableIds);
+
+  const nameById = new Map(
+    ((tables ?? []) as Array<{ id: string; name: string }>).map((table) => [
+      table.id,
+      table.name,
+    ])
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    table_name: nameById.get(row.table_id) ?? "—",
+  }));
+}
+
+export async function bulkImportPosTableMappings(
+  integrationId: string,
+  rows: Array<{ externalTableKey: string; tableId: string }>
+) {
+  const staff = await requireAdmin();
+  const integration = await assertIntegrationAccess(integrationId, staff.org_id);
+
+  if (!rows.length) {
+    return { error: "No mappings to import." };
+  }
+
+  const normalized = rows.map((row) => ({
+    externalTableKey: row.externalTableKey.trim(),
+    tableId: row.tableId.trim(),
+  }));
+
+  for (const row of normalized) {
+    if (!row.externalTableKey) {
+      return { error: "Every row needs a POS table name." };
+    }
+    if (!z.string().uuid().safeParse(row.tableId).success) {
+      return { error: `Invalid Vera table for "${row.externalTableKey}".` };
+    }
+  }
+
+  const seenKeys = new Set<string>();
+  for (const row of normalized) {
+    const key = row.externalTableKey.toLowerCase();
+    if (seenKeys.has(key)) {
+      return {
+        error: `Duplicate POS table name in import: "${row.externalTableKey}".`,
+      };
+    }
+    seenKeys.add(key);
+  }
+
+  const admin = createAdminClient();
+
+  const { data: integrationRow } = await admin
+    .from("pos_integrations")
+    .select("provider")
+    .eq("id", integrationId)
+    .single();
+
+  const provider = (integrationRow as { provider: PosProvider } | null)?.provider;
+  if (!provider) {
+    return { error: "Integration not found." };
+  }
+
+  const tableIds = [...new Set(normalized.map((row) => row.tableId))];
+  const { data: tables } = await admin
+    .from("tables")
+    .select("id")
+    .eq("location_id", integration.location_id)
+    .in("id", tableIds);
+
+  const validTableIds = new Set(
+    ((tables ?? []) as Array<{ id: string }>).map((table) => table.id)
+  );
+
+  for (const row of normalized) {
+    if (!validTableIds.has(row.tableId)) {
+      return {
+        error: `Vera table not found for POS name "${row.externalTableKey}".`,
+      };
+    }
+  }
+
+  const now = new Date().toISOString();
+  const payload = normalized.map((row) => ({
+    location_id: integration.location_id,
+    provider,
+    external_table_key: row.externalTableKey,
+    table_id: row.tableId,
+    updated_at: now,
+  }));
+
+  const { error } = await admin
+    .from("pos_table_mappings" as never)
+    .upsert(payload as never, {
+      onConflict: "location_id,provider,external_table_key",
+    });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin/pos-integrations");
+  revalidatePath("/admin/table-mappings");
+  return { success: true as const, imported: normalized.length };
 }
 
 export async function getLocationTablesForPosMapping(locationId: string) {

@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { resolveFiscalBehavior } from "@/lib/fulfillment/resolve-fiscal-behavior";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
@@ -259,7 +260,7 @@ export async function executeOrderSaga(
 
     const { order, orgId, tableName } = loaded;
 
-    if (order.payment_status === "paid") {
+    if (isPaidPaymentStatus(order.payment_status)) {
       logStep(traceId, "validate_order", "info", "Order saga: already paid", {
         orderId,
       });

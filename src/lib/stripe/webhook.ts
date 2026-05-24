@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { logger } from "@/lib/logger";
 import { executeOrderSagaFromPaymentIntent } from "@/lib/orders/order-saga";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { getCurrentTraceId } from "@/lib/resilience/trace";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -364,7 +365,7 @@ async function verifyAndMarkSessionPaid(
   let allSucceeded = true;
 
   for (const order of rows) {
-    if (order.payment_status === "paid") {
+    if (isPaidPaymentStatus(order.payment_status)) {
       paidOrderIds.push(order.id);
       continue;
     }
