@@ -240,14 +240,14 @@ export function FeatureCheck({
     <li
       className={cn(
         "flex items-start gap-2 text-sm",
-        onDark ? "text-[var(--lp-muted)]" : light ? "text-zinc-600" : "text-zinc-400"
+        onDark ? "text-zinc-300" : light ? "text-zinc-600" : "text-zinc-400"
       )}
     >
       <Check
         className={cn(
           "mt-0.5 size-4 shrink-0",
           accent
-            ? "text-[var(--lp-accent)]"
+            ? "text-[var(--lp-accent,#818cf8)]"
             : light
               ? "text-zinc-500"
               : "text-zinc-500"

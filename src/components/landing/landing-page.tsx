@@ -1,26 +1,46 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
+import { FeatureCheck } from "@/components/landing/product-showcases";
 import { LandingClosingShowcase } from "@/components/landing/landing-closing-showcase";
-import { LandingEnterpriseHome } from "@/components/landing/landing-enterprise-home";
+import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
-import { LandingProductShowcase } from "@/components/landing/landing-product-showcase";
-import { LandingSocialProof } from "@/components/landing/landing-social-proof";
+import { LandingPhilosophy } from "@/components/landing/landing-philosophy";
 import { LandingTrustStrip } from "@/components/landing/landing-trust-strip";
+import { LandingTestimonials } from "@/components/landing/landing-testimonials";
+import { LandingWorkflows } from "@/components/landing/landing-workflows";
 import {
   LandingContainer,
+  LandingEyebrow,
   LandingHeadline,
   LandingLead,
-  LandingSectionLabel,
 } from "@/components/landing/landing-primitives";
-import { FeatureCheck } from "@/components/landing/product-showcases";
 import { platformFeeDescriptionEn } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
+
+const LandingProductTabs = dynamic(
+  () =>
+    import("@/components/landing/landing-product-tabs").then((m) => ({
+      default: m.LandingProductTabs,
+    })),
+  {
+    loading: () => (
+      <div
+        className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 md:py-20"
+        aria-hidden
+      >
+        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-zinc-900/40" />
+      </div>
+    ),
+  }
+);
 
 const plans: Array<{
   name: string;
@@ -75,68 +95,70 @@ const plans: Array<{
 
 export function LandingPage() {
   return (
-    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden antialiased">
+    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden bg-[#08080c] antialiased">
       <LandingNav />
 
       <main className="relative z-[2]">
         <LandingHero />
         <LandingTrustStrip />
-        <LandingSocialProof />
-        <LandingProductShowcase />
-        <LandingEnterpriseHome />
+        <LandingPhilosophy />
+        <LandingModules />
+        <LandingProductTabs />
+        <LandingTestimonials />
+        <LandingWorkflows />
 
-        <section id="pricing" className="scroll-mt-24 py-16 md:py-24">
-          <LandingContainer>
-            <AnimateInView className="mx-auto max-w-[640px] text-center">
-              <LandingSectionLabel>Preise</LandingSectionLabel>
-              <LandingHeadline className="mt-4">Transparente Preise.</LandingHeadline>
-              <LandingLead className="mt-4">
-                Keine monatliche Plattformgebühr. Kartenabwicklung über Stripe mit
-                klarer Gebühr pro Bestellung.
+        <section
+          id="pricing"
+          className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 text-white md:py-20"
+        >
+          <LandingContainer wide>
+            <AnimateInView className="max-w-[480px]">
+              <LandingEyebrow inverted>Preise</LandingEyebrow>
+              <LandingHeadline inverted className="mt-3">
+                Transparente Preise
+              </LandingHeadline>
+              <LandingLead inverted className="mt-4">
+                Keine monatliche Plattformgebühr. Kartenabwicklung über Stripe
+                mit klarer Gebühr pro Bestellung.
               </LandingLead>
             </AnimateInView>
 
-            <div className="mx-auto mt-14 grid max-w-[880px] gap-6 lg:grid-cols-2">
+            <div className="mt-14 grid gap-6 lg:grid-cols-2">
               {plans.map((plan) => (
                 <AnimateInView key={plan.name}>
                   <div
                     className={cn(
-                      "relative flex h-full flex-col rounded-[20px] border p-9",
+                      "landing-glow-border relative flex h-full flex-col rounded-xl border p-8 sm:p-10",
                       plan.primary
-                        ? "border-[var(--lp-accent)] bg-[var(--lp-surface)] shadow-[0_0_40px_rgba(245,158,11,0.08)]"
-                        : "border-[var(--lp-border-subtle)] bg-[var(--lp-surface)]"
+                        ? "landing-pricing-border landing-pricing-glass ring-1 ring-white/10"
+                        : "border-[#1e1e2e] bg-zinc-900/40"
                     )}
                   >
                     {plan.primary && (
-                      <span className="absolute -top-3 left-6 rounded-full bg-[var(--lp-accent)] px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.05em] text-black">
+                      <span className="absolute -top-3 left-8 rounded-full bg-indigo-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
                         Beliebteste Wahl
                       </span>
                     )}
-                    <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--lp-subtle)]">
+                    <p className="text-[13px] font-medium uppercase tracking-wider text-zinc-500">
                       {plan.name}
                     </p>
-                    <div className="mt-3 flex items-baseline gap-1">
-                      <span
-                        className={cn(
-                          "font-display font-normal tracking-[-0.02em] text-[var(--lp-ink)]",
-                          plan.primary ? "text-[48px]" : "text-[36px]"
-                        )}
-                      >
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="font-display text-4xl font-medium tracking-[-0.03em] text-white">
                         {plan.price}
                       </span>
                       {plan.period && (
-                        <span className="text-[16px] text-[var(--lp-muted)]">
+                        <span className="text-[14px] text-zinc-400">
                           {plan.period}
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-[13px] font-medium text-[var(--lp-accent)]">
+                    <p className="mt-2 text-[14px] font-medium text-[var(--lp-accent)]">
                       {plan.fee}
                     </p>
-                    <p className="mt-4 border-b border-[var(--lp-border-subtle)] pb-6 text-[14px] leading-relaxed text-[var(--lp-muted)]">
+                    <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
                       {plan.description}
                     </p>
-                    <ul className="mt-6 flex-1 space-y-3">
+                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-[#1e1e2e] pt-8">
                       {plan.features.map((feat) => (
                         <FeatureCheck key={feat} accent>
                           {feat}
@@ -144,17 +166,17 @@ export function LandingPage() {
                       ))}
                     </ul>
                     {plan.complianceNote && (
-                      <p className="mt-6 text-[12px] text-[var(--lp-dim)]">
+                      <p className="mt-6 text-[12px] font-medium tracking-wide text-zinc-500">
                         {plan.complianceNote}
                       </p>
                     )}
                     <Button
                       asChild
                       className={cn(
-                        "mt-7 h-12 w-full rounded-xl text-[15px] font-semibold",
+                        "mt-8 h-11 w-full rounded-full text-sm font-semibold",
                         plan.primary
                           ? "landing-btn-accent"
-                          : "border border-[var(--lp-border)] bg-transparent text-[var(--lp-ink)] hover:bg-[var(--lp-surface-raised)]"
+                          : "border border-[#2a2a3e] bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-white"
                       )}
                       variant={plan.primary ? "default" : "outline"}
                     >
@@ -166,6 +188,8 @@ export function LandingPage() {
             </div>
           </LandingContainer>
         </section>
+
+        <LandingFaq />
 
         <LandingClosingShowcase />
       </main>

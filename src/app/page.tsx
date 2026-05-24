@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/landing-page";
 
 export const metadata: Metadata = {
-  title: "Vera — Enterprise Hospitality Platform",
+  title: "Vera — Die Hospitality-Plattform",
   description:
-    "Bestellung, Küchendisplay, Kartenzahlung und DATEV-Export — ein System für jeden Tisch. KassenSichV-konform. 0 € / Monat.",
+    "Bestellung, Küche, Zahlung und Analyse für Gastronomie in Deutschland. KassenSichV-konform. 0 € / Monat.",
   openGraph: {
-    title: "Vera — Enterprise Hospitality Platform",
+    title: "Vera — Die Hospitality-Plattform",
     description:
-      "Bestellung, Küchendisplay, Kartenzahlung und DATEV-Export — ein System für jeden Tisch. KassenSichV-konform. 0 € / Monat.",
+      "Bestellung, Küche, Zahlung und Analyse für Gastronomie in Deutschland. KassenSichV-konform. 0 € / Monat.",
     locale: "de_DE",
   },
 };
