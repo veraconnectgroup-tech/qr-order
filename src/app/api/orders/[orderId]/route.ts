@@ -6,8 +6,9 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
-import { enqueueFiscalSendReceipt } from "@/lib/outbox/enqueue-events";
+import { executeOrderSaga } from "@/lib/orders/order-saga";
 import { withRateLimit, withStaffRateLimit } from "@/lib/rate-limit";
+import { getCurrentTraceId } from "@/lib/resilience/trace";
 import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -117,6 +118,7 @@ type StaffAccess = {
     payment_method: string;
     stripe_payment_intent_id: string | null;
     total: number;
+    tip_amount: number | null;
     created_at: string;
   };
   staff: {
@@ -142,7 +144,7 @@ async function verifyStaffOrderAccess(
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, location_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, created_at"
+      "id, location_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, tip_amount, created_at"
     )
     .eq("id", orderId)
     .single();
@@ -256,14 +258,11 @@ export const PATCH = withErrorHandler(
     if (status === "ready") updates.ready_at = now;
     if (status === "delivered") updates.delivered_at = now;
 
-    if (
+    const markPaidOnDeliver =
       status === "delivered" &&
       access.order.payment_status === "pending" &&
       access.order.payment_method !== "online" &&
-      access.order.payment_method !== "unset"
-    ) {
-      updates.payment_status = "paid";
-    }
+      access.order.payment_method !== "unset";
 
     if (status === "rejected") {
       updates.rejection_reason = rejectionReason ?? null;
@@ -311,9 +310,18 @@ export const PATCH = withErrorHandler(
       );
     }
 
-    if (status === "delivered") {
-      void enqueueFiscalSendReceipt(admin, orderId).catch((err) =>
-        logger.error("Receipt outbox enqueue failed", {
+    if (markPaidOnDeliver) {
+      const traceId = getCurrentTraceId() ?? crypto.randomUUID();
+      const tipAmount = Number(access.order.tip_amount ?? 0);
+      const amountCents =
+        Math.round(Number(access.order.total) * 100) +
+        Math.round(tipAmount * 100);
+
+      void executeOrderSaga(orderId, traceId, {
+        amountCents,
+        tipAmount,
+      }).catch((err) =>
+        logger.error("Order saga failed on deliver", {
           orderId,
           error: err instanceof Error ? err.message : String(err),
         })

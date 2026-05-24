@@ -1,9 +1,8 @@
 import type Stripe from "stripe";
 import { logger } from "@/lib/logger";
-import { enqueueFiscalSendReceipt } from "@/lib/outbox/enqueue-events";
+import { executeOrderSagaFromPaymentIntent } from "@/lib/orders/order-saga";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
-import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
-import { orgIdForOrder } from "@/lib/webhooks/org-context";
+import { getCurrentTraceId } from "@/lib/resilience/trace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
@@ -357,34 +356,29 @@ async function verifyAndMarkSessionPaid(
 
   for (const order of rows) {
     if (order.payment_status === "paid") continue;
-    await admin
-      .from("orders")
-      .update({
-        payment_status: "paid",
-        stripe_payment_intent_id: pi.id,
-      })
-      .eq("id", order.id);
+
+    const traceId = getCurrentTraceId() ?? crypto.randomUUID();
+    const result = await executeOrderSagaFromPaymentIntent(
+      order.id,
+      traceId,
+      pi
+    );
+
+    if (!result.success) {
+      logger.error("Order saga failed for session checkout", {
+        orderId: order.id,
+        paymentIntentId: pi.id,
+        failedStep: result.failedStep,
+      });
+      continue;
+    }
 
     logger.info("Payment succeeded", {
       orderId: order.id,
       paymentIntentId: pi.id,
       sessionCheckout: true,
+      saga: result,
     });
-
-    void enqueueFiscalSendReceipt(admin, order.id).catch((err) =>
-      logger.error("Receipt outbox enqueue failed", {
-        orderId: order.id,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    );
-
-    const orgId = await orgIdForOrder(order.id);
-    if (orgId) {
-      dispatchOrgWebhook(orgId, "order.paid", {
-        order_id: order.id,
-        payment_intent_id: pi.id,
-      });
-    }
   }
 }
 
@@ -411,33 +405,23 @@ async function verifyAndMarkPaid(
 
   if (order.payment_status === "paid") return;
 
-  await admin
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      stripe_payment_intent_id: pi.id,
-    })
-    .eq("id", order.id);
+  const traceId = getCurrentTraceId() ?? crypto.randomUUID();
+  const result = await executeOrderSagaFromPaymentIntent(order.id, traceId, pi);
+
+  if (!result.success) {
+    logger.error("Order saga failed", {
+      orderId: order.id,
+      paymentIntentId: pi.id,
+      failedStep: result.failedStep,
+    });
+    return;
+  }
 
   logger.info("Payment succeeded", {
     orderId: order.id,
     paymentIntentId: pi.id,
+    saga: result,
   });
-
-  void enqueueFiscalSendReceipt(admin, order.id).catch((err) =>
-    logger.error("Receipt outbox enqueue failed", {
-      orderId: order.id,
-      error: err instanceof Error ? err.message : String(err),
-    })
-  );
-
-  const orgId = await orgIdForOrder(order.id);
-  if (orgId) {
-    dispatchOrgWebhook(orgId, "order.paid", {
-      order_id: order.id,
-      payment_intent_id: pi.id,
-    });
-  }
 }
 
 async function verifyAndMarkSplitPaid(
@@ -500,20 +484,20 @@ async function verifyAndMarkSplitPaid(
     splits.length > 0 && splits.every((s) => s.payment_status === "paid");
 
   if (allPaid) {
-    await admin
-      .from("orders")
-      .update({
-        payment_status: "paid",
-        stripe_payment_intent_id: pi.id,
-      })
-      .eq("id", row.order_id);
-
-    void enqueueFiscalSendReceipt(admin, row.order_id).catch((err) =>
-      logger.error("Receipt outbox enqueue failed", {
-        orderId: row.order_id,
-        error: err instanceof Error ? err.message : String(err),
-      })
+    const traceId = getCurrentTraceId() ?? crypto.randomUUID();
+    const result = await executeOrderSagaFromPaymentIntent(
+      row.order_id,
+      traceId,
+      pi
     );
+
+    if (!result.success) {
+      logger.error("Order saga failed for split checkout", {
+        orderId: row.order_id,
+        paymentIntentId: pi.id,
+        failedStep: result.failedStep,
+      });
+    }
   }
 
   logger.info("Split payment succeeded", {

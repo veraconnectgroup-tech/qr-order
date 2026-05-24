@@ -1,23 +1,47 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { logger } from "@/lib/logger";
 import { handleDeliverectWebhook } from "@/lib/pos/deliverect-webhook";
+
+function verifyDeliverectSignature(
+  body: string,
+  signature: string,
+  secret: string
+): boolean {
+  const hmac = createHmac("sha256", secret).update(body).digest("hex");
+
+  try {
+    const expected = Buffer.from(hmac, "utf8");
+    const received = Buffer.from(signature, "utf8");
+    if (expected.length !== received.length) return false;
+    return timingSafeEqual(expected, received);
+  } catch {
+    return hmac === signature;
+  }
+}
 
 export const POST = withErrorHandler(
   "deliverect-webhook-post",
   async (req) => {
     const body = await req.text();
-    const signature = req.headers.get("x-deliverect-hmac-sha256");
+    const signature =
+      req.headers.get("x-deliverect-signature") ??
+      req.headers.get("x-deliverect-hmac-sha256");
     const secret = process.env.DELIVERECT_WEBHOOK_SECRET;
 
     if (!secret) {
-      logger.warn("Deliverect webhook received without HMAC verification");
-    } else if (signature) {
-      const hmac = createHmac("sha256", secret).update(body).digest("hex");
-      if (hmac !== signature) {
-        logger.warn("Deliverect webhook bad signature");
-        return new Response("Invalid signature", { status: 401 });
-      }
+      logger.error("Deliverect webhook rejected — secret not configured");
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (!signature) {
+      logger.warn("Deliverect webhook rejected — missing signature header");
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    if (!verifyDeliverectSignature(body, signature, secret)) {
+      logger.warn("Deliverect webhook rejected — invalid signature");
+      return new Response("Unauthorized", { status: 401 });
     }
 
     let parsed: Record<string, unknown>;

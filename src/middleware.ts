@@ -1,12 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
+import { TRACE_HEADER, getTraceId } from "@/lib/resilience/trace-id";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, x-session-token, X-API-Key",
+    "Content-Type, Authorization, x-session-token, X-API-Key, x-trace-id",
 };
 
 const CONTENT_SECURITY_POLICY = [
@@ -57,20 +59,45 @@ function copyCookies(from: NextResponse, to: NextResponse) {
   });
 }
 
+function withTraceHeaders(request: NextRequest) {
+  const traceId = getTraceId(request);
+  Sentry.setTag("trace_id", traceId);
+  Sentry.addBreadcrumb({
+    category: "trace",
+    message: `trace_id=${traceId}`,
+    level: "info",
+  });
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(TRACE_HEADER, traceId);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set(TRACE_HEADER, traceId);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
 
   if (pathname.startsWith("/api/health")) {
-    return withResponseHeaders(NextResponse.next({ request }), true);
+    const response = withTraceHeaders(request);
+    return withResponseHeaders(response, true);
   }
 
   if (isApiRoute) {
     if (request.method === "OPTIONS") {
-      return withResponseHeaders(new NextResponse(null, { status: 204 }), true);
+      const traced = withTraceHeaders(request);
+      return withResponseHeaders(
+        new NextResponse(null, { status: 204, headers: traced.headers }),
+        true
+      );
     }
 
-    return withResponseHeaders(NextResponse.next({ request }), true);
+    const response = withTraceHeaders(request);
+    return withResponseHeaders(response, true);
   }
 
   const needsAuth =
@@ -81,10 +108,11 @@ export async function middleware(request: NextRequest) {
     pathname === "/signup";
 
   if (!needsAuth) {
-    return withResponseHeaders(NextResponse.next({ request }), false);
+    const response = withTraceHeaders(request);
+    return withResponseHeaders(response, false);
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = withTraceHeaders(request);
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,7 +126,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = withTraceHeaders(request);
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options);
           });

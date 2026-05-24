@@ -9,16 +9,29 @@ type LogEntry = {
 
 const isDev = process.env.NODE_ENV === "development";
 
+let traceIdProvider: (() => string | undefined) | null = null;
+
+export function setTraceIdProvider(provider: () => string | undefined) {
+  traceIdProvider = provider;
+}
+
+function withTrace(metadata?: Record<string, unknown>) {
+  const traceId = traceIdProvider?.();
+  if (!traceId) return metadata;
+  return { trace_id: traceId, ...metadata };
+}
+
 function write(
   level: LogLevel,
   message: string,
   metadata?: Record<string, unknown>
 ) {
+  const enriched = withTrace(metadata);
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
     level,
     message,
-    ...(metadata && Object.keys(metadata).length > 0 ? { metadata } : {}),
+    ...(enriched && Object.keys(enriched).length > 0 ? { metadata: enriched } : {}),
   };
 
   if (isDev) {
@@ -28,7 +41,7 @@ function write(
       error: "\x1b[31m",
     };
     const reset = "\x1b[0m";
-    const metaSuffix = metadata ? ` ${JSON.stringify(metadata)}` : "";
+    const metaSuffix = enriched ? ` ${JSON.stringify(enriched)}` : "";
     console.log(`${colors[level]}[${level}]${reset} ${message}${metaSuffix}`);
     return;
   }
