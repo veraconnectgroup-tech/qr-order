@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
+import { useCallback, useEffect, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Plug, Store } from "lucide-react";
+import { Monitor, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   connectPosIntegration,
+  deletePosIntegration,
   disconnectPosIntegration,
+  getPosIntegrations,
   type PosIntegrationRow,
   type PosProvider,
 } from "@/lib/pos/pos-actions";
@@ -21,77 +23,103 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const PROVIDERS: Array<{ id: PosProvider; label: string }> = [
-  { id: "deliverect", label: "Deliverect" },
-  { id: "orderbird", label: "Orderbird" },
-  { id: "lightspeed", label: "Lightspeed" },
-  { id: "ready2order", label: "ready2order" },
-  { id: "custom", label: "Custom" },
-];
+const PROVIDER_LABELS: Record<PosProvider, string> = {
+  deliverect: "Deliverect",
+  orderbird: "Orderbird",
+  lightspeed: "Lightspeed",
+  ready2order: "ready2order",
+  custom: "Custom",
+};
 
 function statusBadge(status: PosIntegrationRow["status"]) {
   if (status === "connected") {
     return (
       <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-        Connected
+        Verbunden
       </span>
     );
   }
   if (status === "error") {
     return (
       <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
-        Error
+        Fehler
       </span>
     );
   }
   return (
     <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
-      Disconnected
+      Getrennt
     </span>
   );
 }
 
 function formatSyncAt(iso: string | null) {
   if (!iso) return "—";
-  return format(new Date(iso), "dd.MM.yyyy HH:mm", { locale: de });
+  return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: de });
 }
 
-export function PosIntegrationsPanel({
-  integrations,
-  locationId,
-}: {
-  integrations: PosIntegrationRow[];
-  locationId: string;
-}) {
-  const [rows, setRows] = useState(integrations);
+export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
+  const [rows, setRows] = useState<PosIntegrationRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<PosProvider | null>(
-    null
-  );
+  const [provider, setProvider] = useState<PosProvider>("deliverect");
   const [apiKey, setApiKey] = useState("");
   const [externalLocationId, setExternalLocationId] = useState("");
   const [pending, setPending] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const byProvider = new Map(rows.map((row) => [row.provider, row]));
+  const reload = useCallback(async () => {
+    const data = await getPosIntegrations(locationId);
+    setRows(data);
+  }, [locationId]);
 
-  function openConnect(provider: PosProvider) {
-    setSelectedProvider(provider);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(async () => {
+      try {
+        const data = await getPosIntegrations(locationId);
+        if (!cancelled) setRows(data);
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "POS-Integrationen konnten nicht geladen werden."
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [locationId]);
+
+  function openConnect() {
+    setProvider("deliverect");
     setApiKey("");
     setExternalLocationId("");
     setDialogOpen(true);
   }
 
   async function handleConnect() {
-    if (!selectedProvider || !apiKey.trim()) return;
+    if (!apiKey.trim()) return;
     setPending(true);
-    const result = await connectPosIntegration({
+    const result = await connectPosIntegration(
       locationId,
-      provider: selectedProvider,
-      apiKey: apiKey.trim(),
-      externalLocationId: externalLocationId.trim() || undefined,
-    });
+      provider,
+      externalLocationId.trim() || null,
+      { api_key: apiKey.trim() }
+    );
     setPending(false);
 
     if ("error" in result && result.error) {
@@ -99,9 +127,9 @@ export function PosIntegrationsPanel({
       return;
     }
 
-    toast.success("POS integration connected");
+    toast.success("POS-Integration verbunden");
     setDialogOpen(false);
-    window.location.reload();
+    await reload();
   }
 
   async function handleDisconnect(integrationId: string) {
@@ -114,64 +142,80 @@ export function PosIntegrationsPanel({
       return;
     }
 
-    setRows((prev) =>
-      prev.map((row) =>
-        row.id === integrationId
-          ? { ...row, status: "disconnected" as const, last_error: null }
-          : row
-      )
-    );
-    toast.success("POS integration disconnected");
+    toast.success("POS-Integration getrennt");
+    await reload();
+  }
+
+  async function handleDelete(integrationId: string) {
+    setBusyId(integrationId);
+    const result = await deletePosIntegration(integrationId);
+    setBusyId(null);
+
+    if ("error" in result && result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("POS-Integration gelöscht");
+    await reload();
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">POS Integrationen</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Kassensystem-Anbindung pro Standort. Bei aktiver Verbindung werden
-          Bestellungen an das POS weitergeleitet.
-        </p>
+    <div className="max-w-2xl rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">POS-Integration</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Kassensystem-Anbindung für diesen Standort. Bei aktiver Verbindung
+            werden Bestellungen an das POS weitergeleitet.
+          </p>
+        </div>
+        <Button type="button" size="sm" onClick={openConnect}>
+          <Plus className="mr-2 size-4" />
+          Verbinden
+        </Button>
       </div>
 
-      <div className="divide-y divide-neutral-100 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
-        {PROVIDERS.map(({ id, label }) => {
-          const row = byProvider.get(id);
-          const status = row?.status ?? "disconnected";
-          const connected = status === "connected";
-
-          return (
-            <div
-              key={id}
-              className="flex flex-wrap items-start justify-between gap-4 px-6 py-5"
+      {loading ? (
+        <p className="mt-6 text-sm text-neutral-500">Wird geladen…</p>
+      ) : rows.length === 0 ? (
+        <p className="mt-6 text-sm text-neutral-500">
+          Noch keine POS-Integrationen konfiguriert.
+        </p>
+      ) : (
+        <ul className="mt-6 divide-y divide-neutral-100">
+          {rows.map((row) => (
+            <li
+              key={row.id}
+              className="flex flex-wrap items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
             >
               <div className="flex items-start gap-3">
                 <div className="flex size-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-                  <Store className="size-5" />
+                  <Monitor className="size-5" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-neutral-900">{label}</p>
-                    {statusBadge(status)}
+                    <p className="font-medium text-neutral-900">
+                      {PROVIDER_LABELS[row.provider]}
+                    </p>
+                    {statusBadge(row.status)}
                   </div>
-                  {row?.external_location_id && (
+                  {row.external_location_id && (
                     <p className="mt-1 text-sm text-neutral-500">
-                      External ID: {row.external_location_id}
+                      Externe Standort-ID: {row.external_location_id}
                     </p>
                   )}
-                  {row && (
-                    <p className="mt-1 text-xs text-neutral-400">
-                      Last sync: {formatSyncAt(row.last_sync_at)}
-                    </p>
-                  )}
-                  {row?.last_error && (
+                  <p className="mt-1 text-xs text-neutral-400">
+                    Letzte Sync: {formatSyncAt(row.last_sync_at)}
+                  </p>
+                  {row.status === "error" && row.last_error && (
                     <p className="mt-2 text-sm text-red-600">{row.last_error}</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                {connected && row ? (
+              <div className="flex flex-wrap gap-2">
+                {row.status === "connected" && (
                   <Button
                     type="button"
                     variant="outline"
@@ -179,57 +223,71 @@ export function PosIntegrationsPanel({
                     disabled={busyId === row.id}
                     onClick={() => handleDisconnect(row.id)}
                   >
-                    Disconnect
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => openConnect(id)}
-                  >
-                    <Plug className="mr-2 size-4" />
-                    Connect
+                    Trennen
                   </Button>
                 )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busyId === row.id}
+                  onClick={() => handleDelete(row.id)}
+                >
+                  <Trash2 className="mr-1 size-4" />
+                  Löschen
+                </Button>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Connect{" "}
-              {PROVIDERS.find((p) => p.id === selectedProvider)?.label ??
-                "POS"}
-            </DialogTitle>
+            <DialogTitle>POS verbinden</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="posApiKey">API Key</Label>
+              <Label htmlFor="posProvider">Anbieter</Label>
+              <Select
+                value={provider}
+                onValueChange={(value) => setProvider(value as PosProvider)}
+              >
+                <SelectTrigger id="posProvider">
+                  <SelectValue placeholder="Anbieter wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(PROVIDER_LABELS) as PosProvider[]).map(
+                    (id) => (
+                      <SelectItem key={id} value={id}>
+                        {PROVIDER_LABELS[id]}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="posExternalLocationId">Externe Standort-ID</Label>
+              <Input
+                id="posExternalLocationId"
+                value={externalLocationId}
+                onChange={(e) => setExternalLocationId(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="posApiKey">API-Schlüssel</Label>
               <Input
                 id="posApiKey"
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="POS API key"
+                placeholder="POS API-Schlüssel"
                 autoComplete="off"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="posExternalLocationId">External Location ID</Label>
-              <Input
-                id="posExternalLocationId"
-                value={externalLocationId}
-                onChange={(e) => setExternalLocationId(e.target.value)}
-                placeholder="Optional — POS location identifier"
-              />
-            </div>
-            <p className="text-xs text-neutral-500">
-              Placeholder setup — full OAuth/sync flow follows in Track C2.
-            </p>
           </div>
           <DialogFooter>
             <Button
@@ -237,14 +295,14 @@ export function PosIntegrationsPanel({
               variant="outline"
               onClick={() => setDialogOpen(false)}
             >
-              Cancel
+              Abbrechen
             </Button>
             <Button
               type="button"
               disabled={pending || !apiKey.trim()}
               onClick={handleConnect}
             >
-              {pending ? "Connecting…" : "Connect"}
+              {pending ? "Wird verbunden…" : "Speichern"}
             </Button>
           </DialogFooter>
         </DialogContent>

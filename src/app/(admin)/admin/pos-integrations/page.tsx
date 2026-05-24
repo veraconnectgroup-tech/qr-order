@@ -1,6 +1,5 @@
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
 import { PosIntegrationsPanel } from "@/components/admin/pos-integrations-panel";
-import { getPosIntegrations } from "@/lib/pos/pos-actions";
 
 export default async function AdminPosIntegrationsPage() {
   const staff = await requireAdmin();
@@ -9,19 +8,15 @@ export default async function AdminPosIntegrationsPage() {
   if (!locationId) {
     return (
       <div className="p-6">
-        <p className="text-neutral-600">Location not found.</p>
+        <p className="text-neutral-600">Standort nicht gefunden.</p>
       </div>
     );
   }
 
-  const integrations = await getPosIntegrations(locationId);
-
   return (
     <div className="p-6">
-      <PosIntegrationsPanel
-        integrations={integrations}
-        locationId={locationId}
-      />
+      <h1 className="mb-6 text-2xl font-bold">POS-Integration</h1>
+      <PosIntegrationsPanel locationId={locationId} />
     </div>
   );
 }

@@ -37,8 +37,8 @@ const providerSchema = z.enum([
 const connectSchema = z.object({
   locationId: z.string().uuid(),
   provider: providerSchema,
-  apiKey: z.string().min(1).max(512),
   externalLocationId: z.string().max(256).optional(),
+  config: z.record(z.string(), z.unknown()),
 });
 
 async function assertLocationAccess(locationId: string, orgId: string) {
@@ -51,8 +51,25 @@ async function assertLocationAccess(locationId: string, orgId: string) {
     .single();
 
   if (!location) {
-    throw new Error("Location not found.");
+    throw new Error("Standort nicht gefunden.");
   }
+}
+
+async function assertIntegrationAccess(integrationId: string, orgId: string) {
+  const admin = createAdminClient();
+  const { data: row } = await admin
+    .from("pos_integrations")
+    .select("id, location_id")
+    .eq("id", integrationId)
+    .single();
+
+  if (!row) {
+    throw new Error("Integration nicht gefunden.");
+  }
+
+  const integration = row as { id: string; location_id: string };
+  await assertLocationAccess(integration.location_id, orgId);
+  return integration;
 }
 
 export async function getPosIntegrations(
@@ -75,36 +92,37 @@ export async function getPosIntegrations(
   return (data ?? []) as PosIntegrationRow[];
 }
 
-export async function connectPosIntegration(input: {
-  locationId: string;
-  provider: PosProvider;
-  apiKey: string;
-  externalLocationId?: string;
-}) {
+export async function connectPosIntegration(
+  locationId: string,
+  provider: PosProvider,
+  externalLocationId: string | null,
+  config: Record<string, unknown>
+) {
   const staff = await requireAdmin();
-  const parsed = connectSchema.safeParse(input);
+  const parsed = connectSchema.safeParse({
+    locationId,
+    provider,
+    externalLocationId: externalLocationId ?? undefined,
+    config,
+  });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
   }
 
   await assertLocationAccess(parsed.data.locationId, staff.org_id);
 
   const admin = createAdminClient();
-  const config = {
-    api_key: parsed.data.apiKey,
-  } satisfies Record<string, string>;
-
   const { error } = await admin.from("pos_integrations").upsert(
     {
       location_id: parsed.data.locationId,
       provider: parsed.data.provider,
       status: "connected",
-      config: config as unknown as Json,
+      config: parsed.data.config as Json,
       external_location_id: parsed.data.externalLocationId?.trim() || null,
       last_error: null,
       updated_at: new Date().toISOString(),
-    } as never,
+    },
     { onConflict: "location_id,provider" }
   );
 
@@ -118,28 +136,34 @@ export async function connectPosIntegration(input: {
 
 export async function disconnectPosIntegration(integrationId: string) {
   const staff = await requireAdmin();
+  await assertIntegrationAccess(integrationId, staff.org_id);
+
   const admin = createAdminClient();
-
-  const { data: row } = await admin
-    .from("pos_integrations")
-    .select("id, location_id")
-    .eq("id", integrationId)
-    .single();
-
-  if (!row) {
-    return { error: "Integration not found." };
-  }
-
-  const integration = row as { id: string; location_id: string };
-  await assertLocationAccess(integration.location_id, staff.org_id);
-
   const { error } = await admin
     .from("pos_integrations")
     .update({
       status: "disconnected",
       last_error: null,
       updated_at: new Date().toISOString(),
-    } as never)
+    })
+    .eq("id", integrationId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin/pos-integrations");
+  return { success: true as const };
+}
+
+export async function deletePosIntegration(integrationId: string) {
+  const staff = await requireAdmin();
+  await assertIntegrationAccess(integrationId, staff.org_id);
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("pos_integrations")
+    .delete()
     .eq("id", integrationId);
 
   if (error) {

@@ -8,7 +8,7 @@ import {
   MapPin,
   Megaphone,
   MessageSquare,
-  Plug,
+  Monitor,
   QrCode,
   ScrollText,
   Settings,
@@ -30,7 +30,7 @@ const navItems = [
   { href: "/admin/staff", label: "Staff", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/tagesabschluss", label: "Tagesabschluss", icon: ScrollText },
-  { href: "/admin/pos-integrations", label: "POS Integrationen", icon: Plug },
+  { href: "/admin/pos-integrations", label: "POS-Integration", icon: Monitor },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
