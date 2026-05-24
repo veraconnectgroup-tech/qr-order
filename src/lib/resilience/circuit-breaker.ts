@@ -103,6 +103,31 @@ export function resolveCircuitState(
   return "CLOSED";
 }
 
+export type CircuitLabel = "closed" | "open" | "half_open";
+
+export function circuitStateLabel(state: CircuitState): CircuitLabel {
+  switch (state) {
+    case "CLOSED":
+      return "closed";
+    case "OPEN":
+      return "open";
+    case "HALF_OPEN":
+      return "half_open";
+  }
+}
+
+export async function getCircuitBreakerStatus(serviceName: string): Promise<{
+  circuit: CircuitLabel;
+  ok: boolean;
+}> {
+  const stored = await loadState(serviceName);
+  const state = resolveCircuitState(stored);
+  return {
+    circuit: circuitStateLabel(state),
+    ok: state !== "OPEN",
+  };
+}
+
 async function recordSuccess(serviceName: string): Promise<void> {
   await saveState(serviceName, emptyState());
 }

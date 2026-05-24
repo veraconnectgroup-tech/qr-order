@@ -1,4 +1,5 @@
-import { Redis } from "@upstash/redis";
+import { getCircuitBreakerStatus } from "@/lib/resilience/circuit-breaker";
+import { getRedisClient } from "@/lib/redis/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const DB_TIMEOUT_MS = 3000;
@@ -25,11 +26,22 @@ export type HealthPayload = {
   write_test?: WriteCheck;
 };
 
-function getRedis(): Redis | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return new Redis({ url, token });
+export type DeepHealthChecks = {
+  database: { ok: boolean; latency_ms: number };
+  redis: { ok: boolean; latency_ms?: number };
+  fiskaly: { ok: boolean; circuit: string };
+  stripe: { ok: boolean; circuit: string };
+  openai: { ok: boolean; circuit: string };
+};
+
+export type DeepHealthPayload = {
+  status: HealthStatus;
+  checks: DeepHealthChecks;
+  timestamp: string;
+};
+
+function getRedis() {
+  return getRedisClient();
 }
 
 async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
@@ -87,6 +99,66 @@ export async function checkRedis(): Promise<HealthChecks["redis"]> {
   } catch {
     return { status: "down", latency_ms: Date.now() - start };
   }
+}
+
+async function checkDatabaseDeep(): Promise<DeepHealthChecks["database"]> {
+  const result = await checkDatabase();
+  return {
+    ok: result.status === "up",
+    latency_ms: result.latency_ms,
+  };
+}
+
+async function checkRedisDeep(): Promise<DeepHealthChecks["redis"]> {
+  const client = getRedis();
+  if (!client) {
+    return { ok: false };
+  }
+
+  const start = Date.now();
+
+  try {
+    await withTimeout(client.ping(), DB_TIMEOUT_MS);
+    return { ok: true, latency_ms: Date.now() - start };
+  } catch {
+    return { ok: false, latency_ms: Date.now() - start };
+  }
+}
+
+export function resolveDeepHealthStatus(checks: DeepHealthChecks): HealthStatus {
+  if (!checks.database.ok || !checks.stripe.ok) {
+    return "unhealthy";
+  }
+
+  if (!checks.redis.ok || !checks.fiskaly.ok || !checks.openai.ok) {
+    return "degraded";
+  }
+
+  return "healthy";
+}
+
+export async function runDeepHealthChecks(): Promise<DeepHealthPayload> {
+  const [database, redis, fiskaly, stripe, openai] = await Promise.all([
+    checkDatabaseDeep(),
+    checkRedisDeep(),
+    getCircuitBreakerStatus("fiskaly"),
+    getCircuitBreakerStatus("stripe"),
+    getCircuitBreakerStatus("openai"),
+  ]);
+
+  const checks: DeepHealthChecks = {
+    database,
+    redis,
+    fiskaly,
+    stripe,
+    openai,
+  };
+
+  return {
+    status: resolveDeepHealthStatus(checks),
+    checks,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export function checkStripe(): HealthChecks["stripe"] {

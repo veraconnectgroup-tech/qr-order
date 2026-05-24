@@ -1,7 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
 import { createServerClient } from "@/lib/supabase/server";
 
 /** Production rate-limit scopes — see README § Rate limiting */
@@ -28,14 +28,8 @@ const SCOPE_BY_USER = new Set<RateLimitScope>([
   "orders-staff",
 ]);
 
-const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const useRedis = Boolean(redisUrl && redisToken);
-
-const redis =
-  useRedis && redisUrl && redisToken
-    ? new Redis({ url: redisUrl, token: redisToken })
-    : null;
+const redis = getRedisClient();
+const useRedis = redis !== null;
 
 function createScopeLimiter(
   scope: RateLimitScope,
@@ -190,14 +184,19 @@ export async function withRateLimit(
   const limiter = upstashLimiters[scope];
 
   if (useRedis && limiter) {
-    const result = await limiter.limit(key);
+    try {
+      const result = await limiter.limit(key);
 
-    if (!result.success) {
-      const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
-      return tooManyRequests(retryAfter);
+      if (!result.success) {
+        const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
+        return tooManyRequests(retryAfter);
+      }
+
+      return null;
+    } catch (error) {
+      logRedisDegradation(`rate-limit:${scope}`, error);
+      return null;
     }
-
-    return null;
   }
 
   const config = MEMORY_SCOPE_CONFIG[scope];
@@ -217,14 +216,19 @@ export async function withRateLimitByKey(
   const limiter = upstashLimiters[scope];
 
   if (useRedis && limiter) {
-    const result = await limiter.limit(key);
+    try {
+      const result = await limiter.limit(key);
 
-    if (!result.success) {
-      const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
-      return tooManyRequests(retryAfter);
+      if (!result.success) {
+        const retryAfter = Math.ceil((result.reset - Date.now()) / 1000);
+        return tooManyRequests(retryAfter);
+      }
+
+      return null;
+    } catch (error) {
+      logRedisDegradation(`rate-limit:${scope}`, error);
+      return null;
     }
-
-    return null;
   }
 
   const config = MEMORY_SCOPE_CONFIG[scope];

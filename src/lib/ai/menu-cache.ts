@@ -2,6 +2,7 @@ import { AI_CONFIG } from "@/lib/ai/config";
 import { buildAiCatalog } from "@/lib/ai/catalog/catalog-builder";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { getAiRedis } from "@/lib/ai/redis";
+import { logRedisDegradation } from "@/lib/redis/client";
 import type { AiMenuCachePayload, AiProductSummary } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -109,6 +110,7 @@ export async function getCachedMenuForLocation(
         return toMenuPayload(cached);
       }
     } catch (error) {
+      logRedisDegradation(`menu-cache:read:${locationId}`, error);
       logger.warn("AI menu cache read failed, falling back to DB", {
         locationId,
         error: error instanceof Error ? error.message : String(error),
@@ -128,6 +130,7 @@ export async function getCachedMenuForLocation(
         productCount: Object.keys(catalog.catalog).length,
       });
     } catch (error) {
+      logRedisDegradation(`menu-cache:write:${locationId}`, error);
       logger.warn("AI menu cache write failed", {
         locationId,
         error: error instanceof Error ? error.message : String(error),
