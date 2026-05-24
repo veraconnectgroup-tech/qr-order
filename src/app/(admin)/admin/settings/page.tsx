@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
+import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
@@ -17,7 +18,7 @@ export default async function AdminSettingsPage() {
   const admin = createAdminClient();
   const locationId = await getStaffLocationId(staff);
 
-  const [{ data: org }, { data: location }, { data: credits }, { data: packages }, { data: apiKeys }, { data: webhooks }] =
+  const [{ data: org }, { data: location }, { data: credits }, { data: packages }, { data: apiKeys }, { data: webhooks }, { data: aiExamples }] =
     await Promise.all([
     admin
       .from("organizations")
@@ -30,7 +31,7 @@ export default async function AdminSettingsPage() {
       ? admin
           .from("locations")
           .select(
-            "name, menu_locale, default_locale, google_review_url, ordering_enabled, ai_concierge_enabled"
+            "name, menu_locale, default_locale, google_review_url, ordering_enabled, ai_concierge_enabled, ai_playbook"
           )
           .eq("id", locationId)
           .single()
@@ -55,6 +56,17 @@ export default async function AdminSettingsPage() {
       .select("id, url, events, is_active, failure_count, created_at")
       .eq("org_id", staff.org_id)
       .order("created_at", { ascending: false }),
+    locationId
+      ? admin
+          .from("ai_examples")
+          .select(
+            "id, category, user_message, assistant_message, sort_order, is_active"
+          )
+          .eq("org_id", staff.org_id)
+          .eq("location_id", locationId)
+          .order("sort_order")
+          .order("created_at")
+      : Promise.resolve({ data: null }),
   ]);
 
   const orgRow = org as {
@@ -75,6 +87,7 @@ export default async function AdminSettingsPage() {
     google_review_url: string | null;
     ordering_enabled: boolean;
     ai_concierge_enabled: boolean;
+    ai_playbook: string | null;
   } | null;
 
   const creditsRow = credits as {
@@ -137,6 +150,14 @@ export default async function AdminSettingsPage() {
                 canEdit
               />
             </Suspense>
+
+            {locationRow.ai_concierge_enabled && (
+              <AiPlaybookPanel
+                playbook={locationRow.ai_playbook}
+                examples={(aiExamples ?? []) as never}
+                canEdit
+              />
+            )}
 
             <PrinterSettingsPanel />
           </>

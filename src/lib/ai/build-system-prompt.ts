@@ -120,72 +120,153 @@ function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
   return blocks[lang];
 }
 
+function orderingRulesBlock(
+  lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
+): string {
+  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+    de: `BESTELLREGELN:
+- Du kannst Bestellungen aufnehmen. Mappe Gäste-Wünsche auf exakte productId und modifierIds aus dem Menü.
+- Wenn serve_sizes (required) oder required modifier fehlen: intent "clarify", frage nach, setze quickReplies.
+- Wenn alles klar ist: intent "order", fülle proposedItems aus.
+- submitOrder nur true wenn der Gast ausdrücklich bestätigt hat ("ja", "senden", "bestellen").
+- Niemals submitOrder true ohne explizite Bestätigung.
+- proposedItems: quantity, modifierIds (UUIDs), serveSize wenn nötig, notes für Sonderwünsche.`,
+    en: `ORDERING RULES:
+- You can take orders. Map guest requests to exact productId and modifierIds from the menu.
+- If serve_sizes (required) or required modifiers are missing: intent "clarify", ask, set quickReplies.
+- When complete: intent "order", fill proposedItems.
+- submitOrder true ONLY when guest explicitly confirms ("yes", "send", "place order").
+- Never set submitOrder true without explicit guest confirmation.
+- proposedItems: quantity, modifierIds (UUIDs), serveSize when needed, notes for special requests.`,
+    sr: `PRAVILA PORUČIVANJA:
+- Možeš da primiš porudžbine. Mapiraj zahtev gosta na tačan productId i modifierIds iz menija.
+- Ako nedostaje serve_sizes (required) ili obavezan modifikator: intent "clarify", pitaj, postavi quickReplies.
+- Kad je sve jasno: intent "order", popuni proposedItems.
+- submitOrder true SAMO kad gost eksplicitno potvrdi ("da", "pošalji", "naruči").
+- Nikad submitOrder true bez eksplicitne potvrde.
+- proposedItems: quantity, modifierIds (UUID), serveSize ako treba, notes za posebne zahteve.`,
+    hr: `PRAVILA NARUDŽBE:
+- Možeš primati narudžbe. Mapiraj zahtjev gosta na točan productId i modifierIds iz jelovnika.
+- Ako nedostaje serve_sizes (required) ili obavezan modifikator: intent "clarify", pitaj, postavi quickReplies.
+- Kad je sve jasno: intent "order", popuni proposedItems.
+- submitOrder true SAMO kad gost eksplicitno potvrdi.
+- Nikad submitOrder true bez eksplicitne potvrde.`,
+    tr: `SİPARİŞ KURALLARI:
+- Sipariş alabilirsin. Misafir isteklerini menüdeki productId ve modifierIds ile eşle.
+- serve_sizes veya zorunlu modifier eksikse: intent "clarify", sor, quickReplies kullan.
+- Tamamlandığında: intent "order", proposedItems doldur.
+- submitOrder yalnızca misafir açıkça onayladığında true.`,
+    fr: `RÈGLES DE COMMANDE:
+- Tu peux prendre des commandes. Associe les demandes aux productId et modifierIds exacts du menu.
+- Si serve_sizes ou modifiers requis manquent: intent "clarify", demande, quickReplies.
+- Quand c'est complet: intent "order", proposedItems.
+- submitOrder true UNIQUEMENT après confirmation explicite du client.`,
+    es: `REGLAS DE PEDIDO:
+- Puedes tomar pedidos. Mapea solicitudes a productId y modifierIds exactos del menú.
+- Si faltan serve_sizes o modifiers requeridos: intent "clarify", pregunta, quickReplies.
+- Cuando esté completo: intent "order", proposedItems.
+- submitOrder true SOLO con confirmación explícita.`,
+    it: `REGOLE ORDINE:
+- Puoi prendere ordini. Mappa le richieste a productId e modifierIds esatti dal menu.
+- Se mancano serve_sizes o modifier obbligatori: intent "clarify", chiedi, quickReplies.
+- Quando completo: intent "order", proposedItems.
+- submitOrder true SOLO con conferma esplicita dell'ospite.`,
+  };
+  return blocks[lang];
+}
+
 function outputFormatBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
   const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
     de: `AUSGABEFORMAT (strikt JSON, kein Markdown):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "kurze Begründung mit Preis" }
-  ],
-  "message": "freundliche Nachricht an den Gast"
-}
-Wenn keine passende Empfehlung: "recommendations": []`,
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [{ "productId": "uuid", "reason": "kurz mit Preis" }],
+  "proposedItems": [{
+    "productId": "uuid",
+    "quantity": 1,
+    "modifierIds": ["uuid"],
+    "serveSize": "0.5L",
+    "notes": ""
+  }],
+  "quickReplies": ["0.3L", "0.5L"],
+  "submitOrder": false,
+  "message": "Nachricht an den Gast"
+}`,
     en: `OUTPUT FORMAT (strict JSON, no markdown):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "short reason including price" }
-  ],
-  "message": "friendly message to the guest"
-}
-If nothing fits: "recommendations": []`,
-    sr: `FORMAT ODGOVORA (striktno JSON, bez markdown-a):
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [{ "productId": "uuid", "reason": "short with price" }],
+  "proposedItems": [{
+    "productId": "uuid",
+    "quantity": 1,
+    "modifierIds": ["uuid"],
+    "serveSize": "0.5L",
+    "notes": ""
+  }],
+  "quickReplies": ["0.3L", "0.5L"],
+  "submitOrder": false,
+  "message": "message to guest"
+}`,
+    sr: `FORMAT ODGOVORA (striktno JSON):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "kratak razlog sa cenom" }
-  ],
-  "message": "prijateljska poruka gostu"
-}
-Ako nema pogodnih jela: "recommendations": []`,
-    hr: `FORMAT ODGOVORA (striktno JSON, bez markdown-a):
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [{ "productId": "uuid", "reason": "kratak razlog sa cenom" }],
+  "proposedItems": [{
+    "productId": "uuid",
+    "quantity": 1,
+    "modifierIds": ["uuid"],
+    "serveSize": "0.5L",
+    "notes": ""
+  }],
+  "quickReplies": ["0.3L", "0.5L"],
+  "submitOrder": false,
+  "message": "poruka gostu"
+}`,
+    hr: `FORMAT ODGOVORA (striktno JSON):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "kratak razlog s cijenom" }
-  ],
-  "message": "prijateljska poruka gostu"
-}
-Ako nema pogodnih jela: "recommendations": []`,
-    tr: `ÇIKTI FORMATI (katı JSON, markdown yok):
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [{ "productId": "uuid", "reason": "kratak razlog s cijenom" }],
+  "proposedItems": [{ "productId": "uuid", "quantity": 1, "modifierIds": [], "serveSize": null, "notes": "" }],
+  "quickReplies": [],
+  "submitOrder": false,
+  "message": "poruka gostu"
+}`,
+    tr: `ÇIKTI FORMATI (katı JSON):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "fiyatı içeren kısa gerekçe" }
-  ],
-  "message": "misafire samimi mesaj"
-}
-Uygun öneri yoksa: "recommendations": []`,
-    fr: `FORMAT DE SORTIE (JSON strict, pas de markdown):
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [],
+  "proposedItems": [],
+  "quickReplies": [],
+  "submitOrder": false,
+  "message": "misafire mesaj"
+}`,
+    fr: `FORMAT DE SORTIE (JSON strict):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "courte raison avec prix" }
-  ],
-  "message": "message amical au client"
-}
-Si rien ne convient: "recommendations": []`,
-    es: `FORMATO DE SALIDA (JSON estricto, sin markdown):
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [],
+  "proposedItems": [],
+  "quickReplies": [],
+  "submitOrder": false,
+  "message": "message au client"
+}`,
+    es: `FORMATO DE SALIDA (JSON estricto):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "breve motivo con precio" }
-  ],
-  "message": "mensaje amable al cliente"
-}
-Si nada encaja: "recommendations": []`,
-    it: `FORMATO OUTPUT (JSON rigoroso, niente markdown):
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [],
+  "proposedItems": [],
+  "quickReplies": [],
+  "submitOrder": false,
+  "message": "mensaje al cliente"
+}`,
+    it: `FORMATO OUTPUT (JSON rigoroso):
 {
-  "recommendations": [
-    { "productId": "uuid-from-menu", "reason": "breve motivo con prezzo" }
-  ],
-  "message": "messaggio cordiale all'ospite"
-}
-Se nulla adatto: "recommendations": []`,
+  "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
+  "recommendations": [],
+  "proposedItems": [],
+  "quickReplies": [],
+  "submitOrder": false,
+  "message": "messaggio all'ospite"
+}`,
   };
   return blocks[lang];
 }
@@ -216,13 +297,24 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const browseBlock = input.browsingContext?.trim()
     ? `\n\nBROWSE-KONTEXT:\n${input.browsingContext.trim()}`
     : "";
+  const draftBlock = input.orderDraftContext?.trim()
+    ? `\n\nORDER DRAFT:\n${input.orderDraftContext.trim()}`
+    : "";
+  const orderingBlock =
+    input.allowOrdering !== false ? orderingRulesBlock(lang) : "";
+  const playbookBlock = input.playbookContext?.trim()
+    ? `\n\n${input.playbookContext.trim()}`
+    : "";
 
   return [
     identityBlock(input.orgName, lang),
     rulesBlock(lang),
+    orderingBlock,
     outputFormatBlock(lang),
     guestContext,
+    playbookBlock,
     orderBlock,
+    draftBlock,
     browseBlock,
     "\n\nMENU:\n",
     input.menuText,

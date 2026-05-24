@@ -6,7 +6,14 @@ import {
 } from "@/lib/ai/config";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
+import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
 import { moderateGuestInput } from "@/lib/ai/moderation";
+import {
+  formatDraftForPrompt,
+  processOrderingTurn,
+} from "@/lib/ai/ordering/ordering-turn";
+import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
+import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import {
   AiCircuitOpenError,
   AiOpenAiError,
@@ -70,6 +77,7 @@ export const aiChatRequestSchema = z.object({
   preferences: preferencesSchema,
   includeOrderContext: z.boolean().optional().default(true),
   browsingContext: zSanitizedText(2000).optional(),
+  allowOrdering: z.boolean().optional().default(true),
 });
 
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
@@ -96,6 +104,7 @@ type AiSessionRow = {
   conversion_count: number;
   status: "active" | "completed" | "expired";
   created_at: string;
+  order_draft: AiOrderDraft | null;
 };
 
 function parseGuestPreferences(value: unknown): AiGuestPreferences {
@@ -135,6 +144,7 @@ function toAiSessionRow(data: Record<string, unknown>): AiSessionRow {
     conversion_count: Number(data.conversion_count ?? 0),
     status: (data.status as AiSessionRow["status"]) ?? "active",
     created_at: data.created_at as string,
+    order_draft: initDraftFromStorage(data.order_draft),
   };
 }
 
@@ -204,6 +214,10 @@ async function resolveStructuredResponse(
       structured: {
         message: AI_CONFIG.fallbackMessage,
         recommendations: [] as { productId: string; reason: string }[],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+        intent: "chat" as const,
       },
       recommendations: [] as ReturnType<typeof parseAiStructuredResponse>["recommendations"],
       openAiResult,
@@ -398,6 +412,104 @@ export async function handleAiChat(body: unknown) {
     timestamp: new Date().toISOString(),
   };
 
+  const allowOrdering = input.allowOrdering !== false;
+  const catalog = {
+    menuText: menuPayload.menuText,
+    productMap: menuPayload.productMap,
+    catalog: menuPayload.catalog,
+    currency: menuPayload.currency,
+    cachedAt: menuPayload.cachedAt,
+  };
+
+  let workingDraft = sessionRow?.order_draft ?? initDraftFromStorage(null);
+
+  const preTurn = processOrderingTurn({
+    userMessage: input.message,
+    allowOrdering,
+    orderDraftRaw: workingDraft,
+    catalog,
+  });
+  workingDraft = preTurn.draft;
+
+  if (preTurn.skippedLlm && preTurn.cartActions.length > 0) {
+    const assistantText =
+      preTurn.confirmationMessage ??
+      `Added to cart: ${preTurn.cartActions.map((a) => a.productName).join(", ")}.`;
+
+    const assistantMessage: StoredMessage = {
+      role: "assistant",
+      content: assistantText,
+      timestamp: new Date().toISOString(),
+    };
+    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
+    const scrollContext = input.browsingContext
+      ? parseBrowsingContextToScrollContext(input.browsingContext)
+      : null;
+
+    let sessionId = sessionRow?.id;
+    const sessionPatch = {
+      messages: updatedMessages,
+      language,
+      guest_preferences: guestPrefs as import("@/types/database").Json,
+      order_draft: workingDraft as unknown as import("@/types/database").Json,
+      ...(scrollContext ? { scroll_context: scrollContext } : {}),
+    };
+
+    if (sessionRow) {
+      const { error: updateError } = await admin
+        .from("ai_sessions")
+        .update(sessionPatch)
+        .eq("id", sessionRow.id);
+      if (updateError) {
+        logger.error("AI session update failed", { error: updateError.message });
+        return apiError("Could not update session.", 500);
+      }
+    } else {
+      const { data: inserted, error: insertError } = await admin
+        .from("ai_sessions")
+        .insert({
+          org_id: orgId,
+          location_id: input.locationId,
+          table_id: input.tableId,
+          session_token: input.sessionToken,
+          messages: updatedMessages,
+          tokens_used: 0,
+          credits_used: 0,
+          products_recommended: [],
+          products_added: [],
+          conversion_count: 0,
+          status: "active",
+          order_draft: workingDraft as unknown as import("@/types/database").Json,
+          language,
+          guest_preferences: guestPrefs,
+          ...(scrollContext ? { scroll_context: scrollContext } : {}),
+        })
+        .select("id")
+        .single();
+      if (insertError || !inserted) {
+        return apiError("Could not create session.", 500);
+      }
+      sessionId = (inserted as { id: string }).id;
+    }
+
+    const { data: creditsRow } = await admin
+      .from("ai_credits")
+      .select("balance")
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    return apiSuccess({
+      message: assistantText,
+      recommendations: [],
+      cartActions: preTurn.cartActions,
+      quickReplies: preTurn.quickReplies,
+      intent: preTurn.intent,
+      submitOrder: false,
+      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      sessionId,
+    });
+  }
+
   const systemPrompt = buildSystemPrompt({
     orgName,
     menuText: menuPayload.menuText,
@@ -405,6 +517,9 @@ export async function handleAiChat(body: unknown) {
     guestPrefs,
     orderContext,
     browsingContext: input.browsingContext ?? null,
+    orderDraftContext: formatDraftForPrompt(workingDraft),
+    allowOrdering,
+    playbookContext: await getPlaybookPromptBlock(orgId, input.locationId),
   });
 
   const openAiMessages: OpenAiChatMessage[] = [
@@ -444,6 +559,15 @@ export async function handleAiChat(body: unknown) {
     structured: resolved.structured,
     recommendations: resolved.recommendations,
   };
+
+  const orderingResult = processOrderingTurn({
+    userMessage: input.message,
+    allowOrdering,
+    orderDraftRaw: workingDraft,
+    catalog,
+    structured: structured.structured,
+  });
+  workingDraft = orderingResult.draft;
 
   logger.info("AI chat token usage", {
     sessionId: sessionRow?.id ?? "new",
@@ -508,6 +632,7 @@ export async function handleAiChat(body: unknown) {
         products_recommended: recommendedIds,
         language,
         guest_preferences: guestPrefs,
+        order_draft: workingDraft as unknown as import("@/types/database").Json,
         ...(scrollContext ? { scroll_context: scrollContext } : {}),
       })
       .eq("id", sessionRow.id);
@@ -533,6 +658,7 @@ export async function handleAiChat(body: unknown) {
         products_added: [],
         conversion_count: 0,
         status: "active",
+        order_draft: workingDraft as unknown as import("@/types/database").Json,
         ...(scrollContext ? { scroll_context: scrollContext } : {}),
       })
       .select("id")
@@ -551,6 +677,10 @@ export async function handleAiChat(body: unknown) {
   return apiSuccess({
     message: structured.structured.message,
     recommendations: structured.recommendations,
+    cartActions: orderingResult.cartActions,
+    quickReplies: orderingResult.quickReplies,
+    intent: orderingResult.intent,
+    submitOrder: structured.structured.submitOrder,
     creditsRemaining: newBalance as number,
     sessionId,
   });

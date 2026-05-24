@@ -30,6 +30,9 @@ export const AI_CONFIG = {
   /** Menu cache TTL in Redis */
   menuCacheTtlSeconds: 300,
   menuCacheKeyPrefix: "ai:menu:",
+  playbookCacheTtlSeconds: 300,
+  playbookCacheKeyPrefix: "ai:playbook:",
+  maxPlaybookExamples: 20,
   circuitBreaker: {
     failureThreshold: 5,
     openDurationMs: 30_000,

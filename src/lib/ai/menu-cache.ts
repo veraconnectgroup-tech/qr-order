@@ -1,110 +1,19 @@
 import { AI_CONFIG } from "@/lib/ai/config";
+import { buildAiCatalog } from "@/lib/ai/catalog/catalog-builder";
+import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { getAiRedis } from "@/lib/ai/redis";
 import type { AiMenuCachePayload, AiProductSummary } from "@/lib/ai/types";
-import { formatPrice } from "@/lib/format";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-type RawCategory = {
-  id: string;
-  name: string;
-  name_en: string | null;
-  sort_order: number;
-  products: RawProduct[] | null;
-};
-
-type RawProduct = {
-  id: string;
-  name: string;
-  name_en: string | null;
-  description: string | null;
-  description_en: string | null;
-  price: number;
-  image_url: string | null;
-  is_available: boolean;
-  ai_description: string | null;
-  allergens: string[] | null;
-  sort_order: number;
-  deleted_at?: string | null;
-};
 
 function menuCacheKey(locationId: string) {
   return `${AI_CONFIG.menuCacheKeyPrefix}${locationId}`;
 }
 
-function pickProductName(product: RawProduct, useEnglish: boolean) {
-  if (useEnglish && product.name_en?.trim()) return product.name_en.trim();
-  return product.name;
-}
-
-function pickDescription(product: RawProduct, useEnglish: boolean) {
-  const ai = product.ai_description?.trim();
-  if (ai) return ai;
-  if (useEnglish && product.description_en?.trim()) {
-    return product.description_en.trim();
-  }
-  return product.description?.trim() ?? "";
-}
-
-function buildMenuPayload(
-  categories: RawCategory[],
-  currency: string,
-  useEnglish: boolean
-): AiMenuCachePayload {
-  const productMap: Record<string, AiProductSummary> = {};
-  const lines: string[] = [];
-
-  const sortedCategories = [...categories].sort(
-    (a, b) => a.sort_order - b.sort_order
-  );
-
-  for (const category of sortedCategories) {
-    const categoryName = useEnglish && category.name_en?.trim()
-      ? category.name_en.trim()
-      : category.name;
-
-    const products = (category.products ?? [])
-      .filter((p) => p.is_available && !p.deleted_at)
-      .sort((a, b) => a.sort_order - b.sort_order);
-
-    if (!products.length) continue;
-
-    lines.push(`## ${categoryName}`);
-
-    for (const product of products) {
-      const name = pickProductName(product, useEnglish);
-      const description = pickDescription(product, useEnglish);
-      const priceLabel = formatPrice(Number(product.price), currency);
-      const allergenPart =
-        product.allergens?.length ? ` | allergens: ${product.allergens.join(", ")}` : "";
-
-      lines.push(
-        `[${product.id}] ${name} — ${priceLabel}${description ? ` — ${description}` : ""}${allergenPart}`
-      );
-
-      productMap[product.id] = {
-        id: product.id,
-        name,
-        price: Number(product.price),
-        imageUrl: product.image_url,
-      };
-    }
-
-    lines.push("");
-  }
-
-  return {
-    menuText: lines.join("\n").trim(),
-    productMap,
-    currency,
-    cachedAt: new Date().toISOString(),
-  };
-}
-
 async function loadMenuFromDb(
   locationId: string,
   useEnglish = false
-): Promise<AiMenuCachePayload> {
+): Promise<AiCatalog> {
   const admin = createAdminClient();
 
   const { data: location, error: locationError } = await admin
@@ -129,6 +38,7 @@ async function loadMenuFromDb(
       id,
       name,
       name_en,
+      menu_section,
       sort_order,
       products (
         id,
@@ -142,7 +52,28 @@ async function loadMenuFromDb(
         ai_description,
         allergens,
         sort_order,
-        deleted_at
+        requires_serve_size,
+        serve_size_presets,
+        allow_custom_serve_size,
+        tax_rate,
+        deleted_at,
+        modifier_groups (
+          id,
+          name,
+          name_en,
+          min_select,
+          max_select,
+          is_required,
+          sort_order,
+          modifiers (
+            id,
+            name,
+            name_en,
+            price,
+            is_available,
+            sort_order
+          )
+        )
       )
     `
     )
@@ -155,16 +86,11 @@ async function loadMenuFromDb(
     throw new Error(`Menu load failed: ${error.message}`);
   }
 
-  const availableProducts = ((categories ?? []) as unknown as RawCategory[]).map(
-    (category) => ({
-      ...category,
-      products: (category.products ?? []).filter(
-        (p) => p.is_available !== false && !p.deleted_at
-      ),
-    })
+  return buildAiCatalog(
+    (categories ?? []) as unknown as Parameters<typeof buildAiCatalog>[0],
+    currency,
+    useEnglish
   );
-
-  return buildMenuPayload(availableProducts, currency, useEnglish);
 }
 
 export async function getCachedMenuForLocation(
@@ -177,10 +103,10 @@ export async function getCachedMenuForLocation(
 
   if (redis && !options?.bypassCache) {
     try {
-      const cached = await redis.get<AiMenuCachePayload>(cacheKey);
-      if (cached?.menuText && cached.productMap) {
+      const cached = await redis.get<AiCatalog>(cacheKey);
+      if (cached?.menuText && cached.catalog) {
         logger.info("AI menu cache hit", { locationId });
-        return cached;
+        return toMenuPayload(cached);
       }
     } catch (error) {
       logger.warn("AI menu cache read failed, falling back to DB", {
@@ -190,16 +116,16 @@ export async function getCachedMenuForLocation(
     }
   }
 
-  const payload = await loadMenuFromDb(locationId, useEnglish);
+  const catalog = await loadMenuFromDb(locationId, useEnglish);
 
   if (redis) {
     try {
-      await redis.set(cacheKey, payload, {
+      await redis.set(cacheKey, catalog, {
         ex: AI_CONFIG.menuCacheTtlSeconds,
       });
       logger.info("AI menu cache set", {
         locationId,
-        productCount: Object.keys(payload.productMap).length,
+        productCount: Object.keys(catalog.catalog).length,
       });
     } catch (error) {
       logger.warn("AI menu cache write failed", {
@@ -209,7 +135,20 @@ export async function getCachedMenuForLocation(
     }
   }
 
-  return payload;
+  return toMenuPayload(catalog);
+}
+
+function toMenuPayload(catalog: AiCatalog): AiMenuCachePayload {
+  return {
+    menuText: catalog.menuText,
+    productMap: catalog.productMap,
+    catalog: catalog.catalog,
+    currency: catalog.currency,
+    cachedAt: catalog.cachedAt,
+  };
 }
 
 export { invalidateMenuCache } from "@/lib/ai/menu-cache-invalidate";
+
+/** @deprecated use AiMenuCachePayload.catalog */
+export type { AiProductSummary };

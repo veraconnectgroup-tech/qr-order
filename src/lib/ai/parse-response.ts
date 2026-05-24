@@ -3,7 +3,27 @@ import { AI_CONFIG } from "@/lib/ai/config";
 import type { AiProductSummary, AiStructuredResponse } from "@/lib/ai/types";
 import { zUuid } from "@/lib/security/zod-fields";
 
+const proposedItemSchema = z.object({
+  productId: zUuid(),
+  quantity: z.number().int().min(1).max(10).optional().default(1),
+  modifierIds: z.array(zUuid()).optional().default([]),
+  serveSize: z.string().trim().max(20).nullable().optional(),
+  notes: z.string().trim().max(200).optional().default(""),
+});
+
 const aiResponseSchema = z.object({
+  intent: z
+    .enum([
+      "recommend",
+      "order",
+      "clarify",
+      "confirm",
+      "status",
+      "menu_info",
+      "chat",
+    ])
+    .optional()
+    .default("chat"),
   recommendations: z
     .array(
       z.object({
@@ -11,7 +31,12 @@ const aiResponseSchema = z.object({
         reason: z.string().trim().min(1).max(500),
       })
     )
-    .max(AI_CONFIG.maxRecommendations),
+    .max(AI_CONFIG.maxRecommendations)
+    .optional()
+    .default([]),
+  proposedItems: z.array(proposedItemSchema).max(10).optional().default([]),
+  quickReplies: z.array(z.string().trim().min(1).max(50)).max(6).optional().default([]),
+  submitOrder: z.boolean().optional().default(false),
   message: z.string().trim().min(1).max(2000),
 });
 
@@ -56,8 +81,20 @@ export function parseAiStructuredResponse(
     })
     .filter((item): item is AiChatRecommendation => item !== null);
 
-  return {
-    structured: result.data,
-    recommendations,
+  const structured: AiStructuredResponse = {
+    intent: result.data.intent,
+    recommendations: result.data.recommendations,
+    proposedItems: result.data.proposedItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      modifierIds: item.modifierIds,
+      serveSize: item.serveSize ?? null,
+      notes: item.notes,
+    })),
+    quickReplies: result.data.quickReplies,
+    submitOrder: result.data.submitOrder,
+    message: result.data.message,
   };
+
+  return { structured, recommendations };
 }

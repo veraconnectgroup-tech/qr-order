@@ -94,6 +94,7 @@ type Tables = {
     google_review_url: string | null;
     ordering_enabled: boolean;
     ai_concierge_enabled: boolean;
+    ai_playbook: string | null;
     rejection_ban_threshold: number;
     rejection_ban_minutes: number;
     rejection_strike_window_minutes: number;
@@ -447,6 +448,35 @@ type Tables = {
     nudges_shown: string[];
     guest_rating: number | null;
     guest_feedback: string | null;
+    order_draft: Json | null;
+    linked_order_ids: string[];
+    last_order_status_snapshot: Json | null;
+  };
+  ai_order_events: {
+    id: string;
+    ai_session_id: string;
+    order_id: string | null;
+    event_type:
+      | "draft_updated"
+      | "cart_applied"
+      | "submit_requested"
+      | "order_created"
+      | "status_notified";
+    payload: Json;
+    created_at: string;
+  };
+  ai_examples: {
+    id: string;
+    org_id: string;
+    location_id: string | null;
+    category: "order" | "recommend" | "clarify" | "confirm" | "general";
+    user_message: string;
+    assistant_message: string;
+    assistant_json: Json | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
   };
   ai_insights: {
     id: string;

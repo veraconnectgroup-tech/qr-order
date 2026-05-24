@@ -1,3 +1,5 @@
+import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
+
 export type AiGuestPreferences = {
   allergies: string[];
   mood: string;
@@ -13,8 +15,26 @@ export type AiProductSummary = {
 export type AiMenuCachePayload = {
   menuText: string;
   productMap: Record<string, AiProductSummary>;
+  catalog: Record<string, AiCatalogProduct>;
   currency: string;
   cachedAt: string;
+};
+
+export type AiConciergeIntent =
+  | "recommend"
+  | "order"
+  | "clarify"
+  | "confirm"
+  | "status"
+  | "menu_info"
+  | "chat";
+
+export type AiProposedItemResponse = {
+  productId: string;
+  quantity: number;
+  modifierIds: string[];
+  serveSize: string | null;
+  notes: string;
 };
 
 export type AiRecommendation = {
@@ -23,7 +43,11 @@ export type AiRecommendation = {
 };
 
 export type AiStructuredResponse = {
+  intent: AiConciergeIntent;
   recommendations: AiRecommendation[];
+  proposedItems: AiProposedItemResponse[];
+  quickReplies: string[];
+  submitOrder: boolean;
   message: string;
 };
 
@@ -44,6 +68,9 @@ export type BuildSystemPromptInput = {
   guestPrefs?: AiGuestPreferences | null;
   orderContext?: string | null;
   browsingContext?: string | null;
+  orderDraftContext?: string | null;
+  allowOrdering?: boolean;
+  playbookContext?: string | null;
 };
 
 export type OpenAiChatMessage = {

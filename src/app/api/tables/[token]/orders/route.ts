@@ -41,6 +41,7 @@ export const GET = withErrorHandler(
       .select(
         `
       id,
+      order_number,
       status,
       created_at,
       delivered_at,
