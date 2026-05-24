@@ -127,6 +127,18 @@ async function processStripeWebhookEvent(
   switch (event.type) {
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;
+      const isTerminalPayment =
+        pi.metadata.terminal === "true" ||
+        pi.payment_method_types?.includes("card_present");
+
+      if (isTerminalPayment) {
+        logger.info("Stripe Terminal payment succeeded", {
+          paymentIntentId: pi.id,
+          orderId: pi.metadata.order_id ?? null,
+          sessionId: pi.metadata.session_id ?? null,
+          amount: pi.amount,
+        });
+      }
 
       if (pi.metadata.split_payment_id) {
         await verifyAndMarkSplitPaid(admin, pi);

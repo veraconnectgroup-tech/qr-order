@@ -1,16 +1,21 @@
+import { resilientFetch } from "@/lib/fetch/resilient-fetch";
+
 export async function patchOrderStatus(
   orderId: string,
   status: "accepted" | "preparing" | "ready" | "delivered" | "rejected",
   rejectionReason?: string
 ) {
-  const res = await fetch(`/api/orders/${orderId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, rejectionReason }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json.error ?? "Update failed");
+  const { error } = await resilientFetch<{ data: unknown; error: string | null }>(
+    `/api/orders/${orderId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, rejectionReason }),
+    }
+  );
+
+  if (error) {
+    throw new Error(error);
   }
 }
 

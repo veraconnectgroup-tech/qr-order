@@ -54,7 +54,11 @@ function mapVatRate(taxRate: number): FiskalyVatRate {
 }
 
 function mapPaymentType(paymentMethod: string): FiskalyPaymentType {
-  if (paymentMethod === "online" || paymentMethod === "card_at_table") {
+  if (
+    paymentMethod === "online" ||
+    paymentMethod === "card_at_table" ||
+    paymentMethod === "card_terminal"
+  ) {
     return "NON_CASH";
   }
   return "CASH";

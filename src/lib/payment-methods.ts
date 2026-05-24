@@ -66,6 +66,14 @@ export function getPaymentMethodOption(
     };
   }
 
+  if (method === "card_terminal") {
+    return {
+      id: "card_terminal",
+      title: "Kartenzahlung (Terminal)",
+      description: "Staff charges the card on a Stripe Terminal reader",
+    };
+  }
+
   if (method === "pos") {
     return {
       id: "pos",
@@ -96,6 +104,7 @@ export const PAYMENT_METHOD_OPTIONS: Record<
 > = {
   at_bar: getPaymentMethodOption("at_bar", "bar"),
   card_at_table: getPaymentMethodOption("card_at_table"),
+  card_terminal: getPaymentMethodOption("card_terminal"),
   online: getPaymentMethodOption("online"),
   pos: getPaymentMethodOption("pos"),
   pos_online: getPaymentMethodOption("pos_online"),
@@ -109,6 +118,7 @@ export function paymentMethodLabel(
     return inPersonPaymentCopy(inPersonLocation).shortLabel;
   }
   if (method === "card_at_table") return "Card";
+  if (method === "card_terminal") return "Terminal";
   if (method === "pos") return "POS";
   if (method === "pos_online") return "Online (POS)";
   if (method === "unset") return "Unpaid";
@@ -152,7 +162,7 @@ export function unpaidPaymentHint(
 
 export type SelectablePaymentMethod = Exclude<
   PaymentMethod,
-  "unset" | "pos" | "pos_online"
+  "unset" | "pos" | "pos_online" | "card_terminal"
 >;
 
 export function getAvailablePaymentMethods(input: {

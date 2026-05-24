@@ -1,5 +1,6 @@
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { signOrderTransactionById } from "@/lib/fiscal/sign-transaction";
+import { criticalPath } from "@/lib/orders/critical-path-events";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
 import { TseSigningDeferredError } from "@/lib/resilience/circuit-breaker";
@@ -21,9 +22,30 @@ export async function handleFiscalTseSign(
   const admin = createAdminClient();
 
   try {
+    const tseStarted = Date.now();
     await signOrderTransactionById(orderId);
+    const tseDuration = Date.now() - tseStarted;
+
+    const { data: order } = await admin
+      .from("orders")
+      .select("tse_signature")
+      .eq("id", orderId)
+      .single();
+
+    const orderRow = order as { tse_signature: string | null } | null;
+
+    if (orderRow?.tse_signature) {
+      criticalPath.tseSigned({
+        orderId,
+        duration_ms: tseDuration,
+      });
+    }
   } catch (error) {
     if (error instanceof TseSigningDeferredError) {
+      criticalPath.tseDeferred({
+        orderId,
+        reason: "fiskaly circuit open",
+      });
       logger.warn("Outbox fiscal.tse_sign deferred — fiskaly circuit open", {
         orderId,
       });

@@ -199,12 +199,20 @@ export function OrderBoard() {
   );
   const [mobileColumn, setMobileColumn] =
     useState<OrderColumnDef["id"]>("new");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [, tickUpdated] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
   useReceiptAutoPrint({ orders, orgName, currency });
+
+  useEffect(() => {
+    if (!lastUpdatedAt) return;
+    const id = setInterval(() => tickUpdated((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [lastUpdatedAt]);
 
   const fetchOrders = useCallback(async () => {
     const supabase = createClient();
@@ -246,6 +254,7 @@ export function OrderBoard() {
     }));
 
     setOrders(enriched);
+    setLastUpdatedAt(new Date());
   }, [locationId]);
 
   useEffect(() => {
@@ -577,7 +586,17 @@ export function OrderBoard() {
             </Link>
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-col items-end gap-0.5">
+          {lastUpdatedAt && (
+            <span className="text-xs text-muted-foreground">
+              Aktualisiert vor{" "}
+              {Math.max(
+                0,
+                Math.floor((Date.now() - lastUpdatedAt.getTime()) / 1000)
+              )}
+              s
+            </span>
+          )}
           <LiveConnectionBadge mode={realtimeMode} />
         </div>
       </div>

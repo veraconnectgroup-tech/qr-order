@@ -89,6 +89,7 @@ type Tables = {
     payment_online_enabled: boolean;
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
+    stripe_terminal_location_id: string | null;
     in_person_payment_location: "bar" | "counter" | "table";
     menu_locale:
       | "de"
@@ -278,6 +279,17 @@ type Tables = {
     created_at: string;
     updated_at: string;
   };
+  terminal_readers: {
+    id: string;
+    location_id: string;
+    org_id: string;
+    stripe_reader_id: string;
+    label: string;
+    status: "online" | "offline";
+    last_seen_at: string | null;
+    created_at: string;
+    updated_at: string;
+  };
   products: {
     id: string;
     location_id: string;
@@ -383,6 +395,7 @@ type Tables = {
       | "online"
       | "at_bar"
       | "card_at_table"
+      | "card_terminal"
       | "unset"
       | "pos"
       | "pos_online";

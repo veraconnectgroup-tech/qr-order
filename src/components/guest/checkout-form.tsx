@@ -25,8 +25,8 @@ import {
   PromoInput,
   type AppliedPromo,
 } from "@/components/guest/promo-input";
-import { readJsonResponse } from "@/lib/api/read-json-response";
-import { fetchWithRetry, isServerErrorStatus } from "@/lib/payment/fetch-with-retry";
+import { resilientFetch } from "@/lib/fetch/resilient-fetch";
+import { isServerErrorStatus } from "@/lib/payment/fetch-with-retry";
 import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
 import {
   enqueueOfflineOrder,
@@ -219,41 +219,54 @@ export function CheckoutForm({
     const sessionId =
       context?.sessionId ?? activeSessionToken ?? sessionToken ?? "unknown";
 
-    const res = await fetchWithRetry("/api/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": buildGuestOrderIdempotencyKey(sessionId, items),
-      },
-      body: JSON.stringify({
-        sessionToken: activeSessionToken,
-        tableToken: token,
-        deviceFingerprint,
-        deviceToken: deviceToken ?? undefined,
-        items,
-        guestEmail: guestEmail.trim() || undefined,
-        isTakeaway,
-        paymentMethod: "unset",
-        promoCodeId: appliedPromo?.promoCodeId,
-      }),
-    });
-
-    if (isServerErrorStatus(res.status)) {
-      throw new Error(tUI("error.orderFailed"));
-    }
-
-    const parsed = await readJsonResponse<{
+    const { data: parsed, error: fetchError, status } = await resilientFetch<{
       error?: string;
       details?: { products?: string[] };
       data?: { orderId: string; awaitingApproval?: boolean };
-    }>(res);
+    }>(
+      "/api/orders",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": buildGuestOrderIdempotencyKey(sessionId, items),
+        },
+        body: JSON.stringify({
+          sessionToken: activeSessionToken,
+          tableToken: token,
+          deviceFingerprint,
+          deviceToken: deviceToken ?? undefined,
+          items,
+          guestEmail: guestEmail.trim() || undefined,
+          isTakeaway,
+          paymentMethod: "unset",
+          promoCodeId: appliedPromo?.promoCodeId,
+        }),
+      },
+      { baseDelayMs: 2000, maxRetries: 3 }
+    );
 
-    if (!parsed.ok) {
-      throw new Error(parsed.error);
+    if (fetchError) {
+      throw new Error(
+        "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+      );
     }
 
-    const json = parsed.data;
-    if (!res.ok || !json.data?.orderId) {
+    if (!parsed) {
+      throw new Error(
+        "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+      );
+    }
+
+    if (status && isServerErrorStatus(status)) {
+      throw new Error(
+        "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+      );
+    }
+
+    const json = parsed;
+
+    if (!json.data?.orderId) {
       if (json.error === "pin_required") {
         throw new Error("pin_required");
       }
@@ -268,7 +281,10 @@ export function CheckoutForm({
           toast.error(tUI("cart.unavailableProduct", { name }));
         }
       }
-      throw new Error(json.error ?? tUI("error.orderFailed"));
+      throw new Error(
+        json.error ??
+          "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+      );
     }
 
     return json.data;
@@ -363,7 +379,11 @@ export function CheckoutForm({
         setProcessing(false);
         return;
       }
-      setError(e instanceof Error ? e.message : tUI("error.generic"));
+      setError(
+        e instanceof Error && e.message.includes("Bestellung konnte nicht")
+          ? e.message
+          : "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+      );
       setProcessing(false);
     }
   }

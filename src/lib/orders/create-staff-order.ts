@@ -18,6 +18,7 @@ import {
   calculateOrderTaxFromItems,
   resolveItemTaxRate,
 } from "@/lib/tax/vat";
+import { criticalPath } from "@/lib/orders/critical-path-events";
 import { logger } from "@/lib/logger";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import type { Staff } from "@/types";
@@ -35,7 +36,7 @@ const staffOrderItemSchema = z.object({
 export const createStaffOrderSchema = z.object({
   tableId: zUuid(),
   items: z.array(staffOrderItemSchema).min(1).max(MAX_ITEMS_PER_ORDER),
-  paymentMethod: z.enum(["at_bar", "card_at_table", "online"]),
+  paymentMethod: z.enum(["at_bar", "card_at_table", "card_terminal", "online"]),
   notes: zOrderNotesOptional(500),
   isTakeaway: z.boolean().optional().default(false),
 });
@@ -55,6 +56,9 @@ function isPaymentMethodAllowed(
     return org.stripe_onboarded && location.payment_online_enabled;
   }
   if (method === "at_bar") return location.payment_at_bar_enabled;
+  if (method === "card_terminal") {
+    return org.stripe_onboarded && location.payment_card_at_table_enabled;
+  }
   return location.payment_card_at_table_enabled;
 }
 
@@ -460,6 +464,14 @@ export async function createStaffOrder(
     phase: "created",
     actorType: "staff",
     actorId: staff.id,
+  });
+
+  criticalPath.orderCreated({
+    orderId: orderRow.id,
+    source: "staff",
+    locationId: locationRow.id,
+    total: orderRow.total,
+    paymentMethod: input.paymentMethod,
   });
 
   logger.info("Staff order created", {

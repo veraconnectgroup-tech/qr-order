@@ -40,7 +40,8 @@ import {
 } from "@/lib/orders/patch-order-status";
 import { useKdsOrders } from "@/hooks/use-kds-orders";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
-import { KdsConnectionBadge } from "@/components/dashboard/kds-connection-badge";
+import { KdsConnectionBadge, kdsSecondsSinceUpdate } from "@/components/dashboard/kds-connection-badge";
+import { useConnectionStatus } from "@/hooks/use-connection-status";
 import {
   KdsPrinterStatus,
   useKdsPrinterStatus,
@@ -229,8 +230,17 @@ function KdsOrderCard({
 export function KdsBoard() {
   const router = useRouter();
   const { locationId, orgName } = useDashboard();
-  const { orders, loading, error, refetch, realtimeMode } =
-    useKdsOrders(locationId);
+  const { status: connectionStatus } = useConnectionStatus();
+  const {
+    orders,
+    loading,
+    error,
+    refetch,
+    realtimeMode,
+    lastUpdatedAt,
+    fetchOk,
+    optimisticUpdateStatus,
+  } = useKdsOrders(locationId);
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -370,18 +380,19 @@ export function KdsBoard() {
       const next = nextKdsStatus(order.status);
       if (!next) return;
 
-      setBusyId(order.id);
+      optimisticUpdateStatus(order.id, next);
       try {
         await patchOrderStatus(order.id, next);
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Update failed");
+      } catch {
+        toast.error("Status konnte nicht geändert werden");
         await refetch();
-      } finally {
-        setBusyId(null);
       }
     },
-    [refetch]
+    [optimisticUpdateStatus, refetch]
   );
+
+  const staleSeconds = kdsSecondsSinceUpdate(lastUpdatedAt);
+  const isStale = staleSeconds > 30;
 
   const toggleFullscreen = useCallback(async () => {
     if (document.fullscreenElement) {
@@ -397,11 +408,21 @@ export function KdsBoard() {
         <div className="min-w-0">
           <p className="truncate text-lg font-bold text-zinc-100">{orgName}</p>
           <p className="text-sm text-zinc-500">Kitchen Display System</p>
+          {isStale && (
+            <p className="text-xs text-amber-400">
+              Daten veraltet — letztes Update vor {staleSeconds}s
+            </p>
+          )}
         </div>
         <LiveClock />
         <div className="flex items-center justify-end gap-2">
           <KdsPrinterStatus status={printerStatus} />
-          <KdsConnectionBadge mode={realtimeMode} />
+          <KdsConnectionBadge
+            realtimeMode={realtimeMode}
+            connectionStatus={connectionStatus}
+            fetchOk={fetchOk}
+            lastUpdatedAt={lastUpdatedAt}
+          />
           <button
             type="button"
             onClick={() => setSettingsOpen((open) => !open)}

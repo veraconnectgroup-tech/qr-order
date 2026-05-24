@@ -46,9 +46,10 @@ function formatDatevDate(isoDate: string): string {
 }
 
 function paymentGegenkonto(paymentMethod: string): string {
-  return paymentMethod === "online"
-    ? DATEV_ACCOUNTS.bankStripe
-    : DATEV_ACCOUNTS.cashBar;
+  if (paymentMethod === "online" || paymentMethod === "card_terminal") {
+    return DATEV_ACCOUNTS.bankStripe;
+  }
+  return DATEV_ACCOUNTS.cashBar;
 }
 
 function revenueAccountForRate(rate: number): { konto: string; ustSatz: number } {

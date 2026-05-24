@@ -1,6 +1,7 @@
 import { getOutboxHandler } from "@/lib/outbox/handlers/registry";
 import { moveToDeadLetterQueue } from "@/lib/outbox/dead-letter-queue";
 import { computeOutboxNextRetryAt } from "@/lib/outbox/retry-delay";
+import { criticalPath } from "@/lib/orders/critical-path-events";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -120,6 +121,7 @@ export async function processOutboxBatch(
       event.payload && typeof event.payload === "object"
         ? (event.payload as Record<string, unknown>)
         : {};
+    const startedAt = Date.now();
 
     try {
       if (!handler) {
@@ -134,6 +136,12 @@ export async function processOutboxBatch(
         attempts: event.attempts,
       });
       result.succeeded += 1;
+      criticalPath.outboxProcessed({
+        eventId: event.id,
+        domain: event.domain,
+        eventType: event.event_type,
+        duration_ms: Date.now() - startedAt,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -147,6 +155,10 @@ export async function processOutboxBatch(
       if (event.attempts >= event.max_attempts) {
         await moveToDeadLetterQueue(admin, event, message);
         result.deadLetter += 1;
+        criticalPath.outboxDeadLetter({
+          eventId: event.id,
+          totalAttempts: event.attempts,
+        });
         logger.error("Outbox event dead-lettered", {
           outboxId: event.id,
           eventType: event.event_type,
@@ -155,6 +167,12 @@ export async function processOutboxBatch(
         });
       } else {
         result.failed += 1;
+        criticalPath.outboxFailed({
+          eventId: event.id,
+          attempts: event.attempts,
+          maxAttempts: event.max_attempts,
+          error: message,
+        });
         logger.warn("Outbox event scheduled for retry", {
           outboxId: event.id,
           eventType: event.event_type,

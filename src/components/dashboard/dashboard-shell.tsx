@@ -6,6 +6,7 @@ import { DashboardProvider } from "@/components/dashboard/dashboard-provider";
 import type { DashboardContextValue } from "@/components/dashboard/dashboard-provider";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { DashboardTopBar } from "@/components/dashboard/dashboard-top-bar";
+import { DashboardResilienceShell } from "@/components/dashboard/dashboard-resilience-shell";
 import { PwaInstallBanner } from "@/components/dashboard/pwa-install-banner";
 import { TrialBanner } from "@/components/dashboard/trial-banner";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
@@ -60,22 +61,24 @@ export function DashboardShell({
 
   return (
     <DashboardProvider value={context}>
-      {isSetup ? (
-        <div className="dashboard-theme min-h-dvh overflow-x-hidden bg-background text-foreground">
-          {children}
-        </div>
-      ) : isKitchen ? (
-        <SoundAlertProvider>
-          <DashboardAlertsProvider>
-            <div className="dashboard-theme min-h-screen overflow-x-hidden bg-background text-foreground md:min-h-dvh">
-              <DashboardBanners />
-              {children}
-            </div>
-          </DashboardAlertsProvider>
-        </SoundAlertProvider>
-      ) : (
-        <DashboardFrame>{children}</DashboardFrame>
-      )}
+      <DashboardResilienceShell staffRole={context.staffRole}>
+        {isSetup ? (
+          <div className="dashboard-theme min-h-dvh overflow-x-hidden bg-background text-foreground">
+            {children}
+          </div>
+        ) : isKitchen ? (
+          <SoundAlertProvider>
+            <DashboardAlertsProvider>
+              <div className="dashboard-theme min-h-screen overflow-x-hidden bg-background text-foreground md:min-h-dvh">
+                <DashboardBanners />
+                {children}
+              </div>
+            </DashboardAlertsProvider>
+          </SoundAlertProvider>
+        ) : (
+          <DashboardFrame>{children}</DashboardFrame>
+        )}
+      </DashboardResilienceShell>
     </DashboardProvider>
   );
 }

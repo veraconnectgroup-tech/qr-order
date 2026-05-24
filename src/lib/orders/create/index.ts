@@ -1,3 +1,4 @@
+import { criticalPath } from "@/lib/orders/critical-path-events";
 import { isDemoGuestTableToken } from "@/lib/demo-guest";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -60,6 +61,13 @@ export async function createOrderFromCart(
   if (!result.ok) return toApi(result.error);
 
   await emitOrderSideEffects(admin, draft, result.value);
+  criticalPath.orderCreated({
+    orderId: result.value.orderId,
+    source: "qr",
+    locationId: table.location_id,
+    total: result.value.total,
+    paymentMethod: input.paymentMethod,
+  });
   logger.info(
     draft.mode.kind === "approval" ? "Order awaiting staff approval" : "Order created",
     {

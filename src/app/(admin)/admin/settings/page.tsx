@@ -7,6 +7,7 @@ import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
+import { TerminalReadersPanel } from "@/components/admin/terminal-readers-panel";
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
 import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel";
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
@@ -177,6 +178,13 @@ export default async function AdminSettingsPage() {
           connected={orgRow?.stripe_onboarded ?? false}
           accountId={orgRow?.stripe_account_id ?? null}
         />
+
+        {locationId && orgRow?.stripe_onboarded && (
+          <TerminalReadersPanel
+            locationId={locationId}
+            stripeConnected={orgRow.stripe_onboarded}
+          />
+        )}
 
         <ApiKeysPanel keys={(apiKeys ?? []) as never} canEdit />
         <WebhooksPanel webhooks={(webhooks ?? []) as never} canEdit />

@@ -20,6 +20,8 @@ export function useKdsOrders(locationId: string) {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [fetchOk, setFetchOk] = useState(true);
 
   const fetchOrders = useCallback(async () => {
     if (!locationId) return;
@@ -41,15 +43,36 @@ export function useKdsOrders(locationId: string) {
     if (fetchError) {
       console.error("KDS orders fetch failed:", fetchError.message);
       setError(fetchError.message);
+      setFetchOk(false);
       setLoading(false);
       return;
     }
 
     setError(null);
+    setFetchOk(true);
+    setLastUpdatedAt(new Date());
     const rows = (data as unknown as OrderWithDetails[]) ?? [];
     setOrders(rows.filter(orderHasKitchenItems));
     setLoading(false);
   }, [locationId]);
+
+  const optimisticUpdateStatus = useCallback(
+    (orderId: string, status: OrderWithDetails["status"]) => {
+      const now = new Date().toISOString();
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (order.id !== orderId) return order;
+          const patch: Partial<OrderWithDetails> = { status };
+          if (status === "accepted") patch.accepted_at = now;
+          if (status === "preparing") patch.preparing_at = now;
+          if (status === "ready") patch.ready_at = now;
+          if (status === "delivered") patch.delivered_at = now;
+          return { ...order, ...patch };
+        })
+      );
+    },
+    []
+  );
 
   useEffect(() => {
     if (!locationId) {
@@ -72,5 +95,19 @@ export function useKdsOrders(locationId: string) {
     backupPollMs: REALTIME_BACKUP_POLL_MS,
   });
 
-  return { orders, loading, error, refetch: fetchOrders, realtimeMode };
+  const secondsSinceUpdate = lastUpdatedAt
+    ? Math.floor((Date.now() - lastUpdatedAt.getTime()) / 1000)
+    : null;
+
+  return {
+    orders,
+    loading,
+    error,
+    refetch: fetchOrders,
+    realtimeMode,
+    lastUpdatedAt,
+    fetchOk,
+    secondsSinceUpdate,
+    optimisticUpdateStatus,
+  };
 }

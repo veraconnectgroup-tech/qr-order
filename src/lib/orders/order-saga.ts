@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { resolveFiscalBehavior } from "@/lib/fulfillment/resolve-fiscal-behavior";
+import { criticalPath } from "@/lib/orders/critical-path-events";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { loadOrderOutboxContext } from "@/lib/outbox/load-outbox-context";
@@ -233,6 +234,12 @@ export async function executeOrderSaga(
   traceId: string,
   payment: OrderSagaPaymentInput
 ): Promise<SagaResult> {
+  const sagaStarted = Date.now();
+  criticalPath.paymentStarted({
+    orderId,
+    method: payment.paymentIntentId ? "online" : "unknown",
+    intentId: payment.paymentIntentId,
+  });
   const admin = createAdminClient();
   const completedSteps: string[] = [];
   const deferredSteps: string[] = [];
@@ -354,6 +361,12 @@ export async function executeOrderSaga(
     }
 
     completedSteps.push("confirm_order");
+
+    criticalPath.paymentCompleted({
+      orderId,
+      method: payment.paymentIntentId ? "online" : "in_person",
+      duration_ms: Date.now() - sagaStarted,
+    });
 
     dispatchOrgWebhook(orgId, "order.paid", {
       order_id: orderId,

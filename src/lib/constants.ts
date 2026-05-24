@@ -71,6 +71,7 @@ export const PAYMENT_METHODS = [
   "online",
   "at_bar",
   "card_at_table",
+  "card_terminal",
   "pos",
   "pos_online",
 ] as const;

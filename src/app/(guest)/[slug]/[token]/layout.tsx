@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata, Viewport } from "next";
 import { AppLocaleProvider } from "@/components/guest/app-locale-provider";
+import { GuestResilienceShell } from "@/components/guest/guest-resilience-shell";
 import { GuestSkipLink } from "@/components/guest/guest-skip-link";
 import { createServerClient } from "@/lib/supabase/server";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
@@ -122,7 +123,9 @@ export default async function GuestTokenLayout({
       logoUrl={logoUrl}
     >
       <GuestSkipLink />
-      <main id="main-content">{children}</main>
+      <GuestResilienceShell>
+        <main id="main-content">{children}</main>
+      </GuestResilienceShell>
     </AppLocaleProvider>
   );
 }

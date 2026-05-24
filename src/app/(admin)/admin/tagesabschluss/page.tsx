@@ -1,4 +1,5 @@
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
+import { DsfinvkExportPanel } from "@/components/admin/dsfinvk-export-panel";
 import { TagesabschlussPanel } from "@/components/admin/tagesabschluss-panel";
 import {
   loadDailyClosingsForLocation,
@@ -23,7 +24,7 @@ export default async function AdminTagesabschlussPage() {
   const [{ data: location }, { data: org }] = await Promise.all([
     admin
       .from("locations")
-      .select("timezone")
+      .select("name, timezone")
       .eq("id", locationId)
       .single(),
     admin
@@ -33,8 +34,8 @@ export default async function AdminTagesabschlussPage() {
       .single(),
   ]);
 
-  const timezone =
-    (location as { timezone: string } | null)?.timezone ?? "Europe/Berlin";
+  const locationRow = location as { name: string; timezone: string } | null;
+  const timezone = locationRow?.timezone ?? "Europe/Berlin";
   const currency =
     (org as { currency: string } | null)?.currency ?? "EUR";
 
@@ -46,12 +47,17 @@ export default async function AdminTagesabschlussPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="space-y-6 p-6">
       <TagesabschlussPanel
         closings={closings}
         locationId={locationId}
         defaultBusinessDate={yesterdayBusinessDate(timezone)}
         currency={currency}
+      />
+
+      <DsfinvkExportPanel
+        locationId={locationId}
+        locationName={locationRow?.name ?? "Standort"}
       />
     </div>
   );

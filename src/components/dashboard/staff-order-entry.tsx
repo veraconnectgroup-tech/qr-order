@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { StaffOrderModifierDialog } from "@/components/dashboard/staff-order-modifier-dialog";
+import { TerminalPayment } from "@/components/dashboard/terminal-payment";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { resilientFetch } from "@/lib/fetch/resilient-fetch";
+import { enqueueStaffOrder } from "@/lib/offline/order-queue";
+import { useConnectionStatus } from "@/hooks/use-connection-status";
 import { createClient } from "@/lib/supabase/client";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
@@ -79,7 +83,7 @@ export type StaffCartItem = {
   lineTotal: number;
 };
 
-type PaymentMethodOption = "at_bar" | "card_at_table" | "online";
+type PaymentMethodOption = "at_bar" | "card_at_table" | "card_terminal" | "online";
 
 type LocationPaymentSettings = {
   accepting_orders: boolean;
@@ -283,6 +287,7 @@ export function StaffOrderEntry() {
     stripeOnboarded,
     staffRole,
   } = useDashboard();
+  const { status: connectionStatus } = useConnectionStatus();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -305,6 +310,13 @@ export function StaffOrderEntry() {
     useState<ProductWithModifiers | null>(null);
   const [modifierMenuSection, setModifierMenuSection] =
     useState<MenuSection>("food");
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [terminalOrder, setTerminalOrder] = useState<{
+    orderId: string;
+    orderNumber: number;
+    total: number;
+    tableName: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -396,6 +408,9 @@ export function StaffOrderEntry() {
     if (paymentSettings.payment_at_bar_enabled) methods.push("at_bar");
     if (paymentSettings.payment_card_at_table_enabled) {
       methods.push("card_at_table");
+    }
+    if (paymentSettings.payment_card_at_table_enabled && stripeOnboarded) {
+      methods.push("card_terminal");
     }
     if (paymentSettings.payment_online_enabled && stripeOnboarded) {
       methods.push("online");
@@ -522,54 +537,170 @@ export function StaffOrderEntry() {
     setCart((prev) => prev.filter((item) => item.id !== id));
   }
 
+  async function verifyTableStillValid(): Promise<boolean> {
+    const supabase = createClient();
+    const { data: table } = await supabase
+      .from("tables")
+      .select("id, deleted_at")
+      .eq("id", selectedTable)
+      .maybeSingle();
+
+    if (!table || (table as { deleted_at: string | null }).deleted_at) {
+      toast.error("Tisch ist nicht mehr verfügbar.");
+      return false;
+    }
+
+    const { data: loc } = await supabase
+      .from("locations")
+      .select("accepting_orders")
+      .eq("id", locationId)
+      .single();
+
+    if (!(loc as { accepting_orders: boolean } | null)?.accepting_orders) {
+      toast.error("Bestellungen sind derzeit pausiert.");
+      return false;
+    }
+
+    return true;
+  }
+
   async function handleSubmit() {
     if (!selectedTable || cart.length === 0 || submitting) return;
 
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/staff-orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tableId: selectedTable,
-          items: cart.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            notes: item.notes || undefined,
-            modifiers: item.modifiers.map((mod) => ({
-              modifierId: mod.modifierId,
-            })),
-          })),
-          paymentMethod,
-          notes: orderNotes.trim() || undefined,
-          isTakeaway,
-        }),
-      });
+    if (!(await verifyTableStillValid())) return;
 
-      const json = await res.json();
+    const tableName =
+      tables.find((table) => table.id === selectedTable)?.name ?? "Tisch";
 
-      if (!res.ok) {
-        toast.error(json.error ?? "Order could not be placed.");
-        return;
-      }
+    const payload = {
+      tableId: selectedTable,
+      items: cart.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        notes: item.notes || undefined,
+        modifiers: item.modifiers.map((mod) => ({
+          modifierId: mod.modifierId,
+        })),
+      })),
+      paymentMethod,
+      notes: orderNotes.trim() || undefined,
+      isTakeaway,
+    };
 
-      const data = json.data as {
-        orderNumber: number;
-        tableName: string;
-        total: number;
-      };
-
-      toast.success(
-        `Order ${formatOrderNumber(data.orderNumber)} — ${data.tableName} — ${formatPrice(data.total, currency)}`,
-        { duration: 5000 }
-      );
+    const clearOrderForm = () => {
       setCart([]);
       setOrderNotes("");
       setIsTakeaway(false);
       setCartOpen(false);
+    };
+
+    const isOffline =
+      connectionStatus === "offline" ||
+      (typeof navigator !== "undefined" && !navigator.onLine);
+
+    if (isOffline) {
+      if (paymentMethod === "card_terminal") {
+        toast.error(
+          "Kartenterminal-Zahlung erfordert eine Internetverbindung."
+        );
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        await enqueueStaffOrder({
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          tableId: selectedTable,
+          tableName,
+          payload,
+        });
+        toast.success("Bestellung erstellt ✓ (offline gespeichert)");
+        clearOrderForm();
+      } catch {
+        toast.error("Bestellung konnte nicht gespeichert werden.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    setSubmitting(true);
+    toast.success("Bestellung erstellt ✓");
+
+    try {
+      const { data: json, error, retried } = await resilientFetch<{
+        data: {
+          orderId: string;
+          orderNumber: number;
+          tableName: string;
+          total: number;
+        } | null;
+        error: string | null;
+      }>("/api/staff-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (error || !json?.data) {
+        if (
+          paymentMethod !== "card_terminal" &&
+          (retried || connectionStatus === "degraded")
+        ) {
+          await enqueueStaffOrder({
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            tableId: selectedTable,
+            tableName,
+            payload,
+          });
+          toast.message(
+            "Bestellung offline gespeichert — wird synchronisiert, sobald die Verbindung steht."
+          );
+          clearOrderForm();
+          return;
+        }
+
+        toast.error(json?.error ?? error ?? "Bestellung konnte nicht erstellt werden.");
+        return;
+      }
+
+      const data = json.data;
+
+      if (paymentMethod === "card_terminal") {
+        setTerminalOrder(data);
+        setTerminalOpen(true);
+        clearOrderForm();
+        return;
+      }
+
+      toast.success(
+        `Bestellung ${formatOrderNumber(data.orderNumber)} — ${data.tableName} — ${formatPrice(data.total, currency)}`,
+        { duration: 5000 }
+      );
+      clearOrderForm();
       router.push("/dashboard/orders");
     } catch {
-      toast.error("Order could not be placed.");
+      if (paymentMethod !== "card_terminal") {
+        try {
+          await enqueueStaffOrder({
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            tableId: selectedTable,
+            tableName,
+            payload,
+          });
+          toast.message(
+            "Bestellung offline gespeichert — wird synchronisiert, sobald die Verbindung steht."
+          );
+          clearOrderForm();
+          return;
+        } catch {
+          // fall through
+        }
+      }
+      toast.error("Bestellung konnte nicht erstellt werden.");
     } finally {
       setSubmitting(false);
     }
@@ -744,6 +875,26 @@ export function StaffOrderEntry() {
           setModifierProduct(null);
         }}
       />
+
+      {terminalOrder && (
+        <TerminalPayment
+          open={terminalOpen}
+          orderId={terminalOrder.orderId}
+          amount={terminalOrder.total}
+          currency={currency}
+          orderLabel={`#${formatOrderNumber(terminalOrder.orderNumber)} · ${terminalOrder.tableName}`}
+          onClose={() => {
+            setTerminalOpen(false);
+            setTerminalOrder(null);
+            router.push("/dashboard/orders");
+          }}
+          onSuccess={() => {
+            setTerminalOpen(false);
+            setTerminalOrder(null);
+            router.push("/dashboard/orders");
+          }}
+        />
+      )}
     </>
   );
 }
@@ -824,6 +975,7 @@ function StaffOrderCartPanel({
   const paymentLabels: Record<PaymentMethodOption, string> = {
     at_bar: atBarPaymentLabel(inPersonPaymentLocation),
     card_at_table: "Card at table",
+    card_terminal: "Kartenzahlung (Terminal)",
     online: "Pay online",
   };
 
