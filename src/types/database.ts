@@ -94,8 +94,22 @@ type Tables = {
     google_review_url: string | null;
     ordering_enabled: boolean;
     ai_concierge_enabled: boolean;
+    rejection_ban_threshold: number;
+    rejection_ban_minutes: number;
+    rejection_strike_window_minutes: number;
     created_at: string;
     updated_at: string;
+  };
+  table_order_blocks: {
+    id: string;
+    location_id: string;
+    table_id: string;
+    device_fingerprint: string;
+    blocked_until: string;
+    strike_count: number;
+    lifted_at: string | null;
+    lifted_by_staff_id: string | null;
+    created_at: string;
   };
   zones: {
     id: string;

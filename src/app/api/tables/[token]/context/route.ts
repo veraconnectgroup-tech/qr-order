@@ -40,6 +40,8 @@ export const GET = withErrorHandler(
           canPlaceOrders: true,
           needsPin: false,
           awaitingApproval: false,
+          deviceBlocked: false,
+          deviceBlockedUntil: null,
         },
       });
     }

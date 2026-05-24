@@ -124,6 +124,8 @@ const de: TranslationMap = {
   "session.approvalWaitingHint": "Das Team bestätigt deine erste Bestellung für diesen Tisch.",
   "session.approvalRejectedTitle": "Bestellung abgelehnt",
   "session.approvalRejected": "Bitte sprich das Service-Team an.",
+  "session.deviceBlockedTitle": "Bestellen vorübergehend gesperrt",
+  "session.deviceBlockedHint": "Dieses Gerät kann vorerst keine Bestellung aufgeben. Bitte sprich das Service-Team an.",
 
   "cart.title": "Deine Bestellung",
   "cart.empty": "Dein Warenkorb ist leer",
@@ -442,6 +444,8 @@ const en: TranslationMap = {
   "session.approvalWaitingHint": "Staff is confirming your first order for this table.",
   "session.approvalRejectedTitle": "Order declined",
   "session.approvalRejected": "Please speak to a team member.",
+  "session.deviceBlockedTitle": "Ordering temporarily blocked",
+  "session.deviceBlockedHint": "This device can't place orders for now. Please speak to a team member.",
 
   "cart.title": "Your order",
   "cart.empty": "Your cart is empty",
@@ -777,6 +781,8 @@ const sr: TranslationMap = {
   "session.approvalWaitingHint": "Osoblje potvrđuje vašu prvu porudžbinu za ovaj sto.",
   "session.approvalRejectedTitle": "Porudžbina odbijena",
   "session.approvalRejected": "Obratite se osoblju.",
+  "session.deviceBlockedTitle": "Poručivanje privremeno blokirano",
+  "session.deviceBlockedHint": "Ovaj telefon trenutno ne može da poruči. Obratite se osoblju.",
 
   "order.status.pending": "Primljeno",
   "order.status.accepted": "Prihvaćeno",

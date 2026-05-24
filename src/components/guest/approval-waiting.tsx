@@ -30,6 +30,7 @@ export function ApprovalWaiting({
   const router = useRouter();
   const [tablePin, setTablePin] = useState<string | null>(null);
   const [rejected, setRejected] = useState<string | null>(null);
+  const [deviceBlocked, setDeviceBlocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +50,7 @@ export function ApprovalWaiting({
         data?: {
           status: string;
           rejectionReason?: string | null;
+          deviceBlocked?: boolean;
           sessionToken?: string;
           sessionId?: string;
           deviceToken?: string;
@@ -61,6 +63,7 @@ export function ApprovalWaiting({
 
       if (data.status === "rejected") {
         setRejected(data.rejectionReason ?? tUI("session.approvalRejected"));
+        setDeviceBlocked(Boolean(data.deviceBlocked));
         return;
       }
 
@@ -126,6 +129,11 @@ export function ApprovalWaiting({
           {tUI("session.approvalRejectedTitle")}
         </p>
         <p className="mt-2 text-sm text-red-200/80">{rejected}</p>
+        {deviceBlocked && (
+          <p className="mt-4 text-sm text-red-200/90">
+            {tUI("session.deviceBlockedHint")}
+          </p>
+        )}
       </div>
     );
   }

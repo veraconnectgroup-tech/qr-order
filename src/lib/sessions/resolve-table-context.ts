@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getActiveDeviceBlock } from "@/lib/sessions/order-blocks";
 import {
   getActiveTableSession,
   getPendingApprovalOrder,
@@ -24,6 +25,8 @@ export type TableGuestContext = {
     canPlaceOrders: boolean;
     needsPin: boolean;
     awaitingApproval: boolean;
+    deviceBlocked: boolean;
+    deviceBlockedUntil: string | null;
   };
 };
 
@@ -68,6 +71,19 @@ export async function resolveTableGuestContext(
   const sessionActive = Boolean(session);
   const awaitingApproval = Boolean(pending);
 
+  let deviceBlock: { blocked_until: string } | null = null;
+  if (input?.deviceFingerprint) {
+    deviceBlock = await getActiveDeviceBlock(
+      admin,
+      tableRow.id,
+      input.deviceFingerprint
+    );
+  }
+  const deviceBlocked = Boolean(deviceBlock);
+
+  const canOrderWithSession = sessionActive && trusted && !awaitingApproval;
+  const canOrderFirstVisit = !sessionActive && !awaitingApproval;
+
   return {
     data: {
       tableId: tableRow.id,
@@ -87,9 +103,12 @@ export async function resolveTableGuestContext(
         canBrowseMenu: true,
         canViewBill: sessionActive,
         canViewOrderStatus: sessionActive,
-        canPlaceOrders: sessionActive && trusted && !awaitingApproval,
-        needsPin: sessionActive && !trusted,
+        canPlaceOrders:
+          !deviceBlocked && (canOrderWithSession || canOrderFirstVisit),
+        needsPin: sessionActive && !trusted && !deviceBlocked,
         awaitingApproval,
+        deviceBlocked,
+        deviceBlockedUntil: deviceBlock?.blocked_until ?? null,
       },
     },
   };

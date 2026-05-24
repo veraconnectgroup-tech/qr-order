@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { noCache } from "@/lib/cache/headers";
 import { consumePinReveal } from "@/lib/sessions/pin-reveal-cache";
+import { getActiveDeviceBlock } from "@/lib/sessions/order-blocks";
 import { trustSessionDevice } from "@/lib/sessions/session-devices";
 import { withRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
@@ -79,10 +80,27 @@ export const GET = withErrorHandler(
     }
 
     if (orderRow.status === "rejected") {
+      let deviceBlocked = false;
+      let deviceBlockedUntil: string | null = null;
+
+      if (orderRow.table_id) {
+        const block = await getActiveDeviceBlock(
+          admin,
+          orderRow.table_id,
+          deviceFingerprint
+        );
+        if (block) {
+          deviceBlocked = true;
+          deviceBlockedUntil = block.blocked_until;
+        }
+      }
+
       return apiSuccess(
         {
           status: "rejected" as const,
           rejectionReason: orderRow.rejection_reason,
+          deviceBlocked,
+          deviceBlockedUntil,
         },
         200,
         cacheHeaders

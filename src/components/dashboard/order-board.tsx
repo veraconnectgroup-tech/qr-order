@@ -265,8 +265,23 @@ export function OrderBoard() {
       }
     }
 
+    function onFocus() {
+      void fetchOrders();
+    }
+
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void fetchOrders();
+    }, REALTIME_FALLBACK_POLL_MS);
+    return () => window.clearInterval(id);
   }, [fetchOrders]);
 
   const realtimeMode = usePostgresRealtime({
@@ -331,7 +346,7 @@ export function OrderBoard() {
         if (!res.ok) {
           throw new Error(json.error ?? "Approval failed");
         }
-        toast.success("Table opened — order sent to kitchen");
+        toast.success("Order approved — sent to kitchen");
         await fetchOrders();
         await refreshAlerts();
       } catch (e) {
@@ -356,7 +371,11 @@ export function OrderBoard() {
         if (!res.ok) {
           throw new Error(json.error ?? "Reject failed");
         }
-        toast.success("Order declined");
+        if (json.data?.deviceBlocked) {
+          toast.success("Order declined — device blocked from ordering");
+        } else {
+          toast.success("Order declined");
+        }
         await fetchOrders();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Reject failed");

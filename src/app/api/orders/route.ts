@@ -20,7 +20,9 @@ export const POST = withErrorHandler("orders-post", async (req, _ctx) => {
     const details =
       "products" in result && Array.isArray(result.products)
         ? { products: result.products }
-        : undefined;
+        : "blockedUntil" in result && result.blockedUntil
+          ? { blockedUntil: result.blockedUntil }
+          : undefined;
     return apiError(result.error, result.status ?? 500, details);
   }
 

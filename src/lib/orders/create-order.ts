@@ -6,6 +6,7 @@ import {
   resolveTableForOrdering,
   validateTableSession,
 } from "@/lib/orders/validate-table-session";
+import { assertDeviceNotBlocked } from "@/lib/sessions/order-blocks";
 import {
   getActiveTableSession,
   getPendingApprovalOrder,
@@ -492,6 +493,19 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   }
 
   if (!isDemo) {
+    const blockCheck = await assertDeviceNotBlocked(
+      admin,
+      tableRow.id,
+      input.deviceFingerprint
+    );
+    if (!blockCheck.ok) {
+      return {
+        error: "device_blocked",
+        status: 403,
+        blockedUntil: blockCheck.blockedUntil,
+      };
+    }
+
     const activeSession = await getActiveTableSession(admin, tableRow.id);
 
     if (!activeSession) {
@@ -607,117 +621,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     }
 
     sessionRow = sessionResult.data.session;
-  }
-
-  const { data: pendingOrder } = await admin
-    .from("orders")
-    .select("id, subtotal, tax_percent, payment_status, stripe_payment_intent_id")
-    .eq("session_id", sessionRow.id)
-    .eq("status", "pending")
-    .in("payment_status", ["pending", "processing"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const pendingRow = pendingOrder as {
-    id: string;
-    subtotal: number;
-    tax_percent: number;
-    payment_status: string;
-    stripe_payment_intent_id: string | null;
-  } | null;
-
-  if (pendingRow) {
-    const { error: clearError } = await admin
-      .from("order_items")
-      .delete()
-      .eq("order_id", pendingRow.id);
-
-    if (clearError) {
-      return { error: "Order could not be updated.", status: 500 };
-    }
-
-    const saveError = await saveOrderItems(pendingRow.id);
-    if (saveError) {
-      return { error: saveError.error, status: 500 };
-    }
-
-    const { data: updatedOrder, error: updateError } = await admin
-      .from("orders")
-      .update({
-        subtotal,
-        tax_percent: effectiveTaxPercent,
-        tax_amount: taxAmount,
-        total: finalTotal,
-        discount_amount: discountAmount,
-        promo_code_id: promoCodeId,
-        is_takeaway: input.isTakeaway,
-        payment_status: "pending",
-        payment_method: input.paymentMethod,
-        stripe_payment_intent_id: null,
-        tip_amount: 0,
-        tip_staff_id: null,
-      })
-      .eq("id", pendingRow.id)
-      .select("id, order_number, total, tax_percent")
-      .single();
-
-    if (updateError || !updatedOrder) {
-      return { error: "Order could not be updated.", status: 500 };
-    }
-
-    const merged = updatedOrder as {
-      id: string;
-      order_number: number;
-      total: number;
-      tax_percent: number;
-    };
-
-    if (input.guestEmail) {
-      await admin
-        .from("table_sessions")
-        .update({ guest_email: input.guestEmail })
-        .eq("id", sessionRow.id);
-    }
-
-    scheduleOrderTseSign(merged.id);
-    scheduleNewOrderPush(
-      tableRow.location_id,
-      merged.order_number,
-      tableRow.name
-    );
-
-    dispatchOrgWebhook(orgRow.id, "order.created", {
-      order_id: merged.id,
-      order_number: merged.order_number,
-      location_id: tableRow.location_id,
-      total: merged.total,
-    });
-
-    if (promoCodeId) {
-      await consumePromoCode(admin, promoCodeId);
-    }
-
-    logger.info("Order created", {
-      orderId: merged.id,
-      orderNumber: merged.order_number,
-      merged: true,
-      locationId: tableRow.location_id,
-    });
-
-    return {
-      data: {
-        orderId: merged.id,
-        orderNumber: merged.order_number,
-        total: merged.total,
-        taxPercent: merged.tax_percent,
-        tableName: tableRow.name,
-        currency,
-        orgId: orgRow.id,
-        locationId: tableRow.location_id,
-        merged: true,
-      },
-    };
   }
 
   const { data: orderNumber, error: numError } = await admin.rpc(

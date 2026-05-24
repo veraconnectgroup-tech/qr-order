@@ -7,6 +7,7 @@ import {
   createActiveSessionWithPin,
   trustSessionDevice,
 } from "@/lib/sessions/session-devices";
+import { applyDeviceBlockAfterReject } from "@/lib/sessions/order-blocks";
 import { storePinReveal } from "@/lib/sessions/pin-reveal-cache";
 import type { Staff } from "@/types";
 
@@ -162,7 +163,17 @@ export async function rejectOrderAccess(
   staff: Staff,
   orderId: string,
   rejectionReason?: string | null
-): Promise<{ data: { ok: true } } | { error: string; status: number }> {
+): Promise<
+  | {
+      data: {
+        ok: true;
+        deviceBlocked?: boolean;
+        blockedUntil?: string;
+        strikeCount?: number;
+      };
+    }
+  | { error: string; status: number }
+> {
   if (!["owner", "manager", "staff", "kitchen"].includes(staff.role)) {
     return { error: "Unauthorized.", status: 403 };
   }
@@ -171,7 +182,7 @@ export async function rejectOrderAccess(
 
   const { data: order } = await admin
     .from("orders")
-    .select("id, location_id, table_id, status")
+    .select("id, location_id, table_id, status, device_fingerprint")
     .eq("id", orderId)
     .single();
 
@@ -184,6 +195,7 @@ export async function rejectOrderAccess(
     location_id: string;
     table_id: string | null;
     status: string;
+    device_fingerprint: string | null;
   };
 
   if (orderRow.status !== "pending_approval") {
@@ -220,5 +232,26 @@ export async function rejectOrderAccess(
     reason: rejectionReason ?? null,
   });
 
-  return { data: { ok: true } };
+  let blockResult: {
+    blocked: boolean;
+    blockedUntil?: string;
+    strikeCount?: number;
+  } = { blocked: false };
+
+  if (orderRow.table_id && orderRow.device_fingerprint) {
+    blockResult = await applyDeviceBlockAfterReject(admin, {
+      locationId: orderRow.location_id,
+      tableId: orderRow.table_id,
+      deviceFingerprint: orderRow.device_fingerprint,
+    });
+  }
+
+  return {
+    data: {
+      ok: true,
+      deviceBlocked: blockResult.blocked,
+      blockedUntil: blockResult.blockedUntil,
+      strikeCount: blockResult.strikeCount,
+    },
+  };
 }

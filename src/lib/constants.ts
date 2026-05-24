@@ -35,7 +35,8 @@ export const REALTIME_FALLBACK_POLL_MS = 3_000;
 export const KDS_REALTIME_FALLBACK_POLL_MS = 10_000;
 
 /** Safety poll while Realtime is connected (missed events). */
-export const REALTIME_BACKUP_POLL_MS = 45_000;
+/** Backup poll while Realtime is connected (catches missed events). */
+export const REALTIME_BACKUP_POLL_MS = 10_000;
 
 /** @deprecated Use REALTIME_FALLBACK_POLL_MS */
 export const DASHBOARD_POLL_INTERVAL_MS = REALTIME_FALLBACK_POLL_MS;

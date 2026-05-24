@@ -11,9 +11,10 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
-import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
+import { usePostgresRealtime, reconnectAllRealtimeChannels } from "@/hooks/use-postgres-realtime";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { staffPaymentRequestToast } from "@/lib/payment-request-alert";
+import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 
 import type { OrderStatus } from "@/types";
 
@@ -30,6 +31,7 @@ const DashboardAlertsContext =
 
 const OPEN_ORDER_STATUSES: OrderStatus[] = [
   "pending",
+  "pending_approval",
   "accepted",
   "preparing",
   "ready",
@@ -96,22 +98,31 @@ export function DashboardAlertsProvider({
 
   const refreshCounts = useCallback(async () => {
     const supabase = createClient();
-    const [{ count: orderCount }, { count: callCount }, paymentCount] =
-      await Promise.all([
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("location_id", locationId)
-          .eq("status", "pending"),
-        supabase
-          .from("waiter_calls")
-          .select("id", { count: "exact", head: true })
-          .eq("location_id", locationId)
-          .eq("status", "pending"),
-        countPaymentRequests(supabase, locationId),
-      ]);
+    const [
+      { count: pendingCount },
+      { count: approvalCount },
+      { count: callCount },
+      paymentCount,
+    ] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .eq("status", "pending"),
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .eq("status", "pending_approval"),
+      supabase
+        .from("waiter_calls")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .eq("status", "pending"),
+      countPaymentRequests(supabase, locationId),
+    ]);
 
-    setPendingOrders(orderCount ?? 0);
+    setPendingOrders((pendingCount ?? 0) + (approvalCount ?? 0));
     setPendingWaiterCalls(callCount ?? 0);
     setPendingPaymentRequests(paymentCount);
   }, [locationId]);
@@ -132,6 +143,7 @@ export function DashboardAlertsProvider({
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: refreshCounts,
+    backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
 
   usePostgresRealtime({
@@ -140,7 +152,22 @@ export function DashboardAlertsProvider({
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: refreshCounts,
+    backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
+
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
+        reconnectAllRealtimeChannels();
+        void refreshCounts();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [refreshCounts]);
 
   useEffect(() => {
     if (!ready) return;
@@ -150,7 +177,7 @@ export function DashboardAlertsProvider({
       play("new-order");
       toast.info(
         delta === 1
-          ? "New order received"
+          ? "New order — check Orders board"
           : `${delta} new orders · ${pendingOrders} waiting`
       );
     }

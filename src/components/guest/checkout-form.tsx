@@ -243,6 +243,9 @@ export function CheckoutForm({
       if (json.error === "pin_required") {
         throw new Error("pin_required");
       }
+      if (json.error === "device_blocked") {
+        throw new Error("device_blocked");
+      }
       if (
         json.error === "unavailable_products" &&
         Array.isArray(json.details?.products)
@@ -305,6 +308,12 @@ export function CheckoutForm({
         setProcessing(false);
         return;
       }
+      if (message === "device_blocked") {
+        setError(tUI("session.deviceBlockedHint"));
+        void refreshContext();
+        setProcessing(false);
+        return;
+      }
       if (!navigator.onLine || e instanceof TypeError) {
         toast.success(tUI("offline.orderQueued"));
         setProcessing(false);
@@ -342,8 +351,22 @@ export function CheckoutForm({
     context.capabilities.needsPin &&
     !pinVerified;
 
+  const showDeviceBlocked =
+    !isDemo && context?.capabilities.deviceBlocked;
+
   return (
     <div className="space-y-6">
+      {showDeviceBlocked && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
+          <p className="font-semibold text-red-300">
+            {tUI("session.deviceBlockedTitle")}
+          </p>
+          <p className="mt-2 text-sm text-red-200/80">
+            {tUI("session.deviceBlockedHint")}
+          </p>
+        </div>
+      )}
+
       {showPinGate && (
         <TablePinGate
           slug={slug}
@@ -358,7 +381,7 @@ export function CheckoutForm({
         />
       )}
 
-      {!showPinGate && (
+      {!showPinGate && !showDeviceBlocked && (
         <>
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="flex items-center justify-between gap-4">

@@ -417,7 +417,7 @@ export function OrderCard({
             onClick={onApproveAccess}
             className="flex-1 rounded-lg bg-orange-500 px-3 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 touch-manipulation sm:py-2"
           >
-            Approve table ►
+            Approve order ►
           </button>
         </div>
       )}

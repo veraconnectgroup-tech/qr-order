@@ -10,9 +10,11 @@ import {
 
 export type RealtimeMode = "connecting" | "live" | "polling";
 
+type RealtimeTable = "orders" | "waiter_calls";
+
 type UsePostgresRealtimeOptions = {
   channelName: string;
-  table: "orders" | "waiter_calls";
+  table: RealtimeTable;
   locationId: string;
   filter: string;
   onChange: () => void;
@@ -29,14 +31,20 @@ type RealtimeSubscriber = {
 };
 
 type SharedRealtimeChannel = {
+  channelName: string;
+  table: RealtimeTable;
+  filter: string;
   channel: RealtimeChannel;
   supabase: SupabaseClient;
   subscribers: Set<RealtimeSubscriber>;
   pollId: ReturnType<typeof setInterval> | null;
   state: RealtimeMode;
+  lastRealtimeEventAt: number;
 };
 
 const sharedChannels = new Map<string, SharedRealtimeChannel>();
+let globalListenersInstalled = false;
+let watchdogInstalled = false;
 
 function assertLocationFilter(locationId: string, filter: string) {
   const required = `location_id=eq.${locationId}`;
@@ -55,6 +63,7 @@ function notifySubscribers(entry: SharedRealtimeChannel) {
 }
 
 function broadcastMode(entry: SharedRealtimeChannel, mode: RealtimeMode) {
+  entry.state = mode;
   for (const subscriber of entry.subscribers) {
     subscriber.setMode(mode);
   }
@@ -76,40 +85,25 @@ function scheduleSharedPoll(entry: SharedRealtimeChannel) {
   entry.pollId = setInterval(() => notifySubscribers(entry), intervalMs);
 }
 
-function acquireSharedChannel(
-  channelName: string,
-  table: "orders" | "waiter_calls",
-  filter: string,
-  supabase: SupabaseClient
-): SharedRealtimeChannel {
-  const existing = sharedChannels.get(channelName);
-  if (existing) {
-    return existing;
-  }
-
-  const entry: SharedRealtimeChannel = {
-    channel: null as unknown as RealtimeChannel,
-    supabase,
-    subscribers: new Set(),
-    pollId: null,
-    state: "connecting",
-  };
-
-  entry.channel = supabase
-    .channel(channelName)
+function attachChannelSubscription(entry: SharedRealtimeChannel) {
+  entry.channel = entry.supabase
+    .channel(entry.channelName)
     .on(
       "postgres_changes",
       {
         event: "*",
         schema: "public",
-        table,
-        filter,
+        table: entry.table,
+        filter: entry.filter,
       },
-      () => notifySubscribers(entry)
+      () => {
+        entry.lastRealtimeEventAt = Date.now();
+        notifySubscribers(entry);
+      }
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        entry.state = "live";
+        entry.lastRealtimeEventAt = Date.now();
         broadcastMode(entry, "live");
         scheduleSharedPoll(entry);
         notifySubscribers(entry);
@@ -121,12 +115,100 @@ function acquireSharedChannel(
         status === "TIMED_OUT" ||
         status === "CLOSED"
       ) {
-        entry.state = "polling";
         broadcastMode(entry, "polling");
         scheduleSharedPoll(entry);
       }
     });
+}
 
+function reconnectSharedChannel(entry: SharedRealtimeChannel) {
+  broadcastMode(entry, "connecting");
+  if (entry.pollId) {
+    clearInterval(entry.pollId);
+    entry.pollId = null;
+  }
+
+  void entry.supabase.removeChannel(entry.channel).finally(() => {
+    if (entry.subscribers.size === 0) return;
+    attachChannelSubscription(entry);
+    scheduleSharedPoll(entry);
+  });
+}
+
+/** Reconnect every open Realtime channel (e.g. after token refresh or tab focus). */
+export function reconnectAllRealtimeChannels() {
+  for (const entry of sharedChannels.values()) {
+    notifySubscribers(entry);
+    reconnectSharedChannel(entry);
+  }
+}
+
+function installGlobalRealtimeRefresh() {
+  if (globalListenersInstalled || typeof document === "undefined") return;
+  globalListenersInstalled = true;
+
+  const refresh = () => {
+    for (const entry of sharedChannels.values()) {
+      notifySubscribers(entry);
+      reconnectSharedChannel(entry);
+    }
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      refresh();
+    }
+  });
+  window.addEventListener("focus", refresh);
+  window.addEventListener("online", refresh);
+}
+
+function installRealtimeWatchdog() {
+  if (watchdogInstalled || typeof window === "undefined") return;
+  watchdogInstalled = true;
+
+  window.setInterval(() => {
+    const now = Date.now();
+    for (const entry of sharedChannels.values()) {
+      if (entry.subscribers.size === 0) continue;
+
+      const staleLive =
+        entry.state === "live" && now - entry.lastRealtimeEventAt > 90_000;
+
+      if (staleLive) {
+        reconnectSharedChannel(entry);
+      }
+    }
+  }, 30_000);
+}
+
+function acquireSharedChannel(
+  channelName: string,
+  table: RealtimeTable,
+  filter: string,
+  supabase: SupabaseClient
+): SharedRealtimeChannel {
+  const existing = sharedChannels.get(channelName);
+  if (existing) {
+    return existing;
+  }
+
+  installGlobalRealtimeRefresh();
+  installRealtimeWatchdog();
+
+  const entry: SharedRealtimeChannel = {
+    channelName,
+    table,
+    filter,
+    channel: null as unknown as RealtimeChannel,
+    supabase,
+    subscribers: new Set(),
+    pollId: null,
+    state: "connecting",
+    lastRealtimeEventAt: Date.now(),
+  };
+
+  attachChannelSubscription(entry);
   sharedChannels.set(channelName, entry);
   return entry;
 }
