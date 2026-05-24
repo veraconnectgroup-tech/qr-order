@@ -296,6 +296,7 @@ function demoOrder(
     device_fingerprint: null,
     requires_session_open: false,
     idempotency_key: null,
+    beleg_token: null,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

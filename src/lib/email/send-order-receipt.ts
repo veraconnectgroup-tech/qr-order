@@ -38,6 +38,7 @@ export async function sendOrderReceipt(
     tse_signature: string | null;
     tse_data: unknown;
     payment_method: string;
+    beleg_token: string | null;
   };
 
   if (row.receipt_sent_at && !options?.force) {
@@ -164,6 +165,9 @@ export async function sendOrderReceipt(
     org?.slug && tableRow?.qr_token
       ? `${appUrl}/${org.slug}/${tableRow.qr_token}/order/${orderId}`
       : undefined;
+  const belegUrl = row.beleg_token
+    ? `${appUrl}/api/beleg/${row.beleg_token}`
+    : undefined;
 
   const locationAddress = [
     locationRow.address,
@@ -195,7 +199,7 @@ export async function sendOrderReceipt(
         items: orderItems,
         tseSignature: row.tse_signature!,
         tseData: tseData!,
-        orderUrl,
+        orderUrl: belegUrl ?? orderUrl,
       })
     : buildOrderReceiptHtml({
         orgName: org?.name ?? "Your venue",

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
@@ -13,7 +14,7 @@ export async function handleFiscalBeleg(
   const admin = createAdminClient();
   const { data: order, error } = await admin
     .from("orders")
-    .select("tse_signature")
+    .select("tse_signature, beleg_token")
     .eq("id", orderId)
     .single();
 
@@ -21,9 +22,27 @@ export async function handleFiscalBeleg(
     throw new Error(`fiscal.beleg order not found: ${orderId}`);
   }
 
-  const tseSignature = (order as { tse_signature: string | null }).tse_signature;
-  if (!tseSignature) {
+  const existing = order as {
+    tse_signature: string | null;
+    beleg_token: string | null;
+  };
+
+  if (!existing.tse_signature) {
     throw new Error("fiscal.beleg requires TSE signature");
+  }
+
+  if (!existing.beleg_token) {
+    const belegToken = randomUUID();
+    const { error: tokenError } = await admin
+      .from("orders")
+      .update({ beleg_token: belegToken } as never)
+      .eq("id", orderId);
+
+    if (tokenError) {
+      throw new Error(`fiscal.beleg beleg_token save failed: ${tokenError.message}`);
+    }
+
+    logger.info("Outbox fiscal.beleg issued beleg_token", { orderId });
   }
 
   const guestEmail =

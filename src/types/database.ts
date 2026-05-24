@@ -292,6 +292,7 @@ type Tables = {
     device_fingerprint: string | null;
     requires_session_open: boolean;
     idempotency_key: string | null;
+    beleg_token: string | null;
     created_at: string;
     updated_at: string;
   };

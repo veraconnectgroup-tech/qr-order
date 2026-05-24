@@ -49,6 +49,7 @@ type OrderData = {
   preparing_at: string | null;
   ready_at: string | null;
   delivered_at: string | null;
+  beleg_token?: string | null;
   tse_signature?: string | null;
   tse_data?: {
     tss_serial?: string;
@@ -536,6 +537,19 @@ export function OrderStatusTracker({
           deliveredAt={order.delivered_at}
           googleReviewUrl={googleReviewUrl}
         />
+      )}
+
+      {isCompleted && isPaid && order.beleg_token && (
+        <section className="mb-6 flex justify-center">
+          <a
+            href={`/api/beleg/${order.beleg_token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+          >
+            Kassenbeleg ansehen
+          </a>
+        </section>
       )}
 
       {/* Actions */}

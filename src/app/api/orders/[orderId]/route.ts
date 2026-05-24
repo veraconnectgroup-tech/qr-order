@@ -69,6 +69,7 @@ export const GET = withErrorHandler(
       preparing_at: string | null;
       ready_at: string | null;
       delivered_at: string | null;
+      beleg_token: string | null;
       order_items: Array<{
         product_name: string;
         quantity: number;
