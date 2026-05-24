@@ -85,21 +85,52 @@ function paymentGegenkonto(paymentMethod: string): string {
     : DATEV_ACCOUNTS.cashBar;
 }
 
-function orderToDatevRow(order: OrderRow): DatevRow {
+export function orderToDatevRows(order: OrderRow): DatevRow[] {
   const items = order.order_items ?? [];
-  const { konto, ustSatz } = resolveRevenueAccount(items);
   const gegenkonto = paymentGegenkonto(order.payment_method);
   const orderNumber = String(Math.max(0, Math.floor(Number(order.order_number))));
 
-  return {
-    umsatz: Number(order.subtotal),
-    sollHaben: "H",
-    konto,
-    gegenkonto,
-    belegdatum: formatDatevDate(order.created_at),
-    buchungstext: `Bestellung #${orderNumber.padStart(4, "0")}`,
-    ustSatz,
-  };
+  if (!items.length) {
+    const { konto, ustSatz } = resolveRevenueAccount(items);
+    return [
+      {
+        umsatz: Number(order.subtotal),
+        sollHaben: "H",
+        konto,
+        gegenkonto,
+        belegdatum: formatDatevDate(order.created_at),
+        buchungstext: `Bestellung #${orderNumber.padStart(4, "0")}`,
+        ustSatz,
+      },
+    ];
+  }
+
+  const byRate = new Map<number, number>();
+  for (const item of items) {
+    const rate = Number(item.tax_rate ?? 19);
+    byRate.set(rate, (byRate.get(rate) ?? 0) + Number(item.total));
+  }
+
+  const rows: DatevRow[] = [];
+  for (const [rate, grossTotal] of byRate) {
+    if (grossTotal <= 0) continue;
+    const { konto, ustSatz } =
+      rate === 7
+        ? { konto: DATEV_ACCOUNTS.revenue7, ustSatz: 7 }
+        : { konto: DATEV_ACCOUNTS.revenue19, ustSatz: rate === 0 ? 0 : 19 };
+
+    rows.push({
+      umsatz: grossTotal,
+      sollHaben: "H",
+      konto,
+      gegenkonto,
+      belegdatum: formatDatevDate(order.created_at),
+      buchungstext: `Bestellung #${orderNumber.padStart(4, "0")}`,
+      ustSatz,
+    });
+  }
+
+  return rows.length ? rows : orderToDatevRows({ ...order, order_items: [] });
 }
 
 export function datevRowsToCsv(rows: DatevRow[]): string {
@@ -164,7 +195,7 @@ export async function generateDatevExport(
 
   const rows = ((orders ?? []) as unknown as OrderRow[])
     .filter((order) => countsTowardRevenue(order.status))
-    .map(orderToDatevRow);
+    .flatMap(orderToDatevRows);
 
   return datevRowsToCsv(rows);
 }

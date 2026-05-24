@@ -289,8 +289,46 @@ type Tables = {
     order_source: "qr" | "staff" | "kiosk";
     device_fingerprint: string | null;
     requires_session_open: boolean;
+    idempotency_key: string | null;
     created_at: string;
     updated_at: string;
+  };
+  order_events: {
+    id: string;
+    order_id: string;
+    event_type: string;
+    payload: Json;
+    idempotency_key: string | null;
+    actor_type: string | null;
+    actor_id: string | null;
+    created_at: string;
+  };
+  outbox_events: {
+    id: string;
+    aggregate_type: string;
+    aggregate_id: string;
+    domain: "fulfillment" | "fiscal" | "integration";
+    event_type: string;
+    payload: Json;
+    status: "pending" | "processing" | "done" | "failed";
+    attempts: number;
+    max_attempts: number;
+    next_retry_at: string;
+    last_error: string | null;
+    created_at: string;
+    processed_at: string | null;
+  };
+  order_channel_deliveries: {
+    id: string;
+    order_id: string;
+    channel: "dashboard" | "pos" | "cloud_print" | "webhook";
+    provider: string;
+    status: "pending" | "delivered" | "failed" | "skipped";
+    external_id: string | null;
+    attempts: number;
+    last_error: string | null;
+    delivered_at: string | null;
+    created_at: string;
   };
   order_items: {
     id: string;
@@ -537,6 +575,19 @@ export interface Database {
       add_ai_credits: {
         Args: { p_org_id: string; p_amount: number };
         Returns: number;
+      };
+      claim_outbox_events: {
+        Args: { p_limit?: number };
+        Returns: Database["public"]["Tables"]["outbox_events"][];
+      };
+      complete_outbox_event: {
+        Args: {
+          p_id: string;
+          p_success: boolean;
+          p_error?: string | null;
+          p_next_retry_at?: string | null;
+        };
+        Returns: void;
       };
     };
     Enums: Record<string, never>;

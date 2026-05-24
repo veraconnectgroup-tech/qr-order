@@ -17,7 +17,7 @@ function signPayload(secret: string, body: string): string {
   return createHmac("sha256", secret).update(body).digest("hex");
 }
 
-async function deliverWebhook(
+async function deliverWebhookStrict(
   config: { id: string; url: string; secret: string; failure_count: number },
   payload: WebhookPayload
 ) {
@@ -63,13 +63,24 @@ async function deliverWebhook(
 
     await admin.from("webhook_configs").update(updates as never).eq("id", config.id);
 
+    throw error instanceof Error ? error : new Error(String(error));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function deliverWebhook(
+  config: { id: string; url: string; secret: string; failure_count: number },
+  payload: WebhookPayload
+) {
+  try {
+    await deliverWebhookStrict(config, payload);
+  } catch (error) {
     logger.error("Webhook delivery failed", {
       webhookId: config.id,
       event: payload.event,
       error: error instanceof Error ? error.message : String(error),
     });
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -108,6 +119,52 @@ export async function dispatchWebhook(
   await Promise.allSettled(
     matching.map((cfg) => deliverWebhook(cfg, payload))
   );
+}
+
+/** Outbox handler — throws on delivery failure for retry. */
+export async function deliverOrgWebhookToConfig(
+  orgId: string,
+  webhookConfigId: string,
+  event: WebhookEvent,
+  data: Record<string, unknown>
+) {
+  const admin = createAdminClient();
+  const { data: config, error } = await admin
+    .from("webhook_configs")
+    .select("id, url, secret, failure_count, events, org_id, is_active")
+    .eq("id", webhookConfigId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (error || !config) {
+    throw new Error("Webhook config not found.");
+  }
+
+  const cfg = config as {
+    id: string;
+    url: string;
+    secret: string;
+    failure_count: number;
+    events: string[];
+    is_active: boolean;
+  };
+
+  if (!cfg.is_active) {
+    return;
+  }
+
+  if (!cfg.events.includes(event)) {
+    return;
+  }
+
+  const payload: WebhookPayload = {
+    id: randomUUID(),
+    event,
+    created_at: new Date().toISOString(),
+    data,
+  };
+
+  await deliverWebhookStrict(cfg, payload);
 }
 
 /** Fire-and-forget — does not block the caller. */

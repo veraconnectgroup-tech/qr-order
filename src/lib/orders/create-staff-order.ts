@@ -22,6 +22,7 @@ import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
 import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
+import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import type { Staff } from "@/types";
 
 const staffOrderItemSchema = z.object({
@@ -449,7 +450,21 @@ export async function createStaffOrder(
     }
   }
 
-  // 12. scheduleOrderTseSign (fiscal compliance)
+  // 12. Outbox + legacy side effects (A7/A8 remove direct calls)
+  await persistOrderSideEffects(admin, {
+    orderId: orderRow.id,
+    locationId: locationRow.id,
+    orgId: staff.org_id,
+    orderNumber: orderRow.order_number,
+    tableName: tableRow.name,
+    total: orderRow.total,
+    paymentStatus: "pending",
+    orderSource: "staff",
+    phase: "created",
+    actorType: "staff",
+    actorId: staff.id,
+  });
+
   scheduleOrderTseSign(orderRow.id);
 
   // 13. scheduleNewOrderPush (kitchen notification)

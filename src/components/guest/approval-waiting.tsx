@@ -82,10 +82,11 @@ export function ApprovalWaiting({
       if (
         data.status === "approved" &&
         data.sessionToken &&
-        data.sessionId &&
-        data.deviceToken
+        data.sessionId
       ) {
-        setStoredDeviceToken(locationId, tableId, data.deviceToken);
+        if (data.deviceToken) {
+          setStoredDeviceToken(locationId, tableId, data.deviceToken);
+        }
         syncTableSessionStores(
           slug,
           token,

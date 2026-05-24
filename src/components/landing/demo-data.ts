@@ -295,6 +295,7 @@ function demoOrder(
     order_source: "qr",
     device_fingerprint: null,
     requires_session_open: false,
+    idempotency_key: null,
     created_at,
     updated_at: created_at,
     order_items: items.map((item) => ({

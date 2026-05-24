@@ -31,7 +31,7 @@ export function buildReceiptEscPos(
     .join(", ");
   const paymentLabel = paymentMethodLabel(
     order.payment_method,
-    location.in_person_payment_location
+    location.in_person_payment_location as "table" | "counter" | "bar"
   );
   const paidSuffix = order.payment_status === "paid" ? " ✓" : "";
 
@@ -53,7 +53,7 @@ export function buildReceiptEscPos(
     .newline()
     .align("left")
     .text(
-      `${formatOrderNumber(order.order_number)} · ${tableName} · ${formatReceiptTime(order.created_at)}`
+      `${formatOrderNumber(order.order_number)} · ${tableName} · ${formatReceiptTime(order.created_at ?? new Date().toISOString())}`
     )
     .newline();
 

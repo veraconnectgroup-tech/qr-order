@@ -37,6 +37,11 @@ import { logger } from "@/lib/logger";
 import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import {
+  findOrderByIdempotencyKey,
+  isIdempotencyUniqueViolation,
+} from "@/lib/orders/idempotency";
+import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
+import {
   validatePromoCode,
   type PromoCodeRow,
   type PromoErrorCode,
@@ -156,8 +161,12 @@ function isPaymentMethodAllowed(
   return location.payment_card_at_table_enabled;
 }
 
-export async function createOrderFromCart(input: CreateOrderInput) {
+export async function createOrderFromCart(
+  input: CreateOrderInput,
+  options?: { idempotencyKey?: string | null }
+) {
   const admin = createAdminClient();
+  const idempotencyKey = options?.idempotencyKey ?? null;
   const isDemo = isDemoGuestTableToken(input.tableToken);
 
   let tableRow: {
@@ -573,6 +582,18 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         return { error: saveApprovalError.error, status: 500 };
       }
 
+      await persistOrderSideEffects(admin, {
+        orderId: approvalRow.id,
+        locationId: tableRow.location_id,
+        orgId: orgRow.id,
+        orderNumber: approvalRow.order_number,
+        tableName: tableRow.name,
+        total: approvalRow.total,
+        paymentStatus: "pending",
+        orderSource: "qr",
+        phase: "approval_requested",
+      });
+
       logger.info("Order awaiting staff approval", {
         orderId: approvalRow.id,
         orderNumber: approvalRow.order_number,
@@ -683,6 +704,19 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       .update({ guest_email: input.guestEmail })
       .eq("id", sessionRow.id);
   }
+
+  await persistOrderSideEffects(admin, {
+    orderId: orderRow.id,
+    locationId: tableRow.location_id,
+    orgId: orgRow.id,
+    orderNumber: orderRow.order_number,
+    tableName: tableRow.name,
+    total: orderRow.total,
+    paymentStatus: "pending",
+    guestEmail: input.guestEmail,
+    orderSource: "qr",
+    phase: "created",
+  });
 
   scheduleOrderTseSign(orderRow.id);
   scheduleNewOrderPush(

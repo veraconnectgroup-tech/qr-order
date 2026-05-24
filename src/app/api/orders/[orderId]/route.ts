@@ -223,6 +223,10 @@ export const PATCH = withErrorHandler(
 
     const { status, rejectionReason } = parsed.data;
 
+    if (access.order.status === status) {
+      return apiSuccess({ ok: true });
+    }
+
     const allowedNext = VALID_TRANSITIONS[access.order.status] ?? [];
     if (!allowedNext.includes(status)) {
       return apiError(

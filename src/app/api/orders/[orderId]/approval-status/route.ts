@@ -8,6 +8,7 @@ import { withRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { zTableToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logger } from "@/lib/logger";
 
 export const GET = withErrorHandler(
   "orders-orderId-approval-status-get",
@@ -123,11 +124,20 @@ export const GET = withErrorHandler(
 
     const sessionRow = session as { id: string; session_token: string };
 
-    const { deviceToken } = await trustSessionDevice(admin, {
-      sessionId: sessionRow.id,
-      deviceFingerprint,
-      userAgent: req.headers.get("user-agent"),
-    });
+    let deviceToken: string | undefined;
+    try {
+      const trustResult = await trustSessionDevice(admin, {
+        sessionId: sessionRow.id,
+        deviceFingerprint,
+        userAgent: req.headers.get("user-agent"),
+      });
+      deviceToken = trustResult.deviceToken;
+    } catch (error) {
+      logger.warn("Device trust failed during approval status poll", {
+        orderId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     const tablePin = consumePinReveal(orderId);
 

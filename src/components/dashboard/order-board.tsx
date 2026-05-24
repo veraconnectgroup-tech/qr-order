@@ -318,11 +318,11 @@ export function OrderBoard() {
         if (!res.ok) {
           throw new Error(json.error ?? "Update failed");
         }
-        await fetchOrders();
         await refreshAlerts();
       } catch (e) {
         setOrders(snapshot);
-        toast.error(e instanceof Error ? e.message : "Update failed", {
+        const message = e instanceof Error ? e.message : "Update failed";
+        toast.error(message, {
           action: {
             label: "Retry",
             onClick: () => patchOrder(orderId, status, rejectionReason),
@@ -330,6 +330,7 @@ export function OrderBoard() {
         });
       } finally {
         setBusyId(null);
+        await fetchOrders();
       }
     },
     [fetchOrders, refreshAlerts]
@@ -347,12 +348,17 @@ export function OrderBoard() {
           throw new Error(json.error ?? "Approval failed");
         }
         toast.success("Order approved — sent to kitchen");
-        await fetchOrders();
         await refreshAlerts();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Approval failed");
+        const message = e instanceof Error ? e.message : "Approval failed";
+        if (message.includes("not awaiting approval")) {
+          toast.info("Order already approved");
+        } else {
+          toast.error(message);
+        }
       } finally {
         setBusyId(null);
+        await fetchOrders();
       }
     },
     [fetchOrders, refreshAlerts]

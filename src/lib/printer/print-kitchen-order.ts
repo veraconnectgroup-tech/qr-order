@@ -74,14 +74,15 @@ export async function printKitchenOrder(
   let failed = false;
 
   for (const printer of printers) {
-    const items = itemsForPrinter(split, printer.print_for);
+    const printFor = printer.print_for as PrinterTarget[];
+    const items = itemsForPrinter(split, printFor);
     if (items.length === 0) continue;
 
     const data = buildKitchenTicketEscPos(
       { ...order, order_items: items },
       orgName,
       printer.paper_width as PaperWidth,
-      ticketHeaderLabel(printer.print_for)
+      ticketHeaderLabel(printFor)
     );
 
     const result = await printTicket(data, printer);

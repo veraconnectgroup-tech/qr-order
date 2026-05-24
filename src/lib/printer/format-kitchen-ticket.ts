@@ -18,7 +18,7 @@ export function buildKitchenTicketEscPos(
   headerLabel?: string
 ): Uint8Array {
   const tableName = order.tables?.name ?? "—";
-  const time = new Date(order.created_at).toLocaleTimeString("de-DE", {
+  const time = new Date(order.created_at ?? Date.now()).toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
   });
