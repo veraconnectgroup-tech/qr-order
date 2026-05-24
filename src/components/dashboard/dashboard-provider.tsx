@@ -20,6 +20,7 @@ export type DashboardContextValue = {
   hasMenuItems: boolean;
   onboardingCompleted: boolean;
   trialEndsAt: string | null;
+  subscriptionStatus: string | null;
   impersonating: boolean;
   impersonatedOrgName: string | null;
   inPersonPaymentLocation: "bar" | "counter" | "table";

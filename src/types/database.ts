@@ -7,6 +7,16 @@ export type Json =
   | Json[];
 
 type Tables = {
+  plans: {
+    id: string;
+    name: string;
+    price_cents: number;
+    currency: string;
+    interval: "month" | "year";
+    features: Json;
+    sort_order: number;
+    is_active: boolean;
+  };
   organizations: {
     id: string;
     name: string;
@@ -29,6 +39,15 @@ type Tables = {
     ust_id_nr: string | null;
     onboarding_completed: boolean;
     trial_ends_at: string | null;
+    plan_id: string | null;
+    stripe_subscription_id: string | null;
+    subscription_status:
+      | "trialing"
+      | "active"
+      | "past_due"
+      | "canceled"
+      | "unpaid"
+      | null;
     feature_flags: Json;
     created_at: string;
     updated_at: string;

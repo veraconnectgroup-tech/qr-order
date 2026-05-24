@@ -77,3 +77,31 @@ export async function toggleOrgFeature(orgId: string, flag: PlatformFeature, ena
   revalidatePath("/platform/orgs");
   return { success: true };
 }
+
+export async function updateOrgPlanAction(orgId: string, planId: string) {
+  await requirePlatformAdmin();
+  const admin = createAdminClient();
+
+  const { data: plan } = await admin
+    .from("plans")
+    .select("id")
+    .eq("id", planId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!plan) return { error: "Plan not found." };
+
+  const { error } = await admin
+    .from("organizations")
+    .update({
+      plan_id: planId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orgId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/platform/orgs/${orgId}`);
+  revalidatePath("/platform/orgs");
+  return { success: true };
+}

@@ -7,9 +7,10 @@ import { AnalyticsMetricCard } from "@/components/admin/analytics-metric-card";
 import { Button } from "@/components/ui/button";
 import { loadPlatformOrgDetail } from "@/lib/platform/platform-stats";
 import { impersonateOrgAction } from "@/lib/platform/platform-actions";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, fromCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/types/database";
+import { PlatformPlanSelector } from "@/components/platform/platform-plan-selector";
 
 function posStatusLabel(status: string) {
   if (status === "connected") return { label: "Aktiv", className: "text-emerald-600" };
@@ -44,6 +45,8 @@ export default async function PlatformOrgDetailPage({
     posIntegrations,
     printers,
     pendingPrintJobs,
+    plans,
+    currentPlan,
   } = detail;
 
   const orgRow = org as {
@@ -60,6 +63,9 @@ export default async function PlatformOrgDetailPage({
     fiskaly_tss_id: string | null;
     steuernummer: string | null;
     ust_id_nr: string | null;
+    plan_id: string | null;
+    subscription_status: string | null;
+    stripe_subscription_id: string | null;
   };
 
   const tseActive = Boolean(orgRow.fiskaly_tss_id);
@@ -100,6 +106,56 @@ export default async function PlatformOrgDetailPage({
             ? `Connected (${orgRow.stripe_account_id ?? "account linked"})`
             : "Not connected"}
         </p>
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-neutral-900">Subscription</h2>
+        <dl className="mt-4 space-y-4 text-sm">
+          <div>
+            <dt className="font-medium text-neutral-500">Current plan</dt>
+            <dd className="mt-1 text-neutral-800">
+              {currentPlan?.name ?? orgRow.plan_id ?? "starter"}
+              {currentPlan && (
+                <span className="text-neutral-500">
+                  {" "}
+                  · {formatPrice(fromCents(currentPlan.price_cents), currentPlan.currency)}/mo
+                </span>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium text-neutral-500">Subscription status</dt>
+            <dd className="mt-1 capitalize text-neutral-800">
+              {orgRow.subscription_status ?? "trialing"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium text-neutral-500">Trial end date</dt>
+            <dd className="mt-1 text-neutral-800">
+              {orgRow.trial_ends_at
+                ? new Date(orgRow.trial_ends_at).toLocaleDateString()
+                : "—"}
+            </dd>
+          </div>
+          {orgRow.stripe_subscription_id && (
+            <div>
+              <dt className="font-medium text-neutral-500">Stripe subscription</dt>
+              <dd className="mt-1 font-mono text-xs text-neutral-600">
+                {orgRow.stripe_subscription_id}
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="font-medium text-neutral-500">Change plan</dt>
+            <dd>
+              <PlatformPlanSelector
+                orgId={orgId}
+                currentPlanId={orgRow.plan_id}
+                plans={plans}
+              />
+            </dd>
+          </div>
+        </dl>
       </section>
 
       <section className="rounded-lg border border-neutral-200 bg-white p-6">

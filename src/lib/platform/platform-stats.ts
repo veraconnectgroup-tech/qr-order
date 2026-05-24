@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadActivePlans } from "@/lib/billing/plans";
 import type { RevenueSeriesPoint } from "@/lib/analytics/admin-analytics";
 
 export type OrgTrialStatus = "active" | "trial" | "expired" | "setup";
@@ -302,6 +303,9 @@ export async function loadPlatformOrgDetail(orgId: string) {
     }));
   }
 
+  const plans = await loadActivePlans();
+  const orgPlanId = (org as { plan_id?: string | null }).plan_id ?? "starter";
+
   return {
     org,
     owner: owner as { id: string; name: string; email: string | null; user_id: string } | null,
@@ -313,6 +317,8 @@ export async function loadPlatformOrgDetail(orgId: string) {
     posIntegrations,
     printers,
     pendingPrintJobs,
+    plans,
+    currentPlan: plans.find((plan) => plan.id === orgPlanId) ?? null,
   };
 }
 

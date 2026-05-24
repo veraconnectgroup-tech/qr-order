@@ -51,7 +51,7 @@ export default async function DashboardLayout({
     await Promise.all([
     admin
       .from("organizations")
-      .select("id, name, slug, currency, logo_url, stripe_onboarded, onboarding_completed, trial_ends_at, fiskaly_tss_id")
+      .select("id, name, slug, currency, logo_url, stripe_onboarded, onboarding_completed, trial_ends_at, fiskaly_tss_id, subscription_status")
       .eq("id", staff.org_id)
       .single(),
     admin
@@ -82,6 +82,7 @@ export default async function DashboardLayout({
     onboarding_completed: boolean;
     trial_ends_at: string | null;
     fiskaly_tss_id: string | null;
+    subscription_status: string | null;
   } | null;
 
   const locationRow = location as {
@@ -117,6 +118,7 @@ export default async function DashboardLayout({
           hasMenuItems: (productCount ?? 0) > 0,
         onboardingCompleted: orgRow?.onboarding_completed ?? true,
         trialEndsAt: orgRow?.trial_ends_at ?? null,
+        subscriptionStatus: orgRow?.subscription_status ?? null,
         impersonating: staff.impersonating ?? false,
         impersonatedOrgName: staff.impersonated_org_name ?? null,
         inPersonPaymentLocation:

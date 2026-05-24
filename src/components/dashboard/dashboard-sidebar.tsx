@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Plus,
   Settings,
+  CreditCard,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
@@ -89,6 +90,7 @@ export function DashboardSidebar() {
   } = useDashboard();
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
+  const canManageBilling = ["owner", "manager"].includes(staffRole);
 
   function renderNavLink(item: NavItem) {
     const { href, label, icon: Icon, exact, alertKey } = item;
@@ -169,6 +171,12 @@ export function DashboardSidebar() {
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => renderNavLink(item))}
+              {group.label === "Management" && canManageBilling &&
+                renderNavLink({
+                  href: "/dashboard/billing",
+                  label: "Billing",
+                  icon: CreditCard,
+                })}
             </div>
           </div>
         ))}
