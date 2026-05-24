@@ -41,8 +41,9 @@ const PRINT_TARGETS: PrinterTarget[] = ["kitchen", "bar", "receipt"];
 
 type PrinterFormState = {
   name: string;
-  type: "usb" | "lan";
+  type: "usb" | "lan" | "cloud";
   ip_address: string;
+  mac_address: string;
   port: string;
   paper_width: "58" | "80";
   auto_print: boolean;
@@ -53,6 +54,7 @@ const defaultForm = (): PrinterFormState => ({
   name: "",
   type: "lan",
   ip_address: "",
+  mac_address: "",
   port: "9100",
   paper_width: "80",
   auto_print: true,
@@ -91,6 +93,15 @@ function PrinterStatusBadge({
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
         <Wifi className="size-3" />
         {printer.ip_address}:{printer.port}
+      </span>
+    );
+  }
+
+  if (printer.type === "cloud") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+        <Wifi className="size-3" />
+        CloudPRNT {printer.mac_address ?? "—"}
       </span>
     );
   }
@@ -149,6 +160,7 @@ export function PrinterSettingsPanel() {
       name: printer.name,
       type: printer.type,
       ip_address: printer.ip_address ?? "",
+      mac_address: printer.mac_address ?? "",
       port: String(printer.port),
       paper_width: String(printer.paper_width) as "58" | "80",
       auto_print: printer.auto_print,
@@ -176,6 +188,10 @@ export function PrinterSettingsPanel() {
       toast.error("IP address is required for LAN printers.");
       return;
     }
+    if (form.type === "cloud" && !form.mac_address.trim()) {
+      toast.error("MAC address is required for CloudPRNT printers.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -183,6 +199,7 @@ export function PrinterSettingsPanel() {
         name: form.name.trim(),
         type: form.type,
         ip_address: form.type === "lan" ? form.ip_address.trim() : null,
+        mac_address: form.type === "cloud" ? form.mac_address.trim() : null,
         port: Number(form.port) || 9100,
         paper_width: Number(form.paper_width),
         auto_print: form.auto_print,
@@ -398,7 +415,7 @@ export function PrinterSettingsPanel() {
               <Label>Type</Label>
               <Select
                 value={form.type}
-                onValueChange={(value: "usb" | "lan") =>
+                onValueChange={(value: "usb" | "lan" | "cloud") =>
                   setForm((prev) => ({ ...prev, type: value }))
                 }
               >
@@ -408,6 +425,7 @@ export function PrinterSettingsPanel() {
                 <SelectContent>
                   <SelectItem value="usb">USB (WebUSB)</SelectItem>
                   <SelectItem value="lan">LAN (Network)</SelectItem>
+                  <SelectItem value="cloud">CloudPRNT (Star)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -438,6 +456,30 @@ export function PrinterSettingsPanel() {
                     }
                   />
                 </div>
+              </div>
+            )}
+
+            {form.type === "cloud" && (
+              <div className="space-y-2">
+                <Label htmlFor="printer-mac">Printer MAC address</Label>
+                <Input
+                  id="printer-mac"
+                  value={form.mac_address}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      mac_address: e.target.value,
+                    }))
+                  }
+                  placeholder="AA:BB:CC:DD:EE:FF"
+                />
+                <p className="text-sm text-neutral-600">
+                  Star printer polls{" "}
+                  <code className="rounded bg-neutral-100 px-1">
+                    /api/printer/cloudprnt
+                  </code>
+                  .
+                </p>
               </div>
             )}
 

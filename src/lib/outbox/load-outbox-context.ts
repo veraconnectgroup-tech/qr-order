@@ -70,9 +70,30 @@ async function loadActiveWebhooks(
     });
 }
 
-function loadCloudPrinters(): CloudPrinterContext[] {
-  // CloudPRNT (Track D) — server-side cloud printers not in schema yet.
-  return [];
+async function loadCloudPrinters(
+  admin: ReturnType<typeof createAdminClient>,
+  locationId: string
+): Promise<CloudPrinterContext[]> {
+  const { data, error } = await admin
+    .from("printer_configs")
+    .select("id, auto_print")
+    .eq("location_id", locationId)
+    .eq("type", "cloud")
+    .eq("auto_print", true);
+
+  if (error) {
+    logger.warn("Cloud printer lookup failed", {
+      locationId,
+      error: error.message,
+    });
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: (row as { id: string }).id,
+    provider: "star_cloudprnt",
+    autoPrint: true,
+  }));
 }
 
 export async function loadOrderOutboxContext(
@@ -92,7 +113,7 @@ export async function loadOrderOutboxContext(
   const [posIntegration, activeWebhooks, cloudPrinters] = await Promise.all([
     loadPosIntegration(admin, input.locationId),
     loadActiveWebhooks(admin, input.orgId),
-    Promise.resolve(loadCloudPrinters()),
+    Promise.resolve(loadCloudPrinters(admin, input.locationId)),
   ]);
 
   return {

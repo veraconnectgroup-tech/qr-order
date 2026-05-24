@@ -1,4 +1,4 @@
-import { handleFulfillCloudPrint } from "@/lib/outbox/handlers/stubs";
+import { handleFulfillCloudPrint } from "@/lib/outbox/handlers/cloud-print";
 import { handleFulfillPushPos } from "@/lib/outbox/handlers/push-pos";
 import { handleFiscalBeleg } from "@/lib/outbox/handlers/beleg";
 import { handleFulfillNotifyStaff } from "@/lib/outbox/handlers/notify-staff";

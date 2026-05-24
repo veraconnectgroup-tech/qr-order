@@ -3,15 +3,17 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff, getStaffLocationId } from "@/lib/auth/session";
 import { buildProductTargetMap } from "@/lib/printer/product-targets";
+import { normalizePrinterMac } from "@/lib/printer/print-jobs";
 import { zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const printerTargetSchema = z.enum(["kitchen", "bar", "receipt"]);
 
-const createSchema = z.object({
+const printerBaseSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  type: z.enum(["usb", "lan"]),
+  type: z.enum(["usb", "lan", "cloud"]),
   ip_address: z.string().trim().optional().nullable(),
+  mac_address: z.string().trim().optional().nullable(),
   port: z.coerce.number().int().min(1).max(65535).optional(),
   paper_width: z.coerce.number().refine((v) => v === 58 || v === 80),
   auto_print: z.boolean().optional(),
@@ -19,7 +21,24 @@ const createSchema = z.object({
   is_default: z.boolean().optional(),
 });
 
-const updateSchema = createSchema.partial().extend({
+const createSchema = printerBaseSchema.superRefine((data, ctx) => {
+  if (data.type === "lan" && !data.ip_address?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "LAN printers require an IP address.",
+      path: ["ip_address"],
+    });
+  }
+  if (data.type === "cloud" && !data.mac_address?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Cloud printers require a MAC address.",
+      path: ["mac_address"],
+    });
+  }
+});
+
+const updateSchema = printerBaseSchema.partial().extend({
   id: zUuid(),
 });
 
@@ -122,10 +141,6 @@ export const POST = withErrorHandler(
     return apiError("Invalid input.", 400, parsed.error.flatten());
   }
 
-  if (parsed.data.type === "lan" && !parsed.data.ip_address) {
-    return apiError("LAN printers require an IP address.", 400);
-  }
-
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("printer_configs")
@@ -134,7 +149,11 @@ export const POST = withErrorHandler(
       name: parsed.data.name,
       type: parsed.data.type,
       ip_address: parsed.data.type === "lan" ? parsed.data.ip_address : null,
-      port: parsed.data.port ?? 9100,
+      mac_address:
+        parsed.data.type === "cloud"
+          ? normalizePrinterMac(parsed.data.mac_address ?? "")
+          : null,
+      port: parsed.data.type === "lan" ? (parsed.data.port ?? 9100) : 9100,
       paper_width: parsed.data.paper_width,
       auto_print: parsed.data.auto_print ?? true,
       print_for: parsed.data.print_for,
@@ -175,23 +194,54 @@ export const PUT = withErrorHandler(
   const admin = createAdminClient();
   const { data: existing } = await admin
     .from("printer_configs")
-    .select("id, location_id, type")
+    .select("id, location_id, type, mac_address, ip_address")
     .eq("id", parsed.data.id)
     .maybeSingle();
 
-  if (!existing || (existing as { location_id: string }).location_id !== locationId) {
+  const existingRow = existing as {
+    location_id: string;
+    type: string;
+    mac_address: string | null;
+    ip_address: string | null;
+  };
+
+  if (!existing || existingRow.location_id !== locationId) {
     return apiError("Printer not found.", 404);
   }
 
-  const nextType = parsed.data.type ?? (existing as { type: string }).type;
-  if (nextType === "lan" && parsed.data.ip_address === null) {
+  const nextType = parsed.data.type ?? existingRow.type;
+  const nextIp = parsed.data.ip_address ?? existingRow.ip_address;
+  const nextMac = parsed.data.mac_address ?? existingRow.mac_address;
+
+  if (nextType === "lan" && !nextIp?.trim()) {
     return apiError("LAN printers require an IP address.", 400);
   }
+  if (nextType === "cloud" && !nextMac?.trim()) {
+    return apiError("Cloud printers require a MAC address.", 400);
+  }
 
-  const { id, ...updates } = parsed.data;
+  const { id, mac_address, ip_address, type, ...updates } = parsed.data;
+  const patch: Record<string, unknown> = { ...updates };
+
+  if (type !== undefined) patch.type = type;
+  if (ip_address !== undefined) {
+    patch.ip_address = nextType === "lan" ? ip_address : null;
+  } else if (nextType === "cloud" || nextType === "usb") {
+    patch.ip_address = null;
+  }
+  if (mac_address !== undefined) {
+    patch.mac_address =
+      nextType === "cloud" ? normalizePrinterMac(mac_address ?? "") : null;
+  } else if (nextType === "lan" || nextType === "usb") {
+    patch.mac_address = null;
+  }
+  if (nextType === "cloud" && patch.mac_address === undefined && nextMac) {
+    patch.mac_address = normalizePrinterMac(nextMac);
+  }
+
   const { data, error } = await admin
     .from("printer_configs")
-    .update(updates)
+    .update(patch as Record<string, never>)
     .eq("id", id)
     .select("*")
     .single();

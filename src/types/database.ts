@@ -158,17 +158,31 @@ type Tables = {
     id: string;
     location_id: string;
     name: string;
-    type: "usb" | "lan";
+    type: "usb" | "lan" | "cloud";
     ip_address: string | null;
     port: number;
     usb_vendor: string | null;
     usb_product: string | null;
+    mac_address: string | null;
     paper_width: number;
     is_default: boolean;
     auto_print: boolean;
     print_for: ("kitchen" | "receipt" | "bar")[];
     created_at: string;
     updated_at: string;
+  };
+  print_jobs: {
+    id: string;
+    printer_id: string;
+    location_id: string;
+    order_id: string | null;
+    job_type: string;
+    payload: string;
+    status: "pending" | "printing" | "done" | "failed";
+    attempts: number;
+    created_at: string;
+    picked_at: string | null;
+    done_at: string | null;
   };
   pos_integrations: {
     id: string;
