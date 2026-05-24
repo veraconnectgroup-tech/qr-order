@@ -178,6 +178,13 @@ export function OrderStatusTracker({
     let cancelled = false;
     let pollId: ReturnType<typeof setInterval> | null = null;
 
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setLoading(true);
+        setOrder(null);
+      }
+    });
+
     async function refresh(initial = false) {
       const data = await refreshOrder(initial);
       if (cancelled) return;
@@ -187,23 +194,18 @@ export function OrderStatusTracker({
           clearInterval(pollId);
           pollId = null;
         }
-        return;
       }
       if (initial) setLoading(false);
     }
 
-    setLoading(true);
-    refresh(true).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-
-    pollId = setInterval(() => refresh(false), REALTIME_FALLBACK_POLL_MS);
+    void refresh(true);
+    pollId = setInterval(() => void refresh(false), REALTIME_FALLBACK_POLL_MS);
 
     return () => {
       cancelled = true;
       if (pollId) clearInterval(pollId);
     };
-  }, [refreshOrder]);
+  }, [refreshOrder, orderId, sessionToken]);
 
   useEffect(() => {
     if (!order) return;

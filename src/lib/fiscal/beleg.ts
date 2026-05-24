@@ -4,7 +4,6 @@ import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import {
   EscPosBuilder,
-  formatAlignedLine,
   type PaperWidth,
   separatorLine,
   wrapText,

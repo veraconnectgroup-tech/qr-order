@@ -50,8 +50,7 @@ export async function handleFiscalBeleg(
     if (needsSnapshot) {
       const snapshot = await loadBelegData(admin, orderId);
       if (snapshot) {
-        const { orderUrl: _, ...snapshotData } = snapshot;
-        update.beleg_snapshot = snapshotData as unknown as Json;
+        update.beleg_snapshot = snapshot as unknown as Json;
       }
     }
 
