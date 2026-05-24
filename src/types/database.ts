@@ -689,6 +689,21 @@ export interface Database {
         };
         Returns: void;
       };
+      create_guest_order_tx: {
+        Args: {
+          p_location_id: string;
+          p_table_id: string;
+          p_session_id: string | null;
+          p_status: string;
+          p_requires_session: boolean;
+          p_idempotency_key: string | null;
+          p_order_payload: Json;
+          p_items: Json;
+          p_promo_code_id: string | null;
+          p_consume_promo: boolean;
+        };
+        Returns: Json;
+      };
       approve_order_access_tx: {
         Args: {
           p_order_id: string;

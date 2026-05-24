@@ -2,24 +2,10 @@ import type {
   CreateOrderSuccess,
   OrderDraft,
 } from "@/lib/orders/create/types";
-import { logger } from "@/lib/logger";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-
-async function consumePromoCode(admin: AdminClient, promoCodeId: string) {
-  const { data, error } = await admin.rpc("increment_promo_used_count", {
-    p_promo_id: promoCodeId,
-  });
-
-  if (error || !data) {
-    logger.warn("Promo code usage increment failed", {
-      promoCodeId,
-      error: error?.message,
-    });
-  }
-}
 
 export async function emitOrderSideEffects(
   admin: AdminClient,
@@ -41,10 +27,6 @@ export async function emitOrderSideEffects(
     orderSource: "qr",
     phase,
   });
-
-  if (draft.mode.kind !== "approval" && draft.pricing.promoCodeId) {
-    await consumePromoCode(admin, draft.pricing.promoCodeId);
-  }
 
   if (draft.input.guestEmail && draft.mode.kind === "normal") {
     await admin
