@@ -27,7 +27,9 @@ function formatGuestContext(
   const mood = prefs.mood?.trim();
 
   if (allergies.length) {
-    const allergyLine: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+    const allergyLine: Partial<
+      Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+    > & { en: string } = {
       de: `STRENGE ALLERGIE-REGEL: Der Gast hat folgende Allergien/Unverträglichkeiten: ${allergies.join(", ")}. Empfehle NIEMALS Gerichte, die diese enthalten könnten. Wenn unsicher, schließe das Gericht aus.`,
       en: `STRICT ALLERGY RULE: Guest allergies/intolerances: ${allergies.join(", ")}. NEVER recommend dishes that may contain these. When unsure, exclude the dish.`,
       sr: `STROGO PRAVILO ALERGIJA: Alergije gosta: ${allergies.join(", ")}. NIKADA ne preporučuj jela koja mogu sadržati ove alergene. Ako nisi siguran, isključi jelo.`,
@@ -41,7 +43,9 @@ function formatGuestContext(
   }
 
   if (mood) {
-    const moodLine: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+    const moodLine: Partial<
+      Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+    > & { en: string } = {
       de: `Stimmung/Vorliebe des Gastes: "${mood}". Passe Ton und Empfehlungen daran an.`,
       en: `Guest mood/preference: "${mood}". Tailor tone and recommendations accordingly.`,
       sr: `Raspoloženje/želja gosta: "${mood}". Prilagodi ton i preporuke.`,
@@ -59,7 +63,9 @@ function formatGuestContext(
 
 function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
   const max = AI_CONFIG.maxRecommendations;
-  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
     de: `REGELN:
 - Empfehle NUR Gerichte aus dem untenstehenden Menü.
 - Maximal ${max} Empfehlungen pro Antwort.
@@ -123,7 +129,9 @@ function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
 function orderingRulesBlock(
   lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
 ): string {
-  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
     de: `BESTELLREGELN:
 - Du kannst Bestellungen aufnehmen. Mappe Gäste-Wünsche auf exakte productId und modifierIds aus dem Menü.
 - Wenn serve_sizes (required) oder required modifier fehlen: intent "clarify", frage nach, setze quickReplies.
@@ -179,7 +187,9 @@ function browseRulesBlock(
   lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
 ): string {
   const max = AI_CONFIG.maxBrowseRecommendations;
-  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
     de: `MENÜ-BROWSE:
 - Bei vagen Anfragen ("Burger", "Bier", "kleines Bier"): intent "menu_info".
 - recommendations: ALLE passenden Menüpunkte (bis ${max}), reason = nur Preis.
@@ -221,7 +231,9 @@ function browseRulesBlock(
 }
 
 function outputFormatBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
-  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
     de: `AUSGABEFORMAT (strikt JSON, kein Markdown):
 {
   "intent": "recommend|order|clarify|confirm|status|menu_info|chat",
@@ -320,7 +332,9 @@ function identityBlock(
   orgName: string,
   lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
 ): string {
-  const blocks: Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string> = {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
     de: `Du bist der AI Concierge von "${orgName}" — ein digitaler, warmer und kompetenter Service-Experte.`,
     en: `You are the AI Concierge for "${orgName}" — a digital, warm, knowledgeable dining guide.`,
     sr: `Ti si AI Concierge restorana "${orgName}" — digitalni, topao i stručan vodič kroz meni.`,

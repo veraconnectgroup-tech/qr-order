@@ -10,3 +10,4 @@ export function multilingualPolicyBlock(menuLanguage: string): string {
 - Product/dish names from the menu may stay as printed on the menu.
 - If the guest's language is unclear, default to ${fallback} (venue menu language).
 - You may receive internal instructions in English — guest-facing text must still follow this policy.`;
+}
