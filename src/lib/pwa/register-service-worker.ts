@@ -77,6 +77,22 @@ async function waitForRegistrationReady(
   return registration;
 }
 
+function canReuseRegistration(
+  registration: ServiceWorkerRegistration,
+  script: string
+): boolean {
+  if (script === DEV_SW) {
+    return registration.active?.scriptURL.endsWith("/push-sw.js") ?? false;
+  }
+  return true;
+}
+
+async function registerServiceWorkerScript(
+  script: string
+): Promise<ServiceWorkerRegistration> {
+  return navigator.serviceWorker.register(script, { scope: "/" });
+}
+
 /** Register the app service worker and wait until it is ready (with timeout). */
 export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistration> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -86,46 +102,31 @@ export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistrat
   }
 
   const script = serviceWorkerScript();
-  let registration = await navigator.serviceWorker.getRegistration();
+  const existing = await navigator.serviceWorker.getRegistration();
 
-  const needsRegister =
-    !registration ||
-    (script === DEV_SW &&
-      !registration.active?.scriptURL.endsWith("/push-sw.js"));
+  if (existing && canReuseRegistration(existing, script)) {
+    return waitForRegistrationReady(existing, ACTIVATION_TIMEOUT_MS);
+  }
 
-  if (needsRegister) {
+  try {
+    const registered = await registerServiceWorkerScript(script);
+    return waitForRegistrationReady(registered, ACTIVATION_TIMEOUT_MS);
+  } catch {
+    if (script !== PRODUCTION_SW) {
+      throw new ServiceWorkerUnavailableError(
+        process.env.NODE_ENV === "development"
+          ? "Service worker is not available. Reload the dev server after saving VAPID keys in .env.local."
+          : "Service worker is not available."
+      );
+    }
+
     try {
-      registration = await navigator.serviceWorker.register(script, {
-        scope: "/",
-      });
+      const fallback = await registerServiceWorkerScript(DEV_SW);
+      return waitForRegistrationReady(fallback, ACTIVATION_TIMEOUT_MS);
     } catch {
-      if (script === PRODUCTION_SW) {
-        try {
-          registration = await navigator.serviceWorker.register(DEV_SW, {
-            scope: "/",
-          });
-        } catch {
-          // fall through to error below
-        }
-      }
-
-      if (!registration) {
-        const devHint =
-          process.env.NODE_ENV === "development"
-            ? " Reload the dev server after saving VAPID keys in .env.local."
-            : "";
-        throw new ServiceWorkerUnavailableError(
-          `Service worker is not available.${devHint}`
-        );
-      }
+      throw new ServiceWorkerUnavailableError(
+        "Service worker is not available."
+      );
     }
   }
-
-  if (!registration) {
-    throw new ServiceWorkerUnavailableError(
-      "Service worker is not available."
-    );
-  }
-
-  return waitForRegistrationReady(registration, ACTIVATION_TIMEOUT_MS);
 }
