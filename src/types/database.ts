@@ -384,6 +384,27 @@ type Tables = {
     date: string;
     last_number: number;
   };
+  daily_closings: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    business_date: string;
+    total_gross: number;
+    total_net: number;
+    total_tax: number;
+    total_cash: number;
+    total_non_cash: number;
+    total_tips: number;
+    vat_summary: Json;
+    order_count: number;
+    refund_count: number;
+    refund_total: number;
+    tse_closing_signature: string | null;
+    tse_closing_data: Json | null;
+    closed_by: string | null;
+    closed_at: string;
+    created_at: string;
+  };
   webhook_events: {
     id: string;
     event_type: string;
