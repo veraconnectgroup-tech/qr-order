@@ -2,50 +2,46 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
+import { ArrowLeft, CreditCard, UtensilsCrossed } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useRealtimeWaiterCalls } from "@/hooks/use-realtime-waiter-calls";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
-import { formatOrderNumber, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import {
   buildWaiterTableRows,
+  getWaiterTableVisualStatus,
   startOfTodayIso,
-  waiterTableStatus,
+  WAITER_TABLE_STATUS_STYLES,
   type WaiterTableRow,
 } from "@/lib/dashboard/waiter-table-data";
+import { WaiterOrderRow, type WaiterDetailOrder } from "@/components/waiter/waiter-order-row";
+import { WaiterTableBillSheet } from "@/components/waiter/waiter-table-bill-sheet";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import type { Table, TableSession, Zone } from "@/types";
-
-function orderStatusLabel(status: string) {
-  switch (status) {
-    case "delivered":
-      return "Delivered";
-    case "preparing":
-    case "accepted":
-      return "Preparing";
-    case "ready":
-      return "Ready";
-    case "rejected":
-      return "Rejected";
-    default:
-      return "New";
-  }
-}
 
 type Props = {
   tableId: string;
 };
 
+const ORDER_SELECT =
+  "id, order_number, status, total, created_at, order_items(*, order_item_modifiers(*))";
+
 export function WaiterTableDetail({ tableId }: Props) {
-  const { locationId, currency } = useDashboard();
+  const { locationId, currency, staffRole } = useDashboard();
   const waiterCallsResult = useRealtimeWaiterCalls(locationId);
   const [table, setTable] = useState<WaiterTableRow | null>(null);
+  const [orders, setOrders] = useState<WaiterDetailOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [billOpen, setBillOpen] = useState(false);
+
+  const canUpdateStatus = !["kitchen"].includes(staffRole);
 
   const pendingCallTableIds = useMemo(
     () =>
@@ -69,6 +65,7 @@ export function WaiterTableDetail({ tableId }: Props) {
 
     if (!tableData) {
       setTable(null);
+      setOrders([]);
       setLoading(false);
       return;
     }
@@ -80,22 +77,36 @@ export function WaiterTableDetail({ tableId }: Props) {
       .eq("table_id", tableId)
       .eq("status", "active");
 
-    const { data: orders } = await supabase
-      .from("orders")
-      .select(
-        "id, table_id, session_id, order_number, total, status, payment_requested_at, payment_status, payment_method"
-      )
-      .eq("location_id", locationId)
-      .eq("table_id", tableId)
-      .gte("created_at", startOfTodayIso())
-      .neq("status", "rejected");
+    const session = (sessions ?? [])[0] as
+      | Pick<TableSession, "id" | "table_id" | "opened_at">
+      | undefined;
+
+    const [{ data: summaryOrdersData }, { data: detailOrdersData }] =
+      await Promise.all([
+        supabase
+          .from("orders")
+          .select(
+            "id, table_id, session_id, order_number, total, status, created_at, payment_requested_at, payment_status, payment_method"
+          )
+          .eq("location_id", locationId)
+          .eq("table_id", tableId)
+          .gte("created_at", startOfTodayIso())
+          .neq("status", "rejected")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("orders")
+          .select(ORDER_SELECT)
+          .eq("location_id", locationId)
+          .eq("table_id", tableId)
+          .gte("created_at", startOfTodayIso())
+          .neq("status", "rejected")
+          .order("created_at", { ascending: false }),
+      ]);
 
     const [row] = buildWaiterTableRows(
       [tableData as unknown as Table & { zone: Zone | null }],
-      (sessions ?? []) as Array<
-        Pick<TableSession, "id" | "table_id" | "opened_at">
-      >,
-      (orders ?? []) as Array<
+      session ? [session] : [],
+      (summaryOrdersData ?? []) as unknown as Array<
         WaiterTableRow["activeOrders"][number] & {
           table_id: string | null;
           session_id: string | null;
@@ -105,6 +116,7 @@ export function WaiterTableDetail({ tableId }: Props) {
     );
 
     setTable(row ?? null);
+    setOrders((detailOrdersData ?? []) as unknown as WaiterDetailOrder[]);
     setLoading(false);
   }, [locationId, pendingCallTableIds, tableId]);
 
@@ -115,6 +127,15 @@ export function WaiterTableDetail({ tableId }: Props) {
   usePostgresRealtime({
     channelName: `waiter-table-detail-orders:${tableId}`,
     table: "orders",
+    locationId,
+    filter: `location_id=eq.${locationId}`,
+    onChange: load,
+    fallbackPollMs: REALTIME_FALLBACK_POLL_MS,
+  });
+
+  usePostgresRealtime({
+    channelName: `waiter-table-detail-calls:${tableId}`,
+    table: "waiter_calls",
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: load,
@@ -139,14 +160,20 @@ export function WaiterTableDetail({ tableId }: Props) {
           onClick={() => hapticLight()}
         >
           <ArrowLeft className="size-4" />
-          Back to tables
+          Nazad na stolove
         </Link>
-        <p className="text-sm text-dash-text-muted">Table not found.</p>
+        <p className="text-sm text-dash-text-muted">Sto nije pronađen.</p>
       </div>
     );
   }
 
-  const status = waiterTableStatus(table);
+  const visualStatus = getWaiterTableVisualStatus(table);
+  const statusStyles = WAITER_TABLE_STATUS_STYLES[visualStatus];
+  const activeOrders = orders.filter((order) =>
+    ["pending", "pending_approval", "accepted", "preparing", "ready"].includes(
+      order.status
+    )
+  );
 
   return (
     <div className="space-y-5">
@@ -156,83 +183,119 @@ export function WaiterTableDetail({ tableId }: Props) {
         onClick={() => hapticLight()}
       >
         <ArrowLeft className="size-4" />
-        All tables
+        Svi stolovi
       </Link>
 
       <div>
-        <h1 className="font-mono text-3xl font-bold text-dash-text">
-          {table.name}
-        </h1>
+        <div className="flex items-center gap-2">
+          <span className={cn("size-3 rounded-full", statusStyles.dot)} />
+          <h1 className="font-mono text-3xl font-bold text-dash-text">
+            {table.name}
+          </h1>
+        </div>
         <p className="mt-1 text-sm text-dash-text-muted">
-          {table.zone?.name ?? "No zone"} · {table.seats} seats ·{" "}
-          <span
-            className={cn(
-              "capitalize",
-              status === "attention" && "text-red-400",
-              status === "payment" && "text-amber-400",
-              status === "occupied" && "text-emerald-400"
-            )}
-          >
-            {status}
-          </span>
+          {table.zone?.name ?? "Bez zone"} · {statusStyles.label}
         </p>
       </div>
-
-      {table.hasPaymentRequest && (
-        <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-300">
-          Guest requested payment — collect bill or use terminal.
-        </p>
-      )}
 
       {table.hasWaiterCall && (
         <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
-          Guest called for service.
+          Gost je pozvao konobara.
         </p>
       )}
 
-      <div className="rounded-xl border border-dash-border-subtle bg-dash-surface p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-          Active orders
+      {table.hasPaymentRequest && (
+        <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-300">
+          Gost je zatražio račun.
         </p>
-        {table.activeOrders.length === 0 ? (
-          <p className="mt-3 text-sm text-dash-text-muted">No active orders</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {table.activeOrders.map((order) => (
-              <li
-                key={order.id}
-                className="flex items-center justify-between gap-3 text-sm"
-              >
-                <span className="font-mono font-semibold text-dash-text">
-                  {formatOrderNumber(order.order_number)}
-                </span>
-                <span className="text-dash-text-muted">
-                  {orderStatusLabel(order.status)}
-                </span>
-                <span className="font-mono text-dash-accent">
-                  {formatPrice(Number(order.total), currency)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {table.sessionTotal > 0 && (
-          <p className="mt-4 border-t border-dash-border-subtle pt-4 font-mono text-lg font-semibold text-dash-accent">
-            Session total: {formatPrice(table.sessionTotal, currency)}
-          </p>
-        )}
+      )}
+
+      <div className="grid grid-cols-1 gap-3">
+        <Button
+          asChild
+          className="min-h-12 w-full bg-dash-accent text-base font-semibold hover:bg-dash-accent/90"
+          onClick={() => hapticLight()}
+        >
+          <Link href={`/waiter/new-order?tableId=${table.id}`}>
+            <UtensilsCrossed className="mr-2 size-5" />
+            Nova narudžba
+          </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-12 w-full border-dash-border-subtle text-base font-semibold"
+          onClick={() => {
+            hapticLight();
+            setBillOpen(true);
+          }}
+        >
+          <CreditCard className="mr-2 size-5" />
+          Račun
+        </Button>
       </div>
 
-      <Button
-        asChild
-        className="min-h-12 w-full bg-dash-accent text-base font-semibold hover:bg-dash-accent/90"
-        onClick={() => hapticLight()}
-      >
-        <Link href={`/waiter/new-order?tableId=${table.id}`}>
-          <Plus className="mr-2 size-5" />
-          New order
-        </Link>
-      </Button>
+      {table.session && (
+        <div className="rounded-xl border border-dash-border-subtle bg-dash-surface p-4 text-sm text-dash-text-secondary">
+          <p>
+            Sesija od{" "}
+            {new Date(table.session.opened_at).toLocaleTimeString("de-DE", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {" · "}
+            {formatDistanceToNow(new Date(table.session.opened_at), {
+              addSuffix: false,
+              locale: de,
+            })}
+          </p>
+          <p className="mt-1">
+            {activeOrders.length} narudžb
+            {activeOrders.length === 1 ? "a" : "e"} ·{" "}
+            <span className="font-mono font-semibold text-dash-accent">
+              {formatPrice(table.sessionTotal, currency)}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {activeOrders.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-dash-border-subtle px-4 py-10 text-center">
+          <p className="text-sm text-dash-text-muted">Sto je slobodan</p>
+          <Button
+            asChild
+            className="mt-4 min-h-12 bg-dash-accent px-6 text-base font-semibold hover:bg-dash-accent/90"
+          >
+            <Link href={`/waiter/new-order?tableId=${table.id}`}>
+              <UtensilsCrossed className="mr-2 size-5" />
+              Nova narudžba
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+            Aktivne narudžbe
+          </p>
+          {activeOrders.map((order) => (
+            <WaiterOrderRow
+              key={order.id}
+              order={order}
+              currency={currency}
+              canUpdateStatus={canUpdateStatus}
+              onUpdated={load}
+            />
+          ))}
+        </div>
+      )}
+
+      <WaiterTableBillSheet
+        open={billOpen}
+        onOpenChange={setBillOpen}
+        tableName={table.name}
+        sessionId={table.session?.id ?? null}
+        onPaid={load}
+      />
     </div>
   );
 }

@@ -29,7 +29,8 @@ type TerminalPhase =
 
 type TerminalPaymentProps = {
   open: boolean;
-  orderId: string;
+  orderId?: string;
+  sessionId?: string;
   amount: number;
   currency: string;
   orderLabel?: string;
@@ -40,6 +41,7 @@ type TerminalPaymentProps = {
 export function TerminalPayment({
   open,
   orderId,
+  sessionId,
   amount,
   currency,
   orderLabel,
@@ -150,6 +152,11 @@ export function TerminalPayment({
       return;
     }
 
+    if (!orderId && !sessionId) {
+      toast.error("Missing payment target.");
+      return;
+    }
+
     setPhase("creating_intent");
     setErrorMessage(null);
 
@@ -157,7 +164,9 @@ export function TerminalPayment({
       const res = await fetch("/api/terminal/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify(
+          sessionId ? { sessionId } : { orderId }
+        ),
       });
       const json = await res.json();
       if (!res.ok) {

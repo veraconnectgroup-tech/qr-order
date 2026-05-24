@@ -2,7 +2,7 @@
 
 import { useConnectionStatus } from "@/hooks/use-connection-status";
 import { cn } from "@/lib/utils";
-import { DashboardResilienceShell } from "@/components/dashboard/dashboard-resilience-shell";
+import { WaiterResilienceShell } from "@/components/waiter/waiter-resilience-shell";
 import {
   DashboardProvider,
   type DashboardContextValue,
@@ -94,13 +94,13 @@ function WaiterFrame({
 export function WaiterShell({ context, children }: Props) {
   return (
     <DashboardProvider value={context}>
-      <DashboardResilienceShell staffRole={context.staffRole}>
+      <WaiterResilienceShell staffRole={context.staffRole}>
         <SoundAlertProvider>
           <DashboardAlertsProvider>
             <WaiterFrame context={context}>{children}</WaiterFrame>
           </DashboardAlertsProvider>
         </SoundAlertProvider>
-      </DashboardResilienceShell>
+      </WaiterResilienceShell>
     </DashboardProvider>
   );
 }

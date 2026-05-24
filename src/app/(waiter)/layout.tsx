@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { OnboardingGuard } from "@/components/dashboard/onboarding-guard";
 import { WaiterShell } from "@/components/waiter/waiter-shell";
@@ -15,6 +16,14 @@ const WAITER_ALLOWED_ROLES = new Set([
   "staff",
   "waiter",
 ]);
+
+export const metadata: Metadata = {
+  manifest: "/waiter/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Vera Waiter",
+  },
+};
 
 export default async function WaiterLayout({
   children,
