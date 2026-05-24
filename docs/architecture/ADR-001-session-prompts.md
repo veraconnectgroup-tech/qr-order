@@ -15,8 +15,8 @@
 | A1 migracije (`00061`–`00063`) | ✅ push-ovano (hibridni baseline — [supabase-migration-baseline.md](./supabase-migration-baseline.md)) |
 | A2 `buildOutboxEvents` + enqueue | ✅ urađeno |
 | A3 outbox processor | ✅ urađeno |
-| A4 idempotency header | ⬜ sledeći |
-| A5 PIN → Redis GETDEL | ⬜ |
+| A4 idempotency header | ✅ urađeno |
+| A5 PIN → Redis GETDEL | ⬜ sledeći |
 | A6 approve/reject RPC | ⬜ |
 | A7/A8 ukloni direct TSE/push | ⬜ (dual-write aktivan) |
 | B2 DATEV mixed-rate | ✅ |

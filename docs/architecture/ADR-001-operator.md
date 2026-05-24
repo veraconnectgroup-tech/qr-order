@@ -96,8 +96,8 @@ Svaka sesija u "operator mode":
 ✅ A1  migracije 61–63 (push-ovano, hibridni baseline)
 ✅ A2  buildOutboxEvents + enqueue
 ✅ A3  outbox processor
-⬜ A4  Idempotency-Key          ← SLEDEĆI
-⬜ A5  PIN → Redis GETDEL
+✅ A4  Idempotency-Key
+⬜ A5  PIN → Redis GETDEL          ← SLEDEĆI
 ⬜ A6  approve TX
 ⬜ A7  ukloni direct push        (tek posle A3 verified)
 ⬜ A8  ukloni direct TSE         (tek posle A3 verified)

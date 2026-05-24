@@ -98,8 +98,6 @@ export async function findOrderByIdempotencyKey(
 
 export function isIdempotencyUniqueViolation(error: {
   code?: string;
-  message?: string;
 } | null): boolean {
-  if (!error) return false;
-  return error.code === "23505" && error.message.includes("idempotency");
+  return error?.code === "23505";
 }

@@ -561,11 +561,22 @@ export async function createOrderFromCart(
           tip_amount: 0,
           tip_staff_id: null,
           order_source: "qr",
+          ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
         })
         .select("id, order_number, total, tax_percent")
         .single();
 
       if (approvalOrderError || !approvalOrder) {
+        if (
+          idempotencyKey &&
+          isIdempotencyUniqueViolation(approvalOrderError)
+        ) {
+          const existing = await findOrderByIdempotencyKey(
+            admin,
+            idempotencyKey
+          );
+          if (existing) return { data: existing };
+        }
         return { error: "Order could not be created.", status: 500 };
       }
 
@@ -677,11 +688,16 @@ export async function createOrderFromCart(
       payment_method: input.paymentMethod,
       tip_amount: 0,
       tip_staff_id: null,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
     })
     .select("id, order_number, total, tax_percent")
     .single();
 
   if (orderError || !order) {
+    if (idempotencyKey && isIdempotencyUniqueViolation(orderError)) {
+      const existing = await findOrderByIdempotencyKey(admin, idempotencyKey);
+      if (existing) return { data: existing };
+    }
     return { error: "Order could not be created.", status: 500 };
   }
 
