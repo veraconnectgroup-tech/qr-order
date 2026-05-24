@@ -296,6 +296,8 @@ function demoOrder(
     device_fingerprint: null,
     requires_session_open: false,
     idempotency_key: null,
+    pos_integration_id: null,
+    external_pos_order_id: null,
     beleg_token: null,
     beleg_snapshot: null,
     created_at,

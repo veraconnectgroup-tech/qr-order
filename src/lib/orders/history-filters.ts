@@ -14,7 +14,7 @@ export type HistoryPaymentFilter =
   | "online"
   | "at_bar"
   | "card_at_table";
-export type HistorySourceFilter = "all" | "guest" | "staff";
+export type HistorySourceFilter = "all" | "guest" | "staff" | "pos";
 
 export type HistorySearchParams = AnalyticsSearchParams & {
   status?: string;
@@ -68,7 +68,7 @@ export function parseHistoryFilters(
     ),
     source: parseEnum(
       params.source,
-      ["all", "guest", "staff"] as const,
+      ["all", "guest", "staff", "pos"] as const,
       "all"
     ),
     search: (params.q ?? "").trim(),
@@ -135,6 +135,8 @@ function applyStatusPaymentSourceFilters<
     next = next.in("order_source", ["qr", "kiosk"]);
   } else if (filters.source === "staff") {
     next = next.eq("order_source", "staff");
+  } else if (filters.source === "pos") {
+    next = next.eq("order_source", "pos");
   }
 
   return next;

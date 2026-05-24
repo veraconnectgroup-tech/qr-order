@@ -66,6 +66,22 @@ export function getPaymentMethodOption(
     };
   }
 
+  if (method === "pos") {
+    return {
+      id: "pos",
+      title: "Paid at POS",
+      description: "Settled on the point-of-sale system",
+    };
+  }
+
+  if (method === "pos_online") {
+    return {
+      id: "pos_online",
+      title: "Paid online (POS order)",
+      description: "Guest paid via Vera for a POS order",
+    };
+  }
+
   return {
     id: "online",
     title: "Pay online",
@@ -81,6 +97,8 @@ export const PAYMENT_METHOD_OPTIONS: Record<
   at_bar: getPaymentMethodOption("at_bar", "bar"),
   card_at_table: getPaymentMethodOption("card_at_table"),
   online: getPaymentMethodOption("online"),
+  pos: getPaymentMethodOption("pos"),
+  pos_online: getPaymentMethodOption("pos_online"),
 };
 
 export function paymentMethodLabel(
@@ -91,6 +109,8 @@ export function paymentMethodLabel(
     return inPersonPaymentCopy(inPersonLocation).shortLabel;
   }
   if (method === "card_at_table") return "Card";
+  if (method === "pos") return "POS";
+  if (method === "pos_online") return "Online (POS)";
   if (method === "unset") return "Unpaid";
   return "Online";
 }
@@ -130,7 +150,10 @@ export function unpaidPaymentHint(
   return "Pending";
 }
 
-export type SelectablePaymentMethod = Exclude<PaymentMethod, "unset">;
+export type SelectablePaymentMethod = Exclude<
+  PaymentMethod,
+  "unset" | "pos" | "pos_online"
+>;
 
 export function getAvailablePaymentMethods(input: {
   stripeOnboarded: boolean;

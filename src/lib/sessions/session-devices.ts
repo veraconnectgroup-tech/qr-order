@@ -10,6 +10,7 @@ export type ActiveSessionRow = {
   location_id: string;
   status: string;
   bill_status: string;
+  access_state: string;
   order_pin_hash: string | null;
   opened_at: string;
 };
@@ -21,7 +22,7 @@ export async function getActiveTableSession(
   const { data } = await admin
     .from("table_sessions")
     .select(
-      "id, session_token, table_id, location_id, status, bill_status, order_pin_hash, opened_at"
+      "id, session_token, table_id, location_id, status, bill_status, access_state, order_pin_hash, opened_at"
     )
     .eq("table_id", tableId)
     .eq("status", "active")
@@ -241,8 +242,9 @@ export async function closeTableSession(
       status: "closed",
       closed_at: now,
       bill_status: billStatus,
+      access_state: "closed",
       order_pin_hash: null,
-    })
+    } as never)
     .eq("id", sessionId);
 
   await revokeSessionDevices(admin, sessionId);

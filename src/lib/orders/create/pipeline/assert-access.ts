@@ -17,6 +17,7 @@ import {
   getActiveTableSession,
   getPendingApprovalOrder,
 } from "@/lib/sessions/session-devices";
+import { isSessionOrderBlocked } from "@/lib/sessions/session-lifecycle";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -41,6 +42,16 @@ export async function assertOrderAccess(
   }
 
   const activeSession = await getActiveTableSession(admin, ctx.table.id);
+
+  if (activeSession && isSessionOrderBlocked(activeSession.access_state)) {
+    return err(
+      orderError(
+        "session_closing",
+        "This table is closing. New orders are not accepted.",
+        409
+      )
+    );
+  }
 
   if (!activeSession) {
     const existingPending = await getPendingApprovalOrder(admin, ctx.table.id);

@@ -65,10 +65,17 @@ export function platformFeeDescriptionEn(currency = "EUR") {
   return `${small} per order under ${threshold}, ${large} per order from ${threshold} upward`;
 }
 
-export const PAYMENT_METHODS = ["unset", "online", "at_bar", "card_at_table"] as const;
+export const PAYMENT_METHODS = [
+  "unset",
+  "online",
+  "at_bar",
+  "card_at_table",
+  "pos",
+  "pos_online",
+] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
-export const ORDER_SOURCES = ["qr", "staff", "kiosk"] as const;
+export const ORDER_SOURCES = ["qr", "staff", "kiosk", "pos"] as const;
 export type OrderSource = (typeof ORDER_SOURCES)[number];
 
 export const IN_PERSON_PAYMENT_LOCATIONS = ["bar", "counter", "table"] as const;

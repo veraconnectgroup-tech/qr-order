@@ -220,6 +220,64 @@ type Tables = {
     created_at: string;
     updated_at: string;
   };
+  pos_order_links: {
+    id: string;
+    pos_integration_id: string;
+    external_order_id: string;
+    order_id: string;
+    created_at: string;
+  };
+  pos_table_mappings: {
+    id: string;
+    location_id: string;
+    provider:
+      | "deliverect"
+      | "orderbird"
+      | "lightspeed"
+      | "ready2order"
+      | "custom";
+    external_table_key: string;
+    table_id: string;
+    created_at: string;
+    updated_at: string;
+  };
+  pos_inbound_events: {
+    id: string;
+    pos_integration_id: string;
+    event_type: string;
+    external_id: string | null;
+    payload_hash: string;
+    processing_status:
+      | "received"
+      | "processed"
+      | "duplicate"
+      | "rejected"
+      | "failed";
+    http_status: number | null;
+    error_message: string | null;
+    order_id: string | null;
+    session_id: string | null;
+    duration_ms: number | null;
+    created_at: string;
+  };
+  pos_outbound_events: {
+    id: string;
+    pos_integration_id: string;
+    event_type: string;
+    success: boolean;
+    error_message: string | null;
+    created_at: string;
+  };
+  session_payment_intents: {
+    id: string;
+    session_id: string;
+    stripe_payment_intent_id: string;
+    idempotency_key: string;
+    amount_cents: number;
+    status: "pending" | "processing" | "succeeded" | "failed" | "cancelled";
+    created_at: string;
+    updated_at: string;
+  };
   products: {
     id: string;
     location_id: string;
@@ -270,6 +328,11 @@ type Tables = {
     session_token: string;
     status: "active" | "closed";
     bill_status: "open" | "settled" | "void";
+    access_state: "open" | "locked" | "closing" | "closed";
+    opened_by: "qr" | "staff" | "pos";
+    closed_by: "qr" | "staff" | "pos" | "timeout" | "system" | null;
+    pos_table_external_id: string | null;
+    payment_authority: "vera" | "pos";
     order_pin_hash: string | null;
     order_pin_set_at: string | null;
     approved_by_staff_id: string | null;
@@ -315,7 +378,13 @@ type Tables = {
       | "refunded"
       | "partial_refund"
       | "failed";
-    payment_method: "online" | "at_bar" | "card_at_table" | "unset";
+    payment_method:
+      | "online"
+      | "at_bar"
+      | "card_at_table"
+      | "unset"
+      | "pos"
+      | "pos_online";
     payment_requested_at: string | null;
     notes: string | null;
     rejection_reason: string | null;
@@ -338,10 +407,12 @@ type Tables = {
     promo_code_id: string | null;
     discount_amount: number;
     created_by_staff_id: string | null;
-    order_source: "qr" | "staff" | "kiosk";
+    order_source: "qr" | "staff" | "kiosk" | "pos";
     device_fingerprint: string | null;
     requires_session_open: boolean;
     idempotency_key: string | null;
+    pos_integration_id: string | null;
+    external_pos_order_id: string | null;
     beleg_token: string | null;
     beleg_snapshot: Json | null;
     created_at: string;
@@ -701,6 +772,18 @@ export interface Database {
           p_items: Json;
           p_promo_code_id: string | null;
           p_consume_promo: boolean;
+        };
+        Returns: Json;
+      };
+      create_pos_order_tx: {
+        Args: {
+          p_pos_integration_id: string;
+          p_location_id: string;
+          p_table_id: string;
+          p_external_order_id: string;
+          p_idempotency_key: string | null;
+          p_order_payload: Json;
+          p_items: Json;
         };
         Returns: Json;
       };

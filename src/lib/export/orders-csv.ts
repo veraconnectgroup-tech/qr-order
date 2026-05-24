@@ -21,6 +21,7 @@ function formatItems(order: OrderCsvRow) {
 
 function formatSource(source: string | undefined) {
   if (source === "staff") return "staff";
+  if (source === "pos") return "pos";
   if (source === "kiosk") return "guest";
   return "guest";
 }

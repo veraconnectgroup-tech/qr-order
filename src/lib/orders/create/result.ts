@@ -11,6 +11,7 @@ export type OrderCreateErrorCode =
   | "promo_invalid"
   | "ordering_paused"
   | "payment_method_unavailable"
+  | "session_closing"
   | "internal";
 
 export type OrderCreateError = {

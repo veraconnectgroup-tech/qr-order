@@ -25,6 +25,7 @@ export type PosDeliveryResult = {
   success: boolean;
   externalId?: string;
   error?: string;
+  skipped?: boolean;
 };
 
 export type PosAdapter = {

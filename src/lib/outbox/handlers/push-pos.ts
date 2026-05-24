@@ -108,11 +108,15 @@ async function recordChannelDelivery(
       order_id: input.orderId,
       channel: "pos",
       provider: input.provider,
-      status: input.result.success ? "delivered" : "failed",
+      status: input.result.skipped
+        ? "skipped"
+        : input.result.success
+          ? "delivered"
+          : "failed",
       external_id: input.result.externalId ?? null,
       attempts,
       last_error: input.result.error ?? null,
-      delivered_at: input.result.success ? now : null,
+      delivered_at: input.result.success && !input.result.skipped ? now : null,
     },
     { onConflict: "order_id,channel,provider" }
   );
@@ -212,7 +216,7 @@ export async function handleFulfillPushPos(
 
   const { data: order, error: orderError } = await admin
     .from("orders")
-    .select("id, created_at, location_id, total")
+    .select("id, created_at, location_id, total, order_source")
     .eq("id", orderId)
     .single();
 
@@ -225,7 +229,25 @@ export async function handleFulfillPushPos(
     created_at: string;
     location_id: string;
     total: number;
+    order_source: string;
   };
+
+  if (orderRow.order_source === "pos") {
+    await recordChannelDelivery(admin, {
+      orderId,
+      provider,
+      result: {
+        success: false,
+        skipped: true,
+        error: "anti_loop: pos-origin order skipped",
+      },
+    });
+    logger.info("Outbox fulfill.push_pos skipped — pos-origin order", {
+      orderId,
+      provider,
+    });
+    return;
+  }
 
   const { data: location, error: locationError } = await admin
     .from("locations")

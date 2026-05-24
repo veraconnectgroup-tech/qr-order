@@ -36,6 +36,21 @@ type SplitProgress = {
   isSplit: boolean;
 };
 
+type BillLineItem = {
+  name: string;
+  quantity: number;
+  total: number;
+};
+
+type BillOrder = {
+  id: string;
+  orderNumber: number;
+  orderSource: string;
+  total: number;
+  paymentStatus: string;
+  items: BillLineItem[];
+};
+
 type SessionBill = {
   amountDue: number;
   tipAmount: number;
@@ -44,6 +59,8 @@ type SessionBill = {
   taxAmount: number;
   unpaidCount: number;
   orderCount: number;
+  accessState?: string;
+  orders?: BillOrder[];
 };
 
 const appearance = {
@@ -404,6 +421,41 @@ export function OrderBillPanel({
         <p className="mt-1 text-xs text-zinc-500">
           {tUI("bill.openOrders", { count: bill.unpaidCount })}
         </p>
+      )}
+
+      {(bill.orders ?? []).filter((o) => o.paymentStatus !== "paid").length >
+        0 && (
+        <ul className="mt-4 space-y-2 border-t border-zinc-800 pt-4">
+          {(bill.orders ?? [])
+            .filter((order) => order.paymentStatus !== "paid")
+            .map((order) => (
+              <li
+                key={order.id}
+                className="rounded-lg bg-zinc-950 px-3 py-2 text-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-zinc-200">
+                    #{String(order.orderNumber).padStart(3, "0")}
+                    {order.orderSource === "pos" && (
+                      <span className="ml-2 rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-purple-300">
+                        POS
+                      </span>
+                    )}
+                  </span>
+                  <span className="tabular-nums text-zinc-300">
+                    {formatPrice(order.total, currency)}
+                  </span>
+                </div>
+                <ul className="mt-1 space-y-0.5 text-xs text-zinc-500">
+                  {order.items.map((item, index) => (
+                    <li key={`${order.id}-${index}`}>
+                      {item.quantity}× {item.name}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+        </ul>
       )}
 
       <div className="mt-4 rounded-lg bg-zinc-950 px-4 py-3">

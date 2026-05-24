@@ -20,6 +20,7 @@ import {
   handleStripeCircuitError,
   withStripeCircuit,
 } from "@/lib/stripe/with-stripe-circuit";
+import { isSessionOrderBlocked } from "@/lib/sessions/session-lifecycle";
 import {
   clampTipAmount,
   distributeTipAcrossOrders,
@@ -66,28 +67,69 @@ export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
 
     const { session } = sessionResult.data;
 
-    const { data: orders } = await admin
+    const { data: sessionRow } = await admin
+      .from("table_sessions")
+      .select("access_state")
+      .eq("id", session.id)
+      .single();
+
+    const accessState = (sessionRow as { access_state?: string } | null)
+      ?.access_state;
+
+    const { data: ordersRaw } = await admin
       .from("orders")
       .select(
-        "id, order_number, status, payment_status, payment_method, subtotal, tax_amount, total, tip_amount, created_at"
+        "id, order_number, status, payment_status, payment_method, order_source, subtotal, tax_amount, total, tip_amount, created_at"
       )
       .eq("session_id", session.id)
       .not("status", "in", '("rejected","cancelled")')
       .order("created_at", { ascending: true });
 
+    const orderIds = ((ordersRaw ?? []) as Array<{ id: string }>).map(
+      (order) => order.id
+    );
+
+    const itemsByOrder = new Map<
+      string,
+      Array<{ product_name: string; quantity: number; total: number }>
+    >();
+
+    if (orderIds.length > 0) {
+      const { data: itemRows } = await admin
+        .from("order_items")
+        .select("order_id, product_name, quantity, total")
+        .in("order_id", orderIds);
+
+      for (const item of (itemRows ?? []) as Array<{
+        order_id: string;
+        product_name: string;
+        quantity: number;
+        total: number;
+      }>) {
+        const list = itemsByOrder.get(item.order_id) ?? [];
+        list.push({
+          product_name: item.product_name,
+          quantity: item.quantity,
+          total: item.total,
+        });
+        itemsByOrder.set(item.order_id, list);
+      }
+    }
+
     const rows =
-      (orders as Array<{
+      (ordersRaw as Array<{
         id: string;
         order_number: number;
         status: string;
         payment_status: string;
         payment_method: string;
+        order_source: string;
         subtotal: number;
         tax_amount: number;
         total: number;
         tip_amount: number;
         created_at: string;
-      }>) ?? [];
+      }> | null) ?? [];
 
     const unpaid = rows.filter((o) => o.payment_status !== "paid");
     const amountDue = unpaid.reduce((sum, o) => sum + Number(o.total), 0);
@@ -100,7 +142,25 @@ export const GET = withErrorHandler("sessions-bill-get", async (req, _ctx) => {
     const chargeTotal = amountDue + tipAmount;
 
     return apiSuccess({
-      orders: rows,
+      orders: rows.map((order) => ({
+        id: order.id,
+        orderNumber: order.order_number,
+        status: order.status,
+        paymentStatus: order.payment_status,
+        paymentMethod: order.payment_method,
+        orderSource: order.order_source,
+        subtotal: order.subtotal,
+        taxAmount: order.tax_amount,
+        total: order.total,
+        tipAmount: order.tip_amount,
+        createdAt: order.created_at,
+        items: (itemsByOrder.get(order.id) ?? []).map((item) => ({
+          name: item.product_name,
+          quantity: item.quantity,
+          total: item.total,
+        })),
+      })),
+      accessState: accessState ?? "open",
       unpaidOrderIds: unpaid.map((o) => o.id),
       amountDue,
       tipAmount,
@@ -193,9 +253,28 @@ export const POST = withErrorHandler(
 
     const { session, table } = sessionResult.data;
 
+    const { data: sessionAccess } = await admin
+      .from("table_sessions")
+      .select("access_state")
+      .eq("id", session.id)
+      .single();
+
+    if (
+      isSessionOrderBlocked(
+        (sessionAccess as { access_state?: string } | null)?.access_state
+      )
+    ) {
+      return apiError(
+        "This table session is closing. Payment is not available.",
+        409
+      );
+    }
+
     const { data: orders } = await admin
       .from("orders")
-      .select("id, total, tip_amount, location_id, stripe_payment_intent_id, payment_status, is_split")
+      .select(
+        "id, total, tip_amount, location_id, stripe_payment_intent_id, payment_status, is_split, order_source"
+      )
       .eq("session_id", session.id)
       .neq("payment_status", "paid")
       .not("status", "in", '("rejected","cancelled")');
@@ -407,6 +486,24 @@ export const POST = withErrorHandler(
           payment_requested_at: new Date().toISOString(),
         })
         .in("id", orderIds);
+
+      const idempotencyKey = buildPaymentIdempotencyKey(
+        (location as { org_id: string }).org_id,
+        session.id,
+        amountCents
+      );
+
+      await admin.from("session_payment_intents" as never).upsert(
+        {
+          session_id: session.id,
+          stripe_payment_intent_id: intent.id,
+          idempotency_key: idempotencyKey,
+          amount_cents: amountCents,
+          status: "processing",
+          updated_at: new Date().toISOString(),
+        } as never,
+        { onConflict: "session_id,idempotency_key" }
+      );
 
       return apiSuccess({
         clientSecret: intent.client_secret,

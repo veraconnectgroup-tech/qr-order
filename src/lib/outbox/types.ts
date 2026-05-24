@@ -3,6 +3,7 @@ export type OutboxDomain = "fulfillment" | "fiscal" | "integration";
 export type OutboxEventType =
   | "fulfill.notify_staff"
   | "fulfill.push_pos"
+  | "fulfill.notify_pos_payment"
   | "fulfill.cloud_print"
   | "fiscal.tse_sign"
   | "fiscal.beleg"

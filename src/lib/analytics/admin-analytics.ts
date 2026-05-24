@@ -9,7 +9,7 @@ export type AdminAnalyticsOrder = {
   status: string;
   payment_status: string;
   payment_method: string;
-  order_source: "qr" | "staff" | "kiosk";
+  order_source: "qr" | "staff" | "kiosk" | "pos";
   created_at: string;
   order_items: Array<{
     product_id: string | null;
@@ -44,7 +44,7 @@ export type PaymentMethodSlice = {
 };
 
 export type OrderSourceSlice = {
-  key: "qr" | "staff" | "kiosk";
+  key: "qr" | "staff" | "kiosk" | "pos";
   name: string;
   count: number;
   percent: number;
@@ -78,6 +78,7 @@ const ORDER_SOURCE_LABELS: Record<OrderSourceSlice["key"], string> = {
   qr: "QR orders",
   staff: "Staff orders",
   kiosk: "Kiosk",
+  pos: "POS orders",
 };
 
 const PAYMENT_METHOD_KEYS = ["online", "at_bar", "card_at_table"] as const;
@@ -296,7 +297,7 @@ export function computeOrderSources(
   orders: AdminAnalyticsOrder[]
 ): OrderSourceSlice[] {
   const counts = new Map<OrderSourceSlice["key"], number>();
-  for (const key of ["qr", "staff", "kiosk"] as const) {
+  for (const key of ["qr", "staff", "kiosk", "pos"] as const) {
     counts.set(key, 0);
   }
 
@@ -310,7 +311,7 @@ export function computeOrderSources(
   const total = orders.length;
   if (total === 0) return [];
 
-  return (["qr", "staff", "kiosk"] as const)
+  return (["qr", "staff", "kiosk", "pos"] as const)
     .map((key) => ({
       key,
       name: ORDER_SOURCE_LABELS[key],

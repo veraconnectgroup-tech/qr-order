@@ -44,6 +44,22 @@ describe("buildOutboxEvents", () => {
     expect(events.map((e) => e.event_type)).not.toContain("fiscal.send_receipt");
   });
 
+  it("skips fulfill.push_pos for pos-origin orders", () => {
+    const events = buildOutboxEvents(
+      baseContext({
+        orderSource: "pos",
+        posIntegration: {
+          id: "pos-1",
+          provider: "deliverect",
+          status: "connected",
+        },
+      }),
+      "created"
+    );
+
+    expect(events.map((e) => e.event_type)).toEqual(["fulfill.notify_staff"]);
+  });
+
   it("skips fiscal events in vorsystem mode and adds fulfill.push_pos", () => {
     const events = buildOutboxEvents(
       baseContext({
@@ -120,6 +136,7 @@ describe("getOutboxHandler", () => {
     );
     expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
     expect(getOutboxHandler("fulfill.push_pos")).toBeDefined();
+    expect(getOutboxHandler("fulfill.notify_pos_payment")).toBeDefined();
     expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
     expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
     expect(getOutboxHandler("unknown.event")).toBeUndefined();

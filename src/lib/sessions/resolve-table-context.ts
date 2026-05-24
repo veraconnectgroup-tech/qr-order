@@ -13,6 +13,7 @@ export type TableGuestContext = {
   tableName: string;
   locationId: string;
   sessionStatus: "none" | "active" | "closed";
+  accessState: "open" | "locked" | "closing" | "closed" | null;
   sessionToken: string | null;
   sessionId: string | null;
   billStatus: "open" | "settled" | "void" | null;
@@ -69,6 +70,8 @@ export async function resolveTableGuestContext(
   }
 
   const sessionActive = Boolean(session);
+  const sessionClosing =
+    session?.access_state === "closing" || session?.access_state === "closed";
   const awaitingApproval = Boolean(pending);
 
   let deviceBlock: { blocked_until: string } | null = null;
@@ -81,7 +84,8 @@ export async function resolveTableGuestContext(
   }
   const deviceBlocked = Boolean(deviceBlock);
 
-  const canOrderWithSession = sessionActive && trusted && !awaitingApproval;
+  const canOrderWithSession =
+    sessionActive && trusted && !awaitingApproval && !sessionClosing;
   const canOrderFirstVisit = !sessionActive && !awaitingApproval;
 
   return {
@@ -90,6 +94,12 @@ export async function resolveTableGuestContext(
       tableName: tableRow.name,
       locationId: tableRow.location_id,
       sessionStatus: session ? "active" : "none",
+      accessState: (session?.access_state ?? null) as
+        | "open"
+        | "locked"
+        | "closing"
+        | "closed"
+        | null,
       sessionToken: session?.session_token ?? null,
       sessionId: session?.id ?? null,
       billStatus: (session?.bill_status ?? null) as
@@ -105,7 +115,7 @@ export async function resolveTableGuestContext(
         canViewOrderStatus: sessionActive,
         canPlaceOrders:
           !deviceBlocked && (canOrderWithSession || canOrderFirstVisit),
-        needsPin: sessionActive && !trusted && !deviceBlocked,
+        needsPin: sessionActive && !trusted && !deviceBlocked && !sessionClosing,
         awaitingApproval,
         deviceBlocked,
         deviceBlockedUntil: deviceBlock?.blocked_until ?? null,

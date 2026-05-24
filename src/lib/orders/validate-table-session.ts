@@ -156,7 +156,9 @@ export async function validateTableSession(
 
   const { data: session } = await admin
     .from("table_sessions")
-    .select("id, session_token, table_id, location_id, opened_at, status, bill_status")
+    .select(
+      "id, session_token, table_id, location_id, opened_at, status, bill_status, access_state"
+    )
     .eq("session_token", sessionToken)
     .eq("status", "active")
     .eq("bill_status", "open")
@@ -168,7 +170,18 @@ export async function validateTableSession(
 
   const sessionRow = session as ValidatedTableSession["session"] & {
     opened_at: string;
+    access_state: string;
   };
+
+  if (
+    sessionRow.access_state === "closing" ||
+    sessionRow.access_state === "closed"
+  ) {
+    return {
+      error: "This table session is closing. Payment is not available.",
+      status: 409,
+    };
+  }
 
   if (sessionRow.table_id !== tableRow.id) {
     return { error: "Session does not match this table", status: 403 };

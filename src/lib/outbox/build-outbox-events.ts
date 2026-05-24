@@ -34,7 +34,10 @@ export function buildOutboxEvents(
     },
   ];
 
-  if (ctx.posIntegration?.status === "connected") {
+  const shouldPushToPos =
+    ctx.posIntegration?.status === "connected" && ctx.orderSource !== "pos";
+
+  if (shouldPushToPos && ctx.posIntegration) {
     events.push({
       aggregate_id: ctx.orderId,
       domain: "fulfillment",

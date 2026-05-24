@@ -356,6 +356,18 @@ export function OrderCard({
               Staff
             </span>
           )}
+          {order.order_source === "pos" && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                light
+                  ? "bg-purple-100 text-purple-700"
+                  : "bg-purple-500/15 text-purple-300"
+              )}
+            >
+              POS
+            </span>
+          )}
           {order.transferred_from_table_name && (
             <span
               className={cn(

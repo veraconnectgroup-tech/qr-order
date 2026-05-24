@@ -15,6 +15,7 @@ const ORDER_SOURCE_COLORS: Record<OrderSourceSlice["key"], string> = {
   qr: ORANGE,
   staff: BLUE_500,
   kiosk: ZINC_500,
+  pos: "#9333ea",
 };
 
 export function OrderSourceChart({

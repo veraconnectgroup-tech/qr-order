@@ -326,12 +326,18 @@ async function verifyAndMarkSessionPaid(
   const orderIds = pi.metadata.order_ids?.split(",").filter(Boolean) ?? [];
   if (orderIds.length === 0) return;
 
+  const sessionId = pi.metadata.session_id ?? null;
+
   const { data: orders } = await admin
     .from("orders")
-    .select("id, total, payment_status, tip_amount")
+    .select("id, total, payment_status, tip_amount, location_id, order_source")
     .in("id", orderIds);
 
-  const rows = (orders as (OrderRow & { tip_amount?: number })[]) ?? [];
+  const rows = (orders as (OrderRow & {
+    tip_amount?: number;
+    location_id: string;
+    order_source: string;
+  })[]) ?? [];
   if (rows.length === 0) return;
 
   const tipFromMeta = pi.metadata.tip_amount
@@ -354,8 +360,14 @@ async function verifyAndMarkSessionPaid(
     return;
   }
 
+  const paidOrderIds: string[] = [];
+  let allSucceeded = true;
+
   for (const order of rows) {
-    if (order.payment_status === "paid") continue;
+    if (order.payment_status === "paid") {
+      paidOrderIds.push(order.id);
+      continue;
+    }
 
     const traceId = getCurrentTraceId() ?? crypto.randomUUID();
     const result = await executeOrderSagaFromPaymentIntent(
@@ -365,6 +377,7 @@ async function verifyAndMarkSessionPaid(
     );
 
     if (!result.success) {
+      allSucceeded = false;
       logger.error("Order saga failed for session checkout", {
         orderId: order.id,
         paymentIntentId: pi.id,
@@ -373,6 +386,8 @@ async function verifyAndMarkSessionPaid(
       continue;
     }
 
+    paidOrderIds.push(order.id);
+
     logger.info("Payment succeeded", {
       orderId: order.id,
       paymentIntentId: pi.id,
@@ -380,6 +395,33 @@ async function verifyAndMarkSessionPaid(
       saga: result,
     });
   }
+
+  if (!allSucceeded || paidOrderIds.length === 0) return;
+
+  const locationId = rows[0]?.location_id;
+  if (!locationId || !sessionId) return;
+
+  const { data: location } = await admin
+    .from("locations")
+    .select("org_id")
+    .eq("id", locationId)
+    .single();
+
+  const orgId = (location as { org_id: string } | null)?.org_id;
+  if (!orgId) return;
+
+  const { markSessionOrdersPaidOnline } = await import(
+    "@/lib/orders/mark-session-paid-online"
+  );
+
+  await markSessionOrdersPaidOnline(admin, {
+    sessionId,
+    locationId,
+    orgId,
+    paymentIntentId: pi.id,
+    amountCents: pi.amount,
+    orderIds: paidOrderIds,
+  });
 }
 
 async function verifyAndMarkPaid(

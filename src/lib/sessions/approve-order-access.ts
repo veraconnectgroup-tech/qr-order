@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
 import { applyDeviceBlockAfterReject } from "@/lib/sessions/order-blocks";
 import { storePinReveal } from "@/lib/sessions/pin-reveal-cache";
+import { lockTableSession } from "@/lib/sessions/session-lifecycle";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import {
   approveOrderAccessTx,
@@ -202,6 +203,8 @@ export async function approveOrderAccess(
   const { data: txData, pinPlain } = txResult;
 
   if (!txData.alreadyApproved) {
+    await lockTableSession(admin, txData.sessionId);
+
     await runPostApprovalSideEffects(admin, {
       orderId,
       sessionId: txData.sessionId,
