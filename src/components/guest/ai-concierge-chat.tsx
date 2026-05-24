@@ -24,10 +24,14 @@ import {
   type AiSheetSelections,
 } from "@/lib/ai/guest-sheet-preferences";
 import {
-  readAiSessionId,
+  clearAiSessionId,
   trackAiConversion,
   writeAiSessionId,
 } from "@/lib/ai/guest-session-storage";
+import {
+  readAiSessionIdWithMigration,
+  resolveGuestAiContextToken,
+} from "@/lib/ai/guest-ai-token";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
@@ -54,6 +58,30 @@ type ChatMessage = {
 };
 
 type ChatPhase = "allergies" | "mood" | "chat";
+
+function mapAiChatError(
+  error: string | undefined,
+  status: number,
+  details: { code?: string } | undefined,
+  tUI: (key: string) => string
+): string {
+  if (details?.code === "not_configured" || error?.includes("not configured")) {
+    return tUI("ai.overlay.unavailable");
+  }
+  if (error === "insufficient_credits") {
+    return tUI("ai.overlay.noCredits");
+  }
+  if (error?.includes("not enabled")) {
+    return tUI("ai.overlay.unavailable");
+  }
+  if (status === 401 || error?.includes("Session expired")) {
+    return tUI("ai.overlay.sessionExpired");
+  }
+  if (status === 429) {
+    return tUI("ai.overlay.rateLimited");
+  }
+  return error ?? tUI("ai.overlay.error");
+}
 
 function nextId() {
   return crypto.randomUUID();
@@ -508,7 +536,11 @@ export function AiConciergeChat({
     setAddedIds(new Set());
     setAiSessionId(
       (sessionToken ?? token)
-        ? readAiSessionId(locationId, sessionToken ?? token)
+        ? readAiSessionIdWithMigration(
+            locationId,
+            resolveGuestAiContextToken(token, sessionToken),
+            token
+          )
         : null
     );
   }, [
@@ -530,16 +562,21 @@ export function AiConciergeChat({
   }, [messages, isTyping, scrollToBottom]);
 
   const callAiChat = useCallback(
-    async (message: string, prefs?: { allergies: string[]; mood: string }) => {
-      const aiContextToken = sessionToken ?? token;
+    async (
+      message: string,
+      prefs?: { allergies: string[]; mood: string },
+      retryWithoutSession = false
+    ) => {
+      const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken) {
         throw new Error(tUI("ai.overlay.unavailable"));
       }
 
-      const sessionId =
-        aiSessionId ??
-        readAiSessionId(locationId, aiContextToken) ??
-        undefined;
+      const sessionId = retryWithoutSession
+        ? undefined
+        : (aiSessionId ??
+          readAiSessionIdWithMigration(locationId, aiContextToken, token) ??
+          undefined);
 
       const controller = new AbortController();
       const timeoutId = window.setTimeout(
@@ -574,20 +611,36 @@ export function AiConciergeChat({
         window.clearTimeout(timeoutId);
       }
 
-      const json = await res.json();
+      const json = (await res.json()) as {
+        error?: string;
+        details?: { code?: string };
+        data?: {
+          message: string;
+          recommendations: ProductRecommendation[];
+          sessionId: string;
+        };
+      };
+
       if (!res.ok) {
-        const err =
-          json.error === "insufficient_credits"
-            ? tUI("ai.overlay.noCredits")
-            : (json.error as string) ?? tUI("ai.overlay.error");
-        throw new Error(err);
+        if (
+          !retryWithoutSession &&
+          (res.status === 401 || res.status === 404) &&
+          sessionId
+        ) {
+          clearAiSessionId(locationId, aiContextToken);
+          if (token !== aiContextToken) {
+            clearAiSessionId(locationId, token);
+          }
+          setAiSessionId(null);
+          return callAiChat(message, prefs, true);
+        }
+
+        throw new Error(
+          mapAiChatError(json.error, res.status, json.details, tUI)
+        );
       }
 
-      const data = json.data as {
-        message: string;
-        recommendations: ProductRecommendation[];
-        sessionId: string;
-      };
+      const data = json.data!;
 
       if (data.sessionId) {
         writeAiSessionId(locationId, aiContextToken, data.sessionId);
@@ -597,8 +650,8 @@ export function AiConciergeChat({
       return data;
     },
     [
-      sessionToken,
       token,
+      sessionToken,
       aiSessionId,
       locationId,
       tableId,
@@ -874,7 +927,8 @@ export function AiConciergeChat({
 
   if (!open) return null;
 
-  const inputEnabled = phase === "chat" && !isTyping;
+  const inputEnabled = phase === "chat";
+  const canSend = inputEnabled && !isTyping && input.trim().length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950 text-zinc-50">

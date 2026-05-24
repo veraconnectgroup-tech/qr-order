@@ -6,7 +6,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
 import { enqueue } from "@/lib/queue/client";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withRateLimit, withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,7 +23,7 @@ export const GET = withErrorHandler(
   "orders-orderId-get",
   async (req, ctx) => {
     const cacheHeaders = noCache();
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withRateLimit(req, "orders-guest");
     if (limited) return limited;
 
     const { orderId } = await ctx.params;
@@ -195,7 +195,7 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 export const PATCH = withErrorHandler(
   "orders-orderId-patch",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
     const { orderId } = await ctx.params;

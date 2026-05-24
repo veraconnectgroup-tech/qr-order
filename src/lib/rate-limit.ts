@@ -7,6 +7,8 @@ import { createServerClient } from "@/lib/supabase/server";
 /** Production rate-limit scopes — see README § Rate limiting */
 export type RateLimitScope =
   | "orders"
+  | "orders-staff"
+  | "orders-guest"
   | "sessions"
   | "bill"
   | "payments"
@@ -20,7 +22,11 @@ export type RateLimitScope =
   | "pin-verify"
   | "default";
 
-const SCOPE_BY_USER = new Set<RateLimitScope>(["export", "fiscal"]);
+const SCOPE_BY_USER = new Set<RateLimitScope>([
+  "export",
+  "fiscal",
+  "orders-staff",
+]);
 
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -45,14 +51,16 @@ function createScopeLimiter(
 }
 
 const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
-  orders: createScopeLimiter("orders", 10, "1 m"),
+  orders: createScopeLimiter("orders", 120, "1 m"),
+  "orders-staff": createScopeLimiter("orders-staff", 600, "1 m"),
+  "orders-guest": createScopeLimiter("orders-guest", 120, "1 m"),
   sessions: createScopeLimiter("sessions", 30, "1 m"),
   bill: createScopeLimiter("bill", 5, "1 m"),
   payments: createScopeLimiter("payments", 30, "1 m"),
   export: createScopeLimiter("export", 10, "1 m"),
   fiscal: createScopeLimiter("fiscal", 10, "1 m"),
   jobs: createScopeLimiter("jobs", 120, "1 m"),
-  ai: createScopeLimiter("ai", 20, "1 m"),
+  ai: createScopeLimiter("ai", 60, "1 m"),
   "waiter-calls": createScopeLimiter("waiter-calls", 3, "1 m"),
   feedback: createScopeLimiter("feedback", 5, "1 m"),
   push: createScopeLimiter("push", 10, "1 m"),
@@ -67,14 +75,16 @@ const MEMORY_SCOPE_CONFIG: Record<
   RateLimitScope,
   { limit: number; windowMs: number }
 > = {
-  orders: { limit: 10, windowMs: 60 * 1000 },
+  orders: { limit: 120, windowMs: 60 * 1000 },
+  "orders-staff": { limit: 600, windowMs: 60 * 1000 },
+  "orders-guest": { limit: 120, windowMs: 60 * 1000 },
   sessions: { limit: 30, windowMs: 60 * 1000 },
   bill: { limit: 5, windowMs: 60 * 1000 },
   payments: { limit: 30, windowMs: 60 * 1000 },
   export: { limit: 10, windowMs: 60 * 1000 },
   fiscal: { limit: 10, windowMs: 60 * 1000 },
   jobs: { limit: 120, windowMs: 60 * 1000 },
-  ai: { limit: 20, windowMs: 60 * 1000 },
+  ai: { limit: 60, windowMs: 60 * 1000 },
   "waiter-calls": { limit: 3, windowMs: 60 * 1000 },
   feedback: { limit: 5, windowMs: 60 * 1000 },
   push: { limit: 10, windowMs: 60 * 1000 },
@@ -143,7 +153,27 @@ async function resolveRateLimitKey(
   return `${scope}:${ip}`;
 }
 
-const LOAD_TEST_SCOPES = new Set<RateLimitScope>(["orders", "sessions"]);
+const LOAD_TEST_SCOPES = new Set<RateLimitScope>([
+  "orders",
+  "orders-staff",
+  "orders-guest",
+  "sessions",
+]);
+
+export async function withStaffRateLimit(
+  req: NextRequest
+): Promise<NextResponse | null> {
+  if (process.env.LOAD_TEST === "true") {
+    return null;
+  }
+
+  const userId = await getRateLimitUserId();
+  if (userId) {
+    return withRateLimitByKey("orders-staff", userId);
+  }
+
+  return withRateLimit(req, "orders-guest");
+}
 
 export async function withRateLimit(
   req: NextRequest,

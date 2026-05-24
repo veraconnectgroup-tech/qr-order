@@ -2,7 +2,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { liftDeviceBlock } from "@/lib/sessions/order-blocks";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
@@ -33,7 +33,7 @@ const bodySchema = z.object({
 export const POST = withErrorHandler(
   "tables-tableId-unblock-device-post",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
     const staff = await loadStaff();

@@ -27,7 +27,7 @@ const querySchema = z.object({
 
 export const GET = withErrorHandler("upsell-suggestions-get", async (req, _ctx) => {
   const cacheHeaders = noCache();
-  const limited = await withRateLimit(req, "orders");
+  const limited = await withRateLimit(req, "orders-guest");
   if (limited) return limited;
 
   const parsed = querySchema.safeParse({

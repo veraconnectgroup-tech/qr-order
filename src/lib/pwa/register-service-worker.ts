@@ -1,4 +1,5 @@
-const SW_SCRIPT = "/sw.js";
+const PRODUCTION_SW = "/sw.js";
+const DEV_SW = "/push-sw.js";
 const ACTIVATION_TIMEOUT_MS = 12_000;
 
 export class ServiceWorkerUnavailableError extends Error {
@@ -6,6 +7,74 @@ export class ServiceWorkerUnavailableError extends Error {
     super(message);
     this.name = "ServiceWorkerUnavailableError";
   }
+}
+
+function serviceWorkerScript(): string {
+  return process.env.NODE_ENV === "development" ? DEV_SW : PRODUCTION_SW;
+}
+
+function waitForWorkerActivation(
+  worker: ServiceWorker,
+  timeoutMs: number
+): Promise<void> {
+  if (worker.state === "activated") {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(
+        new ServiceWorkerUnavailableError(
+          "Service worker took too long to start. Reload the page and try again."
+        )
+      );
+    }, timeoutMs);
+
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "activated") {
+        window.clearTimeout(timeoutId);
+        resolve();
+      }
+      if (worker.state === "redundant") {
+        window.clearTimeout(timeoutId);
+        reject(
+          new ServiceWorkerUnavailableError(
+            "Service worker failed to install. Reload the page and try again."
+          )
+        );
+      }
+    });
+  });
+}
+
+async function waitForRegistrationReady(
+  registration: ServiceWorkerRegistration,
+  timeoutMs: number
+): Promise<ServiceWorkerRegistration> {
+  if (registration.active) {
+    return registration;
+  }
+
+  const installing = registration.installing ?? registration.waiting;
+  if (installing) {
+    await waitForWorkerActivation(installing, timeoutMs);
+    return registration;
+  }
+
+  await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => {
+        reject(
+          new ServiceWorkerUnavailableError(
+            "Service worker took too long to start. Reload the page and try again."
+          )
+        );
+      }, timeoutMs);
+    }),
+  ]);
+
+  return registration;
 }
 
 /** Register the app service worker and wait until it is ready (with timeout). */
@@ -16,49 +85,41 @@ export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistrat
     );
   }
 
+  const script = serviceWorkerScript();
   let registration = await navigator.serviceWorker.getRegistration();
 
-  if (!registration) {
+  const needsRegister =
+    !registration ||
+    (script === DEV_SW &&
+      !registration.active?.scriptURL.endsWith("/push-sw.js"));
+
+  if (needsRegister) {
     try {
-      registration = await navigator.serviceWorker.register(SW_SCRIPT, {
+      registration = await navigator.serviceWorker.register(script, {
         scope: "/",
       });
     } catch {
-      const devHint =
-        process.env.NODE_ENV === "development"
-          ? " Push notifications require a production build (pnpm build && pnpm start)."
-          : "";
-      throw new ServiceWorkerUnavailableError(
-        `Service worker is not available.${devHint}`
-      );
+      if (script === PRODUCTION_SW) {
+        try {
+          registration = await navigator.serviceWorker.register(DEV_SW, {
+            scope: "/",
+          });
+        } catch {
+          // fall through to error below
+        }
+      }
+
+      if (!registration) {
+        const devHint =
+          process.env.NODE_ENV === "development"
+            ? " Reload the dev server after saving VAPID keys in .env.local."
+            : "";
+        throw new ServiceWorkerUnavailableError(
+          `Service worker is not available.${devHint}`
+        );
+      }
     }
   }
 
-  if (registration.active) {
-    return registration;
-  }
-
-  try {
-    await Promise.race([
-      navigator.serviceWorker.ready,
-      new Promise<never>((_, reject) => {
-        window.setTimeout(() => {
-          reject(
-            new ServiceWorkerUnavailableError(
-              "Service worker took too long to start. Reload the page and try again."
-            )
-          );
-        }, ACTIVATION_TIMEOUT_MS);
-      }),
-    ]);
-  } catch (error) {
-    if (error instanceof ServiceWorkerUnavailableError) {
-      throw error;
-    }
-    throw new ServiceWorkerUnavailableError(
-      "Service worker could not be activated."
-    );
-  }
-
-  return registration;
+  return waitForRegistrationReady(registration, ACTIVATION_TIMEOUT_MS);
 }

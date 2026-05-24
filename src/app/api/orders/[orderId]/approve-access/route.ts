@@ -5,7 +5,7 @@ import {
   approveOrderAccess,
   rejectOrderAccess,
 } from "@/lib/sessions/approve-order-access";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 import { zOrderNotesOptional } from "@/lib/security/zod-fields";
 import { isUuid } from "@/lib/security/sanitize";
 import { createServerClient } from "@/lib/supabase/server";
@@ -36,7 +36,7 @@ const rejectSchema = z.object({
 export const POST = withErrorHandler(
   "orders-orderId-approve-access-post",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
     const staff = await loadStaff();
@@ -61,7 +61,7 @@ export const POST = withErrorHandler(
 export const DELETE = withErrorHandler(
   "orders-orderId-approve-access-delete",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
     const staff = await loadStaff();

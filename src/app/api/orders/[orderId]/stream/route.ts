@@ -42,7 +42,7 @@ export const GET = withErrorHandler(
   "orders-orderId-stream-get",
   async (req, ctx) => {
     const cacheHeaders = noCache();
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withRateLimit(req, "orders-guest");
     if (limited) return limited;
 
     const { orderId } = await ctx.params;

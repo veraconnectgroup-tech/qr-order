@@ -79,12 +79,9 @@ export async function verifyAiGuestContext(
 
   const { data: tableSession } = await admin
     .from("table_sessions")
-    .select(
-      "id, session_token, table_id, location_id, status, bill_status, opened_at"
-    )
+    .select("id, session_token, table_id, location_id, status, opened_at")
     .eq("session_token", input.sessionToken)
     .eq("status", "active")
-    .eq("bill_status", "open")
     .gte("opened_at", sessionCutoff)
     .maybeSingle();
 

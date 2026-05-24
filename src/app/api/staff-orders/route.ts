@@ -5,10 +5,10 @@ import {
   createStaffOrder,
   createStaffOrderSchema,
 } from "@/lib/orders/create-staff-order";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 
 export const POST = withErrorHandler("staff-orders-post", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "orders");
+  const limited = await withStaffRateLimit(req);
   if (limited) return limited;
 
   const staff = await getCurrentStaff();

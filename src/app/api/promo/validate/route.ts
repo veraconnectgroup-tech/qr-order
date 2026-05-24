@@ -17,7 +17,7 @@ const bodySchema = z.object({
 export const POST = withErrorHandler(
   "promo-validate-post",
   async (req, _ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withRateLimit(req, "orders-guest");
     if (limited) return limited;
 
     const body = await safeJsonParse(req);

@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff } from "@/lib/auth/session";
 import { withRateLimit } from "@/lib/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 
 const subscriptionSchema = z.object({
@@ -22,6 +23,26 @@ const subscribeSchema = z.object({
 const unsubscribeSchema = z.object({
   endpoint: z.string().url().max(2048),
 });
+
+function pushSubscriptionsTable(admin: ReturnType<typeof createAdminClient>) {
+  return admin.from("push_subscriptions" as never) as unknown as {
+    upsert: (
+      row: Record<string, string | null>,
+      options: { onConflict: string }
+    ) => Promise<{ error: { message: string } | null }>;
+    delete: () => {
+      eq: (
+        column: string,
+        value: string
+      ) => {
+        eq: (
+          column: string,
+          value: string
+        ) => Promise<{ error: { message: string } | null }>;
+      };
+    };
+  };
+}
 
 async function staffCanAccessLocation(
   staff: NonNullable<Awaited<ReturnType<typeof getCurrentStaff>>>,
@@ -78,15 +99,7 @@ export const POST = withErrorHandler(
       return apiError("Unauthorized.", 401);
     }
 
-    type PushClient = {
-      from: (table: string) => {
-        upsert: (
-          row: Record<string, string>,
-          options: { onConflict: string }
-        ) => PromiseLike<{ error: unknown }>;
-      };
-    };
-
+    const admin = createAdminClient();
     const upsertRow: Record<string, string | null> = {
       user_id: user.id,
       staff_id: staff.id,
@@ -98,12 +111,17 @@ export const POST = withErrorHandler(
     const userAgent = req.headers.get("user-agent")?.slice(0, 512);
     if (userAgent) upsertRow.user_agent = userAgent;
 
-    const { error } = await (supabase as unknown as PushClient)
-      .from("push_subscriptions")
-      .upsert(upsertRow as Record<string, string>, { onConflict: "endpoint" });
+    const { error } = await pushSubscriptionsTable(admin).upsert(upsertRow, {
+      onConflict: "endpoint",
+    });
 
     if (error) {
-      return apiError("Subscription could not be saved.", 500);
+      return apiError(
+        error.message?.includes("push_subscriptions")
+          ? "Push subscriptions table missing — run database migrations."
+          : "Subscription could not be saved.",
+        500
+      );
     }
 
     return apiSuccess({ ok: true });
@@ -140,24 +158,8 @@ export const DELETE = withErrorHandler(
       return apiError("Unauthorized.", 401);
     }
 
-    type PushClient = {
-      from: (table: string) => {
-        delete: () => {
-          eq: (
-            col: string,
-            val: string
-          ) => {
-            eq: (
-              col: string,
-              val: string
-            ) => PromiseLike<{ error: unknown }>;
-          };
-        };
-      };
-    };
-
-    const { error } = await (supabase as unknown as PushClient)
-      .from("push_subscriptions")
+    const admin = createAdminClient();
+    const { error } = await pushSubscriptionsTable(admin)
       .delete()
       .eq("endpoint", parsed.data.endpoint)
       .eq("user_id", user.id);

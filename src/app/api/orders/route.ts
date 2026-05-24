@@ -4,7 +4,7 @@ import { createOrderFromCart, createOrderSchema } from "@/lib/orders/create-orde
 import { withRateLimit } from "@/lib/rate-limit";
 
 export const POST = withErrorHandler("orders-post", async (req, _ctx) => {
-  const limited = await withRateLimit(req, "orders");
+  const limited = await withRateLimit(req, "orders-guest");
   if (limited) return limited;
 
   const body = await req.json();

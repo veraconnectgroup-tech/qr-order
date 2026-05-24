@@ -182,7 +182,7 @@ export const GET = withErrorHandler(
   "orders-orderId-split-get",
   async (req, routeCtx) => {
   const cacheHeaders = noCache();
-  const limited = await withRateLimit(req, "orders");
+  const limited = await withRateLimit(req, "orders-guest");
   if (limited) return limited;
 
   const { orderId } = await routeCtx.params;
@@ -257,7 +257,7 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   "orders-orderId-split-post",
   async (req, routeCtx) => {
-  const limited = await withRateLimit(req, "orders");
+  const limited = await withRateLimit(req, "orders-guest");
   if (limited) return limited;
 
   const { orderId } = await routeCtx.params;

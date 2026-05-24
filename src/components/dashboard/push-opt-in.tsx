@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 type PushState = "unsupported" | "default" | "active" | "denied";
 
-function getVapidPublicKey() {
+function buildTimeVapidPublicKey() {
   return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? "";
 }
 
@@ -28,6 +28,9 @@ function pushErrorMessage(error: unknown): string {
   }
   if (error instanceof Error && error.message === "subscribe_timeout") {
     return "Push subscription timed out. Reload the page and try again.";
+  }
+  if (error instanceof Error && error.message === "save_timeout") {
+    return "Saving the subscription timed out. Check your connection and try again.";
   }
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError") {
@@ -53,21 +56,68 @@ function withTimeout<T>(
   ]);
 }
 
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  ms: number
+) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), ms);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("save_timeout");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function loadPushConfig(): Promise<{
+  publicKey: string;
+  configured: boolean;
+}> {
+  try {
+    const res = await fetchWithTimeout("/api/push/config", {}, 8_000);
+    const json = (await res.json().catch(() => null)) as {
+      data?: { publicKey?: string | null; configured?: boolean };
+    } | null;
+
+    const publicKey =
+      json?.data?.publicKey?.trim() ||
+      buildTimeVapidPublicKey() ||
+      "";
+
+    return {
+      publicKey,
+      configured: Boolean(json?.data?.configured && publicKey),
+    };
+  } catch {
+    const fallback = buildTimeVapidPublicKey();
+    return { publicKey: fallback, configured: Boolean(fallback) };
+  }
+}
+
 export function PushOptIn({ className }: { className?: string }) {
   const { locationId } = useDashboard();
   const [state, setState] = useState<PushState>("default");
   const [busy, setBusy] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [vapidPublicKey, setVapidPublicKey] = useState("");
+  const [serverConfigured, setServerConfigured] = useState(false);
 
-  const syncSubscriptionState = useCallback(async () => {
-    const vapidKey = getVapidPublicKey();
-    if (
-      typeof window === "undefined" ||
-      !vapidKey ||
-      !("Notification" in window) ||
-      !("serviceWorker" in navigator) ||
-      !("PushManager" in window)
-    ) {
-      setState("unsupported");
+  const browserSupported =
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window;
+
+  const syncSubscriptionState = useCallback(async (publicKey: string) => {
+    if (!publicKey || !browserSupported) {
       return;
     }
 
@@ -89,30 +139,56 @@ export function PushOptIn({ className }: { className?: string }) {
     } catch {
       setState("default");
     }
-  }, []);
+  }, [browserSupported]);
 
   useEffect(() => {
-    void syncSubscriptionState();
-  }, [syncSubscriptionState]);
+    let cancelled = false;
+
+    void (async () => {
+      const config = await loadPushConfig();
+      if (cancelled) return;
+
+      setVapidPublicKey(config.publicKey);
+      setServerConfigured(config.configured);
+      setConfigLoading(false);
+
+      if (!config.publicKey || !browserSupported) {
+        setState("unsupported");
+        return;
+      }
+
+      await syncSubscriptionState(config.publicKey);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [browserSupported, syncSubscriptionState]);
 
   async function enablePush() {
-    const vapidKey = getVapidPublicKey();
-    if (!vapidKey || state === "unsupported" || state === "denied") {
+    if (!vapidPublicKey || state === "unsupported" || state === "denied") {
       return;
     }
 
     setBusy(true);
+    setLastError(null);
 
     try {
-      const permission = await withTimeout(
-        Notification.requestPermission(),
-        30_000,
-        "permission_timeout"
-      );
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await withTimeout(
+          Notification.requestPermission(),
+          30_000,
+          "permission_timeout"
+        );
+      }
+
       if (permission !== "granted") {
         setState(permission === "denied" ? "denied" : "default");
         if (permission === "denied") {
-          toast.error("Notifications blocked in browser settings");
+          const message = "Notifications blocked in browser settings";
+          setLastError(message);
+          toast.error(message);
         }
         return;
       }
@@ -124,7 +200,7 @@ export function PushOptIn({ className }: { className?: string }) {
         subscription = await withTimeout(
           registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           }),
           15_000,
           "subscribe_timeout"
@@ -134,24 +210,30 @@ export function PushOptIn({ className }: { className?: string }) {
       const json = subscription.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
         setState("default");
-        toast.error("Could not read push subscription");
+        const message = "Could not read push subscription";
+        setLastError(message);
+        toast.error(message);
         return;
       }
 
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locationId,
-          subscription: {
-            endpoint: json.endpoint,
-            keys: {
-              p256dh: json.keys.p256dh,
-              auth: json.keys.auth,
+      const res = await fetchWithTimeout(
+        "/api/push/subscribe",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locationId,
+            subscription: {
+              endpoint: json.endpoint,
+              keys: {
+                p256dh: json.keys.p256dh,
+                auth: json.keys.auth,
+              },
             },
-          },
-        }),
-      });
+          }),
+        },
+        15_000
+      );
 
       const body = (await res.json().catch(() => null)) as {
         error?: string;
@@ -159,15 +241,20 @@ export function PushOptIn({ className }: { className?: string }) {
 
       if (!res.ok) {
         setState("default");
-        toast.error(body?.error ?? "Could not save notification subscription");
+        const message = body?.error ?? "Could not save notification subscription";
+        setLastError(message);
+        toast.error(message);
         return;
       }
 
       setState("active");
+      setLastError(null);
       toast.success("Push notifications enabled");
     } catch (error) {
       setState("default");
-      toast.error(pushErrorMessage(error));
+      const message = pushErrorMessage(error);
+      setLastError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -175,17 +262,22 @@ export function PushOptIn({ className }: { className?: string }) {
 
   async function disablePush() {
     setBusy(true);
+    setLastError(null);
     try {
       const registration = await registerAppServiceWorker();
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
-        await fetch("/api/push/subscribe", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint }),
-        });
+        await fetchWithTimeout(
+          "/api/push/subscribe",
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint }),
+          },
+          15_000
+        );
       }
       setState("default");
       toast.success("Push notifications disabled");
@@ -196,17 +288,32 @@ export function PushOptIn({ className }: { className?: string }) {
     }
   }
 
-  if (state === "unsupported") {
+  if (configLoading) {
     return null;
   }
 
-  if (!getVapidPublicKey()) {
+  if (!browserSupported) {
+    return null;
+  }
+
+  if (!vapidPublicKey) {
     return (
       <span
         className={cn("hidden text-xs text-amber-500/90 sm:inline", className)}
-        title="Set NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY"
+        title="Add NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Vercel env"
       >
         Push not configured
+      </span>
+    );
+  }
+
+  if (!serverConfigured) {
+    return (
+      <span
+        className={cn("hidden text-xs text-amber-500/90 sm:inline", className)}
+        title="VAPID_PRIVATE_KEY is missing on the server"
+      >
+        Push incomplete (missing private key)
       </span>
     );
   }
@@ -245,19 +352,23 @@ export function PushOptIn({ className }: { className?: string }) {
   }
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className={cn(
-        "hidden h-9 gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 sm:inline-flex",
-        className
+    <div className={cn("hidden sm:flex sm:flex-col sm:items-end", className)}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-9 gap-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+        onClick={() => void enablePush()}
+        disabled={busy}
+      >
+        <Bell className="size-4" />
+        {busy ? "Enabling…" : "Enable notifications"}
+      </Button>
+      {lastError && !busy && (
+        <span className="mt-1 max-w-[220px] text-right text-[11px] leading-snug text-red-400">
+          {lastError}
+        </span>
       )}
-      onClick={() => void enablePush()}
-      disabled={busy}
-    >
-      <Bell className="size-4" />
-      {busy ? "Enabling…" : "Enable notifications"}
-    </Button>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 import { closeTableSession } from "@/lib/sessions/session-devices";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -28,7 +28,7 @@ async function loadStaff(): Promise<Staff | null> {
 export const POST = withErrorHandler(
   "sessions-sessionId-close-post",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
     const staff = await loadStaff();

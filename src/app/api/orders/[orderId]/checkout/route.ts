@@ -58,7 +58,7 @@ async function loadPaymentOptions(locationId: string) {
 export const POST = withErrorHandler(
   "orders-orderId-checkout-post",
   async (req, ctx) => {
-    const limited = await withRateLimit(req, "orders");
+    const limited = await withRateLimit(req, "orders-guest");
     if (limited) return limited;
 
     const { orderId } = await ctx.params;

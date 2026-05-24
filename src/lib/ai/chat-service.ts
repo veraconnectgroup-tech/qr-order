@@ -297,10 +297,31 @@ export async function handleAiChat(body: unknown) {
     if (
       row.org_id !== orgId ||
       row.location_id !== input.locationId ||
-      row.table_id !== input.tableId ||
-      row.session_token !== input.sessionToken
+      row.table_id !== input.tableId
     ) {
       return apiError("Unauthorized.", 401);
+    }
+
+    if (row.session_token !== input.sessionToken) {
+      const { data: table } = await admin
+        .from("tables")
+        .select("qr_token")
+        .eq("id", input.tableId)
+        .maybeSingle();
+      const qrToken = (table as { qr_token: string } | null)?.qr_token;
+      const tokensEquivalent =
+        qrToken != null &&
+        (row.session_token === qrToken || input.sessionToken === qrToken);
+
+      if (!tokensEquivalent) {
+        return apiError("Unauthorized.", 401);
+      }
+
+      await admin
+        .from("ai_sessions")
+        .update({ session_token: input.sessionToken })
+        .eq("id", row.id);
+      row.session_token = input.sessionToken;
     }
 
     if (row.status !== "active") {
