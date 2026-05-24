@@ -1,17 +1,61 @@
-/** Short-lived plain PIN reveal after staff approval (not persisted in DB). */
-const cache = new Map<string, { pin: string; expiresAt: number }>();
+import { getRedisClient } from "@/lib/redis/client";
+import { logger } from "@/lib/logger";
 
-const TTL_MS = 10 * 60 * 1000;
+/** Dev-only fallback when Upstash is not configured locally. */
+const devMemoryCache = new Map<string, { pin: string; expiresAt: number }>();
 
-export function storePinReveal(orderId: string, pin: string) {
-  if (!pin) return;
-  cache.set(orderId, { pin, expiresAt: Date.now() + TTL_MS });
+const TTL_SECONDS = 10 * 60;
+const KEY_PREFIX = "pin-reveal:";
+
+function isDevMemoryFallbackEnabled(): boolean {
+  return process.env.NODE_ENV !== "production" && !getRedisClient();
 }
 
-export function consumePinReveal(orderId: string): string | null {
-  const entry = cache.get(orderId);
-  if (!entry) return null;
-  cache.delete(orderId);
-  if (Date.now() > entry.expiresAt) return null;
-  return entry.pin;
+function devMemoryKey(orderId: string) {
+  return `${KEY_PREFIX}${orderId}`;
+}
+
+export async function storePinReveal(orderId: string, pin: string): Promise<void> {
+  if (!pin) return;
+
+  const redis = getRedisClient();
+  if (redis) {
+    await redis.set(`${KEY_PREFIX}${orderId}`, pin, { ex: TTL_SECONDS });
+    return;
+  }
+
+  if (isDevMemoryFallbackEnabled()) {
+    devMemoryCache.set(devMemoryKey(orderId), {
+      pin,
+      expiresAt: Date.now() + TTL_SECONDS * 1000,
+    });
+    return;
+  }
+
+  logger.error("PIN reveal store failed — Redis not configured", { orderId });
+}
+
+/** Atomic consume — Redis GETDEL (production); dev memory fallback for local only. */
+export async function consumePinReveal(orderId: string): Promise<string | null> {
+  const redis = getRedisClient();
+  if (redis) {
+    const pin = await redis.getdel<string>(`${KEY_PREFIX}${orderId}`);
+    return pin ?? null;
+  }
+
+  if (isDevMemoryFallbackEnabled()) {
+    const entry = devMemoryCache.get(devMemoryKey(orderId));
+    if (!entry) return null;
+    devMemoryCache.delete(devMemoryKey(orderId));
+    if (Date.now() > entry.expiresAt) return null;
+    return entry.pin;
+  }
+
+  logger.error("PIN reveal consume failed — Redis not configured", { orderId });
+  return null;
+}
+
+/** Test helper — dev memory fallback only. */
+export function clearPinRevealMemoryCache() {
+  devMemoryCache.clear();
 }

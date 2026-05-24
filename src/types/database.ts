@@ -589,6 +589,23 @@ export interface Database {
         };
         Returns: void;
       };
+      approve_order_access_tx: {
+        Args: {
+          p_order_id: string;
+          p_staff_id: string;
+          p_pin_hash: string;
+          p_device_fingerprint?: string | null;
+          p_user_agent?: string | null;
+        };
+        Returns: Json;
+      };
+      reject_order_access_tx: {
+        Args: {
+          p_order_id: string;
+          p_rejection_reason?: string | null;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
   };

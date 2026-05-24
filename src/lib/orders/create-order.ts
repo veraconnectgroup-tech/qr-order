@@ -32,10 +32,7 @@ import {
   calculateOrderTaxFromItems,
   resolveItemTaxRate,
 } from "@/lib/tax/vat";
-import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
-import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
-import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import {
   findOrderByIdempotencyKey,
   isIdempotencyUniqueViolation,
@@ -732,20 +729,6 @@ export async function createOrderFromCart(
     guestEmail: input.guestEmail,
     orderSource: "qr",
     phase: "created",
-  });
-
-  scheduleOrderTseSign(orderRow.id);
-  scheduleNewOrderPush(
-    tableRow.location_id,
-    orderRow.order_number,
-    tableRow.name
-  );
-
-  dispatchOrgWebhook(orgRow.id, "order.created", {
-    order_id: orderRow.id,
-    order_number: orderRow.order_number,
-    location_id: tableRow.location_id,
-    total: orderRow.total,
   });
 
   if (promoCodeId) {

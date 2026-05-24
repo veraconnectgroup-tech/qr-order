@@ -45,44 +45,17 @@ function formatDatevDate(isoDate: string): string {
   return `${day}${month}${year}`;
 }
 
-function resolveRevenueAccount(
-  items: Array<{ total: number; tax_rate: number }>
-): { konto: string; ustSatz: number } {
-  if (!items.length) {
-    return { konto: DATEV_ACCOUNTS.revenue19, ustSatz: 19 };
-  }
-
-  const byRate = new Map<number, number>();
-  for (const item of items) {
-    const rate = Number(item.tax_rate ?? 19);
-    byRate.set(rate, (byRate.get(rate) ?? 0) + Number(item.total));
-  }
-
-  if (byRate.size === 1) {
-    const rate = [...byRate.keys()][0];
-    return rate === 7
-      ? { konto: DATEV_ACCOUNTS.revenue7, ustSatz: 7 }
-      : { konto: DATEV_ACCOUNTS.revenue19, ustSatz: 19 };
-  }
-
-  let dominantRate = 19;
-  let dominantTotal = 0;
-  for (const [rate, total] of byRate) {
-    if (total > dominantTotal) {
-      dominantTotal = total;
-      dominantRate = rate;
-    }
-  }
-
-  return dominantRate === 7
-    ? { konto: DATEV_ACCOUNTS.revenue7, ustSatz: 7 }
-    : { konto: DATEV_ACCOUNTS.revenue19, ustSatz: 19 };
-}
-
 function paymentGegenkonto(paymentMethod: string): string {
   return paymentMethod === "online"
     ? DATEV_ACCOUNTS.bankStripe
     : DATEV_ACCOUNTS.cashBar;
+}
+
+function revenueAccountForRate(rate: number): { konto: string; ustSatz: number } {
+  if (rate === 7) {
+    return { konto: DATEV_ACCOUNTS.revenue7, ustSatz: 7 };
+  }
+  return { konto: DATEV_ACCOUNTS.revenue19, ustSatz: rate === 0 ? 0 : 19 };
 }
 
 export function orderToDatevRows(order: OrderRow): DatevRow[] {
@@ -91,7 +64,7 @@ export function orderToDatevRows(order: OrderRow): DatevRow[] {
   const orderNumber = String(Math.max(0, Math.floor(Number(order.order_number))));
 
   if (!items.length) {
-    const { konto, ustSatz } = resolveRevenueAccount(items);
+    const { konto, ustSatz } = revenueAccountForRate(Number(order.tax_percent ?? 19));
     return [
       {
         umsatz: Number(order.subtotal),
@@ -114,10 +87,7 @@ export function orderToDatevRows(order: OrderRow): DatevRow[] {
   const rows: DatevRow[] = [];
   for (const [rate, grossTotal] of byRate) {
     if (grossTotal <= 0) continue;
-    const { konto, ustSatz } =
-      rate === 7
-        ? { konto: DATEV_ACCOUNTS.revenue7, ustSatz: 7 }
-        : { konto: DATEV_ACCOUNTS.revenue19, ustSatz: rate === 0 ? 0 : 19 };
+    const { konto, ustSatz } = revenueAccountForRate(rate);
 
     rows.push({
       umsatz: grossTotal,

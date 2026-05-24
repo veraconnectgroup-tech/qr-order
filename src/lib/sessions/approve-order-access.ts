@@ -1,15 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
-import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
-import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
-import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
-import {
-  createActiveSessionWithPin,
-  trustSessionDevice,
-} from "@/lib/sessions/session-devices";
 import { applyDeviceBlockAfterReject } from "@/lib/sessions/order-blocks";
 import { storePinReveal } from "@/lib/sessions/pin-reveal-cache";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
+import {
+  approveOrderAccessTx,
+  rejectOrderAccessTx,
+} from "@/lib/sessions/approve-order-access-rpc";
 import type { Staff } from "@/types";
 
 type OrderAccessRow = {
@@ -75,30 +72,15 @@ async function runPostApprovalSideEffects(
     tableId: string;
     locationId: string;
     orderNumber: number;
-  total: number;
-  paymentStatus: string;
-  deviceFingerprint: string | null;
+    total: number;
+    paymentStatus: string;
     pinPlain: string;
     staffId: string;
     orgId: string;
   }
 ) {
-  try {
-    if (input.deviceFingerprint) {
-      await trustSessionDevice(admin, {
-        sessionId: input.sessionId,
-        deviceFingerprint: input.deviceFingerprint,
-      });
-    }
-  } catch (error) {
-    logger.warn("Device trust failed after order approval", {
-      orderId: input.orderId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
   if (input.pinPlain) {
-    storePinReveal(input.orderId, input.pinPlain);
+    await storePinReveal(input.orderId, input.pinPlain);
   }
 
   try {
@@ -123,20 +105,6 @@ async function runPostApprovalSideEffects(
       phase: "approved",
       actorType: "staff",
       actorId: input.staffId,
-    });
-
-    scheduleOrderTseSign(input.orderId);
-    scheduleNewOrderPush(
-      input.locationId,
-      input.orderNumber,
-      tableName
-    );
-
-    dispatchOrgWebhook(input.orgId, "order.created", {
-      order_id: input.orderId,
-      order_number: input.orderNumber,
-      location_id: input.locationId,
-      total: input.total,
     });
 
     await admin.from("audit_log").insert({
@@ -220,84 +188,47 @@ export async function approveOrderAccess(
     return { error: "Unauthorized.", status: 403 };
   }
 
-  const sessionResult = await createActiveSessionWithPin(admin, {
-    tableId: orderRow.table_id,
-    locationId: orderRow.location_id,
-    approvedByStaffId: staff.id,
-  });
-
-  if ("error" in sessionResult) {
-    return sessionResult;
-  }
-
-  const { sessionId, sessionToken, pinPlain } = sessionResult;
-
-  const { data: updatedOrder, error: updateError } = await admin
-    .from("orders")
-    .update({
-      session_id: sessionId,
-      status: "pending",
-      requires_session_open: false,
-    })
-    .eq("id", orderId)
-    .eq("status", "pending_approval")
-    .select(
-      "id, location_id, table_id, status, order_number, total, payment_status, device_fingerprint, requires_session_open, session_id"
-    )
-    .maybeSingle();
-
-  if (updateError) {
-    return { error: "Order could not be updated.", status: 500 };
-  }
-
-  if (!updatedOrder) {
-    const { data: latestOrder } = await admin
-      .from("orders")
-      .select(
-        "id, location_id, table_id, status, order_number, total, device_fingerprint, requires_session_open, session_id"
-      )
-      .eq("id", orderId)
-      .single();
-
-    const latestRow = latestOrder as OrderAccessRow | null;
-    if (
-      latestRow?.status === "pending" &&
-      latestRow.session_id &&
-      !latestRow.requires_session_open
-    ) {
-      return loadApprovedOrderResult(admin, latestRow);
-    }
-
-    return { error: "Order is not awaiting approval.", status: 409 };
-  }
-
-  await runPostApprovalSideEffects(admin, {
+  const txResult = await approveOrderAccessTx(admin, {
     orderId,
-    sessionId,
+    staffId: staff.id,
     tableId: orderRow.table_id,
-    locationId: orderRow.location_id,
-    orderNumber: orderRow.order_number,
-    total: orderRow.total,
-    paymentStatus: orderRow.payment_status,
     deviceFingerprint: orderRow.device_fingerprint,
-    pinPlain,
-    staffId: staff.id,
-    orgId: staff.org_id,
   });
 
-  logger.info("Order access approved", {
-    orderId,
-    sessionId,
-    staffId: staff.id,
-  });
+  if ("error" in txResult) {
+    return txResult;
+  }
+
+  const { data: txData, pinPlain } = txResult;
+
+  if (!txData.alreadyApproved) {
+    await runPostApprovalSideEffects(admin, {
+      orderId,
+      sessionId: txData.sessionId,
+      tableId: orderRow.table_id,
+      locationId: orderRow.location_id,
+      orderNumber: orderRow.order_number,
+      total: orderRow.total,
+      paymentStatus: orderRow.payment_status,
+      pinPlain,
+      staffId: staff.id,
+      orgId: staff.org_id,
+    });
+
+    logger.info("Order access approved", {
+      orderId,
+      sessionId: txData.sessionId,
+      staffId: staff.id,
+    });
+  }
 
   return {
     data: {
       orderId,
-      sessionId,
-      sessionToken,
+      sessionId: txData.sessionId,
+      sessionToken: txData.sessionToken,
       tablePin: pinPlain || null,
-      orderNumber: orderRow.order_number,
+      orderNumber: txData.orderNumber,
     },
   };
 }
@@ -359,49 +290,31 @@ export async function rejectOrderAccess(
     return { error: "Unauthorized.", status: 403 };
   }
 
-  const { data: rejectedOrder, error } = await admin
-    .from("orders")
-    .update({
-      status: "rejected",
-      rejection_reason: rejectionReason ?? "Order declined by staff.",
-    })
-    .eq("id", orderId)
-    .eq("status", "pending_approval")
-    .select("id")
-    .maybeSingle();
+  const rejectResult = await rejectOrderAccessTx(admin, {
+    orderId,
+    rejectionReason,
+  });
 
-  if (error) {
-    return { error: "Order could not be rejected.", status: 500 };
+  if ("error" in rejectResult) {
+    return rejectResult;
   }
 
-  if (!rejectedOrder) {
-    const { data: latestOrder } = await admin
-      .from("orders")
-      .select("status")
-      .eq("id", orderId)
-      .single();
-
-    if ((latestOrder as { status: string } | null)?.status === "rejected") {
-      return { data: { ok: true } };
+  if (!rejectResult.data.alreadyRejected) {
+    try {
+      await admin.from("audit_log").insert({
+        action: "order.access_rejected",
+        order_id: orderId,
+        table_id: orderRow.table_id,
+        staff_id: staff.id,
+        reason: rejectionReason ?? null,
+      });
+    } catch (auditError) {
+      logger.warn("Reject audit log failed", {
+        orderId,
+        error:
+          auditError instanceof Error ? auditError.message : String(auditError),
+      });
     }
-
-    return { error: "Order is not awaiting approval.", status: 409 };
-  }
-
-  try {
-    await admin.from("audit_log").insert({
-      action: "order.access_rejected",
-      order_id: orderId,
-      table_id: orderRow.table_id,
-      staff_id: staff.id,
-      reason: rejectionReason ?? null,
-    });
-  } catch (auditError) {
-    logger.warn("Reject audit log failed", {
-      orderId,
-      error:
-        auditError instanceof Error ? auditError.message : String(auditError),
-    });
   }
 
   let blockResult: {
@@ -410,7 +323,11 @@ export async function rejectOrderAccess(
     strikeCount?: number;
   } = { blocked: false };
 
-  if (orderRow.table_id && orderRow.device_fingerprint) {
+  if (
+    !rejectResult.data.alreadyRejected &&
+    orderRow.table_id &&
+    orderRow.device_fingerprint
+  ) {
     blockResult = await applyDeviceBlockAfterReject(admin, {
       locationId: orderRow.location_id,
       tableId: orderRow.table_id,

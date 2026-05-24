@@ -97,14 +97,14 @@ Svaka sesija u "operator mode":
 ✅ A2  buildOutboxEvents + enqueue
 ✅ A3  outbox processor
 ✅ A4  Idempotency-Key
-⬜ A5  PIN → Redis GETDEL          ← SLEDEĆI
-⬜ A6  approve TX
-⬜ A7  ukloni direct push        (tek posle A3 verified)
-⬜ A8  ukloni direct TSE         (tek posle A3 verified)
-✅ B2  DATEV mixed-rate
+✅ A5  PIN → Redis GETDEL
+✅ A6  approve/reject TX (RPC 00065)
+✅ A7  ukloni direct push (outbox-only)
+✅ A8  ukloni direct TSE (outbox-only)
+✅ B2  DATEV mixed-rate (mrtav resolveRevenueAccount uklonjen)
 ```
 
-**Pravilo:** A7/A8 tek kad A3 processor radi. Dual-write ostaje do tada.
+**Track A: gotov.** Sledeći: Track B3+ (Beleg, Z-Bon) ili Track C.
 
 ---
 

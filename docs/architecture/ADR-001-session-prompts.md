@@ -16,9 +16,9 @@
 | A2 `buildOutboxEvents` + enqueue | ✅ urađeno |
 | A3 outbox processor | ✅ urađeno |
 | A4 idempotency header | ✅ urađeno |
-| A5 PIN → Redis GETDEL | ⬜ sledeći |
-| A6 approve/reject RPC | ⬜ |
-| A7/A8 ukloni direct TSE/push | ⬜ (dual-write aktivan) |
+| A5 PIN → Redis GETDEL | ✅ urađeno |
+| A6 approve/reject RPC | ✅ urađeno (`00065`) |
+| A7/A8 ukloni direct TSE/push | ⬜ sledeći (dual-write još aktivan) |
 | B2 DATEV mixed-rate | ✅ |
 
 ---

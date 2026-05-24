@@ -139,7 +139,7 @@ export const GET = withErrorHandler(
       });
     }
 
-    const tablePin = consumePinReveal(orderId);
+    const tablePin = await consumePinReveal(orderId);
 
     return apiSuccess(
       {

@@ -18,10 +18,7 @@ import {
   calculateOrderTaxFromItems,
   resolveItemTaxRate,
 } from "@/lib/tax/vat";
-import { scheduleOrderTseSign } from "@/lib/fiscal/sign-transaction";
 import { logger } from "@/lib/logger";
-import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
-import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import type { Staff } from "@/types";
 
@@ -463,19 +460,6 @@ export async function createStaffOrder(
     phase: "created",
     actorType: "staff",
     actorId: staff.id,
-  });
-
-  scheduleOrderTseSign(orderRow.id);
-
-  // 13. scheduleNewOrderPush (kitchen notification)
-  scheduleNewOrderPush(locationRow.id, orderRow.order_number, tableRow.name);
-
-  dispatchOrgWebhook(staff.org_id, "order.created", {
-    order_id: orderRow.id,
-    order_number: orderRow.order_number,
-    location_id: locationRow.id,
-    total: orderRow.total,
-    source: "staff",
   });
 
   logger.info("Staff order created", {
