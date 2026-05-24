@@ -362,6 +362,7 @@
   color: var(--lp-ink);
   position: relative;
   isolation: isolate;
+  font-feature-settings: "ss01", "ss02", "cv01";
 }
 
 .landing-page::before {
@@ -370,7 +371,7 @@
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.55;
+  opacity: 0.12;
   background:
     radial-gradient(ellipse 80% 50% at 20% -10%, rgba(249, 115, 22, 0.12), transparent 55%),
     radial-gradient(ellipse 60% 45% at 85% 15%, rgba(251, 191, 36, 0.08), transparent 50%),

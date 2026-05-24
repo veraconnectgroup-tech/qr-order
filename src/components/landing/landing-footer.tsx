@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { QrCode } from "lucide-react";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 
 const columns = [
@@ -15,7 +14,7 @@ const columns = [
   {
     title: "Company",
     links: [
-      { href: "mailto:hello@qrorder.app", label: "Contact" },
+      { href: "mailto:kontakt@verait.de", label: "Contact" },
       { href: "/#faq", label: "FAQ" },
       { href: "/login", label: "Sign in" },
       { href: "/signup", label: "Request access" },
@@ -89,12 +88,14 @@ export function LandingFooter() {
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Link href="/" className="inline-flex items-center gap-2">
-              <QrCode className="size-4 text-zinc-500" strokeWidth={1.75} />
-              <span className="text-[14px] font-medium text-white">QR Order</span>
+              <span className="text-[16px] font-bold tracking-[-0.03em] text-white">VERA</span>
+              <span className="rounded-[4px] bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+                Hospitality
+              </span>
             </Link>
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
-              Guest ordering, live operations, and payments for restaurants,
-              bars, and hospitality groups.
+              Die All-in-One Plattform für Gastronomie — Bestellung, Küche,
+              Zahlung, Analyse.
             </p>
           </div>
           {columns.map((col) => (
@@ -133,7 +134,7 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-6 flex flex-col gap-2 border-t border-zinc-800 pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px]">© 2026 QR Order · Hamburg, Germany</p>
+          <p className="text-[12px]">© 2026 Vera · Hamburg, Deutschland</p>
           <p className="text-[12px] text-zinc-500">
             Payments powered by Stripe Connect
           </p>

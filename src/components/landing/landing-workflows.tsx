@@ -9,22 +9,20 @@ import { cn } from "@/lib/utils";
 const steps = [
   {
     num: "1",
-    title: "Sign up & add your menu",
+    title: "Registrieren & Speisekarte anlegen",
     desc:
-      "Create your account, upload your menu " +
-      "with categories, modifiers and photos.",
+      "Konto erstellen, Speisekarte mit Kategorien, Modifikatoren und Fotos hochladen.",
   },
   {
     num: "2",
-    title: "Print QR codes for tables",
-    desc: "Generate and print QR codes. " + "Each table gets its own code.",
+    title: "QR-Codes für Tische drucken",
+    desc: "QR-Codes generieren und drucken. Jeder Tisch bekommt seinen eigenen Code.",
   },
   {
     num: "3",
-    title: "Guests scan, order, pay",
+    title: "Gäste scannen, bestellen, bezahlen",
     desc:
-      "No app download. Guests browse, " +
-      "order and pay from their phone.",
+      "Kein App-Download. Gäste browsen, bestellen und bezahlen vom Handy.",
   },
 ];
 
@@ -33,9 +31,9 @@ export function LandingWorkflows() {
     <section className="border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[560px] text-center">
-          <LandingHeadline inverted>Live in three steps</LandingHeadline>
+          <LandingHeadline inverted>In drei Schritten live</LandingHeadline>
           <LandingLead inverted className="mt-4">
-            From signup to first guest order in under two minutes.
+            Von der Anmeldung zur ersten Gästebestellung in unter zwei Minuten.
           </LandingLead>
         </AnimateInView>
 

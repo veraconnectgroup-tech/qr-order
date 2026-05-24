@@ -57,39 +57,39 @@ const plans: Array<{
   {
     name: "Standard",
     price: "€0",
-    period: "/ month",
+    period: "/ Monat",
     fee: TRANSACTION_FEE,
-    description: "Full platform. Pay only when guests pay by card.",
+    description: "Volle Plattform. Zahlen Sie nur wenn Gäste mit Karte bezahlen.",
     features: [
-      "QR guest menus & live orders",
-      "Kitchen display & waiter calls",
-      "Stripe Connect card payments",
-      "Bar, counter & table payment options",
-      "Analytics & CSV export",
-      "Staff invites & roles",
+      "QR-Speisekarte & Live-Bestellungen",
+      "Küchendisplay & Kellnerruf",
+      "Stripe Connect Kartenzahlung",
+      "Bar-, Theken- & Tischkasse",
+      "Analyse & CSV-Export",
+      "Mitarbeiter & Rollen",
     ],
-    cta: "Request access",
+    cta: "Kostenlos starten",
     href: "/signup",
     primary: true,
-    complianceNote: "KassenSichV • DSGVO • DATEV • TSE included",
+    complianceNote: "KassenSichV • DSGVO • DATEV • TSE inklusive",
   },
   {
     name: "Enterprise",
-    price: "Custom",
+    price: "Individuell",
     period: "",
-    fee: "Volume pricing & dedicated onboarding",
-    description: "For chains, hotel F&B, and high-volume venues.",
+    fee: "Mengenrabatt & persönliches Onboarding",
+    description: "Für Ketten, Hotel-F&B und Betriebe mit hohem Volumen.",
     features: [
-      "Everything in Standard",
-      "Multi-location rollout support",
-      "Custom integrations",
-      "Priority support & SLA options",
-      "Dedicated success contact",
+      "Alles aus Standard",
+      "Multi-Standort Rollout-Support",
+      "Individuelle Integrationen",
+      "Prioritäts-Support & SLA-Optionen",
+      "Persönlicher Ansprechpartner",
     ],
-    cta: "Contact sales",
+    cta: "Vertrieb kontaktieren",
     href: "/enterprise",
     primary: false,
-    complianceNote: "KassenSichV • DATEV • TSE included",
+    complianceNote: "KassenSichV • DATEV • TSE inklusive",
   },
 ];
 
@@ -113,13 +113,13 @@ export function LandingPage() {
         >
           <LandingContainer wide>
             <AnimateInView className="max-w-[480px]">
-              <LandingEyebrow inverted>Pricing</LandingEyebrow>
+              <LandingEyebrow inverted>Preise</LandingEyebrow>
               <LandingHeadline inverted className="mt-3">
-                Transparent economics
+                Transparente Preise
               </LandingHeadline>
               <LandingLead inverted className="mt-4">
-                No monthly platform fee on Standard. Card processing via Stripe
-                with a clear per-order fee.
+                Keine monatliche Plattformgebühr. Kartenabwicklung über Stripe
+                mit klarer Gebühr pro Bestellung.
               </LandingLead>
             </AnimateInView>
 
@@ -136,7 +136,7 @@ export function LandingPage() {
                   >
                     {plan.primary && (
                       <span className="absolute -top-3 left-8 rounded-full bg-orange-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(234,88,12,0.4)]">
-                        Most popular
+                        Beliebteste Wahl
                       </span>
                     )}
                     <p className="text-[13px] font-medium uppercase tracking-wider text-zinc-500">

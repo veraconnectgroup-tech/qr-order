@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, QrCode, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
@@ -70,8 +70,10 @@ export function LandingNav() {
       >
         <LandingContainer wide className="flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <QrCode className="size-5 text-[var(--lp-accent)]" strokeWidth={1.75} />
-            <span className="text-[14px] font-semibold text-white">QR Order</span>
+            <span className="text-[16px] font-bold tracking-[-0.03em] text-white">VERA</span>
+            <span className="ml-1.5 rounded-[4px] bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+              Hospitality
+            </span>
           </Link>
 
           <nav className="hidden items-center gap-6 lg:flex">

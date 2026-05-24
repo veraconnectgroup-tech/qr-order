@@ -12,15 +12,15 @@ import {
 } from "@/components/landing/landing-primitives";
 
 const problems = [
-  "4 tools for orders, kitchen, payments, analytics",
-  "Paper tickets lost between bar and kitchen",
-  "Guests waiting 10 min just to pay",
+  "4 verschiedene Tools für Bestellung, Küche, Zahlung, Buchhaltung",
+  "Zettel gehen zwischen Theke und Küche verloren",
+  "Gäste warten 10 Minuten nur um zu bezahlen",
 ];
 
 const solutions = [
-  "Unified dashboard — QR scan to DATEV export",
-  "Real-time kitchen display with sound alerts",
-  "Guests pay at table in 15 seconds",
+  "Ein Dashboard — vom QR-Scan bis zum DATEV-Export",
+  "Echtzeit-Küchendisplay mit Soundbenachrichtigung",
+  "Gäste bezahlen am Tisch in 15 Sekunden",
 ];
 
 export function LandingPhilosophy() {
@@ -28,9 +28,9 @@ export function LandingPhilosophy() {
     <section className="border-b border-zinc-800 bg-zinc-950 py-16 md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
-          <LandingEyebrow inverted>Why QR Order</LandingEyebrow>
+          <LandingEyebrow inverted>Das Problem</LandingEyebrow>
           <LandingHeadline inverted className="mt-4">
-            From duct tape to one platform
+            Gastronomie verdient bessere Software
           </LandingHeadline>
         </AnimateInView>
 
@@ -38,7 +38,7 @@ export function LandingPhilosophy() {
           <StaggerInView>
             <StaggerItem className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 sm:p-10">
               <p className="font-display text-xl font-semibold tracking-[-0.02em] text-zinc-300 sm:text-2xl">
-                Hospitality runs on duct tape.
+                Der Status Quo kostet Sie Geld.
               </p>
               <ul className="mt-6 space-y-3">
                 {problems.map((item) => (
@@ -69,7 +69,7 @@ export function LandingPhilosophy() {
           <StaggerInView>
             <StaggerItem className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/[0.08] to-zinc-900/60 p-8 sm:p-10">
               <p className="font-display text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">
-                One platform. Zero friction.
+                Eine Plattform. Null Reibung.
               </p>
               <ul className="mt-6 space-y-3">
                 {solutions.map((item) => (

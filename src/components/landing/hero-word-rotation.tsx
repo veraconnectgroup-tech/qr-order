@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-const WORDS = ["restaurants", "bars", "hotels", "cafés", "rooftops"];
+const WORDS = ["Restaurants", "Bars", "Hotels", "Cafés", "Kantinen"];
 
 export function HeroWordRotation() {
   const reduce = useReducedMotion();
@@ -21,10 +21,10 @@ export function HeroWordRotation() {
 
   return (
     <p className="mt-4 flex flex-wrap items-baseline gap-x-2 text-[17px] text-zinc-500 sm:text-[18px]">
-      <span>Built for</span>
+      <span>Entwickelt für</span>
       <span className="relative inline-flex h-[1.4em] min-w-[9ch] overflow-hidden">
         {reduce ? (
-          <span className="font-medium text-orange-400">hospitality</span>
+          <span className="font-medium text-orange-400">Gastronomie</span>
         ) : (
           <AnimatePresence mode="wait">
             <motion.span
@@ -40,7 +40,7 @@ export function HeroWordRotation() {
           </AnimatePresence>
         )}
       </span>
-      <span>in Germany.</span>
+      <span>in Deutschland.</span>
     </p>
   );
 }

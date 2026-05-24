@@ -26,68 +26,68 @@ const views: Array<{
 }> = [
   {
     id: "guest",
-    label: "Guest",
-    title: "Ordering without friction",
+    label: "Gast",
+    title: "Bestellung ohne Reibung",
     bullets: [
-      "QR scan opens menu — no app download",
-      "Modifiers, serve sizes, and live order status",
-      "Session bill across multiple rounds",
-      "Pay at table in under 15 seconds",
+      "QR-Scan öffnet Speisekarte — kein App-Download",
+      "Modifikatoren, Portionsgrößen und Live-Status",
+      "Session-Rechnung über mehrere Runden",
+      "Am Tisch bezahlen in unter 15 Sekunden",
     ],
   },
   {
     id: "ai",
-    label: "AI",
-    title: "Smart concierge",
+    label: "KI",
+    title: "Intelligenter Concierge",
     bullets: [
-      "Allergy and mood preferences in one sheet",
-      "Personalized picks from your live menu",
-      "Pairing suggestions after each order",
-      "Optional per location — owner controlled",
+      "Allergien und Vorlieben auf einen Blick",
+      "Personalisierte Empfehlungen aus der Live-Karte",
+      "Pairing-Vorschläge nach jeder Bestellung",
+      "Optional pro Standort — vom Betreiber steuerbar",
     ],
   },
   {
     id: "floor",
-    label: "Floor",
-    title: "Table operations",
+    label: "Tisch",
+    title: "Tischverwaltung",
     bullets: [
-      "Zones, tables, and QR codes in one view",
-      "Session totals and attention states",
-      "Waiter calls from guest devices",
-      "Staff assignments per table",
+      "Zonen, Tische und QR-Codes in einer Ansicht",
+      "Session-Umsätze und Aufmerksamkeits-Status",
+      "Kellnerruf vom Gästegerät",
+      "Mitarbeiter-Zuordnung pro Tisch",
     ],
   },
   {
     id: "kitchen",
-    label: "Kitchen",
-    title: "Prep display",
+    label: "Küche",
+    title: "Küchendisplay",
     bullets: [
-      "Four-column KDS: pending → ready",
-      "Sound alerts for new orders",
-      "Large tap targets for gloved hands",
-      "Fullscreen mode for wall displays",
+      "Vier-Spalten-KDS: offen → fertig",
+      "Sound-Benachrichtigung bei neuen Bestellungen",
+      "Große Buttons für Handschuhbedienung",
+      "Vollbildmodus für Wanddisplays",
     ],
   },
   {
     id: "payments",
-    label: "Payments",
-    title: "Checkout per venue",
+    label: "Zahlung",
+    title: "Checkout pro Standort",
     bullets: [
-      "Stripe Connect with Apple Pay & Google Pay",
-      "Split bill by items or equal parts",
-      "Digital tips at payment time",
-      "Bar, counter, or table checkout",
+      "Stripe Connect mit Apple Pay & Google Pay",
+      "Rechnung teilen nach Artikeln oder gleich",
+      "Digitales Trinkgeld beim Bezahlen",
+      "Bar-, Theken- oder Tischkasse",
     ],
   },
   {
     id: "analytics",
-    label: "Analytics",
-    title: "Operator reporting",
+    label: "Analyse",
+    title: "Betreiber-Reporting",
     bullets: [
-      "Daily revenue and order volume KPIs",
-      "Tips, feedback, and menu performance",
-      "CSV export for finance teams",
-      "DATEV-ready transaction records",
+      "Tagesumsatz und Bestellvolumen-KPIs",
+      "Trinkgeld, Feedback und Menü-Performance",
+      "CSV-Export für das Finanzteam",
+      "DATEV-kompatible Transaktionsdaten",
     ],
   },
 ];
@@ -139,13 +139,13 @@ export function LandingProductTabs() {
     <section id="product" className="scroll-mt-24 border-t border-zinc-800 bg-zinc-950 py-16 text-white md:py-20">
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
-          <LandingSectionLabel>Product tour</LandingSectionLabel>
+          <LandingSectionLabel>Produkttour</LandingSectionLabel>
           <LandingHeadline inverted className="mt-5">
-            Built for every role on the floor
+            Für jede Rolle im Betrieb
           </LandingHeadline>
           <LandingLead inverted className="mt-4">
-            Guest ordering, live ops, kitchen sync, and payments — where your
-            team already works.
+            Gästebestellung, Live-Betrieb, Küchensync und Zahlungen — dort wo
+            Ihr Team bereits arbeitet.
           </LandingLead>
         </AnimateInView>
 

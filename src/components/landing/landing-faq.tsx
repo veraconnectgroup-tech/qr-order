@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const faqs = [
   {
-    q: "Ist QR Order KassenSichV-konform?",
+    q: "Ist Vera KassenSichV-konform?",
     a:
       "Ja. Jede Transaktion wird über eine " +
       "zertifizierte TSE signiert. " +
@@ -32,7 +32,7 @@ const faqs = [
       "seinen Anteil separat.",
   },
   {
-    q: "Was kostet QR Order?",
+    q: "Was kostet Vera?",
     a:
       "0€ monatlich. Wir berechnen nur eine " +
       "kleine Gebühr pro Online-Kartenzahlung.",
@@ -43,6 +43,11 @@ const faqs = [
       "In unter 2 Minuten. Account erstellen, " +
       "Menü hochladen, QR-Codes drucken " +
       "— fertig.",
+  },
+  {
+    q: "Kann ich Vera mit meinem Kassensystem verbinden?",
+    a:
+      "Ja. Vera unterstützt POS-Integrationen über Deliverect, Orderbird, Lightspeed und ready2order. Sprechen Sie uns an für Ihre Konfiguration.",
   },
 ];
 
@@ -59,7 +64,7 @@ export function LandingFaq() {
             Antworten für Betreiber, die QR-Bestellung evaluieren.
           </LandingLead>
           <a
-            href="mailto:hello@qrorder.app"
+            href="mailto:kontakt@verait.de"
             className="mt-6 inline-block text-[14px] font-medium text-[var(--lp-accent)] hover:underline"
           >
             Team kontaktieren →

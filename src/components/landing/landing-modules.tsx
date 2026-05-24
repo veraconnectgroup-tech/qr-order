@@ -39,7 +39,7 @@ import {
 } from "@/components/landing/landing-primitives";
 import { cn } from "@/lib/utils";
 
-const categories = ["All", "Guest", "Operations", "Payments"] as const;
+const categories = ["Alle", "Gast", "Betrieb", "Zahlung"] as const;
 
 type ModulePreview = React.ComponentType;
 
@@ -47,98 +47,109 @@ const modules: Array<{
   icon: LucideIcon;
   title: string;
   description: string;
-  category: Exclude<(typeof categories)[number], "All">;
+  category: Exclude<(typeof categories)[number], "Alle">;
   Preview: ModulePreview;
   featured?: boolean;
 }> = [
   {
     icon: QrCode,
-    title: "QR guest menus",
-    description: "Scan to open a mobile-native menu — modifiers, serve sizes, live status.",
-    category: "Guest",
+    title: "QR-Speisekarte",
+    description:
+      "Gäste scannen und sehen eine mobile Karte — Modifikatoren, Portionsgrößen, Live-Status.",
+    category: "Gast",
     Preview: ModulePreviewQr,
     featured: true,
   },
   {
     icon: Smartphone,
-    title: "Session ordering",
-    description: "Guests add to a table session bill without creating an account.",
-    category: "Guest",
+    title: "Session-Bestellung",
+    description:
+      "Gäste bestellen auf eine Tisch-Rechnung — ohne Konto, ohne App.",
+    category: "Gast",
     Preview: ModulePreviewSession,
   },
   {
     icon: Sparkles,
-    title: "AI Concierge",
-    description: "Smart sommelier — allergies, mood, personalized picks.",
-    category: "Guest",
+    title: "KI-Concierge",
+    description:
+      "Intelligenter Sommelier — Allergien, Stimmung, personalisierte Empfehlungen.",
+    category: "Gast",
     Preview: ModulePreviewAi,
   },
   {
     icon: LayoutGrid,
-    title: "Floor board",
-    description: "Zones, tables, QR codes, session totals, and attention states.",
-    category: "Operations",
+    title: "Tischplan",
+    description:
+      "Zonen, Tische, QR-Codes, Session-Umsätze und Aufmerksamkeits-Status.",
+    category: "Betrieb",
     Preview: ModulePreviewFloor,
   },
   {
     icon: ChefHat,
-    title: "Kitchen display",
-    description: "Prep line with timers and large tap targets for peak service.",
-    category: "Operations",
+    title: "Küchendisplay",
+    description:
+      "Zubereitungslinie mit Timern und großen Buttons für den Küchenbetrieb.",
+    category: "Betrieb",
     Preview: ModulePreviewKitchen,
     featured: true,
   },
   {
     icon: Users,
-    title: "Waiter calls",
-    description: "Guests request staff from the table — hosts see it instantly.",
-    category: "Operations",
+    title: "Kellnerruf",
+    description:
+      "Gäste rufen Personal vom Tisch aus — das Team sieht es sofort.",
+    category: "Betrieb",
     Preview: ModulePreviewWaiter,
   },
   {
     icon: CreditCard,
     title: "Stripe Connect",
-    description: "Card payments routed to each venue with clear per-order fees.",
-    category: "Payments",
+    description:
+      "Kartenzahlung pro Standort mit transparenten Gebühren pro Bestellung.",
+    category: "Zahlung",
     Preview: ModulePreviewStripe,
     featured: true,
   },
   {
     icon: CreditCard,
-    title: "Pay in person",
-    description: "Bar, counter, or table checkout — configured per location.",
-    category: "Payments",
+    title: "Vor-Ort-Zahlung",
+    description:
+      "Bar-, Theken- oder Tischkasse — konfigurierbar pro Standort.",
+    category: "Zahlung",
     Preview: ModulePreviewInPerson,
   },
   {
     icon: Split,
-    title: "Split bill",
-    description: "Guests divide the check equally or by items — each pays their share.",
-    category: "Payments",
+    title: "Rechnung teilen",
+    description:
+      "Gäste teilen gleichmäßig oder nach Artikeln — jeder zahlt seinen Anteil.",
+    category: "Zahlung",
     Preview: ModulePreviewSplit,
   },
   {
     icon: Heart,
-    title: "Digital tips",
-    description: "MwSt-free tips at checkout — routed to assigned staff automatically.",
-    category: "Payments",
+    title: "Digitales Trinkgeld",
+    description:
+      "MwSt-freies Trinkgeld beim Checkout — automatisch dem Personal zugeordnet.",
+    category: "Zahlung",
     Preview: ModulePreviewTips,
   },
   {
     icon: BarChart3,
-    title: "Analytics & export",
-    description: "Daily revenue, filters, and CSV export for finance teams.",
-    category: "Operations",
+    title: "Analyse & Export",
+    description:
+      "Tagesumsatz, Filter und CSV-Export für Buchhaltung und DATEV.",
+    category: "Betrieb",
     Preview: ModulePreviewAnalytics,
   },
 ];
 
 export function LandingModules() {
   const [category, setCategory] =
-    useState<(typeof categories)[number]>("All");
+    useState<(typeof categories)[number]>("Alle");
 
   const filtered =
-    category === "All"
+    category === "Alle"
       ? modules
       : modules.filter((m) => m.category === category);
 
@@ -147,11 +158,11 @@ export function LandingModules() {
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingHeadline inverted>
-            Every module your venue needs
+            Jedes Modul das Ihr Betrieb braucht
           </LandingHeadline>
           <LandingLead inverted className="mt-4">
-            Run guest ordering, floor ops, kitchen, and payments without opening
-            four different tools.
+            Gästebestellung, Tischplan, Küche und Zahlungen — ohne vier
+            verschiedene Tools.
           </LandingLead>
         </AnimateInView>
 
@@ -203,12 +214,12 @@ export function LandingModules() {
 
         <AnimateInView className="mt-10 text-center">
           <p className="text-[14px] text-zinc-500">
-            Plus staff roles, multi-location, and enterprise rollout →{" "}
+            Plus Mitarbeiterrollen, Multi-Standort und Enterprise-Rollout →{" "}
             <a
               href="/enterprise"
               className="font-medium text-[var(--lp-accent)] hover:underline"
             >
-              Explore enterprise
+              Enterprise entdecken
             </a>
           </p>
         </AnimateInView>

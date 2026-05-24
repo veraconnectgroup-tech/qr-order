@@ -25,12 +25,12 @@ export function LandingCtaBanner() {
       <div className="relative z-10 px-6">
         <h2 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-semibold leading-tight tracking-[-0.03em]">
           <span className="landing-gradient-text">
-            Your guests are ready. Are you?
+            Ihre Gäste sind bereit. Sind Sie es auch?
           </span>
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-zinc-400">
-          Join our pilot program — no credit card needed. Go live in under 30
-          minutes.
+          Starten Sie unser Pilotprogramm — keine Kreditkarte nötig. In unter 30
+          Minuten live.
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -40,7 +40,7 @@ export function LandingCtaBanner() {
             className="landing-btn-accent h-12 min-w-[200px] rounded-full px-8 text-[15px] font-semibold"
           >
             <Link href="/signup">
-              Request access
+              Kostenlos starten
               <ArrowRight className="ml-1.5 size-4" />
             </Link>
           </Button>
@@ -50,11 +50,11 @@ export function LandingCtaBanner() {
             asChild
             className="h-12 min-w-[200px] rounded-full border-zinc-700 bg-transparent px-8 text-[15px] font-medium text-zinc-200 hover:bg-zinc-900 hover:text-white"
           >
-            <Link href="/skyline-lounge/demo-table-8">See live demo</Link>
+            <Link href="/skyline-lounge/demo-table-8">Live-Demo ansehen</Link>
           </Button>
         </div>
 
-        <p className="mt-5 text-xs text-zinc-500">🇩🇪 Made in Hamburg</p>
+        <p className="mt-5 text-xs text-zinc-500">🇩🇪 Entwickelt in Hamburg</p>
       </div>
     </section>
   );

@@ -36,17 +36,17 @@ function HeroAuroraOrbs() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <motion.div
-        className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-orange-500/25 blur-[120px]"
+        className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-orange-500/15 blur-[120px]"
         animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-amber-400/15 blur-[120px]"
+        className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-amber-400/10 blur-[120px]"
         animate={{ x: [0, -35, 25, 0], y: [0, 25, -15, 0] }}
         transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
       <motion.div
-        className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-rose-500/10 blur-[120px]"
+        className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-rose-500/8 blur-[120px]"
         animate={{ x: [0, 30, -25, 0], y: [0, -20, 30, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 4 }}
       />
@@ -63,13 +63,13 @@ export function LandingHero() {
           <HeroStagger className="max-w-[620px] lg:max-w-none">
             <HeroItem>
               <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-orange-500">
-                Hospitality OS
+                Die Plattform für Gastronomie
               </p>
             </HeroItem>
             <HeroItem>
               <h1 className="font-display text-[clamp(2.5rem,5.5vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.045em]">
                 <span className="landing-gradient-text">
-                  The operating system for modern hospitality.
+                  Alles was Ihr Betrieb braucht. In einer Plattform.
                 </span>
               </h1>
             </HeroItem>
@@ -78,8 +78,8 @@ export function LandingHero() {
             </HeroItem>
             <HeroItem>
               <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
-                QR ordering, live kitchen ops, table management, and Stripe
-                payments — unified in one platform.
+                Bestellung, Küchendisplay, Tischverwaltung, Kartenzahlung,
+                Buchhaltungsexport — ein System statt fünf.
               </p>
             </HeroItem>
             <HeroItem>
@@ -89,7 +89,7 @@ export function LandingHero() {
                   asChild
                   className="landing-btn-accent h-12 rounded-full px-8 text-sm font-semibold"
                 >
-                  <Link href="/signup">Start free</Link>
+                  <Link href="/signup">Kostenlos starten</Link>
                 </Button>
                 <Button
                   size="lg"
@@ -98,15 +98,14 @@ export function LandingHero() {
                   className="h-12 rounded-full border-zinc-700 bg-transparent px-8 text-sm font-medium text-zinc-200 hover:bg-zinc-900 hover:text-white"
                 >
                   <Link href="/skyline-lounge/demo-table-8">
-                    See live demo →
+                    Live-Demo ansehen →
                   </Link>
                 </Button>
               </div>
             </HeroItem>
             <HeroItem>
               <p className="mt-6 text-[13px] leading-relaxed text-zinc-500">
-                Used by early operators across Germany · 0€/month · Live in{" "}
-                <span className="text-zinc-400">&lt; 30 min</span>
+                0 € / Monat · KassenSichV-konform · In unter 30 Minuten live
               </p>
             </HeroItem>
           </HeroStagger>
