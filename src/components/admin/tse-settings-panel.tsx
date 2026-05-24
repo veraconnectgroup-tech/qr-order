@@ -177,9 +177,7 @@ export function TseSettingsPanel({
       )}
 
       <div className="mt-6 border-t border-neutral-200 pt-6">
-        <h3 className="text-sm font-semibold text-neutral-900">
-          Fiskaldaten für Kassenbeleg
-        </h3>
+        <h3 className="text-sm font-semibold text-neutral-900">Fiskaldaten</h3>
         <p className="mt-1 text-sm text-neutral-600">
           Steuernummer oder USt-IdNr erscheint auf dem gesetzlichen Beleg (§14
           UStG).
@@ -192,7 +190,7 @@ export function TseSettingsPanel({
               id="steuernummer"
               value={steuernummer}
               onChange={(e) => setSteuernummer(e.target.value)}
-              placeholder="12/345/67890"
+              placeholder="123/456/78901"
             />
           </div>
 

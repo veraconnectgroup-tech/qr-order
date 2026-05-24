@@ -17,17 +17,16 @@ type PushNotifyPayload = {
 };
 
 const DEBOUNCE_SECONDS = 10;
-const KEY_PREFIX = "push-debounce:";
 
 /** Dev-only fallback when Upstash is not configured locally. */
-const devMemoryCache = new Map<string, number>();
+const devLastSentAt = new Map<string, number>();
 
 function isDevMemoryFallbackEnabled(): boolean {
   return process.env.NODE_ENV !== "production" && !getRedisClient();
 }
 
 function debounceKey(locationId: string, type: PushNotifyType) {
-  return `${KEY_PREFIX}${locationId}:${type}`;
+  return `push-debounce:${locationId}:${type}`;
 }
 
 /** Returns true when a recent notify for this location+type should be skipped. */
@@ -39,18 +38,18 @@ async function isDebounced(
   const redis = getRedisClient();
 
   if (redis) {
-    const acquired = await redis.set(key, "1", {
+    const wasSet = await redis.set(key, "1", {
       nx: true,
       ex: DEBOUNCE_SECONDS,
     });
-    return acquired === null;
+    return !wasSet;
   }
 
   if (isDevMemoryFallbackEnabled()) {
     const now = Date.now();
-    const last = devMemoryCache.get(key) ?? 0;
+    const last = devLastSentAt.get(key) ?? 0;
     if (now - last < DEBOUNCE_SECONDS * 1000) return true;
-    devMemoryCache.set(key, now);
+    devLastSentAt.set(key, now);
     return false;
   }
 
@@ -61,7 +60,7 @@ async function isDebounced(
   return false;
 }
 
-async function deliverPush(payload: PushNotifyPayload) {
+async function notifyDirect(payload: PushNotifyPayload) {
   void notifyLocationPush(payload.locationId, {
     title: payload.title,
     body: payload.body,
@@ -75,18 +74,14 @@ async function deliverPush(payload: PushNotifyPayload) {
   });
 }
 
-export function schedulePushNotify(payload: PushNotifyPayload) {
-  void runSchedulePushNotify(payload);
-}
-
-async function runSchedulePushNotify(payload: PushNotifyPayload) {
+export async function schedulePushNotify(payload: PushNotifyPayload) {
   if (await isDebounced(payload.locationId, payload.type)) return;
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const secret = process.env.CRON_SECRET;
 
   if (!secret) {
-    await deliverPush(payload);
+    await notifyDirect(payload);
     return;
   }
 
@@ -107,7 +102,7 @@ async function runSchedulePushNotify(payload: PushNotifyPayload) {
 }
 
 export function scheduleWaiterCallPush(locationId: string, tableName: string) {
-  schedulePushNotify({
+  void schedulePushNotify({
     locationId,
     type: "waiter-call",
     title: "Waiter call",
@@ -120,7 +115,7 @@ export function scheduleOrderReadyPush(
   locationId: string,
   orderNumber: number
 ) {
-  schedulePushNotify({
+  void schedulePushNotify({
     locationId,
     type: "order-ready",
     title: `Order ${formatOrderNumber(orderNumber)} ready`,
@@ -131,5 +126,5 @@ export function scheduleOrderReadyPush(
 
 /** Test helper — dev memory fallback only. */
 export function clearPushDebounceMemoryCache() {
-  devMemoryCache.clear();
+  devLastSentAt.clear();
 }

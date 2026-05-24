@@ -8,7 +8,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const fiscalFieldsSchema = z.object({
   steuernummer: zOptionalSanitizedText(50),
-  ust_id_nr: zOptionalSanitizedText(20),
+  ust_id_nr: zOptionalSanitizedText(20).refine(
+    (val) => !val || /^DE\d{9}$/.test(val),
+    { message: "USt-IdNr must be DE followed by 9 digits (e.g. DE123456789)." }
+  ),
 });
 
 export async function updateOrgFiscalFields(formData: FormData) {
@@ -20,7 +23,9 @@ export async function updateOrgFiscalFields(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: "Invalid fiscal fields." };
+    const message =
+      parsed.error.issues[0]?.message ?? "Invalid fiscal fields.";
+    return { error: message };
   }
 
   const admin = createAdminClient();

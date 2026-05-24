@@ -155,9 +155,9 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
     : "";
 
   const fiscalIdBlock = data.steuernummer
-    ? `<p style="margin:0 0 24px;color:#71717a;font-size:13px">St.-Nr.: ${escapeHtml(data.steuernummer)}</p>`
+    ? `<p style="margin:0 0 24px;color:#a1a1aa;font-size:13px">St.-Nr.: ${escapeHtml(data.steuernummer)}</p>`
     : data.ustIdNr
-      ? `<p style="margin:0 0 24px;color:#71717a;font-size:13px">USt-IdNr: ${escapeHtml(data.ustIdNr)}</p>`
+      ? `<p style="margin:0 0 24px;color:#a1a1aa;font-size:13px">USt-IdNr: ${escapeHtml(data.ustIdNr)}</p>`
       : "";
 
   return `<!DOCTYPE html>
