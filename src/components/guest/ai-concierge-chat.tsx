@@ -12,13 +12,12 @@ import { Send, Sparkles, X, Check, Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { MenuCategory } from "@/components/guest/menu-grid";
-import { getDemoAiRecommendations, getDemoAiChatResponse } from "@/lib/demo-ai";
+import { getDemoAiChatResponse } from "@/lib/demo-ai";
 import {
   AI_SHEET_ALLERGY_OPTIONS,
   AI_SHEET_MOOD_OPTIONS,
   allergenIdsFromSheetSelections,
   apiPreferencesFromSheet,
-  buildSmartMenuPrompt,
   type AiSheetAllergyId,
   type AiSheetMoodId,
   type AiSheetSelections,
@@ -979,85 +978,6 @@ export function AiConciergeChat({
     ]
   );
 
-  const fetchInitialRecommendations = useCallback(
-    async (selections: AiSheetSelections) => {
-      setIsTyping(true);
-      try {
-        const prefs = apiPreferencesFromSheet(selections);
-        preferencesRef.current = prefs;
-        onSaveAllergies?.(prefs.allergies, selections.allergies);
-
-        let recommendations: ProductRecommendation[] = [];
-        let sessionId: string | null = aiSessionId;
-
-        if (isDemo) {
-          await new Promise((r) => window.setTimeout(r, 700));
-          recommendations = getDemoAiRecommendations(menuCategories, selections);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: nextId(),
-              role: "assistant",
-              content: recommendations[0]?.reason ?? tUI("ai.smart.recommendedTitle"),
-              recommendations,
-            },
-          ]);
-        } else {
-          const data = await callAiChat(
-            buildSmartMenuPrompt(selections),
-            prefs
-          );
-          recommendations = data.recommendations;
-          sessionId = data.sessionId ?? sessionId;
-          applyCartActions(data.cartActions);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: nextId(),
-              role: "assistant",
-              content: data.message,
-              recommendations,
-              quickReplies: data.quickReplies?.length
-                ? data.quickReplies
-                : undefined,
-            },
-          ]);
-        }
-
-        setPhase("chat");
-        handleRecommendations?.({
-          recommendations,
-          sessionId,
-          preferences: prefs,
-          allergenIds: allergenIdsFromSheetSelections(selections.allergies),
-        });
-      } catch (e) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            content:
-              e instanceof Error ? e.message : tUI("ai.overlay.error"),
-          },
-        ]);
-        setPhase("chat");
-      } finally {
-        setIsTyping(false);
-      }
-    },
-    [
-      aiSessionId,
-      isDemo,
-      menuCategories,
-      callAiChat,
-      applyCartActions,
-      handleRecommendations,
-      onSaveAllergies,
-      tUI,
-    ]
-  );
-
   const handleQuickPickConfirm = useCallback(
     (messageId: string, ids: string[]) => {
       if (phase === "allergies") {
@@ -1150,7 +1070,7 @@ export function AiConciergeChat({
       allergyOptions,
       moodOptions,
       tUI,
-      fetchInitialRecommendations,
+      onSaveAllergies,
     ]
   );
 

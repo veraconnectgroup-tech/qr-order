@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import {
@@ -31,12 +31,23 @@ export function ApprovalWaiting({
   const [tablePin, setTablePin] = useState<string | null>(null);
   const [rejected, setRejected] = useState<string | null>(null);
   const [deviceBlocked, setDeviceBlocked] = useState(false);
+  const tablePinShownRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    let pollIntervalId: ReturnType<typeof setInterval> | undefined;
     const fingerprint = getOrCreateDeviceFingerprint();
 
+    function stopPolling() {
+      if (pollIntervalId !== undefined) {
+        clearInterval(pollIntervalId);
+        pollIntervalId = undefined;
+      }
+    }
+
     async function poll() {
+      if (cancelled || tablePinShownRef.current) return;
+
       const params = new URLSearchParams({
         tableToken: token,
         deviceFingerprint: fingerprint,
@@ -62,6 +73,7 @@ export function ApprovalWaiting({
       if (!data) return;
 
       if (data.status === "rejected") {
+        stopPolling();
         setRejected(data.rejectionReason ?? tUI("session.approvalRejected"));
         setDeviceBlocked(Boolean(data.deviceBlocked));
         return;
@@ -87,18 +99,23 @@ export function ApprovalWaiting({
           tableId
         );
         if (data.tablePin) {
+          tablePinShownRef.current = true;
           setTablePin(data.tablePin);
-        } else {
+          stopPolling();
+          return;
+        }
+        if (!tablePinShownRef.current) {
+          stopPolling();
           router.replace(`/${slug}/${token}/order/${orderId}?placed=1`);
         }
       }
     }
 
     void poll();
-    const id = setInterval(poll, REALTIME_FALLBACK_POLL_MS);
+    pollIntervalId = setInterval(poll, REALTIME_FALLBACK_POLL_MS);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      stopPolling();
     };
   }, [
     orderId,
