@@ -68,7 +68,7 @@ export const GET = withErrorHandler(
       const now = new Date().toISOString();
       for (const reader of readers.data) {
         const status = mapReaderStatus(reader.status);
-        await admin.from("terminal_readers" as never).upsert(
+        await admin.from("terminal_readers").upsert(
           {
             location_id: locationId,
             org_id: orgContext.orgId,
@@ -77,13 +77,13 @@ export const GET = withErrorHandler(
             status,
             last_seen_at: status === "online" ? now : null,
             updated_at: now,
-          } as never,
+          },
           { onConflict: "location_id,stripe_reader_id" }
         );
       }
 
       const { data: rows } = await admin
-        .from("terminal_readers" as never)
+        .from("terminal_readers")
         .select("id, stripe_reader_id, label, status, last_seen_at, created_at")
         .eq("location_id", locationId)
         .order("label");
@@ -161,7 +161,7 @@ export const POST = withErrorHandler(
       const status = mapReaderStatus(reader.status);
       const now = new Date().toISOString();
 
-      await admin.from("terminal_readers" as never).upsert(
+      await admin.from("terminal_readers").upsert(
         {
           location_id: parsed.data.locationId,
           org_id: orgContext.orgId,
@@ -170,7 +170,7 @@ export const POST = withErrorHandler(
           status,
           last_seen_at: status === "online" ? now : null,
           updated_at: now,
-        } as never,
+        },
         { onConflict: "location_id,stripe_reader_id" }
       );
 
@@ -232,7 +232,7 @@ export const DELETE = withErrorHandler(
       );
 
       await admin
-        .from("terminal_readers" as never)
+        .from("terminal_readers")
         .delete()
         .eq("location_id", parsed.data.locationId)
         .eq("stripe_reader_id", parsed.data.stripeReaderId);

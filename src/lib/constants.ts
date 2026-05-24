@@ -21,9 +21,23 @@ export const PAYMENT_STATUSES = [
   "failed",
 ] as const;
 
-export const STAFF_ROLES = ["owner", "manager", "staff", "kitchen"] as const;
+export const STAFF_ROLES = [
+  "owner",
+  "manager",
+  "staff",
+  "kitchen",
+  "waiter",
+] as const;
 
 export const ADMIN_ROLES = ["owner", "manager"] as const;
+
+/** Floor staff who can take orders, manage tables, and handle calls. */
+export const FLOOR_STAFF_ROLES = [
+  "owner",
+  "manager",
+  "staff",
+  "waiter",
+] as const;
 
 export const SESSION_MAX_AGE_HOURS = 12;
 

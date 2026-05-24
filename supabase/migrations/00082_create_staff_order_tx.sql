@@ -1,13 +1,16 @@
--- H9: Atomic staff order creation — order + items + modifiers in one transaction.
+-- H9 / P1: Atomic staff order creation — order + items + modifiers (ADR-001 pattern).
 -- Rollback: DROP FUNCTION IF EXISTS create_staff_order_tx;
 
 CREATE OR REPLACE FUNCTION create_staff_order_tx(
-  p_location_id UUID,
-  p_table_id      UUID,
-  p_session_id    UUID,
-  p_staff_id      UUID,
-  p_order_payload JSONB,
-  p_items         JSONB
+  p_location_id    UUID,
+  p_table_id       UUID,
+  p_session_id     UUID,
+  p_staff_id       UUID,
+  p_payment_method TEXT,
+  p_is_takeaway    BOOLEAN,
+  p_notes          TEXT,
+  p_order_payload  JSONB,
+  p_items          JSONB
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -45,12 +48,12 @@ BEGIN
     (p_order_payload->>'tax_amount')::NUMERIC,
     (p_order_payload->>'total')::NUMERIC,
     0, NULL,
-    COALESCE((p_order_payload->>'is_takeaway')::BOOLEAN, false),
-    NULLIF(p_order_payload->>'notes', ''),
+    COALESCE(p_is_takeaway, false),
+    NULLIF(p_notes, ''),
     COALESCE((p_order_payload->>'estimated_prep_minutes')::INT, 8),
     'accepted', false,
     'pending',
-    p_order_payload->>'payment_method',
+    p_payment_method,
     0, NULL,
     'staff', p_staff_id,
     v_now
@@ -89,8 +92,7 @@ BEGIN
   RETURN jsonb_build_object(
     'order_id', v_order_id,
     'order_number', v_order_number,
-    'total', (p_order_payload->>'total')::NUMERIC,
-    'session_id', p_session_id
+    'total', (p_order_payload->>'total')::NUMERIC
   );
 END;
 $$;

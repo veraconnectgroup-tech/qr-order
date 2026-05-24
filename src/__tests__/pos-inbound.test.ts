@@ -35,6 +35,25 @@ describe("GenericInboundAdapter", () => {
     expect(event.order.paymentState).toBe("UNPAID");
   });
 
+  it("returns unknown for unrecognized payloads", () => {
+    const event = adapter.parseEvent({ ping: true }, new Headers());
+
+    expect(event.type).toBe("unknown");
+    if (event.type !== "unknown") return;
+    expect(event.rawEventType).toBeUndefined();
+  });
+
+  it("returns unknown with rawEventType when event field is present", () => {
+    const event = adapter.parseEvent(
+      { event: "menu.updated", data: {} },
+      new Headers()
+    );
+
+    expect(event.type).toBe("unknown");
+    if (event.type !== "unknown") return;
+    expect(event.rawEventType).toBe("menu.updated");
+  });
+
   it("rejects order.created without externalOrderId", () => {
     const event = adapter.parseEvent(
       {

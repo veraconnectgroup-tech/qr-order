@@ -43,6 +43,7 @@ export type PosInboundEvent =
   | { type: "order.created"; order: PosInboundOrderDraft }
   | { type: "order.cancelled"; externalOrderId: string }
   | { type: "table.closed"; table: PosInboundTableClosedEvent }
+  | { type: "unknown"; rawEventType?: string }
   | { type: "reject"; reason: string };
 
 export type PosInboundAdapter = {

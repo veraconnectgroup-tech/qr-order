@@ -203,8 +203,10 @@ export class GenericInboundAdapter implements PosInboundAdapter {
 
     if (eventType === "unknown") {
       return {
-        type: "reject",
-        reason: "Unrecognized webhook payload — missing event type",
+        type: "unknown",
+        rawEventType:
+          readString(rawBody.event ?? rawBody.eventType ?? rawBody.type) ??
+          undefined,
       };
     }
 

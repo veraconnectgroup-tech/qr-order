@@ -277,7 +277,11 @@ function cartItemTaxRate(
   });
 }
 
-export function StaffOrderEntry() {
+export function StaffOrderEntry({
+  initialTableId,
+}: {
+  initialTableId?: string;
+} = {}) {
   const router = useRouter();
   const {
     locationId,
@@ -368,11 +372,18 @@ export function StaffOrderEntry() {
 
     const tableRows = (tablesData ?? []) as unknown as TableWithZone[];
     setTables(tableRows);
-    setSelectedTable((prev) =>
-      prev && tableRows.some((table) => table.id === prev)
-        ? prev
-        : (tableRows[0]?.id ?? "")
-    );
+    setSelectedTable((prev) => {
+      if (prev && tableRows.some((table) => table.id === prev)) {
+        return prev;
+      }
+      if (
+        initialTableId &&
+        tableRows.some((table) => table.id === initialTableId)
+      ) {
+        return initialTableId;
+      }
+      return tableRows[0]?.id ?? "";
+    });
 
     const normalizedCategories: CategoryWithProducts[] = (
       (categoriesData as Category[]) ?? []
@@ -392,7 +403,7 @@ export function StaffOrderEntry() {
     setDefaultTaxPercent(Number(org?.default_tax_percent ?? 19));
 
     setLoading(false);
-  }, [locationId, orgId]);
+  }, [initialTableId, locationId, orgId]);
 
   useEffect(() => {
     if (staffRole === "kitchen") {

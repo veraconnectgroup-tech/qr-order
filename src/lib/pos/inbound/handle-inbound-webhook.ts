@@ -1,4 +1,4 @@
-import { cancelPosInboundOrder } from "@/lib/pos/inbound/cancel-pos-order";
+import { handlePosOrderCancelled } from "@/lib/pos/inbound/handle-pos-order-cancelled";
 import { createPosOrder } from "@/lib/pos/inbound/create-pos-order";
 import { resolvePosTableForClose } from "@/lib/pos/inbound/resolve-table";
 import {
@@ -181,6 +181,20 @@ export async function handlePosInboundWebhook(
     return { ok: false, status: 422, message: event.reason };
   }
 
+  if (event.type === "unknown") {
+    await recordPosInboundEvent({
+      posIntegrationId: integration.id,
+      eventType: "unknown",
+      externalId: null,
+      payloadHash,
+      processingStatus: "rejected",
+      httpStatus: 422,
+      errorMessage: `Unrecognized event: ${event.rawEventType ?? "none"}`,
+      durationMs: Date.now() - started,
+    });
+    return { ok: false, status: 422, message: "Unrecognized event type" };
+  }
+
   await recordPosInboundEvent({
     posIntegrationId: integration.id,
     eventType: event.type,
@@ -209,8 +223,10 @@ export async function handlePosInboundWebhook(
   }
 
   if (event.type === "order.cancelled") {
-    const cancelResult = await cancelPosInboundOrder(
-      integration.id,
+    const admin = createAdminClient();
+    const result = await handlePosOrderCancelled(
+      admin,
+      integration,
       event.externalOrderId
     );
 
@@ -219,35 +235,17 @@ export async function handlePosInboundWebhook(
       eventType: event.type,
       externalId: event.externalOrderId,
       payloadHash,
-      processingStatus: cancelResult.ok ? "processed" : "rejected",
-      httpStatus: cancelResult.ok ? 200 : cancelResult.status,
-      errorMessage: cancelResult.ok ? null : cancelResult.message,
-      orderId: cancelResult.ok && cancelResult.orderId ? cancelResult.orderId : null,
+      processingStatus: result.ok ? "processed" : "rejected",
+      httpStatus: result.ok ? result.status : result.status,
+      errorMessage: result.ok ? null : result.message,
+      orderId:
+        result.ok && typeof result.body.orderId === "string"
+          ? result.body.orderId
+          : null,
       durationMs: Date.now() - started,
     });
 
-    if (!cancelResult.ok) {
-      return {
-        ok: false,
-        status: cancelResult.status,
-        message: cancelResult.message,
-      };
-    }
-
-    return {
-      ok: true,
-      status: 200,
-      body: {
-        message: cancelResult.orderId
-          ? cancelResult.alreadyCancelled
-            ? "cancel_already_applied"
-            : "order_cancelled"
-          : "cancel_acknowledged",
-        externalOrderId: event.externalOrderId,
-        orderId: cancelResult.orderId || undefined,
-        orderNumber: cancelResult.orderNumber || undefined,
-      },
-    };
+    return result;
   }
 
   const createResult = await createPosOrder(integrationId, event.order);

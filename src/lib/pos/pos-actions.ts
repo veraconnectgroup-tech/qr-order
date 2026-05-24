@@ -218,7 +218,7 @@ export async function getPosTableMappings(
   if (!provider) return [];
 
   const { data, error } = await admin
-    .from("pos_table_mappings" as never)
+    .from("pos_table_mappings")
     .select("id, location_id, provider, external_table_key, table_id")
     .eq("location_id", integration.location_id)
     .eq("provider", provider)
@@ -294,14 +294,14 @@ export async function upsertPosTableMapping(
     return { error: "Table not found for this location." };
   }
 
-  const { error } = await admin.from("pos_table_mappings" as never).upsert(
+  const { error } = await admin.from("pos_table_mappings").upsert(
     {
       location_id: integration.location_id,
       provider,
       external_table_key: key,
       table_id: tableId,
       updated_at: new Date().toISOString(),
-    } as never,
+    },
     { onConflict: "location_id,provider,external_table_key" }
   );
 
@@ -319,7 +319,7 @@ export async function deletePosTableMapping(mappingId: string) {
   const admin = createAdminClient();
 
   const { data: row } = await admin
-    .from("pos_table_mappings" as never)
+    .from("pos_table_mappings")
     .select("id, location_id")
     .eq("id", mappingId)
     .maybeSingle();
@@ -334,7 +334,7 @@ export async function deletePosTableMapping(mappingId: string) {
   );
 
   const { error } = await admin
-    .from("pos_table_mappings" as never)
+    .from("pos_table_mappings")
     .delete()
     .eq("id", mappingId);
 
@@ -356,7 +356,7 @@ export async function getPosTableMappingsForLocation(
 
   const admin = createAdminClient();
   let query = admin
-    .from("pos_table_mappings" as never)
+    .from("pos_table_mappings")
     .select("id, location_id, provider, external_table_key, table_id")
     .eq("location_id", locationId)
     .order("provider")
@@ -479,8 +479,8 @@ export async function bulkImportPosTableMappings(
   }));
 
   const { error } = await admin
-    .from("pos_table_mappings" as never)
-    .upsert(payload as never, {
+    .from("pos_table_mappings")
+    .upsert(payload, {
       onConflict: "location_id,provider,external_table_key",
     });
 

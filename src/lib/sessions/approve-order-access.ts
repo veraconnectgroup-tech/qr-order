@@ -139,7 +139,7 @@ export async function approveOrderAccess(
     }
   | { error: string; status: number }
 > {
-  if (!["owner", "manager", "staff", "kitchen"].includes(staff.role)) {
+  if (!["owner", "manager", "staff", "kitchen", "waiter"].includes(staff.role)) {
     return { error: "Unauthorized.", status: 403 };
   }
 
@@ -251,7 +251,7 @@ export async function rejectOrderAccess(
     }
   | { error: string; status: number }
 > {
-  if (!["owner", "manager", "staff", "kitchen"].includes(staff.role)) {
+  if (!["owner", "manager", "staff", "kitchen", "waiter"].includes(staff.role)) {
     return { error: "Unauthorized.", status: 403 };
   }
 

@@ -102,6 +102,7 @@ export async function middleware(request: NextRequest) {
 
   const needsAuth =
     pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/waiter") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/platform") ||
     pathname === "/login" ||
@@ -141,6 +142,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/waiter") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/platform")) &&
     !user
@@ -155,14 +157,15 @@ export async function middleware(request: NextRequest) {
   if ((pathname === "/login" || pathname === "/signup") && user) {
     const { data: staff } = await supabase
       .from("staff")
-      .select("id")
+      .select("id, role")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .maybeSingle();
 
     if (staff) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname =
+        (staff as { role: string }).role === "waiter" ? "/waiter" : "/dashboard";
       const redirect = NextResponse.redirect(url);
       copyCookies(supabaseResponse, redirect);
       return withResponseHeaders(redirect, false);

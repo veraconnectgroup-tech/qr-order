@@ -518,7 +518,7 @@ type Tables = {
     user_id: string;
     org_id: string;
     location_id: string | null;
-    role: "owner" | "manager" | "staff" | "kitchen";
+    role: "owner" | "manager" | "staff" | "kitchen" | "waiter";
     name: string;
     email: string | null;
     is_active: boolean;
@@ -807,6 +807,9 @@ export interface Database {
           p_table_id: string;
           p_session_id: string;
           p_staff_id: string;
+          p_payment_method: string;
+          p_is_takeaway: boolean;
+          p_notes: string | null;
           p_order_payload: Json;
           p_items: Json;
         };

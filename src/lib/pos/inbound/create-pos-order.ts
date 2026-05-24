@@ -24,8 +24,15 @@ type IntegrationRow = {
   config: Json;
 };
 
-function buildIdempotencyKey(provider: string, externalOrderId: string) {
+export function buildPosOrderIdempotencyKey(
+  provider: string,
+  externalOrderId: string
+) {
   return `pos:${provider}:${externalOrderId}`;
+}
+
+function buildIdempotencyKey(provider: string, externalOrderId: string) {
+  return buildPosOrderIdempotencyKey(provider, externalOrderId);
 }
 
 function validateInboundItems(

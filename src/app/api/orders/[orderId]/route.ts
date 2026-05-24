@@ -262,6 +262,7 @@ export const PATCH = withErrorHandler(
       status === "delivered" &&
       access.order.payment_status === "pending" &&
       access.order.payment_method !== "online" &&
+      access.order.payment_method !== "card_terminal" &&
       access.order.payment_method !== "unset";
 
     if (status === "rejected") {

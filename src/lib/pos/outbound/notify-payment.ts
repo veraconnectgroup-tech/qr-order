@@ -88,10 +88,10 @@ export async function recordPosOutboundEvent(input: {
   errorMessage?: string | null;
 }) {
   const admin = createAdminClient();
-  await admin.from("pos_outbound_events" as never).insert({
+  await admin.from("pos_outbound_events").insert({
     pos_integration_id: input.posIntegrationId,
     event_type: input.eventType,
     success: input.success,
     error_message: input.errorMessage ?? null,
-  } as never);
+  });
 }

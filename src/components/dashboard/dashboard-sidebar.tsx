@@ -21,6 +21,7 @@ import { LocationSwitcher } from "@/components/dashboard/location-switcher";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
+import type { StaffRole } from "@/types";
 
 type NavItem = {
   href: string;
@@ -28,7 +29,16 @@ type NavItem = {
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   exact?: boolean;
   alertKey?: "orders" | "calls" | "payments";
+  roles?: StaffRole[];
 };
+
+const WAITER_NAV_HREFS = new Set([
+  "/dashboard",
+  "/dashboard/orders",
+  "/dashboard/new-order",
+  "/dashboard/tables",
+  "/dashboard/waiter-calls",
+]);
 
 const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
@@ -91,6 +101,17 @@ export function DashboardSidebar() {
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
   const canManageBilling = ["owner", "manager"].includes(staffRole);
+  const isWaiter = staffRole === "waiter";
+
+  function isNavItemVisible(item: NavItem) {
+    if (item.roles) {
+      return item.roles.includes(staffRole as StaffRole);
+    }
+    if (isWaiter) {
+      return WAITER_NAV_HREFS.has(item.href);
+    }
+    return true;
+  }
 
   function renderNavLink(item: NavItem) {
     const { href, label, icon: Icon, exact, alertKey } = item;
@@ -177,13 +198,19 @@ export function DashboardSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-2">
-        {navGroups.map((group, gi) => (
+        {navGroups.map((group, gi) => {
+          const visibleItems = group.items.filter(isNavItemVisible);
+          if (visibleItems.length === 0) {
+            return null;
+          }
+
+          return (
           <div key={group.label} className={gi > 0 ? "mt-5" : "mt-2"}>
             <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-dash-text-disabled">
               {group.label}
             </p>
             <div className="space-y-0.5">
-              {group.items.map((item) => renderNavLink(item))}
+              {visibleItems.map((item) => renderNavLink(item))}
               {group.label === "Management" && canManageBilling &&
                 renderNavLink({
                   href: "/dashboard/billing",
@@ -192,7 +219,8 @@ export function DashboardSidebar() {
                 })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User footer */}

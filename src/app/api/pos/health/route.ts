@@ -16,7 +16,7 @@ export async function GET() {
   }>;
 
   const { count: recentInbound } = await admin
-    .from("pos_inbound_events" as never)
+    .from("pos_inbound_events")
     .select("id", { count: "exact", head: true })
     .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 

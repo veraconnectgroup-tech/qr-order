@@ -32,7 +32,7 @@ export const POST = withErrorHandler(
     if (limited) return limited;
 
     const staff = await loadStaff();
-    if (!staff || !["owner", "manager", "staff"].includes(staff.role)) {
+    if (!staff || !["owner", "manager", "staff", "waiter"].includes(staff.role)) {
       return apiError("Unauthorized.", 401);
     }
 

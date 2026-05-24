@@ -25,7 +25,7 @@ export const POST = withErrorHandler(
       return apiError("Unauthorized.", 401);
     }
 
-    if (!["owner", "manager", "staff"].includes(staff.role)) {
+    if (!["owner", "manager", "staff", "waiter"].includes(staff.role)) {
       return apiError("Unauthorized.", 403);
     }
 

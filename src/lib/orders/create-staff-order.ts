@@ -111,7 +111,6 @@ type CreateStaffOrderRpcResult = {
   order_id: string;
   order_number: number;
   total: number;
-  session_id: string;
 };
 
 export async function createStaffOrder(
@@ -119,7 +118,7 @@ export async function createStaffOrder(
   input: CreateStaffOrderInput
 ) {
   // 1. Validate staff auth + role
-  if (!["owner", "manager", "staff"].includes(staff.role)) {
+  if (!["owner", "manager", "staff", "waiter"].includes(staff.role)) {
     return { error: "Unauthorized.", status: 403 };
   }
 
@@ -404,14 +403,14 @@ export async function createStaffOrder(
       p_table_id: tableRow.id,
       p_session_id: sessionResult.sessionId,
       p_staff_id: staff.id,
+      p_payment_method: input.paymentMethod,
+      p_is_takeaway: input.isTakeaway,
+      p_notes: sanitizedNotes,
       p_order_payload: {
         subtotal,
         tax_percent: effectiveTaxPercent,
         tax_amount: taxAmount,
         total,
-        is_takeaway: input.isTakeaway,
-        notes: sanitizedNotes,
-        payment_method: input.paymentMethod,
         estimated_prep_minutes: 8,
       },
       p_items: buildStaffRpcItems(validatedItems),

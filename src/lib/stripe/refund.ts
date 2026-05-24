@@ -43,7 +43,10 @@ export async function processRefund(
     return { error: "No payment to refund" };
   }
 
-  if (order.payment_method !== "online") {
+  if (
+    order.payment_method !== "online" &&
+    order.payment_method !== "pos_online"
+  ) {
     return { error: "Refunds are only available for online payments" };
   }
 

@@ -1,42 +1,34 @@
 import { redirect } from "next/navigation";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { OnboardingGuard } from "@/components/dashboard/onboarding-guard";
+import { WaiterShell } from "@/components/waiter/waiter-shell";
 import {
   getEffectiveStaff,
   getStaffAccessibleLocations,
   getStaffLocationId,
 } from "@/lib/auth/session";
+import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-import { sumOrderRevenue } from "@/lib/orders/revenue";
-import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+const WAITER_ALLOWED_ROLES = new Set([
+  "owner",
+  "manager",
+  "staff",
+  "waiter",
+]);
 
-async function getTodayRevenue(locationId: string) {
-  const admin = createAdminClient();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const { data } = await admin
-    .from("orders")
-    .select("total, status")
-    .eq("location_id", locationId)
-    .gte("created_at", todayStart.toISOString())
-    .in("status", ["accepted", "preparing", "ready", "delivered"]);
-
-  return sumOrderRevenue(
-    (data ?? []) as Array<{ total: number; status: string }>
-  );
-}
-
-export default async function DashboardLayout({
+export default async function WaiterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const staff = await getEffectiveStaff();
 
-  if (staff.role === "waiter") {
-    redirect("/waiter");
+  if (staff.role === "kitchen") {
+    redirect("/dashboard/kitchen");
+  }
+
+  if (!WAITER_ALLOWED_ROLES.has(staff.role)) {
+    redirect("/dashboard");
   }
 
   const [locationId, accessibleLocations] = await Promise.all([
@@ -53,30 +45,31 @@ export default async function DashboardLayout({
   }
 
   const admin = createAdminClient();
-  const [{ data: org }, { data: location }, todayRevenue, { count: tableCount }, { count: productCount }] =
+  const [{ data: org }, { data: location }, { count: tableCount }, { count: productCount }] =
     await Promise.all([
-    admin
-      .from("organizations")
-      .select("id, name, slug, currency, logo_url, stripe_onboarded, onboarding_completed, trial_ends_at, fiskaly_tss_id, subscription_status")
-      .eq("id", staff.org_id)
-      .single(),
-    admin
-      .from("locations")
-      .select("name, in_person_payment_location, menu_locale, default_locale")
-      .eq("id", locationId)
-      .single(),
-    getTodayRevenue(locationId),
-    admin
-      .from("tables")
-      .select("id", { count: "exact", head: true })
-      .eq("location_id", locationId)
-      .is("deleted_at", null),
-    admin
-      .from("products")
-      .select("id", { count: "exact", head: true })
-      .eq("location_id", locationId)
-      .is("deleted_at", null),
-  ]);
+      admin
+        .from("organizations")
+        .select(
+          "id, name, slug, currency, logo_url, stripe_onboarded, onboarding_completed, trial_ends_at, fiskaly_tss_id, subscription_status"
+        )
+        .eq("id", staff.org_id)
+        .single(),
+      admin
+        .from("locations")
+        .select("name, in_person_payment_location, menu_locale, default_locale")
+        .eq("id", locationId)
+        .single(),
+      admin
+        .from("tables")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .is("deleted_at", null),
+      admin
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("location_id", locationId)
+        .is("deleted_at", null),
+    ]);
 
   const orgRow = org as {
     id: string;
@@ -105,7 +98,7 @@ export default async function DashboardLayout({
 
   return (
     <OnboardingGuard onboardingCompleted={orgRow?.onboarding_completed ?? true}>
-      <DashboardShell
+      <WaiterShell
         context={{
           locationId,
           locationName: locationRow?.name ?? "Location",
@@ -118,23 +111,23 @@ export default async function DashboardLayout({
           staffName: staff.name,
           staffRole: staff.role,
           staffEmail: staff.email,
-          todayRevenue,
+          todayRevenue: 0,
           stripeOnboarded: orgRow?.stripe_onboarded ?? false,
           hasTables: (tableCount ?? 0) > 0,
           hasMenuItems: (productCount ?? 0) > 0,
-        onboardingCompleted: orgRow?.onboarding_completed ?? true,
-        trialEndsAt: orgRow?.trial_ends_at ?? null,
-        subscriptionStatus: orgRow?.subscription_status ?? null,
-        impersonating: staff.impersonating ?? false,
-        impersonatedOrgName: staff.impersonated_org_name ?? null,
-        inPersonPaymentLocation:
+          onboardingCompleted: orgRow?.onboarding_completed ?? true,
+          trialEndsAt: orgRow?.trial_ends_at ?? null,
+          subscriptionStatus: orgRow?.subscription_status ?? null,
+          impersonating: staff.impersonating ?? false,
+          impersonatedOrgName: staff.impersonated_org_name ?? null,
+          inPersonPaymentLocation:
             locationRow?.in_person_payment_location ?? "bar",
           menuLocale,
           fiscalTssEnabled: Boolean(orgRow?.fiskaly_tss_id),
         }}
       >
         {children}
-      </DashboardShell>
+      </WaiterShell>
     </OnboardingGuard>
   );
 }
