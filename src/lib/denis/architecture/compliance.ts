@@ -27,7 +27,7 @@ const REPO_ROOT = join(process.cwd());
 const REQUIRED_PATHS = [
   "docs/architecture/ADR-005-denis-maximum.md",
   "docs/architecture/ADR-004-denis-kernel.md",
-  "docs/architecture/denis-implementation-map.md",
+  "docs/architecture/ADR-006-denis-control-plane.md",
   "src/lib/denis/README.md",
   "src/lib/denis/layers.ts",
   "src/lib/denis/platform/flows/denis_short.flow.json",

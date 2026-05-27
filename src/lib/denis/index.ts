@@ -5,3 +5,7 @@ export {
   runDenisArchitectureCompliance,
 } from "./architecture/compliance";
 export type { ComplianceIssue, ComplianceReport } from "./architecture/compliance";
+export * from "./config";
+export * from "./platform";
+export * from "./kernel";
+export * from "./runtime";

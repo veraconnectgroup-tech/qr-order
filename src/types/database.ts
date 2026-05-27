@@ -710,6 +710,16 @@ type Tables = {
     payload: Json;
     created_at: string;
   };
+  denis_timeline: {
+    id: string;
+    ai_session_id: string;
+    seq: number;
+    event_type: string;
+    payload: Json;
+    trace_id: string | null;
+    context_hash: string | null;
+    created_at: string;
+  };
   ai_examples: {
     id: string;
     org_id: string;

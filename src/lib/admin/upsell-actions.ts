@@ -7,6 +7,7 @@ import {
   zOptionalSanitizedText,
   zUuid,
 } from "@/lib/security/zod-fields";
+import { invalidateVenueKnowledgeGraphCache } from "@/lib/denis/kernel/vkg";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -83,12 +84,15 @@ export async function createUpsellRule(formData: FormData) {
 
   if (error) return { error: error.message };
 
+  await invalidateVenueKnowledgeGraphCache(locationId);
   revalidatePath("/admin/upsells");
   return { success: true };
 }
 
 export async function updateUpsellRule(id: string, formData: FormData) {
-  await requireAdmin();
+  const staff = await requireAdmin();
+  const locationId = await getStaffLocationId(staff);
+  if (!locationId) return { error: "Location not found." };
   const parsed = parseUpsellForm(formData);
   if (!parsed.success) return { error: "Invalid data." };
 
@@ -106,15 +110,19 @@ export async function updateUpsellRule(id: string, formData: FormData) {
 
   if (error) return { error: error.message };
 
+  await invalidateVenueKnowledgeGraphCache(locationId);
   revalidatePath("/admin/upsells");
   return { success: true };
 }
 
 export async function deleteUpsellRule(id: string) {
-  await requireAdmin();
+  const staff = await requireAdmin();
+  const locationId = await getStaffLocationId(staff);
+  if (!locationId) return { error: "Location not found." };
   const supabase = await createServerClient();
   const { error } = await supabase.from("upsell_rules").delete().eq("id", id);
   if (error) return { error: error.message };
+  await invalidateVenueKnowledgeGraphCache(locationId);
   revalidatePath("/admin/upsells");
   return { success: true };
 }
@@ -136,18 +144,22 @@ export async function reorderUpsellRules(orderedIds: string[]) {
     if (error) return { error: error.message };
   }
 
+  await invalidateVenueKnowledgeGraphCache(locationId);
   revalidatePath("/admin/upsells");
   return { success: true };
 }
 
 export async function toggleUpsellRule(id: string, isActive: boolean) {
-  await requireAdmin();
+  const staff = await requireAdmin();
+  const locationId = await getStaffLocationId(staff);
+  if (!locationId) return { error: "Location not found." };
   const supabase = await createServerClient();
   const { error } = await supabase
     .from("upsell_rules")
     .update({ is_active: isActive })
     .eq("id", id);
   if (error) return { error: error.message };
+  await invalidateVenueKnowledgeGraphCache(locationId);
   revalidatePath("/admin/upsells");
   return { success: true };
 }

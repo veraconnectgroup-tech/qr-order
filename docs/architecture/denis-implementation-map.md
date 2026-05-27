@@ -87,11 +87,11 @@ Until M7: legacy routes stay; **no new business logic** in `chat-service.ts`.
 |-------|-------------|--------|
 | **M0** | Approve ADR-005 + this map | docs |
 | **M1** | ✅ ConciergeConfig schema + merge | `config/` |
-| **M2** | Timeline + minimal beliefs | `platform/` |
-| **M3** | Goals + Flow DSL engine | `kernel/`, `platform/flows/` |
-| **M4** | T0 + correction protocol | `kernel/` |
-| **M5** | VKG v1 | `kernel/vkg/` |
-| **M6** | Conflict resolver | `kernel/` |
+| **M2** | ✅ Timeline + minimal beliefs + traceId | `platform/`, `kernel/fold-beliefs` |
+| **M3** | ✅ Goals + Flow DSL engine + skill registry | `kernel/`, `platform/flows/` |
+| **M4** | ✅ T0 reflex + correction protocol | `kernel/` |
+| **M5** | ✅ VKG v1 (`pairingFor`, allergies, substitute) | `kernel/vkg/` |
+| **M6** | ✅ Conflict resolver (AI vs manual cart) | `kernel/conflict/` |
 | **M7** | Guest chat → `runDenisTurn` | `runtime/`, `surfaces/` |
 | **M8** | Scheduler + sense API | `kernel/`, `platform/` |
 | **M9** | Narration contract + lint | `runtime/narrate/` |
@@ -100,7 +100,22 @@ Until M7: legacy routes stay; **no new business logic** in `chat-service.ts`.
 
 ---
 
-## 7. Verification
+## 9. Control plane (ADR-006)
+
+Operational overlay — **not** a second north star. See [ADR-006](./ADR-006-denis-control-plane.md).
+
+| Concept | Code | Track |
+|---------|------|-------|
+| **R0–R5** risk classes | `platform/risk-levels.ts` | M3 registry |
+| **traceId** per turn | `denis_timeline.trace_id` | ✅ M2 |
+| **Rollout ladder** | `ConciergeConfig.rollout` (future) | M10 |
+| **Shadow diff** | `eval/shadow-diff.ts` | M10 |
+
+**Dual-write (M2):** `POST /api/ai/chat` → `recordChatTurnTimeline()` after success.
+
+---
+
+## 10. Verification
 
 ```bash
 pnpm verify:denis
@@ -124,7 +139,7 @@ Add to Denis PR checklist:
 
 ---
 
-## 8. Operator prompt
+## 11. Operator prompt
 
 ```
 Denis M-track mode. Read docs/architecture/denis-implementation-map.md + ADR-005.

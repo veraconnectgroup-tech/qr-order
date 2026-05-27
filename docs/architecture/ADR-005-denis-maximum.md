@@ -4,6 +4,7 @@
 |-------|-------|
 | **Status** | **Proposed** — **ultimate north star** (supersedes [ADR-004](./ADR-004-denis-kernel.md) as product ceiling) |
 | **Implementation map** | [denis-implementation-map.md](./denis-implementation-map.md) — layers, M-tracks, `pnpm verify:denis` |
+| **Control plane** | [ADR-006](./ADR-006-denis-control-plane.md) — risk R0–R5, rollout, observability |
 | **Date** | 2026-05-27 |
 | **Codename** | **Denis** |
 | **Depends on** | [ADR-001](./ADR-001-universal-ordering-platform.md) · [ADR-002](./ADR-002-ai-concierge-orchestrator.md) · [ADR-003](./ADR-003-denis-platform-v2.md) · [ADR-004](./ADR-004-denis-kernel.md) |

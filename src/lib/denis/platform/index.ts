@@ -23,6 +23,24 @@ export {
   isRiskClassAllowedInRollout,
 } from "@/lib/denis/platform/risk-levels";
 export type { DenisRiskClass, RolloutMode } from "@/lib/denis/platform/risk-levels";
+export type {
+  FlowDefinition,
+  FlowGuardContext,
+  FlowNode,
+  FlowNodeId,
+  FlowNodePlan,
+  FlowSignal,
+  FlowTransitionResult,
+} from "@/lib/denis/platform/flow-types";
+export type { FlowProjection } from "@/lib/denis/platform/fold-flow";
+export {
+  cartFlowSignals,
+  describeFlowNode,
+  intentToFlowSignal,
+  resolveFlowTransition,
+} from "@/lib/denis/platform/flow-engine";
+export { foldFlowProjection, emptyFlowProjection } from "@/lib/denis/platform/fold-flow";
+export { getFlowPreset, parseFlowDefinition } from "@/lib/denis/platform/load-flow-preset";
 
-/** L1 Platform layer marker — M2 timeline. */
+/** L1 Platform layer marker — M2 timeline, M3 Flow DSL. */
 export const DENIS_PLATFORM_LAYER = "platform" as const;
