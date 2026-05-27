@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { escapeCsvField } from "@/lib/security/escape";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
+import { grossToNet, roundMoney } from "@/lib/tax/vat";
 
 /** SKR03 accounts used for DATEV export */
 export const DATEV_ACCOUNTS = {
@@ -89,9 +90,10 @@ export function orderToDatevRows(order: OrderRow): DatevRow[] {
   for (const [rate, grossTotal] of byRate) {
     if (grossTotal <= 0) continue;
     const { konto, ustSatz } = revenueAccountForRate(rate);
+    const netTotal = roundMoney(grossToNet(grossTotal, rate));
 
     rows.push({
-      umsatz: grossTotal,
+      umsatz: netTotal,
       sollHaben: "H",
       konto,
       gegenkonto,

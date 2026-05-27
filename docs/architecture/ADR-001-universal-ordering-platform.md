@@ -6,7 +6,7 @@
 | **Date** | 2026-05-23 |
 | **Authors** | QR Order engineering |
 | **Supersedes** | Ad-hoc fire-and-forget side effects in `create-order.ts` |
-| **Related** | [reliability-v2-fiscal-hybrid.md](./reliability-v2-fiscal-hybrid.md) (implementation notes) · **[Implementation warnings](./ADR-001-implementation-warnings.md)** (required for all PRs) · **[Session prompts](./ADR-001-session-prompts.md)** (copy-paste for autonomous Cursor sessions) |
+| **Related** | [reliability-v2-fiscal-hybrid.md](./reliability-v2-fiscal-hybrid.md) (implementation notes) · **[ADR-011 Fiscal Compliance Spine](./ADR-011-fiscal-compliance-spine.md)** (KassenSichV / GoBD target architecture) · **[Implementation warnings](./ADR-001-implementation-warnings.md)** (required for all PRs) · **[Session prompts](./ADR-001-session-prompts.md)** (copy-paste for autonomous Cursor sessions) |
 
 ---
 

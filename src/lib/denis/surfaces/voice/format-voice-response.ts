@@ -1,6 +1,7 @@
 import { apiSuccess } from "@/lib/api-response";
 import type { LegacyChatSuccessData } from "@/lib/denis/surfaces/chat/format-turn-response";
 import type { DenisTurnMeta } from "@/lib/denis/runtime/turn-types";
+import { formatDenisApiMeta } from "@/lib/denis/surfaces/format-denis-api-meta";
 
 export type VoiceTurnApiExtras = {
   speakText: string;
@@ -16,22 +17,6 @@ export function formatVoiceTurnApiResponse(
   return apiSuccess({
     ...data,
     voice,
-    denis: {
-      traceId: meta.traceId,
-      channel: meta.channel,
-      flowNodeId: meta.flowNodeId,
-      topGoal: meta.topGoal,
-      conflictPrompt: meta.conflictPrompt,
-      narrationTier: meta.narrationTier,
-      lintPassed: meta.lintPassed,
-      usedNarrationFallback: meta.usedNarrationFallback,
-      rolloutMode: meta.rolloutMode,
-      partyMode: meta.partyMode,
-      partyDeviceCount: meta.partyDeviceCount,
-      isPrimaryDevice: meta.isPrimaryDevice,
-      sharedAiSessionId: meta.sharedAiSessionId,
-      operatingMode: meta.operatingMode,
-      kdsStress: meta.kdsStress,
-    },
+    denis: formatDenisApiMeta(meta),
   });
 }

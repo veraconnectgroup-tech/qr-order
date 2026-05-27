@@ -648,8 +648,35 @@ type Tables = {
     id: string;
     order_id: string;
     location_id: string;
+    org_id: string | null;
+    session_id: string | null;
     rating: number;
     comment: string | null;
+    sentiment: "positive" | "neutral" | "negative" | null;
+    category: "food" | "service" | "wait_time" | "other" | null;
+    guest_token: string | null;
+    google_review_clicked: boolean;
+    staff_response: string | null;
+    responded_by: string | null;
+    responded_at: string | null;
+    trigger_moment: "session_bill" | "order_delivered" | "payment";
+    created_at: string;
+  };
+  feedback_inbox: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    session_id: string;
+    order_id: string | null;
+    commerce_event_id: string;
+    sentiment: "positive" | "neutral" | "negative";
+    category: "food" | "service" | "wait_time" | "other" | null;
+    rating: number | null;
+    comment: string | null;
+    needs_response: boolean;
+    staff_response: string | null;
+    responded_by: string | null;
+    responded_at: string | null;
     created_at: string;
   };
   table_transfers: {
@@ -778,6 +805,30 @@ type Tables = {
     reference_id: string | null;
     created_at: string;
   };
+  commerce_experience_events: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    session_id: string;
+    order_id: string | null;
+    command_type: string;
+    event_type: string;
+    schema_version: number;
+    payload: Json;
+    idempotency_key: string;
+    trace_id: string | null;
+    created_at: string;
+  };
+  guest_session_commerce_state: {
+    session_id: string;
+    org_id: string;
+    location_id: string;
+    last_payment_settled_order_id: string | null;
+    last_payment_settled_at: string | null;
+    bill_settled: boolean;
+    feedback_submitted: boolean;
+    updated_at: string;
+  };
 };
 
 type TableDef<T extends keyof Tables> = {
@@ -819,6 +870,21 @@ export interface Database {
           p_payload?: Json;
         };
         Returns: number;
+      };
+      finalize_commerce_experience_command: {
+        Args: {
+          p_org_id: string;
+          p_location_id: string;
+          p_session_id: string;
+          p_order_id: string | null;
+          p_command_type: string;
+          p_event_type: string;
+          p_payload: Json;
+          p_idempotency_key: string;
+          p_trace_id?: string | null;
+          p_schema_version?: number;
+        };
+        Returns: string;
       };
       refresh_org_ai_ops: {
         Args: { p_org_id?: string | null };

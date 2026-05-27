@@ -1,19 +1,50 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { submitSessionFeedback } from "@/lib/commerce/capabilities/feedback-v2/submit-session-feedback";
+import {
+  ratingToSentiment,
+  type FeedbackCategory,
+} from "@/lib/commerce/experience/resolve-experience-moment";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
+import { getCurrentTraceId } from "@/lib/resilience/trace";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const sentimentSchema = z.enum(["positive", "neutral", "negative"]);
+const categorySchema = z.enum(["food", "service", "wait_time", "other"]);
+
 const postSchema = z.object({
   orderId: zUuid(),
   sessionToken: zSessionToken(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional(),
+  sentiment: sentimentSchema.optional(),
+  category: categorySchema.optional(),
 });
+
+async function resolveSessionId(
+  admin: ReturnType<typeof createAdminClient>,
+  orderId: string,
+  sessionToken: string
+): Promise<string | null> {
+  const { data: order } = await admin
+    .from("orders")
+    .select("session_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  const sessionId = (order as { session_id: string | null } | null)?.session_id;
+  if (!sessionId) return null;
+
+  const allowed = await verifyOrderSessionAccess(admin, orderId, sessionToken);
+  if (!allowed) return null;
+
+  return sessionId;
+}
 
 export const GET = withErrorHandler("feedback-get", async (req, _ctx) => {
   const limited = await withRateLimit(req, "feedback");
@@ -29,24 +60,41 @@ export const GET = withErrorHandler("feedback-get", async (req, _ctx) => {
   }
 
   const admin = createAdminClient();
-  const allowed = await verifyOrderSessionAccess(
+  const sessionId = await resolveSessionId(
     admin,
     orderParsed.data,
     sessionParsed.data
   );
-  if (!allowed) {
+  if (!sessionId) {
     return apiError("Unauthorized.", 401);
   }
 
-  const { data: feedback } = await admin
+  const { data: feedbackByOrder } = await admin
     .from("order_feedback")
-    .select("id, rating, comment, created_at")
+    .select(
+      "id, rating, comment, sentiment, category, created_at, session_id"
+    )
     .eq("order_id", orderParsed.data)
     .maybeSingle();
 
+  if (feedbackByOrder) {
+    return apiSuccess({
+      submitted: true,
+      feedback: feedbackByOrder,
+    });
+  }
+
+  const { data: feedbackBySession } = await admin
+    .from("order_feedback")
+    .select(
+      "id, rating, comment, sentiment, category, created_at, session_id"
+    )
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
   return apiSuccess({
-    submitted: !!feedback,
-    feedback: feedback ?? null,
+    submitted: !!feedbackBySession,
+    feedback: feedbackBySession ?? null,
   });
 });
 
@@ -62,68 +110,53 @@ export const POST = withErrorHandler(
       return apiError("Invalid input.", 400);
     }
 
-    const { orderId, sessionToken, rating, comment } = parsed.data;
+    const { orderId, sessionToken, rating, comment, sentiment, category } =
+      parsed.data;
     const admin = createAdminClient();
 
-    const allowed = await verifyOrderSessionAccess(
-      admin,
-      orderId,
-      sessionToken
-    );
-    if (!allowed) {
+    const sessionId = await resolveSessionId(admin, orderId, sessionToken);
+    if (!sessionId) {
       return apiError("Unauthorized.", 401);
-    }
-
-    const { data: order } = await admin
-      .from("orders")
-      .select("id, status, location_id")
-      .eq("id", orderId)
-      .single();
-
-    if (!order) {
-      return apiError("Order not found.", 404);
-    }
-
-    const orderRow = order as {
-      id: string;
-      status: string;
-      location_id: string;
-    };
-
-    if (orderRow.status !== "delivered") {
-      return apiError("Feedback is only available after delivery.", 400);
-    }
-
-    const { data: existing } = await admin
-      .from("order_feedback")
-      .select("id")
-      .eq("order_id", orderId)
-      .maybeSingle();
-
-    if (existing) {
-      return apiError("Feedback already submitted.", 409);
     }
 
     const sanitizedComment = comment?.trim()
       ? sanitizeText(comment.trim(), 500)
       : null;
 
-    const { data: inserted, error } = await admin
-      .from("order_feedback")
-      .insert({
-        order_id: orderId,
-        location_id: orderRow.location_id,
-        rating,
-        comment: sanitizedComment,
-      })
-      .select("id, rating, comment, created_at")
-      .single();
+    const result = await submitSessionFeedback(admin, {
+      orderId,
+      sessionId,
+      rating,
+      comment: sanitizedComment,
+      sentiment: sentiment ?? ratingToSentiment(rating),
+      category: (category ?? null) as FeedbackCategory | null,
+      traceId: getCurrentTraceId() ?? undefined,
+    });
 
-    if (error) {
-      logger.error("Feedback insert error", { error: error.message });
+    if (!result.ok) {
+      if (result.code === "already_submitted") {
+        return apiError("Feedback already submitted.", 409);
+      }
+      if (result.code === "not_eligible") {
+        return apiError("Feedback is not available yet.", 400);
+      }
+      if (result.code === "order_not_found") {
+        return apiError("Order not found.", 404);
+      }
+      logger.error("Feedback commerce submit failed", {
+        orderId,
+        sessionId,
+        code: result.code,
+      });
       return apiError("Could not save feedback.", 500);
     }
 
-    return apiSuccess({ feedback: inserted });
+    const { data: feedback } = await admin
+      .from("order_feedback")
+      .select("id, rating, comment, sentiment, category, created_at")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+
+    return apiSuccess({ feedback, eventId: result.eventId });
   }
 );

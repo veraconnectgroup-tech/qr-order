@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { runCommerceExperience } from "@/lib/commerce/runtime/run-commerce-experience";
 import { auditLog } from "@/lib/audit/log";
 import { safeJsonParse } from "@/lib/api/safe-json";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
@@ -482,6 +483,20 @@ export const PATCH = withErrorHandler(
         tipAmount,
       }).catch((err) =>
         logger.error("Order saga failed on deliver", {
+          orderId,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
+
+    if (status === "delivered") {
+      const traceId = getCurrentTraceId() ?? crypto.randomUUID();
+      void runCommerceExperience(
+        admin,
+        { kind: "order_delivered", orderId },
+        { traceId, idempotencyKey: `order_delivered:${orderId}` }
+      ).catch((err) =>
+        logger.warn("Commerce order_delivered failed", {
           orderId,
           error: err instanceof Error ? err.message : String(err),
         })

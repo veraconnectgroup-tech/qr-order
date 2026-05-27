@@ -324,6 +324,12 @@ pnpm type-check
 
 **Post-F8 ops:** shadow → canary → `denis_only` → `denis_act_submit_pilot`; `pnpm eval:denis` before act submit.
 
+| Track | Scope | Status |
+|-------|-------|--------|
+| **F9** | Guest client act submit — `denis.actSubmitLive` meta, no legacy `/api/ai/order/submit` | ✅ |
+
+**Remaining:** retire `order-executor.ts` + `/api/ai/order/submit` when all pilot venues on act submit.
+
 **Doc:** [ADR-010](./ADR-010-denis-ordering-cutover.md) · ADR-006 accepted (May 2026)
 
 ---

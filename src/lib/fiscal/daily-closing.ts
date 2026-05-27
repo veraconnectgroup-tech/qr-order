@@ -10,6 +10,7 @@ import {
 } from "@/lib/fiscal/fiskaly";
 import { formatPrice } from "@/lib/format";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
+import { groupGrossByRate, roundMoney } from "@/lib/tax/vat";
 import { logger } from "@/lib/logger";
 import { escapeHtml } from "@/lib/security/escape";
 import type { Json } from "@/types/database";
@@ -115,31 +116,20 @@ export function yesterdayBusinessDate(
   return format(addDays(parseISO(`${todayInTz}T12:00:00`), -1), "yyyy-MM-dd");
 }
 
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 function groupItemsByVatRate(
   items: Array<{ total: number; tax_rate: number }>
 ): VatSummaryEntry[] {
-  const buckets = new Map<number, number>();
-
-  for (const item of items) {
-    const rate = Number(item.tax_rate ?? 19);
-    buckets.set(rate, (buckets.get(rate) ?? 0) + Number(item.total));
-  }
-
-  return [...buckets.entries()]
-    .sort(([a], [b]) => b - a)
-    .map(([rate, gross]) => {
-      const net = gross / (1 + rate / 100);
-      return {
-        rate,
-        gross: roundMoney(gross),
-        net: roundMoney(net),
-        tax: roundMoney(gross - net),
-      };
-    });
+  return groupGrossByRate(
+    items.map((item) => ({
+      gross: Number(item.total),
+      taxRate: Number(item.tax_rate ?? 19),
+    }))
+  ).map((row) => ({
+    rate: row.rate,
+    gross: row.gross,
+    net: row.net,
+    tax: row.tax,
+  }));
 }
 
 function mapVatRate(taxRate: number): FiskalyVatRate {

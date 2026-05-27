@@ -474,6 +474,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     sharedAiSessionId: ctx.party?.sharedAiSessionId ?? null,
     operatingMode: ctx.venueOps?.operatingMode,
     kdsStress: ctx.venueOps?.kdsStress,
+    actSubmitLive,
+    actSubmitAttempted: actSubmitOutcome.attempted,
+    actOrderNumber: actSubmitOutcome.orderNumber,
   };
 
   if (input.channel === "voice") {

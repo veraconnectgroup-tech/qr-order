@@ -34,6 +34,7 @@ import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
 } from "@/lib/ai/guest-language";
+import type { DenisGuestApiMeta } from "@/lib/denis/surfaces/format-denis-api-meta";
 import type { MenuCategory } from "@/components/guest/menu-grid";
 import { getDemoAiChatResponse } from "@/lib/demo-ai";
 import {
@@ -619,6 +620,7 @@ export function AiConciergeChat({
           submitOrder?: boolean;
           sessionId: string;
           voice?: { speakText: string; ttsRecommended: boolean };
+          denis?: DenisGuestApiMeta;
         };
       };
 
@@ -815,6 +817,33 @@ export function AiConciergeChat({
         const data = await callAiChat(trimmed, undefined, false, inputSurface);
         applyCartActions(data.cartActions);
 
+        if (data.denis?.actSubmitLive) {
+          if (data.denis.actOrderNumber != null) {
+            clearCart();
+            hapticSuccess();
+            recordGuestOrderPlaced();
+          }
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: data.message,
+              recommendations: data.recommendations?.length
+                ? data.recommendations
+                : undefined,
+            },
+          ]);
+          if (
+            inputSurface === "voice" &&
+            data.voice?.ttsRecommended &&
+            data.voice.speakText
+          ) {
+            voice.speak(data.voice.speakText);
+          }
+          return;
+        }
+
         if (data.submitOrder && data.sessionId) {
           const submitMessage = await trySubmitOrder(data.sessionId);
           setMessages((prev) => [
@@ -872,6 +901,7 @@ export function AiConciergeChat({
       callAiChat,
       applyCartActions,
       trySubmitOrder,
+      clearCart,
       tUI,
       voice,
     ]
