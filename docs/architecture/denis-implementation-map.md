@@ -128,16 +128,16 @@ sequenceDiagram
 | `00092_denis_guest_memory.sql` | `denis_guest_memory` consented prefs | M17 |
 | `00093_denis_eval_runs.sql` | `denis_eval_runs` CI regression history | M24 |
 
-### 3.5 Legacy bridge (still active — intentional)
+### 3.5 Legacy bridge (post F8-4)
 
-| Legacy path | Role until cutover |
-|-------------|-------------------|
-| `src/lib/ai/execute-chat-turn.ts` (~937 lines) | OpenAI, ordering, session persist, credits |
-| `src/lib/ai/chat-service.ts` (11 lines) | thin export → `runDenisTurn` |
-| `src/lib/ai/proactive-triggers.ts` | server evaluate via sense (M11) | legacy client fallback if no fingerprint |
-| `src/lib/ai/ordering/order-executor.ts` | Order Core create (ACL allowlist) |
+| Path | Role |
+|------|------|
+| `src/lib/ai/execute-chat-turn.ts` (~620 lines) | OpenAI + session persist only; `deferredOrdering` → kernel bridge |
+| `src/lib/ai/chat-service.ts` | thin export → `runDenisTurn` |
+| `src/lib/ai/ordering/kernel-ordering-bridge.ts` | cart mutations in `runDenisTurn` |
+| `src/lib/ai/ordering/order-executor.ts` | guest `/api/ai/order/submit` until act submit pilot (F8-3) |
 
-**OpenAI today:** ordering/planning in `execute-chat-turn.ts`; optional T3 narration in `runtime/narrate/narrate-llm.ts` when `llm.narrateWithLlm` + rollout `denis_only`.
+**OpenAI:** legacy adapter for structured LLM; optional T3 narration in `runtime/narrate/narrate-llm.ts` when `llm.narrateWithLlm` + rollout `denis_only`.
 
 ---
 
@@ -188,7 +188,7 @@ Honest delta after M10 — do not assume these exist:
 | learning | ✓ | ✓ | | | | | | — | |
 | eval | ✓ | ✓ | ✓ | | ✓ | | | | — |
 
-**OpenAI (compliance):** allowed paths under `src/lib/denis/` are `runtime/narrate/` and `runtime/perceive/` only. Legacy OpenAI remains in `src/lib/ai/execute-chat-turn.ts` until narrate cutover.
+**OpenAI (compliance):** allowed paths under `src/lib/denis/` are `runtime/narrate/` and `runtime/perceive/` only. Legacy OpenAI adapter: `src/lib/ai/execute-chat-turn.ts` (session + LLM; F8-4).
 
 **Shadow diff:** lives in `runtime/shadow-diff.ts` (not `eval/`) — import-matrix constraint.
 
@@ -227,7 +227,7 @@ Honest delta after M10 — do not assume these exist:
 | **M26** | ✅ | CI Denis gates + eval run detail UI |
 | **M27** | ✅ | Canary cohort % (`rollout.canaryPercent`) |
 
-**Next recommended:** push migrations `00094`–`00096`; enable QStash for org_ai_ops refresh; cutover per venue (`shadow` → `canary` → `denis_only`) in Admin Settings.
+**Next recommended:** commit + deploy F8; push migrations `00094`–`00096`; pilot `denis_act_submit_pilot` on one venue; retire guest `order-executor` path after act submit GA.
 
 ---
 
@@ -318,9 +318,11 @@ pnpm type-check
 | Track | Scope | Status |
 |-------|-------|--------|
 | **F8-1** | GA gate (`ga-gate.ts`) + turn observability logs | ✅ |
-| **F8-2** | Kernel ordering bridge + `legacyOrderingEnabled` flag | ✅ |
+| **F8-2** | Kernel ordering bridge in `runDenisTurn` | ✅ |
 | **F8-3** | Live `actSubmitEnabled` pilot + legacy submit suppressed | ✅ |
-| **F8-4** | Delete legacy ordering paths | 📋 |
+| **F8-4** | Legacy adapter slim — session + LLM only | ✅ |
+
+**Post-F8 ops:** shadow → canary → `denis_only` → `denis_act_submit_pilot`; `pnpm eval:denis` before act submit.
 
 **Doc:** [ADR-010](./ADR-010-denis-ordering-cutover.md) · ADR-006 accepted (May 2026)
 

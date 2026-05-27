@@ -3,14 +3,11 @@ import {
   AI_CONFIG,
   isOpenAiConfigured,
   resolveAiPromptLanguage,
-  resolveGuestMessageLanguage,
 } from "@/lib/ai/config";
 import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
-  buildBrowseMessage,
   guestAskedForSuggestions,
-  isExplicitBrowseQuery,
   isLikelyBrowseQuery,
   mergeBrowseRecommendations,
   searchCatalogProducts,
@@ -18,22 +15,9 @@ import {
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
 import { moderateGuestInput } from "@/lib/ai/moderation";
-import {
-  formatDraftForPrompt,
-  processOrderingTurn,
-} from "@/lib/ai/ordering/ordering-turn";
-import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
+import { formatDraftForPrompt } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import {
-  emptyCartSubmitBlockedMessage,
-  finalizeOrderFlow,
-  shouldHandleOrderFlowWithoutLlm,
-} from "@/lib/ai/ordering/order-flow";
-import {
-  isOrderPlacementMessage,
-  maybeBackfillOrderDraft,
-} from "@/lib/ai/ordering/order-message-backfill";
 import {
   AiCircuitOpenError,
   AiOpenAiError,
@@ -44,7 +28,12 @@ import {
   formatOrderContextBlock,
   loadGuestOrdersForAi,
 } from "@/lib/ai/order-context";
-import type { AiGuestPreferences, OpenAiCallResult, OpenAiChatMessage, AiStructuredResponse } from "@/lib/ai/types";
+import type {
+  AiGuestPreferences,
+  OpenAiCallResult,
+  OpenAiChatMessage,
+  AiStructuredResponse,
+} from "@/lib/ai/types";
 import {
   aiSessionInactiveStatus,
   isAiSessionExpired,
@@ -98,8 +87,6 @@ export const aiChatRequestSchema = z.object({
   includeOrderContext: z.boolean().optional().default(true),
   browsingContext: zSanitizedText(2000).optional(),
   allowOrdering: z.boolean().optional().default(true),
-  /** F8-2 — when false, legacy skips cart mutations (kernel bridge in runDenisTurn). */
-  legacyOrderingEnabled: z.boolean().optional().default(true),
 });
 
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
@@ -190,13 +177,19 @@ function toOpenAiHistory(messages: StoredMessage[]): OpenAiChatMessage[] {
   }));
 }
 
-function assistantContent(message: string, recommendations: { productId: string }[]) {
+function assistantContent(
+  message: string,
+  recommendations: { productId: string }[]
+) {
   return JSON.stringify({ message, recommendations });
 }
 
 async function resolveStructuredResponse(
   openAiResult: OpenAiCallResult,
-  productMap: Record<string, { id: string; name: string; price: number; imageUrl: string | null }>,
+  productMap: Record<
+    string,
+    { id: string; name: string; price: number; imageUrl: string | null }
+  >,
   openAiMessages: OpenAiChatMessage[]
 ) {
   try {
@@ -206,7 +199,8 @@ async function resolveStructuredResponse(
     };
   } catch (firstError) {
     logger.warn("AI response parse failed, retrying OpenAI once", {
-      error: firstError instanceof Error ? firstError.message : String(firstError),
+      error:
+        firstError instanceof Error ? firstError.message : String(firstError),
     });
 
     for (let attempt = 0; attempt < AI_CONFIG.parseRetryAttempts; attempt++) {
@@ -227,29 +221,32 @@ async function resolveStructuredResponse(
         logger.warn("AI parse retry failed", {
           attempt: attempt + 1,
           error:
-            retryError instanceof Error ? retryError.message : String(retryError),
+            retryError instanceof Error
+              ? retryError.message
+              : String(retryError),
         });
       }
     }
 
     return {
       structured: {
-        message:
-          "Sorry, I didn't catch that — could you try again?",
+        message: "Sorry, I didn't catch that — could you try again?",
         recommendations: [] as { productId: string; reason: string }[],
         proposedItems: [],
         quickReplies: [],
         submitOrder: false,
         intent: "chat" as const,
       },
-      recommendations: [] as ReturnType<typeof parseAiStructuredResponse>["recommendations"],
+      recommendations: [] as ReturnType<
+        typeof parseAiStructuredResponse
+      >["recommendations"],
       openAiResult,
       usedFallback: true,
     };
   }
 }
 
-/** Legacy LLM + ordering path — called from Denis runtime only (ADR-009 F1). */
+/** Legacy LLM + session adapter — ordering deferred to runDenisTurn (ADR-010 F8-4). */
 export async function executeChatTurn(body: unknown) {
   const parsed = aiChatRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -379,10 +376,7 @@ export async function executeChatTurn(body: unknown) {
     }
   }
 
-  if (
-    sessionRow &&
-    aiSessionInactiveStatus(sessionRow) !== "active"
-  ) {
+  if (sessionRow && aiSessionInactiveStatus(sessionRow) !== "active") {
     return apiError("Session is no longer active.", 410);
   }
 
@@ -432,401 +426,11 @@ export async function executeChatTurn(body: unknown) {
   };
 
   const allowOrdering = input.allowOrdering !== false;
-  const orderingViaLegacy =
-    allowOrdering && input.legacyOrderingEnabled !== false;
-  const catalog = {
-    menuText: menuPayload.menuText,
-    productMap: menuPayload.productMap,
-    catalog: menuPayload.catalog,
-    currency: menuPayload.currency,
-    cachedAt: menuPayload.cachedAt,
-  };
-
-  let workingDraft = sessionRow?.order_draft ?? initDraftFromStorage(null);
-  const browseMatches = searchCatalogProducts(catalog.catalog, input.message);
-
-  if (orderingViaLegacy) {
-  const preTurn = processOrderingTurn({
-    userMessage: input.message,
-    allowOrdering,
-    orderDraftRaw: workingDraft,
-    catalog,
-  });
-  workingDraft = preTurn.draft;
-
-  const earlyBackfill = maybeBackfillOrderDraft(
-    workingDraft,
-    catalog,
-    input.message,
-    priorMessages
+  const orderDraft = sessionRow?.order_draft ?? initDraftFromStorage(null);
+  const browseMatches = searchCatalogProducts(
+    menuPayload.catalog,
+    input.message
   );
-  workingDraft = earlyBackfill.draft;
-
-  if (
-    allowOrdering &&
-    earlyBackfill.cartActions.length > 0 &&
-    !workingDraft.pending &&
-    isOrderPlacementMessage(input.message)
-  ) {
-    const flowResult = finalizeOrderFlow({
-      userMessage: input.message,
-      draft: workingDraft,
-      llmMessage: "",
-      llmSubmitOrder: false,
-      cartActionsThisTurn: earlyBackfill.cartActions.length,
-      language,
-    });
-    workingDraft = flowResult.draft;
-
-    const assistantMessage: StoredMessage = {
-      role: "assistant",
-      content: assistantContent(flowResult.message, []),
-      timestamp: new Date().toISOString(),
-    };
-    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
-    const scrollContext = input.browsingContext
-      ? parseBrowsingContextToScrollContext(input.browsingContext)
-      : null;
-
-    let sessionId = sessionRow?.id;
-    const sessionPatch = {
-      messages: updatedMessages,
-      language,
-      guest_preferences: guestPrefs as import("@/types/database").Json,
-      order_draft: workingDraft as unknown as import("@/types/database").Json,
-      ...(scrollContext ? { scroll_context: scrollContext } : {}),
-    };
-
-    if (sessionRow) {
-      const { error: updateError } = await admin
-        .from("ai_sessions")
-        .update(sessionPatch)
-        .eq("id", sessionRow.id);
-      if (updateError) {
-        logger.error("AI session update failed", { error: updateError.message });
-        return apiError("Could not update session.", 500);
-      }
-    } else {
-      const { data: inserted, error: insertError } = await admin
-        .from("ai_sessions")
-        .insert({
-          org_id: orgId,
-          location_id: input.locationId,
-          table_id: input.tableId,
-          session_token: input.sessionToken,
-          messages: updatedMessages,
-          tokens_used: 0,
-          credits_used: 0,
-          products_recommended: [],
-          products_added: [],
-          conversion_count: 0,
-          status: "active",
-          order_draft: workingDraft as unknown as import("@/types/database").Json,
-          language,
-          guest_preferences: guestPrefs,
-          ...(scrollContext ? { scroll_context: scrollContext } : {}),
-        })
-        .select("id")
-        .single();
-      if (insertError || !inserted) {
-        return apiError("Could not create session.", 500);
-      }
-      sessionId = (inserted as { id: string }).id;
-    }
-
-    const { data: creditsRow } = await admin
-      .from("ai_credits")
-      .select("balance")
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    return apiSuccess({
-      message: flowResult.message,
-      recommendations: [],
-      cartActions: earlyBackfill.cartActions,
-      quickReplies: [],
-      intent: flowResult.intent,
-      submitOrder: flowResult.submitOrder,
-      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
-      creditsCharged: 0,
-      sessionId,
-    });
-  }
-
-  if (
-    preTurn.cartActions.length === 0 &&
-    !workingDraft.pending &&
-    isExplicitBrowseQuery(input.message) &&
-    browseMatches.length >= 2 &&
-    preTurn.quickReplies.length === 0
-  ) {
-    const recommendations = mergeBrowseRecommendations(
-      browseMatches,
-      catalog.productMap,
-      catalog.currency
-    );
-    const responseLanguage = language;
-    const assistantText = buildBrowseMessage(browseMatches, responseLanguage);
-
-    const assistantMessage: StoredMessage = {
-      role: "assistant",
-      content: assistantContent(assistantText, recommendations),
-      timestamp: new Date().toISOString(),
-    };
-    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
-    const scrollContext = input.browsingContext
-      ? parseBrowsingContextToScrollContext(input.browsingContext)
-      : null;
-
-    let sessionId = sessionRow?.id;
-    const recommendedIds = [
-      ...new Set([
-        ...(sessionRow?.products_recommended ?? []),
-        ...recommendations.map((item) => item.productId),
-      ]),
-    ];
-    const sessionPatch = {
-      messages: updatedMessages,
-      language,
-      guest_preferences: guestPrefs as import("@/types/database").Json,
-      order_draft: workingDraft as unknown as import("@/types/database").Json,
-      products_recommended: recommendedIds,
-      ...(scrollContext ? { scroll_context: scrollContext } : {}),
-    };
-
-    if (sessionRow) {
-      const { error: updateError } = await admin
-        .from("ai_sessions")
-        .update(sessionPatch)
-        .eq("id", sessionRow.id);
-      if (updateError) {
-        logger.error("AI session update failed", { error: updateError.message });
-        return apiError("Could not update session.", 500);
-      }
-    } else {
-      const { data: inserted, error: insertError } = await admin
-        .from("ai_sessions")
-        .insert({
-          org_id: orgId,
-          location_id: input.locationId,
-          table_id: input.tableId,
-          session_token: input.sessionToken,
-          messages: updatedMessages,
-          tokens_used: 0,
-          credits_used: 0,
-          products_recommended: recommendedIds,
-          products_added: [],
-          conversion_count: 0,
-          status: "active",
-          order_draft: workingDraft as unknown as import("@/types/database").Json,
-          language,
-          guest_preferences: guestPrefs,
-          ...(scrollContext ? { scroll_context: scrollContext } : {}),
-        })
-        .select("id")
-        .single();
-      if (insertError || !inserted) {
-        return apiError("Could not create session.", 500);
-      }
-      sessionId = (inserted as { id: string }).id;
-    }
-
-    const { data: creditsRow } = await admin
-      .from("ai_credits")
-      .select("balance")
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    return apiSuccess({
-      message: assistantText,
-      recommendations,
-      cartActions: [],
-      quickReplies: [],
-      intent: "menu_info",
-      submitOrder: false,
-      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
-      creditsCharged: 0,
-      sessionId,
-    });
-  }
-
-  if (preTurn.skippedLlm && preTurn.cartActions.length > 0) {
-    const assistantText =
-      preTurn.confirmationMessage ??
-      `Added to cart: ${preTurn.cartActions.map((a) => a.productName).join(", ")}.`;
-
-    const assistantMessage: StoredMessage = {
-      role: "assistant",
-      content: assistantText,
-      timestamp: new Date().toISOString(),
-    };
-    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
-    const scrollContext = input.browsingContext
-      ? parseBrowsingContextToScrollContext(input.browsingContext)
-      : null;
-
-    let sessionId = sessionRow?.id;
-    const sessionPatch = {
-      messages: updatedMessages,
-      language,
-      guest_preferences: guestPrefs as import("@/types/database").Json,
-      order_draft: workingDraft as unknown as import("@/types/database").Json,
-      ...(scrollContext ? { scroll_context: scrollContext } : {}),
-    };
-
-    if (sessionRow) {
-      const { error: updateError } = await admin
-        .from("ai_sessions")
-        .update(sessionPatch)
-        .eq("id", sessionRow.id);
-      if (updateError) {
-        logger.error("AI session update failed", { error: updateError.message });
-        return apiError("Could not update session.", 500);
-      }
-    } else {
-      const { data: inserted, error: insertError } = await admin
-        .from("ai_sessions")
-        .insert({
-          org_id: orgId,
-          location_id: input.locationId,
-          table_id: input.tableId,
-          session_token: input.sessionToken,
-          messages: updatedMessages,
-          tokens_used: 0,
-          credits_used: 0,
-          products_recommended: [],
-          products_added: [],
-          conversion_count: 0,
-          status: "active",
-          order_draft: workingDraft as unknown as import("@/types/database").Json,
-          language,
-          guest_preferences: guestPrefs,
-          ...(scrollContext ? { scroll_context: scrollContext } : {}),
-        })
-        .select("id")
-        .single();
-      if (insertError || !inserted) {
-        return apiError("Could not create session.", 500);
-      }
-      sessionId = (inserted as { id: string }).id;
-    }
-
-    const { data: creditsRow } = await admin
-      .from("ai_credits")
-      .select("balance")
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    return apiSuccess({
-      message: assistantText,
-      recommendations: [],
-      cartActions: preTurn.cartActions,
-      quickReplies: preTurn.quickReplies,
-      intent: preTurn.intent,
-      submitOrder: false,
-      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
-      creditsCharged: 0,
-      sessionId,
-    });
-  }
-
-  if (
-    allowOrdering &&
-    shouldHandleOrderFlowWithoutLlm(input.message, workingDraft)
-  ) {
-    const preFlowBackfill = maybeBackfillOrderDraft(
-      workingDraft,
-      catalog,
-      input.message,
-      priorMessages
-    );
-    workingDraft = preFlowBackfill.draft;
-
-    const flowResult = finalizeOrderFlow({
-      userMessage: input.message,
-      draft: workingDraft,
-      llmMessage: "",
-      llmSubmitOrder: false,
-      cartActionsThisTurn: preFlowBackfill.cartActions.length,
-      language,
-    });
-    workingDraft = flowResult.draft;
-
-    const assistantMessage: StoredMessage = {
-      role: "assistant",
-      content: assistantContent(flowResult.message, []),
-      timestamp: new Date().toISOString(),
-    };
-    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
-    const scrollContext = input.browsingContext
-      ? parseBrowsingContextToScrollContext(input.browsingContext)
-      : null;
-
-    let sessionId = sessionRow?.id;
-    const sessionPatch = {
-      messages: updatedMessages,
-      language,
-      guest_preferences: guestPrefs as import("@/types/database").Json,
-      order_draft: workingDraft as unknown as import("@/types/database").Json,
-      ...(scrollContext ? { scroll_context: scrollContext } : {}),
-    };
-
-    if (sessionRow) {
-      const { error: updateError } = await admin
-        .from("ai_sessions")
-        .update(sessionPatch)
-        .eq("id", sessionRow.id);
-      if (updateError) {
-        logger.error("AI session update failed", { error: updateError.message });
-        return apiError("Could not update session.", 500);
-      }
-    } else {
-      const { data: inserted, error: insertError } = await admin
-        .from("ai_sessions")
-        .insert({
-          org_id: orgId,
-          location_id: input.locationId,
-          table_id: input.tableId,
-          session_token: input.sessionToken,
-          messages: updatedMessages,
-          tokens_used: 0,
-          credits_used: 0,
-          products_recommended: [],
-          products_added: [],
-          conversion_count: 0,
-          status: "active",
-          order_draft: workingDraft as unknown as import("@/types/database").Json,
-          language,
-          guest_preferences: guestPrefs,
-          ...(scrollContext ? { scroll_context: scrollContext } : {}),
-        })
-        .select("id")
-        .single();
-      if (insertError || !inserted) {
-        return apiError("Could not create session.", 500);
-      }
-      sessionId = (inserted as { id: string }).id;
-    }
-
-    const { data: creditsRow } = await admin
-      .from("ai_credits")
-      .select("balance")
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    return apiSuccess({
-      message: flowResult.message,
-      recommendations: [],
-      cartActions: [],
-      quickReplies: [],
-      intent: flowResult.intent,
-      submitOrder: flowResult.submitOrder,
-      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
-      creditsCharged: 0,
-      sessionId,
-    });
-  }
-  }
 
   const systemPrompt = buildSystemPrompt({
     orgName,
@@ -836,8 +440,8 @@ export async function executeChatTurn(body: unknown) {
     guestPrefs,
     orderContext,
     browsingContext: input.browsingContext ?? null,
-    orderDraftContext: formatDraftForPrompt(workingDraft),
-    allowOrdering: orderingViaLegacy ? allowOrdering : false,
+    orderDraftContext: formatDraftForPrompt(orderDraft),
+    allowOrdering,
     playbookContext: await getPlaybookPromptBlock(orgId, input.locationId),
   });
 
@@ -874,89 +478,35 @@ export async function executeChatTurn(body: unknown) {
   );
 
   openAiResult = resolved.openAiResult;
-  const structured = {
-    structured: resolved.structured,
-    recommendations: resolved.recommendations,
-  };
-
-  let orderingResult: ReturnType<typeof processOrderingTurn>;
-  let flowResult: ReturnType<typeof finalizeOrderFlow>;
-  let deferredOrdering: AiStructuredResponse | undefined;
-
-  if (orderingViaLegacy) {
-    const postLlm = applyPostLlmOrdering({
-      userMessage: input.message,
-      allowOrdering,
-      orderDraft: workingDraft,
-      catalog,
-      structured: structured.structured,
-      priorMessages,
-      language,
-    });
-    workingDraft = postLlm.draft;
-    orderingResult = {
-      draft: postLlm.draft,
-      cartActions: postLlm.cartActions,
-      quickReplies: postLlm.quickReplies,
-      intent: postLlm.intent,
-      skippedLlm: false,
-    };
-    flowResult = {
-      draft: postLlm.draft,
-      message: postLlm.assistantMessage,
-      submitOrder: postLlm.submitOrder,
-      intent: postLlm.intent,
-    };
-  } else {
-    deferredOrdering = structured.structured;
-    orderingResult = {
-      draft: workingDraft,
-      cartActions: [],
-      quickReplies: structured.structured.quickReplies,
-      intent: structured.structured.intent,
-      skippedLlm: false,
-    };
-    flowResult = {
-      draft: workingDraft,
-      message: structured.structured.message,
-      submitOrder: structured.structured.submitOrder,
-      intent: structured.structured.intent,
-    };
-  }
-
-  let assistantReplyMessage = flowResult.message;
-  let submitOrder = flowResult.submitOrder;
+  const structured = resolved.structured;
+  const deferredOrdering: AiStructuredResponse | undefined = allowOrdering
+    ? structured
+    : undefined;
 
   const guestWantsSuggestions = guestAskedForSuggestions(input.message);
-
   const shouldEnrichBrowse =
     guestWantsSuggestions &&
     isLikelyBrowseQuery(input.message) &&
     browseMatches.length >= 2 &&
-    !workingDraft.pending &&
-    orderingResult.cartActions.length === 0 &&
-    !submitOrder &&
-    orderingResult.quickReplies.length === 0 &&
-    structured.structured.intent !== "clarify" &&
-    structured.structured.intent !== "confirm" &&
-    ["menu_info", "recommend", "chat"].includes(structured.structured.intent);
+    !orderDraft.pending &&
+    structured.intent !== "clarify" &&
+    structured.intent !== "confirm" &&
+    ["menu_info", "recommend", "chat"].includes(structured.intent);
 
   const finalRecommendations = shouldEnrichBrowse
     ? mergeBrowseRecommendations(
         browseMatches,
         menuPayload.productMap,
-        catalog.currency,
-        structured.recommendations
+        menuPayload.currency,
+        resolved.recommendations
       )
-    : structured.recommendations;
+    : resolved.recommendations;
 
   const displayRecommendations =
-    !guestWantsSuggestions &&
-    structured.structured.intent !== "menu_info"
+    !guestWantsSuggestions && structured.intent !== "menu_info"
       ? []
-      : (structured.structured.intent === "clarify" ||
-            structured.structured.intent === "confirm") &&
-          orderingResult.quickReplies.length > 0
+      : (structured.intent === "clarify" || structured.intent === "confirm") &&
+          structured.quickReplies.length > 0
         ? []
         : finalRecommendations;
 
@@ -970,10 +520,7 @@ export async function executeChatTurn(body: unknown) {
 
   const assistantMessage: StoredMessage = {
     role: "assistant",
-    content: assistantContent(
-      assistantReplyMessage,
-      displayRecommendations
-    ),
+    content: assistantContent(structured.message, displayRecommendations),
     timestamp: new Date().toISOString(),
   };
 
@@ -994,6 +541,7 @@ export async function executeChatTurn(body: unknown) {
   const creditsUsed = sessionRow?.credits_used ?? 0;
 
   let sessionId = sessionRow?.id;
+  const orderDraftJson = orderDraft as unknown as import("@/types/database").Json;
 
   if (sessionRow) {
     const { error: updateError } = await admin
@@ -1005,7 +553,7 @@ export async function executeChatTurn(body: unknown) {
         products_recommended: recommendedIds,
         language,
         guest_preferences: guestPrefs,
-        order_draft: workingDraft as unknown as import("@/types/database").Json,
+        order_draft: orderDraftJson,
         ...(scrollContext ? { scroll_context: scrollContext } : {}),
       })
       .eq("id", sessionRow.id);
@@ -1031,7 +579,7 @@ export async function executeChatTurn(body: unknown) {
         products_added: [],
         conversion_count: 0,
         status: "active",
-        order_draft: workingDraft as unknown as import("@/types/database").Json,
+        order_draft: orderDraftJson,
         ...(scrollContext ? { scroll_context: scrollContext } : {}),
       })
       .select("id")
@@ -1047,13 +595,20 @@ export async function executeChatTurn(body: unknown) {
     sessionId = (inserted as { id: string }).id;
   }
 
+  const { data: creditsRow } = await admin
+    .from("ai_credits")
+    .select("balance")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
   return apiSuccess({
-    message: assistantReplyMessage,
+    message: structured.message,
     recommendations: displayRecommendations,
-    cartActions: orderingResult.cartActions,
-    quickReplies: orderingResult.quickReplies,
-    intent: flowResult.intent,
-    submitOrder,
+    cartActions: [],
+    quickReplies: structured.quickReplies,
+    intent: structured.intent,
+    submitOrder: allowOrdering ? structured.submitOrder : false,
+    creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
     creditsCharged: AI_CONFIG.creditsPerMessage,
     sessionId,
     ...(deferredOrdering ? { deferredOrdering } : {}),

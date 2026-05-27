@@ -58,7 +58,7 @@ flowchart LR
 | **F8-1** | GA gate + turn observability | `evaluateGaGate`, structured turn logs, admin panel hints | ✅ |
 | **F8-2** | Legacy adapter slim | Ordering paths removed from legacy; reflex+act own cart mutations | ✅ |
 | **F8-3** | Act submit cutover | `actSubmitEnabled` on pilot venues; legacy submit disabled | ✅ |
-| **F8-4** | Legacy delete | `execute-chat-turn.ts` ≤ session+LLM budget; ordering modules only via act |
+| **F8-4** | Legacy delete | `execute-chat-turn.ts` session+LLM only; ordering via kernel bridge in `runDenisTurn` | ✅ |
 
 Each track = **one PR**, `pnpm verify:denis`, `pnpm eval:denis`, `pnpm type-check`.
 
@@ -109,7 +109,17 @@ Code: `resolve-act-submit-outcome.ts`, `run-denis-turn.ts` act block.
 
 ---
 
-## 7. Verification
+## 8. Legacy adapter slim (F8-4)
+
+`execute-chat-turn.ts` is **session + LLM only**:
+
+- OpenAI structured response → `deferredOrdering`
+- Session persist (messages, tokens); **no** cart mutations in legacy file
+- `runDenisTurn` always runs `applyPostLlmOrdering` when `deferredOrdering` is present
+
+---
+
+## 9. Verification
 
 ```bash
 pnpm verify:denis

@@ -92,7 +92,6 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
       llm: { narrateWithLlm: false, slotExtractWithLlm: false },
       ordering: {
         slotExtractEnabled: true,
-        legacyOrderingEnabled: false,
         actLayerEnabled: true,
         actDryRun: true,
         actSubmitEnabled: false,
@@ -131,7 +130,6 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
       llm: { narrateWithLlm: true, slotExtractWithLlm: false },
       ordering: {
         slotExtractEnabled: true,
-        legacyOrderingEnabled: false,
         actLayerEnabled: true,
         actDryRun: false,
         actSubmitEnabled: true,
@@ -153,7 +151,6 @@ export type DenisRolloutFormState = {
   actLayerEnabled: boolean;
   actDryRun: boolean;
   actSubmitEnabled: boolean;
-  legacyOrderingEnabled: boolean;
 };
 
 /** Map effective merged config to admin form fields. */
@@ -168,7 +165,6 @@ export function denisRolloutFormFromEffective(config: {
     actLayerEnabled: boolean;
     actDryRun: boolean;
     actSubmitEnabled: boolean;
-    legacyOrderingEnabled: boolean;
   };
   memory: { returnGuestEnabled: boolean };
   surfaces: { voiceEnabled: boolean };
@@ -184,7 +180,6 @@ export function denisRolloutFormFromEffective(config: {
     actLayerEnabled: config.ordering.actLayerEnabled,
     actDryRun: config.ordering.actDryRun,
     actSubmitEnabled: config.ordering.actSubmitEnabled,
-    legacyOrderingEnabled: config.ordering.legacyOrderingEnabled,
   };
 }
 
@@ -207,7 +202,6 @@ export function denisRolloutPatchFromForm(
       actLayerEnabled: form.actLayerEnabled,
       actDryRun: form.actDryRun,
       actSubmitEnabled: form.actSubmitEnabled,
-      legacyOrderingEnabled: form.legacyOrderingEnabled,
     },
     memory: { returnGuestEnabled: form.returnGuestEnabled },
     surfaces: { voiceEnabled: form.voiceEnabled },
@@ -236,6 +230,5 @@ export function denisRolloutFormFromPreset(
     actLayerEnabled: ordering.actLayerEnabled ?? false,
     actDryRun: ordering.actDryRun ?? true,
     actSubmitEnabled: ordering.actSubmitEnabled ?? false,
-    legacyOrderingEnabled: ordering.legacyOrderingEnabled ?? true,
   };
 }

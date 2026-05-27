@@ -150,10 +150,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     : null;
 
   const legacyStarted = performance.now();
-  const legacyResponse = await executeChatTurn({
-    ...parsed.data,
-    legacyOrderingEnabled: ctx.config.ordering.legacyOrderingEnabled,
-  });
+  const legacyResponse = await executeChatTurn(parsed.data);
   timings.legacyMs = elapsedMs(legacyStarted);
   if (legacyResponse.status !== 200) {
     return legacyResponse;
@@ -169,11 +166,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   let cartDraftForAct = ctx.aiCartState.draft;
   const actSubmitLive = isActSubmitLive(ctx.config);
 
-  if (
-    !ctx.config.ordering.legacyOrderingEnabled &&
-    data.deferredOrdering &&
-    data.sessionId
-  ) {
+  if (data.deferredOrdering && data.sessionId) {
     const { data: sessionRow, error: sessionError } = await admin
       .from("ai_sessions")
       .select("order_draft, messages")

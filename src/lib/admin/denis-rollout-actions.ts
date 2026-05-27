@@ -36,7 +36,6 @@ const denisRolloutFormSchema = z.object({
   actLayerEnabled: z.boolean(),
   actDryRun: z.boolean(),
   actSubmitEnabled: z.boolean(),
-  legacyOrderingEnabled: z.boolean(),
 });
 
 export type DenisRolloutAdminState = {
@@ -103,16 +102,6 @@ export async function saveDenisRolloutConfig(
   ) {
     return {
       error: "Live act submit (F8-3) requires rollout mode denis_only.",
-    };
-  }
-
-  if (
-    parsed.data.actSubmitEnabled &&
-    !parsed.data.legacyOrderingEnabled &&
-    !parsed.data.actLayerEnabled
-  ) {
-    return {
-      error: "Kernel ordering off requires act layer when act submit is enabled.",
     };
   }
 

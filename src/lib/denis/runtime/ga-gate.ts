@@ -123,18 +123,6 @@ export function evaluateGaGate(
     }
   }
 
-  if (!form.legacyOrderingEnabled) {
-    checks.push(
-      check(
-        "kernel-ordering-act",
-        "Kernel ordering requires act layer enabled",
-        form.actLayerEnabled,
-        true,
-        "Enable act layer when legacy ordering is off (F8-2)."
-      )
-    );
-  }
-
   const actSubmitLive =
     form.actSubmitEnabled && form.actLayerEnabled && !form.actDryRun;
 

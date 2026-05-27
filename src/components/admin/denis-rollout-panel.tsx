@@ -328,12 +328,6 @@ export function DenisRolloutPanel({ initial }: Props) {
             onCheckedChange={(v) => updateForm("voiceEnabled", v)}
           />
           <FlagRow
-            label="Legacy ordering in adapter"
-            description="When off, cart mutations run via kernel bridge (F8-2)."
-            checked={form.legacyOrderingEnabled}
-            onCheckedChange={(v) => updateForm("legacyOrderingEnabled", v)}
-          />
-          <FlagRow
             label="Act layer"
             description="Execute planned skills on timeline."
             checked={form.actLayerEnabled}
