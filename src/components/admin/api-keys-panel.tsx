@@ -11,6 +11,7 @@ import {
   API_SCOPE_LABELS,
   type ApiScope,
 } from "@/lib/api/v1/scopes";
+import { AdminPanel } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,17 +76,20 @@ export function ApiKeysPanel({
   }
 
   return (
-    <div className="max-w-2xl rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">API keys</h2>
-      <p className="mt-1 text-sm text-neutral-500">
-        Authenticate public API requests with the{" "}
-        <code className="rounded bg-neutral-100 px-1">X-API-Key</code> header.
-      </p>
-
+    <AdminPanel
+      className="max-w-2xl"
+      title="API keys"
+      description={
+        <>
+          Authenticate public API requests with the{" "}
+          <code className="rounded bg-muted px-1 text-foreground">X-API-Key</code> header.
+        </>
+      }
+    >
       {createdKey && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-900">Copy your new key</p>
-          <code className="mt-2 block break-all text-xs text-amber-950">{createdKey}</code>
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="text-sm font-medium text-amber-200">Copy your new key</p>
+          <code className="mt-2 block break-all text-xs text-amber-100">{createdKey}</code>
           <Button
             type="button"
             size="sm"
@@ -124,8 +128,8 @@ export function ApiKeysPanel({
                   onClick={() => toggleScope(scope)}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
                     selectedScopes.includes(scope)
-                      ? "bg-blue-600 text-white"
-                      : "bg-neutral-100 text-neutral-600"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {API_SCOPE_LABELS[scope]}
@@ -143,11 +147,11 @@ export function ApiKeysPanel({
         {activeKeys.map((key) => (
           <li
             key={key.id}
-            className="flex items-center justify-between rounded-lg border border-neutral-100 px-3 py-2 text-sm"
+            className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm"
           >
             <div>
-              <p className="font-medium">{key.name}</p>
-              <p className="text-xs text-neutral-500">
+              <p className="font-medium text-foreground">{key.name}</p>
+              <p className="text-xs text-muted-foreground">
                 {key.key_prefix}… · {key.scopes.join(", ")}
                 {key.last_used_at &&
                   ` · last used ${new Date(key.last_used_at).toLocaleDateString()}`}
@@ -166,9 +170,9 @@ export function ApiKeysPanel({
           </li>
         ))}
         {activeKeys.length === 0 && (
-          <p className="text-sm text-neutral-500">No active API keys.</p>
+          <p className="text-sm text-muted-foreground">No active API keys.</p>
         )}
       </ul>
-    </div>
+    </AdminPanel>
   );
 }

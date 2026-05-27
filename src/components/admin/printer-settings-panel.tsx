@@ -10,6 +10,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminPanel } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -290,14 +291,12 @@ export function PrinterSettingsPanel() {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Printers</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            ESC/POS kitchen, bar, and receipt printers for this location.
-          </p>
-        </div>
+    <AdminPanel
+      className="max-w-none"
+      title="Printers"
+      description="ESC/POS kitchen, bar, and receipt printers for this location."
+    >
+      <div className="-mt-1 mb-4 flex justify-end">
         <Button type="button" onClick={openCreateDialog}>
           <Plus className="size-4" />
           Add Printer
@@ -552,6 +551,6 @@ export function PrinterSettingsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPanel>
   );
 }

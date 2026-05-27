@@ -10,6 +10,7 @@ import {
 import { updateLocationAiConciergeEnabled } from "@/lib/admin/ai-actions";
 import { MENU_LOCALES } from "@/lib/i18n/locale-config";
 import { LOCALE_LABELS, type MenuLocale } from "@/lib/i18n/translations";
+import { AdminPanel, AdminPanelSection } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,11 +53,11 @@ export function LocationSettings({
 
     const [localeResult, reviewResult, orderingResult, aiResult] =
       await Promise.all([
-      updateLocationMenuLocale(menuLocale),
-      updateLocationGoogleReviewUrl(googleReviewUrl),
-      updateLocationOrderingEnabled(orderingEnabled),
-      updateLocationAiConciergeEnabled(aiConciergeEnabled),
-    ]);
+        updateLocationMenuLocale(menuLocale),
+        updateLocationGoogleReviewUrl(googleReviewUrl),
+        updateLocationOrderingEnabled(orderingEnabled),
+        updateLocationAiConciergeEnabled(aiConciergeEnabled),
+      ]);
 
     setSaving(false);
 
@@ -81,17 +82,19 @@ export function LocationSettings({
   }
 
   return (
-    <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">Location settings</h2>
-      <p className="mt-1 text-sm text-neutral-500">
-        Configuration for{" "}
-        <span className="font-medium text-neutral-700">{locationName}</span>.
-      </p>
-
-      <div className="mt-6 flex items-start justify-between gap-4 rounded-lg border border-neutral-200 p-4">
+    <AdminPanel
+      title="Location settings"
+      description={
+        <>
+          Configuration for{" "}
+          <span className="font-medium text-foreground">{locationName}</span>.
+        </>
+      }
+    >
+      <AdminPanelSection className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <Label htmlFor="online-ordering">Online ordering</Label>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             When off, guests browse menu but cannot place orders
           </p>
         </div>
@@ -101,12 +104,12 @@ export function LocationSettings({
           onCheckedChange={setOrderingEnabled}
           disabled={!canEdit}
         />
-      </div>
+      </AdminPanelSection>
 
-      <div className="mt-5 flex items-start justify-between gap-4 rounded-lg border border-neutral-200 p-4">
+      <AdminPanelSection className="mt-5 flex items-start justify-between gap-4">
         <div className="space-y-1">
           <Label htmlFor="ai-concierge">Denis aktivieren</Label>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             Gäste erhalten Denis-Empfehlungen im Menü
           </p>
         </div>
@@ -116,7 +119,7 @@ export function LocationSettings({
           onCheckedChange={setAiConciergeEnabled}
           disabled={!canEdit}
         />
-      </div>
+      </AdminPanelSection>
 
       <div className="mt-5 space-y-2">
         <Label htmlFor="menu-locale">Primary language</Label>
@@ -136,7 +139,7 @@ export function LocationSettings({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           Enter product names in {LOCALE_LABELS[menuLocale]} in the primary field,
           and the English translation in the English field.
         </p>
@@ -152,7 +155,7 @@ export function LocationSettings({
           placeholder="https://g.page/r/..."
           disabled={!canEdit}
         />
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           Guests see review prompt after payment
         </p>
       </div>
@@ -167,6 +170,6 @@ export function LocationSettings({
           {saving ? "Saving…" : "Save"}
         </Button>
       )}
-    </div>
+    </AdminPanel>
   );
 }

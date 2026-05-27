@@ -15,7 +15,7 @@ import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel"
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import type { AiCreditPackage } from "@/types";
-import { QrCard, QrCardTitle } from "@/components/design-system/qr-card";
+import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
 
 export default async function AdminSettingsPage() {
   const staff = await requireAdmin();
@@ -123,10 +123,10 @@ export default async function AdminSettingsPage() {
 
       <div className="space-y-6">
         <QrCard className="max-w-lg">
-          <QrCardTitle>Restoran</QrCardTitle>
+          <QrCardTitle>Organization</QrCardTitle>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Naziv</dt>
+              <dt className="text-muted-foreground">Name</dt>
               <dd className="font-medium text-foreground">{orgRow?.name}</dd>
             </div>
             <div className="flex justify-between">
@@ -134,11 +134,11 @@ export default async function AdminSettingsPage() {
               <dd className="text-foreground">{orgRow?.email ?? "—"}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Valuta</dt>
+              <dt className="text-muted-foreground">Currency</dt>
               <dd className="text-foreground">{orgRow?.currency}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">PDV</dt>
+              <dt className="text-muted-foreground">VAT</dt>
               <dd className="text-foreground">{orgRow?.default_tax_percent}%</dd>
             </div>
           </dl>

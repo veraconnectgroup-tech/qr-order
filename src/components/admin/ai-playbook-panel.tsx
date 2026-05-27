@@ -11,6 +11,7 @@ import {
   updateAiPlaybook,
 } from "@/lib/admin/ai-playbook-actions";
 import type { AiExampleCategory } from "@/lib/ai/playbook/types";
+import { AdminPanel } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,15 +114,11 @@ export function AiPlaybookPanel({
   }
 
   return (
-    <div className="max-w-2xl space-y-6 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-lg font-semibold">Denis Playbook</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          Pravila restorana i primeri razgovora — Denis uči stil i ponašanje iz
-          ovih unosa (few-shot).
-        </p>
-      </div>
-
+    <AdminPanel
+      className="max-w-2xl"
+      title="Denis Playbook"
+      description="Pravila restorana i primeri razgovora — Denis uči stil i ponašanje iz ovih unosa (few-shot)."
+    >
       <div className="space-y-3">
         <Label htmlFor="ai-playbook">Pravila restorana</Label>
         <Textarea
@@ -261,6 +258,6 @@ export function AiPlaybookPanel({
           </form>
         )}
       </div>
-    </div>
+    </AdminPanel>
   );
 }
