@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { MenuView } from "@/components/guest/menu-view";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import {
   getDemoGuestMenuProps,
   isDemoGuestRoute,
@@ -180,6 +181,8 @@ export default async function GuestMenuPage({
     }))
     .filter((c) => c.products.length > 0);
 
+  const conciergeConfig = await loadConciergeConfigForLocation(table.location_id);
+
   return (
     <MenuView
       slug={slug}
@@ -198,6 +201,10 @@ export default async function GuestMenuPage({
       orderingEnabled={table.location.ordering_enabled}
       acceptingOrders={table.location.accepting_orders}
       aiConciergeEnabled={table.location.ai_concierge_enabled}
+      returnGuestEnabled={conciergeConfig.memory.returnGuestEnabled}
+      memoryConsentPrompt={conciergeConfig.memory.consentPromptTemplate}
+      voiceEnabled={conciergeConfig.surfaces.voiceEnabled}
+      voiceTtsEnabled={conciergeConfig.surfaces.voiceTtsEnabled}
       googleReviewUrl={table.location.google_review_url}
     />
   );

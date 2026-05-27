@@ -1,4 +1,5 @@
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { inferDenisChannelFromBody } from "@/lib/denis/surfaces/voice/infer-denis-channel";
 import { runDenisTurn } from "@/lib/denis/runtime/run-denis-turn";
 import { zSessionToken } from "@/lib/security/zod-fields";
 import { withRateLimitByKey } from "@/lib/rate-limit";
@@ -20,5 +21,8 @@ export const POST = withErrorHandler("denis-turn-post", async (req, _ctx) => {
   const limited = await withRateLimitByKey("ai", sessionTokenParsed.data);
   if (limited) return limited;
 
-  return runDenisTurn({ channel: "chat", rawBody: body });
+  return runDenisTurn({
+    channel: inferDenisChannelFromBody(body),
+    rawBody: body,
+  });
 });

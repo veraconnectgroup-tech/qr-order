@@ -22,6 +22,7 @@ import { mergePeerManualDraft } from "@/lib/denis/runtime/adapters/map-party-man
 import {
   loadEffectiveVenueOps,
 } from "@/lib/denis/venue/ops";
+import { loadGuestMemoryProjection } from "@/lib/guest/denis-guest-memory-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SessionDraftRow = {
@@ -99,6 +100,17 @@ export async function buildDenisTurnContext(
     foodUpsellAsked = draft.flow?.foodUpsellAsked ?? false;
   }
 
+  let guestMemory = null;
+  if (
+    config.memory.returnGuestEnabled &&
+    input.deviceFingerprint
+  ) {
+    guestMemory = await loadGuestMemoryProjection(admin, {
+      locationId: input.locationId,
+      deviceFingerprint: input.deviceFingerprint,
+    });
+  }
+
   return {
     locationId: input.locationId,
     aiSessionId: input.sessionId,
@@ -112,5 +124,6 @@ export async function buildDenisTurnContext(
     venueOps,
     opsEffects,
     foodUpsellAsked,
+    guestMemory,
   };
 }

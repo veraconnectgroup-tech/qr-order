@@ -55,6 +55,7 @@ import { useSmartNudges } from "@/hooks/use-smart-nudges";
 import { useDenisSense } from "@/hooks/use-denis-sense";
 import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
+import { DenisMemoryConsentBanner } from "@/components/guest/denis-memory-consent-banner";
 import { AiSmartNudgeBanner } from "@/components/guest/ai-smart-nudge-banner";
 import type { ProductWithModifiers } from "@/types";
 import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
@@ -118,6 +119,10 @@ export function MenuView({
   orderingEnabled = true,
   acceptingOrders = true,
   aiConciergeEnabled = false,
+  returnGuestEnabled = false,
+  memoryConsentPrompt = null,
+  voiceEnabled = false,
+  voiceTtsEnabled = true,
   googleReviewUrl = null,
 }: {
   slug: string;
@@ -137,6 +142,10 @@ export function MenuView({
   orderingEnabled?: boolean;
   acceptingOrders?: boolean;
   aiConciergeEnabled?: boolean;
+  returnGuestEnabled?: boolean;
+  memoryConsentPrompt?: string | null;
+  voiceEnabled?: boolean;
+  voiceTtsEnabled?: boolean;
   googleReviewUrl?: string | null;
 }) {
   const { tUI, tName, menuLocale, isEnglish } = useAppLocale();
@@ -401,18 +410,30 @@ export function MenuView({
 
   const language = isEnglish ? "en" : menuLocale;
 
+  const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
+
   const {
     profile,
     isReturning,
+    lastVisitItems,
     saveAllergies: saveGuestAllergies,
-  } = useGuestMemory(locationId);
+    showMemoryConsent,
+    acceptMemoryConsent,
+    declineMemoryConsent,
+  } = useGuestMemory(locationId, {
+    enabled: returnGuestEnabled && aiConciergeEnabled,
+    tableId,
+    sessionToken,
+    deviceFingerprint,
+    language,
+  });
 
   const welcomeBackMessage = useMemo(() => {
-    if (!isReturning || !profile.lastVisitItems.length) return null;
+    if (!isReturning || !lastVisitItems.length) return null;
     return tUI("ai.memory.welcomeBack", {
-      items: profile.lastVisitItems.slice(0, 4).join(", "),
+      items: lastVisitItems.slice(0, 4).join(", "),
     });
-  }, [isReturning, profile.lastVisitItems, tUI]);
+  }, [isReturning, lastVisitItems, tUI]);
 
   const { orders: sessionOrders } = useGuestTableOrders(
     token,
@@ -574,8 +595,6 @@ export function MenuView({
       }),
     [tUI, currency]
   );
-
-  const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
 
   const getManualCartSnapshot = useCallback(() => {
     if (cartItems.length === 0) return undefined;
@@ -901,6 +920,14 @@ export function MenuView({
             />
           )}
 
+          {showMemoryConsent && (
+            <DenisMemoryConsentBanner
+              onAccept={() => void acceptMemoryConsent()}
+              onDecline={declineMemoryConsent}
+              promptTemplate={memoryConsentPrompt}
+            />
+          )}
+
           {aiConciergeEnabled && (
             <AiSmartNudgeBanner
               nudge={activeNudge}
@@ -1089,6 +1116,8 @@ export function MenuView({
               onSaveAllergies={saveGuestAllergies}
               getManualCartSnapshot={getManualCartSnapshot}
               deviceFingerprint={deviceFingerprint}
+              voiceEnabled={voiceEnabled}
+              voiceTtsEnabled={voiceTtsEnabled}
             />
           )}
         </div>

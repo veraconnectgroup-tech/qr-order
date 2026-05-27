@@ -18,6 +18,10 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
     return committed.conflictQuestion;
   }
 
+  if (committed.returnGuestWelcome) {
+    return committed.returnGuestWelcome;
+  }
+
   if (committed.blockedReason) {
     return committed.blockedReason;
   }

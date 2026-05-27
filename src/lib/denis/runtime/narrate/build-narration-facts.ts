@@ -5,6 +5,9 @@ import type {
   OpsPlannerEffects,
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
+import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
+import { buildReturnGuestWelcomeMessage } from "@/lib/guest/denis-guest-memory-messages";
 import { unavailableProductNamesInDraft } from "@/lib/denis/venue/ops/planner-effects";
 
 function uniqueNames(names: string[]): string[] {
@@ -38,6 +41,8 @@ export type BuildNarrationFactsInput = {
   config: ConciergeConfig;
   language: string;
   reflexTurn: ReflexTurnResult;
+  flowNodeId?: FlowNodeId;
+  guestMemory?: GuestMemoryProjection | null;
   cartActions?: Array<{ productName: string; quantity?: number }>;
   recommendations?: Array<{ productName?: string; name?: string }>;
   orderNumber?: number | null;
@@ -112,6 +117,22 @@ export function buildNarrationFacts(
     if (unavailableNames.length > 0) {
       committed.blockedReason = `${unavailableNames.join(", ")} trenutno nije dostupno.`;
       allowedMentions.push(...unavailableNames);
+    }
+  }
+
+  if (
+    input.guestMemory &&
+    input.flowNodeId === "welcome" &&
+    topGoal === "OPEN_TABLE"
+  ) {
+    const welcome = buildReturnGuestWelcomeMessage({
+      language: input.language,
+      lastVisitItems: input.guestMemory.lastVisitItemNames,
+      visitCount: input.guestMemory.visitCount,
+    });
+    if (welcome) {
+      committed.returnGuestWelcome = welcome;
+      allowedMentions.push(...input.guestMemory.lastVisitItemNames);
     }
   }
 

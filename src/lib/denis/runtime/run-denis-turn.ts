@@ -24,7 +24,19 @@ import {
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
+import { formatVoiceTurnApiResponse } from "@/lib/denis/surfaces/voice/format-voice-response";
+import { parseDenisVoiceBody } from "@/lib/denis/surfaces/voice/parse-voice-turn";
+import type {
+  PerceptionChannel,
+  TurnEnvelope,
+} from "@/lib/denis/platform/timeline-types";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+function isSupportedTurnChannel(
+  channel: DenisTurnRunInput["channel"]
+): channel is "chat" | "voice" {
+  return channel === "chat" || channel === "voice";
+}
 
 type LegacyChatPayload = {
   data?: {
@@ -43,11 +55,14 @@ type LegacyChatPayload = {
  * Denis PPAN+ entry — perceive → plan → legacy narrate → lint → timeline (M7–M9).
  */
 export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> {
-  if (input.channel !== "chat") {
+  if (!isSupportedTurnChannel(input.channel)) {
     return apiError("Unsupported channel.", 400);
   }
 
-  const parsed = parseDenisChatBody(input.rawBody);
+  const parsed =
+    input.channel === "voice"
+      ? parseDenisVoiceBody(input.rawBody)
+      : parseDenisChatBody(input.rawBody);
   if (!parsed.ok) {
     return parsed.response;
   }
@@ -55,6 +70,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const admin = createAdminClient();
   const traceId = createTurnTraceId();
   const ctx = await buildDenisTurnContext(admin, parsed.data);
+
+  if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
+    return apiError("Voice is not enabled for this location.", 403);
+  }
+
+  const timelineSurface: TurnEnvelope["surface"] =
+    input.channel === "voice" ? "voice" : "chat";
+  const perceptionChannel: PerceptionChannel =
+    input.channel === "voice" ? "voice.transcript" : "chat.message";
 
   const reflexTurn = planTurnWithReflex({
     config: ctx.config,
@@ -83,6 +107,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     config: ctx.config,
     language: parsed.data.language,
     reflexTurn,
+    flowNodeId: ctx.flowNodeId,
+    guestMemory: ctx.guestMemory,
     cartActions: data.cartActions,
     recommendations: data.recommendations,
     venueOps: ctx.venueOps,
@@ -143,36 +169,46 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       intentTier: guestIntentTierFromReflex(reflexTurn.usedT0),
       narrationTier: narration.tier,
       reflexTurn,
+      channel: perceptionChannel,
+      timelineSurface,
     });
   }
 
-  return formatChatTurnApiResponse(
-    {
-      message: guestMessage,
-      recommendations: data.recommendations,
-      cartActions: data.cartActions,
-      quickReplies,
-      intent: data.intent,
-      submitOrder: data.submitOrder,
-      creditsRemaining: data.creditsRemaining,
-      sessionId: data.sessionId,
-    },
-    {
-      traceId,
-      channel: input.channel,
-      flowNodeId: reflexTurn.plan.transition.toNodeId,
-      topGoal: reflexTurn.plan.topGoal?.type ?? null,
-      conflictPrompt: reflexTurn.conflict?.guestPrompt ?? null,
-      narrationTier: narration.tier,
-      lintPassed: narration.lintPassed,
-      usedNarrationFallback: narration.usedFallback,
-      rolloutMode: rollout.mode,
-      partyMode: ctx.config.party.mode,
-      partyDeviceCount: ctx.party?.activeDeviceCount ?? 0,
-      isPrimaryDevice: ctx.party?.isCurrentDevicePrimary ?? false,
-      sharedAiSessionId: ctx.party?.sharedAiSessionId ?? null,
-      operatingMode: ctx.venueOps?.operatingMode,
-      kdsStress: ctx.venueOps?.kdsStress,
-    }
-  );
+  const responseData = {
+    message: guestMessage,
+    recommendations: data.recommendations,
+    cartActions: data.cartActions,
+    quickReplies,
+    intent: data.intent,
+    submitOrder: data.submitOrder,
+    creditsRemaining: data.creditsRemaining,
+    sessionId: data.sessionId,
+  };
+
+  const responseMeta = {
+    traceId,
+    channel: input.channel,
+    flowNodeId: reflexTurn.plan.transition.toNodeId,
+    topGoal: reflexTurn.plan.topGoal?.type ?? null,
+    conflictPrompt: reflexTurn.conflict?.guestPrompt ?? null,
+    narrationTier: narration.tier,
+    lintPassed: narration.lintPassed,
+    usedNarrationFallback: narration.usedFallback,
+    rolloutMode: rollout.mode,
+    partyMode: ctx.config.party.mode,
+    partyDeviceCount: ctx.party?.activeDeviceCount ?? 0,
+    isPrimaryDevice: ctx.party?.isCurrentDevicePrimary ?? false,
+    sharedAiSessionId: ctx.party?.sharedAiSessionId ?? null,
+    operatingMode: ctx.venueOps?.operatingMode,
+    kdsStress: ctx.venueOps?.kdsStress,
+  };
+
+  if (input.channel === "voice") {
+    return formatVoiceTurnApiResponse(responseData, responseMeta, {
+      speakText: guestMessage,
+      ttsRecommended: ctx.config.surfaces.voiceTtsEnabled,
+    });
+  }
+
+  return formatChatTurnApiResponse(responseData, responseMeta);
 }

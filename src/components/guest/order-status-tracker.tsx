@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
+import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
@@ -100,8 +101,10 @@ export function OrderStatusTracker({
   slug,
   token,
   orderId,
+  tableId,
   sessionToken,
   locationId,
+  returnGuestEnabled = false,
   currency,
   stripeOnboarded,
   paymentOnlineEnabled,
@@ -113,8 +116,10 @@ export function OrderStatusTracker({
   slug: string;
   token: string;
   orderId: string;
+  tableId: string;
   sessionToken: string;
   locationId: string;
+  returnGuestEnabled?: boolean;
   currency: string;
   stripeOnboarded: boolean;
   paymentOnlineEnabled: boolean;
@@ -123,7 +128,7 @@ export function OrderStatusTracker({
   googleReviewUrl: string | null;
   inPersonPaymentLocation: InPersonPaymentLocation;
 }) {
-  const { tUI } = useAppLocale();
+  const { tUI, menuLocale, isEnglish } = useAppLocale();
   const reduceMotion = useReducedMotion();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -140,7 +145,14 @@ export function OrderStatusTracker({
   const [statusPulse, setStatusPulse] = useState(false);
   const hapticFired = useRef(false);
   const visitRecordedRef = useRef(false);
-  const { recordVisit } = useGuestMemory(locationId);
+  const deviceFingerprint = getOrCreateDeviceFingerprint();
+  const { recordVisit } = useGuestMemory(locationId, {
+    enabled: returnGuestEnabled,
+    tableId,
+    sessionToken,
+    deviceFingerprint,
+    language: isEnglish ? "en" : menuLocale,
+  });
 
   const refreshOrder = useCallback(
     async (retryOnMiss = false) => {

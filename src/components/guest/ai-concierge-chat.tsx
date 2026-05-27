@@ -44,6 +44,8 @@ import type { MenuSection } from "@/lib/menu-section";
 import type { AllergenId } from "@/lib/allergens";
 import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
 import { useCart } from "@/hooks/use-cart";
+import { useDenisVoice } from "@/hooks/use-denis-voice";
+import { DenisVoiceMicButton } from "@/components/guest/denis-voice-mic-button";
 import { cn } from "@/lib/utils";
 
 type QuickPickOption = { id: string; label: string };
@@ -425,6 +427,9 @@ export type AiConciergeChatProps = {
     | null
     | undefined;
   deviceFingerprint?: string;
+  /** Premium — location `surfaces.voiceEnabled` (M18). */
+  voiceEnabled?: boolean;
+  voiceTtsEnabled?: boolean;
 };
 
 export function AiConciergeChat({
@@ -454,8 +459,11 @@ export function AiConciergeChat({
   onSaveAllergies,
   getManualCartSnapshot,
   deviceFingerprint,
+  voiceEnabled = false,
+  voiceTtsEnabled = true,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
+  const language = isEnglish ? "en" : menuLocale;
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
   const handleRecommendations = onRecommendations ?? onSetupComplete;
   const resolvedAllergySelection =
@@ -469,7 +477,6 @@ export function AiConciergeChat({
       items: guestProfile.lastVisitItems.slice(0, 4).join(", "),
     });
   }, [welcomeBackMessage, isReturning, guestProfile?.lastVisitItems, tUI]);
-  const language = isEnglish ? "en" : menuLocale;
   const addItem = useCart((s) => s.addItem);
   const clearCart = useCart((s) => s.clearCart);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -579,11 +586,18 @@ export function AiConciergeChat({
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
+  const voice = useDenisVoice({
+    enabled: voiceEnabled && open,
+    language,
+    autoSpeak: voiceTtsEnabled,
+  });
+
   const callAiChat = useCallback(
     async (
       message: string,
       prefs?: { allergies: string[]; mood: string },
-      retryWithoutSession = false
+      retryWithoutSession = false,
+      inputSurface: "chat" | "voice" = "chat"
     ) => {
       const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken) {
@@ -621,6 +635,7 @@ export function AiConciergeChat({
             browsingContext: resolveScrollContext?.() ?? undefined,
             manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
             deviceFingerprint,
+            ...(inputSurface === "voice" ? { inputSurface: "voice" as const } : {}),
           }),
         });
       } catch (fetchError) {
@@ -642,6 +657,7 @@ export function AiConciergeChat({
           quickReplies?: string[];
           submitOrder?: boolean;
           sessionId: string;
+          voice?: { speakText: string; ttsRecommended: boolean };
         };
       };
 
@@ -653,7 +669,7 @@ export function AiConciergeChat({
         ) {
           clearAiSessionIdForGuest(locationId, token, [sessionToken, aiContextToken]);
           setAiSessionId(null);
-          return callAiChat(message, prefs, true);
+          return callAiChat(message, prefs, true, inputSurface);
         }
 
         throw new Error(
@@ -795,9 +811,13 @@ export function AiConciergeChat({
   });
 
   const sendUserMessage = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      options?: { inputSurface?: "chat" | "voice" }
+    ) => {
       const trimmed = text.trim();
       if (!trimmed || isTyping || phase !== "chat") return;
+      const inputSurface = options?.inputSurface ?? "chat";
 
       setMessages((prev) => [
         ...prev,
@@ -822,7 +842,7 @@ export function AiConciergeChat({
           return;
         }
 
-        const data = await callAiChat(trimmed);
+        const data = await callAiChat(trimmed, undefined, false, inputSurface);
         applyCartActions(data.cartActions);
 
         if (data.submitOrder && data.sessionId) {
@@ -840,17 +860,26 @@ export function AiConciergeChat({
           return;
         }
 
+        const assistantText = data.message;
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: "assistant",
-            content: data.message,
+            content: assistantText,
             recommendations: data.recommendations?.length
               ? data.recommendations
               : undefined,
           },
         ]);
+
+        if (
+          inputSurface === "voice" &&
+          data.voice?.ttsRecommended &&
+          data.voice.speakText
+        ) {
+          voice.speak(data.voice.speakText);
+        }
       } catch (err) {
         setMessages((prev) => [
           ...prev,
@@ -874,7 +903,15 @@ export function AiConciergeChat({
       applyCartActions,
       trySubmitOrder,
       tUI,
+      voice,
     ]
+  );
+
+  const handleVoiceTranscript = useCallback(
+    (transcript: string) => {
+      void sendUserMessage(transcript, { inputSurface: "voice" });
+    },
+    [sendUserMessage]
   );
 
   const handleQuickReply = useCallback(
@@ -1118,6 +1155,18 @@ export function AiConciergeChat({
         className="shrink-0 border-t border-zinc-800 bg-zinc-950 px-4 pt-3 pb-safe"
       >
         <div className="flex items-center gap-2">
+          {voiceEnabled && (
+            <DenisVoiceMicButton
+              listening={voice.listening}
+              supported={voice.supported}
+              disabled={!inputEnabled || isTyping}
+              listenLabel={tUI("ai.voice.listen")}
+              listeningLabel={tUI("ai.voice.listening")}
+              unsupportedLabel={tUI("ai.voice.unsupported")}
+              onPressStart={() => voice.startListening(handleVoiceTranscript)}
+              onPressEnd={() => voice.stopListening()}
+            />
+          )}
           <input
             type="text"
             value={input}

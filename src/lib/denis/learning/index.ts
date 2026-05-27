@@ -11,3 +11,11 @@ export {
   meetsLearnedEdgeThreshold,
   suggestedWeightFromAcceptRate,
 } from "@/lib/denis/learning/compute-pair-stats";
+export type {
+  GuestMemoryConsent,
+  GuestMemoryProjection,
+  GuestMemoryScope,
+  GuestMemorySyncPayload,
+} from "@/lib/denis/platform/guest-memory-types";
+export { buildReturnGuestWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-welcome-message";
+export { sameAgainQuickReplyLabels } from "@/lib/denis/learning/guest-memory/same-again-chips";

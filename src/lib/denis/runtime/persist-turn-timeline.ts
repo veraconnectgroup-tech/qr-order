@@ -4,6 +4,7 @@ import {
   buildTurnEnvelope,
   type GuestIntent,
   type PerceptionChannel,
+  type TurnEnvelope,
 } from "@/lib/denis/platform/timeline-types";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -21,6 +22,7 @@ export type PersistDenisTurnTimelineInput = {
   narrationTier?: NarrationTier;
   reflexTurn: ReflexTurnResult;
   channel?: PerceptionChannel;
+  timelineSurface?: TurnEnvelope["surface"];
 };
 
 /** Append PPAN timeline events from a completed turn (M7). */
@@ -28,7 +30,10 @@ export async function persistDenisTurnTimeline(
   admin: SupabaseClient,
   input: PersistDenisTurnTimelineInput
 ): Promise<void> {
-  const envelope = buildTurnEnvelope("chat", input.traceId);
+  const envelope = buildTurnEnvelope(
+    input.timelineSurface ?? "chat",
+    input.traceId
+  );
   const plan = input.reflexTurn.plan;
 
   try {

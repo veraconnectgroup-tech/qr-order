@@ -3,6 +3,7 @@ import type {
   NarrationFacts,
   SanitizedNarration,
 } from "@/lib/denis/runtime/narrate/narration-facts.schema";
+import { sameAgainQuickReplyLabels } from "@/lib/guest/denis-guest-memory-messages";
 
 const MAX_CHIPS = 6;
 
@@ -143,6 +144,14 @@ export function resolveTurnQuickReplies(input: {
 }): string[] {
   const labels = labelsForLanguage(input.language ?? "sr");
   const legacy = input.legacyQuickReplies ?? [];
+
+  if (input.facts.committed.returnGuestWelcome) {
+    const sameAgain = sameAgainQuickReplyLabels(input.language ?? "sr");
+    return dedupeChips([sameAgain.sameAgain, sameAgain.somethingElse]).slice(
+      0,
+      MAX_CHIPS
+    );
+  }
 
   const conflictChips = buildConflictChips(input.reflexTurn, labels);
   if (conflictChips.length > 0) {

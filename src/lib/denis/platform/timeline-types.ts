@@ -3,7 +3,7 @@ import type { DenisRiskClass } from "@/lib/denis/platform/risk-levels";
 /** Envelope attached to timeline events (ADR-006 §5). */
 export type TurnEnvelope = {
   traceId: string;
-  surface: "chat" | "nudge" | "sense" | "staff" | "system";
+  surface: "chat" | "nudge" | "sense" | "staff" | "system" | "voice";
   rolloutMode?: string;
   configVersion?: number;
   latencyMs?: Partial<{
@@ -40,7 +40,9 @@ export type PerceptionChannel =
   | "telemetry.manual_cart"
   | "realtime.order_status"
   | "system.proactive_tick"
-  | "staff.message";
+  | "staff.message"
+  | "voice.transcript"
+  | "voice.tts";
 
 export type PerceptionFrame = {
   channel: PerceptionChannel;

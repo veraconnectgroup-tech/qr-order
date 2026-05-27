@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { OrderPageClient } from "@/components/guest/order-page-client";
 
 export default async function OrderPage({
@@ -37,6 +38,7 @@ export default async function OrderPage({
   if (!tableData) notFound();
 
   const table = tableData as unknown as {
+    id: string;
     location: {
       id: string;
       payment_online_enabled: boolean;
@@ -54,12 +56,16 @@ export default async function OrderPage({
   const org = table.location.organization;
   if (org.slug !== slug) notFound();
 
+  const conciergeConfig = await loadConciergeConfigForLocation(table.location.id);
+
   return (
     <OrderPageClient
       slug={slug}
       token={token}
       orderId={orderId}
+      tableId={table.id}
       locationId={table.location.id}
+      returnGuestEnabled={conciergeConfig.memory.returnGuestEnabled}
       currency={org.currency}
       stripeOnboarded={org.stripe_onboarded}
       paymentOnlineEnabled={table.location.payment_online_enabled}

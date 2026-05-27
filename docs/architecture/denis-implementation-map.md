@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M16** (May 2026) — learned edges queue + admin UI |
+| **As-built through** | **M18** (May 2026) — optional guest voice in/out |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M16 ✅)
+## 3. As-built snapshot (M0–M18 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -84,6 +84,7 @@ sequenceDiagram
 | M14 | `venue/floor/*`, `config.ops.floorGraph*`, cron `/api/cron/denis-floor` | floor snapshot, Redis `denis:floor:{id}`, auto rush from KDS backlog |
 | M15 | `venue/copilot/*`, `/dashboard/denis`, `/api/dashboard/denis-copilot` | staff copilot: rush/KDS, priority tables, table hints |
 | M16 | `learning/*`, `denis_learned_edges`, `/admin/denis-insights`, cron aggregate | L3 pairing queue → approve → upsell_rules |
+| M17 | `platform/guest-memory-types`, `learning/guest-memory/*`, `denis_guest_memory`, guest memory API | consented return-guest prefs + welcome T0 |
 
 ### 3.3 API routes (actual)
 
@@ -96,6 +97,10 @@ sequenceDiagram
 | `GET /api/cron/denis-floor` | ✅ | `processDenisFloorTick` (Bearer `CRON_SECRET`) |
 | `GET /api/dashboard/denis-copilot` | ✅ | staff copilot snapshot |
 | `GET /api/cron/denis-learned-edges` | ✅ | aggregate learned pairing candidates |
+| `POST /api/guest/denis-memory` | ✅ | load consented projection |
+| `POST /api/guest/denis-memory/consent` | ✅ | grant consent + seed profile |
+| `POST /api/guest/denis-memory/sync` | ✅ | sync allergies / record visit |
+| `DELETE /api/guest/denis-memory` | ✅ | GDPR erase |
 | `POST /api/denis/schedules/tick` | ❌ | not implemented (cron only) |
 
 ### 3.4 Database (migrations — verify push status locally)
@@ -108,6 +113,7 @@ sequenceDiagram
 | `00089_denis_party.sql` | `denis_party_devices` + `upsert_denis_party_device` | M12 |
 | `00090_denis_ops_beliefs.sql` | `denis_operating_mode`, `denis_kds_stress`, `denis_staff_table_hints` | M13 |
 | `00091_denis_learned_edges.sql` | `denis_learned_edges` L3 queue | M16 |
+| `00092_denis_guest_memory.sql` | `denis_guest_memory` consented prefs | M17 |
 
 ### 3.5 Legacy bridge (still active — intentional)
 
@@ -133,8 +139,9 @@ Honest delta after M10 — do not assume these exist:
 | `runtime/act/*` skill executor | ❌ skills planned, not executed in Denis path | M7+ / ACL |
 | `src/lib/denis/acl/` DenisOrderCommand | ❌ marker only | with act layer |
 | `src/lib/denis/venue/` | ✅ party + ops + floor + copilot (M15) | M16 learning |
-| `src/lib/denis/learning/` | ✅ learned edges queue (M16) | M17 guest memory |
+| `src/lib/denis/learning/` | ✅ learned edges + guest memory (M17) | M19 venue sim |
 | `menu_knowledge_edges` / L3 learned VKG | ✅ `denis_learned_edges` (M16) | promote only via admin |
+| Consented return-guest memory | ✅ `denis_guest_memory` (M17) | GA gate `memory.returnGuestEnabled` |
 | `denis_eval_runs` table | ❌ CI in-memory only | optional |
 | Guest UI `manualCartSnapshot` on sense | ✅ | `menu-view` + `use-denis-sense` debounce |
 | `use-smart-nudges` → server proactive | ✅ | `system.proactive_tick` via `fetchServerProactive` |
@@ -198,9 +205,11 @@ Honest delta after M10 — do not assume these exist:
 | **M14** | ✅ | Floor graph + auto rush, GA gate |
 | **M15** | ✅ | Staff copilot (dashboard) |
 | **M16** | ✅ | Learned edges queue + admin UI |
-| **M17–M20** | ⬜ | Guest memory, voice (premium) |
+| **M17** | ✅ | Consented guest memory + return welcome |
+| **M18** | ✅ | Voice in/out (premium, `surfaces.voiceEnabled`) |
+| **M19–M20** | ⬜ | Admin debugger (ADR §14), venue sim |
 
-**Next recommended:** **M17** — consented guest memory.
+**Next recommended:** **M19** — admin debugger (beliefs/goals/timeline) per ADR-005 §14; or **M20** venue sim per map §7.
 
 ---
 

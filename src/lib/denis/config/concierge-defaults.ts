@@ -102,6 +102,15 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     minAcceptRateForSuggestion: 0.15,
     minImpressionsForSuggestion: 3,
   },
+  memory: {
+    returnGuestEnabled: false,
+    memoryTtlDays: 90,
+    consentPromptTemplate: null,
+  },
+  surfaces: {
+    voiceEnabled: false,
+    voiceTtsEnabled: true,
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;

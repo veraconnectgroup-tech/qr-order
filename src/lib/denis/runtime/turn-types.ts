@@ -13,14 +13,17 @@ import type {
   OpsPlannerEffects,
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
+import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 
-export type DenisChannel = "chat" | "proactive" | "status_poll";
+export type DenisChannel = "chat" | "voice" | "proactive" | "status_poll";
 
 export { manualCartSnapshotSchema };
 
 export const denisChatBodySchema = aiChatRequestSchema.extend({
   manualCartSnapshot: manualCartSnapshotSchema.optional(),
   deviceFingerprint: z.string().trim().min(8).max(128).optional(),
+  /** Guest input surface — voice uses same body as chat with STT transcript (M18). */
+  inputSurface: z.enum(["chat", "voice"]).optional(),
 });
 
 export type DenisChatBody = z.infer<typeof denisChatBodySchema>;
@@ -43,6 +46,7 @@ export type DenisTurnContext = {
   venueOps?: VenueOpsBeliefs;
   opsEffects?: OpsPlannerEffects;
   foodUpsellAsked: boolean;
+  guestMemory?: GuestMemoryProjection | null;
 };
 
 export type DenisTurnMeta = {

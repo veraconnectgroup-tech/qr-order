@@ -10,7 +10,9 @@ export function OrderPageClient({
   slug,
   token,
   orderId,
+  tableId,
   locationId,
+  returnGuestEnabled = false,
   currency,
   stripeOnboarded,
   paymentOnlineEnabled,
@@ -22,7 +24,9 @@ export function OrderPageClient({
   slug: string;
   token: string;
   orderId: string;
+  tableId: string;
   locationId: string;
+  returnGuestEnabled?: boolean;
   currency: string;
   stripeOnboarded: boolean;
   paymentOnlineEnabled: boolean;
@@ -66,8 +70,10 @@ export function OrderPageClient({
         slug={slug}
         token={token}
         orderId={orderId}
+        tableId={tableId}
         sessionToken={sessionToken}
         locationId={locationId}
+        returnGuestEnabled={returnGuestEnabled}
         currency={currency}
         stripeOnboarded={stripeOnboarded}
         paymentOnlineEnabled={paymentOnlineEnabled}
