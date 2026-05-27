@@ -1,3 +1,7 @@
+import {
+  handleBillingLowBalance,
+  handleBillingStaffHint,
+} from "@/lib/outbox/handlers/billing-low-balance";
 import { handleFulfillCloudPrint } from "@/lib/outbox/handlers/cloud-print";
 import { handleSessionPaidOnline } from "@/lib/outbox/handlers/session-paid-online";
 import { handleFulfillPushPos } from "@/lib/outbox/handlers/push-pos";
@@ -21,6 +25,8 @@ const handlers: Record<OutboxEventType, OutboxHandler> = {
   "fiscal.beleg": handleFiscalBeleg,
   "fiscal.send_receipt": handleFiscalSendReceipt,
   "integration.webhook": handleIntegrationWebhook,
+  "billing.low_balance": handleBillingLowBalance,
+  "billing.staff_hint": handleBillingStaffHint,
 };
 
 export function getOutboxHandler(
