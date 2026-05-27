@@ -21,19 +21,16 @@ const faqs = [
 
 export function LandingFaq() {
   return (
-    <section id="faq" className="scroll-mt-14 border-t border-zinc-800/80 bg-[#08080c] text-white">
-      <div className="flex items-baseline gap-3 border-b border-zinc-800/60 px-6 py-3 lg:px-8">
-        <span className="font-mono text-[11px] tabular-nums text-zinc-600">06</span>
-        <h2 className="text-[13px] font-medium tracking-tight text-zinc-300">
-          Operator reference
-        </h2>
+    <section id="faq" className="scroll-mt-14 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)]">
+      <div className="border-b border-[var(--lp-border-subtle)] px-6 py-3 lg:px-8">
+        <h2 className="landing-zone-label">Operator reference</h2>
       </div>
 
-      <dl className="divide-y divide-zinc-800/60">
+      <dl className="divide-y divide-[var(--lp-border-subtle)]">
         {faqs.map((faq) => (
-          <div key={faq.q} className="px-6 py-5 lg:px-8 lg:py-6">
-            <dt className="text-[14px] font-medium text-zinc-300">{faq.q}</dt>
-            <dd className="mt-2 max-w-2xl text-[14px] leading-relaxed text-zinc-500">
+          <div key={faq.q} className="px-6 py-6 lg:px-8 lg:py-7">
+            <dt className="text-[14px] font-medium text-[var(--lp-ink)]">{faq.q}</dt>
+            <dd className="mt-2 max-w-2xl text-[14px] leading-relaxed text-[var(--lp-muted)]">
               {faq.a}
             </dd>
           </div>

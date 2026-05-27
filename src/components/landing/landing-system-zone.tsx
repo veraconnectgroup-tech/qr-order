@@ -2,21 +2,17 @@
 
 import { cn } from "@/lib/utils";
 
-/** Application-grade operational surface — not a marketing feature row. */
+/** Continuous operational surface — typography labels only, no feature sections. */
 export function LandingSystemZone({
   id,
-  index,
   label,
-  caption,
   meta,
   children,
   className,
   surfaceClassName,
 }: {
   id?: string;
-  index: string;
   label: string;
-  caption?: string;
   meta?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -25,34 +21,25 @@ export function LandingSystemZone({
   return (
     <section
       id={id}
-      className={cn("scroll-mt-14 border-t border-zinc-800/80 bg-[#08080c]", className)}
+      className={cn(
+        "scroll-mt-14 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)]",
+        className
+      )}
     >
-      <div className="flex items-baseline justify-between gap-4 border-b border-zinc-800/60 px-6 py-3 lg:px-8">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <span className="shrink-0 font-mono text-[11px] tabular-nums text-zinc-600">
-            {index}
-          </span>
-          <h2 className="truncate text-[13px] font-medium tracking-tight text-zinc-300">
-            {label}
-          </h2>
-          {caption && (
-            <span className="hidden truncate text-[12px] text-zinc-600 sm:inline">
-              {caption}
-            </span>
-          )}
-        </div>
+      <div className="flex items-center justify-between gap-4 border-b border-[var(--lp-border-subtle)] px-6 py-3 lg:px-8">
+        <h2 className="landing-zone-label">{label}</h2>
         {meta}
       </div>
 
-      <div className={cn("relative bg-[#09090b]", surfaceClassName)}>{children}</div>
+      <div className={cn("landing-surface relative", surfaceClassName)}>{children}</div>
     </section>
   );
 }
 
 export function SystemLiveMeta({ label = "Live" }: { label?: string }) {
   return (
-    <p className="flex shrink-0 items-center gap-1.5 text-[11px] text-zinc-500">
-      <span className="size-1.5 rounded-full bg-emerald-500 pulse-dot" aria-hidden />
+    <p className="flex shrink-0 items-center gap-1.5 text-[11px] text-[var(--lp-muted)]">
+      <span className="size-1.5 rounded-full bg-emerald-500/90 pulse-dot" aria-hidden />
       <span>{label}</span>
     </p>
   );

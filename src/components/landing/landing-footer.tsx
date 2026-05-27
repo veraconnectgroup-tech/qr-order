@@ -85,7 +85,7 @@ const builtWith = [
 
 export function LandingFooter() {
   return (
-    <footer className="relative z-[2] border-t border-[#1e1e2e]/60 bg-black py-16 text-zinc-400 sm:py-20">
+    <footer className="relative z-[2] border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-[var(--lp-muted)] sm:py-20">
       <LandingContainer wide>
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>

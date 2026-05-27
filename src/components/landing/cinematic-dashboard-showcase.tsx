@@ -25,7 +25,7 @@ export function CinematicDashboardShowcase({
   const screen = STORY_SCREEN[story];
 
   return (
-    <ScaledDashboardPreview designHeight={440}>
+    <ScaledDashboardPreview designHeight={480} className="min-h-[520px] sm:min-h-[580px]">
       <ShowcaseDashboardShell
         activeScreen={screen}
         title={screen === "tables" ? "Tables" : "Live Orders"}

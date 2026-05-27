@@ -30,35 +30,20 @@ export function ShowcaseOrderCard({
       elapsed < 60 ? `${Math.max(1, elapsed)}s` : `${Math.floor(elapsed / 60)}m`;
 
     return (
-      <article className="max-w-[320px] rounded-xl border border-zinc-800/90 bg-zinc-950/90 p-5 border-l-2 border-l-[#e85d04]">
-        <div className="flex items-start justify-between gap-3">
-          <p className="font-mono text-[1.75rem] font-semibold leading-none tracking-[-0.03em] text-zinc-50">
+      <article className="max-w-[360px]">
+        <div className="flex items-baseline justify-between gap-8">
+          <p className="font-mono text-[2.25rem] font-medium leading-none tracking-[-0.04em] text-[var(--lp-ink,#f5f0eb)]">
             {formatOrderNumber(order.order_number)}
           </p>
-          <span className="shrink-0 rounded-md bg-zinc-800/90 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
-            {tableName}
-          </span>
+          <p className="text-[13px] text-[var(--lp-muted,#9c958c)]">{tableName}</p>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <span
-            className="size-1.5 shrink-0 rounded-full bg-orange-400 pulse-dot"
-            aria-hidden
-          />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-400">
-            New
-          </span>
-          <span className="text-[11px] text-zinc-600">· {elapsedLabel}</span>
-        </div>
-
-        <div className="mt-2.5 h-px overflow-hidden rounded-full bg-zinc-800/90">
-          <div className="h-full w-full rounded-full bg-[#e85d04]/55 showcase-route-pulse" />
-        </div>
-        <p className="mt-1.5 text-[10px] tracking-wide text-zinc-600">
-          Routing to bar station
+        <p className="mt-6 text-[12px] text-[var(--lp-muted,#9c958c)]">
+          <span className="text-[var(--lp-ember,#e85d04)]">New</span> · {elapsedLabel} ·
+          routing to bar
         </p>
 
-        <ul className="mt-4 space-y-2 text-[13px] leading-snug text-zinc-300">
+        <ul className="mt-8 space-y-2.5 text-[15px] leading-snug text-[var(--lp-ink,#f5f0eb)]/90">
           {items.slice(0, 2).map((line) => (
             <li key={line.id}>
               {line.quantity}× {line.product_name}
@@ -66,11 +51,11 @@ export function ShowcaseOrderCard({
           ))}
         </ul>
 
-        <div className="mt-5 flex items-center justify-between border-t border-zinc-800/80 pt-4">
-          <span className="font-mono text-sm font-semibold tabular-nums text-zinc-200">
+        <div className="mt-10 flex items-baseline justify-between">
+          <span className="font-mono text-[15px] tabular-nums text-[var(--lp-ink,#f5f0eb)]">
             {formatPrice(Number(order.total), currency)}
           </span>
-          <span className="rounded-lg bg-[#e85d04] px-3.5 py-1.5 text-[11px] font-semibold text-white">
+          <span className="text-[12px] font-medium text-[var(--lp-ember,#e85d04)]">
             Accept
           </span>
         </div>

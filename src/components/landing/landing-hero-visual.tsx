@@ -18,13 +18,13 @@ import { cn } from "@/lib/utils";
 function HeroOperationalCanvas() {
   return (
     <>
-      <div className="absolute right-[-8%] top-[-4%] z-10 h-full w-[112%] origin-top-left scale-[1.06] sm:right-[-6%] sm:scale-[1.04] lg:scale-[1.02]">
-        <ShowcaseWindow presentation="cinematic">
+      <div className="absolute inset-0 overflow-hidden">
+        <ShowcaseWindow presentation="cinematic" className="size-full min-h-full">
           <CinematicDashboardShowcase story="live-orders" />
         </ShowcaseWindow>
       </div>
 
-      <ShowcaseFloatDevice className="bottom-[22%] left-[4%] w-[30%] max-w-[172px] md:bottom-[24%]">
+      <ShowcaseFloatDevice className="bottom-[22%] left-[5%] w-[28%] max-w-[168px] md:bottom-[24%]">
         <ShowcasePhone presentation="float" hideLabel className="max-w-none">
           <ScaledPhonePreview designWidth={280} designHeight={480}>
             <GuestMenuContent variant="cinematic" />
@@ -47,7 +47,7 @@ export function LandingHeroVisual({
     return (
       <div
         className={cn(
-          "relative size-full min-h-[inherit] overflow-hidden bg-[#09090b]",
+          "relative size-full min-h-[inherit] overflow-hidden bg-[var(--lp-bg)]",
           className
         )}
       >
@@ -59,7 +59,7 @@ export function LandingHeroVisual({
   return (
     <ShowcaseStage
       className={cn(
-        "mx-auto w-full max-w-none overflow-hidden bg-[#09090b] sm:min-h-[480px] lg:min-h-[540px]",
+        "mx-auto w-full max-w-none overflow-hidden bg-[var(--lp-bg)] sm:min-h-[480px] lg:min-h-[540px]",
         className
       )}
     >

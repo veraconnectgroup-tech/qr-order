@@ -51,18 +51,20 @@ export function ShowcaseDashboardShell({
 
   if (cinematic) {
     return (
-      <div className="relative flex h-full flex-col overflow-hidden bg-[#09090b] text-zinc-50">
+      <div className="relative flex h-full flex-col overflow-hidden bg-[var(--lp-bg,#0a0908)] text-[var(--lp-ink,#f5f0eb)]">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-[3.25rem] border-r border-zinc-800/45 bg-zinc-950/35 sm:w-14"
+          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-14 border-r border-[var(--lp-border-subtle,#1a1816)] bg-[var(--lp-surface,#141210)]/40"
         >
-          <nav className="flex flex-col gap-2.5 px-2.5 pt-[4.25rem] opacity-[0.2]">
+          <nav className="flex flex-col gap-3 px-3 pt-20 opacity-[0.16]">
             {NAV.slice(0, 5).map(({ id, label, icon: Icon }) => (
               <div
                 key={id}
                 className={cn(
                   "flex items-center gap-2 text-[10px]",
-                  id === activeScreen ? "text-zinc-300" : "text-zinc-600"
+                  id === activeScreen
+                    ? "text-[var(--lp-muted,#9c958c)]"
+                    : "text-[var(--lp-subtle,#6b645c)]"
                 )}
               >
                 <Icon className="size-3 shrink-0" />
@@ -72,30 +74,19 @@ export function ShowcaseDashboardShell({
           </nav>
         </div>
 
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-11 bottom-0 z-0 opacity-[0.08]"
-        >
-          <div className="flex h-full gap-4 px-16 pt-9 sm:gap-5 sm:px-20 sm:pt-10">
-            <div className="w-24 border-t-2 border-orange-500 sm:w-28" />
-            <div className="w-24 border-t-2 border-yellow-500 sm:w-28" />
-            <div className="w-24 border-t-2 border-green-500 sm:w-28" />
-          </div>
-        </div>
-
-        <div className="relative z-10 flex h-11 shrink-0 items-center justify-between border-b border-zinc-800/70 px-8 sm:pl-16 sm:pr-10">
-          <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
+        <div className="relative z-10 flex h-11 shrink-0 items-center justify-between border-b border-[var(--lp-border-subtle,#1a1816)] px-8 sm:pl-16 sm:pr-10">
+          <p className="text-[13px] font-medium tracking-tight text-[var(--lp-ink,#f5f0eb)]">
             {title}
           </p>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-[11px] text-zinc-500 sm:inline">Today</span>
-            <span className="font-mono text-[11px] font-semibold tabular-nums text-zinc-400">
+          <div className="flex items-center gap-3 text-[11px] text-[var(--lp-muted,#9c958c)]">
+            <span className="hidden sm:inline">Today</span>
+            <span className="font-mono tabular-nums">
               {formatPrice(todayRevenue, currency)}
             </span>
-            <span className="size-1.5 rounded-full bg-emerald-500 pulse-dot" aria-hidden />
+            <span className="size-1.5 rounded-full bg-emerald-500/90 pulse-dot" aria-hidden />
           </div>
         </div>
-        <main className="relative z-10 min-h-0 flex-1 overflow-hidden px-8 py-8 sm:pl-16 sm:pr-10 sm:py-9">
+        <main className="relative z-10 min-h-0 flex-1 overflow-hidden px-8 py-10 sm:pl-16 sm:pr-12 sm:py-12">
           {children}
         </main>
       </div>
