@@ -25,6 +25,7 @@ describe("Denis rollout cutover M25", () => {
   it("merges location override without dropping version", () => {
     const patch = denisRolloutPatchFromForm({
       rolloutMode: "denis_only",
+      canaryPercent: 10,
       narrateWithLlm: true,
       slotExtractEnabled: true,
       slotExtractWithLlm: false,

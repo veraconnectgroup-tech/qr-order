@@ -5,6 +5,7 @@ import type { PartialConciergeConfig } from "@/lib/denis/config/concierge-config
 export type DenisRolloutPresetId =
   | "shadow_observe"
   | "shadow_instrumented"
+  | "canary_10"
   | "denis_guest_narration"
   | "denis_full_shadow_act";
 
@@ -51,6 +52,20 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
     },
   },
   {
+    id: "canary_10",
+    label: "Canary 10%",
+    description:
+      "~10% of table sessions see Denis guest path; others stay legacy. Kernel on for all.",
+    patch: {
+      version: 1,
+      rollout: { mode: "canary", canaryPercent: 10 },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: { slotExtractEnabled: true, ...SHADOW_SAFE_ACT },
+      memory: { returnGuestEnabled: false },
+      surfaces: { voiceEnabled: false },
+    },
+  },
+  {
     id: "denis_guest_narration",
     label: "Denis guest path",
     description:
@@ -87,6 +102,7 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
 
 export type DenisRolloutFormState = {
   rolloutMode: ConciergeRolloutMode;
+  canaryPercent: number;
   narrateWithLlm: boolean;
   slotExtractEnabled: boolean;
   slotExtractWithLlm: boolean;
@@ -99,7 +115,7 @@ export type DenisRolloutFormState = {
 
 /** Map effective merged config to admin form fields. */
 export function denisRolloutFormFromEffective(config: {
-  rollout: { mode: ConciergeRolloutMode };
+  rollout: { mode: ConciergeRolloutMode; canaryPercent: number };
   llm: {
     narrateWithLlm: boolean;
     slotExtractWithLlm: boolean;
@@ -115,6 +131,7 @@ export function denisRolloutFormFromEffective(config: {
 }): DenisRolloutFormState {
   return {
     rolloutMode: config.rollout.mode,
+    canaryPercent: config.rollout.canaryPercent,
     narrateWithLlm: config.llm.narrateWithLlm,
     slotExtractEnabled: config.ordering.slotExtractEnabled,
     slotExtractWithLlm: config.llm.slotExtractWithLlm,
@@ -132,7 +149,10 @@ export function denisRolloutPatchFromForm(
 ): PartialConciergeConfig {
   return {
     version: 1,
-    rollout: { mode: form.rolloutMode },
+    rollout: {
+      mode: form.rolloutMode,
+      canaryPercent: form.canaryPercent,
+    },
     llm: {
       narrateWithLlm: form.narrateWithLlm,
       slotExtractWithLlm: form.slotExtractWithLlm,
@@ -161,6 +181,7 @@ export function denisRolloutFormFromPreset(
 
   return {
     rolloutMode: preset.patch.rollout.mode,
+    canaryPercent: preset.patch.rollout.canaryPercent ?? 10,
     narrateWithLlm: llm.narrateWithLlm ?? false,
     slotExtractEnabled: ordering.slotExtractEnabled ?? false,
     slotExtractWithLlm: llm.slotExtractWithLlm ?? false,

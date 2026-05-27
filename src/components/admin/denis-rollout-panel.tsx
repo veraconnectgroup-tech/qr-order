@@ -16,11 +16,12 @@ import {
 } from "@/lib/denis/config/rollout-cutover";
 import type { ConciergeRolloutMode } from "@/lib/denis/config/rollout";
 import {
-  guestSeesLegacyPath,
   kernelTimelineEnabled,
+  resolveGuestLegacyPath,
   shouldRunShadowDiff,
 } from "@/lib/denis/config/rollout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -49,7 +50,7 @@ const ROLLOUT_MODES: Array<{
   {
     value: "canary",
     label: "Canary",
-    hint: "Reserved — partial Denis path (ops testing).",
+    hint: "Stable % of table sessions see Denis; others stay legacy.",
   },
   {
     value: "denis_only",
@@ -72,16 +73,22 @@ export function DenisRolloutPanel({ initial }: Props) {
   });
   const [saving, setSaving] = useState(false);
 
+  function syncFlags(next: DenisRolloutFormState) {
+    setFlags((f) => ({
+      ...f,
+      guestSeesLegacy: resolveGuestLegacyPath(next.rolloutMode, {
+        canaryPercent: next.canaryPercent,
+      }),
+      timelineEnabled: kernelTimelineEnabled(next.rolloutMode),
+      shadowDiffEnabled: shouldRunShadowDiff(next.rolloutMode),
+    }));
+  }
+
   function applyPreset(presetId: DenisRolloutPresetId) {
     const next = denisRolloutFormFromPreset(presetId);
     if (!next) return;
     setForm(next);
-    setFlags((f) => ({
-      ...f,
-      guestSeesLegacy: guestSeesLegacyPath(next.rolloutMode),
-      timelineEnabled: kernelTimelineEnabled(next.rolloutMode),
-      shadowDiffEnabled: shouldRunShadowDiff(next.rolloutMode),
-    }));
+    syncFlags(next);
   }
 
   function updateForm<K extends keyof DenisRolloutFormState>(
@@ -90,14 +97,8 @@ export function DenisRolloutPanel({ initial }: Props) {
   ) {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "rolloutMode") {
-        const mode = value as ConciergeRolloutMode;
-        setFlags((f) => ({
-          ...f,
-          guestSeesLegacy: guestSeesLegacyPath(mode),
-          timelineEnabled: kernelTimelineEnabled(mode),
-          shadowDiffEnabled: shouldRunShadowDiff(mode),
-        }));
+      if (key === "rolloutMode" || key === "canaryPercent") {
+        syncFlags(next);
       }
       return next;
     });
@@ -190,11 +191,39 @@ export function DenisRolloutPanel({ initial }: Props) {
           </p>
         </div>
 
+        {form.rolloutMode === "canary" && (
+          <div>
+            <Label htmlFor="canary-percent">Canary cohort %</Label>
+            <Input
+              id="canary-percent"
+              type="number"
+              min={0}
+              max={100}
+              className="mt-1.5 max-w-[8rem]"
+              value={form.canaryPercent}
+              onChange={(e) =>
+                updateForm(
+                  "canaryPercent",
+                  Math.min(100, Math.max(0, Number(e.target.value) || 0))
+                )
+              }
+            />
+            <p className="mt-1 text-xs text-neutral-500">
+              ~{form.canaryPercent}% of table sessions (by QR token) see Denis
+              guest path. Per-session assignment is stable.
+            </p>
+          </div>
+        )}
+
         <dl className="grid grid-cols-3 gap-2 rounded-md border border-neutral-100 bg-neutral-50 p-3 text-xs">
           <div>
             <dt className="text-neutral-500">Guest path</dt>
             <dd className="font-medium">
-              {flags.guestSeesLegacy ? "Legacy" : "Denis"}
+              {form.rolloutMode === "canary"
+                ? `~${form.canaryPercent}% Denis`
+                : flags.guestSeesLegacy
+                  ? "Legacy"
+                  : "Denis"}
             </dd>
           </div>
           <div>

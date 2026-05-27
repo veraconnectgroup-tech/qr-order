@@ -30,6 +30,10 @@ describe("Denis M21 narrate-llm", () => {
       },
     };
     expect(shouldUseDenisNarration(config, "denis_only")).toBe(true);
+    expect(shouldUseDenisNarration(config, "canary")).toBe(true);
+    expect(
+      shouldUseDenisNarration(config, "canary", { guestUsesLegacy: true })
+    ).toBe(false);
     expect(shouldUseDenisNarration(config, "shadow")).toBe(false);
   });
 

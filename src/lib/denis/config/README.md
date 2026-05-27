@@ -9,5 +9,6 @@
 - `config-cache.ts` — Redis `ai:config:{locationId}`
 - `load-concierge-config.ts` — DB load + cache
 - `rollout-cutover.ts` — ops ladder presets (M25 admin UI)
+- `rollout.ts` — `resolveGuestLegacyPath`, canary cohort % (M27)
 
 Migration: `00086_ai_concierge_config.sql`

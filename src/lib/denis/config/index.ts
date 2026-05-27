@@ -41,11 +41,15 @@ export {
 } from "@/lib/denis/config/load-concierge-config";
 export type { LoadConciergeConfigOptions } from "@/lib/denis/config/load-concierge-config";
 export {
+  canaryCohortBucket,
   guestSeesLegacyPath,
+  isInCanaryCohort,
   kernelTimelineEnabled,
   parseRolloutModeFromEnv,
   resolveEffectiveRollout,
+  resolveGuestLegacyPath,
   shouldRunShadowDiff,
 } from "@/lib/denis/config/rollout";
+export type { GuestLegacyPathOptions } from "@/lib/denis/config/rollout";
 export type { ConciergeRollout, ConciergeRolloutMode } from "@/lib/denis/config/rollout";
 export const DENIS_CONFIG_LAYER = "config" as const;

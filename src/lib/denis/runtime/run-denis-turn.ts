@@ -5,9 +5,9 @@ import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-e
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import {
-  guestSeesLegacyPath,
   kernelTimelineEnabled,
   resolveEffectiveRollout,
+  resolveGuestLegacyPath,
   shouldRunShadowDiff,
 } from "@/lib/denis/config/rollout";
 import { diffShadowTurn } from "@/lib/denis/runtime/shadow-diff";
@@ -152,6 +152,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   const rollout = resolveEffectiveRollout(ctx.config);
+  const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
+    cohortKey: parsed.data.sessionToken,
+    canaryPercent: ctx.config.rollout.canaryPercent,
+  });
 
   const narrationFacts = buildNarrationFacts({
     config: ctx.config,
@@ -182,10 +186,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     legacyQuickReplies: data.quickReplies,
     language: parsed.data.language,
   });
-  const guestMessage = guestSeesLegacyPath(rollout.mode) &&
-    !resolvedNarration.usedDenisNarrator
-    ? data.message
-    : narration.message;
+  const guestMessage =
+    guestUsesLegacy && !resolvedNarration.usedDenisNarrator
+      ? data.message
+      : narration.message;
 
   if (shouldRunShadowDiff(rollout.mode)) {
     const shadowDiff = diffShadowTurn({

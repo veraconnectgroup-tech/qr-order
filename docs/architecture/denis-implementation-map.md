@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M26** (May 2026) — CI Denis gates + eval run detail |
+| **As-built through** | **M27** (May 2026) — canary cohort rollout % |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M26 ✅)
+## 3. As-built snapshot (M0–M27 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -94,6 +94,7 @@ sequenceDiagram
 | M24 | `eval/persist-eval-run.ts`, `/platform/denis-eval` | `pnpm eval:denis:record`; migration `00093` |
 | M25 | `config/rollout-cutover.ts`, `denis-rollout-panel` on `/admin/settings` | ops ladder presets + per-location flags |
 | M26 | `eval/record-eval-suite.ts`, CI workflow, `/platform/denis-eval/[runId]` | `verify:denis` + `eval:denis` in CI; optional persist on main |
+| M27 | `resolveGuestLegacyPath`, `rollout.canaryPercent` | stable per-session cohort; preset Canary 10% |
 
 ### 3.3 API routes (actual)
 
@@ -223,8 +224,9 @@ Honest delta after M10 — do not assume these exist:
 | **M24** | ✅ | `denis_eval_runs` + platform eval history UI |
 | **M25** | ✅ | Admin rollout cutover panel + ladder presets |
 | **M26** | ✅ | CI Denis gates + eval run detail UI |
+| **M27** | ✅ | Canary cohort % (`rollout.canaryPercent`) |
 
-**Next recommended:** production cutover per venue (`shadow` → `denis_only`); push migrations `00089`–`00093`; add `SUPABASE_*` secrets to GitHub for eval history on main.
+**Next recommended:** production cutover per venue (`shadow` → `canary` → `denis_only`); push migrations `00089`–`00093`; GitHub `SUPABASE_*` secrets for eval history on main.
 
 ---
 
@@ -244,7 +246,7 @@ Honest delta after M10 — do not assume these exist:
 |------|---------------|----------|------------|
 | `legacy` | legacy | off | no |
 | `shadow` | legacy | on | yes |
-| `canary` | — | on | TBD |
+| `canary` | Denis if session in cohort % | on | `rollout.canaryPercent` (M27) |
 | `denis_only` | linted Denis | on | optional |
 | `simulation` | — | eval only | yes |
 

@@ -17,8 +17,13 @@ export async function resolveTurnNarrationMessage(input: {
   facts: NarrationFacts;
   config: ConciergeConfig;
   rolloutMode: ConciergeRolloutMode;
+  guestUsesLegacy?: boolean;
 }): Promise<ResolvedTurnNarration> {
-  if (!shouldUseDenisNarration(input.config, input.rolloutMode)) {
+  if (
+    !shouldUseDenisNarration(input.config, input.rolloutMode, {
+      guestUsesLegacy: input.guestUsesLegacy,
+    })
+  ) {
     return {
       draftMessage: input.legacyMessage,
       usedDenisNarrator: false,

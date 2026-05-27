@@ -19,11 +19,15 @@ import {
   ConciergeRolloutModeSchema,
   parseRolloutModeFromEnv,
   resolveEffectiveRollout,
+  resolveGuestLegacyPath,
+  kernelTimelineEnabled,
+  shouldRunShadowDiff,
 } from "@/lib/denis/config/rollout";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const denisRolloutFormSchema = z.object({
   rolloutMode: ConciergeRolloutModeSchema,
+  canaryPercent: z.number().int().min(0).max(100),
   narrateWithLlm: z.boolean(),
   slotExtractEnabled: z.boolean(),
   slotExtractWithLlm: z.boolean(),
@@ -61,13 +65,11 @@ export async function loadDenisRolloutAdminState(): Promise<
   return {
     effective: storedForm,
     envRolloutOverride,
-    guestSeesLegacy:
-      effectiveRollout.mode === "legacy" ||
-      effectiveRollout.mode === "shadow",
-    timelineEnabled: effectiveRollout.mode !== "legacy",
-    shadowDiffEnabled:
-      effectiveRollout.mode === "shadow" ||
-      effectiveRollout.mode === "simulation",
+    guestSeesLegacy: resolveGuestLegacyPath(effectiveRollout.mode, {
+      canaryPercent: effectiveRollout.canaryPercent,
+    }),
+    timelineEnabled: kernelTimelineEnabled(effectiveRollout.mode),
+    shadowDiffEnabled: shouldRunShadowDiff(effectiveRollout.mode),
   };
 }
 
@@ -100,6 +102,16 @@ export async function saveDenisRolloutConfig(
   ) {
     return {
       error: "Denis narration requires rollout mode denis_only or canary.",
+    };
+  }
+
+  if (
+    parsed.data.rolloutMode === "canary" &&
+    parsed.data.narrateWithLlm &&
+    parsed.data.canaryPercent <= 0
+  ) {
+    return {
+      error: "Canary percent must be > 0 when narrate is enabled.",
     };
   }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ConciergeRolloutSchema } from "@/lib/denis/config/rollout";
 
 export const ConciergeToneSchema = z.enum([
   "warm_short",
@@ -120,10 +121,6 @@ const ConciergeExperimentsSchema = z.object({
 const ConciergeCreditsSchema = z.object({
   chargeProactive: z.boolean(),
   chargeDeterministic: z.boolean(),
-});
-
-const ConciergeRolloutSchema = z.object({
-  mode: z.enum(["legacy", "shadow", "canary", "denis_only", "simulation"]),
 });
 
 const ConciergePartySchema = z.object({
