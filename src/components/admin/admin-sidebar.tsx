@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   BarChart3,
   ClipboardList,
   LayoutGrid,
@@ -44,6 +45,7 @@ const marketingItems = [
   { href: "/admin/promos", label: "Promo codes", icon: Ticket },
   { href: "/admin/upsells", label: "Upsell rules", icon: Megaphone },
   { href: "/admin/denis-insights", label: "Denis Insights", icon: Sparkles },
+  { href: "/admin/denis-debug", label: "Denis Debugger", icon: Activity },
 ];
 
 export function AdminSidebar() {

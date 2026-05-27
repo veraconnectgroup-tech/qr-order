@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M18** (May 2026) — optional guest voice in/out |
+| **As-built through** | **M19** (May 2026) — admin session debugger |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M18 ✅)
+## 3. As-built snapshot (M0–M19 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -101,6 +101,7 @@ sequenceDiagram
 | `POST /api/guest/denis-memory/consent` | ✅ | grant consent + seed profile |
 | `POST /api/guest/denis-memory/sync` | ✅ | sync allergies / record visit |
 | `DELETE /api/guest/denis-memory` | ✅ | GDPR erase |
+| `GET /api/denis/session/:id/graph` | ✅ | admin debugger — beliefs/goals/timeline (M19) |
 | `POST /api/denis/schedules/tick` | ❌ | not implemented (cron only) |
 
 ### 3.4 Database (migrations — verify push status locally)
@@ -139,7 +140,7 @@ Honest delta after M10 — do not assume these exist:
 | `runtime/act/*` skill executor | ❌ skills planned, not executed in Denis path | M7+ / ACL |
 | `src/lib/denis/acl/` DenisOrderCommand | ❌ marker only | with act layer |
 | `src/lib/denis/venue/` | ✅ party + ops + floor + copilot (M15) | M16 learning |
-| `src/lib/denis/learning/` | ✅ learned edges + guest memory (M17) | M19 venue sim |
+| `src/lib/denis/learning/` | ✅ learned edges + guest memory (M17) | M20 venue sim |
 | `menu_knowledge_edges` / L3 learned VKG | ✅ `denis_learned_edges` (M16) | promote only via admin |
 | Consented return-guest memory | ✅ `denis_guest_memory` (M17) | GA gate `memory.returnGuestEnabled` |
 | `denis_eval_runs` table | ❌ CI in-memory only | optional |
@@ -207,9 +208,10 @@ Honest delta after M10 — do not assume these exist:
 | **M16** | ✅ | Learned edges queue + admin UI |
 | **M17** | ✅ | Consented guest memory + return welcome |
 | **M18** | ✅ | Voice in/out (premium, `surfaces.voiceEnabled`) |
-| **M19–M20** | ⬜ | Admin debugger (ADR §14), venue sim |
+| **M19** | ✅ | Admin debugger (beliefs/goals/timeline graph) |
+| **M20** | ⬜ | Venue sim + experiment toggles |
 
-**Next recommended:** **M19** — admin debugger (beliefs/goals/timeline) per ADR-005 §14; or **M20** venue sim per map §7.
+**Next recommended:** **M20** — venue sim + counterfactual config replay (ADR-005 §7.3).
 
 ---
 

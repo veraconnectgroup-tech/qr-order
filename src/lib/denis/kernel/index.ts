@@ -32,6 +32,12 @@ export {
 } from "@/lib/denis/kernel/correction-protocol";
 export type { CorrectionOutcome } from "@/lib/denis/kernel/correction-protocol";
 export { deriveGoalStack, topGoal } from "@/lib/denis/kernel/goal-stack";
+export { buildSessionDebugGraph } from "@/lib/denis/kernel/session-debug-graph";
+export type {
+  DenisSessionDebugGraph,
+  DebugBeliefRow,
+  DebugTurnSummary,
+} from "@/lib/denis/kernel/session-debug-graph";
 export type {
   DenisGoal,
   GoalDerivationContext,
