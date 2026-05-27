@@ -4,48 +4,31 @@ import Link from "next/link";
 import {
   HeroItem,
   HeroStagger,
-  AnimateInView,
 } from "@/components/landing/animate-in-view";
-import { LandingFloorHero } from "@/components/landing/landing-floor-hero";
+import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 
-function HeroAuroraOrbs() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-indigo-500/20 blur-[120px]" />
-      <div className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-violet-500/12 blur-[120px]" />
-      <div className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-indigo-400/10 blur-[120px]" />
-    </div>
-  );
-}
-
 export function LandingHero() {
   return (
-    <section className="landing-hero-dark landing-dot-grid landing-glow-top relative overflow-hidden pt-20 pb-12">
-      <HeroAuroraOrbs />
+    <section className="relative overflow-hidden bg-black pt-24 pb-16 md:pb-24">
       <LandingContainer wide className="relative z-[2]">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-16">
-          <HeroStagger className="max-w-[620px] lg:max-w-none">
+        <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-12 xl:gap-16">
+          <HeroStagger className="max-w-[560px]">
             <HeroItem>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-400">
+              <p className="text-[12px] font-medium tracking-[0.08em] text-zinc-500">
                 Part of Vera Group
               </p>
             </HeroItem>
             <HeroItem>
-              <h1 className="font-display text-[clamp(3rem,7vw,4.5rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-white">
-                Denis
+              <h1 className="font-display text-[clamp(2.75rem,6vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white">
+                Denis turns your floor into revenue
               </h1>
             </HeroItem>
             <HeroItem>
-              <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-300 sm:text-[18px]">
-                Der Concierge für Ihren Gastraum.
-              </p>
-            </HeroItem>
-            <HeroItem>
-              <p className="mt-3 max-w-[540px] text-[15px] leading-relaxed text-zinc-500">
-                Bestellung, Küchendisplay, Tischverwaltung, Kartenzahlung und
-                DATEV-Export — ein System statt fünf.
+              <p className="mt-5 max-w-[520px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
+                QR ordering, kitchen display, table management, and card
+                payments — one enterprise platform instead of five tools.
               </p>
             </HeroItem>
             <HeroItem>
@@ -53,34 +36,28 @@ export function LandingHero() {
                 <Button
                   size="lg"
                   asChild
-                  className="landing-btn-accent h-12 rounded-full px-8 text-sm font-semibold"
+                  className="h-11 rounded-full bg-white px-7 text-sm font-semibold text-black hover:bg-zinc-100"
                 >
                   <Link href="/signup">Kostenlos starten</Link>
                 </Button>
                 <Button
                   size="lg"
-                  variant="outline"
+                  variant="ghost"
                   asChild
-                  className="h-12 rounded-full border-[#2a2a3e] bg-transparent px-8 text-sm font-medium text-zinc-200 hover:bg-[#12121a] hover:text-white"
+                  className="h-11 rounded-full px-6 text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-white"
                 >
-                  <Link href="/skyline-lounge/demo-table-8">
-                    Live-Demo ansehen →
-                  </Link>
+                  <Link href="#product">Product tour →</Link>
                 </Button>
               </div>
             </HeroItem>
             <HeroItem>
-              <p className="mt-6 text-[13px] leading-relaxed text-zinc-500">
-                0 € / Monat · KassenSichV-konform · Live in unter 30 Minuten
+              <p className="mt-6 text-[13px] text-zinc-600">
+                0 € / Monat · KassenSichV · Live in unter 30 Minuten
               </p>
             </HeroItem>
           </HeroStagger>
 
-          <AnimateInView className="relative lg:min-h-[460px]" delay={0.15}>
-            <div className="aspect-[4/3] w-full lg:min-h-[460px]">
-              <LandingFloorHero className="min-h-[280px] lg:min-h-[460px]" />
-            </div>
-          </AnimateInView>
+          <LandingHeroVisual />
         </div>
       </LandingContainer>
     </section>

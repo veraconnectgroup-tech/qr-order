@@ -12,7 +12,10 @@ import { ImageIcon, Send, X, Check, Plus } from "lucide-react";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { DenisChip } from "@/components/design-system/denis-chip";
 import { DenisTableMark } from "@/components/design-system/denis-table-mark";
-import { DenisCartTiles } from "@/components/guest/denis-cart-tiles";
+import {
+  DenisCartHeaderLink,
+  DenisCartTiles,
+} from "@/components/guest/denis-cart-tiles";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import {
   resolveStickyGuestLanguage,
@@ -383,6 +386,7 @@ export type AiConciergeChatProps = {
   tableId: string;
   sessionToken: string | null;
   currency: string;
+  taxPercent: number;
   orderingDisabled?: boolean;
   isDemo?: boolean;
   menuCategories?: MenuCategory[];
@@ -424,11 +428,13 @@ export type AiConciergeChatProps = {
 export function AiConciergeChat({
   open,
   onOpenChange,
+  slug,
   token,
   locationId,
   tableId,
   sessionToken,
   currency,
+  taxPercent,
   orderingDisabled = false,
   isDemo = false,
   menuCategories = [],
@@ -1115,15 +1121,23 @@ export function AiConciergeChat({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/45">
       <div className="mx-3 mb-3 flex max-h-[min(88dvh,720px)] min-h-[min(68dvh,540px)] flex-col overflow-hidden rounded-[20px] border border-[var(--qr-elevated)] bg-[var(--qr-void)] text-[var(--qr-ivory)] shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
-        <header className="flex shrink-0 items-center justify-between border-b border-[var(--qr-elevated)] bg-[var(--qr-surface)]/90 px-4 py-3 backdrop-blur-md">
+        <header className="flex shrink-0 items-center gap-2 border-b border-[var(--qr-elevated)] bg-[var(--qr-surface)]/90 px-3 py-3 backdrop-blur-md sm:gap-3 sm:px-4">
           <DenisBrandMark
             markState={isTyping ? "think" : "idle"}
-            className="min-w-0 [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
+            className="min-w-0 flex-1 [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
           />
+          {!orderingDisabled && (
+            <DenisCartHeaderLink
+              slug={slug}
+              token={token}
+              taxPercent={taxPercent}
+              currency={currency}
+            />
+          )}
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="touch-target inline-flex size-10 items-center justify-center rounded-full text-[var(--qr-muted)] hover:bg-[var(--qr-elevated)] hover:text-[var(--qr-ivory)]"
+            className="touch-target inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[var(--qr-muted)] hover:bg-[var(--qr-elevated)] hover:text-[var(--qr-ivory)]"
             aria-label={tUI("ai.chat.close")}
           >
             <X className="size-5" />

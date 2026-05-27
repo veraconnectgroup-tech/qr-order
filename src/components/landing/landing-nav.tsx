@@ -3,16 +3,14 @@
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "#modules", label: "Platform", sectionId: "modules" },
+  { href: "#product", label: "Product", sectionId: "product" },
   { href: "/enterprise", label: "Enterprise", sectionId: null },
   { href: "#pricing", label: "Pricing", sectionId: "pricing" },
-  { href: "#product", label: "Product", sectionId: "product" },
 ];
 
 export function LandingNav() {
@@ -65,47 +63,33 @@ export function LandingNav() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200",
           scrolled
-            ? "landing-nav-gradient-border border-[#1e1e2e]/80 bg-[#08080c]/90 backdrop-blur-xl"
+            ? "border-white/[0.06] bg-black/80 backdrop-blur-xl"
             : "border-transparent bg-transparent"
         )}
       >
         <LandingContainer wide className="flex h-14 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="hidden sm:block">
-              <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
-            </span>
-            <span className="sm:hidden">
-              <DenisBrandMark
-                markOnly
-                className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white"
-              />
-            </span>
+          <Link
+            href="/"
+            className="text-[15px] font-semibold tracking-[-0.03em] text-white"
+          >
+            Denis
           </Link>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-8 lg:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "relative text-[13px] font-medium transition hover:text-white",
+                  "text-[13px] font-medium transition hover:text-white",
                   link.sectionId && activeSection === link.sectionId
                     ? "text-white"
-                    : "text-zinc-400"
+                    : "text-zinc-500"
                 )}
               >
                 {link.label}
-                {link.sectionId && activeSection === link.sectionId && (
-                  <span className="absolute -bottom-[1.15rem] left-0 right-0 h-0.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
-                )}
               </Link>
             ))}
-            <Link
-              href="/skyline-lounge/demo-table-8"
-              className="text-[13px] font-medium text-zinc-400 transition hover:text-white"
-            >
-              Demo
-            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -113,16 +97,16 @@ export function LandingNav() {
               variant="ghost"
               size="sm"
               asChild
-              className="hidden h-8 px-3 text-[13px] font-medium text-zinc-400 hover:bg-[#12121a] hover:text-white sm:inline-flex"
+              className="hidden h-8 px-3 text-[13px] font-medium text-zinc-400 hover:bg-white/5 hover:text-white sm:inline-flex"
             >
-              <Link href="/login">Anmelden</Link>
+              <Link href="/login">Sign in</Link>
             </Button>
             <Button
               size="sm"
               asChild
-              className="landing-btn-accent hidden h-8 rounded-full px-4 text-[13px] font-semibold sm:inline-flex"
+              className="hidden h-8 rounded-full bg-white px-4 text-[13px] font-semibold text-black hover:bg-zinc-100 sm:inline-flex"
             >
-              <Link href="/signup">Zugang anfordern</Link>
+              <Link href="/signup">Get started</Link>
             </Button>
             <button
               type="button"
@@ -137,15 +121,15 @@ export function LandingNav() {
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-40 bg-[#08080c] lg:hidden">
-          <div className="flex h-14 items-center justify-between border-b border-[#1e1e2e] px-6">
+        <div className="fixed inset-0 z-40 bg-black lg:hidden">
+          <div className="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
             <span className="text-[14px] font-semibold text-white">Menu</span>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close">
               <X className="size-5 text-white" />
             </button>
           </div>
           <nav className="flex flex-col gap-1 px-6 py-6">
-            {[...navLinks, { href: "/login", label: "Anmelden", sectionId: null }].map(
+            {[...navLinks, { href: "/login", label: "Sign in", sectionId: null }].map(
               (link) => (
                 <Link
                   key={link.href}
@@ -159,9 +143,12 @@ export function LandingNav() {
             )}
           </nav>
           <div className="px-6">
-            <Button asChild className="landing-btn-accent h-11 w-full rounded-full">
+            <Button
+              asChild
+              className="h-11 w-full rounded-full bg-white text-black hover:bg-zinc-100"
+            >
               <Link href="/signup" onClick={() => setOpen(false)}>
-                Zugang anfordern
+                Get started
               </Link>
             </Button>
           </div>

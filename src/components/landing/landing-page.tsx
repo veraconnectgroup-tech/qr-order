@@ -4,15 +4,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/product-showcases";
-import { LandingClosingShowcase } from "@/components/landing/landing-closing-showcase";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingHero } from "@/components/landing/landing-hero";
-import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
-import { LandingPhilosophy } from "@/components/landing/landing-philosophy";
 import { LandingTrustStrip } from "@/components/landing/landing-trust-strip";
-import { LandingTestimonials } from "@/components/landing/landing-testimonials";
-import { LandingWorkflows } from "@/components/landing/landing-workflows";
 import {
   LandingContainer,
   LandingEyebrow,
@@ -33,10 +28,10 @@ const LandingProductTabs = dynamic(
   {
     loading: () => (
       <div
-        className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 md:py-20"
+        className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 md:py-28"
         aria-hidden
       >
-        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-zinc-900/40" />
+        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-white/[0.03]" />
       </div>
     ),
   }
@@ -95,25 +90,21 @@ const plans: Array<{
 
 export function LandingPage() {
   return (
-    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden bg-[#08080c] antialiased">
+    <div className="landing-page relative min-h-screen overflow-x-hidden bg-black antialiased">
       <LandingNav />
 
       <main className="relative z-[2]">
         <LandingHero />
         <LandingTrustStrip />
-        <LandingPhilosophy />
-        <LandingModules />
         <LandingProductTabs />
-        <LandingTestimonials />
-        <LandingWorkflows />
 
         <section
           id="pricing"
-          className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 text-white md:py-20"
+          className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 text-white md:py-28"
         >
           <LandingContainer wide>
             <AnimateInView className="max-w-[480px]">
-              <LandingEyebrow inverted>Preise</LandingEyebrow>
+              <LandingEyebrow inverted>Pricing</LandingEyebrow>
               <LandingHeadline inverted className="mt-3">
                 Transparente Preise
               </LandingHeadline>
@@ -128,14 +119,14 @@ export function LandingPage() {
                 <AnimateInView key={plan.name}>
                   <div
                     className={cn(
-                      "landing-glow-border relative flex h-full flex-col rounded-xl border p-8 sm:p-10",
+                      "relative flex h-full flex-col rounded-2xl border p-8 sm:p-10",
                       plan.primary
-                        ? "landing-pricing-border landing-pricing-glass ring-1 ring-white/10"
-                        : "border-[#1e1e2e] bg-zinc-900/40"
+                        ? "border-white/[0.12] bg-white/[0.03] ring-1 ring-white/[0.08]"
+                        : "border-white/[0.06] bg-white/[0.02]"
                     )}
                   >
                     {plan.primary && (
-                      <span className="absolute -top-3 left-8 rounded-full bg-indigo-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+                      <span className="absolute -top-3 left-8 rounded-full bg-[var(--qr-ember,#f97316)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
                         Beliebteste Wahl
                       </span>
                     )}
@@ -152,13 +143,13 @@ export function LandingPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-[14px] font-medium text-[var(--lp-accent)]">
+                    <p className="mt-2 text-[14px] font-medium text-[var(--qr-ember,#f97316)]">
                       {plan.fee}
                     </p>
                     <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
                       {plan.description}
                     </p>
-                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-[#1e1e2e] pt-8">
+                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-white/[0.06] pt-8">
                       {plan.features.map((feat) => (
                         <FeatureCheck key={feat} accent>
                           {feat}
@@ -175,8 +166,8 @@ export function LandingPage() {
                       className={cn(
                         "mt-8 h-11 w-full rounded-full text-sm font-semibold",
                         plan.primary
-                          ? "landing-btn-accent"
-                          : "border border-[#2a2a3e] bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-white"
+                          ? "bg-white text-black hover:bg-zinc-100"
+                          : "border border-white/[0.12] bg-transparent text-zinc-200 hover:bg-white/[0.04] hover:text-white"
                       )}
                       variant={plan.primary ? "default" : "outline"}
                     >
@@ -190,8 +181,6 @@ export function LandingPage() {
         </section>
 
         <LandingFaq />
-
-        <LandingClosingShowcase />
       </main>
     </div>
   );

@@ -5,6 +5,7 @@
 | **Status** | **Accepted** — **v4 Denis Spatial adopted** (May 2026) |
 | **Relates to** | [ADR-005 Denis Maximum](../architecture/ADR-005-denis-maximum.md), `.cursor/rules/project.mdc` |
 | **Implementation plan** | **[denis-spatial-implementation-plan.md](./denis-spatial-implementation-plan.md)** (DS-01…DS-14) |
+| **Enterprise web architecture** | **[ADR-008](./ADR-008-web-design-architecture.md)** — detaljan plan ekrana, kartica, DE-tracks |
 | **As-built audit** | 4 disconnected visual silos (see §2) |
 | **Legacy roadmap** | V0–V8 (§9) — superseded by **DS-tracks** in implementation plan |
 

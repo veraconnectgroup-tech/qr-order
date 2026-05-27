@@ -1056,7 +1056,7 @@ export function MenuView({
                   onDismiss={() => setPairingRecommendation(null)}
                 />
               )}
-              {!detailProduct && (
+              {!detailProduct && !aiChatOpen && (
                 <CartSummaryBar
                   slug={slug}
                   token={token}
@@ -1091,6 +1091,7 @@ export function MenuView({
               tableId={tableId}
               sessionToken={sessionToken}
               currency={currency}
+              taxPercent={taxPercent}
               orderingDisabled={!canPlaceOrders}
               isDemo={isDemoGuestRoute(slug, token)}
               menuCategories={menuCategories}
