@@ -97,6 +97,11 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
   },
+  learning: {
+    learnedEdgesEnabled: false,
+    minAcceptRateForSuggestion: 0.15,
+    minImpressionsForSuggestion: 3,
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;

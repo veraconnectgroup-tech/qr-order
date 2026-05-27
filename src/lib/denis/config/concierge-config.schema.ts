@@ -129,6 +129,12 @@ const ConciergeOpsSchema = z.object({
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
 });
 
+const ConciergeLearningSchema = z.object({
+  learnedEdgesEnabled: z.boolean(),
+  minAcceptRateForSuggestion: z.number().min(0).max(1),
+  minImpressionsForSuggestion: z.number().int().min(1).max(1000),
+});
+
 export const ConciergeConfigSchema = z.object({
   version: z.literal(1),
   enabled: z.boolean(),
@@ -146,6 +152,7 @@ export const ConciergeConfigSchema = z.object({
   rollout: ConciergeRolloutSchema,
   party: ConciergePartySchema,
   ops: ConciergeOpsSchema,
+  learning: ConciergeLearningSchema,
 });
 
 export type ConciergeConfig = z.infer<typeof ConciergeConfigSchema>;
@@ -164,6 +171,7 @@ export const PartialConciergeCreditsSchema = ConciergeCreditsSchema.partial();
 export const PartialConciergeRolloutSchema = ConciergeRolloutSchema.partial();
 export const PartialConciergePartySchema = ConciergePartySchema.partial();
 export const PartialConciergeOpsSchema = ConciergeOpsSchema.partial();
+export const PartialConciergeLearningSchema = ConciergeLearningSchema.partial();
 
 export const PartialConciergeConfigSchema = z.object({
   version: z.literal(1).optional(),
@@ -182,6 +190,7 @@ export const PartialConciergeConfigSchema = z.object({
   rollout: PartialConciergeRolloutSchema.optional(),
   party: PartialConciergePartySchema.optional(),
   ops: PartialConciergeOpsSchema.optional(),
+  learning: PartialConciergeLearningSchema.optional(),
 });
 
 export type PartialConciergeConfig = z.infer<typeof PartialConciergeConfigSchema>;
