@@ -1,0 +1,242 @@
+import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
+
+type MenuLanguage = "de" | "en" | "sr" | "hr";
+
+function normalizeMessage(message: string) {
+  return message.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function summarizeDraftOrder(draft: AiOrderDraft): string {
+  return draft.items
+    .map(
+      (item) =>
+        `${item.quantity}× ${item.productName}${item.serveSize ? ` ${item.serveSize}` : ""}`
+    )
+    .join(", ");
+}
+
+export function isGuestDecliningMore(message: string): boolean {
+  const text = normalizeMessage(message);
+  return (
+    /^(ne+hvala|ne hvala|ne, hvala|ne treba|nije potrebno|ne mora|ne želim|ne zelim)$/.test(
+      text
+    ) ||
+    /^(nein danke|nein, danke|danke nein|no thanks?|nope|nicht|ne\.?)$/.test(
+      text
+    ) ||
+    /^ne(,|$)/.test(text)
+  );
+}
+
+export function isGuestDoneOrdering(message: string): boolean {
+  const text = normalizeMessage(message);
+  return (
+    /to je sve|samo to|gotovo|ništa više|nista vise/.test(text) ||
+    /das war(\s+)?('|)s|das reicht|nichts mehr|nur das|fertig/.test(text) ||
+    /that('s| is) all|nothing else|just that/.test(text)
+  );
+}
+
+export function isGuestFinalConfirm(message: string): boolean {
+  const text = normalizeMessage(message);
+  return (
+    /^(da|ja|yes|yep|ok+|potvrdi|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/.test(
+      text
+    ) ||
+    /^(da|ja),?\s*(pošalji|posalji|potvrdi|bestätigen|send|naruči|naruci)/.test(
+      text
+    )
+  );
+}
+
+function asksAboutFood(message: string): boolean {
+  return /essen|jelo|food|something to eat|etwas zu essen|noch etwas|još nešto|jos nesto|anything else to eat|želite li nešto za jelo|möchten sie noch etwas/i.test(
+    message
+  );
+}
+
+function isDrinksOnly(draft: AiOrderDraft): boolean {
+  return (
+    draft.items.length > 0 &&
+    draft.items.every((item) => item.menuSection === "drinks")
+  );
+}
+
+function confirmOrderMessage(summary: string, lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return `Bitte bestätigen Sie: ${summary}. Soll ich die Bestellung senden?`;
+    case "en":
+      return `Please confirm: ${summary}. Shall I send the order?`;
+    case "hr":
+      return `Molim potvrdite: ${summary}. Da pošaljem narudžbu?`;
+    default:
+      return `Molim potvrdite porudžbinu: ${summary}. Da pošaljem?`;
+  }
+}
+
+function sendOrderMessage(lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return "Perfekt — ich sende Ihre Bestellung!";
+    case "en":
+      return "Great — sending your order!";
+    case "hr":
+      return "Odlično — šaljem narudžbu!";
+    default:
+      return "Odlično — šaljem porudžbinu!";
+  }
+}
+
+function addedDrinkAskFoodMessage(summary: string, lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return `Alles klar — ${summary}. Möchten Sie noch etwas zu essen?`;
+    case "en":
+      return `Got it — ${summary}. Would you like something to eat?`;
+    case "hr":
+      return `U redu — ${summary}. Želite li nešto za jelo?`;
+    default:
+      return `U redu — ${summary}. Želite li nešto za jelo?`;
+  }
+}
+
+function resolveMenuLanguage(language: string | undefined): MenuLanguage {
+  if (language === "de" || language === "en" || language === "hr") {
+    return language;
+  }
+  if (language === "sr") return "sr";
+  return "de";
+}
+
+export type OrderFlowResult = {
+  draft: AiOrderDraft;
+  message: string;
+  submitOrder: boolean;
+  intent: "confirm" | "order" | "chat";
+};
+
+/**
+ * Deterministic guardrails: finish the order in a short path — no endless questions.
+ */
+export function finalizeOrderFlow(input: {
+  userMessage: string;
+  draft: AiOrderDraft;
+  llmMessage: string;
+  llmSubmitOrder: boolean;
+  cartActionsThisTurn: number;
+  language?: string;
+}): OrderFlowResult {
+  const lang = resolveMenuLanguage(input.language);
+  const draft: AiOrderDraft = {
+    ...input.draft,
+    flow: { ...input.draft.flow },
+  };
+  const flow = draft.flow!;
+  const hasItems = draft.items.length > 0 && !draft.pending;
+  const summary = summarizeDraftOrder(draft);
+
+  if (!hasItems) {
+    return {
+      draft,
+      message: input.llmMessage,
+      submitOrder: input.llmSubmitOrder,
+      intent: input.llmSubmitOrder ? "confirm" : "chat",
+    };
+  }
+
+  if (
+    flow.awaitingFinalConfirm &&
+    isGuestFinalConfirm(input.userMessage) &&
+    !isGuestDecliningMore(input.userMessage)
+  ) {
+    return {
+      draft,
+      message: sendOrderMessage(lang),
+      submitOrder: true,
+      intent: "confirm",
+    };
+  }
+
+  if (
+    isGuestDecliningMore(input.userMessage) ||
+    isGuestDoneOrdering(input.userMessage)
+  ) {
+    flow.foodUpsellAsked = true;
+    flow.awaitingFinalConfirm = true;
+    return {
+      draft,
+      message: confirmOrderMessage(summary, lang),
+      submitOrder: false,
+      intent: "confirm",
+    };
+  }
+
+  if (input.cartActionsThisTurn > 0) {
+    flow.foodUpsellAsked = true;
+
+    if (isDrinksOnly(draft) && !flow.awaitingFinalConfirm) {
+      return {
+        draft,
+        message: addedDrinkAskFoodMessage(summary, lang),
+        submitOrder: false,
+        intent: "order",
+      };
+    }
+
+    flow.awaitingFinalConfirm = true;
+    return {
+      draft,
+      message: confirmOrderMessage(summary, lang),
+      submitOrder: false,
+      intent: "confirm",
+    };
+  }
+
+  if (flow.awaitingFinalConfirm) {
+    return {
+      draft,
+      message: confirmOrderMessage(summary, lang),
+      submitOrder: false,
+      intent: "confirm",
+    };
+  }
+
+  if (flow.foodUpsellAsked && asksAboutFood(input.llmMessage)) {
+    flow.awaitingFinalConfirm = true;
+    return {
+      draft,
+      message: confirmOrderMessage(summary, lang),
+      submitOrder: false,
+      intent: "confirm",
+    };
+  }
+
+  if (asksAboutFood(input.llmMessage)) {
+    flow.foodUpsellAsked = true;
+  }
+
+  return {
+    draft,
+    message: input.llmMessage,
+    submitOrder: input.llmSubmitOrder,
+    intent: input.llmSubmitOrder ? "confirm" : "chat",
+  };
+}
+
+export function formatFlowForPrompt(draft: AiOrderDraft): string | null {
+  const flow = draft.flow;
+  if (!flow) return null;
+
+  const parts: string[] = [];
+  if (flow.foodUpsellAsked) {
+    parts.push("food_upsell_already_asked=true — do NOT ask about food again");
+  }
+  if (flow.awaitingFinalConfirm) {
+    parts.push(
+      "awaiting_final_confirm=true — only recap the order or set submitOrder on explicit yes"
+    );
+  }
+  if (parts.length === 0) return null;
+  return `ORDER FLOW STATE:\n- ${parts.join("\n- ")}`;
+}

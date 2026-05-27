@@ -1,11 +1,19 @@
 import type { MenuSection } from "@/lib/menu-section";
 
+export type AiOrderFlowState = {
+  /** Guest was asked once about food — do not ask again. */
+  foodUpsellAsked?: boolean;
+  /** Waiting for explicit yes/no on order recap before submit. */
+  awaitingFinalConfirm?: boolean;
+};
+
 export type AiOrderDraft = {
   version: 1;
   items: AiDraftItem[];
   pending: AiPendingItem | null;
   cartRevision: number;
   updatedAt: string;
+  flow?: AiOrderFlowState;
 };
 
 export type AiDraftItem = {
@@ -88,5 +96,9 @@ export function parseOrderDraft(value: unknown): AiOrderDraft | null {
       typeof row.updatedAt === "string"
         ? row.updatedAt
         : new Date().toISOString(),
+    flow:
+      row.flow && typeof row.flow === "object" && !Array.isArray(row.flow)
+        ? (row.flow as AiOrderFlowState)
+        : undefined,
   };
 }

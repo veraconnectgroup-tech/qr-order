@@ -174,27 +174,30 @@ function orderingConversationFlowBlock(
   const blocks: Partial<
     Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
   > & { en: string } = {
-    de: `GESPRÄCHSABLAUF (Bestellung):
-1. Begrüßung: kurz fragen ob etwas zu trinken oder zu essen — kein Menü zeigen.
-2. Gast bestellt Getränk ohne Größe und Menü hat serve_sizes → intent "clarify", frage "0,3L oder 0,5L?" in message, proposedItems = [].
-3. Größe klar → intent "order", proposedItems füllen, kurz bestätigen was hinzugefügt wurde.
-4. Einmal fragen: "Möchten Sie noch etwas zu essen?" — keine Karten. Bei Ablehnung → "Ist das alles?"
-5. Gast bestätigt ("ja", "das war's") → intent "confirm", proposedItems = [], Bestellung in message auflisten: "Bitte bestätigen: 1× Cola Zero 0,3L"
-6. submitOrder true NUR bei expliziter Endbestätigung ("ja, bestätigen", "bestellen", "senden").`,
-    en: `CONVERSATION FLOW (ordering):
-1. Greeting: briefly ask drink or food — no menu cards.
-2. Guest orders drink without size and menu has serve_sizes → intent "clarify", ask "0.3L or 0.5L?" in message, proposedItems = [].
-3. Size clear → intent "order", fill proposedItems, briefly confirm what was added.
-4. Ask once: "Would you like something to eat?" — no cards. If declined → "Is that everything?"
-5. Guest confirms ("yes", "that's all") → intent "confirm", proposedItems = [], list order: "Please confirm: 1× Cola Zero 0.3L"
-6. submitOrder true ONLY on explicit final confirmation ("yes, confirm", "place order", "send").`,
-    sr: `TOK RAZGOVORA (poručivanje):
-1. Pozdrav: pitaj piće ili jelo — bez kartica menija.
-2. Gost naruči piće bez veličine i meni ima serve_sizes → intent "clarify", pitaj "0,3L ili 0,5L?" u poruci, proposedItems = [].
-3. Veličina jasna → intent "order", popuni proposedItems, kratko potvrdi šta je dodato.
-4. Jednom pitaj: "Želite li nešto za jelo?" — bez kartica. Ako odbije → "Da li je to sve?"
-5. Gost potvrdi ("da", "to je sve") → intent "confirm", proposedItems = [], navedi porudžbinu: "Molim potvrdite: 1× Cola Zero 0,3L"
-6. submitOrder true SAMO na eksplicitnu potvrdu ("da, pošalji", "naruči").`,
+    de: `GESPRÄCHSABLAUF (Bestellung — kurz, max 3 Schritte nach dem letzten Artikel):
+1. Begrüßung: Getränk oder Essen? Keine Menü-Karten.
+2. Gast nennt Getränk MIT Größe (z.B. "Cola Zero 0,3L") → sofort intent "order", proposedItems füllen — NICHT nochmal nach Größe fragen.
+3. Getränk OHNE Größe → einmal "0,3L oder 0,5L?" fragen, dann order.
+4. Nach erstem Getränk: EINMAL "Möchten Sie noch etwas zu essen?" — nie wiederholen.
+5. Gast sagt "nein danke" / "das war's" → intent "confirm", Bestellung auflisten, senden anbieten — KEINE weiteren Fragen.
+6. Gast bestätigt explizit → submitOrder true.
+NIEMALS nach Schritt 5 noch "Noch etwas?" fragen.`,
+    en: `CONVERSATION FLOW (ordering — short, max 3 steps after last item):
+1. Greeting: drink or food? No menu cards.
+2. Guest names drink WITH size (e.g. "Cola Zero 0.3L") → intent "order" immediately — do NOT ask size again.
+3. Drink WITHOUT size → ask "0.3L or 0.5L?" once, then order.
+4. After first drink only: ask food ONCE — never repeat.
+5. Guest says "no thanks" / "that's all" → intent "confirm", list order, offer to send — NO more questions.
+6. Guest explicitly confirms → submitOrder true.
+NEVER ask "anything else?" after step 5.`,
+    sr: `TOK RAZGOVORA (kratak — max 3 koraka posle poslednje stavke):
+1. Pozdrav: piće ili jelo? Bez kartica.
+2. Gost kaže piće SA veličinom (npr. "Cola Zero 0,3") → odmah intent "order" — NE pitaj ponovo veličinu.
+3. Piće BEZ veličine → jednom pitaj "0,3L ili 0,5L?", pa order.
+4. Posle samo pića: JEDNOM pitaj za jelo — nikad ponovo.
+5. Gost kaže "ne hvala" / "to je sve" → intent "confirm", navedi porudžbinu — BEZ daljih pitanja.
+6. Eksplicitna potvrda → submitOrder true.
+NIKAD ne pitaj "još nešto?" posle koraka 5.`,
     hr: `TOK RAZGOVORA (naručivanje):
 1. Pozdrav: pitaj piće ili jelo — bez kartica jelovnika.
 2. Gost naruči piće bez veličine → intent "clarify", pitaj "0,3L ili 0,5L?" u poruci.

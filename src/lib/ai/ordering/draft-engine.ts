@@ -14,6 +14,7 @@ import {
   validateProposedItems,
 } from "@/lib/ai/ordering/cart-validator";
 import { formatServeSize } from "@/lib/serve-size";
+import { formatFlowForPrompt } from "@/lib/ai/ordering/order-flow";
 
 function normalizeText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -273,6 +274,11 @@ export function formatDraftForPrompt(draft: AiOrderDraft | null): string | null 
         `- ${item.quantity}x ${item.productName}${item.serveSize ? ` (${item.serveSize})` : ""}`
       );
     }
+  }
+
+  const flowBlock = formatFlowForPrompt(draft);
+  if (flowBlock) {
+    lines.push(flowBlock);
   }
 
   return lines.length ? lines.join("\n") : null;

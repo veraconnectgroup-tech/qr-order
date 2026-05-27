@@ -7,13 +7,12 @@ export type DefaultAiExample = {
   assistantJson?: Record<string, unknown>;
 };
 
-export const DEFAULT_AI_PLAYBOOK = `- Ton: topao, prijateljski, kratak — kao pravi konobar
-- Ne koristi quickReplies — pitaj u običnom tekstu
-- Ne prikazuj kartice menija osim ako gost eksplicitno traži preporuku
-- Uvek pitaj veličinu pića (0,3L / 0,5L) ako gost nije naveo
-- Posle pića jednom pitaj da li želi nešto za jelo
-- Pre slanja: "Da li je to sve?" pa potvrdite narudžbinu sa listom stavki
-- submitOrder samo posle eksplicitne potvrde`;
+export const DEFAULT_AI_PLAYBOOK = `- Ton: topao, kratak — završi porudžbinu brzo, bez petlje pitanja
+- Piće sa veličinom u poruci → odmah dodaj, ne pitaj ponovo
+- Piće bez veličine → pitaj 0,3L/0,5L jednom
+- Posle pića → jednom pitaj za jelo
+- "Ne hvala" → odmah potvrdi porudžbinu i pitaj da li da pošalješ
+- Nikad "još nešto?" više od jednom`;
 
 export const DEFAULT_AI_EXAMPLES: DefaultAiExample[] = [
   {
@@ -32,21 +31,8 @@ export const DEFAULT_AI_EXAMPLES: DefaultAiExample[] = [
     },
   },
   {
-    category: "clarify",
-    userMessage: "Eine Cola Zero",
-    assistantMessage: "Gerne! Welche Größe — 0,3L oder 0,5L?",
-    assistantJson: {
-      intent: "clarify",
-      recommendations: [],
-      proposedItems: [],
-      quickReplies: [],
-      submitOrder: false,
-      message: "Gerne! Welche Größe — 0,3L oder 0,5L?",
-    },
-  },
-  {
     category: "order",
-    userMessage: "0,3 bitte",
+    userMessage: "Eine Cola Zero 0,3L bitte",
     assistantMessage:
       "Alles klar — Cola Zero 0,3L. Möchten Sie noch etwas zu essen?",
     assistantJson: {
@@ -68,34 +54,34 @@ export const DEFAULT_AI_EXAMPLES: DefaultAiExample[] = [
     },
   },
   {
-    category: "confirm",
-    userMessage: "Nein danke",
-    assistantMessage: "Verstanden. Ist das alles?",
+    category: "clarify",
+    userMessage: "Eine Cola Zero",
+    assistantMessage: "Gerne! Welche Größe — 0,3L oder 0,5L?",
     assistantJson: {
-      intent: "chat",
+      intent: "clarify",
       recommendations: [],
       proposedItems: [],
       quickReplies: [],
       submitOrder: false,
-      message: "Verstanden. Ist das alles?",
+      message: "Gerne! Welche Größe — 0,3L oder 0,5L?",
     },
   },
   {
     category: "confirm",
-    userMessage: "Ja",
-    assistantMessage: "Bitte bestätigen: 1× Cola Zero 0,3L",
+    userMessage: "Nein danke",
+    assistantMessage: "Bitte bestätigen: 1× Cola Zero 0,3L. Soll ich senden?",
     assistantJson: {
       intent: "confirm",
       recommendations: [],
       proposedItems: [],
       quickReplies: [],
       submitOrder: false,
-      message: "Bitte bestätigen: 1× Cola Zero 0,3L",
+      message: "Bitte bestätigen: 1× Cola Zero 0,3L. Soll ich senden?",
     },
   },
   {
     category: "confirm",
-    userMessage: "Ja, bestätigen",
+    userMessage: "Ja, bitte",
     assistantMessage: "Perfekt — ich sende Ihre Bestellung!",
     assistantJson: {
       intent: "confirm",

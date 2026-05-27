@@ -23,6 +23,7 @@ import {
 } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 import {
   AiCircuitOpenError,
   AiOpenAiError,
@@ -681,6 +682,18 @@ export async function handleAiChat(body: unknown) {
   });
   workingDraft = orderingResult.draft;
 
+  const flowResult = finalizeOrderFlow({
+    userMessage: input.message,
+    draft: workingDraft,
+    llmMessage: structured.structured.message,
+    llmSubmitOrder: structured.structured.submitOrder,
+    cartActionsThisTurn: orderingResult.cartActions.length,
+    language,
+  });
+  workingDraft = flowResult.draft;
+  const assistantReplyMessage = flowResult.message;
+  const submitOrder = flowResult.submitOrder;
+
   const guestWantsSuggestions = guestAskedForSuggestions(input.message);
 
   const shouldEnrichBrowse =
@@ -689,7 +702,7 @@ export async function handleAiChat(body: unknown) {
     browseMatches.length >= 2 &&
     !workingDraft.pending &&
     orderingResult.cartActions.length === 0 &&
-    !structured.structured.submitOrder &&
+    !submitOrder &&
     orderingResult.quickReplies.length === 0 &&
     structured.structured.intent !== "clarify" &&
     structured.structured.intent !== "confirm" &&
@@ -742,7 +755,7 @@ export async function handleAiChat(body: unknown) {
   const assistantMessage: StoredMessage = {
     role: "assistant",
     content: assistantContent(
-      structured.structured.message,
+      assistantReplyMessage,
       displayRecommendations
     ),
     timestamp: new Date().toISOString(),
@@ -820,12 +833,12 @@ export async function handleAiChat(body: unknown) {
   }
 
   return apiSuccess({
-    message: structured.structured.message,
+    message: assistantReplyMessage,
     recommendations: displayRecommendations,
     cartActions: orderingResult.cartActions,
     quickReplies: orderingResult.quickReplies,
-    intent: orderingResult.intent,
-    submitOrder: structured.structured.submitOrder,
+    intent: flowResult.intent,
+    submitOrder,
     creditsRemaining: newBalance as number,
     sessionId,
   });
