@@ -13,7 +13,7 @@ export function DenisPanel({
   return (
     <div
       className={cn(
-        "flex max-h-[min(88dvh,720px)] min-h-[min(68dvh,540px)] flex-col overflow-hidden rounded-[20px] border border-[var(--qr-elevated)] bg-[var(--qr-void)] text-[var(--qr-ivory)] shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
+        "flex max-h-[min(88dvh,720px)] min-h-[min(68dvh,540px)] flex-col overflow-hidden rounded-2xl bg-[var(--qr-void)] text-[var(--qr-ivory)]",
         className
       )}
     >
@@ -32,7 +32,7 @@ export function DenisPanelHeader({
   return (
     <header
       className={cn(
-        "flex shrink-0 items-center gap-2 border-b border-[var(--qr-elevated)] bg-[var(--qr-surface)]/90 px-3 py-3 backdrop-blur-md sm:gap-3 sm:px-4",
+        "flex shrink-0 items-center gap-3 px-5 py-4 sm:px-6",
         className
       )}
     >
@@ -49,7 +49,7 @@ export const DenisPanelBody = forwardRef<
     <div
       ref={ref}
       className={cn(
-        "min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4",
+        "min-h-0 flex-1 space-y-8 overflow-y-auto overscroll-contain px-5 py-2 sm:px-6",
         className
       )}
       {...props}
@@ -67,12 +67,7 @@ export function DenisPanelFooter({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "shrink-0 border-t border-[var(--qr-elevated)] bg-[var(--qr-void)] px-4 pt-3 pb-safe",
-        className
-      )}
-    >
+    <div className={cn("shrink-0 px-5 pt-2 pb-safe sm:px-6", className)}>
       {children}
     </div>
   );

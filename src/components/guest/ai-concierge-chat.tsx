@@ -9,11 +9,11 @@ import {
   type FormEvent,
 } from "react";
 import { Send, X } from "lucide-react";
-import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { DenisChip } from "@/components/design-system/denis-chip";
 import {
   DenisMessageBlock,
   DenisMessageThinking,
+  DenisThreadLabel,
 } from "@/components/design-system/denis-message-block";
 import {
   DenisPanel,
@@ -61,7 +61,6 @@ import {
 import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
 import { useAiOrderStatus } from "@/hooks/use-ai-order-status";
 import { toastAddedToCart } from "@/lib/cart-toast";
-import { formatPrice } from "@/lib/format";
 import { hapticClick, hapticSuccess } from "@/lib/haptics";
 import type { MenuSection } from "@/lib/menu-section";
 import type { AllergenId } from "@/lib/allergens";
@@ -157,7 +156,7 @@ function DenisRecommendList({
   if (!recommendations.length) return null;
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-4 divide-y divide-[var(--qr-elevated)]/80">
       {recommendations.map((rec) => (
         <ProductRecommendationCard
           key={rec.productId}
@@ -193,15 +192,15 @@ function DenisMessageRow({
 }) {
   if (message.role === "user") {
     return (
-      <DenisMessageBlock role="user">
-        <p className="whitespace-pre-wrap">{message.content}</p>
-      </DenisMessageBlock>
+      <DenisMessageBlock role="user">{message.content}</DenisMessageBlock>
     );
   }
 
   return (
     <DenisMessageBlock role="assistant">
-      <p className="whitespace-pre-wrap">{message.content}</p>
+      <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-[var(--qr-ivory)]">
+        {message.content}
+      </p>
       {message.quickPicks && onQuickPickConfirm && (
         <ChatQuickPicks
           options={message.quickPicks.options}
@@ -296,7 +295,7 @@ function ChatQuickPicks({
                   : selected
             )
           }
-          className="min-h-11 rounded-xl bg-[var(--qr-ember)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--qr-ember-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-4 text-sm text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {continueLabel}
         </button>
@@ -1070,13 +1069,12 @@ export function AiConciergeChat({
   const canSend = inputEnabled && !isTyping && input.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/45">
-      <DenisPanel className="mx-3 mb-3">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70">
+      <DenisPanel className="mx-2 mb-2 sm:mx-3 sm:mb-3">
         <DenisPanelHeader>
-          <DenisBrandMark
-            markState={isTyping ? "think" : "idle"}
-            className="min-w-0 flex-1 [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
-          />
+          <p className="min-w-0 flex-1 text-sm font-medium tracking-wide text-[var(--qr-ivory)]">
+            Denis
+          </p>
           {!orderingDisabled && (
             <DenisCartHeaderLink
               slug={slug}
@@ -1088,20 +1086,15 @@ export function AiConciergeChat({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="touch-target inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[var(--qr-muted)] hover:bg-[var(--qr-elevated)] hover:text-[var(--qr-ivory)]"
+            className="touch-target inline-flex size-9 shrink-0 items-center justify-center text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
             aria-label={tUI("ai.chat.close")}
           >
-            <X className="size-5" />
+            <X className="size-5" strokeWidth={1.5} />
           </button>
         </DenisPanelHeader>
 
-        <DenisCartTiles
-          items={cartItems}
-          currency={currency}
-          title={tUI("cart.title")}
-        />
-
         <DenisPanelBody ref={scrollRef}>
+          <DenisThreadLabel />
           {messages.map((message) => (
             <DenisMessageRow
               key={message.id}
@@ -1147,15 +1140,15 @@ export function AiConciergeChat({
                     ? tUI("ai.chat.placeholder")
                     : tUI("ai.chat.orderPlaceholder")
                 }
-                className="min-w-0 flex-1 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-4 py-3 text-sm text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-ember)] disabled:opacity-50"
+                className="min-w-0 flex-1 border-0 border-b border-[var(--qr-elevated)] bg-transparent py-3 text-[15px] text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-muted)] disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!canSend}
                 aria-label={tUI("ai.chat.send")}
-                className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--qr-ember)] text-white transition hover:bg-[var(--qr-ember-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-10 shrink-0 items-center justify-center text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)] disabled:opacity-30"
               >
-                <Send className="size-5" />
+                <Send className="size-4" strokeWidth={1.5} />
               </button>
             </div>
           </form>

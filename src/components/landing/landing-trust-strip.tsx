@@ -3,22 +3,13 @@ import { TrustLogoList } from "@/components/landing/trust-logos";
 
 export function LandingTrustStrip() {
   return (
-    <section
-      aria-label="Integrations and compliance"
-      className="border-y border-white/[0.06] bg-black py-6"
-    >
+    <section aria-label="Integrations and compliance" className="bg-black py-12 md:py-16">
       <LandingContainer wide>
-        <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-          Trusted by hospitality teams · Integrations &amp; compliance
+        <p className="text-center text-[11px] tracking-[0.14em] text-zinc-600 uppercase">
+          Integrations &amp; compliance
         </p>
 
-        {/* Mobile: horizontal scroll — avoids squashing wide payment marks */}
-        <ul className="mt-5 flex gap-3 overflow-x-auto pb-1 md:hidden">
-          <TrustLogoList />
-        </ul>
-
-        {/* Desktop: flex wrap center */}
-        <ul className="mt-5 hidden flex-wrap items-center justify-center gap-3 md:flex">
+        <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4 opacity-40 md:gap-x-8">
           <TrustLogoList />
         </ul>
       </LandingContainer>

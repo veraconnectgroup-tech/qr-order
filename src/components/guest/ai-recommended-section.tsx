@@ -1,14 +1,10 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import { X } from "lucide-react";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import {
   ProductRecommendationCard,
   type ProductRecommendation,
 } from "@/components/guest/product-recommendation-card";
-import { toastAddedToCart } from "@/lib/cart-toast";
 
 export function AiRecommendedSection({
   recommendations,
@@ -26,53 +22,44 @@ export function AiRecommendedSection({
   onReset: () => void;
 }) {
   const { tUI } = useAppLocale();
-  const reduceMotion = useReducedMotion();
 
   if (!recommendations.length) return null;
 
   return (
-    <motion.section
-      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
-      transition={{ duration: reduceMotion ? 0 : 0.2 }}
-      className="border-b border-[var(--qr-elevated)] px-3 py-4 sm:px-4"
-    >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--qr-ivory)]">
-          <DenisTableMark size={24} state="idle" className="size-4" />
+    <section className="px-4 py-6 sm:px-5">
+      <div className="mb-4 flex items-baseline justify-between gap-4">
+        <h2 className="text-sm font-medium text-[var(--qr-ivory)]">
           {tUI("ai.smart.recommendedTitle")}
         </h2>
         <button
           type="button"
           onClick={onDismiss}
-          className="flex size-8 items-center justify-center rounded-full text-[var(--qr-muted)] transition hover:bg-[var(--qr-elevated)] hover:text-[var(--qr-ivory)]"
-          aria-label={tUI("ai.smart.dismissSection")}
+          className="text-xs text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
         >
-          <X className="size-4" />
+          {tUI("ai.smart.dismissSection")}
         </button>
       </div>
 
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="divide-y divide-[var(--qr-elevated)]/80">
         {recommendations.map((rec) => (
-          <div key={rec.productId} className="w-64 shrink-0 snap-start">
-            <ProductRecommendationCard
-              recommendation={rec}
-              currency={currency}
-              orderingDisabled={orderingDisabled}
-              onAddClick={() => onAdd(rec)}
-            />
-          </div>
+          <ProductRecommendationCard
+            key={rec.productId}
+            recommendation={rec}
+            currency={currency}
+            compact
+            orderingDisabled={orderingDisabled}
+            onAddClick={() => onAdd(rec)}
+          />
         ))}
       </div>
 
       <button
         type="button"
         onClick={onReset}
-        className="mt-3 text-xs text-[var(--qr-muted)] underline-offset-2 hover:text-[var(--qr-ivory)] hover:underline"
+        className="mt-5 text-xs text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
       >
         {tUI("ai.smart.reset")}
       </button>
-    </motion.section>
+    </section>
   );
 }

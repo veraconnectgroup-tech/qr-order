@@ -1,13 +1,11 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import {
   LandingContainer,
   LandingHeadline,
   LandingLead,
 } from "@/components/landing/landing-primitives";
-import { cn } from "@/lib/utils";
 
 const faqs = [
   {
@@ -16,11 +14,7 @@ const faqs = [
   },
   {
     q: "Do guests need an app?",
-    a: "No. Guests scan a QR code and order in the mobile browser. No download required.",
-  },
-  {
-    q: "How does split bill work?",
-    a: "Guests can split by items or evenly. Each person pays their share separately.",
+    a: "No. Guests scan a QR code and order in the mobile browser.",
   },
   {
     q: "What does Denis cost?",
@@ -28,48 +22,33 @@ const faqs = [
   },
   {
     q: "How fast can I go live?",
-    a: "Under 30 minutes. Create an account, upload your menu, print QR codes — done.",
-  },
-  {
-    q: "Can I connect Denis to my POS?",
-    a: "Yes. Denis supports POS integrations via Deliverect, Orderbird, Lightspeed, and ready2order. Contact us for your setup.",
+    a: "Under 30 minutes. Create an account, upload your menu, print QR codes.",
   },
 ];
 
 export function LandingFaq() {
   return (
-    <section
-      id="faq"
-      className="scroll-mt-24 border-t border-white/[0.06] bg-black py-16 text-white md:py-20"
-    >
+    <section id="faq" className="scroll-mt-24 bg-black py-24 text-white md:py-36">
       <LandingContainer wide>
-        <AnimateInView className="max-w-[480px]">
-          <LandingHeadline inverted>FAQ</LandingHeadline>
-          <LandingLead inverted className="mt-4">
-            Common questions from restaurant operators in DACH.
+        <AnimateInView className="max-w-[440px]">
+          <LandingHeadline inverted className="text-[clamp(1.75rem,3vw,2.25rem)]">
+            FAQ
+          </LandingHeadline>
+          <LandingLead inverted className="mt-6 text-[16px] leading-[1.7] text-zinc-500">
+            Common questions from restaurant operators.
           </LandingLead>
         </AnimateInView>
 
-        <div className="mt-12 divide-y divide-white/[0.06] border-y border-white/[0.06]">
+        <dl className="mt-16 max-w-2xl space-y-10">
           {faqs.map((faq) => (
             <AnimateInView key={faq.q}>
-              <details className="group py-5 md:py-6">
-                <summary
-                  className={cn(
-                    "flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-zinc-100",
-                    "[&::-webkit-details-marker]:hidden"
-                  )}
-                >
-                  {faq.q}
-                  <ChevronDown className="size-4 shrink-0 text-zinc-500 transition group-open:rotate-180" />
-                </summary>
-                <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
-                  {faq.a}
-                </p>
-              </details>
+              <div>
+                <dt className="text-[15px] font-medium text-zinc-200">{faq.q}</dt>
+                <dd className="mt-3 text-[15px] leading-[1.7] text-zinc-500">{faq.a}</dd>
+              </div>
             </AnimateInView>
           ))}
-        </div>
+        </dl>
       </LandingContainer>
     </section>
   );

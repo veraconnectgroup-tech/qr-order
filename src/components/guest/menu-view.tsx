@@ -995,7 +995,7 @@ export function MenuView({
                     {tUI("menu.noResults", { query: searchQuery })}
                   </p>
                 ) : (
-                  <div className="divide-y divide-[var(--qr-elevated)] border-y border-[var(--qr-elevated)]">
+                  <div className="divide-y divide-[var(--qr-elevated)]/80">
                     {filtered.map((product) => (
                       <MenuListItem
                         key={product.id}

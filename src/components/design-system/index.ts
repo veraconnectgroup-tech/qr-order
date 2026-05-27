@@ -16,6 +16,7 @@ export {
 export {
   DenisMessageBlock,
   DenisMessageThinking,
+  DenisThreadLabel,
 } from "./denis-message-block";
 export {
   QrCard,

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Plus, UtensilsCrossed } from "lucide-react";
-import { QrCard } from "@/components/design-system/qr-card";
+import { Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
@@ -39,7 +38,6 @@ export function ProductRecommendationCard({
   orderingDisabled?: boolean;
   onOpenDetail?: () => void;
   className?: string;
-  /** @deprecated Use conversionContext.sessionId — kept for legacy callers */
   aiSessionId?: string | null;
   conversionContext?: {
     sessionId: string;
@@ -91,114 +89,41 @@ export function ProductRecommendationCard({
     }
   }
 
-  if (compact) {
-    return (
-      <QrCard
-        padding="sm"
-        className={cn("border-[var(--qr-elevated)] bg-[var(--qr-surface)]", className)}
-      >
-        <div className="flex items-center gap-3">
-          <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-[var(--qr-elevated)]">
-            {recommendation.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={recommendation.imageUrl}
-                alt={recommendation.name}
-                className="size-full object-cover"
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center">
-                <UtensilsCrossed className="size-4 text-[var(--qr-muted)]" />
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[var(--qr-ivory)]">
-              {recommendation.name}
-            </p>
-            {recommendation.reason && (
-              <p className="line-clamp-1 text-xs text-[var(--qr-muted)]">
-                {recommendation.reason}
-              </p>
-            )}
-            <p className="mt-0.5 text-xs font-bold text-[var(--qr-ember)]">
-              {formatPrice(recommendation.price, currency)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={orderingDisabled || added}
-            aria-label={recommendation.name}
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-full transition active:scale-95",
-              added
-                ? "bg-[var(--qr-elevated)] text-[var(--qr-muted)]"
-                : "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)] disabled:opacity-50"
-            )}
-          >
-            {added ? <Check className="size-4" /> : <Plus className="size-4" />}
-          </button>
-        </div>
-      </QrCard>
-    );
-  }
-
   return (
-    <QrCard
-      padding="none"
-      className={cn("overflow-hidden border-[var(--qr-elevated)] bg-[var(--qr-surface)]", className)}
+    <div
+      className={cn(
+        "flex items-start justify-between gap-4 py-3",
+        compact && "py-2.5",
+        className
+      )}
     >
-      <div className="relative h-32 w-full bg-[var(--qr-elevated)]">
-        {recommendation.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={recommendation.imageUrl}
-            alt={recommendation.name}
-            className="size-full object-cover"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <UtensilsCrossed className="size-8 text-[var(--qr-muted)]" />
-          </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="text-[15px] font-medium text-[var(--qr-ivory)]">
+            {recommendation.name}
+          </p>
+          <span className="shrink-0 text-sm tabular-nums text-[var(--qr-ivory)]">
+            {formatPrice(recommendation.price, currency)}
+          </span>
+        </div>
+        {recommendation.reason && (
+          <p className="mt-1 text-sm text-[var(--qr-muted)]">{recommendation.reason}</p>
         )}
       </div>
-
-      <div className="space-y-3 p-4">
-        <div>
-          <h3 className="text-lg font-semibold text-[var(--qr-ivory)]">
-            {recommendation.name}
-          </h3>
-          <p className="mt-1 font-bold text-[var(--qr-ember)]">
-            {formatPrice(recommendation.price, currency)}
-          </p>
-        </div>
-
-        {recommendation.reason && (
-          <p className="text-sm text-[var(--qr-muted)]">{recommendation.reason}</p>
-        )}
-
+      {!orderingDisabled && !added && (
         <button
           type="button"
           onClick={handleAdd}
-          disabled={orderingDisabled || added}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98]",
-            added
-              ? "cursor-default bg-[var(--qr-elevated)] text-[var(--qr-muted)]"
-              : "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)] disabled:opacity-50"
-          )}
+          className="shrink-0 text-xs text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
         >
-          {added ? (
-            <>
-              <Check className="size-4" />
-              {tUI("ai.recommendation.added")}
-            </>
-          ) : (
-            tUI("ai.recommendation.add")
-          )}
+          {compact ? <Plus className="size-4" strokeWidth={1.5} /> : tUI("ai.recommendation.add")}
         </button>
-      </div>
-    </QrCard>
+      )}
+      {added && (
+        <span className="shrink-0 text-xs text-[var(--qr-muted)]">
+          {tUI("ai.recommendation.added")}
+        </span>
+      )}
+    </div>
   );
 }

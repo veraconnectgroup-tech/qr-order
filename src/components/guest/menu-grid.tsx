@@ -53,7 +53,7 @@ export function MenuGrid({
         <section
           key={category.id}
           id={`cat-${category.id}`}
-          className={`scroll-mt-36 ${index > 0 ? "mt-8" : ""}`}
+          className={`scroll-mt-36 ${index > 0 ? "mt-12" : ""}`}
         >
           <h2 className="mb-1 text-lg font-semibold text-[var(--qr-ivory)]">
             {tName(category)}{" "}
@@ -61,7 +61,7 @@ export function MenuGrid({
               ({category.products.length})
             </span>
           </h2>
-          <div className="divide-y divide-[var(--qr-elevated)] border-y border-[var(--qr-elevated)]">
+          <div className="divide-y divide-[var(--qr-elevated)]/80">
             {category.products.map((product) => (
               <MenuListItem
                 key={product.id}
