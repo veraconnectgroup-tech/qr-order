@@ -19,3 +19,4 @@ export {
   sanitizeNarrationOutput,
   templateNarrationFallback,
 } from "@/lib/denis/runtime/narrate/template-fallback";
+export { resolveTurnQuickReplies } from "@/lib/denis/runtime/narrate/build-turn-quick-replies";

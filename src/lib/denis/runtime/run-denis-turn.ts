@@ -18,6 +18,7 @@ import { logger } from "@/lib/logger";
 import { persistDenisTurnTimeline } from "@/lib/denis/runtime/persist-turn-timeline";
 import {
   buildNarrationFacts,
+  resolveTurnQuickReplies,
   sanitizeNarrationOutput,
 } from "@/lib/denis/runtime/narrate";
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
@@ -85,6 +86,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   });
 
   const narration = sanitizeNarrationOutput(data.message, narrationFacts);
+  const quickReplies = resolveTurnQuickReplies({
+    reflexTurn,
+    facts: narrationFacts,
+    narration,
+    legacyQuickReplies: data.quickReplies,
+    language: parsed.data.language,
+  });
   const rollout = resolveEffectiveRollout(ctx.config);
   const guestMessage = guestSeesLegacyPath(rollout.mode)
     ? data.message

@@ -19,6 +19,13 @@ import {
   createTurnTraceId,
 } from "@/lib/denis/platform/timeline-types";
 import type { DenisSenseRequest } from "@/lib/denis/platform/sense-types";
+import {
+  evaluateGuestProactiveTick,
+  type GuestProactiveNudge,
+  type ProactiveTickPayload,
+} from "@/lib/denis/runtime/evaluate-proactive-tick";
+import { resolveTurnQuickReplies } from "@/lib/denis/runtime/narrate/build-turn-quick-replies";
+import { buildNarrationFacts } from "@/lib/denis/runtime/narrate/build-narration-facts";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -28,6 +35,8 @@ export type DenisSenseResult = {
   schedulesUpserted: number;
   conflictPrompt: string | null;
   ingested: boolean;
+  proactiveNudge?: GuestProactiveNudge | null;
+  quickReplies?: string[];
 };
 
 /** Ingest sensory event without chat — timeline + optional schedules (M8). */
