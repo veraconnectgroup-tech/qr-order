@@ -32,6 +32,7 @@ export type ReflexTurnInput = {
   foodUpsellAsked?: boolean;
   cartConflict?: boolean;
   hasOpenOrders?: boolean;
+  skipUpsell?: boolean;
 };
 
 export type ReflexTurnResult = {
@@ -78,6 +79,7 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
     foodUpsellAsked: input.foodUpsellAsked,
     cartConflict,
     hasOpenOrders: input.hasOpenOrders,
+    skipUpsell: input.skipUpsell ?? false,
   });
 
   if (correction?.ok) {

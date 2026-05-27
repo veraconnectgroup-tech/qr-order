@@ -14,7 +14,7 @@ function evaluateGuard(
 ): boolean {
   if (!guard) return true;
   if (guard === "config.upsell.foodAfterDrinks") {
-    return ctx.foodAfterDrinksEnabled;
+    return ctx.foodAfterDrinksEnabled && !ctx.skipUpsell;
   }
   return true;
 }

@@ -424,6 +424,7 @@ export type AiConciergeChatProps = {
     | import("@/lib/guest/manual-cart-snapshot").GuestManualCartSnapshot
     | null
     | undefined;
+  deviceFingerprint?: string;
 };
 
 export function AiConciergeChat({
@@ -452,6 +453,7 @@ export function AiConciergeChat({
   knownAllergySelection,
   onSaveAllergies,
   getManualCartSnapshot,
+  deviceFingerprint,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
@@ -618,6 +620,7 @@ export function AiConciergeChat({
             allowOrdering: !orderingDisabled,
             browsingContext: resolveScrollContext?.() ?? undefined,
             manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
+            deviceFingerprint,
           }),
         });
       } catch (fetchError) {
@@ -678,6 +681,7 @@ export function AiConciergeChat({
       resolveScrollContext,
       orderingDisabled,
       getManualCartSnapshot,
+      deviceFingerprint,
     ]
   );
 

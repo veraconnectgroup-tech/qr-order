@@ -29,6 +29,7 @@ export type PlanTurnInput = {
   cartConflict?: boolean;
   hasOpenOrders?: boolean;
   submitOutcome?: "SUCCESS" | "FAIL" | null;
+  skipUpsell?: boolean;
 };
 
 export type PlannedSkill = SkillDefinition;
@@ -53,6 +54,7 @@ function buildGuardContext(
     cartItemCount: cart.itemCount,
     drinksOnly: cart.drinksOnly,
     hasFood: cart.hasFood,
+    skipUpsell: input.skipUpsell ?? false,
   };
 }
 
@@ -95,6 +97,7 @@ export function planTurn(input: PlanTurnInput): PlanTurnResult {
     foodUpsellAsked: input.foodUpsellAsked ?? false,
     hasOpenOrders: input.hasOpenOrders ?? false,
     lastIntent: input.intent,
+    skipUpsell: input.skipUpsell ?? false,
   });
 
   return {

@@ -45,6 +45,8 @@ export type FlowGuardContext = {
   cartItemCount: number;
   drinksOnly: boolean;
   hasFood: boolean;
+  /** M13 — skip upsell_food when rush / KDS stress */
+  skipUpsell?: boolean;
 };
 
 export type FlowTransitionResult = {

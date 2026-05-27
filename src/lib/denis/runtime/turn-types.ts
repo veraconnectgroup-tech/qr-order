@@ -9,6 +9,10 @@ import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import { manualCartSnapshotSchema } from "@/lib/denis/platform/sense-types";
 import type { ManualCartSnapshot } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import type { TablePartyModel } from "@/lib/denis/venue/party/types";
+import type {
+  OpsPlannerEffects,
+  VenueOpsBeliefs,
+} from "@/lib/denis/venue/ops/types";
 
 export type DenisChannel = "chat" | "proactive" | "status_poll";
 
@@ -36,6 +40,8 @@ export type DenisTurnContext = {
   manualCartDraft?: DenisCartDraft;
   peerManualCartDraft?: DenisCartDraft;
   party?: TablePartyModel | null;
+  venueOps?: VenueOpsBeliefs;
+  opsEffects?: OpsPlannerEffects;
   foodUpsellAsked: boolean;
 };
 
@@ -53,6 +59,8 @@ export type DenisTurnMeta = {
   partyDeviceCount?: number;
   isPrimaryDevice?: boolean;
   sharedAiSessionId?: string | null;
+  operatingMode?: string;
+  kdsStress?: string;
 };
 
 export type { ManualCartSnapshot };

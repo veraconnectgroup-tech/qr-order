@@ -32,7 +32,7 @@ export function deriveGoalStack(ctx: GoalDerivationContext): GoalStack {
       goals.push({ type: "COMPLETE_ROUND", priority: 90 });
       break;
     case "upsell_food":
-      if (!ctx.foodUpsellAsked) {
+      if (!ctx.skipUpsell && !ctx.foodUpsellAsked) {
         goals.push({ type: "UPSELL_ONCE", category: "food", priority: 40 });
       }
       goals.push({ type: "COMPLETE_ROUND", priority: 90 });

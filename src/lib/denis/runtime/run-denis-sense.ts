@@ -27,12 +27,16 @@ import {
 import { resolveTurnQuickReplies } from "@/lib/denis/runtime/narrate/build-turn-quick-replies";
 import { buildNarrationFacts } from "@/lib/denis/runtime/narrate/build-narration-facts";
 import {
+  loadEffectiveVenueOps,
+} from "@/lib/denis/venue/ops";
+import {
   loadTableParty,
-  mergePeerManualDraft,
   registerPartyDevice,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
 } from "@/lib/denis/venue/party";
+import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
+import { mergePeerManualDraft } from "@/lib/denis/runtime/adapters/map-party-manual";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -70,6 +74,11 @@ export async function runDenisSense(
 
   const aiSessionId = input.aiSessionId ?? null;
   const config = await loadConciergeConfigForLocation(input.locationId);
+  const { venueOps, opsEffects } = await loadEffectiveVenueOps(admin, {
+    locationId: input.locationId,
+    tableId: input.tableId,
+    config,
+  });
   let draftAiSessionId = aiSessionId;
   let aiCartState = emptyCartState();
   let schedulesUpserted = 0;
@@ -79,7 +88,7 @@ export async function runDenisSense(
   let partyDeviceCount = 0;
   let isPrimaryDevice = false;
   let sharedAiSessionId: string | null = null;
-  let peerManualCartDraft = undefined;
+  let peerManualCartDraft: DenisCartDraft | undefined;
 
   const tableSessionId = await resolveActiveTableSessionId(admin, {
     tableId: input.tableId,
@@ -192,6 +201,7 @@ export async function runDenisSense(
       cartState: aiCartState,
       manualCartDraft: manualSnapshotToDenisDraft(input.manualCartSnapshot),
       peerManualCartDraft,
+      skipUpsell: opsEffects.skipUpsell,
     });
     conflictPrompt = reflexTurn.conflict?.guestPrompt ?? null;
     if (conflictPrompt) {
@@ -199,6 +209,8 @@ export async function runDenisSense(
         config,
         language: config.language.venueDefault,
         reflexTurn,
+        venueOps,
+        opsEffects,
       });
       quickReplies = resolveTurnQuickReplies({
         reflexTurn,
@@ -214,7 +226,7 @@ export async function runDenisSense(
       });
     }
 
-    if (reflexTurn.conflict?.hasConflict) {
+    if (reflexTurn.conflict?.hasConflict && aiSessionId) {
       await appendDenisTimelineEvent(admin, {
         aiSessionId,
         eventType: "belief.revision",

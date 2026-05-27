@@ -1,0 +1,31 @@
+import type { VenueOperatingMode } from "@/lib/denis/venue/ops/types";
+
+export type FloorTableHint =
+  | "needs_attention"
+  | "ready_for_dessert"
+  | "idle"
+  | null;
+
+export type FloorGraphTable = {
+  tableId: string;
+  tableSessionId: string | null;
+  seatedMinutes: number | null;
+  openOrderCount: number;
+  lastGuestActivityAt: string | null;
+  aiSessionId: string | null;
+  operatingHint: FloorTableHint;
+};
+
+export type FloorGraphHouse = {
+  operatingMode: VenueOperatingMode;
+  kdsBacklogMinutes: number | null;
+  activeOrderCount: number;
+  staffOnFloor: number | null;
+};
+
+export type FloorGraph = {
+  locationId: string;
+  at: string;
+  tables: FloorGraphTable[];
+  house: FloorGraphHouse;
+};

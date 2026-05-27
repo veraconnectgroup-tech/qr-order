@@ -24,4 +24,5 @@ export type GoalDerivationContext = {
   foodUpsellAsked: boolean;
   hasOpenOrders: boolean;
   lastIntent: string | null;
+  skipUpsell?: boolean;
 };

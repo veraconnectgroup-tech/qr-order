@@ -57,6 +57,7 @@ import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { AiSmartNudgeBanner } from "@/components/guest/ai-smart-nudge-banner";
 import type { ProductWithModifiers } from "@/types";
+import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
 import {
   buildManualCartSnapshot,
   manualCartRevision,
@@ -574,6 +575,8 @@ export function MenuView({
     [tUI, currency]
   );
 
+  const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
+
   const getManualCartSnapshot = useCallback(() => {
     if (cartItems.length === 0) return undefined;
     return buildManualCartSnapshot(
@@ -588,6 +591,7 @@ export function MenuView({
     tableId,
     sessionToken: aiContextToken,
     aiSessionId,
+    deviceFingerprint,
     cartItems,
     cartBump,
   });
@@ -606,6 +610,7 @@ export function MenuView({
         tableId,
         sessionToken: aiContextToken,
         aiSessionId: sessionId,
+        deviceFingerprint,
         channel: "system.proactive_tick",
         payload: {
           browseMinutes,
@@ -634,6 +639,7 @@ export function MenuView({
       hasSessionOrders,
       hasDrinkInCart,
       smartNudgeMessages,
+      deviceFingerprint,
     ]
   );
 
@@ -1082,6 +1088,7 @@ export function MenuView({
               onRecommendations={handleAiChatSetupComplete}
               onSaveAllergies={saveGuestAllergies}
               getManualCartSnapshot={getManualCartSnapshot}
+              deviceFingerprint={deviceFingerprint}
             />
           )}
         </div>

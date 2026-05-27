@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M11** (May 2026) — UI-first chips + guest sense wired |
+| **As-built through** | **M15** (May 2026) — staff copilot dashboard |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M11 ✅)
+## 3. As-built snapshot (M0–M15 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -79,6 +79,10 @@ sequenceDiagram
 | M9 | `runtime/narrate/*` | facts + lint + template fallback; **no** `narrate-llm.ts` yet |
 | M10 | `eval/*`, `runtime/shadow-diff.ts`, `config/rollout.ts` | default rollout `shadow`; `pnpm eval:denis` |
 | M11 | `runtime/narrate/build-turn-quick-replies.ts`, `runtime/evaluate-proactive-tick.ts`, `lib/guest/manual-cart-snapshot.ts`, `hooks/use-denis-sense.ts` | T0 chips on templates; guest sends `manualCartSnapshot`; nudges via `/api/denis/sense` |
+| M12 | `venue/party/*`, `kernel/conflict/peer-manual.ts`, `runtime/adapters/map-party-manual.ts` | multi-device party; shared ai draft; peer conflict prompt |
+| M13 | `venue/ops/*`, `config.ops`, migration `00090` | 86 list, rush/KDS skip upsell, staff table hints |
+| M14 | `venue/floor/*`, `config.ops.floorGraph*`, cron `/api/cron/denis-floor` | floor snapshot, Redis `denis:floor:{id}`, auto rush from KDS backlog |
+| M15 | `venue/copilot/*`, `/dashboard/denis`, `/api/dashboard/denis-copilot` | staff copilot: rush/KDS, priority tables, table hints |
 
 ### 3.3 API routes (actual)
 
@@ -88,6 +92,8 @@ sequenceDiagram
 | `POST /api/denis/turn` | ✅ | `runDenisTurn` (same as chat) |
 | `POST /api/denis/sense` | ✅ | `runDenisSense` — telemetry without chat |
 | `GET /api/cron/denis-scheduler` | ✅ | `processDenisSchedulerTick` (Bearer `CRON_SECRET`) |
+| `GET /api/cron/denis-floor` | ✅ | `processDenisFloorTick` (Bearer `CRON_SECRET`) |
+| `GET /api/dashboard/denis-copilot` | ✅ | staff copilot snapshot |
 | `POST /api/denis/schedules/tick` | ❌ | not implemented (cron only) |
 
 ### 3.4 Database (migrations — verify push status locally)
@@ -97,6 +103,8 @@ sequenceDiagram
 | `00086_ai_concierge_config.sql` | `locations.ai_concierge_config` JSONB | M1 |
 | `00087_denis_timeline.sql` | `denis_timeline` + `append_denis_timeline_event` | M2 |
 | `00088_denis_schedules.sql` | `denis_schedules` + `claim_due_denis_schedules` | M8 |
+| `00089_denis_party.sql` | `denis_party_devices` + `upsert_denis_party_device` | M12 |
+| `00090_denis_ops_beliefs.sql` | `denis_operating_mode`, `denis_kds_stress`, `denis_staff_table_hints` | M13 |
 
 ### 3.5 Legacy bridge (still active — intentional)
 
@@ -104,7 +112,7 @@ sequenceDiagram
 |-------------|-------------------|
 | `src/lib/ai/execute-chat-turn.ts` (~937 lines) | OpenAI, ordering, session persist, credits |
 | `src/lib/ai/chat-service.ts` (11 lines) | thin export → `runDenisTurn` |
-| `src/lib/ai/proactive-triggers.ts` | client `use-smart-nudges` still local — **not** wired to `/api/denis/sense` |
+| `src/lib/ai/proactive-triggers.ts` | server evaluate via sense (M11) | legacy client fallback if no fingerprint |
 | `src/lib/ai/ordering/order-executor.ts` | Order Core create (ACL allowlist) |
 
 **OpenAI today:** only in `src/lib/ai/execute-chat-turn.ts`, **not** yet in `runtime/narrate/narrate-llm.ts`.
@@ -121,7 +129,7 @@ Honest delta after M10 — do not assume these exist:
 | `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ❌ lint wraps legacy text | M9+ cutover |
 | `runtime/act/*` skill executor | ❌ skills planned, not executed in Denis path | M7+ / ACL |
 | `src/lib/denis/acl/` DenisOrderCommand | ❌ marker only | with act layer |
-| `src/lib/denis/venue/` | ❌ README stub | M12–M15 |
+| `src/lib/denis/venue/` | ✅ party + ops + floor + copilot (M15) | M16 learning |
 | `src/lib/denis/learning/` | ❌ README stub | M16+ |
 | `menu_knowledge_edges` / L3 learned VKG | ❌ | M20+ |
 | `denis_eval_runs` table | ❌ CI in-memory only | optional |
@@ -182,10 +190,13 @@ Honest delta after M10 — do not assume these exist:
 | **M9** | ✅ | Narration contract + lint |
 | **M10** | ✅ | Eval + shadow rollout |
 | **M11** | ✅ | UI-first chips + guest sense + server nudges |
-| **M12–M14** | ⬜ | Party, ops beliefs, GA gate (ADR-005) |
-| **M15–M20** | ⬜ | Venue OS, learning, voice (premium) |
+| **M12** | ✅ | Party model + shared cart |
+| **M13** | ✅ | Ops beliefs (86, rush, staff hints) |
+| **M14** | ✅ | Floor graph + auto rush, GA gate |
+| **M15** | ✅ | Staff copilot (dashboard) |
+| **M16–M20** | ⬜ | Learning, voice (premium) |
 
-**Next recommended:** **M12** — party model + shared cart.
+**Next recommended:** **M16** — learned edges queue + admin UI.
 
 ---
 

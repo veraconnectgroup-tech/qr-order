@@ -89,6 +89,14 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
   party: {
     mode: "shared_cart",
   },
+  ops: {
+    staffHintsEnabled: true,
+    rushSkipUpsell: true,
+    kdsStressSkipUpsell: true,
+    floorGraphEnabled: false,
+    autoRushEnabled: false,
+    autoRushBacklogMinutes: 20,
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;

@@ -14,11 +14,14 @@ import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import {
   loadTableParty,
-  mergePeerManualDraft,
   registerPartyDevice,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
 } from "@/lib/denis/venue/party";
+import { mergePeerManualDraft } from "@/lib/denis/runtime/adapters/map-party-manual";
+import {
+  loadEffectiveVenueOps,
+} from "@/lib/denis/venue/ops";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SessionDraftRow = {
@@ -31,6 +34,11 @@ export async function buildDenisTurnContext(
   input: DenisChatBody
 ): Promise<DenisTurnContext> {
   const config = await loadConciergeConfigForLocation(input.locationId);
+  const { venueOps, opsEffects } = await loadEffectiveVenueOps(admin, {
+    locationId: input.locationId,
+    tableId: input.tableId,
+    config,
+  });
   let flowNodeId: FlowNodeId = "welcome";
   let aiCartState = emptyCartState();
   let foodUpsellAsked = false;
@@ -101,6 +109,8 @@ export async function buildDenisTurnContext(
     manualCartDraft: manualSnapshotToDenisDraft(input.manualCartSnapshot),
     peerManualCartDraft,
     party,
+    venueOps,
+    opsEffects,
     foodUpsellAsked,
   };
 }

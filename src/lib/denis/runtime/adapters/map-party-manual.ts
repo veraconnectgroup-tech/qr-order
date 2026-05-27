@@ -13,7 +13,7 @@ function snapshotToDraft(snapshot: unknown): DenisCartDraft | undefined {
   return manualSnapshotToDenisDraft(snapshot as ManualCartSnapshot);
 }
 
-/** Merge peer device manual carts (excludes current device). */
+/** Merge peer device manual carts (excludes current device) — M12. */
 export function mergePeerManualDraft(
   devices: PartyDeviceRow[],
   excludeFingerprint: string | null | undefined
@@ -45,50 +45,6 @@ export function mergePeerManualDraft(
 
   return {
     ...emptyCartDraft(),
-    items: [...merged.values()],
-  };
-}
-
-/** Lines present in peer manual but not in local manual. */
-export function peerOnlyManualLines(
-  local: DenisCartDraft,
-  peer: DenisCartDraft
-): DenisCartLine[] {
-  if (peer.items.length === 0) return [];
-  const localFps = new Set(local.items.map((line) => lineFingerprint(line)));
-  return peer.items.filter((line) => !localFps.has(lineFingerprint(line)));
-}
-
-/** Union local + peer manual for combined conflict check. */
-export function combineManualDrafts(
-  local: DenisCartDraft | undefined,
-  peer: DenisCartDraft
-): DenisCartDraft {
-  const base = local ?? emptyCartDraft();
-  if (peer.items.length === 0) return base;
-
-  const merged = new Map<string, DenisCartLine>();
-  for (const line of base.items) {
-    merged.set(lineFingerprint(line), { ...line });
-  }
-  for (const line of peer.items) {
-    const fp = lineFingerprint(line);
-    const existing = merged.get(fp);
-    if (!existing) {
-      merged.set(fp, { ...line });
-      continue;
-    }
-    const qty = Math.max(existing.quantity, line.quantity);
-    const price = unitPrice(existing);
-    merged.set(fp, {
-      ...existing,
-      quantity: qty,
-      lineTotal: Number((price * qty).toFixed(2)),
-    });
-  }
-
-  return {
-    cartRevision: Math.max(base.cartRevision, 0),
     items: [...merged.values()],
   };
 }

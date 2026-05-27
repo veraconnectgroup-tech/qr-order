@@ -7,12 +7,13 @@ import {
   BarChart3,
   Bell,
   ChefHat,
+  CreditCard,
   Grid3X3,
   LayoutDashboard,
   LayoutGrid,
   Plus,
   Settings,
-  CreditCard,
+  Sparkles,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
@@ -30,6 +31,7 @@ type NavItem = {
   exact?: boolean;
   alertKey?: "orders" | "calls" | "payments";
   roles?: StaffRole[];
+  requiresDenis?: boolean;
 };
 
 const WAITER_NAV_HREFS = new Set([
@@ -75,6 +77,12 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
         icon: Bell,
         alertKey: "calls",
       },
+      {
+        href: "/dashboard/denis",
+        label: "Denis Copilot",
+        icon: Sparkles,
+        requiresDenis: true,
+      },
     ],
   },
   {
@@ -97,6 +105,7 @@ export function DashboardSidebar() {
     staffRole,
     accessibleLocations,
     locationId,
+    aiConciergeEnabled,
   } = useDashboard();
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
@@ -104,6 +113,9 @@ export function DashboardSidebar() {
   const isWaiter = staffRole === "waiter";
 
   function isNavItemVisible(item: NavItem) {
+    if (item.requiresDenis && !aiConciergeEnabled) {
+      return false;
+    }
     if (item.roles) {
       return item.roles.includes(staffRole as StaffRole);
     }

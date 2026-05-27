@@ -33,6 +33,8 @@ export function formatChatTurnApiResponse(
       partyDeviceCount: meta.partyDeviceCount,
       isPrimaryDevice: meta.isPrimaryDevice,
       sharedAiSessionId: meta.sharedAiSessionId,
+      operatingMode: meta.operatingMode,
+      kdsStress: meta.kdsStress,
     },
   });
 }

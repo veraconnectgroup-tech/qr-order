@@ -62,7 +62,7 @@ export default async function WaiterAppLayout({
         .single(),
       admin
         .from("locations")
-        .select("name, in_person_payment_location, menu_locale, default_locale")
+        .select("name, in_person_payment_location, menu_locale, default_locale, ai_concierge_enabled")
         .eq("id", locationId)
         .single(),
       admin
@@ -95,6 +95,7 @@ export default async function WaiterAppLayout({
     in_person_payment_location: "bar" | "counter" | "table";
     menu_locale: string | null;
     default_locale: string | null;
+    ai_concierge_enabled: boolean;
   } | null;
 
   const menuLocale = parseMenuLocaleFromDb(
@@ -130,6 +131,7 @@ export default async function WaiterAppLayout({
             locationRow?.in_person_payment_location ?? "bar",
           menuLocale,
           fiscalTssEnabled: Boolean(orgRow?.fiskaly_tss_id),
+          aiConciergeEnabled: locationRow?.ai_concierge_enabled ?? false,
         }}
       >
         {children}

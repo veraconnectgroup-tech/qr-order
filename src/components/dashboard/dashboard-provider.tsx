@@ -26,6 +26,7 @@ export type DashboardContextValue = {
   inPersonPaymentLocation: "bar" | "counter" | "table";
   menuLocale: import("@/lib/i18n/translations").MenuLocale;
   fiscalTssEnabled: boolean;
+  aiConciergeEnabled: boolean;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);

@@ -64,6 +64,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     manualCartDraft: ctx.manualCartDraft,
     peerManualCartDraft: ctx.peerManualCartDraft,
     foodUpsellAsked: ctx.foodUpsellAsked,
+    skipUpsell: ctx.opsEffects?.skipUpsell ?? false,
   });
 
   const legacyResponse = await executeChatTurn(parsed.data);
@@ -84,6 +85,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     reflexTurn,
     cartActions: data.cartActions,
     recommendations: data.recommendations,
+    venueOps: ctx.venueOps,
+    opsEffects: ctx.opsEffects,
   });
 
   const narration = sanitizeNarrationOutput(data.message, narrationFacts);
@@ -168,6 +171,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       partyDeviceCount: ctx.party?.activeDeviceCount ?? 0,
       isPrimaryDevice: ctx.party?.isCurrentDevicePrimary ?? false,
       sharedAiSessionId: ctx.party?.sharedAiSessionId ?? null,
+      operatingMode: ctx.venueOps?.operatingMode,
+      kdsStress: ctx.venueOps?.kdsStress,
     }
   );
 }

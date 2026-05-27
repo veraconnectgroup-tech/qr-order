@@ -22,3 +22,7 @@ export {
   resolveCartConflict,
   type ResolveCartConflictInput,
 } from "@/lib/denis/kernel/conflict/resolve";
+export {
+  buildPeerAddedPrompt,
+  combineManualDrafts,
+} from "@/lib/denis/kernel/conflict/peer-manual";

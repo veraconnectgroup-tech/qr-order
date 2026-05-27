@@ -15,8 +15,7 @@ import type {
   ResolutionStrategy,
   UnifiedCartView,
 } from "@/lib/denis/kernel/conflict/types";
-import { combineManualDrafts } from "@/lib/denis/venue/party/merge-peer-manual";
-import { buildPeerAddedPrompt } from "@/lib/denis/venue/party/peer-prompts";
+import { combineManualDrafts, buildPeerAddedPrompt } from "@/lib/denis/kernel/conflict/peer-manual";
 
 export type ResolveCartConflictInput = {
   ai: DenisCartDraft;

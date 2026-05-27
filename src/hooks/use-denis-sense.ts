@@ -65,6 +65,7 @@ export function useDenisSense({
     tableId,
     sessionToken,
     aiSessionId,
+    deviceFingerprint,
     cartItems,
     cartBump,
     manualCartEnabled,
