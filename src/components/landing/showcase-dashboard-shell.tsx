@@ -48,9 +48,16 @@ export function ShowcaseDashboardShell({
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
-  const navItems = cinematic
-    ? NAV.filter(({ id }) => ["orders", "tables", "kitchen"].includes(id))
-    : NAV;
+
+  if (cinematic) {
+    return (
+      <div className="h-full bg-[#09090b] text-zinc-50">
+        <main className="h-full overflow-hidden px-14 py-16 sm:px-16 sm:py-20">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -90,7 +97,7 @@ export function ShowcaseDashboardShell({
         </div>
 
         <nav className={cn("flex-1 space-y-0.5", compact ? "p-1.5" : "p-2")}>
-          {navItems.map(({ id, label, icon: Icon }) => {
+          {NAV.map(({ id, label, icon: Icon }) => {
             const active = id === activeScreen;
             return (
               <div
@@ -114,7 +121,7 @@ export function ShowcaseDashboardShell({
           })}
         </nav>
 
-        {!compact && !cinematic && (
+        {!compact && (
           <div className={cn("border-t p-3", light ? "border-zinc-200" : "border-zinc-800")}>
             <div className={cn("rounded-lg p-2.5", light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900")}>
               <p className={cn("text-[10px]", light ? "text-zinc-500" : "text-zinc-500")}>Staff</p>
@@ -157,7 +164,7 @@ export function ShowcaseDashboardShell({
                 {formatPrice(todayRevenue, currency)}
               </span>
             </div>
-            {showExport && !cinematic && (
+            {showExport && (
               <div
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px]",
@@ -174,7 +181,7 @@ export function ShowcaseDashboardShell({
         <main
           className={cn(
             "flex-1 overflow-hidden",
-            cinematic ? "p-6" : compact ? "p-3" : "p-5",
+            compact ? "p-3" : "p-5",
             light ? "bg-zinc-50/50" : ""
           )}
         >

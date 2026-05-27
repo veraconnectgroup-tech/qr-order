@@ -5,6 +5,7 @@ import { GuestMenuContent } from "@/components/landing/showcase-content";
 import {
   ShowcaseAmbientStage,
   ShowcaseCropFrame,
+  ShowcaseFloatDevice,
 } from "@/components/landing/showcase-composition";
 import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
 import {
@@ -13,56 +14,44 @@ import {
   ShowcaseWindow,
 } from "@/components/landing/showcase-frame";
 
-/** Hero: bounded stage, one dominant surface + one floating phone. */
+/** Hero: one operational moment. Typography + space, not dashboard chrome. */
 export function LandingHeroVisual() {
   return (
-    <ShowcaseStage className="mx-auto w-full max-w-none overflow-hidden rounded-2xl sm:min-h-[400px] lg:min-h-[460px]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(ellipse_70%_55%_at_68%_38%,rgba(255,255,255,0.045),transparent_68%)]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-white/[0.06]"
-      />
-
-      <div className="absolute right-[-3%] top-[-1%] z-10 w-[94%] sm:w-[91%] lg:right-[-2%] lg:w-[88%]">
-        <ShowcaseWindow url="denis.app/dashboard/orders" presentation="cinematic">
+    <ShowcaseStage className="mx-auto w-full max-w-none overflow-hidden bg-[#09090b] sm:min-h-[440px] lg:min-h-[520px] xl:min-h-[560px]">
+      <div className="absolute right-[-16%] top-[-14%] z-10 w-[125%] origin-top-left scale-[1.24] sm:right-[-14%] sm:top-[-12%] sm:w-[120%] sm:scale-[1.2] lg:scale-[1.16]">
+        <ShowcaseWindow presentation="cinematic">
           <CinematicDashboardShowcase story="live-orders" />
         </ShowcaseWindow>
       </div>
 
-      <div className="pointer-events-none absolute bottom-[4%] left-[-1%] z-20 hidden w-[34%] min-w-[136px] max-w-[176px] md:block">
-        <div className="-rotate-2 drop-shadow-[0_24px_56px_rgba(0,0,0,0.62)]">
-          <ShowcasePhone presentation="float" hideLabel className="max-w-none">
-            <ScaledPhonePreview designWidth={300} designHeight={520}>
-              <GuestMenuContent variant="cinematic" />
-            </ScaledPhonePreview>
-          </ShowcasePhone>
-        </div>
-      </div>
+      <ShowcaseFloatDevice>
+        <ShowcasePhone presentation="float" hideLabel className="max-w-none">
+          <ScaledPhonePreview designWidth={300} designHeight={480}>
+            <GuestMenuContent variant="cinematic" />
+          </ScaledPhonePreview>
+        </ShowcasePhone>
+      </ShowcaseFloatDevice>
     </ShowcaseStage>
   );
 }
 
-/** Feature sections: single cropped surface, no device collage. */
+/** Feature sections: one cropped surface each. */
 export function FeatureShowcase({
-  url,
   children,
   aspect = "16/10",
   className,
+  cropClassName,
 }: {
-  url: string;
+  url?: string;
   children: React.ReactNode;
   aspect?: string;
   className?: string;
+  cropClassName?: string;
 }) {
   return (
     <ShowcaseAmbientStage className={className}>
-      <ShowcaseCropFrame aspect={aspect}>
-        <ShowcaseWindow url={url} presentation="cinematic">
-          {children}
-        </ShowcaseWindow>
+      <ShowcaseCropFrame aspect={aspect} innerClassName={cropClassName}>
+        <ShowcaseWindow presentation="cinematic">{children}</ShowcaseWindow>
       </ShowcaseCropFrame>
     </ShowcaseAmbientStage>
   );

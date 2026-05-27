@@ -23,6 +23,12 @@ export function ShowcaseWindow({
   const isLight = theme === "light";
   const cinematic = presentation === "cinematic";
 
+  if (cinematic) {
+    return (
+      <div className={cn("overflow-hidden bg-[#09090b]", className)}>{children}</div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -273,7 +279,7 @@ export function ShowcasePhone({
         className={cn(
           "relative bg-zinc-950",
           floating
-            ? "rounded-[1.75rem] border border-white/[0.08] p-1 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.65)] sm:rounded-[2rem] sm:p-1.5"
+            ? "rounded-[1.85rem] border border-white/[0.06] bg-zinc-950 p-1 sm:rounded-[2rem] sm:p-1.5"
             : "rounded-[2rem] border-[3px] border-zinc-700 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] sm:rounded-[2.5rem] sm:p-2"
         )}
       >
