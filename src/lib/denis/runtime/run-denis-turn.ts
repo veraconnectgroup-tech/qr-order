@@ -35,7 +35,19 @@ import {
   shouldRunSlotExtract,
 } from "@/lib/denis/runtime/perceive";
 import { executeActPhase } from "@/lib/denis/runtime/act";
+import {
+  elapsedMs,
+  emptyTurnTimings,
+  logDenisTurnObservability,
+} from "@/lib/denis/runtime/turn-observability";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
+import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
+import type { AiStructuredResponse } from "@/lib/ai/types";
+import {
+  mergeKernelOrderingIntoTurn,
+  persistKernelOrderingDraft,
+} from "@/lib/denis/runtime/act/apply-kernel-ordering";
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
@@ -64,6 +76,7 @@ type LegacyChatPayload = {
     submitOrder?: boolean;
     creditsRemaining?: number;
     creditsCharged?: number;
+    deferredOrdering?: AiStructuredResponse;
   };
 };
 
@@ -85,6 +98,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const admin = createAdminClient();
   const traceId = createTurnTraceId();
+  const turnStarted = performance.now();
+  const timings = emptyTurnTimings();
+  let shadowParityScore: number | undefined;
 
   const orgResult = await resolveAiTurnOrg(admin, {
     locationId: parsed.data.locationId,
@@ -100,7 +116,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     return apiError("insufficient_credits", 402);
   }
 
+  const ctxStarted = performance.now();
   const ctx = await buildDenisTurnContext(admin, parsed.data);
+  timings.contextMs = elapsedMs(ctxStarted);
 
   if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
     return apiError("Voice is not enabled for this location.", 403);
@@ -130,7 +148,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       })
     : null;
 
-  const legacyResponse = await executeChatTurn(parsed.data);
+  const legacyStarted = performance.now();
+  const legacyResponse = await executeChatTurn({
+    ...parsed.data,
+    legacyOrderingEnabled: ctx.config.ordering.legacyOrderingEnabled,
+  });
+  timings.legacyMs = elapsedMs(legacyStarted);
   if (legacyResponse.status !== 200) {
     return legacyResponse;
   }
@@ -140,6 +163,61 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   if (!data?.message) {
     return legacyResponse;
+  }
+
+  if (
+    !ctx.config.ordering.legacyOrderingEnabled &&
+    data.deferredOrdering &&
+    data.sessionId
+  ) {
+    const { data: sessionRow, error: sessionError } = await admin
+      .from("ai_sessions")
+      .select("order_draft, messages")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+
+    if (!sessionError && sessionRow) {
+      try {
+        const menuPayload = await getCachedMenuForLocation(parsed.data.locationId, {
+          useEnglish: false,
+        });
+        const catalog = {
+          menuText: menuPayload.menuText,
+          productMap: menuPayload.productMap,
+          catalog: menuPayload.catalog,
+          currency: menuPayload.currency,
+          cachedAt: menuPayload.cachedAt,
+        };
+        const priorMessages =
+          (sessionRow.messages as Array<{ role: string; content: string }>) ??
+          [];
+
+        const kernel = applyPostLlmOrdering({
+          userMessage: parsed.data.message,
+          allowOrdering: true,
+          orderDraft: initDraftFromStorage(sessionRow.order_draft),
+          catalog,
+          structured: data.deferredOrdering,
+          priorMessages,
+          language: parsed.data.language,
+        });
+
+        await persistKernelOrderingDraft(admin, data.sessionId, kernel.draft);
+
+        const merged = mergeKernelOrderingIntoTurn(data.message, kernel);
+        data.message = merged.message;
+        data.cartActions = merged.cartActions;
+        data.quickReplies = merged.quickReplies;
+        data.intent = merged.intent;
+        data.submitOrder = merged.submitOrder;
+      } catch (error) {
+        logger.warn("Kernel ordering bridge failed", {
+          traceId,
+          sessionId: data.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   let actPhase: Awaited<ReturnType<typeof executeActPhase>> = {
@@ -161,6 +239,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       }
     }
 
+    const actStarted = performance.now();
     actPhase = await executeActPhase({
       config: ctx.config,
       reflexTurn,
@@ -172,6 +251,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       catalog,
       legacySubmitOrder: data.submitOrder,
     });
+    timings.actMs = elapsedMs(actStarted);
   }
 
   const rollout = resolveEffectiveRollout(ctx.config);
@@ -192,6 +272,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     opsEffects: ctx.opsEffects,
   });
 
+  const narrateStarted = performance.now();
   const resolvedNarration = await resolveTurnNarrationMessage({
     legacyMessage: data.message,
     facts: narrationFacts,
@@ -213,6 +294,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     guestUsesLegacy && !resolvedNarration.usedDenisNarrator
       ? data.message
       : narration.message;
+  timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {
     const shadowDiff = diffShadowTurn({
@@ -240,9 +322,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       slotItemCount: slotExtract?.items.length ?? 0,
       slotTier: slotExtract?.tier ?? null,
     });
+    shadowParityScore = shadowDiff.parityScore;
   }
 
   if (data.sessionId && kernelTimelineEnabled(rollout.mode)) {
+    const timelineStarted = performance.now();
     const intent = resolveTurnIntent(
       reflexTurn.reflex?.intent,
       data.intent ?? "UNKNOWN"
@@ -293,6 +377,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         },
       });
     }
+    timings.timelineMs = elapsedMs(timelineStarted);
   }
 
   let creditsRemaining =
@@ -300,6 +385,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const creditsCharged = data.creditsCharged ?? 0;
 
   if (data.sessionId && creditsCharged > 0) {
+    const meteringStarted = performance.now();
     const metering = await finalizeTurnMetering(admin, {
       orgId: orgResult.data.orgId,
       aiSessionId: data.sessionId,
@@ -331,7 +417,25 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         code: metering.code,
       });
     }
+    timings.meteringMs = elapsedMs(meteringStarted);
   }
+
+  timings.totalMs = elapsedMs(turnStarted);
+
+  logDenisTurnObservability({
+    traceId,
+    locationId: parsed.data.locationId,
+    channel: input.channel,
+    rolloutMode: rollout.mode,
+    guestUsesLegacy,
+    narrationTier: narration.tier,
+    lintPassed: narration.lintPassed,
+    creditsCharged,
+    actDryRun: actPhase.dryRun,
+    actEnabled: actPhase.enabled,
+    shadowParityScore,
+    timings,
+  });
 
   const responseData = {
     message: guestMessage,

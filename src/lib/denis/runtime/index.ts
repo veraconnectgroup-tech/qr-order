@@ -2,6 +2,17 @@ import { manualSnapshotToDenisDraft } from "@/lib/denis/runtime/adapters/map-leg
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import { mapLegacyIntentToGuest } from "@/lib/denis/runtime/map-legacy-intent";
 import { persistDenisTurnTimeline } from "@/lib/denis/runtime/persist-turn-timeline";
+export { evaluateGaGate } from "@/lib/denis/runtime/ga-gate";
+export type { GaGateCheck, GaGateMetrics, GaGateReport } from "@/lib/denis/runtime/ga-gate";
+export {
+  elapsedMs,
+  emptyTurnTimings,
+  logDenisTurnObservability,
+} from "@/lib/denis/runtime/turn-observability";
+export type {
+  DenisTurnObservabilityPayload,
+  TurnPhaseTimings,
+} from "@/lib/denis/runtime/turn-observability";
 export { runDenisTurn } from "@/lib/denis/runtime/run-denis-turn";
 export { runDenisSense } from "@/lib/denis/runtime/run-denis-sense";
 export type { DenisSenseResult } from "@/lib/denis/runtime/run-denis-sense";

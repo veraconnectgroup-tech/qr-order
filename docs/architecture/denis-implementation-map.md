@@ -269,6 +269,8 @@ Override: env `DENIS_ROLLOUT_MODE`.
 
 **Verify F1:** `grep -rn executeChatTurn src/` → only `run-denis-turn.ts` + legacy file.
 
+See **§13 F8** for ordering cutover (legacy adapter retirement).
+
 ---
 
 ## 9. Verification
@@ -308,6 +310,19 @@ pnpm type-check
 **Also:** Platform `(platform)/**` dark tokens aligned with `admin-theme` (May 2026).
 
 **Doc:** [ADR-008](../design/ADR-008-web-design-architecture.md) · [ADR-007 Appendix B](../design/ADR-007-visual-system.md)
+
+---
+
+## 13. Ordering cutover (ADR-010 F8)
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| **F8-1** | GA gate (`ga-gate.ts`) + turn observability logs | ✅ |
+| **F8-2** | Slim legacy adapter — ordering out of `execute-chat-turn.ts` | 📋 |
+| **F8-3** | Live `actSubmitEnabled` pilot venues | 📋 |
+| **F8-4** | Delete legacy ordering paths | 📋 |
+
+**Doc:** [ADR-010](./ADR-010-denis-ordering-cutover.md) · ADR-006 accepted (May 2026)
 
 ---
 

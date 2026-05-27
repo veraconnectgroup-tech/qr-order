@@ -35,6 +35,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     actLayerEnabled: false,
     actDryRun: true,
     actSubmitEnabled: false,
+    legacyOrderingEnabled: true,
     defaultServeSize: null,
     maxItemsPerOrder: 50,
     maxQuantityPerLine: 20,

@@ -59,6 +59,8 @@ const ConciergeOrderingSchema = z.object({
   actLayerEnabled: z.boolean(),
   actDryRun: z.boolean(),
   actSubmitEnabled: z.boolean(),
+  /** F8-2 — when false, cart mutations run via kernel bridge in runDenisTurn. */
+  legacyOrderingEnabled: z.boolean(),
   defaultServeSize: z.string().trim().max(40).nullable(),
   maxItemsPerOrder: z.number().int().min(1).max(100),
   maxQuantityPerLine: z.number().int().min(1).max(99),

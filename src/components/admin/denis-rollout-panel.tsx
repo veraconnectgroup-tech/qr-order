@@ -14,6 +14,7 @@ import {
   type DenisRolloutFormState,
   type DenisRolloutPresetId,
 } from "@/lib/denis/config/rollout-cutover";
+import { evaluateGaGate } from "@/lib/denis/runtime/ga-gate";
 import type { ConciergeRolloutMode } from "@/lib/denis/config/rollout";
 import {
   kernelTimelineEnabled,
@@ -131,6 +132,8 @@ export function DenisRolloutPanel({ initial }: Props) {
 
   const actSubmitRisk =
     form.actSubmitEnabled && form.actLayerEnabled && !form.actDryRun;
+
+  const gaGate = evaluateGaGate(form);
 
   return (
     <QrCard className="max-w-2xl">
@@ -251,6 +254,45 @@ export function DenisRolloutPanel({ initial }: Props) {
             </dd>
           </div>
         </dl>
+
+        <div
+          className={`rounded-md border p-3 ${
+            gaGate.ready
+              ? "border-emerald-500/30 bg-emerald-500/5"
+              : "border-amber-500/30 bg-amber-500/5"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-foreground">
+              GA gate {gaGate.ready ? "— ready" : "— review before save"}
+            </p>
+            {gaGate.recommendedNextMode ? (
+              <span className="text-xs text-muted-foreground">
+                Suggested next:{" "}
+                <strong className="text-foreground">
+                  {gaGate.recommendedNextMode}
+                </strong>
+              </span>
+            ) : null}
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {gaGate.checks.map((check) => (
+              <li
+                key={check.id}
+                className={`text-xs ${
+                  check.passed
+                    ? "text-emerald-300"
+                    : check.blocking
+                      ? "text-amber-200"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {check.passed ? "✓" : check.blocking ? "!" : "·"} {check.label}
+                {check.detail ? ` — ${check.detail}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <div className="space-y-3 border-t border-border pt-4">
           <p className="text-sm font-medium text-foreground">Feature flags</p>

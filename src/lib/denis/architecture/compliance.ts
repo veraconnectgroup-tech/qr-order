@@ -29,6 +29,7 @@ const REQUIRED_PATHS = [
   "docs/architecture/ADR-004-denis-kernel.md",
   "docs/architecture/ADR-006-denis-control-plane.md",
   "docs/architecture/ADR-009-atomic-turn-commercial-spine.md",
+  "docs/architecture/ADR-010-denis-ordering-cutover.md",
   "src/lib/denis/README.md",
   "src/lib/denis/layers.ts",
   "src/lib/denis/platform/flows/denis_short.flow.json",

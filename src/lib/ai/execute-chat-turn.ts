@@ -22,6 +22,7 @@ import {
   formatDraftForPrompt,
   processOrderingTurn,
 } from "@/lib/ai/ordering/ordering-turn";
+import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import {
@@ -43,7 +44,7 @@ import {
   formatOrderContextBlock,
   loadGuestOrdersForAi,
 } from "@/lib/ai/order-context";
-import type { AiGuestPreferences, OpenAiCallResult, OpenAiChatMessage } from "@/lib/ai/types";
+import type { AiGuestPreferences, OpenAiCallResult, OpenAiChatMessage, AiStructuredResponse } from "@/lib/ai/types";
 import {
   aiSessionInactiveStatus,
   isAiSessionExpired,
@@ -97,6 +98,8 @@ export const aiChatRequestSchema = z.object({
   includeOrderContext: z.boolean().optional().default(true),
   browsingContext: zSanitizedText(2000).optional(),
   allowOrdering: z.boolean().optional().default(true),
+  /** F8-2 — when false, legacy skips cart mutations (kernel bridge in runDenisTurn). */
+  legacyOrderingEnabled: z.boolean().optional().default(true),
 });
 
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
@@ -429,6 +432,8 @@ export async function executeChatTurn(body: unknown) {
   };
 
   const allowOrdering = input.allowOrdering !== false;
+  const orderingViaLegacy =
+    allowOrdering && input.legacyOrderingEnabled !== false;
   const catalog = {
     menuText: menuPayload.menuText,
     productMap: menuPayload.productMap,
@@ -439,6 +444,7 @@ export async function executeChatTurn(body: unknown) {
 
   let workingDraft = sessionRow?.order_draft ?? initDraftFromStorage(null);
 
+  if (orderingViaLegacy) {
   const preTurn = processOrderingTurn({
     userMessage: input.message,
     allowOrdering,
@@ -821,6 +827,7 @@ export async function executeChatTurn(body: unknown) {
       sessionId,
     });
   }
+  }
 
   const systemPrompt = buildSystemPrompt({
     orgName,
@@ -831,7 +838,7 @@ export async function executeChatTurn(body: unknown) {
     orderContext,
     browsingContext: input.browsingContext ?? null,
     orderDraftContext: formatDraftForPrompt(workingDraft),
-    allowOrdering,
+    allowOrdering: orderingViaLegacy ? allowOrdering : false,
     playbookContext: await getPlaybookPromptBlock(orgId, input.locationId),
   });
 
@@ -873,48 +880,53 @@ export async function executeChatTurn(body: unknown) {
     recommendations: resolved.recommendations,
   };
 
-  const orderingResult = processOrderingTurn({
-    userMessage: input.message,
-    allowOrdering,
-    orderDraftRaw: workingDraft,
-    catalog,
-    structured: structured.structured,
-  });
-  workingDraft = orderingResult.draft;
+  let orderingResult: ReturnType<typeof processOrderingTurn>;
+  let flowResult: ReturnType<typeof finalizeOrderFlow>;
+  let deferredOrdering: AiStructuredResponse | undefined;
 
-  const postOrderBackfill = maybeBackfillOrderDraft(
-    workingDraft,
-    catalog,
-    input.message,
-    priorMessages
-  );
-  workingDraft = postOrderBackfill.draft;
-  const cartActionsThisTurn =
-    orderingResult.cartActions.length + postOrderBackfill.cartActions.length;
+  if (orderingViaLegacy) {
+    const postLlm = applyPostLlmOrdering({
+      userMessage: input.message,
+      allowOrdering,
+      orderDraft: workingDraft,
+      catalog,
+      structured: structured.structured,
+      priorMessages,
+      language,
+    });
+    workingDraft = postLlm.draft;
+    orderingResult = {
+      draft: postLlm.draft,
+      cartActions: postLlm.cartActions,
+      quickReplies: postLlm.quickReplies,
+      intent: postLlm.intent,
+      skippedLlm: false,
+    };
+    flowResult = {
+      draft: postLlm.draft,
+      message: postLlm.assistantMessage,
+      submitOrder: postLlm.submitOrder,
+      intent: postLlm.intent,
+    };
+  } else {
+    deferredOrdering = structured.structured;
+    orderingResult = {
+      draft: workingDraft,
+      cartActions: [],
+      quickReplies: structured.structured.quickReplies,
+      intent: structured.structured.intent,
+      skippedLlm: false,
+    };
+    flowResult = {
+      draft: workingDraft,
+      message: structured.structured.message,
+      submitOrder: structured.structured.submitOrder,
+      intent: structured.structured.intent,
+    };
+  }
 
-  const flowResult = finalizeOrderFlow({
-    userMessage: input.message,
-    draft: workingDraft,
-    llmMessage: structured.structured.message,
-    llmSubmitOrder: structured.structured.submitOrder,
-    cartActionsThisTurn,
-    language,
-  });
-  workingDraft = flowResult.draft;
   let assistantReplyMessage = flowResult.message;
   let submitOrder = flowResult.submitOrder;
-
-  if (
-    workingDraft.items.length === 0 &&
-    (submitOrder || structured.structured.submitOrder)
-  ) {
-    submitOrder = false;
-    assistantReplyMessage = emptyCartSubmitBlockedMessage(
-      language === "de" || language === "en" || language === "hr" || language === "sr"
-        ? language
-        : "sr"
-    );
-  }
 
   const guestWantsSuggestions = guestAskedForSuggestions(input.message);
 
@@ -1045,5 +1057,6 @@ export async function executeChatTurn(body: unknown) {
     submitOrder,
     creditsCharged: AI_CONFIG.creditsPerMessage,
     sessionId,
+    ...(deferredOrdering ? { deferredOrdering } : {}),
   });
 }
