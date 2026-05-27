@@ -85,16 +85,16 @@ export function DatevExportPanel() {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-start gap-3">
         <div className="flex size-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
           <FileSpreadsheet className="size-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900">
+          <h2 className="text-lg font-semibold text-foreground">
             DATEV Export
           </h2>
-          <p className="mt-1 text-sm text-neutral-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             Monatlicher CSV-Export für die Buchhaltung (SKR03: 8400/8300 Erlöse,
             1200 Bank, 1000 Kasse).
           </p>
@@ -103,11 +103,11 @@ export function DatevExportPanel() {
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="space-y-1.5">
-          <span className="text-sm font-medium text-neutral-700">Monat</span>
+          <span className="text-sm font-medium text-foreground/90">Monat</span>
           <select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
-            className="block min-w-[160px] rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="block min-w-[160px] rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           >
             {MONTHS.map((m) => (
               <option key={m.value} value={m.value}>
@@ -118,11 +118,11 @@ export function DatevExportPanel() {
         </label>
 
         <label className="space-y-1.5">
-          <span className="text-sm font-medium text-neutral-700">Jahr</span>
+          <span className="text-sm font-medium text-foreground/90">Jahr</span>
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="block min-w-[120px] rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="block min-w-[120px] rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           >
             {yearOptions.map((y) => (
               <option key={y} value={y}>
@@ -143,7 +143,7 @@ export function DatevExportPanel() {
         </Button>
       </div>
 
-      <p className="mt-3 text-xs text-neutral-500">
+      <p className="mt-3 text-xs text-muted-foreground">
         Zeitraum: {toIsoDate(from)} – {toIsoDate(to)} · Online-Zahlungen → Konto
         1200 · Bar/Tisch → Konto 1000
       </p>

@@ -761,6 +761,23 @@ type Tables = {
     sort_order: number;
     created_at: string;
   };
+  org_ai_ops: {
+    org_id: string;
+    credit_balance: number;
+    lifetime_used: number;
+    turns_24h: number;
+    timeline_events_24h: number;
+    low_balance: boolean;
+    refreshed_at: string;
+  };
+  org_billing_events: {
+    id: string;
+    org_id: string;
+    event_type: string;
+    payload: Json;
+    reference_id: string | null;
+    created_at: string;
+  };
 };
 
 type TableDef<T extends keyof Tables> = {
@@ -791,6 +808,20 @@ export interface Database {
       };
       add_ai_credits: {
         Args: { p_org_id: string; p_amount: number };
+        Returns: number;
+      };
+      finalize_denis_turn_metering: {
+        Args: {
+          p_org_id: string;
+          p_ai_session_id: string;
+          p_amount: number;
+          p_trace_id: string;
+          p_payload?: Json;
+        };
+        Returns: number;
+      };
+      refresh_org_ai_ops: {
+        Args: { p_org_id?: string | null };
         Returns: number;
       };
       claim_outbox_events: {

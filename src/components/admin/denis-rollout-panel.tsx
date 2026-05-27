@@ -216,6 +216,17 @@ export function DenisRolloutPanel({ initial }: Props) {
           </div>
         )}
 
+        {form.rolloutMode === "denis_only" && (
+          <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
+            Denis-only cutover: guests see linted Denis replies; billing uses
+            the commercial spine (1 credit per AI turn, timeline +
+            <code className="mx-1 rounded bg-muted px-1 text-xs">
+              billing.turn_debited
+            </code>
+            ). Confirm credits and narrate flag before saving.
+          </p>
+        )}
+
         <dl className="grid grid-cols-3 gap-2 rounded-md border border-border bg-muted p-3 text-xs">
           <div>
             <dt className="text-muted-foreground">Guest path</dt>

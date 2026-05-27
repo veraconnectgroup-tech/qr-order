@@ -248,9 +248,9 @@ export function TablesManager({
       </Dialog>
 
       {!tables.length ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">No tables yet.</p>
-          <p className="mt-1 text-sm text-neutral-400">
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">No tables yet.</p>
+          <p className="mt-1 text-sm text-muted-foreground/70">
             Add zones and tables, then generate QR codes.
           </p>
         </div>
@@ -258,7 +258,7 @@ export function TablesManager({
         <div className="space-y-8">
           {grouped.map(({ zone, tables: zoneTables }) => (
             <section key={zone.id}>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {zone.name} ({zoneTables.length})
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -275,7 +275,7 @@ export function TablesManager({
           ))}
           {ungrouped.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Unzoned
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -306,12 +306,12 @@ function TableCard({
   onShowQr: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <p className="font-semibold">{table.name}</p>
-      <p className="text-sm text-neutral-500">{table.seats} seats</p>
+      <p className="text-sm text-muted-foreground">{table.seats} seats</p>
       {staffMembers.length > 0 && (
         <div className="mt-2">
-          <Label className="text-xs text-neutral-500">Waiter (tips)</Label>
+          <Label className="text-xs text-muted-foreground">Waiter (tips)</Label>
           <Select
             value={table.assigned_staff_id ?? "none"}
             onValueChange={async (v) => {

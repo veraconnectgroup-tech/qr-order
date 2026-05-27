@@ -9,7 +9,7 @@ export default async function AdminTablesPage() {
   const locationId = await getStaffLocationId(staff);
   if (!locationId) {
     return (
-      <div className="p-6 text-sm text-neutral-600">
+      <div className="p-6 text-sm text-muted-foreground">
         No location assigned to this account.
       </div>
     );

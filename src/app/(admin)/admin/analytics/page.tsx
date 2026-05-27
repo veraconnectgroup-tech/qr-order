@@ -24,7 +24,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 function DateRangePickerFallback() {
   return (
-    <div className="h-20 w-full max-w-xl animate-pulse rounded-lg bg-neutral-100" />
+    <div className="h-20 w-full max-w-xl animate-pulse rounded-lg bg-muted/50" />
   );
 }
 
@@ -53,8 +53,8 @@ export default async function AdminAnalyticsPage({
     <div className="p-6">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Analytics</h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Revenue, orders, and guest feedback for your location.
           </p>
         </div>
@@ -64,7 +64,7 @@ export default async function AdminAnalyticsPage({
       </div>
 
       {!snapshot ? (
-        <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-neutral-600 shadow-sm">
+        <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground shadow-sm">
           No location assigned. Analytics require at least one location.
         </div>
       ) : (

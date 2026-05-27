@@ -261,16 +261,16 @@ export function MenuManager({
       )}
 
       {!products.length ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">Your menu is empty.</p>
-          <p className="mt-1 text-sm text-neutral-400">
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">Your menu is empty.</p>
+          <p className="mt-1 text-sm text-muted-foreground/70">
             Add your first product so guests can order.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
-            <thead className="border-b bg-neutral-50 text-left">
+            <thead className="border-b bg-muted/30 text-left">
               <tr>
                 <th className="w-10 px-2 py-3">
                   <Checkbox
@@ -310,7 +310,7 @@ export function MenuManager({
                       <td className="px-2 py-3">
                         <button
                           type="button"
-                          className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+                          className="rounded p-1 text-muted-foreground/70 hover:bg-muted/50 hover:text-muted-foreground"
                           onClick={() => toggleProductExpand(product.id)}
                           aria-expanded={expanded}
                           aria-label={
@@ -334,7 +334,7 @@ export function MenuManager({
                           <div className="min-w-0">
                             <p className="font-medium">{product.name}</p>
                             {product.description && (
-                              <p className="line-clamp-1 text-neutral-500">
+                              <p className="line-clamp-1 text-muted-foreground">
                                 {product.description}
                               </p>
                             )}
@@ -347,7 +347,7 @@ export function MenuManager({
                       <td className="px-4 py-3 tabular-nums">
                         {formatPrice(Number(product.price), currency)}
                       </td>
-                      <td className="px-4 py-3 text-neutral-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {groupCount > 0
                           ? `${groupCount} group${groupCount === 1 ? "" : "s"}, ${modifierCount} option${modifierCount === 1 ? "" : "s"}`
                           : "—"}

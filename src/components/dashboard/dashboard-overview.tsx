@@ -65,15 +65,16 @@ export function DashboardOverview({
       />
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+        <div className="space-y-4 lg:col-span-8">
           <OverviewFloorSnapshot
             tables={tableStatuses}
             loading={overviewLoading}
             currency={currency}
           />
+          <OverviewLiveFeed initialOrders={initialData.liveFeed} compact maxOrders={4} />
         </div>
         <div className="lg:col-span-4">
-          <div className="lg:sticky lg:top-4 lg:min-h-[280px]">
+          <div className="lg:sticky lg:top-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-muted">
               Quick actions
             </p>
@@ -81,8 +82,6 @@ export function DashboardOverview({
           </div>
         </div>
       </div>
-
-      <OverviewLiveFeed initialOrders={initialData.liveFeed} compact maxOrders={4} />
 
       <OverviewDenisStrip />
     </div>

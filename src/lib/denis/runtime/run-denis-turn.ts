@@ -1,5 +1,12 @@
 import { apiError } from "@/lib/api-response";
 import { executeChatTurn } from "@/lib/ai/execute-chat-turn";
+import {
+  assertSufficientCredits,
+  finalizeTurnMetering,
+  maybeEnqueueLowBalanceAlert,
+  refreshOrgAiOpsProjection,
+  resolveAiTurnOrg,
+} from "@/lib/denis/commercial";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -56,6 +63,7 @@ type LegacyChatPayload = {
     quickReplies?: string[];
     submitOrder?: boolean;
     creditsRemaining?: number;
+    creditsCharged?: number;
   };
 };
 
@@ -77,6 +85,21 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const admin = createAdminClient();
   const traceId = createTurnTraceId();
+
+  const orgResult = await resolveAiTurnOrg(admin, {
+    locationId: parsed.data.locationId,
+    tableId: parsed.data.tableId,
+    sessionToken: parsed.data.sessionToken,
+  });
+  if (!orgResult.ok) {
+    return apiError(orgResult.error, orgResult.status);
+  }
+
+  const creditCheck = await assertSufficientCredits(admin, orgResult.data.orgId);
+  if (!creditCheck.ok) {
+    return apiError("insufficient_credits", 402);
+  }
+
   const ctx = await buildDenisTurnContext(admin, parsed.data);
 
   if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
@@ -272,6 +295,44 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
   }
 
+  let creditsRemaining =
+    data.creditsRemaining ?? creditCheck.balanceAfter;
+  const creditsCharged = data.creditsCharged ?? 0;
+
+  if (data.sessionId && creditsCharged > 0) {
+    const metering = await finalizeTurnMetering(admin, {
+      orgId: orgResult.data.orgId,
+      aiSessionId: data.sessionId,
+      traceId,
+    });
+
+    if (metering.ok) {
+      creditsRemaining = metering.balanceAfter;
+      await maybeEnqueueLowBalanceAlert(admin, {
+        orgId: orgResult.data.orgId,
+        locationId: parsed.data.locationId,
+        balanceAfter: metering.balanceAfter,
+        traceId,
+      });
+      void refreshOrgAiOpsProjection(admin, orgResult.data.orgId).catch(
+        (error) => {
+          logger.warn("Denis turn org_ai_ops refresh failed", {
+            orgId: orgResult.data.orgId,
+            traceId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      );
+    } else {
+      logger.error("Denis turn metering finalize failed", {
+        traceId,
+        aiSessionId: data.sessionId,
+        orgId: orgResult.data.orgId,
+        code: metering.code,
+      });
+    }
+  }
+
   const responseData = {
     message: guestMessage,
     recommendations: data.recommendations,
@@ -279,7 +340,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     quickReplies,
     intent: data.intent,
     submitOrder: data.submitOrder,
-    creditsRemaining: data.creditsRemaining,
+    creditsRemaining,
     sessionId: data.sessionId,
   };
 

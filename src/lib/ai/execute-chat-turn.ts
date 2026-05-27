@@ -246,23 +246,8 @@ async function resolveStructuredResponse(
   }
 }
 
-/** Legacy LLM + ordering path — called from Denis runtime (M7). */
-export type ExecuteChatTurnOptions = {
-  /**
-   * ADR-009 F2: Denis runtime owns metering via commercial module.
-   * Legacy path debits inline; Denis path skips check + debit here.
-   */
-  skipCreditMetering?: boolean;
-};
-
-/**
- * Legacy narrate + session adapter — **do not call from API routes**.
- * Single production caller: `runDenisTurn` (ADR-009 F1).
- */
-export async function executeChatTurn(
-  body: unknown,
-  options?: ExecuteChatTurnOptions
-) {
+/** Legacy LLM + ordering path — called from Denis runtime only (ADR-009 F1). */
+export async function executeChatTurn(body: unknown) {
   const parsed = aiChatRequestSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("Invalid input.", 400);
@@ -293,20 +278,6 @@ export async function executeChatTurn(
   }
 
   const { orgId, orgName } = guestContext.data;
-  const skipCreditMetering = options?.skipCreditMetering === true;
-
-  if (!skipCreditMetering) {
-    const { data: creditsRow } = await admin
-      .from("ai_credits")
-      .select("balance")
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    const balance = (creditsRow as { balance: number } | null)?.balance ?? 0;
-    if (balance < AI_CONFIG.creditsPerMessage) {
-      return apiError("insufficient_credits", 402);
-    }
-  }
 
   const menuLanguageHint = resolveAiPromptLanguage(input.language);
   const useEnglishHint = menuLanguageHint === "en";
@@ -570,6 +541,7 @@ export async function executeChatTurn(
       intent: flowResult.intent,
       submitOrder: flowResult.submitOrder,
       creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      creditsCharged: 0,
       sessionId,
     });
   }
@@ -668,6 +640,7 @@ export async function executeChatTurn(
       intent: "menu_info",
       submitOrder: false,
       creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      creditsCharged: 0,
       sessionId,
     });
   }
@@ -747,6 +720,7 @@ export async function executeChatTurn(
       intent: preTurn.intent,
       submitOrder: false,
       creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      creditsCharged: 0,
       sessionId,
     });
   }
@@ -843,6 +817,7 @@ export async function executeChatTurn(
       intent: flowResult.intent,
       submitOrder: flowResult.submitOrder,
       creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      creditsCharged: 0,
       sessionId,
     });
   }
@@ -982,23 +957,6 @@ export async function executeChatTurn(
     usedFallback: "usedFallback" in resolved && resolved.usedFallback,
   });
 
-  const { data: newBalance, error: debitError } = await admin.rpc(
-    "decrement_ai_credits",
-    {
-      p_org_id: orgId,
-      p_amount: AI_CONFIG.creditsPerMessage,
-    }
-  );
-
-  if (debitError) {
-    logger.error("AI credit debit failed", { error: debitError.message });
-    return apiError("Could not debit credits.", 500);
-  }
-
-  if (newBalance === -1) {
-    return apiError("insufficient_credits", 402);
-  }
-
   const assistantMessage: StoredMessage = {
     role: "assistant",
     content: assistantContent(
@@ -1022,8 +980,7 @@ export async function executeChatTurn(
 
   const tokensUsed =
     (sessionRow?.tokens_used ?? 0) + openAiResult.tokensUsed;
-  const creditsUsed =
-    (sessionRow?.credits_used ?? 0) + AI_CONFIG.creditsPerMessage;
+  const creditsUsed = sessionRow?.credits_used ?? 0;
 
   let sessionId = sessionRow?.id;
 
@@ -1086,7 +1043,7 @@ export async function executeChatTurn(
     quickReplies: orderingResult.quickReplies,
     intent: flowResult.intent,
     submitOrder,
-    creditsRemaining: newBalance as number,
+    creditsCharged: AI_CONFIG.creditsPerMessage,
     sessionId,
   });
 }

@@ -64,11 +64,11 @@ export function AiCreditsPurchaseModal({
           {packages.map((pkg) => (
             <div
               key={pkg.id}
-              className="flex items-center justify-between rounded-lg border border-neutral-200 p-4"
+              className="flex items-center justify-between rounded-lg border border-border p-4"
             >
               <div>
-                <p className="font-semibold text-neutral-900">{pkg.name}</p>
-                <p className="text-sm text-neutral-500">
+                <p className="font-semibold text-foreground">{pkg.name}</p>
+                <p className="text-sm text-muted-foreground">
                   {pkg.credits.toLocaleString("de-DE")} Kredite
                 </p>
               </div>

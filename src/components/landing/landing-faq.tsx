@@ -24,7 +24,11 @@ const faqs = [
   },
   {
     q: "What does Denis cost?",
-    a: "€0 per month. We charge a small fee per online card payment only.",
+    a: "€0 per month for the platform. Card payments use a small per-order fee via Stripe. Denis AI is optional — buy credit packs in Admin when you enable the concierge.",
+  },
+  {
+    q: "How do Denis AI credits work?",
+    a: "One credit per AI-assisted guest message. Browsing the menu without AI is free. Credit packs start at 500 credits from €19. Staff get a notification when your balance runs low.",
   },
   {
     q: "How fast can I go live?",

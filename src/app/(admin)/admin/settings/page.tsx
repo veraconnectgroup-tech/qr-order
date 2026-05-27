@@ -22,7 +22,7 @@ export default async function AdminSettingsPage() {
   const admin = createAdminClient();
   const locationId = await getStaffLocationId(staff);
 
-  const [{ data: org }, { data: location }, { data: credits }, { data: packages }, { data: apiKeys }, { data: webhooks }, { data: aiExamples }] =
+  const [{ data: org }, { data: location }, { data: credits }, { data: aiOps }, { data: packages }, { data: apiKeys }, { data: webhooks }, { data: aiExamples }] =
     await Promise.all([
     admin
       .from("organizations")
@@ -43,6 +43,13 @@ export default async function AdminSettingsPage() {
     admin
       .from("ai_credits")
       .select("balance, lifetime_used")
+      .eq("org_id", staff.org_id)
+      .maybeSingle(),
+    admin
+      .from("org_ai_ops")
+      .select(
+        "turns_24h, timeline_events_24h, low_balance, refreshed_at"
+      )
       .eq("org_id", staff.org_id)
       .maybeSingle(),
     admin
@@ -99,6 +106,13 @@ export default async function AdminSettingsPage() {
   const creditsRow = credits as {
     balance: number;
     lifetime_used: number;
+  } | null;
+
+  const aiOpsRow = aiOps as {
+    turns_24h: number;
+    timeline_events_24h: number;
+    low_balance: boolean;
+    refreshed_at: string;
   } | null;
 
   const creditPackages = (packages ?? []) as AiCreditPackage[];
@@ -160,6 +174,16 @@ export default async function AdminSettingsPage() {
                 locationName={locationRow.name}
                 creditsBalance={creditsRow?.balance ?? 0}
                 creditsLifetimeUsed={creditsRow?.lifetime_used ?? 0}
+                aiOps={
+                  aiOpsRow
+                    ? {
+                        turns24h: aiOpsRow.turns_24h,
+                        timelineEvents24h: aiOpsRow.timeline_events_24h,
+                        lowBalance: aiOpsRow.low_balance,
+                        refreshedAt: aiOpsRow.refreshed_at,
+                      }
+                    : null
+                }
                 packages={creditPackages}
                 currency={orgRow?.currency ?? "EUR"}
                 canEdit

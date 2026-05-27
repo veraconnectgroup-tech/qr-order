@@ -10,7 +10,7 @@ export default async function DenisInsightsAdminPage() {
 
   if (!locationId) {
     return (
-      <p className="text-sm text-neutral-500">No location assigned.</p>
+      <p className="text-sm text-muted-foreground">No location assigned.</p>
     );
   }
 

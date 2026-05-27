@@ -28,6 +28,7 @@ const REQUIRED_PATHS = [
   "docs/architecture/ADR-005-denis-maximum.md",
   "docs/architecture/ADR-004-denis-kernel.md",
   "docs/architecture/ADR-006-denis-control-plane.md",
+  "docs/architecture/ADR-009-atomic-turn-commercial-spine.md",
   "src/lib/denis/README.md",
   "src/lib/denis/layers.ts",
   "src/lib/denis/platform/flows/denis_short.flow.json",
@@ -37,6 +38,10 @@ const REQUIRED_PATHS = [
 const DENIS_IMPORT_RE = /from\s+["']@\/lib\/denis\/([^/"']+)/g;
 const MODULE_LEVEL_MAP_SET_RE =
   /^(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Map|Set)\s*[<(]/m;
+const EXECUTE_CHAT_TURN_FN_IMPORT_RE =
+  /import\s+(?:type\s+)?\{[^}]*\bexecuteChatTurn\b/;
+const EXECUTE_CHAT_TURN_ALLOWED_CALLER =
+  "src/lib/denis/runtime/run-denis-turn.ts";
 const CREATE_ORDER_IMPORT_RE = /from\s+["']@\/lib\/orders\/create-order["']/;
 
 function walkTsFiles(dir: string): string[] {
@@ -161,6 +166,25 @@ function isOrderCoreAllowlisted(filePath: string): boolean {
   );
 }
 
+function checkExecuteChatTurnSingleCaller(report: ComplianceReport): void {
+  const srcRoot = join(REPO_ROOT, "src");
+  for (const file of walkTsFiles(srcRoot)) {
+    const normalized = rel(file);
+    if (normalized === "src/lib/ai/execute-chat-turn.ts") continue;
+    const content = readFileSync(file, "utf8");
+    if (!EXECUTE_CHAT_TURN_FN_IMPORT_RE.test(content)) continue;
+    if (normalized !== EXECUTE_CHAT_TURN_ALLOWED_CALLER) {
+      pushIssue(report, {
+        severity: "error",
+        code: "EXECUTE_CHAT_TURN_SINGLE_CALLER",
+        message:
+          "executeChatTurn may only be imported from run-denis-turn.ts (ADR-009 F1)",
+        file: normalized,
+      });
+    }
+  }
+}
+
 function checkOrderCoreBoundary(report: ComplianceReport): void {
   const aiRoot = join(REPO_ROOT, "src/lib/ai");
   const denisRoot = join(REPO_ROOT, "src/lib/denis");
@@ -233,6 +257,7 @@ export function runDenisArchitectureCompliance(): ComplianceReport {
   checkDenisImportMatrix(report);
   checkModuleLevelMutableState(report);
   checkOrderCoreBoundary(report);
+  checkExecuteChatTurnSingleCaller(report);
   checkChatServiceLineBudget(report);
   checkOpenAiBoundary(report);
 

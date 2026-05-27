@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Brain, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { DenisStaffCopilotDrawer } from "@/components/dashboard/denis-staff-copilot-drawer";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import { QrCard } from "@/components/design-system/qr-card";
 import { useAiInsights } from "@/hooks/use-ai-insights";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +25,7 @@ function DenisStripExpanded({
   alerts: Array<{ label: string; detail: string; severity: "info" | "warning" | "critical" }>;
 }) {
   return (
-    <div className="max-h-60 space-y-4 overflow-y-auto border-t border-dash-border px-3 py-3">
+    <div className="max-h-[240px] space-y-4 overflow-y-auto border-t border-dash-border px-3 py-3">
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
           Menu gaps
@@ -95,6 +97,7 @@ function DenisStripExpanded({
 export function OverviewDenisStrip() {
   const { aiConciergeEnabled } = useDashboard();
   const [expanded, setExpanded] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { data, loading, error } = useAiInsights("today");
 
   if (!aiConciergeEnabled) return null;
@@ -110,44 +113,57 @@ export function OverviewDenisStrip() {
   const guestCount = summary.sessionCount;
 
   return (
-    <QrCard as="section" variant="muted" padding="none">
-      <div className="flex min-h-12 items-center gap-2 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setExpanded((open) => !open)}
-          aria-expanded={expanded}
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition hover:bg-dash-surface-raised/50"
-        >
-          <Brain className="size-4 shrink-0 text-[var(--qr-ember)]" />
-          <span className="shrink-0 text-sm font-semibold text-dash-text">Denis</span>
-          <span className="hidden truncate text-xs text-dash-text-muted sm:inline">
-            {guestLabel(guestCount)}
-          </span>
-          <span className="truncate text-xs font-semibold tabular-nums text-[var(--qr-ember)]">
-            {conversionPct}% Konversion
-          </span>
-          <ChevronDown
-            className={cn(
-              "ms-auto size-4 shrink-0 text-dash-text-disabled transition-transform duration-200",
-              expanded && "rotate-180"
-            )}
-          />
-        </button>
-        <Link
-          href="/dashboard/denis"
-          className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[var(--qr-ember)] transition hover:bg-[var(--qr-ember-muted)] hover:text-[var(--qr-ember-hover)]"
-        >
-          Details →
-        </Link>
-      </div>
+    <>
+      <QrCard as="section" variant="muted" padding="none">
+        <div className="flex min-h-12 items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition hover:bg-dash-surface-raised/50"
+          >
+            <DenisTableMark size={24} state="idle" className="size-4 shrink-0" />
+            <span className="shrink-0 text-sm font-semibold text-dash-text">
+              Denis
+            </span>
+            <span className="hidden truncate text-xs text-dash-text-muted sm:inline">
+              {guestLabel(guestCount)}
+            </span>
+            <span className="truncate text-xs font-semibold tabular-nums text-[var(--qr-ember)]">
+              {conversionPct}% Konversion
+            </span>
+            <ChevronDown
+              className={cn(
+                "ms-auto size-4 shrink-0 text-dash-text-disabled transition-transform duration-200",
+                expanded && "rotate-180"
+              )}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[var(--qr-ember)] transition hover:bg-[var(--qr-ember-muted)] hover:text-[var(--qr-ember-hover)]"
+          >
+            Open Denis
+          </button>
+          <Link
+            href="/dashboard/denis"
+            className="hidden shrink-0 rounded-lg px-2 py-2 text-xs font-medium text-dash-text-muted transition hover:text-dash-text sm:inline"
+          >
+            Full →
+          </Link>
+        </div>
 
-      {expanded ? (
-        <DenisStripExpanded
-          menuGaps={menuGaps}
-          topProducts={topProducts}
-          alerts={alerts}
-        />
-      ) : null}
-    </QrCard>
+        {expanded ? (
+          <DenisStripExpanded
+            menuGaps={menuGaps}
+            topProducts={topProducts}
+            alerts={alerts}
+          />
+        ) : null}
+      </QrCard>
+
+      <DenisStaffCopilotDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+    </>
   );
 }

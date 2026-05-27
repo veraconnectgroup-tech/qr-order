@@ -30,15 +30,15 @@ export async function FeedbackRatingKpiCard({
   const count = feedback.length;
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <p className="text-sm text-muted-foreground">
         Average rating ({formatAnalyticsRangeLabel(range).toLowerCase()})
       </p>
-      <p className="mt-2 font-mono text-3xl font-bold text-neutral-900">
+      <p className="mt-2 font-mono text-3xl font-bold text-foreground">
         {formatAverageRating(avg)}
-        <span className="ml-1 text-lg font-normal text-neutral-400">/ 5</span>
+        <span className="ml-1 text-lg font-normal text-muted-foreground/70">/ 5</span>
       </p>
-      <p className="mt-1 text-xs text-neutral-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         {count} {count === 1 ? "rating" : "ratings"} · post-delivery
       </p>
     </div>

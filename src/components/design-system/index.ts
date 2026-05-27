@@ -19,6 +19,11 @@ export {
   DenisThreadLabel,
 } from "./denis-message-block";
 export {
+  GuestProductRow,
+  type GuestProductRowProps,
+} from "./guest-product-row";
+export { QrKpi, type QrKpiProps } from "./qr-kpi";
+export {
   QrCard,
   QrCardDescription,
   QrCardHeading,

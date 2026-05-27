@@ -34,7 +34,7 @@ export function DenisMemoryConsentBanner({
         <Button
           type="button"
           size="sm"
-          className="min-h-11 bg-orange-500 text-white hover:bg-orange-600"
+          className="min-h-12 bg-orange-500 text-white hover:bg-orange-600"
           onClick={onAccept}
         >
           {tUI("ai.memory.consentAccept")}
@@ -43,7 +43,7 @@ export function DenisMemoryConsentBanner({
           type="button"
           size="sm"
           variant="ghost"
-          className="min-h-11 text-orange-100 hover:bg-orange-500/20 hover:text-orange-50"
+          className="min-h-12 text-orange-100 hover:bg-orange-500/20 hover:text-orange-50"
           onClick={onDecline}
         >
           {tUI("ai.memory.consentDecline")}

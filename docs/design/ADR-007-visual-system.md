@@ -6,22 +6,22 @@
 | **Relates to** | [ADR-005 Denis Maximum](../architecture/ADR-005-denis-maximum.md), `.cursor/rules/project.mdc` |
 | **Implementation plan** | **[denis-spatial-implementation-plan.md](./denis-spatial-implementation-plan.md)** (DS-01…DS-14) |
 | **Enterprise web architecture** | **[ADR-008](./ADR-008-web-design-architecture.md)** — detaljan plan ekrana, kartica, DE-tracks |
-| **As-built audit** | 4 disconnected visual silos (see §2) |
+| **As-built audit** | DE-01…DE-08 complete (May 2026); see [ADR-008](./ADR-008-web-design-architecture.md) §10 |
 | **Legacy roadmap** | V0–V8 (§9) — superseded by **DS-tracks** in implementation plan |
 
 ---
 
 ## 1. Problem statement
 
-Backend and Denis architecture (M0–M27) are coherent. **Visual layer is not.**
+Backend and Denis architecture (M0–M27) are coherent. **Visual layer is converging** via DE-tracks (ADR-008).
 
-| Surface | Current look | User impact |
-|---------|--------------|-------------|
-| **Dashboard** (`dashboard-theme`) | Dark zinc + orange — strong | Tables/Floor feel “premium”; Overview stacks 5 KPIs + 2×2 cards + 360px Denis card → **long scroll, low scan** |
-| **Guest** (`guest-theme`) | Same palette, different component choices | OK base; AI chat uses ad-hoc classes, not Denis chrome |
-| **Admin** | `bg-neutral-50`, shadcn **blue** `:root` primary | Feels like a different product; Denis debug/insights look “internal tool” |
-| **Platform** | Same light admin shell | Same fracture |
-| **Marketing** (`landing-page`) | Raycast-style `#08080c`, custom utilities, brand copy **“Vera”** | Third aesthetic; does not inherit product tokens |
+| Surface | Current look (May 2026) | Notes |
+|---------|-------------------------|-------|
+| **Dashboard** (`dashboard-theme`) | Dark void + ember; Overview cockpit v2 | `QrKpi` strip, floor snapshot, collapsed Denis strip |
+| **Guest** (`guest-theme`) | DenisPanel + `GuestProductRow`; chips 48px | AI chat uses block gramat, not bubbles |
+| **Admin** (`admin-theme`) | Full dark — `bg-card`, semantic borders | No `bg-white` / `neutral-*` in `(admin)` routes |
+| **Platform** | Same admin-theme family | Denis lockup in sidebar |
+| **Marketing** (`landing-page`) | Void `#08080c` + ember CTAs; Denis brand | Hero + Trust + 4× FeatureRow + pricing + FAQ |
 | **Kitchen** | Minimal `kitchen-theme` | Acceptable isolation (high contrast) |
 
 **Goal:** One **design system** with **contextual density**, so Denis reads as the same premium intelligence everywhere — without forcing KDS or marketing into identical layouts.
@@ -454,3 +454,24 @@ Defined on `.dashboard-theme`, `.admin-theme`, `.guest-theme` in `src/app/global
 | `--denis-chip-border` | `rgba(249,115,22,0.28)` | Quick-reply chip outline |
 
 **Bridge:** `--dash-accent` → `var(--qr-ember)` (no visual break on existing dashboard screens).
+
+---
+
+## Appendix B — Platform component gallery (DE as-built, May 2026)
+
+Implemented primitives in `src/components/design-system/` and route-level screens per [ADR-008 §10](./ADR-008-web-design-architecture.md).
+
+| Primitive | File | Surfaces |
+|-----------|------|----------|
+| `QrCard` | `qr-card.tsx` | Admin, dashboard, guest elevated panels |
+| `QrKpi` | `qr-kpi.tsx` | Dashboard overview KPI strip |
+| `FloorTile` | `floor-tile.tsx` | Tables board, overview floor snapshot, Denis chips |
+| `DenisPanel` | `denis-panel.tsx` | Guest AI sheet, staff copilot drawer, landing showcase |
+| `DenisMessageBlock` | `denis-message-block.tsx` | Guest chat, staff copilot, landing demo |
+| `GuestProductRow` | `guest-product-row.tsx` | Guest menu, Denis recommendations, landing demo |
+| `DenisBrandMark` | `denis-brand-mark.tsx` | Admin/platform sidebar, auth shell, landing |
+| `ShowcaseWindow` | `landing/showcase-frame.tsx` | Landing hero + feature rows |
+| `FeatureRow` | `landing/feature-row.tsx` | Landing feature sections ×4 |
+| `AuthShell` | `auth/auth-shell.tsx` | Login, signup (split + showcase) |
+
+**Motion & a11y (DE-10):** `prefers-reduced-motion` disables landing hero, spatial tile enter, dashboard pulse, Denis presence lines; guest touch targets ≥48px on Denis chips, quantity controls, send button, consent CTAs.

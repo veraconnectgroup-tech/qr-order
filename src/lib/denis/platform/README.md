@@ -10,4 +10,4 @@
 
 **Must not import:** kernel, venue, runtime, surfaces, acl, learning, eval.
 
-Dual-write bridge lives in `runtime/record-chat-turn-timeline.ts`.
+Timeline writes go through `runDenisTurn` → `persistDenisTurnTimeline` (ADR-009 F6 — no dual-write bridge).

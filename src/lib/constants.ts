@@ -80,6 +80,22 @@ export function platformFeeDescriptionEn(currency = "EUR") {
   return `${small} per order under ${threshold}, ${large} per order from ${threshold} upward`;
 }
 
+/** Default Starter pack in `ai_credit_packages` (00046) — marketing copy only. */
+export const DENIS_AI_STARTER_CREDITS = 500;
+export const DENIS_AI_STARTER_PRICE_EUR = 19;
+export const DENIS_AI_CREDITS_PER_TURN = 1;
+export const DENIS_AI_LOW_BALANCE_THRESHOLD = 10;
+
+export function denisAiCreditsMarketingEn(currency = "EUR") {
+  const sym = currency === "EUR" ? "€" : `${currency} `;
+  return {
+    starterLabel: `${DENIS_AI_STARTER_CREDITS.toLocaleString("en-GB")} credits from ${sym}${DENIS_AI_STARTER_PRICE_EUR}`,
+    perTurn: `${DENIS_AI_CREDITS_PER_TURN} credit per AI-assisted guest message`,
+    browseFree: "Menu browse without AI is free",
+    lowBalance: `Staff alert when balance drops to ${DENIS_AI_LOW_BALANCE_THRESHOLD} credits or below`,
+  };
+}
+
 export const PAYMENT_METHODS = [
   "unset",
   "online",

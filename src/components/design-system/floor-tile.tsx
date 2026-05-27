@@ -27,7 +27,7 @@ const variantBaseClasses: Record<FloorTileVariant, string> = {
     "rounded-xl border bg-dash-surface p-3 text-center transition hover:border-dash-surface-overlay sm:p-5",
   kpi: "rounded-xl border border-dash-border bg-dash-surface text-left transition",
   chip:
-    "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[var(--denis-chip-border)] bg-[var(--qr-ember-muted)] px-4 text-sm font-medium text-dash-text transition hover:border-[var(--qr-ember)] hover:bg-dash-surface-raised",
+    "inline-flex min-h-12 min-w-12 items-center justify-center rounded-full border border-[var(--denis-chip-border)] bg-[var(--qr-ember-muted)] px-4 text-sm font-medium text-dash-text transition hover:border-[var(--qr-ember)] hover:bg-dash-surface-raised",
 };
 
 function floorTileClasses({

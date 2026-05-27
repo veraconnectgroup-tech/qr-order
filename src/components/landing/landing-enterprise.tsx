@@ -32,9 +32,9 @@ const pillars = [
       "Stripe Connect per venue, session billing, in-person and online checkout, and export-ready order history for finance teams.",
   },
   {
-    title: "Rollout with structure",
+    title: "Intelligence with controls",
     description:
-      "Dedicated onboarding for menu migration, QR deployment, staff training, and go-live — designed for groups opening multiple concepts.",
+      "Denis concierge and staff copilot with pay-as-you-go AI credits, rollout modes (shadow → canary → production), and full audit timeline per venue.",
   },
 ];
 

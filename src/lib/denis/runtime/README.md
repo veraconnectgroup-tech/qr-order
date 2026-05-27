@@ -12,7 +12,7 @@
 | `build-turn-context.ts` | Config, flow fold, cart projections |
 | `narrate/` | T3 facts + lint + template fallback |
 | `shadow-diff.ts` | Legacy vs kernel parity (shadow mode) |
-| `record-chat-turn-timeline.ts` | Deprecated — use `runDenisTurn` |
+| `record-chat-turn-timeline.ts` | Removed (F6) — use `runDenisTurn` |
 
 **M22:** `perceive/slot-extract.ts` (opt-in timeline signal)  
 **M23:** `act/*` + `acl/DenisOrderCommand` (dry-run default)

@@ -72,14 +72,14 @@ export function TagesabschlussPanel({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Tagesabschlüsse</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Z-Bon / Kassenabschluss gemäß KassenSichV (standalone Modus).
         </p>
       </div>
 
-      <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="max-w-lg rounded-lg border border-border bg-card p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Manueller Abschluss</h2>
-        <p className="mt-1 text-sm text-neutral-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Erstellt oder aktualisiert den Tagesabschluss für ein gewähltes Datum.
         </p>
         <div className="mt-4 space-y-3">
@@ -113,17 +113,17 @@ export function TagesabschlussPanel({
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
-        <div className="border-b border-neutral-200 px-6 py-4">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold">Letzte 30 Tage</h2>
         </div>
 
         {closings.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-neutral-500">
+          <p className="px-6 py-8 text-sm text-muted-foreground">
             Noch keine Tagesabschlüsse vorhanden.
           </p>
         ) : (
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-border">
             {closings.map((closing) => {
               const signed = Boolean(closing.tse_closing_signature);
               const vatSummary = closing.vat_summary ?? [];
@@ -132,14 +132,14 @@ export function TagesabschlussPanel({
                 <div key={closing.id} className="px-6 py-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-neutral-900">
+                      <p className="font-semibold text-foreground">
                         {formatBusinessDateLabel(closing.business_date)}
                       </p>
-                      <p className="mt-1 text-sm text-neutral-600">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {closing.order_count} Bestellungen ·{" "}
                         {formatPrice(Number(closing.total_gross), currency)} brutto
                       </p>
-                      <p className="mt-1 text-sm text-neutral-500">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         Bar {formatPrice(Number(closing.total_cash), currency)} ·
                         Unbar{" "}
                         {formatPrice(Number(closing.total_non_cash), currency)}
@@ -149,7 +149,7 @@ export function TagesabschlussPanel({
                           {vatSummary.map((row) => (
                             <span
                               key={row.rate}
-                              className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700"
+                              className="rounded-full bg-muted/50 px-2.5 py-1 text-xs text-foreground/90"
                             >
                               MwSt {row.rate}%:{" "}
                               {formatPrice(row.gross, currency)}

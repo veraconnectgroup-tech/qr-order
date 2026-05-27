@@ -186,8 +186,8 @@ export function ProductEditDialog({
         <div className="space-y-4">
           <div
             className={cn(
-              "overflow-hidden rounded-lg border border-dashed bg-neutral-50 transition",
-              dragOver ? "border-blue-500 bg-blue-50/50" : "border-neutral-300"
+              "overflow-hidden rounded-lg border border-dashed bg-muted/30 transition",
+              dragOver ? "border-blue-500 bg-blue-50/50" : "border-border"
             )}
             onDragOver={(e) => {
               e.preventDefault();
@@ -211,7 +211,7 @@ export function ProductEditDialog({
                 />
                 <button
                   type="button"
-                  className="absolute right-1 top-1 rounded bg-white/90 p-1.5 text-neutral-600 shadow hover:text-red-600"
+                  className="absolute right-1 top-1 rounded bg-card/90 p-1.5 text-muted-foreground shadow hover:text-red-600"
                   onClick={() => setImageUrl(null)}
                   aria-label="Remove image"
                 >
@@ -219,12 +219,12 @@ export function ProductEditDialog({
                 </button>
               </div>
             ) : (
-              <div className="flex h-32 flex-col items-center justify-center gap-2 text-neutral-500">
-                <ImagePlus className="size-8 text-neutral-400" />
+              <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+                <ImagePlus className="size-8 text-muted-foreground/70" />
                 <p className="text-xs">Drag & drop or upload image</p>
               </div>
             )}
-            <div className="border-t border-neutral-200 p-3">
+            <div className="border-t border-border p-3">
               <input
                 ref={fileRef}
                 type="file"
@@ -252,7 +252,7 @@ export function ProductEditDialog({
                   "Upload photo"
                 )}
               </Button>
-              <p className="mt-2 text-center text-[11px] text-neutral-400">
+              <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
                 JPG, PNG or WebP · max 2 MB
               </p>
             </div>
@@ -337,7 +337,7 @@ export function ProductEditDialog({
               </SelectContent>
             </Select>
             {isDrinksCategory && (
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Drinks categories are always taxed at 19%.
               </p>
             )}
@@ -357,7 +357,7 @@ export function ProductEditDialog({
                       "rounded-full border px-3 py-1 text-xs transition",
                       active
                         ? "border-orange-300 bg-orange-50 text-orange-800"
-                        : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+                        : "border-border bg-card text-muted-foreground hover:border-border"
                     )}
                   >
                     <span aria-hidden>{allergen.emoji}</span> {allergen.label}
@@ -452,7 +452,7 @@ export function ProductThumbnail({
   }
 
   return (
-    <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-xs font-medium text-neutral-400">
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted/50 text-xs font-medium text-muted-foreground/70">
       {name.charAt(0).toUpperCase()}
     </div>
   );

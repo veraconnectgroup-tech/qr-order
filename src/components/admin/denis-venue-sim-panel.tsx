@@ -57,18 +57,18 @@ export function DenisVenueSimPanel({
         <FlaskConical className="mt-0.5 size-5 text-blue-600" />
         <div>
           <h2 className="text-lg font-semibold">Venue Sim</h2>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Counterfactual kernel replay on a recorded timeline — compare upsell,
             conflict, and flow deltas before changing live config (M20).
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:grid-cols-2">
+      <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
         <label className="block text-sm">
-          <span className="font-medium text-neutral-700">AI session</span>
+          <span className="font-medium text-foreground/90">AI session</span>
           <select
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            className="mt-1 w-full rounded-md border border-border px-3 py-2"
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
           >
@@ -104,14 +104,14 @@ export function DenisVenueSimPanel({
         </label>
 
         <label className="block text-sm">
-          <span className="font-medium text-neutral-700">
+          <span className="font-medium text-foreground/90">
             upsell.maxUpsellsPerSession
           </span>
           <input
             type="number"
             min={0}
             max={10}
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            className="mt-1 w-full rounded-md border border-border px-3 py-2"
             value={maxUpsells}
             onChange={(e) => setMaxUpsells(Number(e.target.value))}
           />
@@ -145,14 +145,14 @@ export function DenisVenueSimPanel({
             />
           </div>
 
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             Baseline: {report.baselineLabel} · Counterfactual:{" "}
             {report.counterfactualLabel}
           </p>
 
-          <div className="overflow-hidden rounded-lg border border-neutral-200">
+          <div className="overflow-hidden rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
+              <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Guest</th>
                   <th className="px-3 py-2">Baseline goal</th>
@@ -167,7 +167,7 @@ export function DenisVenueSimPanel({
                     className={
                       turn.plannerChanged
                         ? "border-t border-amber-100 bg-amber-50/50"
-                        : "border-t border-neutral-100"
+                        : "border-t border-border"
                     }
                   >
                     <td className="max-w-[12rem] truncate px-3 py-2">
@@ -206,17 +206,17 @@ function MetricCard({
   delta: number;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50/80 p-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <div className="rounded-lg border border-border bg-muted/30/80 p-3">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title}
       </div>
-      <div className="mt-1 text-lg font-semibold text-neutral-900">
+      <div className="mt-1 text-lg font-semibold text-foreground">
         {baseline} → {counterfactual}
       </div>
       <div
         className={
           delta === 0
-            ? "text-xs text-neutral-500"
+            ? "text-xs text-muted-foreground"
             : delta > 0
               ? "text-xs text-amber-700"
               : "text-xs text-emerald-700"

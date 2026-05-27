@@ -29,17 +29,17 @@ export function AuditLogFilters() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-4 rounded-lg border border-neutral-200 bg-white p-4"
+      className="flex flex-wrap items-end gap-4 rounded-lg border border-border bg-card p-4"
     >
       <div>
-        <Label htmlFor="audit-action" className="text-xs text-neutral-500">
+        <Label htmlFor="audit-action" className="text-xs text-muted-foreground">
           Action
         </Label>
         <select
           id="audit-action"
           name="action"
           defaultValue={searchParams.get("action") ?? ""}
-          className="mt-1 block h-9 rounded-md border border-neutral-200 bg-white px-3 text-sm"
+          className="mt-1 block h-9 rounded-md border border-border bg-card px-3 text-sm"
         >
           <option value="">All actions</option>
           {AUDIT_ACTIONS.map((action) => (
@@ -50,7 +50,7 @@ export function AuditLogFilters() {
         </select>
       </div>
       <div>
-        <Label htmlFor="audit-from" className="text-xs text-neutral-500">
+        <Label htmlFor="audit-from" className="text-xs text-muted-foreground">
           From
         </Label>
         <Input
@@ -62,7 +62,7 @@ export function AuditLogFilters() {
         />
       </div>
       <div>
-        <Label htmlFor="audit-to" className="text-xs text-neutral-500">
+        <Label htmlFor="audit-to" className="text-xs text-muted-foreground">
           To
         </Label>
         <Input

@@ -34,7 +34,7 @@ export function LandingHero() {
                 <Button
                   size="lg"
                   asChild
-                  className="h-11 rounded-md bg-[var(--qr-ember)] px-8 text-sm font-medium text-white hover:bg-[var(--qr-ember-hover)]"
+                  className="h-12 rounded-md bg-[var(--qr-ember)] px-8 text-sm font-medium text-white hover:bg-[var(--qr-ember-hover)]"
                 >
                   <Link href="/signup">Get started</Link>
                 </Button>

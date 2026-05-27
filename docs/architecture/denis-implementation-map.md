@@ -227,7 +227,7 @@ Honest delta after M10 — do not assume these exist:
 | **M26** | ✅ | CI Denis gates + eval run detail UI |
 | **M27** | ✅ | Canary cohort % (`rollout.canaryPercent`) |
 
-**Next recommended:** production cutover per venue (`shadow` → `canary` → `denis_only`); push migrations `00089`–`00093`; GitHub `SUPABASE_*` secrets for eval history on main.
+**Next recommended:** push migrations `00094`–`00096`; enable QStash for org_ai_ops refresh; cutover per venue (`shadow` → `canary` → `denis_only`) in Admin Settings.
 
 ---
 
@@ -252,6 +252,22 @@ Honest delta after M10 — do not assume these exist:
 | `simulation` | — | eval only | yes |
 
 Override: env `DENIS_ROLLOUT_MODE`.
+
+---
+
+## 11. Commercial spine (ADR-009 F1–F5)
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| **F1** | All chat APIs → `runDenisTurn`; `executeChatTurn` adapter only | ✅ |
+| **F2** | `finalize_denis_turn_metering` RPC (debit + timeline + session) | ✅ migration `00094` |
+| **F3** | `src/lib/denis/commercial/` metering module | ✅ |
+| **F4** | Outbox `billing.low_balance` + push handler | ✅ |
+| **F5** | `org_ai_ops` projection + `refresh_org_ai_ops` | ✅ migration `00095` |
+| **F6** | `denis_only` cutover; retire dual-write | ✅ removed `record-chat-turn-timeline`; metering only via commercial |
+| **F7** | Stripe `applyCreditPurchase` + admin + landing copy | ✅ migration `00096`, pricing FAQ, `LandingDenisCreditsNote` |
+
+**Verify F1:** `grep -rn executeChatTurn src/` → only `run-denis-turn.ts` + legacy file.
 
 ---
 

@@ -28,11 +28,11 @@ function RevenueTooltip({
   if (!active || !payload?.length) return null;
   return (
     <div
-      className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm"
+      className="rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-sm"
       style={tooltipStyle}
     >
-      <p className="font-medium text-neutral-900">{label}</p>
-      <p className="mt-0.5 text-neutral-600">
+      <p className="font-medium text-foreground">{label}</p>
+      <p className="mt-0.5 text-muted-foreground">
         {formatPrice(Number(payload[0]?.value ?? 0), currency)}
       </p>
     </div>
@@ -55,7 +55,7 @@ export function RevenueChart({
       className={cn("h-full", className)}
     >
       {data.every((p) => p.revenue === 0) ? (
-        <p className="py-16 text-center text-sm text-neutral-500">
+        <p className="py-16 text-center text-sm text-muted-foreground">
           No paid revenue in this period
         </p>
       ) : (

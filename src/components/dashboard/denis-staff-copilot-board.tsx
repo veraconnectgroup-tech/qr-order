@@ -6,15 +6,14 @@ import {
   Bot,
   Clock,
   RefreshCw,
-  Sparkles,
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useDenisStaffCopilot } from "@/hooks/use-denis-staff-copilot";
+import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import {
-  floorHintLabel,
-  type StaffCopilotTableRow,
-} from "@/lib/denis/venue/copilot";
+  StaffCopilotTableList,
+} from "@/components/dashboard/denis-staff-copilot-parts";
+import { useDenisStaffCopilot } from "@/hooks/use-denis-staff-copilot";
 import {
   setDenisKdsStress,
   setDenisOperatingMode,
@@ -30,61 +29,6 @@ const MODE_OPTIONS: Array<{ value: VenueOperatingMode; label: string }> = [
   { value: "rush", label: "Rush" },
   { value: "kitchen_closed", label: "Kitchen closed" },
 ];
-
-function HintBadge({ hint }: { hint: StaffCopilotTableRow["operatingHint"] }) {
-  const label = floorHintLabel(hint);
-  if (!label) return null;
-
-  const styles =
-    hint === "needs_attention"
-      ? "bg-red-500/15 text-red-300 border-red-500/30"
-      : hint === "ready_for_dessert"
-        ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
-        : "bg-dash-surface-raised text-dash-text-muted border-dash-border";
-
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
-        styles
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function TableCopilotRow({ table }: { table: StaffCopilotTableRow }) {
-  return (
-    <div className="rounded-lg border border-dash-border bg-dash-bg/60 px-3 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-dash-text">{table.tableName}</p>
-          <p className="mt-0.5 text-xs text-dash-text-muted">
-            {table.hasActiveSession
-              ? table.seatedMinutes != null
-                ? `Seated ${table.seatedMinutes} min`
-                : "Active session"
-              : "No session"}
-            {table.openOrderCount > 0
-              ? ` · ${table.openOrderCount} open order${table.openOrderCount === 1 ? "" : "s"}`
-              : ""}
-          </p>
-        </div>
-        <HintBadge hint={table.operatingHint} />
-      </div>
-      {table.staffHint ? (
-        <p className="mt-2 text-sm text-dash-text-secondary">
-          <span className="font-medium text-dash-accent">Hint:</span>{" "}
-          {table.staffHint.text}
-          <span className="ms-2 text-[11px] text-dash-text-disabled">
-            ({table.staffHint.visibility === "guest_safe" ? "guest-safe" : "Denis only"})
-          </span>
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 export function DenisStaffCopilotBoard() {
   const { data, loading, error, refresh } = useDenisStaffCopilot();
@@ -182,7 +126,7 @@ export function DenisStaffCopilotBoard() {
             Venue OS
           </p>
           <h2 className="mt-1 flex items-center gap-2 text-xl font-bold text-dash-text sm:text-2xl">
-            <Sparkles className="size-5 text-dash-accent" />
+            <DenisTableMark size={24} state="idle" />
             Denis
           </h2>
           <p className="mt-1 text-sm text-dash-text-muted">
@@ -310,17 +254,10 @@ export function DenisStaffCopilotBoard() {
             Priority tables
           </h3>
         </div>
-        {data.priorityTables.length === 0 ? (
-          <p className="text-sm text-dash-text-muted">
-            No tables need attention right now.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {data.priorityTables.map((table) => (
-              <TableCopilotRow key={table.tableId} table={table} />
-            ))}
-          </div>
-        )}
+        <StaffCopilotTableList
+          tables={data.priorityTables}
+          emptyMessage="No tables need attention right now."
+        />
       </section>
 
       {data.canSetTableHints ? (

@@ -34,7 +34,7 @@ export function OrderSourceChart({
       className={cn("h-full", className)}
     >
       {data.length === 0 ? (
-        <p className="py-12 text-center text-sm text-neutral-500">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           No orders in this period
         </p>
       ) : (
@@ -82,19 +82,19 @@ export function OrderSourceChart({
                     className="size-2.5 rounded-full"
                     style={{ backgroundColor: ORDER_SOURCE_COLORS[source.key] }}
                   />
-                  <span className="text-neutral-700">{source.name}</span>
+                  <span className="text-foreground/90">{source.name}</span>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium tabular-nums text-neutral-900">
+                  <p className="font-medium tabular-nums text-foreground">
                     {source.count}
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-muted-foreground">
                     {source.percent.toFixed(1)}%
                   </p>
                 </div>
               </li>
             ))}
-            <li className="border-t border-neutral-100 pt-2 text-xs text-neutral-500">
+            <li className="border-t border-border pt-2 text-xs text-muted-foreground">
               {total} orders total
             </li>
           </ul>

@@ -1146,7 +1146,7 @@ export function AiConciergeChat({
                 type="submit"
                 disabled={!canSend}
                 aria-label={tUI("ai.chat.send")}
-                className="flex size-10 shrink-0 items-center justify-center text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)] disabled:opacity-30"
+                className="flex size-12 shrink-0 items-center justify-center rounded-full text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--qr-ember)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--qr-void)] disabled:opacity-30"
               >
                 <Send className="size-4" strokeWidth={1.5} />
               </button>

@@ -126,7 +126,7 @@ export function AnalyticsDateRangePicker() {
                 variant="outline"
                 className="min-w-[140px] justify-start gap-2 font-normal"
               >
-                <CalendarIcon className="size-4 text-neutral-500" />
+                <CalendarIcon className="size-4 text-muted-foreground" />
                 {customFrom ? format(customFrom, "dd MMM yyyy") : "From"}
               </Button>
             </PopoverTrigger>
@@ -144,7 +144,7 @@ export function AnalyticsDateRangePicker() {
             </PopoverContent>
           </Popover>
 
-          <span className="text-sm text-neutral-400">–</span>
+          <span className="text-sm text-muted-foreground/70">–</span>
 
           <Popover open={toOpen} onOpenChange={setToOpen}>
             <PopoverTrigger asChild>
@@ -153,7 +153,7 @@ export function AnalyticsDateRangePicker() {
                 variant="outline"
                 className="min-w-[140px] justify-start gap-2 font-normal"
               >
-                <CalendarIcon className="size-4 text-neutral-500" />
+                <CalendarIcon className="size-4 text-muted-foreground" />
                 {customTo ? format(customTo, "dd MMM yyyy") : "To"}
               </Button>
             </PopoverTrigger>
@@ -185,7 +185,7 @@ export function AnalyticsDateRangePicker() {
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           {formatAnalyticsRangeLabel(range)}
         </p>
       )}

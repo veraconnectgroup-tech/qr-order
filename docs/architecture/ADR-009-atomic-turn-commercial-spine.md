@@ -78,8 +78,8 @@ flowchart LR
 | **F3** | `commercial/` module | metering + billing event types; runtime imports commercial |
 | **F4** | Outbox handlers | `billing.low_balance` (+ optional staff hint) |
 | **F5** | Read model | `org_ai_ops` table + refresh RPC |
-| **F6** | Cutover | `denis_only` rollout; retire dual-write paths |
-| **F7** | Web/docs | Admin + landing copy aligned with credit model |
+| **F6** | Cutover | `denis_only` rollout; retire dual-write paths | ✅ |
+| **F7** | Web/docs | Admin + landing copy aligned with credit model | ✅ |
 
 Each track = **one PR**, standalone, passes `pnpm verify:denis`, `pnpm eval:denis`, `pnpm type-check`.
 
@@ -110,7 +110,7 @@ Single transaction:
 |------------|------|
 | `billing.turn_debited` | After successful turn finalize (F2 RPC) |
 | `billing.low_balance` | Enqueued via outbox when balance ≤ threshold (F4) |
-| `billing.credits_purchased` | Future — Stripe webhook wrapper (F3+ / F7) |
+| `billing.credits_purchased` | Stripe checkout via `applyCreditPurchase` (F7) |
 
 Payload shape (turn debited):
 

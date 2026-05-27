@@ -142,11 +142,11 @@ export function AiPlaybookPanel({
         )}
       </div>
 
-      <div className="border-t border-neutral-100 pt-6">
-        <h3 className="text-sm font-semibold text-neutral-900">
+      <div className="border-t border-border pt-6">
+        <h3 className="text-sm font-semibold text-foreground">
           Primeri razgovora
         </h3>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Pitanje gosta → kako Denis treba da odgovori. Max 20 aktivnih primera.
         </p>
 
@@ -168,17 +168,17 @@ export function AiPlaybookPanel({
             {examples.map((example) => (
               <li
                 key={example.id}
-                className="rounded-lg border border-neutral-200 p-3 text-sm"
+                className="rounded-lg border border-border p-3 text-sm"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
+                  <span className="rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                     {CATEGORY_LABELS[example.category]}
                   </span>
                   {canEdit && (
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        className="text-xs text-neutral-500 hover:text-neutral-800"
+                        className="text-xs text-muted-foreground hover:text-foreground"
                         onClick={() =>
                           void handleToggle(example.id, !example.is_active)
                         }
@@ -195,13 +195,13 @@ export function AiPlaybookPanel({
                     </div>
                   )}
                 </div>
-                <p className="mt-2 text-neutral-500">
+                <p className="mt-2 text-muted-foreground">
                   Gost:{" "}
-                  <span className="text-neutral-800">{example.user_message}</span>
+                  <span className="text-foreground">{example.user_message}</span>
                 </p>
-                <p className="mt-1 text-neutral-500">
+                <p className="mt-1 text-muted-foreground">
                   Denis:{" "}
-                  <span className="text-neutral-800">
+                  <span className="text-foreground">
                     {example.assistant_message}
                   </span>
                 </p>
@@ -220,7 +220,7 @@ export function AiPlaybookPanel({
                 onChange={(e) =>
                   setCategory(e.target.value as AiExampleCategory)
                 }
-                className="mt-1 w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm"
               >
                 {(Object.keys(CATEGORY_LABELS) as AiExampleCategory[]).map(
                   (key) => (

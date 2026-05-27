@@ -319,7 +319,7 @@
     padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
   }
   .touch-target {
-    @apply min-h-11 min-w-11 touch-manipulation;
+    @apply min-h-12 min-w-12 touch-manipulation;
   }
   .text-display {
     @apply text-2xl font-bold leading-[1.1] tracking-tight sm:text-[28px];
@@ -1047,6 +1047,12 @@
   .denis-presence-line--think {
     animation: none !important;
     transition: none !important;
+  }
+
+  .dashboard-theme .animate-pulse,
+  .guest-theme .animate-pulse,
+  .admin-theme .animate-pulse {
+    animation: none !important;
   }
 }
 

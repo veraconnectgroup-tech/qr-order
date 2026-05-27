@@ -66,7 +66,7 @@ function SortableRuleRow({
       <td className="px-2 py-3">
         <button
           type="button"
-          className="cursor-grab touch-none text-neutral-400 hover:text-neutral-600"
+          className="cursor-grab touch-none text-muted-foreground/70 hover:text-muted-foreground"
           aria-label="Reorder"
           {...attributes}
           {...listeners}
@@ -74,13 +74,13 @@ function SortableRuleRow({
           <GripVertical className="size-4" />
         </button>
       </td>
-      <td className="px-4 py-3 text-neutral-700">{triggerLabel}</td>
+      <td className="px-4 py-3 text-foreground/90">{triggerLabel}</td>
       <td className="px-4 py-3 font-medium">{suggestLabel}</td>
-      <td className="max-w-xs truncate px-4 py-3 text-neutral-500">
+      <td className="max-w-xs truncate px-4 py-3 text-muted-foreground">
         {rule.message ?? "—"}
       </td>
       <td className="px-4 py-3">
-        <span className={rule.is_active ? "text-green-600" : "text-neutral-400"}>
+        <span className={rule.is_active ? "text-green-600" : "text-muted-foreground/70"}>
           {rule.is_active ? "Active" : "Inactive"}
         </span>
       </td>
@@ -131,7 +131,7 @@ function UpsellForm({
           id="trigger_type"
           name="trigger_type"
           defaultValue={defaultTriggerType}
-          className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+          className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         >
           <option value="product">Product in cart</option>
           <option value="category">Category in cart</option>
@@ -143,7 +143,7 @@ function UpsellForm({
           id="trigger_product_id"
           name="trigger_product_id"
           defaultValue={rule?.trigger_product_id ?? ""}
-          className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+          className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         >
           <option value="">—</option>
           {products.map((p) => (
@@ -159,7 +159,7 @@ function UpsellForm({
           id="trigger_category_id"
           name="trigger_category_id"
           defaultValue={rule?.trigger_category_id ?? ""}
-          className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+          className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         >
           <option value="">—</option>
           {categories.map((c) => (
@@ -176,7 +176,7 @@ function UpsellForm({
           name="suggest_product_id"
           required
           defaultValue={rule?.suggest_product_id ?? ""}
-          className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+          className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         >
           <option value="" disabled>
             Select product
@@ -204,7 +204,7 @@ function UpsellForm({
           name="is_active"
           type="checkbox"
           defaultChecked={rule?.is_active ?? true}
-          className="size-4 rounded border-neutral-300"
+          className="size-4 rounded border-border"
         />
         <Label htmlFor="is_active">Active</Label>
       </div>
@@ -301,8 +301,8 @@ export function UpsellManager({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Upsell rules</h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <h1 className="text-2xl font-bold text-foreground">Upsell rules</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Cart and checkout recommendations based on cart contents
           </p>
         </div>
@@ -329,18 +329,18 @@ export function UpsellManager({
       </div>
 
       {!rules.length ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">No upsell rules yet.</p>
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">No upsell rules yet.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
             <table className="w-full text-sm">
-              <thead className="border-b bg-neutral-50 text-left">
+              <thead className="border-b bg-muted/30 text-left">
                 <tr>
                   <th className="w-10 px-2 py-3" />
                   <th className="px-4 py-3 font-medium">Trigger</th>

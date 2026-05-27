@@ -8,7 +8,7 @@ export default async function AdminPosIntegrationsPage() {
   if (!locationId) {
     return (
       <div className="p-6">
-        <p className="text-neutral-600">Standort nicht gefunden.</p>
+        <p className="text-muted-foreground">Standort nicht gefunden.</p>
       </div>
     );
   }

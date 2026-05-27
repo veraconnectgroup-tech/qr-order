@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/product-showcases";
 import { LandingFaq } from "@/components/landing/landing-faq";
+import { LandingDenisCreditsNote } from "@/components/landing/landing-denis-credits-note";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingNav } from "@/components/landing/landing-nav";
@@ -64,6 +65,7 @@ const plans: Array<{
       "Bar, counter & table checkout",
       "Analytics & CSV export",
       "Staff accounts & roles",
+      "Denis AI credits (optional, pay as you go)",
     ],
     cta: "Start free",
     href: "/signup",
@@ -166,7 +168,7 @@ export function LandingPage() {
                     <Button
                       asChild
                       className={cn(
-                        "mt-8 h-11 w-full rounded-full text-sm font-semibold",
+                        "mt-8 h-12 w-full rounded-full text-sm font-semibold",
                         plan.primary
                           ? "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
                           : "border border-white/[0.12] bg-transparent text-zinc-200 hover:bg-white/[0.04] hover:text-white"
@@ -179,6 +181,8 @@ export function LandingPage() {
                 </AnimateInView>
               ))}
             </div>
+
+            <LandingDenisCreditsNote />
           </LandingContainer>
         </section>
 

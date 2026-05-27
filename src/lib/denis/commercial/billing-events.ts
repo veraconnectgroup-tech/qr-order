@@ -1,5 +1,7 @@
 /** Billing timeline + outbox payloads (ADR-009 §5). */
 
+export { DENIS_AI_LOW_BALANCE_THRESHOLD as AI_LOW_BALANCE_THRESHOLD } from "@/lib/constants";
+
 export type BillingTurnDebitedPayload = {
   type: "billing.turn_debited";
   amount: number;
@@ -28,6 +30,3 @@ export const BILLING_EVENT_TYPES = {
   lowBalance: "billing.low_balance",
   creditsPurchased: "billing.credits_purchased",
 } as const;
-
-/** Balance at or below this triggers outbox `billing.low_balance` (F4). */
-export const AI_LOW_BALANCE_THRESHOLD = 10;

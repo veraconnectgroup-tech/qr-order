@@ -69,6 +69,7 @@ export function LandingFeatures() {
         lead="Denis assists guests and staff quietly — recommendations, ordering, and German fiscal compliance in one system."
         bullets={[
           "Structured concierge panel — not iMessage bubbles",
+          "Pay-as-you-go AI credits — 1 credit per assisted message",
           "KassenSichV, TSE, DATEV export included",
           "Allergen-aware recommendations at the table",
         ]}

@@ -632,15 +632,15 @@ Vidi [qr-card-print-spec.md](./qr-card-print-spec.md). Vizuel:
 | FloorTile | `floor-tile.tsx` | ✅ postoji |
 | DenisChip | `denis-chip.tsx` | ✅ postoji |
 | DenisBrandMark / TableMark | `denis-*.tsx` | ✅ postoji |
-| DenisPanel | **novo** `denis-panel.tsx` | ❌ DE-03 |
-| DenisMessageBlock | **novo** `denis-message-block.tsx` | ❌ DE-03 |
-| ProductRecommendCard | izdvojiti iz menu + Denis | ❌ DE-04 |
-| QrKpi | **novo** `qr-kpi.tsx` | ❌ DE-05 |
+| DenisPanel | `denis-panel.tsx` | ✅ DE-03 |
+| DenisMessageBlock | `denis-message-block.tsx` | ✅ DE-03 |
+| ProductRecommendCard | `guest-product-row.tsx` + wrappers | ✅ DE-04 |
+| QrKpi | `qr-kpi.tsx` | ✅ DE-05 |
 | QrButton | extend `ui/button` variant ember | ⚠️ delimično |
 | AdminPanel | `admin/admin-panel.tsx` | ✅ postoji |
 | ShowcaseWindow | `landing/showcase-frame.tsx` | ✅ postoji |
-| FeatureRow | **novo** `landing/feature-row.tsx` | ❌ DE-01 |
-| AuthShell | **novo** ili proširiti postojeći | ⚠️ DE-02 |
+| FeatureRow | `landing/feature-row.tsx` | ✅ DE-01 |
+| AuthShell | `auth/auth-shell.tsx` split + showcase | ✅ DE-02 |
 
 ---
 
@@ -650,16 +650,16 @@ Jedan PR po track-u. Redosled:
 
 | Track | Naziv | Deliverable | Zavisi |
 |-------|-------|-------------|--------|
-| **DE-01** | Landing enterprise | Hero + Trust + 4× FeatureRow + Pricing + FAQ; ukloniti FloorTile hero | ShowcaseWindow ✅ |
-| **DE-02** | Auth shell | Split + AuthCard dark | DE-01 tokens |
+| **DE-01** | Landing enterprise | Hero + Trust + 4× FeatureRow + Pricing + FAQ; ukloniti FloorTile hero | ✅ |
+| **DE-02** | Auth shell | Split + AuthCard dark | ✅ |
 | **DE-03** | Denis panel gramat | DenisPanel + DenisMessageBlock; refactor `ai-concierge-chat.tsx` | — |
-| **DE-04** | Guest menu unifikacija | MenuItemCard = ProductRecommendCard | DE-03 |
-| **DE-05** | Overview cockpit v2 | QrKpi strip + floor snapshot + collapsed Denis strip | FloorTile ✅ |
-| **DE-06** | Admin full dark | Sve admin stranice → AdminPanel + QrCard | AdminPanel ✅ |
-| **DE-07** | Dashboard Denis drawer | Staff copilot isti block gramat | DE-03 |
-| **DE-08** | Landing Denis showcase | `ai-concierge-showcase.tsx` → panel ne bubbles | DE-03 |
-| **DE-09** | Design doc sync | ADR-007 appendix + platform gallery | DE-01…DE-06 |
-| **DE-10** | Motion + a11y pass | reduced-motion, focus ring, 48px audit | svi |
+| **DE-04** | Guest menu unifikacija | `GuestProductRow` — menu + Denis + landing | ✅ |
+| **DE-05** | Overview cockpit v2 | QrKpi strip + floor snapshot + collapsed Denis strip | ✅ |
+| **DE-06** | Admin full dark | Sve admin stranice → AdminPanel + QrCard | ✅ |
+| **DE-07** | Dashboard Denis drawer | Staff copilot `DenisPanel` drawer + block gramat | ✅ DE-03 |
+| **DE-08** | Landing Denis showcase | `ai-concierge-showcase.tsx` → DenisPanel gramat | ✅ DE-03 |
+| **DE-09** | Design doc sync | ADR-007 appendix + platform gallery | ✅ |
+| **DE-10** | Motion + a11y pass | reduced-motion, focus ring, 48px audit | ✅ |
 
 **Procena:** ~12–15 dev-dana solo, paralelizacija DE-01 + DE-03.
 
