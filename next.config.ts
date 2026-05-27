@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import path from "path";
+import { fileURLToPath } from "url";
 import { withSentryConfig } from "@sentry/nextjs";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const withPWA = require("next-pwa")({
@@ -67,7 +69,12 @@ const withPWA = require("next-pwa")({
   ],
 });
 
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: projectRoot,
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
   },

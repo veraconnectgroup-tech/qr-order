@@ -23,9 +23,16 @@ export function useContainerScale(
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [ready, setReady] = useState(false);
   const maxScale = options?.maxScale ?? Infinity;
 
   useEffect(() => {
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+
     const el = containerRef.current;
     if (!el) return;
 
@@ -43,7 +50,7 @@ export function useContainerScale(
       scaleListeners.delete(el);
       scaleObserver?.unobserve(el);
     };
-  }, [designWidth, maxScale]);
+  }, [designWidth, maxScale, ready]);
 
-  return { containerRef, scale };
+  return { containerRef, scale: ready ? scale : 1, ready };
 }
