@@ -26,6 +26,13 @@ import {
 } from "@/lib/denis/runtime/evaluate-proactive-tick";
 import { resolveTurnQuickReplies } from "@/lib/denis/runtime/narrate/build-turn-quick-replies";
 import { buildNarrationFacts } from "@/lib/denis/runtime/narrate/build-narration-facts";
+import {
+  loadTableParty,
+  mergePeerManualDraft,
+  registerPartyDevice,
+  resolveActiveTableSessionId,
+  resolveDraftAiSessionId,
+} from "@/lib/denis/venue/party";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -37,6 +44,10 @@ export type DenisSenseResult = {
   ingested: boolean;
   proactiveNudge?: GuestProactiveNudge | null;
   quickReplies?: string[];
+  partyMode?: string;
+  partyDeviceCount?: number;
+  isPrimaryDevice?: boolean;
+  sharedAiSessionId?: string | null;
 };
 
 /** Ingest sensory event without chat — timeline + optional schedules (M8). */
@@ -57,16 +68,64 @@ export async function runDenisSense(
     return apiError(guestContext.error, guestContext.status);
   }
 
-  let aiSessionId = input.aiSessionId ?? null;
+  const aiSessionId = input.aiSessionId ?? null;
+  const config = await loadConciergeConfigForLocation(input.locationId);
+  let draftAiSessionId = aiSessionId;
   let aiCartState = emptyCartState();
   let schedulesUpserted = 0;
   let conflictPrompt: string | null = null;
+  let proactiveNudge: GuestProactiveNudge | null = null;
+  let quickReplies: string[] | undefined;
+  let partyDeviceCount = 0;
+  let isPrimaryDevice = false;
+  let sharedAiSessionId: string | null = null;
+  let peerManualCartDraft = undefined;
 
-  if (aiSessionId) {
+  const tableSessionId = await resolveActiveTableSessionId(admin, {
+    tableId: input.tableId,
+    locationId: input.locationId,
+    sessionToken: input.sessionToken,
+  });
+
+  if (tableSessionId && input.deviceFingerprint) {
+    await registerPartyDevice(admin, {
+      tableSessionId,
+      locationId: input.locationId,
+      tableId: input.tableId,
+      deviceFingerprint: input.deviceFingerprint,
+      aiSessionId,
+      manualCartSnapshot: input.manualCartSnapshot ?? null,
+      manualCartRevision: input.manualCartSnapshot?.revision ?? 0,
+    });
+
+    const party = await loadTableParty(admin, {
+      tableSessionId,
+      partyMode: config.party.mode,
+      deviceFingerprint: input.deviceFingerprint,
+    });
+
+    if (party) {
+      partyDeviceCount = party.activeDeviceCount;
+      isPrimaryDevice = party.isCurrentDevicePrimary;
+      sharedAiSessionId = party.sharedAiSessionId;
+      peerManualCartDraft = mergePeerManualDraft(
+        party.devices,
+        input.deviceFingerprint
+      );
+      draftAiSessionId =
+        resolveDraftAiSessionId(
+          config.party.mode,
+          aiSessionId ?? undefined,
+          party.sharedAiSessionId
+        ) ?? aiSessionId;
+    }
+  }
+
+  if (draftAiSessionId) {
     const { data: sessionRow } = await admin
       .from("ai_sessions")
       .select("id, order_draft, location_id, table_id")
-      .eq("id", aiSessionId)
+      .eq("id", draftAiSessionId)
       .maybeSingle();
 
     const row = sessionRow as {
@@ -81,12 +140,14 @@ export async function runDenisSense(
       row.location_id !== input.locationId ||
       row.table_id !== input.tableId
     ) {
-      return apiError("Session not found.", 404);
+      if (aiSessionId === draftAiSessionId) {
+        return apiError("Session not found.", 404);
+      }
+    } else {
+      aiCartState = aiOrderDraftToDenisCartState(
+        initDraftFromStorage(row.order_draft)
+      );
     }
-
-    aiCartState = aiOrderDraftToDenisCartState(
-      initDraftFromStorage(row.order_draft)
-    );
   }
 
   if (aiSessionId) {
@@ -119,10 +180,8 @@ export async function runDenisSense(
     });
   }
 
-  const config = await loadConciergeConfigForLocation(input.locationId);
-
   if (
-    aiSessionId &&
+    draftAiSessionId &&
     input.channel === "telemetry.manual_cart" &&
     input.manualCartSnapshot
   ) {
@@ -132,8 +191,28 @@ export async function runDenisSense(
       flowNodeId: "recap",
       cartState: aiCartState,
       manualCartDraft: manualSnapshotToDenisDraft(input.manualCartSnapshot),
+      peerManualCartDraft,
     });
     conflictPrompt = reflexTurn.conflict?.guestPrompt ?? null;
+    if (conflictPrompt) {
+      const facts = buildNarrationFacts({
+        config,
+        language: config.language.venueDefault,
+        reflexTurn,
+      });
+      quickReplies = resolveTurnQuickReplies({
+        reflexTurn,
+        facts,
+        narration: {
+          message: conflictPrompt,
+          tier: "template",
+          lintPassed: true,
+          issues: [],
+          usedFallback: true,
+        },
+        language: config.language.venueDefault,
+      });
+    }
 
     if (reflexTurn.conflict?.hasConflict) {
       await appendDenisTimelineEvent(admin, {
@@ -150,14 +229,18 @@ export async function runDenisSense(
     }
   }
 
+  const guestOrders = await loadGuestOrdersForAi(
+    admin,
+    input.tableId,
+    input.sessionToken
+  );
+
   if (
     aiSessionId &&
     (input.channel === "realtime.order_status" ||
       input.channel === "system.proactive_tick")
   ) {
-    const orders = mapGuestOrdersToSchedulerSnapshot(
-      await loadGuestOrdersForAi(admin, input.tableId, input.sessionToken)
-    );
+    const orders = mapGuestOrdersToSchedulerSnapshot(guestOrders);
     const drafts = buildScheduleDrafts({ orders, config });
     schedulesUpserted = await upsertDenisSchedules(
       admin,
@@ -167,11 +250,37 @@ export async function runDenisSense(
     );
   }
 
+  if (input.channel === "system.proactive_tick") {
+    const payload = (input.payload ?? {}) as ProactiveTickPayload & {
+      browseMessage?: string;
+      dessertMessage?: string;
+      slowKitchenMessage?: string;
+    };
+    proactiveNudge = evaluateGuestProactiveTick({
+      config,
+      orders: guestOrders,
+      payload,
+      messages: {
+        browse: payload.browseMessage ?? "Treba vam pomoć pri biranju?",
+        dessert: payload.dessertMessage ?? "Spremni za desert?",
+        slowKitchen:
+          payload.slowKitchenMessage ??
+          "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
+      },
+    });
+  }
+
   return apiSuccess({
     traceId,
     aiSessionId,
     schedulesUpserted,
     conflictPrompt,
     ingested: aiSessionId !== null,
+    proactiveNudge,
+    quickReplies,
+    partyMode: config.party.mode,
+    partyDeviceCount,
+    isPrimaryDevice,
+    sharedAiSessionId,
   } satisfies DenisSenseResult);
 }

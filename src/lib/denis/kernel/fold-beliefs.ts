@@ -94,7 +94,7 @@ function asRecord(payload: DenisTimelineRow["payload"]): Record<string, unknown>
 export function foldMinimalBeliefs(
   events: DenisTimelineRow[]
 ): DenisMinimalBeliefs {
-  let state = emptyMinimalBeliefs();
+  const state = emptyMinimalBeliefs();
 
   for (const event of events) {
     const payload = asRecord(event.payload);

@@ -28,6 +28,7 @@ export type ReflexTurnInput = {
   flowNodeId: FlowNodeId;
   cartState?: DenisCartState;
   manualCartDraft?: DenisCartDraft;
+  peerManualCartDraft?: DenisCartDraft;
   foodUpsellAsked?: boolean;
   cartConflict?: boolean;
   hasOpenOrders?: boolean;
@@ -62,6 +63,7 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
   const conflict = resolveCartConflict({
     ai: cartState.draft,
     manual: input.manualCartDraft ?? emptyCartDraft(),
+    peerManual: input.peerManualCartDraft,
     config: input.config,
   });
 

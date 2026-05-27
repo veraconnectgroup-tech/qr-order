@@ -37,6 +37,15 @@ type UseSmartNudgesOptions = {
   };
   formatPairingMessage: (rec: ProductRecommendation) => string;
   fetchPairingRecommendation: (prompt: string) => Promise<ProductRecommendation | null>;
+  /** When set, proactive triggers are evaluated server-side via Denis sense (M11). */
+  fetchServerProactive?: (ctx: {
+    dismissedKeys: string[];
+  }) => Promise<{
+    kind: SmartNudgeKind;
+    message: string;
+    orderId?: string;
+    prompt?: string;
+  } | null>;
 };
 
 const POLL_MS = 8_000;
@@ -53,6 +62,7 @@ export function useSmartNudges({
   messages,
   formatPairingMessage,
   fetchPairingRecommendation,
+  fetchServerProactive,
 }: UseSmartNudgesOptions) {
   const [activeNudge, setActiveNudge] = useState<SmartNudge | null>(null);
   const [tick, setTick] = useState(0);
@@ -83,6 +93,59 @@ export function useSmartNudges({
 
   useEffect(() => {
     if (!enabled || aiChatOpen || activeNudge) return;
+
+    if (fetchServerProactive) {
+      const dismissedKeys = [...dismissedRef.current];
+      void fetchServerProactive({ dismissedKeys }).then((nudge) => {
+        if (!nudge) return;
+        if (nudge.kind === "drink_pairing" && nudge.orderId) {
+          if (
+            isDismissed(`drink_pairing:${nudge.orderId}`) ||
+            isDismissed("drink_pairing") ||
+            pairingFetchedRef.current.has(nudge.orderId)
+          ) {
+            return;
+          }
+          if (!nudge.prompt) return;
+          pairingFetchedRef.current.add(nudge.orderId);
+          void fetchPairingRecommendation(nudge.prompt).then((rec) => {
+            if (
+              !rec ||
+              isDismissed(`drink_pairing:${nudge.orderId}`) ||
+              isDismissed("drink_pairing")
+            ) {
+              return;
+            }
+            setActiveNudge((current) => {
+              if (current) return current;
+              return {
+                kind: "drink_pairing",
+                message: formatPairingMessage(rec),
+                recommendation: rec,
+                orderId: nudge.orderId,
+              };
+            });
+          });
+          return;
+        }
+
+        const dismissKey =
+          nudge.kind === "slow_kitchen" && nudge.orderId
+            ? `slow_kitchen:${nudge.orderId}`
+            : nudge.kind;
+        if (isDismissed(dismissKey)) return;
+
+        setActiveNudge((current) => {
+          if (current) return current;
+          return {
+            kind: nudge.kind,
+            message: nudge.message,
+            orderId: nudge.orderId,
+          };
+        });
+      });
+      return;
+    }
 
     const hasOrdered = cartItemCount > 0 || hasSessionOrders;
 
@@ -158,6 +221,7 @@ export function useSmartNudges({
     messages,
     formatPairingMessage,
     fetchPairingRecommendation,
+    fetchServerProactive,
   ]);
 
   return { activeNudge, dismiss };

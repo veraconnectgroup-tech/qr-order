@@ -62,6 +62,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     flowNodeId: ctx.flowNodeId,
     cartState: ctx.aiCartState,
     manualCartDraft: ctx.manualCartDraft,
+    peerManualCartDraft: ctx.peerManualCartDraft,
     foodUpsellAsked: ctx.foodUpsellAsked,
   });
 
@@ -147,7 +148,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       message: guestMessage,
       recommendations: data.recommendations,
       cartActions: data.cartActions,
-      quickReplies: data.quickReplies,
+      quickReplies,
       intent: data.intent,
       submitOrder: data.submitOrder,
       creditsRemaining: data.creditsRemaining,
@@ -163,6 +164,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       lintPassed: narration.lintPassed,
       usedNarrationFallback: narration.usedFallback,
       rolloutMode: rollout.mode,
+      partyMode: ctx.config.party.mode,
+      partyDeviceCount: ctx.party?.activeDeviceCount ?? 0,
+      isPrimaryDevice: ctx.party?.isCurrentDevicePrimary ?? false,
+      sharedAiSessionId: ctx.party?.sharedAiSessionId ?? null,
     }
   );
 }

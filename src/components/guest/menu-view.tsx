@@ -52,10 +52,16 @@ import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
 import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
 import { useSmartNudges } from "@/hooks/use-smart-nudges";
+import { useDenisSense } from "@/hooks/use-denis-sense";
 import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { AiSmartNudgeBanner } from "@/components/guest/ai-smart-nudge-banner";
 import type { ProductWithModifiers } from "@/types";
+import {
+  buildManualCartSnapshot,
+  manualCartRevision,
+} from "@/lib/guest/manual-cart-snapshot";
+import { postDenisSense } from "@/lib/guest/denis-sense-client";
 
 const AiCartPairingBanner = dynamic(
   () =>
@@ -171,6 +177,7 @@ export function MenuView({
 
   const addItem = useCart((s) => s.addItem);
   const cartItems = useCart((s) => s.items);
+  const cartBump = useCart((s) => s.cartBump);
   const itemCount = useCart((s) => s.itemCount());
   const sessionToken = useGuestSession((s) => s.sessionToken);
 
@@ -414,6 +421,14 @@ export function MenuView({
 
   const hasSessionOrders = sessionOrders.length > 0;
 
+  useEffect(() => {
+    if (!aiConciergeEnabled || !sessionToken) return;
+    const stored = readAiSessionIdForGuest(locationId, token, [sessionToken]);
+    if (stored) setAiSessionId(stored);
+  }, [aiConciergeEnabled, sessionToken, locationId, token]);
+
+  const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
+
   const { getAiContext, browseMinutes } = useScrollIntelligence(menuCategories, {
     enabled: aiConciergeEnabled,
     containerRef: menuMainRef,
@@ -559,6 +574,69 @@ export function MenuView({
     [tUI, currency]
   );
 
+  const getManualCartSnapshot = useCallback(() => {
+    if (cartItems.length === 0) return undefined;
+    return buildManualCartSnapshot(
+      cartItems,
+      manualCartRevision(cartItems, cartBump)
+    );
+  }, [cartItems, cartBump]);
+
+  useDenisSense({
+    enabled: aiConciergeEnabled && canPlaceOrders && !!aiContextToken,
+    locationId,
+    tableId,
+    sessionToken: aiContextToken,
+    aiSessionId,
+    cartItems,
+    cartBump,
+  });
+
+  const fetchServerProactive = useCallback(
+    async ({ dismissedKeys }: { dismissedKeys: string[] }) => {
+      if (!aiContextToken || isDemoGuestRoute(slug, token)) return null;
+
+      const sessionId =
+        aiSessionId ??
+        readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
+        undefined;
+
+      const result = await postDenisSense({
+        locationId,
+        tableId,
+        sessionToken: aiContextToken,
+        aiSessionId: sessionId,
+        channel: "system.proactive_tick",
+        payload: {
+          browseMinutes,
+          cartItemCount: itemCount,
+          hasSessionOrders,
+          hasDrinkInCart,
+          dismissedNudgeKeys: dismissedKeys,
+          browseMessage: smartNudgeMessages.browse,
+          dessertMessage: smartNudgeMessages.dessert,
+          slowKitchenMessage: smartNudgeMessages.slowKitchen,
+        },
+      });
+
+      return result?.proactiveNudge ?? null;
+    },
+    [
+      aiContextToken,
+      slug,
+      token,
+      aiSessionId,
+      locationId,
+      tableId,
+      sessionToken,
+      browseMinutes,
+      itemCount,
+      hasSessionOrders,
+      hasDrinkInCart,
+      smartNudgeMessages,
+    ]
+  );
+
   const { activeNudge, dismiss: dismissNudge } = useSmartNudges({
     enabled: aiConciergeEnabled && canPlaceOrders,
     browseMinutes,
@@ -570,6 +648,7 @@ export function MenuView({
     messages: smartNudgeMessages,
     formatPairingMessage,
     fetchPairingRecommendation: fetchPairingForNudge,
+    fetchServerProactive,
   });
 
   const resetAiRecommendations = useCallback(() => {
@@ -1002,6 +1081,7 @@ export function MenuView({
               }}
               onRecommendations={handleAiChatSetupComplete}
               onSaveAllergies={saveGuestAllergies}
+              getManualCartSnapshot={getManualCartSnapshot}
             />
           )}
         </div>

@@ -15,6 +15,10 @@ export type DenisSenseResponse = {
   ingested: boolean;
   proactiveNudge?: DenisSenseProactiveNudge | null;
   quickReplies?: string[];
+  partyMode?: string;
+  partyDeviceCount?: number;
+  isPrimaryDevice?: boolean;
+  sharedAiSessionId?: string | null;
 };
 
 export type PostDenisSenseInput = {
@@ -22,6 +26,7 @@ export type PostDenisSenseInput = {
   tableId: string;
   sessionToken: string;
   aiSessionId?: string;
+  deviceFingerprint?: string;
   channel:
     | "telemetry.manual_cart"
     | "telemetry.scroll"

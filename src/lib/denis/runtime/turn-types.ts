@@ -1,11 +1,14 @@
 import { z } from "zod";
 import { aiChatRequestSchema } from "@/lib/ai/execute-chat-turn";
-import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
-import type { DenisCartState } from "@/lib/denis/kernel/cart-projection";
+import type {
+  DenisCartDraft,
+  DenisCartState,
+} from "@/lib/denis/kernel/cart-projection";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import { manualCartSnapshotSchema } from "@/lib/denis/platform/sense-types";
 import type { ManualCartSnapshot } from "@/lib/denis/runtime/adapters/map-legacy-draft";
+import type { TablePartyModel } from "@/lib/denis/venue/party/types";
 
 export type DenisChannel = "chat" | "proactive" | "status_poll";
 
@@ -13,6 +16,7 @@ export { manualCartSnapshotSchema };
 
 export const denisChatBodySchema = aiChatRequestSchema.extend({
   manualCartSnapshot: manualCartSnapshotSchema.optional(),
+  deviceFingerprint: z.string().trim().min(8).max(128).optional(),
 });
 
 export type DenisChatBody = z.infer<typeof denisChatBodySchema>;
@@ -25,10 +29,13 @@ export type DenisTurnRunInput = {
 export type DenisTurnContext = {
   locationId: string;
   aiSessionId?: string;
+  draftAiSessionId?: string;
   config: ConciergeConfig;
   flowNodeId: FlowNodeId;
   aiCartState: DenisCartState;
   manualCartDraft?: DenisCartDraft;
+  peerManualCartDraft?: DenisCartDraft;
+  party?: TablePartyModel | null;
   foodUpsellAsked: boolean;
 };
 
@@ -42,6 +49,10 @@ export type DenisTurnMeta = {
   lintPassed?: boolean;
   usedNarrationFallback?: boolean;
   rolloutMode?: string;
+  partyMode?: string;
+  partyDeviceCount?: number;
+  isPrimaryDevice?: boolean;
+  sharedAiSessionId?: string | null;
 };
 
 export type { ManualCartSnapshot };

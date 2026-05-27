@@ -116,6 +116,10 @@ const ConciergeRolloutSchema = z.object({
   mode: z.enum(["legacy", "shadow", "canary", "denis_only", "simulation"]),
 });
 
+const ConciergePartySchema = z.object({
+  mode: z.enum(["shared_cart", "per_device"]),
+});
+
 export const ConciergeConfigSchema = z.object({
   version: z.literal(1),
   enabled: z.boolean(),
@@ -131,6 +135,7 @@ export const ConciergeConfigSchema = z.object({
   experiments: ConciergeExperimentsSchema,
   credits: ConciergeCreditsSchema,
   rollout: ConciergeRolloutSchema,
+  party: ConciergePartySchema,
 });
 
 export type ConciergeConfig = z.infer<typeof ConciergeConfigSchema>;
@@ -147,6 +152,7 @@ export const PartialConciergeHandoffSchema = ConciergeHandoffSchema.partial();
 export const PartialConciergeExperimentsSchema = ConciergeExperimentsSchema.partial();
 export const PartialConciergeCreditsSchema = ConciergeCreditsSchema.partial();
 export const PartialConciergeRolloutSchema = ConciergeRolloutSchema.partial();
+export const PartialConciergePartySchema = ConciergePartySchema.partial();
 
 export const PartialConciergeConfigSchema = z.object({
   version: z.literal(1).optional(),
@@ -163,6 +169,7 @@ export const PartialConciergeConfigSchema = z.object({
   experiments: PartialConciergeExperimentsSchema.optional(),
   credits: PartialConciergeCreditsSchema.optional(),
   rollout: PartialConciergeRolloutSchema.optional(),
+  party: PartialConciergePartySchema.optional(),
 });
 
 export type PartialConciergeConfig = z.infer<typeof PartialConciergeConfigSchema>;

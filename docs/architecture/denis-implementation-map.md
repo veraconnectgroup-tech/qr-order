@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M10** (May 2026) — kernel spine complete, GA gate M11–M14 open |
+| **As-built through** | **M11** (May 2026) — UI-first chips + guest sense wired |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M10 ✅)
+## 3. As-built snapshot (M0–M11 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -78,6 +78,7 @@ sequenceDiagram
 | M8 | `kernel/scheduler/*`, `runtime/run-denis-sense.ts`, `process-scheduler-tick.ts` | migration `00088`; cron `GET /api/cron/denis-scheduler` |
 | M9 | `runtime/narrate/*` | facts + lint + template fallback; **no** `narrate-llm.ts` yet |
 | M10 | `eval/*`, `runtime/shadow-diff.ts`, `config/rollout.ts` | default rollout `shadow`; `pnpm eval:denis` |
+| M11 | `runtime/narrate/build-turn-quick-replies.ts`, `runtime/evaluate-proactive-tick.ts`, `lib/guest/manual-cart-snapshot.ts`, `hooks/use-denis-sense.ts` | T0 chips on templates; guest sends `manualCartSnapshot`; nudges via `/api/denis/sense` |
 
 ### 3.3 API routes (actual)
 
@@ -124,8 +125,8 @@ Honest delta after M10 — do not assume these exist:
 | `src/lib/denis/learning/` | ❌ README stub | M16+ |
 | `menu_knowledge_edges` / L3 learned VKG | ❌ | M20+ |
 | `denis_eval_runs` table | ❌ CI in-memory only | optional |
-| Guest UI `manualCartSnapshot` on sense | ❌ schema ready, client not sending | M11 |
-| `use-smart-nudges` → server proactive | ❌ | M11 / B1 |
+| Guest UI `manualCartSnapshot` on sense | ✅ | `menu-view` + `use-denis-sense` debounce |
+| `use-smart-nudges` → server proactive | ✅ | `system.proactive_tick` via `fetchServerProactive` |
 | Rollout `canary` / `denis_only` in production | ⚠️ config exists; ops must set explicitly | ops |
 | Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
 
@@ -180,10 +181,11 @@ Honest delta after M10 — do not assume these exist:
 | **M8** | ✅ | Scheduler + sense API |
 | **M9** | ✅ | Narration contract + lint |
 | **M10** | ✅ | Eval + shadow rollout |
-| **M11–M14** | ⬜ | UI-first, party, GA gate (ADR-005) |
+| **M11** | ✅ | UI-first chips + guest sense + server nudges |
+| **M12–M14** | ⬜ | Party, ops beliefs, GA gate (ADR-005) |
 | **M15–M20** | ⬜ | Venue OS, learning, voice (premium) |
 
-**Next recommended:** **M11** — UI-first chips / quick replies on all templates; wire guest sense for manual cart.
+**Next recommended:** **M12** — party model + shared cart.
 
 ---
 

@@ -29,6 +29,10 @@ export function formatChatTurnApiResponse(
       lintPassed: meta.lintPassed,
       usedNarrationFallback: meta.usedNarrationFallback,
       rolloutMode: meta.rolloutMode,
+      partyMode: meta.partyMode,
+      partyDeviceCount: meta.partyDeviceCount,
+      isPrimaryDevice: meta.isPrimaryDevice,
+      sharedAiSessionId: meta.sharedAiSessionId,
     },
   });
 }

@@ -86,6 +86,9 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
   rollout: {
     mode: "shadow",
   },
+  party: {
+    mode: "shared_cart",
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;

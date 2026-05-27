@@ -14,6 +14,7 @@ type UseDenisSenseOptions = {
   tableId: string;
   sessionToken: string | null;
   aiSessionId: string | null;
+  deviceFingerprint: string | null;
   cartItems: CartItem[];
   cartBump: number;
   manualCartEnabled?: boolean;
@@ -28,6 +29,7 @@ export function useDenisSense({
   tableId,
   sessionToken,
   aiSessionId,
+  deviceFingerprint,
   cartItems,
   cartBump,
   manualCartEnabled = true,
@@ -38,6 +40,7 @@ export function useDenisSense({
     if (!enabled || !sessionToken || !aiSessionId || !manualCartEnabled) {
       return;
     }
+    if (!deviceFingerprint) return;
 
     const revision = manualCartRevision(cartItems, cartBump);
     if (lastRevisionRef.current === revision) return;
@@ -49,6 +52,7 @@ export function useDenisSense({
         tableId,
         sessionToken,
         aiSessionId,
+        deviceFingerprint,
         channel: "telemetry.manual_cart",
         manualCartSnapshot: buildManualCartSnapshot(cartItems, revision),
       });

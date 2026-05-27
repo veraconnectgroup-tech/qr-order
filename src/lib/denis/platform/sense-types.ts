@@ -2,6 +2,8 @@ import { z } from "zod";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import type { PerceptionChannel } from "@/lib/denis/platform/timeline-types";
 
+export const deviceFingerprintSchema = z.string().trim().min(8).max(128);
+
 export const manualCartSnapshotSchema = z.object({
   revision: z.number().int().nonnegative(),
   updatedAt: z.string(),
@@ -36,6 +38,7 @@ export const denisSenseRequestSchema = z.object({
   channel: denisSenseChannelSchema,
   payload: z.record(z.string(), z.unknown()).optional().default({}),
   manualCartSnapshot: manualCartSnapshotSchema.optional(),
+  deviceFingerprint: deviceFingerprintSchema.optional(),
 });
 
 export type DenisSenseRequest = z.infer<typeof denisSenseRequestSchema>;

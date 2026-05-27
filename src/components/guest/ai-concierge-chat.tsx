@@ -419,6 +419,11 @@ export type AiConciergeChatProps = {
     allergies: string[],
     sheetIds: AiSheetAllergyId[]
   ) => void;
+  /** Manual guest cart snapshot for Denis conflict detection (M11). */
+  getManualCartSnapshot?: () =>
+    | import("@/lib/guest/manual-cart-snapshot").GuestManualCartSnapshot
+    | null
+    | undefined;
 };
 
 export function AiConciergeChat({
@@ -446,6 +451,7 @@ export function AiConciergeChat({
   welcomeBackMessage,
   knownAllergySelection,
   onSaveAllergies,
+  getManualCartSnapshot,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
@@ -611,6 +617,7 @@ export function AiConciergeChat({
             includeOrderContext: true,
             allowOrdering: !orderingDisabled,
             browsingContext: resolveScrollContext?.() ?? undefined,
+            manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
           }),
         });
       } catch (fetchError) {
@@ -670,6 +677,7 @@ export function AiConciergeChat({
       tUI,
       resolveScrollContext,
       orderingDisabled,
+      getManualCartSnapshot,
     ]
   );
 

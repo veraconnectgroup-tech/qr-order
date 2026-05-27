@@ -15,10 +15,13 @@ import type {
   ResolutionStrategy,
   UnifiedCartView,
 } from "@/lib/denis/kernel/conflict/types";
+import { combineManualDrafts } from "@/lib/denis/venue/party/merge-peer-manual";
+import { buildPeerAddedPrompt } from "@/lib/denis/venue/party/peer-prompts";
 
 export type ResolveCartConflictInput = {
   ai: DenisCartDraft;
   manual: DenisCartDraft;
+  peerManual?: DenisCartDraft;
   config: Pick<ConciergeConfig, "context">;
   strategyOverride?: ResolutionStrategy;
 };
@@ -109,12 +112,18 @@ export function resolveCartConflict(
   input: ResolveCartConflictInput
 ): ConflictResolution {
   const strategy = resolveStrategy(input.config, input.strategyOverride);
-  const conflicts = detectCartConflicts(input.ai, input.manual);
+  const peerManual = input.peerManual;
+  const effectiveManual =
+    peerManual?.items.length
+      ? combineManualDrafts(input.manual, peerManual)
+      : input.manual;
+
+  const conflicts = detectCartConflicts(input.ai, effectiveManual);
   const hasConflict = conflicts.length > 0;
 
   const unifiedView = buildUnifiedView(
     input.ai,
-    input.manual,
+    effectiveManual,
     strategy,
     conflicts
   );
@@ -127,6 +136,20 @@ export function resolveCartConflict(
       guestPrompt = buildConflictGuestPrompt(
         conflicts.filter((c) => c.kind === "ai_only" || c.kind === "duplicate_line")
       );
+    }
+  }
+
+  if (peerManual?.items.length) {
+    const peerConflicts = detectCartConflicts(input.ai, peerManual);
+    const peerLines: DenisCartLine[] = peerConflicts
+      .filter(
+        (conflict): conflict is Extract<typeof conflict, { kind: "manual_only" }> =>
+          conflict.kind === "manual_only"
+      )
+      .map((conflict) => conflict.line);
+    const peerPrompt = buildPeerAddedPrompt(peerLines);
+    if (peerPrompt) {
+      guestPrompt = peerPrompt;
     }
   }
 
