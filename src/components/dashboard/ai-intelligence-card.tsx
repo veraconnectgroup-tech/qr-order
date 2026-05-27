@@ -50,7 +50,7 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Brain className="size-4 text-dash-accent" />
-          <h3 className="text-sm font-semibold text-dash-text">AI Intelligence</h3>
+          <h3 className="text-sm font-semibold text-dash-text">Denis</h3>
         </div>
         <label className="relative">
           <select
@@ -70,7 +70,7 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border border-dash-border bg-dash-bg/60 p-3 text-xs sm:grid-cols-4">
         <div>
-          <p className="text-dash-text-disabled">AI-Umsatz</p>
+          <p className="text-dash-text-disabled">Denis-Umsatz</p>
           <p className="mt-1 text-base font-bold tabular-nums text-dash-text">
             {formatPrice(summary.aiRevenue, currency)}
           </p>
@@ -120,10 +120,10 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
 
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-            📊 Top AI-Verkäufe
+            📊 Top Denis-Verkäufe
           </p>
           {topProducts.length === 0 ? (
-            <p className="text-sm text-dash-text-disabled">Noch keine AI-Conversions.</p>
+            <p className="text-sm text-dash-text-disabled">Noch keine Denis-Conversions.</p>
           ) : (
             <ol className="space-y-1.5">
               {topProducts.map((product, index) => (

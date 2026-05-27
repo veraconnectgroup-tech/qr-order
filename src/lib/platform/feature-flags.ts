@@ -11,7 +11,7 @@ export const PLATFORM_FEATURES = [
 export type PlatformFeature = (typeof PLATFORM_FEATURES)[number];
 
 export const FEATURE_LABELS: Record<PlatformFeature, string> = {
-  ai_concierge: "AI Concierge",
+  ai_concierge: "Denis",
   split_payments: "Split payments",
   fiscal: "Fiscal / TSE",
   multi_location: "Multi-location",

@@ -79,7 +79,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       },
       {
         href: "/dashboard/denis",
-        label: "Denis Copilot",
+        label: "Denis",
         icon: Sparkles,
         requiresDenis: true,
       },

@@ -115,9 +115,9 @@ export function AiPlaybookPanel({
   return (
     <div className="max-w-2xl space-y-6 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
       <div>
-        <h2 className="text-lg font-semibold">AI Playbook</h2>
+        <h2 className="text-lg font-semibold">Denis Playbook</h2>
         <p className="mt-1 text-sm text-neutral-500">
-          Pravila restorana i primeri razgovora — AI uči stil i ponašanje iz
+          Pravila restorana i primeri razgovora — Denis uči stil i ponašanje iz
           ovih unosa (few-shot).
         </p>
       </div>
@@ -150,7 +150,7 @@ export function AiPlaybookPanel({
           Primeri razgovora
         </h3>
         <p className="mt-1 text-xs text-neutral-500">
-          Pitanje gosta → kako AI treba da odgovori. Max 20 aktivnih primera.
+          Pitanje gosta → kako Denis treba da odgovori. Max 20 aktivnih primera.
         </p>
 
         {canEdit && examples.length === 0 && (
@@ -203,7 +203,7 @@ export function AiPlaybookPanel({
                   <span className="text-neutral-800">{example.user_message}</span>
                 </p>
                 <p className="mt-1 text-neutral-500">
-                  AI:{" "}
+                  Denis:{" "}
                   <span className="text-neutral-800">
                     {example.assistant_message}
                   </span>
@@ -245,7 +245,7 @@ export function AiPlaybookPanel({
               />
             </div>
             <div>
-              <Label htmlFor="example-assistant">Odgovor AI</Label>
+              <Label htmlFor="example-assistant">Odgovor Denisa</Label>
               <Textarea
                 id="example-assistant"
                 value={assistantMessage}

@@ -385,7 +385,7 @@ function ProductForm({
           value={aiDescription}
           onChange={(e) => setAiDescription(e.target.value)}
           rows={3}
-          placeholder="Beschreiben Sie Zubereitung, Zutaten, Empfehlungen fuer den AI Concierge"
+          placeholder="Beschreiben Sie Zubereitung, Zutaten, Empfehlungen für Denis"
           className="w-full rounded-lg border border-dash-surface-overlay bg-dash-bg px-3 py-2 text-sm text-dash-text outline-none focus:border-dash-accent"
         />
       </label>

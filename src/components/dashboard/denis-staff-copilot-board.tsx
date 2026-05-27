@@ -117,7 +117,7 @@ export function DenisStaffCopilotBoard() {
       <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-6 text-center">
         <Bot className="mx-auto size-8 text-dash-text-disabled" />
         <p className="mt-3 text-sm text-dash-text-muted">
-          Denis is not enabled for this location. Turn on AI Concierge in admin
+          Denis is not enabled for this location. Turn on Denis in admin
           settings.
         </p>
       </div>
@@ -183,10 +183,10 @@ export function DenisStaffCopilotBoard() {
           </p>
           <h2 className="mt-1 flex items-center gap-2 text-xl font-bold text-dash-text sm:text-2xl">
             <Sparkles className="size-5 text-dash-accent" />
-            Denis Copilot
+            Denis
           </h2>
           <p className="mt-1 text-sm text-dash-text-muted">
-            Floor priorities, rush mode, and table hints for Denis.
+            Floor priorities, rush mode, and table hints.
           </p>
         </div>
         <Button

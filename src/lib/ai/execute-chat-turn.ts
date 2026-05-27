@@ -254,7 +254,7 @@ export async function executeChatTurn(body: unknown) {
   }
 
   if (!isOpenAiConfigured()) {
-    return apiError("AI Concierge is not configured.", 503, {
+    return apiError("Denis is not configured.", 503, {
       code: "not_configured",
     });
   }

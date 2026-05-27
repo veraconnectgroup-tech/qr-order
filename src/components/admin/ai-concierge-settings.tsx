@@ -37,7 +37,7 @@ export function AiConciergeSettings({
   return (
     <>
       <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">AI Concierge</h2>
+        <h2 className="text-lg font-semibold">Denis</h2>
         <p className="mt-1 text-sm text-neutral-500">
           KI-Guthaben für{" "}
           <span className="font-medium text-neutral-700">{locationName}</span>.

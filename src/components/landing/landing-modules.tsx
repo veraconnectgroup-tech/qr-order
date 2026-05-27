@@ -70,9 +70,9 @@ const modules: Array<{
   },
   {
     icon: Sparkles,
-    title: "KI-Concierge",
+    title: "Denis",
     description:
-      "Intelligenter Sommelier — Allergien, Stimmung, personalisierte Empfehlungen.",
+      "Intelligenter Kellner — Allergien, Stimmung, personalisierte Empfehlungen.",
     category: "Gast",
     Preview: ModulePreviewAi,
   },

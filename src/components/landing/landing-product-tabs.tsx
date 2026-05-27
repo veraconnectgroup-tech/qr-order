@@ -38,7 +38,7 @@ const views: Array<{
   {
     id: "ai",
     label: "KI",
-    title: "Intelligenter Concierge",
+    title: "Denis",
     bullets: [
       "Allergien und Vorlieben auf einen Blick",
       "Personalisierte Empfehlungen aus der Live-Karte",

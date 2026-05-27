@@ -21,13 +21,13 @@ export function useAiInsights(initialRange: AiInsightsRange = "today") {
       );
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error ?? "Could not load AI insights.");
+        setError(json.error ?? "Could not load Denis insights.");
         setData(null);
         return;
       }
       setData(json.data as AiInsightsDashboardPayload);
     } catch {
-      setError("Could not load AI insights.");
+      setError("Could not load Denis insights.");
       setData(null);
     } finally {
       setLoading(false);

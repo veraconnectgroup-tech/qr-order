@@ -92,7 +92,7 @@ export const POST = withErrorHandler(
             ).toLowerCase(),
             unit_amount: packageRow.price_cents,
             product_data: {
-              name: `AI Concierge — ${packageRow.name}`,
+              name: `Denis — ${packageRow.name}`,
               description: `${packageRow.credits.toLocaleString(
                 "de-DE"
               )} Kredite für ${orgRow.name}`,

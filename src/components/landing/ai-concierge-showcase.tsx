@@ -7,7 +7,7 @@ function AiConciergePreview() {
     <div className="flex h-full flex-col bg-zinc-950 p-3 pt-8">
       <div className="mb-3 text-center">
         <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-          AI Konobar
+          Denis
         </p>
       </div>
       <div className="flex flex-1 flex-col justify-end gap-2 pb-4">
@@ -41,8 +41,8 @@ function AiConciergePreview() {
 export function AiConciergeShowcase({ hideLabel = false }: { hideLabel?: boolean }) {
   return (
     <ShowcasePhone
-      label="Guest phone — AI concierge"
-      shortLabel="Guest — AI"
+      label="Guest phone — Denis"
+      shortLabel="Guest — Denis"
       hideLabel={hideLabel}
     >
       <AiConciergePreview />

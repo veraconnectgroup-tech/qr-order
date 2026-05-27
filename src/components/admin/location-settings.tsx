@@ -105,9 +105,9 @@ export function LocationSettings({
 
       <div className="mt-5 flex items-start justify-between gap-4 rounded-lg border border-neutral-200 p-4">
         <div className="space-y-1">
-          <Label htmlFor="ai-concierge">AI Concierge aktivieren</Label>
+          <Label htmlFor="ai-concierge">Denis aktivieren</Label>
           <p className="text-xs text-neutral-500">
-            Gäste erhalten KI-Empfehlungen im Menü
+            Gäste erhalten Denis-Empfehlungen im Menü
           </p>
         </div>
         <Switch

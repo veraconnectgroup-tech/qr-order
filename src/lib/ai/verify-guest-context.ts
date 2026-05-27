@@ -46,7 +46,7 @@ export async function verifyAiGuestContext(
       "ai_concierge"
     )
   ) {
-    return { error: "AI Concierge is not enabled for this location.", status: 403 };
+    return { error: "Denis is not enabled for this location.", status: 403 };
   }
 
   const { data: table, error: tableError } = await admin
