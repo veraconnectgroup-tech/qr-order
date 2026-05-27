@@ -87,68 +87,78 @@ function TableCard({
 
 export function TablesShowcaseContent({
   compact = false,
+  cinematic = false,
   theme = "dark",
 }: {
   compact?: boolean;
+  cinematic?: boolean;
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
+  const tables = cinematic ? DEMO_TABLES.slice(0, 6) : DEMO_TABLES;
+
   return (
     <>
-      <div
-        className={cn(
-          "mb-4 flex flex-wrap items-center justify-between gap-3",
-          compact && "mb-2 gap-2"
-        )}
-      >
+      {!cinematic && (
         <div
           className={cn(
-            "flex flex-wrap gap-4 border-b pb-1.5",
-            compact && "gap-2",
-            light ? "border-zinc-200" : "border-zinc-800"
+            "mb-4 flex flex-wrap items-center justify-between gap-3",
+            compact && "mb-2 gap-2"
           )}
         >
-          <span
+          <div
             className={cn(
-              "border-b-2 border-orange-500 pb-1.5 font-medium",
-              compact ? "text-[10px]" : "text-xs",
-              light ? "text-zinc-900" : "text-white"
+              "flex flex-wrap gap-4 border-b pb-1.5",
+              compact && "gap-2",
+              light ? "border-zinc-200" : "border-zinc-800"
             )}
           >
-            All ({DEMO_TABLES.length})
-          </span>
-          {DEMO_ZONES.map((zone) => (
             <span
-              key={zone.id}
               className={cn(
-                "pb-1.5 font-medium text-zinc-400",
-                compact ? "text-[10px]" : "text-xs"
+                "border-b-2 border-orange-500 pb-1.5 font-medium",
+                compact ? "text-[10px]" : "text-xs",
+                light ? "text-zinc-900" : "text-white"
               )}
             >
-              {zone.name} ({zone.count})
+              All ({DEMO_TABLES.length})
             </span>
-          ))}
-        </div>
-        {!compact && (
-          <div className="flex gap-2">
-            <span className={cn("rounded-lg px-3 py-1.5 text-[11px]", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300")}>
-              Download All QR Codes
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white">
-              <Plus className="size-3" />
-              Add Table
-            </span>
+            {DEMO_ZONES.map((zone) => (
+              <span
+                key={zone.id}
+                className={cn(
+                  "pb-1.5 font-medium text-zinc-400",
+                  compact ? "text-[10px]" : "text-xs"
+                )}
+              >
+                {zone.name} ({zone.count})
+              </span>
+            ))}
           </div>
-        )}
-      </div>
+          {!compact && (
+            <div className="flex gap-2">
+              <span className={cn("rounded-lg px-3 py-1.5 text-[11px]", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300")}>
+                Download All QR Codes
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white">
+                <Plus className="size-3" />
+                Add Table
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {cinematic && (
+        <p className="mb-5 text-xs text-zinc-500">Floor · Rooftop</p>
+      )}
       <div
         className={cn(
-          "grid grid-cols-6 gap-2.5",
-          compact && "grid-cols-6 gap-1.5"
+          "grid gap-2.5",
+          cinematic ? "grid-cols-3 gap-3" : "grid-cols-6 gap-2.5",
+          compact && !cinematic && "grid-cols-6 gap-1.5"
         )}
       >
-        {DEMO_TABLES.map((table) => (
-          <TableCard key={table.id} table={table} compact={compact} theme={theme} />
+        {tables.map((table) => (
+          <TableCard key={table.id} table={table} compact={compact || cinematic} theme={theme} />
         ))}
       </div>
     </>

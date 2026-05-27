@@ -8,29 +8,29 @@ import { Button } from "@/components/ui/button";
 
 export function LandingHero() {
   return (
-    <section className="bg-black pt-28 pb-20 md:pt-36 md:pb-28">
+    <section className="overflow-hidden bg-black pt-32 pb-16 md:pt-36 md:pb-20">
       <LandingContainer wide>
-        <div className="grid items-center gap-20 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
-          <HeroStagger className="max-w-[520px]">
+        <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-10 xl:gap-14">
+          <HeroStagger className="w-full max-w-[540px] shrink-0 lg:max-w-[480px] xl:max-w-[520px]">
             <HeroItem>
               <p className="text-[13px] tracking-wide text-zinc-600">
                 Denis · Part of Vera Group
               </p>
             </HeroItem>
             <HeroItem>
-              <h1 className="font-display text-[clamp(2.5rem,5.5vw,4rem)] font-medium leading-[1.05] tracking-[-0.03em] text-white">
+              <h1 className="mt-4 font-display text-[clamp(2.25rem,4.8vw,3.75rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white">
                 Hospitality operations,
                 <span className="text-zinc-500"> one system.</span>
               </h1>
             </HeroItem>
             <HeroItem>
-              <p className="mt-8 max-w-[460px] text-[17px] leading-[1.75] text-zinc-500">
+              <p className="mt-6 max-w-[460px] text-[17px] leading-[1.75] text-zinc-500">
                 Guest ordering, kitchen, staff coordination, and payments —
                 designed for the floor, not for demos.
               </p>
             </HeroItem>
             <HeroItem>
-              <div className="mt-10">
+              <div className="mt-8">
                 <Button
                   size="lg"
                   asChild
@@ -41,13 +41,15 @@ export function LandingHero() {
               </div>
             </HeroItem>
             <HeroItem>
-              <p className="mt-8 text-[13px] text-zinc-600">
+              <p className="mt-6 text-[13px] text-zinc-600">
                 €0 / month · KassenSichV · Under 30 minutes to live
               </p>
             </HeroItem>
           </HeroStagger>
 
-          <LandingHeroVisual />
+          <div className="w-full min-w-0 lg:flex-1">
+            <LandingHeroVisual />
+          </div>
         </div>
       </LandingContainer>
     </section>

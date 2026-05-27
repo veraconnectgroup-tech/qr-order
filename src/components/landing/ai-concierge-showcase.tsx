@@ -49,9 +49,21 @@ function DenisPanelPreview() {
   );
 }
 
-export function AiConciergeShowcase({ hideLabel = false }: { hideLabel?: boolean }) {
+export function AiConciergeShowcase({
+  hideLabel = false,
+  presentation = "default",
+}: {
+  hideLabel?: boolean;
+  presentation?: "default" | "float";
+}) {
   return (
-    <ShowcasePhone label="Guest — Denis" shortLabel="Guest" hideLabel={hideLabel}>
+    <ShowcasePhone
+      label="Guest — Denis"
+      shortLabel="Guest"
+      hideLabel={hideLabel}
+      presentation={presentation}
+      className={presentation === "float" ? "max-w-none" : undefined}
+    >
       <DenisPanelPreview />
     </ShowcasePhone>
   );

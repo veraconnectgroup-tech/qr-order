@@ -35,15 +35,67 @@ function trimOrderItems(order: OrderWithDetails, maxItems = 3): OrderWithDetails
 }
 
 /** Static guest menu UI for landing previews — no guest app deps. */
-export function GuestMenuContent({ variant = "hero" }: { variant?: "feature" | "hero" }) {
+export function GuestMenuContent({
+  variant = "hero",
+}: {
+  variant?: "feature" | "hero" | "cinematic";
+}) {
   const [activeCategory, setActiveCategory] = useState(
     DEMO_MENU_CATEGORIES[0]?.id ?? ""
   );
   const pillCategories = DEMO_MENU_CATEGORIES.map(({ id, name }) => ({ id, name }));
   const isHero = variant === "hero";
+  const isCinematic = variant === "cinematic";
   const activeProducts = DEMO_MENU_CATEGORIES.find(
     (c) => c.id === activeCategory
-  )?.products.slice(0, isHero ? 2 : 4);
+  )?.products.slice(0, isCinematic ? 2 : isHero ? 2 : 4);
+
+  if (isCinematic) {
+    const categoryName =
+      pillCategories.find((c) => c.id === activeCategory)?.name ?? "Menu";
+
+    return (
+      <div className="pointer-events-none relative flex h-full min-h-[480px] w-full flex-col bg-[#09090b]">
+        <header className="shrink-0 border-b border-zinc-800/80 px-4 py-3">
+          <p className="truncate text-sm font-medium text-zinc-100">Skyline Lounge</p>
+          <p className="mt-0.5 text-[10px] text-zinc-500">Table 8 · Rooftop</p>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-hidden px-4 pt-4 pb-14">
+          <p className="mb-3 text-[11px] font-medium text-zinc-400">{categoryName}</p>
+          <div className="space-y-4">
+            {activeProducts?.map((product) => (
+              <div
+                key={product.id}
+                className="flex items-start justify-between gap-3 border-b border-zinc-800/80 pb-4 last:border-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-medium text-zinc-100">
+                    {product.name}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
+                    {product.description ?? "Chef selection"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[12px] font-medium tabular-nums text-zinc-200">
+                  {formatPrice(Number(product.price), DEMO_CURRENCY)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 border-t border-zinc-800/80 bg-zinc-950/95 px-4 py-3">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-zinc-500">{CART_COUNT} items</span>
+            <span className="font-medium text-zinc-200">
+              {formatPrice(CART_TOTAL, DEMO_CURRENCY)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -175,15 +227,55 @@ export function OrdersBoardContent({
   variant = "feature",
   theme = "dark",
 }: {
-  variant?: "hero" | "feature";
+  variant?: "hero" | "feature" | "cinematic";
   theme?: ShowcaseTheme;
 }) {
   const isHero = variant === "hero";
+  const isCinematic = variant === "cinematic";
   const light = theme === "light";
   const cardAppearance = light ? "light" : "default";
-  const columns = isHero
+  const columns = isHero || isCinematic
     ? SHOWCASE_ORDER_COLUMNS.filter((c) => ["new", "preparing", "ready"].includes(c.id))
     : SHOWCASE_ORDER_COLUMNS;
+
+  if (isCinematic) {
+    return (
+      <div className="pointer-events-none select-none">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-xs text-zinc-500">
+            Skyline Lounge · <span className="text-emerald-500">Live</span>
+          </p>
+        </div>
+        <div className="flex gap-4 overflow-hidden">
+          {columns.map((column) => {
+            const order = DEMO_ORDERS.find((o) =>
+              column.statuses.includes(o.status)
+            );
+            if (!order) return null;
+            return (
+              <div
+                key={column.id}
+                className={cn(
+                  "min-w-0 flex-1 rounded-xl border-t-2 p-3",
+                  column.border,
+                  light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900/40"
+                )}
+              >
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                  {column.label}
+                </p>
+                <ShowcaseOrderCard
+                  order={trimOrderItems(order, 2)}
+                  currency={DEMO_CURRENCY}
+                  appearance={cardAppearance}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   if (isHero) {
     return (
