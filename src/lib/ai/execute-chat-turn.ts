@@ -247,7 +247,22 @@ async function resolveStructuredResponse(
 }
 
 /** Legacy LLM + ordering path — called from Denis runtime (M7). */
-export async function executeChatTurn(body: unknown) {
+export type ExecuteChatTurnOptions = {
+  /**
+   * ADR-009 F2: Denis runtime owns metering via commercial module.
+   * Legacy path debits inline; Denis path skips check + debit here.
+   */
+  skipCreditMetering?: boolean;
+};
+
+/**
+ * Legacy narrate + session adapter — **do not call from API routes**.
+ * Single production caller: `runDenisTurn` (ADR-009 F1).
+ */
+export async function executeChatTurn(
+  body: unknown,
+  options?: ExecuteChatTurnOptions
+) {
   const parsed = aiChatRequestSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("Invalid input.", 400);
@@ -278,16 +293,19 @@ export async function executeChatTurn(body: unknown) {
   }
 
   const { orgId, orgName } = guestContext.data;
+  const skipCreditMetering = options?.skipCreditMetering === true;
 
-  const { data: creditsRow } = await admin
-    .from("ai_credits")
-    .select("balance")
-    .eq("org_id", orgId)
-    .maybeSingle();
+  if (!skipCreditMetering) {
+    const { data: creditsRow } = await admin
+      .from("ai_credits")
+      .select("balance")
+      .eq("org_id", orgId)
+      .maybeSingle();
 
-  const balance = (creditsRow as { balance: number } | null)?.balance ?? 0;
-  if (balance < AI_CONFIG.creditsPerMessage) {
-    return apiError("insufficient_credits", 402);
+    const balance = (creditsRow as { balance: number } | null)?.balance ?? 0;
+    if (balance < AI_CONFIG.creditsPerMessage) {
+      return apiError("insufficient_credits", 402);
+    }
   }
 
   const menuLanguageHint = resolveAiPromptLanguage(input.language);
