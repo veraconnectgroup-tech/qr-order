@@ -4,11 +4,11 @@ import { LandingPage } from "@/components/landing/landing-page";
 export const metadata: Metadata = {
   title: "Denis — Hospitality operating system · Vera Group",
   description:
-    "Mission control for hospitality operations — orders, floor routing, prep display, and Denis intelligence. Part of Vera Group.",
+    "Guest ordering, kitchen display, staff coordination, and payments — one enterprise platform. Part of Vera Group. KassenSichV compliant. €0 / month.",
   openGraph: {
     title: "Denis — Hospitality operating system",
     description:
-      "Open Denis. Coordinate the floor, kitchen, and guest channel from one operational environment.",
+      "Run the floor, serve faster, stay compliant. Intelligence embedded — not advertised.",
     locale: "en_US",
   },
 };

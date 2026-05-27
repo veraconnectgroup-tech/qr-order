@@ -13,62 +13,29 @@ import {
   ShowcaseStage,
   ShowcaseWindow,
 } from "@/components/landing/showcase-frame";
-import { cn } from "@/lib/utils";
 
-function HeroOperationalCanvas() {
+/** Hero: one strong operational focal point + physical guest device. */
+export function LandingHeroVisual() {
   return (
-    <>
-      <div className="absolute inset-0 overflow-hidden">
-        <ShowcaseWindow presentation="cinematic" className="size-full min-h-full">
+    <ShowcaseStage className="mx-auto w-full max-w-none overflow-hidden bg-[#09090b] sm:min-h-[480px] lg:min-h-[540px] xl:min-h-[580px]">
+      <div className="absolute right-[-10%] top-[-6%] z-10 w-[115%] origin-top-left scale-[1.1] sm:right-[-8%] sm:top-[-5%] sm:w-[112%] sm:scale-[1.08] lg:scale-[1.04]">
+        <ShowcaseWindow presentation="cinematic">
           <CinematicDashboardShowcase story="live-orders" />
         </ShowcaseWindow>
       </div>
 
-      <ShowcaseFloatDevice className="bottom-[22%] left-[5%] w-[28%] max-w-[168px] md:bottom-[24%]">
+      <ShowcaseFloatDevice>
         <ShowcasePhone presentation="float" hideLabel className="max-w-none">
-          <ScaledPhonePreview designWidth={280} designHeight={480}>
+          <ScaledPhonePreview designWidth={280} designHeight={460}>
             <GuestMenuContent variant="cinematic" />
           </ScaledPhonePreview>
         </ShowcasePhone>
       </ShowcaseFloatDevice>
-    </>
-  );
-}
-
-/** Hero: full operational canvas — quietly alive. */
-export function LandingHeroVisual({
-  className,
-  fullBleed = false,
-}: {
-  className?: string;
-  fullBleed?: boolean;
-}) {
-  if (fullBleed) {
-    return (
-      <div
-        className={cn(
-          "relative size-full min-h-[inherit] overflow-hidden bg-[var(--lp-bg)]",
-          className
-        )}
-      >
-        <HeroOperationalCanvas />
-      </div>
-    );
-  }
-
-  return (
-    <ShowcaseStage
-      className={cn(
-        "mx-auto w-full max-w-none overflow-hidden bg-[var(--lp-bg)] sm:min-h-[480px] lg:min-h-[540px]",
-        className
-      )}
-    >
-      <HeroOperationalCanvas />
     </ShowcaseStage>
   );
 }
 
-/** Cropped operational surface for legacy embeds. */
+/** Feature sections: one cropped operational moment each. */
 export function FeatureShowcase({
   children,
   aspect = "16/11",

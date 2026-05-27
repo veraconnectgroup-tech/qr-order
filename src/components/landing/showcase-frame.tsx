@@ -25,9 +25,7 @@ export function ShowcaseWindow({
 
   if (cinematic) {
     return (
-      <div className={cn("overflow-hidden bg-[var(--lp-bg,#0a0908)]", className)}>
-        {children}
-      </div>
+      <div className={cn("overflow-hidden bg-[#09090b]", className)}>{children}</div>
     );
   }
 
@@ -128,7 +126,7 @@ export function ShowcaseStage({
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-[min(100%,720px)] overflow-hidden",
+        "relative mx-auto w-full max-w-[min(100%,720px)] overflow-visible",
         "aspect-[5/4] min-h-[360px] sm:aspect-[16/12] sm:min-h-[440px] lg:min-h-[520px] xl:min-h-[560px]",
         className
       )}

@@ -1,20 +1,27 @@
+import { LandingContainer } from "@/components/landing/landing-primitives";
 import { TrustLogoList } from "@/components/landing/trust-logos";
 
-/** Infrastructure metadata — quiet, not marketing. */
 export function LandingTrustStrip() {
   return (
-    <div
-      aria-label="System integrations and compliance"
-      className="border-b border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] px-6 py-3 lg:px-8"
+    <section
+      aria-label="Integrations and compliance"
+      className="border-y border-white/[0.06] bg-black py-6"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="landing-meta font-mono">
-          Stripe Connect · TSE · DATEV
+      <LandingContainer wide>
+        <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+          Trusted by hospitality teams · Integrations &amp; compliance
         </p>
-        <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 opacity-30">
+
+        {/* Mobile: horizontal scroll — avoids squashing wide payment marks */}
+        <ul className="mt-5 flex gap-3 overflow-x-auto pb-1 md:hidden">
           <TrustLogoList />
         </ul>
-      </div>
-    </div>
+
+        {/* Desktop: flex wrap center */}
+        <ul className="mt-5 hidden flex-wrap items-center justify-center gap-3 md:flex">
+          <TrustLogoList />
+        </ul>
+      </LandingContainer>
+    </section>
   );
 }

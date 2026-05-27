@@ -1,5 +1,4 @@
 import { formatOrderNumber, formatPrice } from "@/lib/format";
-import { demoElapsedSeconds } from "@/components/landing/demo-data";
 import { cn } from "@/lib/utils";
 import { getShowcaseOrderColumnId } from "@/components/landing/showcase-static/order-columns";
 import type { OrderWithDetails } from "@/types";
@@ -23,27 +22,26 @@ export function ShowcaseOrderCard({
   const items = order.order_items ?? [];
 
   if (cinematic) {
-    const elapsed = order.created_at
-      ? demoElapsedSeconds(order.created_at)
-      : 0;
-    const elapsedLabel =
-      elapsed < 60 ? `${Math.max(1, elapsed)}s` : `${Math.floor(elapsed / 60)}m`;
-
     return (
-      <article className="max-w-[360px]">
-        <div className="flex items-baseline justify-between gap-8">
-          <p className="font-mono text-[2.25rem] font-medium leading-none tracking-[-0.04em] text-[var(--lp-ink,#f5f0eb)]">
+      <article className="max-w-[320px] rounded-xl border border-zinc-800/90 bg-zinc-950/90 p-5 border-l-2 border-l-[#e85d04]">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-mono text-[1.75rem] font-semibold leading-none tracking-[-0.03em] text-zinc-50">
             {formatOrderNumber(order.order_number)}
           </p>
-          <p className="text-[13px] text-[var(--lp-muted,#9c958c)]">{tableName}</p>
+          <span className="shrink-0 rounded-md bg-zinc-800/90 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
+            {tableName}
+          </span>
         </div>
 
-        <p className="mt-6 text-[12px] text-[var(--lp-muted,#9c958c)]">
-          <span className="text-[var(--lp-ember,#e85d04)]">New</span> · {elapsedLabel} ·
-          routing to bar
-        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-400">
+            New
+          </span>
+          <span className="text-[11px] text-zinc-600">· just now</span>
+        </div>
 
-        <ul className="mt-8 space-y-2.5 text-[15px] leading-snug text-[var(--lp-ink,#f5f0eb)]/90">
+        <ul className="mt-4 space-y-1.5 text-[13px] leading-snug text-zinc-300">
           {items.slice(0, 2).map((line) => (
             <li key={line.id}>
               {line.quantity}× {line.product_name}
@@ -51,11 +49,11 @@ export function ShowcaseOrderCard({
           ))}
         </ul>
 
-        <div className="mt-10 flex items-baseline justify-between">
-          <span className="font-mono text-[15px] tabular-nums text-[var(--lp-ink,#f5f0eb)]">
+        <div className="mt-5 flex items-center justify-between border-t border-zinc-800/80 pt-4">
+          <span className="font-mono text-sm font-semibold tabular-nums text-zinc-200">
             {formatPrice(Number(order.total), currency)}
           </span>
-          <span className="text-[12px] font-medium text-[var(--lp-ember,#e85d04)]">
+          <span className="rounded-lg bg-[#e85d04] px-3.5 py-1.5 text-[11px] font-semibold text-white">
             Accept
           </span>
         </div>

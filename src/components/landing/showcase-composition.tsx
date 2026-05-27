@@ -60,9 +60,7 @@ export function ShowcaseFloatDevice({
         className
       )}
     >
-      <div className="relative translate-y-1 -rotate-[1.25deg] [filter:drop-shadow(0_32px_64px_rgba(0,0,0,0.72))]">
-        {children}
-      </div>
+      <div className="relative translate-y-1 -rotate-[1.25deg]">{children}</div>
     </div>
   );
 }

@@ -58,57 +58,65 @@ export function GuestMenuContent({
     );
 
     return (
-      <div className="pointer-events-none flex h-full min-h-[480px] w-full flex-col bg-[var(--lp-bg,#0a0908)]">
-        <header className="shrink-0 border-b border-[var(--lp-border-subtle,#1a1816)] px-6 py-5">
-          <p className="text-[15px] font-medium tracking-[-0.02em] text-[var(--lp-ink,#f5f0eb)]">
-            Skyline Lounge
-          </p>
-          <p className="mt-1.5 text-[12px] text-[var(--lp-muted,#9c958c)]">Table 8</p>
+      <div className="pointer-events-none flex h-full min-h-[420px] w-full flex-col bg-[#09090b]">
+        <header className="shrink-0 border-b border-zinc-800/80 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[13px] font-semibold leading-tight text-zinc-100">
+                Skyline Lounge
+              </p>
+              <p className="text-[10px] text-zinc-500">Table 8 · Rooftop</p>
+            </div>
+            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-400 ring-1 ring-zinc-800">
+              Drinks
+            </span>
+          </div>
         </header>
 
-        <div className="flex flex-1 flex-col justify-center gap-6 px-6 py-10">
+        <div className="flex flex-1 flex-col gap-2.5 px-3 py-3">
           {products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center gap-4 border-b border-[var(--lp-border-subtle,#1a1816)] pb-6 last:border-0 last:pb-0"
+              className="flex items-center gap-3 rounded-lg bg-zinc-950/90 p-2.5 ring-1 ring-zinc-800/70"
             >
-              <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-[var(--lp-surface,#141210)]">
+              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-zinc-800">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={product.image_url}
                     alt=""
-                    className="size-full object-cover opacity-90"
+                    className="size-full object-cover"
                   />
                 ) : (
-                  <div className="flex size-full items-center justify-center text-sm font-medium text-[var(--lp-subtle,#6b645c)]">
+                  <div className="flex size-full items-center justify-center text-sm font-semibold text-zinc-600">
                     {product.name.charAt(0)}
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-medium tracking-[-0.01em] text-[var(--lp-ink,#f5f0eb)]">
+                <p className="truncate text-[13px] font-medium text-zinc-100">
                   {product.name}
                 </p>
                 {product.prep_time_minutes != null && (
-                  <p className="mt-1 text-[12px] text-[var(--lp-muted,#9c958c)]">
+                  <p className="text-[10px] text-zinc-500">
                     {product.prep_time_minutes} min
                   </p>
                 )}
               </div>
-              <p className="font-mono text-[14px] tabular-nums text-[var(--lp-ink,#f5f0eb)]/80">
+              <p className="font-mono text-[12px] tabular-nums text-zinc-300">
                 {formatPrice(Number(product.price), DEMO_CURRENCY)}
               </p>
             </div>
           ))}
         </div>
 
-        <footer className="shrink-0 border-t border-[var(--lp-border-subtle,#1a1816)] px-6 py-5">
-          <div className="flex items-center justify-between text-[13px]">
-            <span className="text-[var(--lp-muted,#9c958c)]">
+        <footer className="shrink-0 border-t border-zinc-800/80 px-3 py-3">
+          <div className="flex items-center justify-between rounded-lg bg-[#e85d04] px-3 py-2.5 text-white">
+            <span className="text-[11px] font-medium">
               {products.length} {products.length === 1 ? "item" : "items"}
             </span>
-            <span className="font-mono tabular-nums text-[var(--lp-ink,#f5f0eb)]">
+            <span className="text-[11px] font-semibold">Cart →</span>
+            <span className="font-mono text-[12px] font-bold tabular-nums">
               {formatPrice(cartPreviewTotal, DEMO_CURRENCY)}
             </span>
           </div>
@@ -265,20 +273,39 @@ export function OrdersBoardContent({
     if (!primaryOrder) return null;
 
     return (
-      <div className="pointer-events-none flex min-h-[360px] items-center px-6 sm:min-h-[400px] sm:px-10">
-        <div className="flex w-full max-w-3xl items-start gap-14 lg:gap-24">
+      <div className="pointer-events-none select-none">
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Operations
+            </p>
+            <p className="mt-1 text-lg font-semibold tracking-tight text-zinc-100">
+              Live Orders
+            </p>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Skyline Lounge{" "}
+            <span className="font-medium text-emerald-500">● Live</span>
+          </p>
+        </div>
+
+        <div className="flex items-start gap-6 lg:gap-10">
           <ShowcaseOrderCard
             order={trimOrderItems(primaryOrder, 2)}
             currency={DEMO_CURRENCY}
             appearance="cinematic"
           />
           {preparingOrder && (
-            <div className="hidden min-w-[140px] pt-14 opacity-[0.42] sm:block">
-              <p className="font-mono text-xl font-medium text-[var(--lp-muted,#9c958c)]">
+            <div className="hidden min-w-[160px] flex-1 pt-10 opacity-[0.38] sm:block">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+                Preparing
+              </p>
+              <p className="font-mono text-xl font-medium text-zinc-400">
                 {formatOrderNumber(preparingOrder.order_number)}
               </p>
-              <p className="mt-2 text-[12px] leading-relaxed text-[var(--lp-subtle,#6b645c)]">
-                preparing · {preparingOrder.order_items?.[0]?.product_name}
+              <p className="mt-2 text-[12px] text-zinc-600">
+                {preparingOrder.tables?.name ?? "Bar"} ·{" "}
+                {preparingOrder.order_items?.[0]?.product_name}
               </p>
             </div>
           )}
