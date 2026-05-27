@@ -180,6 +180,8 @@ export async function promoteLearnedEdgeToUpsellRule(
     .maybeSingle();
 
   const suggestName = (productRow as { name: string } | null)?.name ?? "preporuku";
+
+  const { data: maxRow } = await admin
     .from("upsell_rules")
     .select("sort_order")
     .eq("location_id", input.locationId)
@@ -190,7 +192,6 @@ export async function promoteLearnedEdgeToUpsellRule(
   const nextSort =
     ((maxRow as { sort_order: number } | null)?.sort_order ?? -1) + 1;
 
-  const suggestName = edge.to_product?.name ?? "preporuku";
   const message = `Denis predlaže: ${suggestName}`;
 
   const { data: ruleRow, error: insertError } = await admin

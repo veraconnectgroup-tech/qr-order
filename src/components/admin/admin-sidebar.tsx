@@ -15,6 +15,7 @@ import {
   ScrollText,
   Settings,
   ShoppingBag,
+  Sparkles,
   Tags,
   Ticket,
   Users,
@@ -42,6 +43,7 @@ const navItems = [
 const marketingItems = [
   { href: "/admin/promos", label: "Promo codes", icon: Ticket },
   { href: "/admin/upsells", label: "Upsell rules", icon: Megaphone },
+  { href: "/admin/denis-insights", label: "Denis Insights", icon: Sparkles },
 ];
 
 export function AdminSidebar() {

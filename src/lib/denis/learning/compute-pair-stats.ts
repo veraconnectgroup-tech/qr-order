@@ -15,10 +15,7 @@ export function aggregateSessionPairStats(
 
   for (const session of sessions) {
     const added = new Set(session.productsAdded);
-    const anchorId =
-      session.productsAdded.length > 0
-        ? session.productsAdded[session.productsAdded.length - 1]
-        : null;
+    const anchorId = session.productsAdded[0];
 
     if (!anchorId) continue;
 
