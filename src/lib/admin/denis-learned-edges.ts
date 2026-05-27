@@ -167,14 +167,19 @@ export async function promoteLearnedEdgeToUpsellRule(
     to_product_id: string;
     suggested_weight: number;
     status: LearnedEdgeStatus;
-    to_product: { name: string } | null;
   };
 
   if (edge.status !== "pending") {
     return { error: "Edge already reviewed." };
   }
 
-  const { data: maxRow } = await admin
+  const { data: productRow } = await admin
+    .from("products")
+    .select("name")
+    .eq("id", edge.to_product_id)
+    .maybeSingle();
+
+  const suggestName = (productRow as { name: string } | null)?.name ?? "preporuku";
     .from("upsell_rules")
     .select("sort_order")
     .eq("location_id", input.locationId)
