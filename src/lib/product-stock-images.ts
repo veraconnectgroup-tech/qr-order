@@ -18,12 +18,15 @@ export type ProductStockImage = {
 const PHOTOS = {
   aperolSpritz: "photo-1758218058958-78f40a716c20",
   negroni: "photo-1514362545857-3bc16c4c7d1b",
-  espressoMartini: "photo-1544145945-f90425340c7e",
+  espressoMartini: "photo-1676471793068-0db319151c3a",
   hugoSpritz: "photo-1556679343-c7306c1976bc",
   mojito: "photo-1572116469696-31de0f17cc34",
   whiskey: "photo-1558642452-9d2a7deb7f62",
+  ginTonic: "photo-1627891974481-5566738c3ebf",
+  whiskeySour: "photo-1594655885211-f9985d98a4c6",
   prosecco: "photo-1553361371-9b22f78e8b1d",
   whiteWine: "photo-1547595628-c61a29f496f0",
+  redWine: "photo-1598430721694-da039e2fe585",
   craftBeer: "photo-1436076863939-06870fe779c2",
   draftBeer: "photo-1535958636474-b021ee887b13",
   lemonade: "photo-1541167760496-1628856ab772",
@@ -95,13 +98,13 @@ export const PRODUCT_STOCK_IMAGES: Record<string, ProductStockImage> = {
   "f0000000-0000-4000-8000-000000000007": entry(
     "f0000000-0000-4000-8000-000000000007",
     "Gin & Tonic",
-    PHOTOS.hugoSpritz,
+    PHOTOS.ginTonic,
     ["sulfites"]
   ),
   "f0000000-0000-4000-8000-000000000008": entry(
     "f0000000-0000-4000-8000-000000000008",
     "Whiskey Sour",
-    PHOTOS.espressoMartini,
+    PHOTOS.whiskeySour,
     ["sulfites"]
   ),
   "f0000000-0000-4000-8000-000000000009": entry(
@@ -119,7 +122,7 @@ export const PRODUCT_STOCK_IMAGES: Record<string, ProductStockImage> = {
   "f0000000-0000-4000-8000-000000000011": entry(
     "f0000000-0000-4000-8000-000000000011",
     "Malbec Reserva",
-    PHOTOS.negroni,
+    PHOTOS.redWine,
     ["sulfites"]
   ),
   "f0000000-0000-4000-8000-000000000012": entry(
@@ -214,4 +217,30 @@ const BY_NAME = Object.values(PRODUCT_STOCK_IMAGES).reduce<
 /** Lookup by display name (demo landing page). */
 export function getProductStockImage(name: string): ProductStockImage | undefined {
   return BY_NAME[name] ?? BY_NAME[name.replace(/^Nachos$/, "Nachos Supreme")];
+}
+
+const SEED_PRODUCT_ID_PREFIX = "f0000000-";
+
+/** Seed demo products always use curated stock photos (DB URLs can be stale). */
+export function isSeedProductId(id: string): boolean {
+  return id.startsWith(SEED_PRODUCT_ID_PREFIX);
+}
+
+export function resolveProductImageUrl(product: {
+  id: string;
+  name?: string | null;
+  image_url: string | null;
+}): string | null {
+  if (isSeedProductId(product.id)) {
+    const stock = PRODUCT_STOCK_IMAGES[product.id];
+    if (stock) return stock.imageUrl;
+  }
+
+  if (product.image_url) return product.image_url;
+
+  if (product.name) {
+    return getProductStockImage(product.name)?.imageUrl ?? null;
+  }
+
+  return null;
 }

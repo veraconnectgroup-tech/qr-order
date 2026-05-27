@@ -7,6 +7,7 @@ import {
 } from "@/lib/demo-guest";
 import { getDemoAiRecommendations } from "@/lib/demo-ai";
 import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
+import { resolveProductImageUrl } from "@/lib/product-stock-images";
 
 export const revalidate = 60;
 
@@ -148,6 +149,11 @@ export default async function GuestMenuPage({
         .map(
           (p): ProductWithModifiers => ({
             ...p,
+            image_url: resolveProductImageUrl({
+              id: p.id,
+              name: p.name,
+              image_url: p.image_url,
+            }),
             location_id: table.location_id,
             category_id: cat.id,
             prep_time_minutes: p.prep_time_minutes,

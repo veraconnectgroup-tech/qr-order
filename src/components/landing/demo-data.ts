@@ -41,7 +41,7 @@ function demoProduct(
     taxRate?: number | null;
   }
 ): ProductWithModifiers {
-  const media = getDemoProductMedia(name);
+  const media = getDemoProductMedia(id, name);
 
   return {
     id,
