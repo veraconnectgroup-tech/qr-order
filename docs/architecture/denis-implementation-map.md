@@ -318,8 +318,8 @@ pnpm type-check
 | Track | Scope | Status |
 |-------|-------|--------|
 | **F8-1** | GA gate (`ga-gate.ts`) + turn observability logs | ✅ |
-| **F8-2** | Slim legacy adapter — ordering out of `execute-chat-turn.ts` | 📋 |
-| **F8-3** | Live `actSubmitEnabled` pilot venues | 📋 |
+| **F8-2** | Kernel ordering bridge + `legacyOrderingEnabled` flag | ✅ |
+| **F8-3** | Live `actSubmitEnabled` pilot + legacy submit suppressed | ✅ |
 | **F8-4** | Delete legacy ordering paths | 📋 |
 
 **Doc:** [ADR-010](./ADR-010-denis-ordering-cutover.md) · ADR-006 accepted (May 2026)

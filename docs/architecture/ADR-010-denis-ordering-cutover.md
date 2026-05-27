@@ -56,8 +56,8 @@ flowchart LR
 | Track | Scope | Done when |
 |-------|-------|-----------|
 | **F8-1** | GA gate + turn observability | `evaluateGaGate`, structured turn logs, admin panel hints | ✅ |
-| **F8-2** | Legacy adapter slim | Ordering paths removed from legacy; reflex+act own cart mutations |
-| **F8-3** | Act submit cutover | `actSubmitEnabled` on pilot venues; legacy submit disabled |
+| **F8-2** | Legacy adapter slim | Ordering paths removed from legacy; reflex+act own cart mutations | ✅ |
+| **F8-3** | Act submit cutover | `actSubmitEnabled` on pilot venues; legacy submit disabled | ✅ |
 | **F8-4** | Legacy delete | `execute-chat-turn.ts` ≤ session+LLM budget; ordering modules only via act |
 
 Each track = **one PR**, `pnpm verify:denis`, `pnpm eval:denis`, `pnpm type-check`.
@@ -97,6 +97,15 @@ Aligns with ADR-006 §5 envelope (latencyMs).
 Existing presets in `rollout-cutover.ts`. **Do not** enable `actSubmitEnabled` until F8-3 gate green.
 
 New preset (F8-3): `denis_act_submit_pilot` — only after GA gate + venue sign-off.
+
+When `actSubmitEnabled` + `!actDryRun`:
+
+1. `runDenisTurn` runs `order.submit` via ACL (`executeDenisOrderCommand`).
+2. Guest API returns `submitOrder: false` — client must **not** call `/api/ai/order/submit`.
+3. `orderNumber` flows into narration facts (template: „Narudžbina #N je poslata.“).
+4. Kernel cart draft is refreshed after F8-2 bridge before act phase.
+
+Code: `resolve-act-submit-outcome.ts`, `run-denis-turn.ts` act block.
 
 ---
 

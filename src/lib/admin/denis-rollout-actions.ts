@@ -36,6 +36,7 @@ const denisRolloutFormSchema = z.object({
   actLayerEnabled: z.boolean(),
   actDryRun: z.boolean(),
   actSubmitEnabled: z.boolean(),
+  legacyOrderingEnabled: z.boolean(),
 });
 
 export type DenisRolloutAdminState = {
@@ -93,6 +94,26 @@ export async function saveDenisRolloutConfig(
 
   if (parsed.data.actSubmitEnabled && parsed.data.actDryRun) {
     return { error: "Disable act dry-run before enabling order submit." };
+  }
+
+  if (
+    parsed.data.actSubmitEnabled &&
+    !parsed.data.actDryRun &&
+    parsed.data.rolloutMode !== "denis_only"
+  ) {
+    return {
+      error: "Live act submit (F8-3) requires rollout mode denis_only.",
+    };
+  }
+
+  if (
+    parsed.data.actSubmitEnabled &&
+    !parsed.data.legacyOrderingEnabled &&
+    !parsed.data.actLayerEnabled
+  ) {
+    return {
+      error: "Kernel ordering off requires act layer when act submit is enabled.",
+    };
   }
 
   if (

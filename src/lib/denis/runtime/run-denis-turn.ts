@@ -34,7 +34,8 @@ import {
   extractOrderSlots,
   shouldRunSlotExtract,
 } from "@/lib/denis/runtime/perceive";
-import { executeActPhase } from "@/lib/denis/runtime/act";
+import { executeActPhase, isActSubmitLive, resolveActSubmitOutcome } from "@/lib/denis/runtime/act";
+import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import {
   elapsedMs,
   emptyTurnTimings,
@@ -165,6 +166,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     return legacyResponse;
   }
 
+  let cartDraftForAct = ctx.aiCartState.draft;
+  const actSubmitLive = isActSubmitLive(ctx.config);
+
   if (
     !ctx.config.ordering.legacyOrderingEnabled &&
     data.deferredOrdering &&
@@ -189,8 +193,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
           cachedAt: menuPayload.cachedAt,
         };
         const priorMessages =
-          (sessionRow.messages as Array<{ role: string; content: string }>) ??
-          [];
+          (sessionRow.messages as Array<{
+            role: "user" | "assistant";
+            content: string;
+          }>) ?? [];
 
         const kernel = applyPostLlmOrdering({
           userMessage: parsed.data.message,
@@ -203,6 +209,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         });
 
         await persistKernelOrderingDraft(admin, data.sessionId, kernel.draft);
+
+        cartDraftForAct = aiOrderDraftToDenisCartState(kernel.draft).draft;
 
         const merged = mergeKernelOrderingIntoTurn(data.message, kernel);
         data.message = merged.message;
@@ -227,10 +235,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   };
   if (ctx.config.ordering.actLayerEnabled) {
     let catalog;
+    const legacyWantsSubmit = Boolean(data.submitOrder);
     const needsCatalog =
-      ctx.config.ordering.actSubmitEnabled &&
-      !ctx.config.ordering.actDryRun &&
-      Boolean(data.submitOrder);
+      actSubmitLive && legacyWantsSubmit;
     if (needsCatalog) {
       try {
         catalog = await getCachedMenuForLocation(parsed.data.locationId);
@@ -247,12 +254,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       tableToken: parsed.data.sessionToken,
       sessionToken: parsed.data.sessionToken,
       deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
-      cartDraft: ctx.aiCartState.draft,
+      cartDraft: cartDraftForAct,
       catalog,
-      legacySubmitOrder: data.submitOrder,
+      legacySubmitOrder: legacyWantsSubmit,
     });
     timings.actMs = elapsedMs(actStarted);
   }
+
+  const actSubmitOutcome = resolveActSubmitOutcome(actPhase);
 
   const rollout = resolveEffectiveRollout(ctx.config);
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
@@ -268,6 +277,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     guestMemory: ctx.guestMemory,
     cartActions: data.cartActions,
     recommendations: data.recommendations,
+    orderNumber: actSubmitOutcome.orderNumber ?? null,
+    blockedReason: actSubmitOutcome.guestBlockedReason ?? null,
     venueOps: ctx.venueOps,
     opsEffects: ctx.opsEffects,
   });
@@ -433,9 +444,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     creditsCharged,
     actDryRun: actPhase.dryRun,
     actEnabled: actPhase.enabled,
+    actSubmitLive,
+    actSubmitAttempted: actSubmitOutcome.attempted,
+    actOrderNumber: actSubmitOutcome.orderNumber,
     shadowParityScore,
     timings,
   });
+
+  const guestSubmitOrder =
+    actSubmitLive ? false : Boolean(data.submitOrder);
 
   const responseData = {
     message: guestMessage,
@@ -443,7 +460,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     cartActions: data.cartActions,
     quickReplies,
     intent: data.intent,
-    submitOrder: data.submitOrder,
+    submitOrder: guestSubmitOrder,
     creditsRemaining,
     sessionId: data.sessionId,
   };

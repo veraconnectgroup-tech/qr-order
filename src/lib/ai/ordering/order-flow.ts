@@ -1,4 +1,5 @@
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
+import type { AiConciergeIntent } from "@/lib/ai/types";
 
 type MenuLanguage = "de" | "en" | "sr" | "hr";
 
@@ -158,7 +159,7 @@ export type OrderFlowResult = {
   draft: AiOrderDraft;
   message: string;
   submitOrder: boolean;
-  intent: "confirm" | "order" | "chat";
+  intent: AiConciergeIntent;
 };
 
 /**

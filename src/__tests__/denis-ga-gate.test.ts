@@ -16,6 +16,7 @@ function baseForm(
     actLayerEnabled: false,
     actDryRun: true,
     actSubmitEnabled: false,
+    legacyOrderingEnabled: true,
     ...overrides,
   };
 }

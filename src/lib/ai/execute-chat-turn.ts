@@ -443,6 +443,7 @@ export async function executeChatTurn(body: unknown) {
   };
 
   let workingDraft = sessionRow?.order_draft ?? initDraftFromStorage(null);
+  const browseMatches = searchCatalogProducts(catalog.catalog, input.message);
 
   if (orderingViaLegacy) {
   const preTurn = processOrderingTurn({
@@ -551,8 +552,6 @@ export async function executeChatTurn(body: unknown) {
       sessionId,
     });
   }
-
-  const browseMatches = searchCatalogProducts(catalog.catalog, input.message);
 
   if (
     preTurn.cartActions.length === 0 &&

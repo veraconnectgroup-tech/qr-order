@@ -7,7 +7,9 @@ export type DenisRolloutPresetId =
   | "shadow_instrumented"
   | "canary_10"
   | "denis_guest_narration"
-  | "denis_full_shadow_act";
+  | "denis_kernel_ordering"
+  | "denis_full_shadow_act"
+  | "denis_act_submit_pilot";
 
 export type DenisRolloutPreset = {
   id: DenisRolloutPresetId;
@@ -80,6 +82,26 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
     },
   },
   {
+    id: "denis_kernel_ordering",
+    label: "Kernel ordering (F8-2)",
+    description:
+      "Legacy adapter LLM-only; cart mutations via kernel bridge + act timeline.",
+    patch: {
+      version: 1,
+      rollout: { mode: "shadow" },
+      llm: { narrateWithLlm: false, slotExtractWithLlm: false },
+      ordering: {
+        slotExtractEnabled: true,
+        legacyOrderingEnabled: false,
+        actLayerEnabled: true,
+        actDryRun: true,
+        actSubmitEnabled: false,
+      },
+      memory: { returnGuestEnabled: false },
+      surfaces: { voiceEnabled: false },
+    },
+  },
+  {
     id: "denis_full_shadow_act",
     label: "Denis + memory (safe act)",
     description:
@@ -98,6 +120,26 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
       surfaces: { voiceEnabled: false },
     },
   },
+  {
+    id: "denis_act_submit_pilot",
+    label: "Act submit pilot (F8-3)",
+    description:
+      "Denis guest path + kernel ordering + live ACL order submit. Requires eval green + venue sign-off.",
+    patch: {
+      version: 1,
+      rollout: { mode: "denis_only" },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: {
+        slotExtractEnabled: true,
+        legacyOrderingEnabled: false,
+        actLayerEnabled: true,
+        actDryRun: false,
+        actSubmitEnabled: true,
+      },
+      memory: { returnGuestEnabled: false },
+      surfaces: { voiceEnabled: false },
+    },
+  },
 ];
 
 export type DenisRolloutFormState = {
@@ -111,6 +153,7 @@ export type DenisRolloutFormState = {
   actLayerEnabled: boolean;
   actDryRun: boolean;
   actSubmitEnabled: boolean;
+  legacyOrderingEnabled: boolean;
 };
 
 /** Map effective merged config to admin form fields. */
@@ -125,6 +168,7 @@ export function denisRolloutFormFromEffective(config: {
     actLayerEnabled: boolean;
     actDryRun: boolean;
     actSubmitEnabled: boolean;
+    legacyOrderingEnabled: boolean;
   };
   memory: { returnGuestEnabled: boolean };
   surfaces: { voiceEnabled: boolean };
@@ -140,6 +184,7 @@ export function denisRolloutFormFromEffective(config: {
     actLayerEnabled: config.ordering.actLayerEnabled,
     actDryRun: config.ordering.actDryRun,
     actSubmitEnabled: config.ordering.actSubmitEnabled,
+    legacyOrderingEnabled: config.ordering.legacyOrderingEnabled,
   };
 }
 
@@ -162,6 +207,7 @@ export function denisRolloutPatchFromForm(
       actLayerEnabled: form.actLayerEnabled,
       actDryRun: form.actDryRun,
       actSubmitEnabled: form.actSubmitEnabled,
+      legacyOrderingEnabled: form.legacyOrderingEnabled,
     },
     memory: { returnGuestEnabled: form.returnGuestEnabled },
     surfaces: { voiceEnabled: form.voiceEnabled },
@@ -190,5 +236,6 @@ export function denisRolloutFormFromPreset(
     actLayerEnabled: ordering.actLayerEnabled ?? false,
     actDryRun: ordering.actDryRun ?? true,
     actSubmitEnabled: ordering.actSubmitEnabled ?? false,
+    legacyOrderingEnabled: ordering.legacyOrderingEnabled ?? true,
   };
 }

@@ -21,6 +21,9 @@ export type DenisTurnObservabilityPayload = {
   creditsCharged: number;
   actDryRun: boolean;
   actEnabled: boolean;
+  actSubmitLive?: boolean;
+  actSubmitAttempted?: boolean;
+  actOrderNumber?: number;
   shadowParityScore?: number;
   timings: TurnPhaseTimings;
 };
@@ -40,6 +43,9 @@ export function logDenisTurnObservability(
     creditsCharged: payload.creditsCharged,
     actDryRun: payload.actDryRun,
     actEnabled: payload.actEnabled,
+    actSubmitLive: payload.actSubmitLive,
+    actSubmitAttempted: payload.actSubmitAttempted,
+    actOrderNumber: payload.actOrderNumber,
     shadowParityScore: payload.shadowParityScore,
     latencyMs: payload.timings,
   });

@@ -14,7 +14,7 @@ export type ApplyPostLlmOrderingInput = {
   orderDraft: AiOrderDraft;
   catalog: AiCatalog;
   structured: AiStructuredResponse;
-  priorMessages: Array<{ role: string; content: string }>;
+  priorMessages: Array<{ role: "user" | "assistant"; content: string }>;
   language: string;
 };
 

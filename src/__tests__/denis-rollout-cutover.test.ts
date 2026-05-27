@@ -22,6 +22,16 @@ describe("Denis rollout cutover M25", () => {
     expect(form?.actSubmitEnabled).toBe(false);
   });
 
+  it("act submit pilot preset enables live ACL submit", () => {
+    const form = denisRolloutFormFromPreset("denis_act_submit_pilot");
+    expect(form?.rolloutMode).toBe("denis_only");
+    expect(form?.narrateWithLlm).toBe(true);
+    expect(form?.legacyOrderingEnabled).toBe(false);
+    expect(form?.actLayerEnabled).toBe(true);
+    expect(form?.actDryRun).toBe(false);
+    expect(form?.actSubmitEnabled).toBe(true);
+  });
+
   it("merges location override without dropping version", () => {
     const patch = denisRolloutPatchFromForm({
       rolloutMode: "denis_only",
@@ -34,6 +44,7 @@ describe("Denis rollout cutover M25", () => {
       actLayerEnabled: true,
       actDryRun: true,
       actSubmitEnabled: false,
+      legacyOrderingEnabled: true,
     });
     const merged = mergePartialConciergeConfig(
       { version: 1, upsell: { foodAfterDrinks: false } },
