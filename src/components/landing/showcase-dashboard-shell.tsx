@@ -51,8 +51,20 @@ export function ShowcaseDashboardShell({
 
   if (cinematic) {
     return (
-      <div className="h-full bg-[#09090b] text-zinc-50">
-        <main className="h-full overflow-hidden pl-[5.5rem] pr-[8.5rem] pt-[6.5rem] pb-[7.5rem] sm:pl-28 sm:pr-36 sm:pt-32 sm:pb-40">
+      <div className="flex h-full flex-col bg-[#09090b] text-zinc-50">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-zinc-800/70 px-8 sm:px-10">
+          <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
+            {title}
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-[11px] text-zinc-500 sm:inline">Today</span>
+            <span className="font-mono text-[11px] font-semibold tabular-nums text-zinc-400">
+              {formatPrice(todayRevenue, currency)}
+            </span>
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+          </div>
+        </div>
+        <main className="min-h-0 flex-1 overflow-hidden px-8 py-8 sm:px-10 sm:py-9">
           {children}
         </main>
       </div>

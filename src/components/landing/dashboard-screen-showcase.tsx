@@ -20,6 +20,8 @@ import type { ShowcaseTheme } from "@/components/landing/showcase-frame";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const CINEMATIC_FLOOR_TABLES = ["t7", "t9", "t4"] as const;
+
 function TableCard({
   table,
   compact = false,
@@ -35,9 +37,38 @@ function TableCard({
 
   if (cinematic) {
     return (
-      <p className="font-mono text-[3.25rem] font-medium leading-none tracking-[-0.06em] text-zinc-500 sm:text-[3.5rem]">
-        {table.name}
-      </p>
+      <div
+        className={cn(
+          "min-w-[92px] rounded-lg border px-3 py-3 text-center",
+          table.status === "attention" &&
+            "border-red-500/50 bg-red-500/[0.06]",
+          table.status === "occupied" &&
+            "border-green-500/35 bg-zinc-950/90",
+          table.status === "available" && "border-zinc-800 bg-zinc-950/70"
+        )}
+      >
+        <p className="font-mono text-sm font-semibold text-zinc-100">{table.name}</p>
+        {table.status === "attention" ? (
+          <p className="mt-2 text-[10px] font-medium text-red-400">
+            <span className="mr-1 inline-block size-1 rounded-full bg-red-500" />
+            Call
+          </p>
+        ) : table.status === "occupied" ? (
+          <>
+            <p className="mt-2 text-[10px] text-green-400">
+              <span className="mr-1 inline-block size-1 rounded-full bg-green-500" />
+              Active
+            </p>
+            {table.sessionTotal != null && (
+              <p className="mt-1 font-mono text-[11px] tabular-nums text-zinc-400">
+                {formatPrice(table.sessionTotal, DEMO_CURRENCY)}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="mt-2 text-[10px] text-zinc-500">Open</p>
+        )}
+      </div>
     );
   }
 
@@ -106,10 +137,29 @@ export function TablesShowcaseContent({
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
-  const tables = cinematic ? DEMO_TABLES.slice(0, 1) : DEMO_TABLES;
+  const tables = cinematic
+    ? CINEMATIC_FLOOR_TABLES.map(
+        (id) => DEMO_TABLES.find((table) => table.id === id)!
+      )
+    : DEMO_TABLES;
 
   return (
     <>
+      {cinematic && (
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Floor
+            </p>
+            <p className="mt-1 text-lg font-semibold tracking-tight text-zinc-100">
+              Tables
+            </p>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Rooftop <span className="font-medium text-emerald-500">● Live</span>
+          </p>
+        </div>
+      )}
       {!cinematic && (
         <div
           className={cn(
@@ -158,7 +208,12 @@ export function TablesShowcaseContent({
           )}
         </div>
       )}
-      <div className={cn(cinematic ? "" : "grid grid-cols-6 gap-2.5", compact && !cinematic && "grid-cols-6 gap-1.5")}>
+      <div
+        className={cn(
+          cinematic ? "flex gap-3" : "grid grid-cols-6 gap-2.5",
+          compact && !cinematic && "grid-cols-6 gap-1.5"
+        )}
+      >
         {tables.map((table) => (
           <TableCard
             key={table.id}

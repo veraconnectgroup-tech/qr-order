@@ -22,17 +22,41 @@ export function ShowcaseOrderCard({
   const items = order.order_items ?? [];
 
   if (cinematic) {
-    const item = items[0];
     return (
-      <article className="max-w-[280px]">
-        <p className="font-mono text-[4rem] font-medium leading-[0.9] tracking-[-0.06em] text-zinc-100 sm:text-[4.25rem]">
-          {formatOrderNumber(order.order_number)}
-        </p>
-        {item && (
-          <p className="mt-[5.5rem] text-[14px] leading-[1.6] tracking-[-0.01em] text-zinc-700">
-            {item.product_name}
+      <article className="max-w-[320px] rounded-xl border border-zinc-800/90 bg-zinc-950/90 p-5 border-l-2 border-l-[#e85d04]">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-mono text-[1.75rem] font-semibold leading-none tracking-[-0.03em] text-zinc-50">
+            {formatOrderNumber(order.order_number)}
           </p>
-        )}
+          <span className="shrink-0 rounded-md bg-zinc-800/90 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
+            {tableName}
+          </span>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-400">
+            New
+          </span>
+          <span className="text-[11px] text-zinc-600">· just now</span>
+        </div>
+
+        <ul className="mt-4 space-y-1.5 text-[13px] leading-snug text-zinc-300">
+          {items.slice(0, 2).map((line) => (
+            <li key={line.id}>
+              {line.quantity}× {line.product_name}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-5 flex items-center justify-between border-t border-zinc-800/80 pt-4">
+          <span className="font-mono text-sm font-semibold tabular-nums text-zinc-200">
+            {formatPrice(Number(order.total), currency)}
+          </span>
+          <span className="rounded-lg bg-[#e85d04] px-3.5 py-1.5 text-[11px] font-semibold text-white">
+            Accept
+          </span>
+        </div>
       </article>
     );
   }

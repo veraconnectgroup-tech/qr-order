@@ -13,7 +13,7 @@ export function ShowcaseAmbientStage({
   return <div className={cn("relative", className)}>{children}</div>;
 }
 
-/** Partial visibility only — never the full surface. */
+/** Partial visibility — crop keeps focus without hiding the product. */
 export function ShowcaseCropFrame({
   children,
   className,
@@ -33,8 +33,8 @@ export function ShowcaseCropFrame({
       <div
         className={cn(
           "absolute inset-0 size-full origin-top-left",
-          "scale-[1.28] -translate-x-[14%] -translate-y-[12%]",
-          "sm:scale-[1.32] sm:-translate-x-[16%] sm:-translate-y-[14%]",
+          "scale-[1.14] -translate-x-[8%] -translate-y-[6%]",
+          "sm:scale-[1.16] sm:-translate-x-[10%] sm:-translate-y-[7%]",
           innerClassName
         )}
       >
@@ -44,7 +44,7 @@ export function ShowcaseCropFrame({
   );
 }
 
-/** Secondary device — physical, quiet, background. */
+/** Secondary device — physical, present, not dominant. */
 export function ShowcaseFloatDevice({
   children,
   className,
@@ -56,12 +56,11 @@ export function ShowcaseFloatDevice({
     <div
       className={cn(
         "pointer-events-none absolute z-20 hidden md:block",
-        "bottom-[14%] left-[6%] w-[28%] min-w-[118px] max-w-[148px]",
-        "opacity-[0.52]",
+        "bottom-[10%] left-[5%] w-[32%] min-w-[132px] max-w-[168px]",
         className
       )}
     >
-      <div className="relative translate-y-1 -rotate-[1.5deg]">{children}</div>
+      <div className="relative translate-y-1 -rotate-[1.25deg]">{children}</div>
     </div>
   );
 }

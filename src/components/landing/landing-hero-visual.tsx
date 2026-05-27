@@ -14,11 +14,11 @@ import {
   ShowcaseWindow,
 } from "@/components/landing/showcase-frame";
 
-/** Hero: photographed operational moment — partial surface, vast space. */
+/** Hero: one strong operational focal point + physical guest device. */
 export function LandingHeroVisual() {
   return (
-    <ShowcaseStage className="mx-auto w-full max-w-none overflow-hidden bg-[#09090b] sm:min-h-[480px] lg:min-h-[560px] xl:min-h-[600px]">
-      <div className="absolute right-[-22%] top-[-18%] z-10 w-[135%] origin-top-left scale-[1.34] sm:right-[-20%] sm:top-[-16%] sm:w-[130%] sm:scale-[1.3] lg:scale-[1.26]">
+    <ShowcaseStage className="mx-auto w-full max-w-none overflow-hidden bg-[#09090b] sm:min-h-[480px] lg:min-h-[540px] xl:min-h-[580px]">
+      <div className="absolute right-[-10%] top-[-6%] z-10 w-[115%] origin-top-left scale-[1.1] sm:right-[-8%] sm:top-[-5%] sm:w-[112%] sm:scale-[1.08] lg:scale-[1.04]">
         <ShowcaseWindow presentation="cinematic">
           <CinematicDashboardShowcase story="live-orders" />
         </ShowcaseWindow>
@@ -26,7 +26,7 @@ export function LandingHeroVisual() {
 
       <ShowcaseFloatDevice>
         <ShowcasePhone presentation="float" hideLabel className="max-w-none">
-          <ScaledPhonePreview designWidth={280} designHeight={420}>
+          <ScaledPhonePreview designWidth={280} designHeight={460}>
             <GuestMenuContent variant="cinematic" />
           </ScaledPhonePreview>
         </ShowcasePhone>
@@ -35,7 +35,7 @@ export function LandingHeroVisual() {
   );
 }
 
-/** Feature sections: one cropped editorial surface each. */
+/** Feature sections: one cropped operational moment each. */
 export function FeatureShowcase({
   children,
   aspect = "16/11",

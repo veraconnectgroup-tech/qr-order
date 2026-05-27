@@ -11,10 +11,10 @@ import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
 
 function GuestPhoneShowcase() {
   return (
-    <ShowcaseAmbientStage className="mx-auto w-full max-w-[200px] opacity-[0.88] sm:max-w-[220px]">
+    <ShowcaseAmbientStage className="mx-auto w-full max-w-[230px] sm:max-w-[250px]">
       <div className="translate-y-0.5 -rotate-[1deg]">
         <ShowcasePhone presentation="float" hideLabel className="max-w-none">
-          <ScaledPhonePreview designWidth={280} designHeight={460}>
+          <ScaledPhonePreview designWidth={280} designHeight={480}>
             <GuestMenuContent variant="cinematic" />
           </ScaledPhonePreview>
         </ShowcasePhone>
@@ -41,7 +41,7 @@ export function LandingFeatures() {
         visual={
           <FeatureShowcase
             aspect="16/11"
-            cropClassName="lg:scale-[1.36] lg:-translate-x-[18%] lg:-translate-y-[14%]"
+            cropClassName="lg:scale-[1.18] lg:-translate-x-[11%] lg:-translate-y-[8%]"
           >
             <CinematicDashboardShowcase story="live-orders" />
           </FeatureShowcase>
@@ -55,7 +55,7 @@ export function LandingFeatures() {
         visual={
           <FeatureShowcase
             aspect="16/11"
-            cropClassName="lg:scale-[1.34] lg:-translate-x-[20%] lg:-translate-y-[12%]"
+            cropClassName="lg:scale-[1.16] lg:-translate-x-[12%] lg:-translate-y-[7%]"
           >
             <CinematicDashboardShowcase story="floor" />
           </FeatureShowcase>
@@ -68,7 +68,7 @@ export function LandingFeatures() {
         lead="German fiscal requirements included. Denis helps guests order — without turning the product into a chatbot."
         reverse
         visual={
-          <ShowcaseAmbientStage className="mx-auto w-full max-w-[200px] opacity-[0.88] sm:max-w-[220px]">
+          <ShowcaseAmbientStage className="mx-auto w-full max-w-[230px] sm:max-w-[250px]">
             <div className="translate-y-0.5 -rotate-[1deg]">
               <AiConciergeShowcase hideLabel presentation="float" />
             </div>
