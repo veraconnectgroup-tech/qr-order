@@ -6,6 +6,7 @@ import {
   DEMO_CURRENCY,
   DEMO_MENU_CATEGORIES,
   DEMO_ORDERS,
+  demoElapsedMinutes,
 } from "@/components/landing/demo-data";
 import {
   getShowcaseOrderColumnId,
@@ -58,28 +59,38 @@ export function GuestMenuContent({
     );
 
     return (
-      <div className="pointer-events-none flex h-full min-h-[420px] w-full flex-col bg-[#09090b]">
-        <header className="shrink-0 border-b border-zinc-800/80 px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
+      <div className="pointer-events-none flex h-full min-h-[440px] w-full flex-col bg-[#0a0a0a]">
+        <header className="shrink-0 border-b border-zinc-800/70 px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[13px] font-semibold leading-tight text-zinc-100">
+              <p className="text-[14px] font-semibold leading-tight tracking-[-0.02em] text-zinc-100">
                 Skyline Lounge
               </p>
-              <p className="text-[10px] text-zinc-500">Table 8 · Rooftop</p>
+              <p className="mt-1 text-[11px] text-zinc-500">Table 8 · Rooftop</p>
             </div>
-            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-400 ring-1 ring-zinc-800">
+            <span className="rounded-full bg-zinc-900 px-2.5 py-1 text-[10px] font-medium text-zinc-400 ring-1 ring-zinc-800">
               Drinks
             </span>
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-2.5 px-3 py-3">
+        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-xl bg-zinc-950/90 px-3.5 py-2.5 ring-1 ring-zinc-800/80">
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-emerald-500 pulse-dot"
+            aria-hidden
+          />
+          <p className="text-[11px] leading-snug text-zinc-400">
+            <span className="font-mono text-zinc-300">#047</span> syncing with floor
+          </p>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-3.5 px-4 py-5">
           {products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center gap-3 rounded-lg bg-zinc-950/90 p-2.5 ring-1 ring-zinc-800/70"
+              className="flex items-center gap-3.5 rounded-xl bg-zinc-950/90 p-3.5 ring-1 ring-zinc-800/70"
             >
-              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-zinc-800">
+              <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-zinc-800">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -94,29 +105,29 @@ export function GuestMenuContent({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-zinc-100">
+                <p className="truncate text-[14px] font-medium leading-snug tracking-[-0.01em] text-zinc-100">
                   {product.name}
                 </p>
                 {product.prep_time_minutes != null && (
-                  <p className="text-[10px] text-zinc-500">
-                    {product.prep_time_minutes} min
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    {product.prep_time_minutes} min prep
                   </p>
                 )}
               </div>
-              <p className="font-mono text-[12px] tabular-nums text-zinc-300">
+              <p className="font-mono text-[13px] tabular-nums text-zinc-300">
                 {formatPrice(Number(product.price), DEMO_CURRENCY)}
               </p>
             </div>
           ))}
         </div>
 
-        <footer className="shrink-0 border-t border-zinc-800/80 px-3 py-3">
-          <div className="flex items-center justify-between rounded-lg bg-[#e85d04] px-3 py-2.5 text-white">
+        <footer className="shrink-0 border-t border-zinc-800/70 px-4 py-4">
+          <div className="flex items-center justify-between rounded-xl bg-[#e85d04] px-4 py-3 text-white">
             <span className="text-[11px] font-medium">
               {products.length} {products.length === 1 ? "item" : "items"}
             </span>
-            <span className="text-[11px] font-semibold">Cart →</span>
-            <span className="font-mono text-[12px] font-bold tabular-nums">
+            <span className="text-[12px] font-semibold tracking-wide">Cart →</span>
+            <span className="font-mono text-[13px] font-bold tabular-nums">
               {formatPrice(cartPreviewTotal, DEMO_CURRENCY)}
             </span>
           </div>
@@ -269,12 +280,17 @@ export function OrdersBoardContent({
   if (isCinematic) {
     const primaryOrder = DEMO_ORDERS.find((o) => o.status === "pending");
     const preparingOrder = DEMO_ORDERS.find((o) => o.status === "preparing");
+    const readyOrder = DEMO_ORDERS.find((o) => o.status === "ready");
 
     if (!primaryOrder) return null;
 
+    const preparingMinutes = preparingOrder?.created_at
+      ? demoElapsedMinutes(preparingOrder.created_at)
+      : null;
+
     return (
       <div className="pointer-events-none select-none">
-        <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mb-4 flex items-end justify-between gap-4">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
               Operations
@@ -283,29 +299,59 @@ export function OrdersBoardContent({
               Live Orders
             </p>
           </div>
-          <p className="text-[11px] text-zinc-500">
-            Skyline Lounge{" "}
-            <span className="font-medium text-emerald-500">● Live</span>
+          <p className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+            Skyline Lounge
+            <span className="size-1.5 rounded-full bg-emerald-500 pulse-dot" aria-hidden />
+            <span className="font-medium text-emerald-500/90">Live</span>
           </p>
         </div>
 
-        <div className="flex items-start gap-6 lg:gap-10">
+        <p className="mb-5 flex items-center gap-2 text-[11px] text-zinc-600">
+          <span className="size-1 shrink-0 rounded-full bg-zinc-600" aria-hidden />
+          Synced across floor · bar · kitchen
+        </p>
+
+        <div className="flex items-start gap-5 lg:gap-8">
           <ShowcaseOrderCard
             order={trimOrderItems(primaryOrder, 2)}
             currency={DEMO_CURRENCY}
             appearance="cinematic"
           />
           {preparingOrder && (
-            <div className="hidden min-w-[160px] flex-1 pt-10 opacity-[0.38] sm:block">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+            <div className="hidden min-w-[150px] flex-1 pt-8 opacity-[0.55] sm:block">
+              <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-yellow-500/90">
+                <span
+                  className="size-1.5 rounded-full bg-yellow-500 pulse-dot"
+                  aria-hidden
+                />
                 Preparing
               </p>
-              <p className="font-mono text-xl font-medium text-zinc-400">
+              <p className="font-mono text-xl font-medium text-zinc-300">
                 {formatOrderNumber(preparingOrder.order_number)}
               </p>
-              <p className="mt-2 text-[12px] text-zinc-600">
+              <p className="mt-2 text-[12px] leading-snug text-zinc-500">
                 {preparingOrder.tables?.name ?? "Bar"} ·{" "}
                 {preparingOrder.order_items?.[0]?.product_name}
+              </p>
+              {preparingMinutes != null && (
+                <p className="mt-1.5 text-[10px] text-zinc-600">{preparingMinutes}m in prep</p>
+              )}
+            </div>
+          )}
+          {readyOrder && (
+            <div className="hidden min-w-[120px] flex-1 pt-12 opacity-[0.34] lg:block">
+              <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-green-500/90">
+                <span
+                  className="size-1.5 rounded-full bg-green-500 pulse-dot"
+                  aria-hidden
+                />
+                Ready
+              </p>
+              <p className="font-mono text-lg font-medium text-zinc-400">
+                {formatOrderNumber(readyOrder.order_number)}
+              </p>
+              <p className="mt-2 text-[11px] text-zinc-600">
+                {readyOrder.tables?.name} · awaiting pickup
               </p>
             </div>
           )}

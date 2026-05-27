@@ -50,7 +50,7 @@ function TableCard({
         <p className="font-mono text-sm font-semibold text-zinc-100">{table.name}</p>
         {table.status === "attention" ? (
           <p className="mt-2 text-[10px] font-medium text-red-400">
-            <span className="mr-1 inline-block size-1 rounded-full bg-red-500" />
+            <span className="mr-1 inline-block size-1 rounded-full bg-red-500 pulse-dot" />
             Call
           </p>
         ) : table.status === "occupied" ? (
@@ -156,7 +156,11 @@ export function TablesShowcaseContent({
             </p>
           </div>
           <p className="text-[11px] text-zinc-500">
-            Rooftop <span className="font-medium text-emerald-500">● Live</span>
+            Rooftop{" "}
+            <span className="inline-flex items-center gap-1 font-medium text-emerald-500/90">
+              <span className="size-1.5 rounded-full bg-emerald-500 pulse-dot" aria-hidden />
+              Live
+            </span>
           </p>
         </div>
       )}

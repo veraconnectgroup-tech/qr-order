@@ -6,7 +6,8 @@ const columns = [
   {
     title: "Product",
     links: [
-      { href: "/#features-guest", label: "Platform" },
+      { href: "/#system", label: "Overview" },
+      { href: "/#operations", label: "Operations" },
       { href: "/enterprise", label: "Enterprise" },
       { href: "/#pricing", label: "Pricing" },
       { href: "/skyline-lounge/demo-table-8", label: "Live demo" },

@@ -404,23 +404,19 @@
 
 .landing-page {
   --lp-bg: #08080c;
-  --lp-surface: #0f0f14;
-  --lp-tint: #0c0c11;
-  --lp-warm: #0c0c11;
+  --lp-surface: #0a0a0a;
+  --lp-tint: #08080c;
+  --lp-warm: #08080c;
   --lp-ink: #ededef;
-  --lp-muted: #8a8a9a;
-  --lp-subtle: #5c5c72;
-  --lp-border: #1e1e2e;
-  --lp-accent: #818cf8;
-  --lp-accent-hover: #6366f1;
-  --lp-accent-soft: rgba(129, 140, 248, 0.08);
+  --lp-muted: #71717a;
+  --lp-subtle: #52525b;
+  --lp-border: #27272a;
+  --lp-accent: #e85d04;
+  --lp-accent-hover: #d14d04;
+  --lp-accent-soft: rgba(232, 93, 4, 0.08);
   --lp-ember: #e85d04;
   --lp-ember-hover: #d14d04;
   --lp-dark: #08080c;
-  --lp-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.3);
-  --lp-shadow-md: 0 16px 48px rgba(0, 0, 0, 0.35);
-  --lp-shadow-lg: 0 32px 80px rgba(0, 0, 0, 0.45);
   background: #08080c;
   color: #ededef;
   position: relative;
@@ -428,30 +424,10 @@
   font-feature-settings: "ss01", "ss02", "cv01";
 }
 
-.landing-page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.4;
-  background:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99, 102, 241, 0.12), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 85% 15%, rgba(139, 92, 246, 0.08), transparent 50%),
-    radial-gradient(ellipse 70% 40% at 50% 100%, rgba(99, 102, 241, 0.06), transparent 55%);
-  animation: landing-aurora-drift 20s ease-in-out infinite alternate;
-}
-
+/* Application-grade landing — flat system surface, no aurora marketing layer */
+.landing-page::before,
 .landing-page::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.02;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 180px 180px;
+  display: none;
 }
 
 @keyframes landing-aurora-drift {
@@ -874,6 +850,55 @@
   }
   to {
     transform: translateX(-50%);
+  }
+}
+
+/* Landing showcase — quiet live motion (no glow) */
+@keyframes showcase-route {
+  0%,
+  100% {
+    transform: scaleX(0.3);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleX(0.82);
+    opacity: 1;
+  }
+}
+
+.showcase-route-pulse {
+  animation: showcase-route 2.4s ease-in-out infinite;
+  transform-origin: left center;
+}
+
+@keyframes showcase-denis-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+.showcase-denis-dots span {
+  animation: showcase-denis-dot 1.4s ease-in-out infinite;
+}
+
+.showcase-denis-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.showcase-denis-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase-route-pulse,
+  .showcase-denis-dots span {
+    animation: none;
   }
 }
 

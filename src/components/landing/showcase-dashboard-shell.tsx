@@ -51,8 +51,39 @@ export function ShowcaseDashboardShell({
 
   if (cinematic) {
     return (
-      <div className="flex h-full flex-col bg-[#09090b] text-zinc-50">
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-zinc-800/70 px-8 sm:px-10">
+      <div className="relative flex h-full flex-col overflow-hidden bg-[#09090b] text-zinc-50">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-[3.25rem] border-r border-zinc-800/45 bg-zinc-950/35 sm:w-14"
+        >
+          <nav className="flex flex-col gap-2.5 px-2.5 pt-[4.25rem] opacity-[0.2]">
+            {NAV.slice(0, 5).map(({ id, label, icon: Icon }) => (
+              <div
+                key={id}
+                className={cn(
+                  "flex items-center gap-2 text-[10px]",
+                  id === activeScreen ? "text-zinc-300" : "text-zinc-600"
+                )}
+              >
+                <Icon className="size-3 shrink-0" />
+                <span className="truncate">{label}</span>
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-11 bottom-0 z-0 opacity-[0.08]"
+        >
+          <div className="flex h-full gap-4 px-16 pt-9 sm:gap-5 sm:px-20 sm:pt-10">
+            <div className="w-24 border-t-2 border-orange-500 sm:w-28" />
+            <div className="w-24 border-t-2 border-yellow-500 sm:w-28" />
+            <div className="w-24 border-t-2 border-green-500 sm:w-28" />
+          </div>
+        </div>
+
+        <div className="relative z-10 flex h-11 shrink-0 items-center justify-between border-b border-zinc-800/70 px-8 sm:pl-16 sm:pr-10">
           <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
             {title}
           </p>
@@ -61,10 +92,10 @@ export function ShowcaseDashboardShell({
             <span className="font-mono text-[11px] font-semibold tabular-nums text-zinc-400">
               {formatPrice(todayRevenue, currency)}
             </span>
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+            <span className="size-1.5 rounded-full bg-emerald-500 pulse-dot" aria-hidden />
           </div>
         </div>
-        <main className="min-h-0 flex-1 overflow-hidden px-8 py-8 sm:px-10 sm:py-9">
+        <main className="relative z-10 min-h-0 flex-1 overflow-hidden px-8 py-8 sm:pl-16 sm:pr-10 sm:py-9">
           {children}
         </main>
       </div>

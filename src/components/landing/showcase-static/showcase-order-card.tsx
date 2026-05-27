@@ -1,4 +1,5 @@
 import { formatOrderNumber, formatPrice } from "@/lib/format";
+import { demoElapsedSeconds } from "@/components/landing/demo-data";
 import { cn } from "@/lib/utils";
 import { getShowcaseOrderColumnId } from "@/components/landing/showcase-static/order-columns";
 import type { OrderWithDetails } from "@/types";
@@ -22,6 +23,12 @@ export function ShowcaseOrderCard({
   const items = order.order_items ?? [];
 
   if (cinematic) {
+    const elapsed = order.created_at
+      ? demoElapsedSeconds(order.created_at)
+      : 0;
+    const elapsedLabel =
+      elapsed < 60 ? `${Math.max(1, elapsed)}s` : `${Math.floor(elapsed / 60)}m`;
+
     return (
       <article className="max-w-[320px] rounded-xl border border-zinc-800/90 bg-zinc-950/90 p-5 border-l-2 border-l-[#e85d04]">
         <div className="flex items-start justify-between gap-3">
@@ -34,14 +41,24 @@ export function ShowcaseOrderCard({
         </div>
 
         <div className="mt-3 flex items-center gap-2">
-          <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-orange-400 pulse-dot"
+            aria-hidden
+          />
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-400">
             New
           </span>
-          <span className="text-[11px] text-zinc-600">· just now</span>
+          <span className="text-[11px] text-zinc-600">· {elapsedLabel}</span>
         </div>
 
-        <ul className="mt-4 space-y-1.5 text-[13px] leading-snug text-zinc-300">
+        <div className="mt-2.5 h-px overflow-hidden rounded-full bg-zinc-800/90">
+          <div className="h-full w-full rounded-full bg-[#e85d04]/55 showcase-route-pulse" />
+        </div>
+        <p className="mt-1.5 text-[10px] tracking-wide text-zinc-600">
+          Routing to bar station
+        </p>
+
+        <ul className="mt-4 space-y-2 text-[13px] leading-snug text-zinc-300">
           {items.slice(0, 2).map((line) => (
             <li key={line.id}>
               {line.quantity}× {line.product_name}

@@ -1,18 +1,20 @@
-import { LandingContainer } from "@/components/landing/landing-primitives";
 import { TrustLogoList } from "@/components/landing/trust-logos";
 
+/** System metadata rail — not a marketing logo strip. */
 export function LandingTrustStrip() {
   return (
-    <section aria-label="Integrations and compliance" className="bg-black py-12 md:py-16">
-      <LandingContainer wide>
-        <p className="text-center text-[11px] tracking-[0.14em] text-zinc-600 uppercase">
-          Integrations &amp; compliance
+    <div
+      aria-label="System integrations and compliance"
+      className="border-b border-zinc-800/60 bg-[#08080c] px-6 py-3 lg:px-8"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono text-[11px] text-zinc-600">
+          Infrastructure · Stripe Connect · TSE · DATEV export
         </p>
-
-        <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4 opacity-40 md:gap-x-8">
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 opacity-35">
           <TrustLogoList />
         </ul>
-      </LandingContainer>
-    </section>
+      </div>
+    </div>
   );
 }
