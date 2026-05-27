@@ -32,7 +32,7 @@ export function PlatformPlanSelector({
       value={currentPlanId ?? "starter"}
       disabled={pending}
       onChange={(e) => onChange(e.target.value)}
-      className="mt-2 h-9 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
+      className="mt-2 h-9 rounded-md border border-border bg-card px-3 text-sm text-foreground"
     >
       {plans.map((plan) => (
         <option key={plan.id} value={plan.id}>

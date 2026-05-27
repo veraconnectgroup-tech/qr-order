@@ -15,7 +15,7 @@ export function CopyableText({ value }: { value: string }) {
 
   return (
     <div className="mt-1 flex items-center gap-2">
-      <code className="rounded bg-neutral-100 px-2 py-1 font-mono text-xs text-neutral-800">
+      <code className="rounded bg-muted/50 px-2 py-1 font-mono text-xs text-foreground">
         {value}
       </code>
       <Button

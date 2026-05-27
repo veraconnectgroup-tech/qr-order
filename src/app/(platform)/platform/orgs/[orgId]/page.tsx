@@ -16,7 +16,7 @@ import { DlqRetryButton } from "@/components/platform/dlq-retry-button";
 function posStatusLabel(status: string) {
   if (status === "connected") return { label: "Aktiv", className: "text-emerald-600" };
   if (status === "error") return { label: "Fehler", className: "text-red-600" };
-  return { label: "Inaktiv", className: "text-neutral-500" };
+  return { label: "Inaktiv", className: "text-muted-foreground" };
 }
 
 function printerTypeLabel(type: string) {
@@ -77,13 +77,13 @@ export default async function PlatformOrgDetailPage({
       <div>
         <Link
           href="/platform/orgs"
-          className="inline-flex items-center text-sm text-neutral-500 hover:text-neutral-800"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="me-1 size-4" />
           Organizations
         </Link>
-        <h1 className="mt-3 text-2xl font-semibold text-neutral-900">{orgRow.name}</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="mt-3 text-2xl font-semibold text-foreground">{orgRow.name}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           {orgRow.slug} · {trial_status}
           {orgRow.trial_ends_at && (
             <> · trial until {new Date(orgRow.trial_ends_at).toLocaleDateString()}</>
@@ -101,24 +101,24 @@ export default async function PlatformOrgDetailPage({
         />
       </div>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">Stripe</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Stripe</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           {orgRow.stripe_onboarded
             ? `Connected (${orgRow.stripe_account_id ?? "account linked"})`
             : "Not connected"}
         </p>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">Subscription</h2>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
         <dl className="mt-4 space-y-4 text-sm">
           <div>
-            <dt className="font-medium text-neutral-500">Current plan</dt>
-            <dd className="mt-1 text-neutral-800">
+            <dt className="font-medium text-muted-foreground">Current plan</dt>
+            <dd className="mt-1 text-foreground">
               {currentPlan?.name ?? orgRow.plan_id ?? "starter"}
               {currentPlan && (
-                <span className="text-neutral-500">
+                <span className="text-muted-foreground">
                   {" "}
                   · {formatPrice(fromCents(currentPlan.price_cents), currentPlan.currency)}/mo
                 </span>
@@ -126,14 +126,14 @@ export default async function PlatformOrgDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-500">Subscription status</dt>
-            <dd className="mt-1 capitalize text-neutral-800">
+            <dt className="font-medium text-muted-foreground">Subscription status</dt>
+            <dd className="mt-1 capitalize text-foreground">
               {orgRow.subscription_status ?? "trialing"}
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-500">Trial end date</dt>
-            <dd className="mt-1 text-neutral-800">
+            <dt className="font-medium text-muted-foreground">Trial end date</dt>
+            <dd className="mt-1 text-foreground">
               {orgRow.trial_ends_at
                 ? new Date(orgRow.trial_ends_at).toLocaleDateString()
                 : "—"}
@@ -141,14 +141,14 @@ export default async function PlatformOrgDetailPage({
           </div>
           {orgRow.stripe_subscription_id && (
             <div>
-              <dt className="font-medium text-neutral-500">Stripe subscription</dt>
-              <dd className="mt-1 font-mono text-xs text-neutral-600">
+              <dt className="font-medium text-muted-foreground">Stripe subscription</dt>
+              <dd className="mt-1 font-mono text-xs text-muted-foreground">
                 {orgRow.stripe_subscription_id}
               </dd>
             </div>
           )}
           <div>
-            <dt className="font-medium text-neutral-500">Change plan</dt>
+            <dt className="font-medium text-muted-foreground">Change plan</dt>
             <dd>
               <PlatformPlanSelector
                 orgId={orgId}
@@ -160,11 +160,11 @@ export default async function PlatformOrgDetailPage({
         </dl>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">Fiscal / TSE</h2>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Fiscal / TSE</h2>
         <dl className="mt-4 space-y-4 text-sm">
           <div>
-            <dt className="font-medium text-neutral-500">TSE Status</dt>
+            <dt className="font-medium text-muted-foreground">TSE Status</dt>
             <dd className="mt-1">
               <span
                 className={cn(
@@ -178,31 +178,31 @@ export default async function PlatformOrgDetailPage({
           </div>
           {orgRow.fiskaly_tss_id && (
             <div>
-              <dt className="font-medium text-neutral-500">TSS ID</dt>
+              <dt className="font-medium text-muted-foreground">TSS ID</dt>
               <dd>
                 <CopyableText value={orgRow.fiskaly_tss_id} />
               </dd>
             </div>
           )}
           <div>
-            <dt className="font-medium text-neutral-500">Steuernummer</dt>
-            <dd className="mt-1 text-neutral-800">
+            <dt className="font-medium text-muted-foreground">Steuernummer</dt>
+            <dd className="mt-1 text-foreground">
               {orgRow.steuernummer?.trim() || "Nicht hinterlegt"}
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-500">USt-IdNr</dt>
-            <dd className="mt-1 text-neutral-800">
+            <dt className="font-medium text-muted-foreground">USt-IdNr</dt>
+            <dd className="mt-1 text-foreground">
               {orgRow.ust_id_nr?.trim() || "Nicht hinterlegt"}
             </dd>
           </div>
         </dl>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">POS-Integration</h2>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">POS-Integration</h2>
         {posIntegrations.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Keine POS-Integration (Standalone-Modus)
           </p>
         ) : (
@@ -212,17 +212,17 @@ export default async function PlatformOrgDetailPage({
               return (
                 <li
                   key={`${pos.provider}-${index}`}
-                  className="rounded-md border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm"
+                  className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium capitalize text-neutral-900">
+                    <span className="font-medium capitalize text-foreground">
                       {pos.provider}
                     </span>
                     <span className={cn("font-medium", status.className)}>
                       {status.label}
                     </span>
                   </div>
-                  <p className="mt-1 font-mono text-xs text-neutral-500">
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
                     {pos.external_location_id ?? "—"}
                   </p>
                 </li>
@@ -232,28 +232,28 @@ export default async function PlatformOrgDetailPage({
         )}
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">Drucker</h2>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Drucker</h2>
         {printers.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">Keine Drucker konfiguriert</p>
+          <p className="mt-2 text-sm text-muted-foreground">Keine Drucker konfiguriert</p>
         ) : (
           <>
-            <p className="mt-2 text-sm text-neutral-600">
+            <p className="mt-2 text-sm text-muted-foreground">
               {pendingPrintJobs} ausstehende Druckaufträge
             </p>
             <ul className="mt-4 space-y-3">
               {printers.map((printer) => (
                 <li
                   key={printer.id}
-                  className="rounded-md border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm"
+                  className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium text-neutral-900">{printer.name}</span>
-                    <span className="text-neutral-600">
+                    <span className="font-medium text-foreground">{printer.name}</span>
+                    <span className="text-muted-foreground">
                       {printerTypeLabel(printer.type)}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {printer.auto_print ? "Auto-Druck aktiv" : "Manuell"} ·{" "}
                     {printer.pending_jobs} pending
                   </p>
@@ -264,10 +264,10 @@ export default async function PlatformOrgDetailPage({
         )}
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">Failed jobs</h2>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Failed jobs</h2>
         {failedJobs.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">No unresolved failed jobs.</p>
+          <p className="mt-2 text-sm text-muted-foreground">No unresolved failed jobs.</p>
         ) : (
           <ul className="mt-4 space-y-3">
             {failedJobs.map((job) => (
@@ -277,8 +277,8 @@ export default async function PlatformOrgDetailPage({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium text-neutral-900">{job.job_type}</p>
-                    <p className="mt-1 text-xs text-neutral-600">
+                    <p className="font-medium text-foreground">{job.job_type}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {new Date(job.created_at).toLocaleString()}
                     </p>
                     {job.error_message && (
@@ -293,9 +293,9 @@ export default async function PlatformOrgDetailPage({
         )}
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-neutral-900">Owner</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Owner</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           {owner?.name ?? "—"}
           {owner?.email && <> · {owner.email}</>}
         </p>
@@ -307,8 +307,8 @@ export default async function PlatformOrgDetailPage({
         </form>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-neutral-900">Feature flags</h2>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Feature flags</h2>
         <FeatureFlagToggles orgId={orgId} featureFlags={orgRow.feature_flags} />
       </section>
     </div>

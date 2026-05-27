@@ -33,7 +33,7 @@ export function FeatureFlagToggles({
       {PLATFORM_FEATURES.map((flag) => (
         <div
           key={flag}
-          className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-4 py-3"
+          className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
         >
           <Label htmlFor={flag} className="text-sm font-medium">
             {FEATURE_LABELS[flag]}

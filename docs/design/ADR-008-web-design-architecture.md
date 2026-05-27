@@ -652,7 +652,7 @@ Jedan PR po track-u. Redosled:
 |-------|-------|-------------|--------|
 | **DE-01** | Landing enterprise | Hero + Trust + 4× FeatureRow + Pricing + FAQ; ukloniti FloorTile hero | ✅ |
 | **DE-02** | Auth shell | Split + AuthCard dark | ✅ |
-| **DE-03** | Denis panel gramat | DenisPanel + DenisMessageBlock; refactor `ai-concierge-chat.tsx` | — |
+| **DE-03** | Denis panel gramat | DenisPanel + DenisMessageBlock; refactor `ai-concierge-chat.tsx` | ✅ |
 | **DE-04** | Guest menu unifikacija | `GuestProductRow` — menu + Denis + landing | ✅ |
 | **DE-05** | Overview cockpit v2 | QrKpi strip + floor snapshot + collapsed Denis strip | ✅ |
 | **DE-06** | Admin full dark | Sve admin stranice → AdminPanel + QrCard | ✅ |
@@ -743,25 +743,33 @@ flowchart TB
 
 ---
 
-## 15. Sledeći korak
+## 15. Status (May 2026)
 
-1. **Ti odobriš** ovaj dokument (sekcije 7, 10, 14).
-2. Implementacija **DE-01 + DE-03** prva (landing + Denis gramat) — najveći vizuelni skok.
-3. Preview test na `design/denis-spatial` Vercel URL, ne na main.
+**DE-01…DE-10 implementirano** na grani `design/denis-spatial`. Platform shell dark migracija usklađena sa admin-theme.
+
+**Pre merge na main:**
+
+1. Vercel preview QA (landing, auth, dashboard overview, guest Denis, admin settings)
+2. `pnpm verify:denis` · `pnpm eval:denis` · `pnpm build`
+3. Venue rollout: shadow → canary → `denis_only` u Admin Settings
+4. QStash env za `refresh-org-ai-ops` job (F5)
+
+Otvorene product odluke: §14 (hero layout, ember shift `#e85d04`, landing EN lokalizacija).
 
 ---
 
 ## Appendix — checklist po fajlu (DE-06 admin)
 
-Stranice za migraciju (grep `bg-white|neutral-50`):
+Stranice za migraciju (grep `bg-white|neutral-50`) — **✅ migrirano May 2026** (admin + platform):
 
 - `admin/menu/**`
 - `admin/tables/**`
 - `admin/staff/**`
 - `admin/analytics/**`
-- `admin/settings/**` (delimično urađeno)
+- `admin/settings/**`
 - `admin/denis/**`
 - `admin/stripe/**`
 - `admin/locations/**`
+- `platform/**` (orgs, denis-eval, analytics)
 
 Svaka: `AdminPanel` → `AdminPanelSection` → `QrCard` → dark inputs.

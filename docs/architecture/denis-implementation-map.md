@@ -290,6 +290,27 @@ pnpm type-check
 
 ---
 
+## 12. Design enterprise tracks (ADR-008 DE-01…DE-10)
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| DE-01 | Landing enterprise (hero, trust, 4× FeatureRow, pricing, FAQ) | ✅ |
+| DE-02 | Auth split shell + showcase panel | ✅ |
+| DE-03 | DenisPanel + DenisMessageBlock gramat | ✅ |
+| DE-04 | `GuestProductRow` (menu + Denis + landing) | ✅ |
+| DE-05 | Overview cockpit (`QrKpi`, floor, Denis strip) | ✅ |
+| DE-06 | Admin full dark | ✅ |
+| DE-07 | Dashboard Denis staff copilot drawer | ✅ |
+| DE-08 | Landing Denis showcase | ✅ |
+| DE-09 | ADR-007 appendix B component gallery | ✅ |
+| DE-10 | Motion + a11y (48px, reduced-motion) | ✅ |
+
+**Also:** Platform `(platform)/**` dark tokens aligned with `admin-theme` (May 2026).
+
+**Doc:** [ADR-008](../design/ADR-008-web-design-architecture.md) · [ADR-007 Appendix B](../design/ADR-007-visual-system.md)
+
+---
+
 ## 10. Operator prompt (M11+)
 
 ```

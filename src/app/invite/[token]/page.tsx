@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { AcceptInviteForm } from "@/components/auth/accept-invite-form";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { getStaffInvite } from "@/lib/dashboard/staff-actions";
 
 export default async function InvitePage({
@@ -13,24 +13,22 @@ export default async function InvitePage({
 
   if (!invite) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4 text-center">
-        <h1 className="text-xl font-semibold text-zinc-100">Invite expired</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          This link is invalid or has already been used.
+      <AuthShell title="Invite expired" description="This link is invalid or has already been used.">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Go to sign in
+          </Link>
         </p>
-        <Link
-          href="/login"
-          className="mt-6 text-sm text-orange-400 hover:underline"
-        >
-          Go to sign in
-        </Link>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 py-12">
-      <AcceptInviteForm token={token} {...invite} />
-    </div>
+    <AuthShell
+      title={`Join ${invite.orgName}`}
+      description={`${invite.name} · ${invite.email} · ${invite.role}`}
+    >
+      <AcceptInviteForm token={token} />
+    </AuthShell>
   );
 }

@@ -9,19 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function AcceptInviteForm({
-  token,
-  email,
-  name,
-  role,
-  orgName,
-}: {
-  token: string;
-  email: string;
-  name: string;
-  role: string;
-  orgName: string;
-}) {
+export function AcceptInviteForm({ token }: { token: string }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [pending, startTransition] = useTransition();
@@ -44,43 +32,30 @@ export function AcceptInviteForm({
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <p className="text-sm text-zinc-500">Join team</p>
-      <h1 className="mt-1 text-2xl font-bold text-zinc-50">{orgName}</h1>
-      <p className="mt-2 text-sm text-zinc-400">
-        {name} · {email} · {role}
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div>
-          <Label htmlFor="password" className="text-zinc-400">
-            Choose a password
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            minLength={8}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 border-zinc-700 bg-zinc-950 text-zinc-100"
-          />
-        </div>
-        <Button
-          type="submit"
-          disabled={pending}
-          className="w-full bg-orange-500 hover:bg-orange-600"
-        >
-          {pending ? "Creating account…" : "Accept invite"}
-        </Button>
-      </form>
-
-      <p className="mt-4 text-center text-sm text-zinc-500">
+    <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+      <div>
+        <Label htmlFor="password">Choose a password</Label>
+        <Input
+          id="password"
+          type="password"
+          minLength={8}
+          required
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mt-1.5 h-10"
+        />
+        <p className="mt-1.5 text-xs text-muted-foreground">At least 8 characters</p>
+      </div>
+      <Button type="submit" disabled={pending} size="lg" className="w-full">
+        {pending ? "Creating account…" : "Accept invite"}
+      </Button>
+      <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="text-orange-400 hover:underline">
+        <Link href="/login" className="font-medium text-primary hover:underline">
           Sign in
         </Link>
       </p>
-    </div>
+    </form>
   );
 }

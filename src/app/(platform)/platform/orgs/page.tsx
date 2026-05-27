@@ -32,8 +32,8 @@ export default async function PlatformOrgsPage({
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Organizations</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-2xl font-semibold text-foreground">Organizations</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Search and filter venues on the platform.
         </p>
       </div>
