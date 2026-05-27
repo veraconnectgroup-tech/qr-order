@@ -5,6 +5,7 @@ import {
   resolveAiPromptLanguage,
   resolveGuestMessageLanguage,
 } from "@/lib/ai/config";
+import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
   buildBrowseMessage,
@@ -284,13 +285,13 @@ export async function executeChatTurn(body: unknown) {
     return apiError("insufficient_credits", 402);
   }
 
-  const language = resolveAiPromptLanguage(input.language);
-  const useEnglish = language === "en";
+  const menuLanguageHint = resolveAiPromptLanguage(input.language);
+  const useEnglishHint = menuLanguageHint === "en";
 
   let menuPayload;
   try {
     menuPayload = await getCachedMenuForLocation(input.locationId, {
-      useEnglish,
+      useEnglish: useEnglishHint,
     });
   } catch (error) {
     logger.error("AI menu load failed", {
@@ -400,6 +401,12 @@ export async function executeChatTurn(body: unknown) {
     input.preferences ??
     ({ allergies: [], mood: "" } satisfies AiGuestPreferences);
 
+  const language = resolveStickyGuestLanguage(
+    input.message,
+    input.language,
+    sessionRow?.language
+  );
+
   let orderContext: string | null = null;
   if (input.includeOrderContext) {
     try {
@@ -460,10 +467,7 @@ export async function executeChatTurn(body: unknown) {
       catalog.productMap,
       catalog.currency
     );
-    const responseLanguage = resolveGuestMessageLanguage(
-      input.message,
-      language
-    );
+    const responseLanguage = language;
     const assistantText = buildBrowseMessage(browseMatches, responseLanguage);
 
     const assistantMessage: StoredMessage = {

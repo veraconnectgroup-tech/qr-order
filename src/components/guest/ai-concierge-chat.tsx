@@ -10,6 +10,10 @@ import {
 } from "react";
 import { Send, Sparkles, X, Check, Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import {
+  resolveStickyGuestLanguage,
+  tForAiGuestLanguage,
+} from "@/lib/ai/guest-language";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { MenuCategory } from "@/components/guest/menu-grid";
 import { getDemoAiChatResponse } from "@/lib/demo-ai";
@@ -463,7 +467,8 @@ export function AiConciergeChat({
   voiceTtsEnabled = true,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
-  const language = isEnglish ? "en" : menuLocale;
+  const defaultLanguage = isEnglish ? "en" : menuLocale;
+  const [chatLanguage, setChatLanguage] = useState(defaultLanguage);
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
   const handleRecommendations = onRecommendations ?? onSetupComplete;
   const resolvedAllergySelection =
@@ -559,6 +564,7 @@ export function AiConciergeChat({
     });
     setMessages(initialMessages);
     setPhase("chat");
+    setChatLanguage(defaultLanguage);
 
     setIsTyping(false);
     setInput("");
@@ -578,6 +584,7 @@ export function AiConciergeChat({
     moodOptions,
     resolvedWelcomeMessage,
     resolvedAllergySelection,
+    defaultLanguage,
   ]);
 
   const CHAT_FETCH_TIMEOUT_MS = 45_000;
@@ -588,9 +595,15 @@ export function AiConciergeChat({
 
   const voice = useDenisVoice({
     enabled: voiceEnabled && open,
-    language,
+    language: chatLanguage,
     autoSpeak: voiceTtsEnabled,
   });
+
+  const tChat = useCallback(
+    (key: Parameters<typeof tForAiGuestLanguage>[0], vars?: Record<string, string | number>) =>
+      tForAiGuestLanguage(key, chatLanguage, vars),
+    [chatLanguage]
+  );
 
   const callAiChat = useCallback(
     async (
@@ -616,6 +629,12 @@ export function AiConciergeChat({
         CHAT_FETCH_TIMEOUT_MS
       );
 
+      const requestLanguage = resolveStickyGuestLanguage(
+        message,
+        defaultLanguage,
+        chatLanguage
+      );
+
       let res: Response;
       try {
         res = await fetch("/api/ai/chat", {
@@ -627,7 +646,7 @@ export function AiConciergeChat({
             tableId,
             sessionToken: aiContextToken,
             message,
-            language,
+            language: requestLanguage,
             sessionId,
             preferences: prefs ?? preferencesRef.current,
             includeOrderContext: true,
@@ -684,6 +703,8 @@ export function AiConciergeChat({
         setAiSessionId(data.sessionId);
       }
 
+      setChatLanguage(requestLanguage);
+
       return data;
     },
     [
@@ -691,8 +712,9 @@ export function AiConciergeChat({
       sessionToken,
       aiSessionId,
       locationId,
+      defaultLanguage,
+      chatLanguage,
       tableId,
-      language,
       tUI,
       resolveScrollContext,
       orderingDisabled,
@@ -763,7 +785,7 @@ export function AiConciergeChat({
         };
 
         if (!res.ok || !json.data) {
-          return json.error ?? tUI("ai.order.submitFailed");
+          return json.error ?? tChat("ai.order.submitFailed");
         }
 
         clearCart();
@@ -771,16 +793,16 @@ export function AiConciergeChat({
         recordGuestOrderPlaced();
 
         if (json.data.awaitingApproval) {
-          return tUI("ai.order.submitApproval", {
+          return tChat("ai.order.submitApproval", {
             number: String(json.data.orderNumber),
           });
         }
 
-        return tUI("ai.order.submitSuccess", {
+        return tChat("ai.order.submitSuccess", {
           number: String(json.data.orderNumber),
         });
       } catch {
-        return tUI("ai.order.submitFailed");
+        return tChat("ai.order.submitFailed");
       }
     },
     [
@@ -791,7 +813,7 @@ export function AiConciergeChat({
       locationId,
       tableId,
       clearCart,
-      tUI,
+      tChat,
     ]
   );
 

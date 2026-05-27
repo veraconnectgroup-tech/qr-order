@@ -8,6 +8,11 @@ export {
   resolveAiPromptLanguage,
   resolveGuestMessageLanguage,
 } from "@/lib/ai/config";
+export {
+  isLanguageNeutralGuestMessage,
+  resolveStickyGuestLanguage,
+  tForAiGuestLanguage,
+} from "@/lib/ai/guest-language";
 export type { GuestLanguageDetection } from "@/lib/ai/config";
 export { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 export { getCachedMenuForLocation, invalidateMenuCache } from "@/lib/ai/menu-cache";
