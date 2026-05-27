@@ -94,6 +94,8 @@ const ConciergeLlmSchema = z.object({
   temperatureRecommend: z.number().min(0).max(1),
   parseRetryAttempts: z.number().int().min(0).max(3),
   skipLlmWhenPossible: z.boolean(),
+  /** M21 — T3 narration from facts only (requires rollout denis_only). */
+  narrateWithLlm: z.boolean(),
 });
 
 const ConciergeHandoffSchema = z.object({

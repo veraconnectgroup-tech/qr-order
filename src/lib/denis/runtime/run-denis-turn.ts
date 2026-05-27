@@ -21,6 +21,7 @@ import {
   resolveTurnQuickReplies,
   sanitizeNarrationOutput,
 } from "@/lib/denis/runtime/narrate";
+import { resolveTurnNarrationMessage } from "@/lib/denis/runtime/narrate/resolve-turn-narration";
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
@@ -103,6 +104,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     return legacyResponse;
   }
 
+  const rollout = resolveEffectiveRollout(ctx.config);
+
   const narrationFacts = buildNarrationFacts({
     config: ctx.config,
     language: parsed.data.language,
@@ -115,7 +118,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     opsEffects: ctx.opsEffects,
   });
 
-  const narration = sanitizeNarrationOutput(data.message, narrationFacts);
+  const resolvedNarration = await resolveTurnNarrationMessage({
+    legacyMessage: data.message,
+    facts: narrationFacts,
+    config: ctx.config,
+    rolloutMode: rollout.mode,
+  });
+  const narration = sanitizeNarrationOutput(
+    resolvedNarration.draftMessage,
+    narrationFacts
+  );
   const quickReplies = resolveTurnQuickReplies({
     reflexTurn,
     facts: narrationFacts,
@@ -123,8 +135,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     legacyQuickReplies: data.quickReplies,
     language: parsed.data.language,
   });
-  const rollout = resolveEffectiveRollout(ctx.config);
-  const guestMessage = guestSeesLegacyPath(rollout.mode)
+  const guestMessage = guestSeesLegacyPath(rollout.mode) &&
+    !resolvedNarration.usedDenisNarrator
     ? data.message
     : narration.message;
 

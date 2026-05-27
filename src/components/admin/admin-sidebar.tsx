@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart3,
+  FlaskConical,
   ClipboardList,
   LayoutGrid,
   Link2,
@@ -46,6 +47,7 @@ const marketingItems = [
   { href: "/admin/upsells", label: "Upsell rules", icon: Megaphone },
   { href: "/admin/denis-insights", label: "Denis Insights", icon: Sparkles },
   { href: "/admin/denis-debug", label: "Denis Debugger", icon: Activity },
+  { href: "/admin/denis-sim", label: "Venue Sim", icon: FlaskConical },
 ];
 
 export function AdminSidebar() {

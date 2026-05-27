@@ -20,6 +20,15 @@ export { assertRiskBoundaries, maxRiskClass } from "@/lib/denis/eval/assert-risk
 export {
   runDenisEvalSuite,
 } from "@/lib/denis/eval/run-fixtures";
+export { runVenueSim } from "@/lib/denis/eval/run-venue-sim";
+export { applyVenueSimOverrides } from "@/lib/denis/eval/apply-venue-sim-overrides";
+export { extractTimelineReplayTurns } from "@/lib/denis/eval/extract-timeline-turns";
+export type {
+  VenueSimReport,
+  VenueSimExperimentOverrides,
+  VenueSimTurnDelta,
+  VenueSimMetrics,
+} from "@/lib/denis/eval/venue-sim-types";
 
-/** Eval layer — fixtures, shadow diff, CI harness (M10). */
+/** Eval layer — fixtures, shadow diff, venue sim (M10, M20). */
 export const DENIS_EVAL_LAYER = "eval" as const;

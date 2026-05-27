@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M19** (May 2026) — admin session debugger |
+| **As-built through** | **M21** (May 2026) — T3 narrate-llm cutover path |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M19 ✅)
+## 3. As-built snapshot (M0–M21 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -76,7 +76,8 @@ sequenceDiagram
 | M6 | `kernel/conflict/*` | `resolveCartConflict`, wired in `reflex-plan` |
 | M7 | `runtime/run-denis-turn.ts`, `build-turn-context.ts`, `surfaces/chat/*` | `chat-service.ts` = 11-line wrapper |
 | M8 | `kernel/scheduler/*`, `runtime/run-denis-sense.ts`, `process-scheduler-tick.ts` | migration `00088`; cron `GET /api/cron/denis-scheduler` |
-| M9 | `runtime/narrate/*` | facts + lint + template fallback; **no** `narrate-llm.ts` yet |
+| M9 | `runtime/narrate/*` | facts + lint + template fallback |
+| M21 | `runtime/narrate/narrate-llm.ts`, `resolve-turn-narration.ts` | T3 facts-only LLM when `llm.narrateWithLlm` + `denis_only` |
 | M10 | `eval/*`, `runtime/shadow-diff.ts`, `config/rollout.ts` | default rollout `shadow`; `pnpm eval:denis` |
 | M11 | `runtime/narrate/build-turn-quick-replies.ts`, `runtime/evaluate-proactive-tick.ts`, `lib/guest/manual-cart-snapshot.ts`, `hooks/use-denis-sense.ts` | T0 chips on templates; guest sends `manualCartSnapshot`; nudges via `/api/denis/sense` |
 | M12 | `venue/party/*`, `kernel/conflict/peer-manual.ts`, `runtime/adapters/map-party-manual.ts` | multi-device party; shared ai draft; peer conflict prompt |
@@ -85,6 +86,9 @@ sequenceDiagram
 | M15 | `venue/copilot/*`, `/dashboard/denis`, `/api/dashboard/denis-copilot` | staff copilot: rush/KDS, priority tables, table hints |
 | M16 | `learning/*`, `denis_learned_edges`, `/admin/denis-insights`, cron aggregate | L3 pairing queue → approve → upsell_rules |
 | M17 | `platform/guest-memory-types`, `learning/guest-memory/*`, `denis_guest_memory`, guest memory API | consented return-guest prefs + welcome T0 |
+| M18 | `surfaces/voice/*`, `hooks/use-denis-voice`, guest mic UI | `inputSurface: voice`; timeline `voice.transcript` |
+| M19 | `kernel/session-debug-graph`, `/admin/denis-debug`, session graph API | beliefs + goals + flow + timeline replay |
+| M20 | `eval/run-venue-sim`, `/admin/denis-sim`, `POST /api/admin/denis-venue-sim` | counterfactual config replay on timeline |
 
 ### 3.3 API routes (actual)
 
@@ -102,6 +106,7 @@ sequenceDiagram
 | `POST /api/guest/denis-memory/sync` | ✅ | sync allergies / record visit |
 | `DELETE /api/guest/denis-memory` | ✅ | GDPR erase |
 | `GET /api/denis/session/:id/graph` | ✅ | admin debugger — beliefs/goals/timeline (M19) |
+| `POST /api/admin/denis-venue-sim` | ✅ | counterfactual kernel replay (M20) |
 | `POST /api/denis/schedules/tick` | ❌ | not implemented (cron only) |
 
 ### 3.4 Database (migrations — verify push status locally)
@@ -125,7 +130,7 @@ sequenceDiagram
 | `src/lib/ai/proactive-triggers.ts` | server evaluate via sense (M11) | legacy client fallback if no fingerprint |
 | `src/lib/ai/ordering/order-executor.ts` | Order Core create (ACL allowlist) |
 
-**OpenAI today:** only in `src/lib/ai/execute-chat-turn.ts`, **not** yet in `runtime/narrate/narrate-llm.ts`.
+**OpenAI today:** ordering/planning in `execute-chat-turn.ts`; optional T3 narration in `runtime/narrate/narrate-llm.ts` when `llm.narrateWithLlm` + rollout `denis_only`.
 
 ---
 
@@ -136,7 +141,7 @@ Honest delta after M10 — do not assume these exist:
 | ADR target | Status | Next track |
 |------------|--------|------------|
 | `runtime/perceive/slot-extract.ts` (T2) | ❌ stub folder only | post-M10 |
-| `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ❌ lint wraps legacy text | M9+ cutover |
+| `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ✅ opt-in (`llm.narrateWithLlm` + `denis_only`) | ops enable per location |
 | `runtime/act/*` skill executor | ❌ skills planned, not executed in Denis path | M7+ / ACL |
 | `src/lib/denis/acl/` DenisOrderCommand | ❌ marker only | with act layer |
 | `src/lib/denis/venue/` | ✅ party + ops + floor + copilot (M15) | M16 learning |
@@ -209,9 +214,10 @@ Honest delta after M10 — do not assume these exist:
 | **M17** | ✅ | Consented guest memory + return welcome |
 | **M18** | ✅ | Voice in/out (premium, `surfaces.voiceEnabled`) |
 | **M19** | ✅ | Admin debugger (beliefs/goals/timeline graph) |
-| **M20** | ⬜ | Venue sim + experiment toggles |
+| **M20** | ✅ | Venue sim + experiment toggles (counterfactual replay) |
+| **M21** | ✅ | T3 `narrate-llm` facts-only path (opt-in cutover) |
 
-**Next recommended:** **M20** — venue sim + counterfactual config replay (ADR-005 §7.3).
+**Next recommended:** ops — set `rollout.mode: denis_only` + `llm.narrateWithLlm: true` per location after shadow parity; then act layer / slot-extract (§4).
 
 ---
 

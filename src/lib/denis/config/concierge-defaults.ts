@@ -69,6 +69,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     temperatureRecommend: 0.5,
     parseRetryAttempts: 1,
     skipLlmWhenPossible: true,
+    narrateWithLlm: false,
   },
   handoff: {
     waiterCall: true,

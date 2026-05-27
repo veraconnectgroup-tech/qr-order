@@ -29,14 +29,22 @@ export async function listDenisDebugSessions(
     return [];
   }
 
-  const rows = sessions as Array<{
+  const rows = sessions as unknown as Array<{
     id: string;
     table_id: string;
     status: string;
     language: string;
     created_at: string;
-    tables: { name: string } | null;
+    tables: { name: string } | { name: string }[] | null;
   }>;
+
+  function tableNameFromRelation(
+    tables: { name: string } | { name: string }[] | null
+  ): string | null {
+    if (!tables) return null;
+    if (Array.isArray(tables)) return tables[0]?.name ?? null;
+    return tables.name;
+  }
 
   const sessionIds = rows.map((row) => row.id);
   const countBySession = new Map<string, number>();
@@ -56,7 +64,7 @@ export async function listDenisDebugSessions(
   return rows.map((session) => ({
     id: session.id,
     tableId: session.table_id,
-    tableName: session.tables?.name ?? null,
+    tableName: tableNameFromRelation(session.tables),
     status: session.status,
     language: session.language,
     createdAt: session.created_at,
