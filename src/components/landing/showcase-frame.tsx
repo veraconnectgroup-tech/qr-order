@@ -127,7 +127,7 @@ export function ShowcaseStage({
     <div
       className={cn(
         "relative mx-auto w-full max-w-[min(100%,720px)] overflow-visible",
-        "aspect-[5/4] min-h-[340px] sm:aspect-[16/11] sm:min-h-[400px] lg:min-h-[460px]",
+        "aspect-[5/4] min-h-[360px] sm:aspect-[16/12] sm:min-h-[440px] lg:min-h-[520px] xl:min-h-[560px]",
         className
       )}
     >
@@ -279,20 +279,20 @@ export function ShowcasePhone({
         className={cn(
           "relative bg-zinc-950",
           floating
-            ? "rounded-[1.85rem] border border-white/[0.06] bg-zinc-950 p-1 sm:rounded-[2rem] sm:p-1.5"
+            ? "rounded-[2rem] bg-[#0a0a0a] p-[3px] shadow-[0_48px_96px_-24px_rgba(0,0,0,0.92)] sm:rounded-[2.125rem]"
             : "rounded-[2rem] border-[3px] border-zinc-700 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] sm:rounded-[2.5rem] sm:p-2"
         )}
       >
         <div
           className={cn(
             "absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b-2xl bg-zinc-950",
-            floating ? "h-4 w-[72px] sm:h-5 sm:w-[84px]" : "h-5 w-[96px] sm:h-6 sm:w-[108px]"
+            floating ? "h-3.5 w-[64px] sm:h-4 sm:w-[72px]" : "h-5 w-[96px] sm:h-6 sm:w-[108px]"
           )}
         />
         <div
           className={cn(
             "overflow-hidden bg-[#09090b]",
-            floating ? "rounded-[1.5rem] sm:rounded-[1.65rem]" : "rounded-[1.65rem] sm:rounded-[2rem]"
+            floating ? "rounded-[1.75rem] sm:rounded-[1.875rem]" : "rounded-[1.65rem] sm:rounded-[2rem]"
           )}
         >
           {children}

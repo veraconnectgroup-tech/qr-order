@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-/** Minimal wrapper — spacing only, no decoration. */
+/** Minimal wrapper — spacing only. */
 export function ShowcaseAmbientStage({
   children,
   className,
@@ -13,15 +13,12 @@ export function ShowcaseAmbientStage({
   return <div className={cn("relative", className)}>{children}</div>;
 }
 
-/**
- * Crops inner UI — partial visibility only. Never show full dashboard.
- * Showcase-only framing.
- */
+/** Partial visibility only — never the full surface. */
 export function ShowcaseCropFrame({
   children,
   className,
   innerClassName,
-  aspect = "16/10",
+  aspect = "16/11",
 }: {
   children: React.ReactNode;
   className?: string;
@@ -36,8 +33,8 @@ export function ShowcaseCropFrame({
       <div
         className={cn(
           "absolute inset-0 size-full origin-top-left",
-          "scale-[1.18] -translate-x-[10%] -translate-y-[8%]",
-          "sm:scale-[1.22] sm:-translate-x-[12%] sm:-translate-y-[10%]",
+          "scale-[1.28] -translate-x-[14%] -translate-y-[12%]",
+          "sm:scale-[1.32] sm:-translate-x-[16%] sm:-translate-y-[14%]",
           innerClassName
         )}
       >
@@ -47,7 +44,7 @@ export function ShowcaseCropFrame({
   );
 }
 
-/** Secondary device — quiet background layer. */
+/** Secondary device — physical, quiet, background. */
 export function ShowcaseFloatDevice({
   children,
   className,
@@ -58,12 +55,13 @@ export function ShowcaseFloatDevice({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute z-20 hidden opacity-[0.72] md:block",
-        "bottom-[10%] left-[3%] w-[32%] min-w-[132px] max-w-[168px]",
+        "pointer-events-none absolute z-20 hidden md:block",
+        "bottom-[14%] left-[6%] w-[28%] min-w-[118px] max-w-[148px]",
+        "opacity-[0.52]",
         className
       )}
     >
-      <div className="relative -rotate-[2deg]">{children}</div>
+      <div className="relative translate-y-1 -rotate-[1.5deg]">{children}</div>
     </div>
   );
 }

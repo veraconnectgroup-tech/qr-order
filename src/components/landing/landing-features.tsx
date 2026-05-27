@@ -11,12 +11,14 @@ import { ScaledPhonePreview } from "@/components/landing/scaled-phone-preview";
 
 function GuestPhoneShowcase() {
   return (
-    <ShowcaseAmbientStage className="mx-auto w-full max-w-[240px] sm:max-w-[260px]">
-      <ShowcasePhone presentation="float" hideLabel className="max-w-none">
-        <ScaledPhonePreview designWidth={300} designHeight={520}>
-          <GuestMenuContent variant="cinematic" />
-        </ScaledPhonePreview>
-      </ShowcasePhone>
+    <ShowcaseAmbientStage className="mx-auto w-full max-w-[200px] opacity-[0.88] sm:max-w-[220px]">
+      <div className="translate-y-0.5 -rotate-[1deg]">
+        <ShowcasePhone presentation="float" hideLabel className="max-w-none">
+          <ScaledPhonePreview designWidth={280} designHeight={460}>
+            <GuestMenuContent variant="cinematic" />
+          </ScaledPhonePreview>
+        </ShowcasePhone>
+      </div>
     </ShowcaseAmbientStage>
   );
 }
@@ -38,9 +40,8 @@ export function LandingFeatures() {
         reverse
         visual={
           <FeatureShowcase
-            url="denis.app/dashboard/orders"
-            aspect="16/10"
-            cropClassName="lg:scale-[1.16] lg:-translate-x-[9%]"
+            aspect="16/11"
+            cropClassName="lg:scale-[1.36] lg:-translate-x-[18%] lg:-translate-y-[14%]"
           >
             <CinematicDashboardShowcase story="live-orders" />
           </FeatureShowcase>
@@ -53,9 +54,8 @@ export function LandingFeatures() {
         lead="Tables, calls, revenue, and live orders in a single operational view — built for service, not slides."
         visual={
           <FeatureShowcase
-            url="denis.app/dashboard/tables"
-            aspect="16/10"
-            cropClassName="lg:scale-[1.14] lg:-translate-x-[8%] lg:-translate-y-[6%]"
+            aspect="16/11"
+            cropClassName="lg:scale-[1.34] lg:-translate-x-[20%] lg:-translate-y-[12%]"
           >
             <CinematicDashboardShowcase story="floor" />
           </FeatureShowcase>
@@ -68,8 +68,10 @@ export function LandingFeatures() {
         lead="German fiscal requirements included. Denis helps guests order — without turning the product into a chatbot."
         reverse
         visual={
-          <ShowcaseAmbientStage className="mx-auto w-full max-w-[240px] sm:max-w-[260px]">
-            <AiConciergeShowcase hideLabel presentation="float" />
+          <ShowcaseAmbientStage className="mx-auto w-full max-w-[200px] opacity-[0.88] sm:max-w-[220px]">
+            <div className="translate-y-0.5 -rotate-[1deg]">
+              <AiConciergeShowcase hideLabel presentation="float" />
+            </div>
           </ShowcaseAmbientStage>
         }
       />

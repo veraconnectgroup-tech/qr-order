@@ -32,16 +32,12 @@ function TableCard({
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
-  const active = table.status === "occupied" || table.status === "attention";
 
   if (cinematic) {
     return (
-      <div className="space-y-10">
-        <p className="font-mono text-[2rem] font-medium leading-none tracking-[-0.04em] text-zinc-200">
-          {table.name}
-        </p>
-        <p className="text-[12px] text-zinc-700">{active ? "In service" : "Open"}</p>
-      </div>
+      <p className="font-mono text-[3.25rem] font-medium leading-none tracking-[-0.06em] text-zinc-500 sm:text-[3.5rem]">
+        {table.name}
+      </p>
     );
   }
 
@@ -110,7 +106,7 @@ export function TablesShowcaseContent({
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
-  const tables = cinematic ? DEMO_TABLES.slice(0, 2) : DEMO_TABLES;
+  const tables = cinematic ? DEMO_TABLES.slice(0, 1) : DEMO_TABLES;
 
   return (
     <>
@@ -162,12 +158,7 @@ export function TablesShowcaseContent({
           )}
         </div>
       )}
-      <div
-        className={cn(
-          cinematic ? "flex gap-20" : "grid grid-cols-6 gap-2.5",
-          compact && !cinematic && "grid-cols-6 gap-1.5"
-        )}
-      >
+      <div className={cn(cinematic ? "" : "grid grid-cols-6 gap-2.5", compact && !cinematic && "grid-cols-6 gap-1.5")}>
         {tables.map((table) => (
           <TableCard
             key={table.id}

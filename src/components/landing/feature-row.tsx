@@ -22,11 +22,11 @@ export function FeatureRow({
   reverse?: boolean;
 }) {
   return (
-    <section id={id} className="scroll-mt-24 bg-black py-24 text-white md:py-36">
+    <section id={id} className="scroll-mt-24 bg-black py-28 text-white md:py-40">
       <LandingContainer wide>
         <div
           className={cn(
-            "grid items-center gap-16 lg:grid-cols-2 lg:gap-24",
+            "grid items-center gap-20 lg:grid-cols-2 lg:gap-28",
             reverse && "lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1"
           )}
         >

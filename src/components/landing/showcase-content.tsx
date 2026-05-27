@@ -54,26 +54,12 @@ export function GuestMenuContent({
     const primary = activeProducts?.[0];
 
     return (
-      <div className="pointer-events-none relative flex h-full min-h-[480px] w-full flex-col bg-[#09090b] px-6 py-8">
-        <p className="text-[14px] font-medium tracking-[-0.02em] text-zinc-300">
-          Skyline Lounge
-        </p>
-        <p className="mt-2 text-[11px] text-zinc-700">Table 8</p>
-
+      <div className="pointer-events-none flex h-full min-h-[420px] w-full flex-col justify-end bg-[#09090b] px-8 pb-14 pt-24">
         {primary && (
-          <div className="mt-14">
-            <p className="text-[16px] font-medium leading-snug tracking-[-0.02em] text-zinc-100">
-              {primary.name}
-            </p>
-            <p className="mt-10 font-mono text-[14px] tabular-nums text-zinc-500">
-              {formatPrice(Number(primary.price), DEMO_CURRENCY)}
-            </p>
-          </div>
+          <p className="max-w-[14ch] text-[18px] font-medium leading-[1.45] tracking-[-0.035em] text-zinc-300">
+            {primary.name}
+          </p>
         )}
-
-        <p className="mt-auto pt-12 text-[11px] text-zinc-800">
-          {CART_COUNT} items · {formatPrice(CART_TOTAL, DEMO_CURRENCY)}
-        </p>
       </div>
     );
   }
@@ -227,11 +213,10 @@ export function OrdersBoardContent({
     return (
       <div className="pointer-events-none select-none">
         <ShowcaseOrderCard
-          order={trimOrderItems(primaryOrder, 2)}
+          order={trimOrderItems(primaryOrder, 1)}
           currency={DEMO_CURRENCY}
           appearance="cinematic"
         />
-        <p className="mt-20 text-[12px] text-zinc-800">Skyline Lounge · live</p>
       </div>
     );
   }

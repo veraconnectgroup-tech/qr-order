@@ -22,29 +22,17 @@ export function ShowcaseOrderCard({
   const items = order.order_items ?? [];
 
   if (cinematic) {
+    const item = items[0];
     return (
-      <article className="max-w-[380px]">
-        <p className="font-mono text-[2.75rem] font-medium leading-none tracking-[-0.04em] text-zinc-100">
+      <article className="max-w-[280px]">
+        <p className="font-mono text-[4rem] font-medium leading-[0.9] tracking-[-0.06em] text-zinc-100 sm:text-[4.25rem]">
           {formatOrderNumber(order.order_number)}
         </p>
-        <p className="mt-8 text-[13px] text-zinc-600">{tableName}</p>
-        <ul className="mt-10 space-y-3 text-[15px] leading-relaxed text-zinc-400">
-          {items.slice(0, 2).map((item) => (
-            <li key={item.id}>
-              {item.quantity}× {item.product_name}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-14 flex items-baseline gap-10">
-          <span className="font-mono text-[17px] tabular-nums text-zinc-300">
-            {formatPrice(Number(order.total), currency)}
-          </span>
-          {columnId === "new" && (
-            <span className="text-[13px] font-medium text-[var(--lp-ember,#e85d04)]">
-              Accept
-            </span>
-          )}
-        </div>
+        {item && (
+          <p className="mt-[5.5rem] text-[14px] leading-[1.6] tracking-[-0.01em] text-zinc-700">
+            {item.product_name}
+          </p>
+        )}
       </article>
     );
   }

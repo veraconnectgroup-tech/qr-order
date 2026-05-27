@@ -52,7 +52,7 @@ export function ShowcaseDashboardShell({
   if (cinematic) {
     return (
       <div className="h-full bg-[#09090b] text-zinc-50">
-        <main className="h-full overflow-hidden px-14 py-16 sm:px-16 sm:py-20">
+        <main className="h-full overflow-hidden pl-[5.5rem] pr-[8.5rem] pt-[6.5rem] pb-[7.5rem] sm:pl-28 sm:pr-36 sm:pt-32 sm:pb-40">
           {children}
         </main>
       </div>
