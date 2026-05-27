@@ -31,6 +31,10 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     flow: "denis_short",
     requireExplicitConfirm: true,
     allowMultiItemParse: true,
+    slotExtractEnabled: false,
+    actLayerEnabled: false,
+    actDryRun: true,
+    actSubmitEnabled: false,
     defaultServeSize: null,
     maxItemsPerOrder: 50,
     maxQuantityPerLine: 20,
@@ -70,6 +74,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     parseRetryAttempts: 1,
     skipLlmWhenPossible: true,
     narrateWithLlm: false,
+    slotExtractWithLlm: false,
   },
   handoff: {
     waiterCall: true,

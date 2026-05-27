@@ -12,6 +12,7 @@ export type ShadowDenisTurn = {
   hasConflict?: boolean;
   lintPassed?: boolean;
   intent?: string | null;
+  slotItemCount?: number;
 };
 
 export type ShadowDiffResult = {

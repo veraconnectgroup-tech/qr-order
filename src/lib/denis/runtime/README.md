@@ -14,6 +14,7 @@
 | `shadow-diff.ts` | Legacy vs kernel parity (shadow mode) |
 | `record-chat-turn-timeline.ts` | Deprecated — use `runDenisTurn` |
 
-**Not yet:** `perceive/slot-extract.ts`, `act/*`, `narrate/narrate-llm.ts`
+**M22:** `perceive/slot-extract.ts` (opt-in timeline signal)  
+**M23:** `act/*` + `acl/DenisOrderCommand` (dry-run default)
 
 **OpenAI today:** legacy `src/lib/ai/execute-chat-turn.ts` only.

@@ -52,6 +52,12 @@ const ConciergeOrderingSchema = z.object({
   flow: ConciergeFlowPresetSchema,
   requireExplicitConfirm: z.boolean(),
   allowMultiItemParse: z.boolean(),
+  /** M22 — Denis T2 slot extract on timeline (shadow signal; legacy still orders). */
+  slotExtractEnabled: z.boolean(),
+  /** M23 — execute planned skills (default dry-run timeline only). */
+  actLayerEnabled: z.boolean(),
+  actDryRun: z.boolean(),
+  actSubmitEnabled: z.boolean(),
   defaultServeSize: z.string().trim().max(40).nullable(),
   maxItemsPerOrder: z.number().int().min(1).max(100),
   maxQuantityPerLine: z.number().int().min(1).max(99),
@@ -96,6 +102,8 @@ const ConciergeLlmSchema = z.object({
   skipLlmWhenPossible: z.boolean(),
   /** M21 — T3 narration from facts only (requires rollout denis_only). */
   narrateWithLlm: z.boolean(),
+  /** M22 — LLM fallback when heuristic slot extract finds nothing. */
+  slotExtractWithLlm: z.boolean(),
 });
 
 const ConciergeHandoffSchema = z.object({

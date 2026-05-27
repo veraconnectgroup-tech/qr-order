@@ -1,6 +1,7 @@
 import { apiError } from "@/lib/api-response";
 import { executeChatTurn } from "@/lib/ai/execute-chat-turn";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
+import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import {
@@ -22,6 +23,12 @@ import {
   sanitizeNarrationOutput,
 } from "@/lib/denis/runtime/narrate";
 import { resolveTurnNarrationMessage } from "@/lib/denis/runtime/narrate/resolve-turn-narration";
+import {
+  extractOrderSlots,
+  shouldRunSlotExtract,
+} from "@/lib/denis/runtime/perceive";
+import { executeActPhase } from "@/lib/denis/runtime/act";
+import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
@@ -92,6 +99,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     skipUpsell: ctx.opsEffects?.skipUpsell ?? false,
   });
 
+  const slotExtract = shouldRunSlotExtract(ctx.config, reflexTurn)
+    ? await extractOrderSlots({
+        utterance: parsed.data.message,
+        language: parsed.data.language,
+        config: ctx.config,
+      })
+    : null;
+
   const legacyResponse = await executeChatTurn(parsed.data);
   if (legacyResponse.status !== 200) {
     return legacyResponse;
@@ -102,6 +117,38 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   if (!data?.message) {
     return legacyResponse;
+  }
+
+  let actPhase: Awaited<ReturnType<typeof executeActPhase>> = {
+    enabled: false,
+    dryRun: true,
+    results: [],
+  };
+  if (ctx.config.ordering.actLayerEnabled) {
+    let catalog;
+    const needsCatalog =
+      ctx.config.ordering.actSubmitEnabled &&
+      !ctx.config.ordering.actDryRun &&
+      Boolean(data.submitOrder);
+    if (needsCatalog) {
+      try {
+        catalog = await getCachedMenuForLocation(parsed.data.locationId);
+      } catch {
+        catalog = undefined;
+      }
+    }
+
+    actPhase = await executeActPhase({
+      config: ctx.config,
+      reflexTurn,
+      aiSessionId: data.sessionId,
+      tableToken: parsed.data.sessionToken,
+      sessionToken: parsed.data.sessionToken,
+      deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
+      cartDraft: ctx.aiCartState.draft,
+      catalog,
+      legacySubmitOrder: data.submitOrder,
+    });
   }
 
   const rollout = resolveEffectiveRollout(ctx.config);
@@ -155,6 +202,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         hasConflict: reflexTurn.conflict?.hasConflict ?? false,
         lintPassed: narration.lintPassed,
         intent: reflexTurn.reflex?.intent ?? null,
+        slotItemCount: slotExtract?.items.length ?? 0,
       },
     });
     logger.info("Denis shadow diff", {
@@ -162,6 +210,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       rolloutMode: rollout.mode,
       parityScore: shadowDiff.parityScore,
       mismatches: shadowDiff.mismatches,
+      slotItemCount: slotExtract?.items.length ?? 0,
+      slotTier: slotExtract?.tier ?? null,
     });
   }
 
@@ -184,6 +234,38 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       channel: perceptionChannel,
       timelineSurface,
     });
+
+    if (slotExtract && slotExtract.items.length > 0) {
+      await appendDenisTimelineEvent(admin, {
+        aiSessionId: data.sessionId,
+        eventType: "slot.extracted",
+        traceId,
+        payload: {
+          type: "slot.extracted",
+          tier: slotExtract.tier,
+          itemCount: slotExtract.items.length,
+          items: slotExtract.items,
+          unmappedSpans: slotExtract.unmappedSpans,
+        },
+      });
+    }
+
+    for (const skillResult of actPhase.results) {
+      await appendDenisTimelineEvent(admin, {
+        aiSessionId: data.sessionId,
+        eventType: "skill.executed",
+        traceId,
+        payload: {
+          type: "skill.executed",
+          skillId: skillResult.skillId,
+          riskClass: skillResult.riskClass,
+          dryRun: skillResult.dryRun,
+          ok: skillResult.ok,
+          error: skillResult.error ?? null,
+          detail: skillResult.detail ?? null,
+        },
+      });
+    }
   }
 
   const responseData = {

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M21** (May 2026) — T3 narrate-llm cutover path |
+| **As-built through** | **M23** (May 2026) — act layer + DenisOrderCommand ACL |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M21 ✅)
+## 3. As-built snapshot (M0–M23 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -78,6 +78,8 @@ sequenceDiagram
 | M8 | `kernel/scheduler/*`, `runtime/run-denis-sense.ts`, `process-scheduler-tick.ts` | migration `00088`; cron `GET /api/cron/denis-scheduler` |
 | M9 | `runtime/narrate/*` | facts + lint + template fallback |
 | M21 | `runtime/narrate/narrate-llm.ts`, `resolve-turn-narration.ts` | T3 facts-only LLM when `llm.narrateWithLlm` + `denis_only` |
+| M22 | `runtime/perceive/slot-extract.ts`, heuristic + optional T2 LLM | timeline `slot.extracted`; legacy still orders |
+| M23 | `acl/execute-denis-order-command`, `runtime/act/*` | `DenisOrderCommand` → Order Core; act dry-run default |
 | M10 | `eval/*`, `runtime/shadow-diff.ts`, `config/rollout.ts` | default rollout `shadow`; `pnpm eval:denis` |
 | M11 | `runtime/narrate/build-turn-quick-replies.ts`, `runtime/evaluate-proactive-tick.ts`, `lib/guest/manual-cart-snapshot.ts`, `hooks/use-denis-sense.ts` | T0 chips on templates; guest sends `manualCartSnapshot`; nudges via `/api/denis/sense` |
 | M12 | `venue/party/*`, `kernel/conflict/peer-manual.ts`, `runtime/adapters/map-party-manual.ts` | multi-device party; shared ai draft; peer conflict prompt |
@@ -142,8 +144,8 @@ Honest delta after M10 — do not assume these exist:
 |------------|--------|------------|
 | `runtime/perceive/slot-extract.ts` (T2) | ❌ stub folder only | post-M10 |
 | `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ✅ opt-in (`llm.narrateWithLlm` + `denis_only`) | ops enable per location |
-| `runtime/act/*` skill executor | ❌ skills planned, not executed in Denis path | M7+ / ACL |
-| `src/lib/denis/acl/` DenisOrderCommand | ❌ marker only | with act layer |
+| `runtime/act/*` skill executor | ✅ dry-run default; submit via ACL when enabled | ops `actSubmitEnabled` |
+| `src/lib/denis/acl/` DenisOrderCommand | ✅ `executeDenisOrderCommand` | legacy executor still allowlisted |
 | `src/lib/denis/venue/` | ✅ party + ops + floor + copilot (M15) | M16 learning |
 | `src/lib/denis/learning/` | ✅ learned edges + guest memory (M17) | M20 venue sim |
 | `menu_knowledge_edges` / L3 learned VKG | ✅ `denis_learned_edges` (M16) | promote only via admin |
@@ -216,8 +218,10 @@ Honest delta after M10 — do not assume these exist:
 | **M19** | ✅ | Admin debugger (beliefs/goals/timeline graph) |
 | **M20** | ✅ | Venue sim + experiment toggles (counterfactual replay) |
 | **M21** | ✅ | T3 `narrate-llm` facts-only path (opt-in cutover) |
+| **M22** | ✅ | T2 slot extract (heuristic + optional LLM, timeline signal) |
+| **M23** | ✅ | Act layer + `DenisOrderCommand` ACL (dry-run default) |
 
-**Next recommended:** ops — set `rollout.mode: denis_only` + `llm.narrateWithLlm: true` per location after shadow parity; then act layer / slot-extract (§4).
+**Next recommended:** ops cutover ladder — `shadow` → `denis_only` + feature flags; optional `denis_eval_runs` table (§4).
 
 ---
 
