@@ -17,18 +17,19 @@ export function LandingHero() {
           <HeroStagger className="max-w-[560px]">
             <HeroItem>
               <p className="text-[12px] font-medium tracking-[0.08em] text-zinc-500">
-                Part of Vera Group
+                Part of Vera Group · Hospitality operating system
               </p>
             </HeroItem>
             <HeroItem>
               <h1 className="font-display text-[clamp(2.75rem,6vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-white">
-                Denis turns your floor into revenue
+                Run the floor. Serve faster. Stay compliant.
               </h1>
             </HeroItem>
             <HeroItem>
               <p className="mt-5 max-w-[520px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
-                QR ordering, kitchen display, table management, and card
-                payments — one enterprise platform instead of five tools.
+                Denis is a modern hospitality OS — guest ordering, kitchen
+                display, staff coordination, and payments in one calm enterprise
+                platform. Intelligence embedded, not advertised.
               </p>
             </HeroItem>
             <HeroItem>
@@ -36,9 +37,9 @@ export function LandingHero() {
                 <Button
                   size="lg"
                   asChild
-                  className="h-11 rounded-full bg-white px-7 text-sm font-semibold text-black hover:bg-zinc-100"
+                  className="h-11 rounded-full bg-[var(--qr-ember)] px-7 text-sm font-semibold text-white hover:bg-[var(--qr-ember-hover)]"
                 >
-                  <Link href="/signup">Kostenlos starten</Link>
+                  <Link href="/signup">Get started</Link>
                 </Button>
                 <Button
                   size="lg"
@@ -46,13 +47,13 @@ export function LandingHero() {
                   asChild
                   className="h-11 rounded-full px-6 text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-white"
                 >
-                  <Link href="#product">Product tour →</Link>
+                  <Link href="#features-guest">See the platform →</Link>
                 </Button>
               </div>
             </HeroItem>
             <HeroItem>
               <p className="mt-6 text-[13px] text-zinc-600">
-                0 € / Monat · KassenSichV · Live in unter 30 Minuten
+                €0 / month · KassenSichV · Live in under 30 minutes
               </p>
             </HeroItem>
           </HeroStagger>

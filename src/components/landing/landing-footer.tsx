@@ -6,7 +6,7 @@ const columns = [
   {
     title: "Product",
     links: [
-      { href: "/#product", label: "Platform" },
+      { href: "/#features-guest", label: "Platform" },
       { href: "/enterprise", label: "Enterprise" },
       { href: "/#pricing", label: "Pricing" },
       { href: "/skyline-lounge/demo-table-8", label: "Live demo" },
@@ -90,8 +90,8 @@ export function LandingFooter() {
           <div>
             <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
-              Denis — Hospitality AI für Gastronomie. Bestellung, Küche, Zahlung
-              und Analyse. Part of Vera Group.
+              Denis — hospitality operating system for ordering, kitchen,
+              payments, and compliance. Part of Vera Group.
             </p>
           </div>
           {columns.map((col) => (

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "#product", label: "Product", sectionId: "product" },
+  { href: "#features-guest", label: "Platform", sectionId: "features-guest" },
   { href: "/enterprise", label: "Enterprise", sectionId: null },
   { href: "#pricing", label: "Pricing", sectionId: "pricing" },
 ];
@@ -104,7 +104,7 @@ export function LandingNav() {
             <Button
               size="sm"
               asChild
-              className="hidden h-8 rounded-full bg-white px-4 text-[13px] font-semibold text-black hover:bg-zinc-100 sm:inline-flex"
+              className="hidden h-8 rounded-full bg-[var(--qr-ember)] px-4 text-[13px] font-semibold text-white hover:bg-[var(--qr-ember-hover)] sm:inline-flex"
             >
               <Link href="/signup">Get started</Link>
             </Button>
@@ -145,7 +145,7 @@ export function LandingNav() {
           <div className="px-6">
             <Button
               asChild
-              className="h-11 w-full rounded-full bg-white text-black hover:bg-zinc-100"
+              className="h-11 w-full rounded-full bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
             >
               <Link href="/signup" onClick={() => setOpen(false)}>
                 Get started

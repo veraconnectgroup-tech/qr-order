@@ -26,7 +26,7 @@ export function LandingHeroVisual() {
         <div className="landing-hero-stage pointer-events-none absolute -inset-8 rounded-[2rem]" aria-hidden />
         <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-black p-2 shadow-[0_24px_80px_rgba(0,0,0,0.65)]">
           <ShowcaseWindow
-            url="app.qr-order.com/dashboard"
+            url="denis.app/dashboard"
             theme="dark"
             className="border-0 shadow-none ring-0"
           >
@@ -58,7 +58,7 @@ export function LandingHeroVisual() {
         <HeroSlideIn from="right" delay={0.12} className="absolute right-0 top-[2%] z-10 w-[88%]">
           <div className="landing-hero-reflection relative overflow-hidden rounded-2xl border border-zinc-800/90 bg-black p-1 shadow-[0_32px_100px_rgba(0,0,0,0.75)]">
             <ShowcaseWindow
-              url="app.qr-order.com/dashboard/orders"
+              url="denis.app/dashboard/orders"
               theme="dark"
               className="border-0 shadow-none ring-0"
             >

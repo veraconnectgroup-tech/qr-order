@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/product-showcases";
 import { LandingFaq } from "@/components/landing/landing-faq";
+import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingTrustStrip } from "@/components/landing/landing-trust-strip";
@@ -20,10 +21,10 @@ import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
 
-const LandingProductTabs = dynamic(
+const LandingFeatures = dynamic(
   () =>
-    import("@/components/landing/landing-product-tabs").then((m) => ({
-      default: m.LandingProductTabs,
+    import("@/components/landing/landing-features").then((m) => ({
+      default: m.LandingFeatures,
     })),
   {
     loading: () => (
@@ -52,39 +53,40 @@ const plans: Array<{
   {
     name: "Standard",
     price: "€0",
-    period: "/ Monat",
+    period: "/ month",
     fee: TRANSACTION_FEE,
-    description: "Volle Plattform. Zahlen Sie nur wenn Gäste mit Karte bezahlen.",
+    description:
+      "Full platform. Pay only when guests checkout with card.",
     features: [
-      "QR-Speisekarte & Live-Bestellungen",
-      "Küchendisplay & Kellnerruf",
-      "Stripe Connect Kartenzahlung",
-      "Bar-, Theken- & Tischkasse",
-      "Analyse & CSV-Export",
-      "Mitarbeiter & Rollen",
+      "QR menu & live ordering",
+      "Kitchen display & waiter call",
+      "Stripe Connect card payments",
+      "Bar, counter & table checkout",
+      "Analytics & CSV export",
+      "Staff accounts & roles",
     ],
-    cta: "Kostenlos starten",
+    cta: "Start free",
     href: "/signup",
     primary: true,
-    complianceNote: "KassenSichV • DSGVO • DATEV • TSE inklusive",
+    complianceNote: "KassenSichV • GDPR • DATEV • TSE included",
   },
   {
     name: "Enterprise",
-    price: "Individuell",
+    price: "Custom",
     period: "",
-    fee: "Mengenrabatt & persönliches Onboarding",
-    description: "Für Ketten, Hotel-F&B und Betriebe mit hohem Volumen.",
+    fee: "Volume pricing & dedicated onboarding",
+    description: "For chains, hotel F&B, and high-volume venues.",
     features: [
-      "Alles aus Standard",
-      "Multi-Standort Rollout-Support",
-      "Individuelle Integrationen",
-      "Prioritäts-Support & SLA-Optionen",
-      "Persönlicher Ansprechpartner",
+      "Everything in Standard",
+      "Multi-location rollout support",
+      "Custom integrations",
+      "Priority support & SLA options",
+      "Dedicated account manager",
     ],
-    cta: "Vertrieb kontaktieren",
+    cta: "Contact sales",
     href: "/enterprise",
     primary: false,
-    complianceNote: "KassenSichV • DATEV • TSE inklusive",
+    complianceNote: "KassenSichV • DATEV • TSE included",
   },
 ];
 
@@ -96,7 +98,7 @@ export function LandingPage() {
       <main className="relative z-[2]">
         <LandingHero />
         <LandingTrustStrip />
-        <LandingProductTabs />
+        <LandingFeatures />
 
         <section
           id="pricing"
@@ -106,11 +108,11 @@ export function LandingPage() {
             <AnimateInView className="max-w-[480px]">
               <LandingEyebrow inverted>Pricing</LandingEyebrow>
               <LandingHeadline inverted className="mt-3">
-                Transparente Preise
+                Transparent pricing
               </LandingHeadline>
               <LandingLead inverted className="mt-4">
-                Keine monatliche Plattformgebühr. Kartenabwicklung über Stripe
-                mit klarer Gebühr pro Bestellung.
+                No monthly platform fee. Card processing via Stripe with a clear
+                per-order fee.
               </LandingLead>
             </AnimateInView>
 
@@ -126,8 +128,8 @@ export function LandingPage() {
                     )}
                   >
                     {plan.primary && (
-                      <span className="absolute -top-3 left-8 rounded-full bg-[var(--qr-ember,#f97316)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
-                        Beliebteste Wahl
+                      <span className="absolute -top-3 left-8 rounded-full bg-[var(--qr-ember)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
+                        Most popular
                       </span>
                     )}
                     <p className="text-[13px] font-medium uppercase tracking-wider text-zinc-500">
@@ -143,7 +145,7 @@ export function LandingPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-[14px] font-medium text-[var(--qr-ember,#f97316)]">
+                    <p className="mt-2 text-[14px] font-medium text-[var(--qr-ember)]">
                       {plan.fee}
                     </p>
                     <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
@@ -166,7 +168,7 @@ export function LandingPage() {
                       className={cn(
                         "mt-8 h-11 w-full rounded-full text-sm font-semibold",
                         plan.primary
-                          ? "bg-white text-black hover:bg-zinc-100"
+                          ? "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
                           : "border border-white/[0.12] bg-transparent text-zinc-200 hover:bg-white/[0.04] hover:text-white"
                       )}
                       variant={plan.primary ? "default" : "outline"}
@@ -182,6 +184,8 @@ export function LandingPage() {
 
         <LandingFaq />
       </main>
+
+      <LandingFooter />
     </div>
   );
 }

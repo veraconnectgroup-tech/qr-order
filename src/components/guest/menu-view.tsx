@@ -20,7 +20,7 @@ import {
   registerMenuPeriodicSync,
   usePwaServiceWorkerMessages,
 } from "@/lib/pwa/sw-messages";
-import { ProductCard } from "@/components/guest/product-card";
+import { MenuListItem } from "@/components/guest/menu-list-item";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
 import {
@@ -995,9 +995,9 @@ export function MenuView({
                     {tUI("menu.noResults", { query: searchQuery })}
                   </p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                  <div className="divide-y divide-[var(--qr-elevated)] border-y border-[var(--qr-elevated)]">
                     {filtered.map((product) => (
-                      <ProductCard
+                      <MenuListItem
                         key={product.id}
                         product={product}
                         currency={currency}
@@ -1006,7 +1006,6 @@ export function MenuView({
                         }
                         orderingDisabled={!canPlaceOrders}
                         onOpenDetail={() => openProductDetail(product)}
-                        aiReason={aiReasonByProductId?.get(product.id) ?? null}
                       />
                     ))}
                   </div>

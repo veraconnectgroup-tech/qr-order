@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, UtensilsCrossed } from "lucide-react";
+import { Check, Plus, UtensilsCrossed } from "lucide-react";
+import { QrCard } from "@/components/design-system/qr-card";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
@@ -28,6 +29,8 @@ export function ProductRecommendationCard({
   onOpenDetail,
   className,
   conversionContext,
+  compact = false,
+  onAddClick,
 }: {
   recommendation: ProductRecommendation;
   currency: string;
@@ -44,6 +47,8 @@ export function ProductRecommendationCard({
     tableId: string;
     sessionToken: string;
   };
+  compact?: boolean;
+  onAddClick?: () => void;
 }) {
   const { tUI } = useAppLocale();
   const addItem = useCart((s) => s.addItem);
@@ -54,6 +59,13 @@ export function ProductRecommendationCard({
 
     if (onOpenDetail) {
       onOpenDetail();
+      return;
+    }
+
+    if (onAddClick) {
+      hapticClick();
+      onAddClick();
+      setAdded(true);
       return;
     }
 
@@ -79,14 +91,65 @@ export function ProductRecommendationCard({
     }
   }
 
+  if (compact) {
+    return (
+      <QrCard
+        padding="sm"
+        className={cn("border-[var(--qr-elevated)] bg-[var(--qr-surface)]", className)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-[var(--qr-elevated)]">
+            {recommendation.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={recommendation.imageUrl}
+                alt={recommendation.name}
+                className="size-full object-cover"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center">
+                <UtensilsCrossed className="size-4 text-[var(--qr-muted)]" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[var(--qr-ivory)]">
+              {recommendation.name}
+            </p>
+            {recommendation.reason && (
+              <p className="line-clamp-1 text-xs text-[var(--qr-muted)]">
+                {recommendation.reason}
+              </p>
+            )}
+            <p className="mt-0.5 text-xs font-bold text-[var(--qr-ember)]">
+              {formatPrice(recommendation.price, currency)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={orderingDisabled || added}
+            aria-label={recommendation.name}
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-full transition active:scale-95",
+              added
+                ? "bg-[var(--qr-elevated)] text-[var(--qr-muted)]"
+                : "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)] disabled:opacity-50"
+            )}
+          >
+            {added ? <Check className="size-4" /> : <Plus className="size-4" />}
+          </button>
+        </div>
+      </QrCard>
+    );
+  }
+
   return (
-    <article
-      className={cn(
-        "overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900",
-        className
-      )}
+    <QrCard
+      padding="none"
+      className={cn("overflow-hidden border-[var(--qr-elevated)] bg-[var(--qr-surface)]", className)}
     >
-      <div className="relative h-32 w-full">
+      <div className="relative h-32 w-full bg-[var(--qr-elevated)]">
         {recommendation.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -95,24 +158,24 @@ export function ProductRecommendationCard({
             className="size-full object-cover"
           />
         ) : (
-          <div className="flex size-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-            <UtensilsCrossed className="size-8 text-zinc-600" />
+          <div className="flex size-full items-center justify-center">
+            <UtensilsCrossed className="size-8 text-[var(--qr-muted)]" />
           </div>
         )}
       </div>
 
       <div className="space-y-3 p-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-lg font-semibold text-[var(--qr-ivory)]">
             {recommendation.name}
           </h3>
-          <p className="mt-1 text-orange-500 font-bold">
+          <p className="mt-1 font-bold text-[var(--qr-ember)]">
             {formatPrice(recommendation.price, currency)}
           </p>
         </div>
 
         {recommendation.reason && (
-          <p className="text-sm text-zinc-400">{recommendation.reason}</p>
+          <p className="text-sm text-[var(--qr-muted)]">{recommendation.reason}</p>
         )}
 
         <button
@@ -122,8 +185,8 @@ export function ProductRecommendationCard({
           className={cn(
             "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98]",
             added
-              ? "cursor-default bg-zinc-700 text-zinc-300"
-              : "bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+              ? "cursor-default bg-[var(--qr-elevated)] text-[var(--qr-muted)]"
+              : "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)] disabled:opacity-50"
           )}
         >
           {added ? (
@@ -136,6 +199,6 @@ export function ProductRecommendationCard({
           )}
         </button>
       </div>
-    </article>
+    </QrCard>
   );
 }

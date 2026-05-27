@@ -8,6 +8,16 @@ export type { DenisChipProps } from "./denis-chip";
 export { DenisBrandMark } from "./denis-brand-mark";
 export { DenisTableMark } from "./denis-table-mark";
 export {
+  DenisPanel,
+  DenisPanelBody,
+  DenisPanelFooter,
+  DenisPanelHeader,
+} from "./denis-panel";
+export {
+  DenisMessageBlock,
+  DenisMessageThinking,
+} from "./denis-message-block";
+export {
   QrCard,
   QrCardDescription,
   QrCardHeading,

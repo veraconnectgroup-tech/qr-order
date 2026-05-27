@@ -8,20 +8,32 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { ImageIcon, Send, X, Check, Plus } from "lucide-react";
+import { Send, X } from "lucide-react";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { DenisChip } from "@/components/design-system/denis-chip";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
+import {
+  DenisMessageBlock,
+  DenisMessageThinking,
+} from "@/components/design-system/denis-message-block";
+import {
+  DenisPanel,
+  DenisPanelBody,
+  DenisPanelFooter,
+  DenisPanelHeader,
+} from "@/components/design-system/denis-panel";
 import {
   DenisCartHeaderLink,
   DenisCartTiles,
 } from "@/components/guest/denis-cart-tiles";
+import {
+  ProductRecommendationCard,
+  type ProductRecommendation,
+} from "@/components/guest/product-recommendation-card";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
 } from "@/lib/ai/guest-language";
-import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { MenuCategory } from "@/components/guest/menu-grid";
 import { getDemoAiChatResponse } from "@/lib/demo-ai";
 import {
@@ -57,7 +69,6 @@ import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
 import { useCart } from "@/hooks/use-cart";
 import { useDenisVoice } from "@/hooks/use-denis-voice";
 import { DenisVoiceMicButton } from "@/components/guest/denis-voice-mic-button";
-import { cn } from "@/lib/utils";
 
 type QuickPickOption = { id: string; label: string };
 
@@ -130,17 +141,93 @@ function nextId() {
   return crypto.randomUUID();
 }
 
-function ChatTypingIndicator() {
+function DenisRecommendList({
+  recommendations,
+  currency,
+  orderingDisabled,
+  addedIds,
+  onAdd,
+}: {
+  recommendations: ProductRecommendation[];
+  currency: string;
+  orderingDisabled: boolean;
+  addedIds: Set<string>;
+  onAdd: (rec: ProductRecommendation) => void;
+}) {
+  if (!recommendations.length) return null;
+
   return (
-    <div className="flex items-center gap-1.5 px-3 py-2">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="size-2 animate-bounce rounded-full bg-[var(--qr-muted)]"
-          style={{ animationDelay: `${i * 120}ms`, animationDuration: "0.9s" }}
+    <div className="mt-3 space-y-2">
+      {recommendations.map((rec) => (
+        <ProductRecommendationCard
+          key={rec.productId}
+          recommendation={rec}
+          currency={currency}
+          compact
+          orderingDisabled={orderingDisabled || addedIds.has(rec.productId)}
+          onAddClick={() => onAdd(rec)}
         />
       ))}
     </div>
+  );
+}
+
+function DenisMessageRow({
+  message,
+  currency,
+  orderingDisabled,
+  addedIds,
+  onQuickPickConfirm,
+  onQuickReply,
+  onAddRecommendation,
+  continueLabel,
+}: {
+  message: ChatMessage;
+  currency: string;
+  orderingDisabled: boolean;
+  addedIds: Set<string>;
+  onQuickPickConfirm?: (messageId: string, ids: string[]) => void;
+  onQuickReply?: (messageId: string, label: string) => void;
+  onAddRecommendation: (rec: ProductRecommendation) => void;
+  continueLabel: string;
+}) {
+  if (message.role === "user") {
+    return (
+      <DenisMessageBlock role="user">
+        <p className="whitespace-pre-wrap">{message.content}</p>
+      </DenisMessageBlock>
+    );
+  }
+
+  return (
+    <DenisMessageBlock role="assistant">
+      <p className="whitespace-pre-wrap">{message.content}</p>
+      {message.quickPicks && onQuickPickConfirm && (
+        <ChatQuickPicks
+          options={message.quickPicks.options}
+          mode={message.quickPicks.mode}
+          confirmed={message.quickPicks.confirmed}
+          continueLabel={continueLabel}
+          onConfirm={(ids) => onQuickPickConfirm(message.id, ids)}
+        />
+      )}
+      {message.quickReplies?.length && onQuickReply && (
+        <ChatQuickReplies
+          options={message.quickReplies}
+          used={message.quickRepliesUsed ?? false}
+          onSelect={(label) => onQuickReply(message.id, label)}
+        />
+      )}
+      {message.recommendations && (
+        <DenisRecommendList
+          recommendations={message.recommendations}
+          currency={currency}
+          orderingDisabled={orderingDisabled}
+          addedIds={addedIds}
+          onAdd={onAddRecommendation}
+        />
+      )}
+    </DenisMessageBlock>
   );
 }
 
@@ -237,142 +324,6 @@ function ChatQuickReplies({
           onClick={() => onSelect(option)}
         />
       ))}
-    </div>
-  );
-}
-
-function ChatMenuPickList({
-  recommendations,
-  currency,
-  orderingDisabled,
-  addedIds,
-  onAdd,
-}: {
-  recommendations: ProductRecommendation[];
-  currency: string;
-  orderingDisabled: boolean;
-  addedIds: Set<string>;
-  onAdd: (rec: ProductRecommendation) => void;
-}) {
-  if (!recommendations.length) return null;
-
-  return (
-    <div className="mt-3 space-y-2">
-      {recommendations.map((rec) => {
-        const added = addedIds.has(rec.productId);
-        return (
-          <div
-            key={rec.productId}
-            className="flex items-center gap-3 rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)] p-2"
-          >
-            <div className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-[var(--qr-elevated)]">
-              {rec.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={rec.imageUrl}
-                  alt={rec.name}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center bg-[var(--qr-elevated)]">
-                  <ImageIcon className="size-4 text-[var(--qr-muted)]" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[var(--qr-ivory)]">
-                {rec.name}
-              </p>
-              <p className="text-xs font-bold text-[var(--qr-ember)]">
-                {formatPrice(rec.price, currency)}
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={orderingDisabled || added}
-              onClick={() => onAdd(rec)}
-              aria-label={rec.name}
-              className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-full transition active:scale-95",
-                added
-                  ? "bg-[var(--qr-elevated)] text-[var(--qr-muted)]"
-                  : "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)] disabled:opacity-50"
-              )}
-            >
-              {added ? <Check className="size-4" /> : <Plus className="size-4" />}
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ChatBubble({
-  message,
-  currency,
-  orderingDisabled,
-  addedIds,
-  onQuickPickConfirm,
-  onQuickReply,
-  onAddRecommendation,
-  continueLabel,
-}: {
-  message: ChatMessage;
-  currency: string;
-  orderingDisabled: boolean;
-  addedIds: Set<string>;
-  onQuickPickConfirm?: (messageId: string, ids: string[]) => void;
-  onQuickReply?: (messageId: string, label: string) => void;
-  onAddRecommendation: (rec: ProductRecommendation) => void;
-  continueLabel: string;
-}) {
-  const isUser = message.role === "user";
-
-  return (
-    <div
-      className={cn("flex gap-2", isUser ? "flex-row-reverse" : "flex-row")}
-    >
-      {!isUser && (
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--denis-bubble-assistant)]">
-          <DenisTableMark size={24} className="size-4" />
-        </span>
-      )}
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-          isUser
-            ? "bg-[var(--qr-ember)] text-white"
-            : "border-l-2 border-[var(--qr-ember)] bg-[var(--denis-bubble-assistant)] text-[var(--qr-ivory)]"
-        )}
-      >
-        <p className="whitespace-pre-wrap">{message.content}</p>
-        {message.quickPicks && onQuickPickConfirm && (
-          <ChatQuickPicks
-            options={message.quickPicks.options}
-            mode={message.quickPicks.mode}
-            confirmed={message.quickPicks.confirmed}
-            continueLabel={continueLabel}
-            onConfirm={(ids) => onQuickPickConfirm(message.id, ids)}
-          />
-        )}
-        {message.quickReplies?.length && onQuickReply && (
-          <ChatQuickReplies
-            options={message.quickReplies}
-            used={message.quickRepliesUsed ?? false}
-            onSelect={(label) => onQuickReply(message.id, label)}
-          />
-        )}
-        {message.recommendations && (
-          <ChatMenuPickList
-            recommendations={message.recommendations}
-            currency={currency}
-            orderingDisabled={orderingDisabled}
-            addedIds={addedIds}
-            onAdd={onAddRecommendation}
-          />
-        )}
-      </div>
     </div>
   );
 }
@@ -1120,8 +1071,8 @@ export function AiConciergeChat({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/45">
-      <div className="mx-3 mb-3 flex max-h-[min(88dvh,720px)] min-h-[min(68dvh,540px)] flex-col overflow-hidden rounded-[20px] border border-[var(--qr-elevated)] bg-[var(--qr-void)] text-[var(--qr-ivory)] shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
-        <header className="flex shrink-0 items-center gap-2 border-b border-[var(--qr-elevated)] bg-[var(--qr-surface)]/90 px-3 py-3 backdrop-blur-md sm:gap-3 sm:px-4">
+      <DenisPanel className="mx-3 mb-3">
+        <DenisPanelHeader>
           <DenisBrandMark
             markState={isTyping ? "think" : "idle"}
             className="min-w-0 flex-1 [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
@@ -1142,7 +1093,7 @@ export function AiConciergeChat({
           >
             <X className="size-5" />
           </button>
-        </header>
+        </DenisPanelHeader>
 
         <DenisCartTiles
           items={cartItems}
@@ -1150,12 +1101,9 @@ export function AiConciergeChat({
           title={tUI("cart.title")}
         />
 
-        <div
-          ref={scrollRef}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4"
-        >
+        <DenisPanelBody ref={scrollRef}>
           {messages.map((message) => (
-            <ChatBubble
+            <DenisMessageRow
               key={message.id}
               message={message}
               currency={currency}
@@ -1171,58 +1119,48 @@ export function AiConciergeChat({
               onAddRecommendation={handleAddRecommendation}
             />
           ))}
-          {isTyping && (
-            <div className="flex gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--denis-bubble-assistant)]">
-                <DenisTableMark size={24} state="think" className="size-4" />
-              </span>
-              <div className="rounded-2xl border-l-2 border-[var(--qr-ember)] bg-[var(--denis-bubble-assistant)]">
-                <ChatTypingIndicator />
-              </div>
-            </div>
-          )}
-        </div>
+          {isTyping && <DenisMessageThinking />}
+        </DenisPanelBody>
 
-        <form
-          onSubmit={handleSend}
-          className="shrink-0 border-t border-[var(--qr-elevated)] bg-[var(--qr-void)] px-4 pt-3 pb-safe"
-        >
-          <div className="flex items-center gap-2">
-            {voiceEnabled && (
-              <DenisVoiceMicButton
-                listening={voice.listening}
-                supported={voice.supported}
-                disabled={!inputEnabled || isTyping}
-                listenLabel={tUI("ai.voice.listen")}
-                listeningLabel={tUI("ai.voice.listening")}
-                unsupportedLabel={tUI("ai.voice.unsupported")}
-                onPressStart={() => voice.startListening(handleVoiceTranscript)}
-                onPressEnd={() => voice.stopListening()}
+        <DenisPanelFooter>
+          <form onSubmit={handleSend}>
+            <div className="flex items-center gap-2">
+              {voiceEnabled && (
+                <DenisVoiceMicButton
+                  listening={voice.listening}
+                  supported={voice.supported}
+                  disabled={!inputEnabled || isTyping}
+                  listenLabel={tUI("ai.voice.listen")}
+                  listeningLabel={tUI("ai.voice.listening")}
+                  unsupportedLabel={tUI("ai.voice.unsupported")}
+                  onPressStart={() => voice.startListening(handleVoiceTranscript)}
+                  onPressEnd={() => voice.stopListening()}
+                />
+              )}
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={!inputEnabled}
+                placeholder={
+                  orderingDisabled
+                    ? tUI("ai.chat.placeholder")
+                    : tUI("ai.chat.orderPlaceholder")
+                }
+                className="min-w-0 flex-1 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-4 py-3 text-sm text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-ember)] disabled:opacity-50"
               />
-            )}
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={!inputEnabled}
-              placeholder={
-                orderingDisabled
-                  ? tUI("ai.chat.placeholder")
-                  : tUI("ai.chat.orderPlaceholder")
-              }
-              className="min-w-0 flex-1 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-4 py-3 text-sm text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-ember)] disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={!canSend}
-              aria-label={tUI("ai.chat.send")}
-              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--qr-ember)] text-white transition hover:bg-[var(--qr-ember-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Send className="size-5" />
-            </button>
-          </div>
-        </form>
-      </div>
+              <button
+                type="submit"
+                disabled={!canSend}
+                aria-label={tUI("ai.chat.send")}
+                className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--qr-ember)] text-white transition hover:bg-[var(--qr-ember-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Send className="size-5" />
+              </button>
+            </div>
+          </form>
+        </DenisPanelFooter>
+      </DenisPanel>
     </div>
   );
 }

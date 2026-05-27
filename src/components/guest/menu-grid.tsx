@@ -1,6 +1,6 @@
 "use client";
 
-import { ProductCard } from "@/components/guest/product-card";
+import { MenuListItem } from "@/components/guest/menu-list-item";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { inferMenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
@@ -25,7 +25,6 @@ export function MenuGrid({
   currency,
   onOpenDetail,
   orderingDisabled = false,
-  aiReasonByProductId,
 }: {
   categories: MenuCategory[];
   unavailableCategories?: MenuCategory[];
@@ -54,24 +53,23 @@ export function MenuGrid({
         <section
           key={category.id}
           id={`cat-${category.id}`}
-          className={`scroll-mt-36 ${index > 0 ? "mt-6" : ""}`}
+          className={`scroll-mt-36 ${index > 0 ? "mt-8" : ""}`}
         >
-          <h2 className="mb-3 text-lg font-semibold text-zinc-100">
+          <h2 className="mb-1 text-lg font-semibold text-[var(--qr-ivory)]">
             {tName(category)}{" "}
-            <span className="font-normal text-zinc-500">
+            <span className="font-normal text-[var(--qr-muted)]">
               ({category.products.length})
             </span>
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          <div className="divide-y divide-[var(--qr-elevated)] border-y border-[var(--qr-elevated)]">
             {category.products.map((product) => (
-              <ProductCard
+              <MenuListItem
                 key={product.id}
                 product={product}
                 currency={currency}
                 menuSection={inferMenuSection(category)}
                 orderingDisabled={orderingDisabled}
                 onOpenDetail={() => onOpenDetail(product)}
-                aiReason={aiReasonByProductId?.get(product.id) ?? null}
               />
             ))}
           </div>
@@ -81,11 +79,15 @@ export function MenuGrid({
       {unavailableCategories.map((category) => (
         <section
           key={`unavailable-${category.id}`}
-          className="mt-6 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4 opacity-70"
+          className="mt-8 rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]/40 p-4 opacity-70"
         >
-          <h2 className="text-lg font-semibold text-zinc-500">{tName(category)}</h2>
+          <h2 className="text-lg font-semibold text-[var(--qr-muted)]">
+            {tName(category)}
+          </h2>
           {category.scheduleHint && (
-            <p className="mt-1 text-sm text-zinc-500">{category.scheduleHint}</p>
+            <p className="mt-1 text-sm text-[var(--qr-muted)]">
+              {category.scheduleHint}
+            </p>
           )}
         </section>
       ))}
