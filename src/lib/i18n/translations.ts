@@ -952,6 +952,17 @@ const sr: TranslationMap = {
   "payment.atTable.instruction": "Platite za stolom kada ste spremni. Osoblje dolazi do vas.",
   "payment.atTable.confirm": "Plati za stolom kada ste spremni",
 
+  "ai.order.addedMultiple": "Dodato {count} stavki",
+  "ai.order.submitSuccess": "Porudžbina #{number} je poslata!",
+  "ai.order.submitApproval": "Porudžbina #{number} čeka odobrenje za stolom.",
+  "ai.order.submitFailed": "Porudžbina nije mogla biti poslata.",
+  "ai.order.status.pendingApproval": "Porudžbina #{number} čeka odobrenje.",
+  "ai.order.status.pending": "Porudžbina #{number} je primljena.",
+  "ai.order.status.accepted": "Porudžbina #{number} je prihvaćena.",
+  "ai.order.status.preparing": "Porudžbina #{number} se priprema.",
+  "ai.order.status.ready": "Porudžbina #{number} je spremna — stižemo.",
+  "ai.order.status.delivered": "Porudžbina #{number} je servirana. Prijatno!",
+
   "error.generic": "Nešto nije u redu.",
   "error.orderFailed": "Porudžbina nije mogla biti poslata.",
   "error.paymentFailed": "Plaćanje nije uspelo.",

@@ -95,6 +95,8 @@ function confirmOrderMessage(summary: string, lang: MenuLanguage): string {
       return `Please confirm: ${summary}. Shall I send the order?`;
     case "hr":
       return `Molim potvrdite: ${summary}. Da pošaljem narudžbu?`;
+    case "sr":
+      return `Molim potvrdite porudžbinu: ${summary}. Da pošaljem?`;
     default:
       return `Molim potvrdite porudžbinu: ${summary}. Da pošaljem?`;
   }
@@ -108,6 +110,8 @@ function sendOrderMessage(lang: MenuLanguage): string {
       return "Great — sending your order!";
     case "hr":
       return "Odlično — šaljem narudžbu!";
+    case "sr":
+      return "Odlično — šaljem porudžbinu!";
     default:
       return "Odlično — šaljem porudžbinu!";
   }

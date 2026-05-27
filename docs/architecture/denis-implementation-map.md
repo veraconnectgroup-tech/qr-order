@@ -155,6 +155,7 @@ Honest delta after M10 — do not assume these exist:
 | Guest UI `manualCartSnapshot` on sense | ✅ | `menu-view` + `use-denis-sense` debounce |
 | `use-smart-nudges` → server proactive | ✅ | `system.proactive_tick` via `fetchServerProactive` |
 | Rollout `canary` / `denis_only` in production | ✅ Admin Settings → Denis rollout (M25) | enable per location; watch `DENIS_ROLLOUT_MODE` env |
+| Guest language stickiness (SR chat → EN confirm) | ✅ `resolveStickyGuestLanguage` + `sr` `ai.order.*` i18n | follows conversation, not UI splash |
 | Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
 
 ---

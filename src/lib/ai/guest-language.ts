@@ -93,11 +93,7 @@ export function tForAiGuestLanguage(
     return applyTranslationVars(lookupTranslation(key, "en"), vars);
   }
   if (normalized === "sr") {
-    const srText = translations.sr[key as keyof typeof translations.sr];
-    if (srText) {
-      return applyTranslationVars(srText, vars);
-    }
-    return applyTranslationVars(lookupTranslation(key, "hr"), vars);
+    return applyTranslationVars(lookupTranslation(key, "sr"), vars);
   }
   if (
     (
