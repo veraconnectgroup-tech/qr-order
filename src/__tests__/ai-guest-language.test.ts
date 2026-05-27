@@ -46,7 +46,7 @@ describe("sticky guest language", () => {
           serveSize: "0.5L",
           notes: "",
           lineTotal: 5.5,
-          menuSection: "drinks",
+          menuSection: "drinks" as const,
           productTaxRate: 19,
         },
       ],

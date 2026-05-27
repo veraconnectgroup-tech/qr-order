@@ -97,7 +97,7 @@ export async function submitAiOrderDraft(
   input: AiOrderSubmitInput
 ): Promise<AiOrderSubmitResult> {
   if (!input.draft.items.length) {
-    return { error: "No items to order.", status: 400 };
+    return { error: "empty_cart", status: 400 };
   }
 
   if (input.draft.pending) {

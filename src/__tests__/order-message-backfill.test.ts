@@ -1,0 +1,133 @@
+import { describe, expect, it } from "vitest";
+import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
+import {
+  backfillDraftFromOrderMessage,
+  isOrderPlacementMessage,
+  maybeBackfillOrderDraft,
+  splitOrderMessageSegments,
+} from "@/lib/ai/ordering/order-message-backfill";
+import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
+import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
+
+function mockCatalog(): AiCatalog {
+  const kisela = {
+    id: "drink-1",
+    name: "Kisela voda",
+    price: 3.5,
+    imageUrl: null,
+    menuSection: "drinks" as const,
+    requiresServeSize: true,
+    serveSizePresets: ["0.3", "0.5"],
+    allowCustomServeSize: false,
+    modifierGroups: [],
+    taxRate: 19,
+    allergens: [],
+  };
+  const pivo = {
+    id: "drink-2",
+    name: "Veliko pivo",
+    price: 5,
+    imageUrl: null,
+    menuSection: "drinks" as const,
+    requiresServeSize: false,
+    serveSizePresets: [],
+    allowCustomServeSize: false,
+    modifierGroups: [],
+    taxRate: 19,
+    allergens: [],
+  };
+  const burger = {
+    id: "food-1",
+    name: "Beef burger",
+    price: 12,
+    imageUrl: null,
+    menuSection: "food" as const,
+    requiresServeSize: false,
+    serveSizePresets: [],
+    allowCustomServeSize: false,
+    modifierGroups: [
+      {
+        id: "g1",
+        name: "Prilog",
+        isRequired: false,
+        minSelect: 0,
+        maxSelect: 1,
+        modifiers: [
+          { id: "mod-fries", name: "Pomfrit", price: 2 },
+        ],
+      },
+    ],
+    taxRate: 19,
+    allergens: [],
+  };
+
+  const catalog = {
+    [kisela.id]: kisela,
+    [pivo.id]: pivo,
+    [burger.id]: burger,
+  };
+
+  return {
+    menuText: "",
+    productMap: {},
+    catalog,
+    currency: "EUR",
+    cachedAt: new Date().toISOString(),
+  };
+}
+
+describe("order message backfill", () => {
+  it("splits multi-item Serbian order", () => {
+    const segments = splitOrderMessageSegments(
+      "Daj mi kiselu malu, veliko pivo i beef burger sa ponesom"
+    );
+    expect(segments.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("detects order placement vs confirm", () => {
+    expect(
+      isOrderPlacementMessage("Daj mi kiselu malu i pivo")
+    ).toBe(true);
+    expect(isOrderPlacementMessage("da")).toBe(false);
+  });
+
+  it("backfills draft from catalog search", () => {
+    const catalog = mockCatalog();
+    const result = backfillDraftFromOrderMessage(
+      emptyOrderDraft(),
+      catalog,
+      "Daj mi kiselu malu, veliko pivo i beef burger sa pomfritom"
+    );
+    expect(result.cartActions.length).toBeGreaterThanOrEqual(2);
+    expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("maybeBackfill uses prior user message on da", () => {
+    const catalog = mockCatalog();
+    const result = maybeBackfillOrderDraft(
+      emptyOrderDraft(),
+      catalog,
+      "da",
+      [
+        {
+          role: "user",
+          content: "Daj mi kiselu malu, veliko pivo i beef burger sa pomfritom",
+          timestamp: new Date().toISOString(),
+        },
+      ]
+    );
+    expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("finalizeOrderFlow does not submit with empty cart", () => {
+    const result = finalizeOrderFlow({
+      userMessage: "da",
+      draft: emptyOrderDraft(),
+      llmMessage: "No items to order.",
+      llmSubmitOrder: true,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+    expect(result.submitOrder).toBe(false);
+  });
+});

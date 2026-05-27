@@ -25,9 +25,14 @@ import {
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import {
+  emptyCartSubmitBlockedMessage,
   finalizeOrderFlow,
   shouldHandleOrderFlowWithoutLlm,
 } from "@/lib/ai/ordering/order-flow";
+import {
+  isOrderPlacementMessage,
+  maybeBackfillOrderDraft,
+} from "@/lib/ai/ordering/order-message-backfill";
 import {
   AiCircuitOpenError,
   AiOpenAiError,
@@ -453,6 +458,104 @@ export async function executeChatTurn(body: unknown) {
   });
   workingDraft = preTurn.draft;
 
+  const earlyBackfill = maybeBackfillOrderDraft(
+    workingDraft,
+    catalog,
+    input.message,
+    priorMessages
+  );
+  workingDraft = earlyBackfill.draft;
+
+  if (
+    allowOrdering &&
+    earlyBackfill.cartActions.length > 0 &&
+    !workingDraft.pending &&
+    isOrderPlacementMessage(input.message)
+  ) {
+    const flowResult = finalizeOrderFlow({
+      userMessage: input.message,
+      draft: workingDraft,
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: earlyBackfill.cartActions.length,
+      language,
+    });
+    workingDraft = flowResult.draft;
+
+    const assistantMessage: StoredMessage = {
+      role: "assistant",
+      content: assistantContent(flowResult.message, []),
+      timestamp: new Date().toISOString(),
+    };
+    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
+    const scrollContext = input.browsingContext
+      ? parseBrowsingContextToScrollContext(input.browsingContext)
+      : null;
+
+    let sessionId = sessionRow?.id;
+    const sessionPatch = {
+      messages: updatedMessages,
+      language,
+      guest_preferences: guestPrefs as import("@/types/database").Json,
+      order_draft: workingDraft as unknown as import("@/types/database").Json,
+      ...(scrollContext ? { scroll_context: scrollContext } : {}),
+    };
+
+    if (sessionRow) {
+      const { error: updateError } = await admin
+        .from("ai_sessions")
+        .update(sessionPatch)
+        .eq("id", sessionRow.id);
+      if (updateError) {
+        logger.error("AI session update failed", { error: updateError.message });
+        return apiError("Could not update session.", 500);
+      }
+    } else {
+      const { data: inserted, error: insertError } = await admin
+        .from("ai_sessions")
+        .insert({
+          org_id: orgId,
+          location_id: input.locationId,
+          table_id: input.tableId,
+          session_token: input.sessionToken,
+          messages: updatedMessages,
+          tokens_used: 0,
+          credits_used: 0,
+          products_recommended: [],
+          products_added: [],
+          conversion_count: 0,
+          status: "active",
+          order_draft: workingDraft as unknown as import("@/types/database").Json,
+          language,
+          guest_preferences: guestPrefs,
+          ...(scrollContext ? { scroll_context: scrollContext } : {}),
+        })
+        .select("id")
+        .single();
+      if (insertError || !inserted) {
+        return apiError("Could not create session.", 500);
+      }
+      sessionId = (inserted as { id: string }).id;
+    }
+
+    const { data: creditsRow } = await admin
+      .from("ai_credits")
+      .select("balance")
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    return apiSuccess({
+      message: flowResult.message,
+      recommendations: [],
+      cartActions: earlyBackfill.cartActions,
+      quickReplies: [],
+      intent: flowResult.intent,
+      submitOrder: flowResult.submitOrder,
+      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      sessionId,
+    });
+  }
+
   const browseMatches = searchCatalogProducts(catalog.catalog, input.message);
 
   if (
@@ -634,12 +737,20 @@ export async function executeChatTurn(body: unknown) {
     allowOrdering &&
     shouldHandleOrderFlowWithoutLlm(input.message, workingDraft)
   ) {
+    const preFlowBackfill = maybeBackfillOrderDraft(
+      workingDraft,
+      catalog,
+      input.message,
+      priorMessages
+    );
+    workingDraft = preFlowBackfill.draft;
+
     const flowResult = finalizeOrderFlow({
       userMessage: input.message,
       draft: workingDraft,
       llmMessage: "",
       llmSubmitOrder: false,
-      cartActionsThisTurn: 0,
+      cartActionsThisTurn: preFlowBackfill.cartActions.length,
       language,
     });
     workingDraft = flowResult.draft;
@@ -778,17 +889,39 @@ export async function executeChatTurn(body: unknown) {
   });
   workingDraft = orderingResult.draft;
 
+  const postOrderBackfill = maybeBackfillOrderDraft(
+    workingDraft,
+    catalog,
+    input.message,
+    priorMessages
+  );
+  workingDraft = postOrderBackfill.draft;
+  const cartActionsThisTurn =
+    orderingResult.cartActions.length + postOrderBackfill.cartActions.length;
+
   const flowResult = finalizeOrderFlow({
     userMessage: input.message,
     draft: workingDraft,
     llmMessage: structured.structured.message,
     llmSubmitOrder: structured.structured.submitOrder,
-    cartActionsThisTurn: orderingResult.cartActions.length,
+    cartActionsThisTurn,
     language,
   });
   workingDraft = flowResult.draft;
-  const assistantReplyMessage = flowResult.message;
-  const submitOrder = flowResult.submitOrder;
+  let assistantReplyMessage = flowResult.message;
+  let submitOrder = flowResult.submitOrder;
+
+  if (
+    workingDraft.items.length === 0 &&
+    (submitOrder || structured.structured.submitOrder)
+  ) {
+    submitOrder = false;
+    assistantReplyMessage = emptyCartSubmitBlockedMessage(
+      language === "de" || language === "en" || language === "hr" || language === "sr"
+        ? language
+        : "sr"
+    );
+  }
 
   const guestWantsSuggestions = guestAskedForSuggestions(input.message);
 

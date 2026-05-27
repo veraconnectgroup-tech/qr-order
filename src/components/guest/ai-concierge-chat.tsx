@@ -785,6 +785,12 @@ export function AiConciergeChat({
         };
 
         if (!res.ok || !json.data) {
+          if (
+            json.error === "empty_cart" ||
+            json.error === "No items to order."
+          ) {
+            return tChat("ai.order.emptyCart");
+          }
           return json.error ?? tChat("ai.order.submitFailed");
         }
 

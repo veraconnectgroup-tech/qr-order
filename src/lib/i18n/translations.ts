@@ -248,6 +248,8 @@ const de: TranslationMap = {
   "ai.order.submitSuccess": "Bestellung #{number} wurde gesendet!",
   "ai.order.submitApproval": "Bestellung #{number} wartet auf Freigabe am Tisch.",
   "ai.order.submitFailed": "Bestellung konnte nicht gesendet werden.",
+  "ai.order.emptyCart":
+    "In der Bestellung sind noch keine Artikel. Sagen Sie mir, was Sie möchten, und bestätigen Sie danach mit „ja“.",
   "ai.order.status.pendingApproval": "Bestellung #{number} wartet auf Freigabe.",
   "ai.order.status.pending": "Bestellung #{number} ist eingegangen.",
   "ai.order.status.accepted": "Bestellung #{number} wurde angenommen.",
@@ -595,6 +597,8 @@ const en: TranslationMap = {
   "ai.order.submitSuccess": "Order #{number} has been sent!",
   "ai.order.submitApproval": "Order #{number} is waiting for table approval.",
   "ai.order.submitFailed": "Could not place the order.",
+  "ai.order.emptyCart":
+    "Your order has no items yet. Tell me what you'd like, then confirm with yes.",
   "ai.order.status.pendingApproval": "Order #{number} is waiting for approval.",
   "ai.order.status.pending": "Order #{number} has been received.",
   "ai.order.status.accepted": "Order #{number} has been accepted.",
@@ -956,6 +960,8 @@ const sr: TranslationMap = {
   "ai.order.submitSuccess": "Porudžbina #{number} je poslata!",
   "ai.order.submitApproval": "Porudžbina #{number} čeka odobrenje za stolom.",
   "ai.order.submitFailed": "Porudžbina nije mogla biti poslata.",
+  "ai.order.emptyCart":
+    "Porudžbina je još prazna. Recite šta želite, pa potvrdite sa „da“.",
   "ai.order.status.pendingApproval": "Porudžbina #{number} čeka odobrenje.",
   "ai.order.status.pending": "Porudžbina #{number} je primljena.",
   "ai.order.status.accepted": "Porudžbina #{number} je prihvaćena.",
@@ -1298,6 +1304,8 @@ const hr: TranslationMap = {
   "ai.order.submitSuccess": "Porudžbina #{number} je poslata!",
   "ai.order.submitApproval": "Porudžbina #{number} čeka odobrenje za stolom.",
   "ai.order.submitFailed": "Porudžbina nije mogla biti poslata.",
+  "ai.order.emptyCart":
+    "Porudžbina je još prazna. Recite šta želite, pa potvrdite sa „da“.",
   "ai.order.status.pendingApproval": "Porudžbina #{number} čeka odobrenje.",
   "ai.order.status.pending": "Porudžbina #{number} je primljena.",
   "ai.order.status.accepted": "Porudžbina #{number} je prihvaćena.",

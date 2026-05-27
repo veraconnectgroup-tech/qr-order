@@ -138,6 +138,22 @@ function resolveMenuLanguage(language: string | undefined): MenuLanguage {
   return "de";
 }
 
+/** Guest tried to confirm/submit but session cart has no line items. */
+export function emptyCartSubmitBlockedMessage(lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return "In der Bestellung sind noch keine Artikel. Sagen Sie mir, was Sie möchten, und bestätigen Sie danach mit „ja“.";
+    case "en":
+      return "Your order has no items yet. Tell me what you'd like, then confirm with yes.";
+    case "hr":
+      return "Narudžba je još prazna. Recite što želite, pa potvrdite s „da“.";
+    case "sr":
+      return "Porudžbina je još prazna. Recite šta želite, pa potvrdite sa „da“.";
+    default:
+      return "Porudžbina je još prazna. Recite šta želite, pa potvrdite sa „da“.";
+  }
+}
+
 export type OrderFlowResult = {
   draft: AiOrderDraft;
   message: string;
@@ -169,7 +185,7 @@ export function finalizeOrderFlow(input: {
     return {
       draft,
       message: input.llmMessage,
-      submitOrder: input.llmSubmitOrder,
+      submitOrder: false,
       intent: input.llmSubmitOrder ? "confirm" : "chat",
     };
   }
