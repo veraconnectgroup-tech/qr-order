@@ -83,6 +83,9 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     chargeProactive: false,
     chargeDeterministic: false,
   },
+  rollout: {
+    mode: "shadow",
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;

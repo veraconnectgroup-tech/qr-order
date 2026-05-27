@@ -3,9 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
+| **As-built through** | **M10** (May 2026) — kernel spine complete, GA gate M11–M14 open |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
+| **Control plane** | [ADR-006](./ADR-006-denis-control-plane.md) |
 | **Bootstrap** | [ADR-002 detail](./ADR-002-denis-architecture-detail.md) |
 
 ---
@@ -13,29 +15,123 @@
 ## 1. Purpose
 
 This document is the **single operational map** between ADRs and code.  
-Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:denis`**.
+Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:denis`** and **`pnpm eval:denis`**.
 
 ---
 
-## 2. Five layers → folders
+## 2. Layers → folders
 
 | Layer | ADR | Folder | Owns |
 |-------|-----|--------|------|
-| **L1 Platform** | ADR-003 | `src/lib/denis/platform/` | `denis_timeline`, fold, replay, Flow DSL files |
+| **L1 Platform** | ADR-003 | `src/lib/denis/platform/` | timeline, fold, Flow DSL, sense request schema |
 | **L2 Kernel** | ADR-004 | `src/lib/denis/kernel/` | beliefs, goals, VKG, conflict, correction, scheduler |
 | **L3 Venue OS** | ADR-005 §5 | `src/lib/denis/venue/` | floor graph, party, ops beliefs, staff copilot |
-| **Runtime** | ADR-003 PPAN+ | `src/lib/denis/runtime/` | `runDenisTurn`, perceive/plan/act/narrate |
-| **L4 Surfaces** | ADR-005 §6 | `src/lib/denis/surfaces/` | chat, nudge, voice formatters (no business logic) |
+| **Runtime** | ADR-003 PPAN+ | `src/lib/denis/runtime/` | `runDenisTurn`, sense, narrate lint, shadow diff |
+| **L4 Surfaces** | ADR-005 §6 | `src/lib/denis/surfaces/` | chat API formatters (no business logic) |
 | **L5 Learning** | ADR-005 §7 | `src/lib/denis/learning/` | learned edges queue, guest memory |
-| **Eval** | ADR-005 §7.3 | `src/lib/denis/eval/` + `/eval` | fixtures, score, shadow helpers |
+| **Eval** | ADR-005 §7.3 | `src/lib/denis/eval/` | fixtures, risk assert, CI harness |
 | **ACL** | ADR-003 §8 | `src/lib/denis/acl/` | `DenisOrderCommand` → Order Core only |
-| **Config** | ADR-002 §7 | `src/lib/denis/config/` | `ConciergeConfig` schema, merge, cache |
-
-**Legacy (transitional):** `src/lib/ai/**` remains until M7 cutover. New Denis logic goes in `src/lib/denis/**`, not into growing `chat-service.ts`.
+| **Config** | ADR-002 §7 | `src/lib/denis/config/` | `ConciergeConfig`, merge, cache, rollout |
+| **Architecture** | — | `src/lib/denis/architecture/` | import-matrix compliance engine |
 
 ---
 
-## 3. Hard boundaries (invariants)
+## 3. As-built snapshot (M0–M10 ✅)
+
+### 3.1 Request flow (production today)
+
+```mermaid
+sequenceDiagram
+  participant G as Guest
+  participant API as /api/ai/chat or /api/denis/turn
+  participant RT as runDenisTurn
+  participant KN as Kernel planTurnWithReflex
+  participant LG as executeChatTurn (legacy)
+  participant NR as narrate lint
+  participant TL as denis_timeline
+
+  G->>API: POST chat body
+  API->>RT: handleAiChat → runDenisTurn
+  RT->>KN: plan + conflict + goals
+  RT->>LG: LLM + ordering (legacy)
+  LG-->>RT: message, cartActions, intent
+  RT->>NR: sanitizeNarrationOutput
+  alt rollout shadow
+    RT-->>G: legacy message (guest)
+  else rollout denis_only
+    RT-->>G: linted message
+  end
+  RT->>TL: persistDenisTurnTimeline
+```
+
+### 3.2 Module inventory (implemented)
+
+| Track | Code | Notes |
+|-------|------|-------|
+| M1 | `config/concierge-config.schema.ts`, merge, load, Redis cache | `rollout.mode` added M10 |
+| M2 | `platform/append-timeline-event.ts`, `timeline-types.ts`, `fold-flow.ts`, RPC `append_denis_timeline_event` | migration `00087` |
+| M3 | `platform/flow-engine.ts`, `flows/denis_short.flow.json`, `kernel/plan-turn.ts`, `goal-stack.ts`, `skill-registry.ts` | |
+| M4 | `kernel/reflex-rules.ts`, `correction-protocol.ts`, `reflex-plan.ts`, `cart-projection.ts` | T0 + undo depth 5 |
+| M5 | `kernel/vkg/*` | L0 catalog + L1 `upsell_rules`; Redis `ai:vkg:{locationId}` |
+| M6 | `kernel/conflict/*` | `resolveCartConflict`, wired in `reflex-plan` |
+| M7 | `runtime/run-denis-turn.ts`, `build-turn-context.ts`, `surfaces/chat/*` | `chat-service.ts` = 11-line wrapper |
+| M8 | `kernel/scheduler/*`, `runtime/run-denis-sense.ts`, `process-scheduler-tick.ts` | migration `00088`; cron `GET /api/cron/denis-scheduler` |
+| M9 | `runtime/narrate/*` | facts + lint + template fallback; **no** `narrate-llm.ts` yet |
+| M10 | `eval/*`, `runtime/shadow-diff.ts`, `config/rollout.ts` | default rollout `shadow`; `pnpm eval:denis` |
+
+### 3.3 API routes (actual)
+
+| Route | Status | Handler |
+|-------|--------|---------|
+| `POST /api/ai/chat` | ✅ | `handleAiChat` → `runDenisTurn` |
+| `POST /api/denis/turn` | ✅ | `runDenisTurn` (same as chat) |
+| `POST /api/denis/sense` | ✅ | `runDenisSense` — telemetry without chat |
+| `GET /api/cron/denis-scheduler` | ✅ | `processDenisSchedulerTick` (Bearer `CRON_SECRET`) |
+| `POST /api/denis/schedules/tick` | ❌ | not implemented (cron only) |
+
+### 3.4 Database (migrations — verify push status locally)
+
+| Migration | Table / object | Track |
+|-----------|----------------|-------|
+| `00086_ai_concierge_config.sql` | `locations.ai_concierge_config` JSONB | M1 |
+| `00087_denis_timeline.sql` | `denis_timeline` + `append_denis_timeline_event` | M2 |
+| `00088_denis_schedules.sql` | `denis_schedules` + `claim_due_denis_schedules` | M8 |
+
+### 3.5 Legacy bridge (still active — intentional)
+
+| Legacy path | Role until cutover |
+|-------------|-------------------|
+| `src/lib/ai/execute-chat-turn.ts` (~937 lines) | OpenAI, ordering, session persist, credits |
+| `src/lib/ai/chat-service.ts` (11 lines) | thin export → `runDenisTurn` |
+| `src/lib/ai/proactive-triggers.ts` | client `use-smart-nudges` still local — **not** wired to `/api/denis/sense` |
+| `src/lib/ai/ordering/order-executor.ts` | Order Core create (ACL allowlist) |
+
+**OpenAI today:** only in `src/lib/ai/execute-chat-turn.ts`, **not** yet in `runtime/narrate/narrate-llm.ts`.
+
+---
+
+## 4. Not built yet (ADR vs code gaps)
+
+Honest delta after M10 — do not assume these exist:
+
+| ADR target | Status | Next track |
+|------------|--------|------------|
+| `runtime/perceive/slot-extract.ts` (T2) | ❌ stub folder only | post-M10 |
+| `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ❌ lint wraps legacy text | M9+ cutover |
+| `runtime/act/*` skill executor | ❌ skills planned, not executed in Denis path | M7+ / ACL |
+| `src/lib/denis/acl/` DenisOrderCommand | ❌ marker only | with act layer |
+| `src/lib/denis/venue/` | ❌ README stub | M12–M15 |
+| `src/lib/denis/learning/` | ❌ README stub | M16+ |
+| `menu_knowledge_edges` / L3 learned VKG | ❌ | M20+ |
+| `denis_eval_runs` table | ❌ CI in-memory only | optional |
+| Guest UI `manualCartSnapshot` on sense | ❌ schema ready, client not sending | M11 |
+| `use-smart-nudges` → server proactive | ❌ | M11 / B1 |
+| Rollout `canary` / `denis_only` in production | ⚠️ config exists; ops must set explicitly | ops |
+| Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
+
+---
+
+## 5. Hard boundaries (invariants)
 
 | Rule | Violation |
 |------|-----------|
@@ -45,104 +141,99 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 | **Timeline append-only** | UPDATE/DELETE on `denis_timeline` |
 | **No module-level mutable state** | `new Map()` / `new Set()` at file scope in `src/lib/denis/` |
 | **No duplicate side effects** | Old fire-and-forget + outbox for same event |
-| **One PR = one M-track** | M1 config only, M2 timeline only, etc. |
+| **One PR = one M-track** | M11+ only after M0–M10 green |
 
 ---
 
-## 4. Import matrix (enforced by `pnpm verify:denis`)
+## 6. Import matrix (enforced by `pnpm verify:denis`)
 
-Rows import **only** columns marked ✓.
+| Importer ↓ / Import → | config | platform | kernel | venue | runtime | surfaces | acl | learning | eval |
+|-----------------------|--------|----------|--------|-------|---------|----------|-----|----------|------|
+| config | — | | | | | | | | |
+| platform | ✓ | — | | | | | | | |
+| kernel | ✓ | ✓ | — | | | | | | |
+| venue | ✓ | ✓ | ✓ | — | | | | | |
+| runtime | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | | |
+| surfaces | ✓ | | | | ✓ | — | | | |
+| acl | | | | | | | — | | |
+| learning | ✓ | ✓ | | | | | | — | |
+| eval | ✓ | ✓ | ✓ | | ✓ | | | | — |
 
-| Importer ↓ / Import → | config | platform | kernel | venue | runtime | surfaces | acl | learning | eval | openai | create-order |
-|-----------------------|--------|----------|--------|-------|---------|----------|-----|----------|------|--------|--------------|
-| config | — | | | | | | | | | | |
-| platform | ✓ | — | | | | | | | | | |
-| kernel | ✓ | ✓ | — | | | | | | | | |
-| venue | ✓ | ✓ | ✓ | — | | | | | | | |
-| runtime | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | | | ✓* | |
-| surfaces | ✓ | | | | ✓ | — | | | | | |
-| acl | | | | | | | — | | | | ✓ |
-| learning | ✓ | ✓ | | | | | | — | | | |
-| eval | ✓ | ✓ | ✓ | | ✓ | | | | — | | |
+**OpenAI (compliance):** allowed paths under `src/lib/denis/` are `runtime/narrate/` and `runtime/perceive/` only. Legacy OpenAI remains in `src/lib/ai/execute-chat-turn.ts` until narrate cutover.
 
-\* OpenAI only in `runtime/narrate/` and `runtime/perceive/slot-extract.ts` — nowhere else in `denis/`.
-
----
-
-## 5. API target (M7+)
-
-| Route | Role |
-|-------|------|
-| `POST /api/denis/turn` | Unified entry |
-| `POST /api/denis/sense` | Sensory ingest without chat |
-| Legacy `/api/ai/chat` | Thin wrapper → `runDenisTurn` |
-
-Until M7: legacy routes stay; **no new business logic** in `chat-service.ts`.
+**Shadow diff:** lives in `runtime/shadow-diff.ts` (not `eval/`) — import-matrix constraint.
 
 ---
 
-## 6. M-track roadmap (execution order)
+## 7. M-track roadmap
 
-| Track | Deliverable | Folder |
-|-------|-------------|--------|
-| **M0** | Approve ADR-005 + this map | docs |
-| **M1** | ✅ ConciergeConfig schema + merge | `config/` |
-| **M2** | ✅ Timeline + minimal beliefs + traceId | `platform/`, `kernel/fold-beliefs` |
-| **M3** | ✅ Goals + Flow DSL engine + skill registry | `kernel/`, `platform/flows/` |
-| **M4** | ✅ T0 reflex + correction protocol | `kernel/` |
-| **M5** | ✅ VKG v1 (`pairingFor`, allergies, substitute) | `kernel/vkg/` |
-| **M6** | ✅ Conflict resolver (AI vs manual cart) | `kernel/conflict/` |
-| **M7** | Guest chat → `runDenisTurn` | `runtime/`, `surfaces/` |
-| **M8** | Scheduler + sense API | `kernel/`, `platform/` |
-| **M9** | Narration contract + lint | `runtime/narrate/` |
-| **M10** | Eval + shadow cutover | `eval/` |
-| **M11–M20** | UI-first, party, house, learn, voice | per ADR-005 §14 |
+| Track | Status | Deliverable |
+|-------|--------|-------------|
+| **M0** | ✅ | ADR-005 + this map |
+| **M1** | ✅ | ConciergeConfig |
+| **M2** | ✅ | Timeline + minimal beliefs |
+| **M3** | ✅ | Goals + Flow DSL |
+| **M4** | ✅ | T0 reflex + corrections |
+| **M5** | ✅ | VKG v1 |
+| **M6** | ✅ | Conflict resolver |
+| **M7** | ✅ | `runDenisTurn` + surfaces |
+| **M8** | ✅ | Scheduler + sense API |
+| **M9** | ✅ | Narration contract + lint |
+| **M10** | ✅ | Eval + shadow rollout |
+| **M11–M14** | ⬜ | UI-first, party, GA gate (ADR-005) |
+| **M15–M20** | ⬜ | Venue OS, learning, voice (premium) |
 
----
-
-## 9. Control plane (ADR-006)
-
-Operational overlay — **not** a second north star. See [ADR-006](./ADR-006-denis-control-plane.md).
-
-| Concept | Code | Track |
-|---------|------|-------|
-| **R0–R5** risk classes | `platform/risk-levels.ts` | M3 registry |
-| **traceId** per turn | `denis_timeline.trace_id` | ✅ M2 |
-| **Rollout ladder** | `ConciergeConfig.rollout` (future) | M10 |
-| **Shadow diff** | `eval/shadow-diff.ts` | M10 |
-
-**Dual-write (M2):** `POST /api/ai/chat` → `recordChatTurnTimeline()` after success.
+**Next recommended:** **M11** — UI-first chips / quick replies on all templates; wire guest sense for manual cart.
 
 ---
 
-## 10. Verification
+## 8. Control plane (ADR-006)
+
+| Concept | Code | Status |
+|---------|------|--------|
+| **R0–R5** | `platform/risk-levels.ts`, `skill-registry.ts` | ✅ |
+| **traceId** | `denis_timeline.trace_id` | ✅ |
+| **Rollout ladder** | `config/rollout.ts`, `ConciergeConfig.rollout` | ✅ default `shadow` |
+| **Shadow diff** | `runtime/shadow-diff.ts` | ✅ logged per turn in shadow |
+| **Timeline write** | `persistDenisTurnTimeline` via `runDenisTurn` | ✅ replaces old dual-write on chat route |
+
+### Rollout modes (guest-visible behaviour)
+
+| Mode | Guest message | Timeline | Shadow log |
+|------|---------------|----------|------------|
+| `legacy` | legacy | off | no |
+| `shadow` | legacy | on | yes |
+| `canary` | — | on | TBD |
+| `denis_only` | linted Denis | on | optional |
+| `simulation` | — | eval only | yes |
+
+Override: env `DENIS_ROLLOUT_MODE`.
+
+---
+
+## 9. Verification
 
 ```bash
-pnpm verify:denis
+pnpm verify:denis    # import matrix, paths, chat-service budget, flow JSON
+pnpm eval:denis      # golden kernel scenarios (M10)
+pnpm type-check
 ```
 
-Checks:
-
-1. Required layer folders + ADRs exist  
-2. Import matrix respected under `src/lib/denis/`  
-3. No module-level `Map`/`Set` in `src/lib/denis/`  
-4. Order Core access only via ACL allowlist  
-5. `chat-service.ts` line budget (legacy guard — must shrink after M7)  
-6. Flow preset JSON valid  
-
-Add to Denis PR checklist:
+### PR checklist
 
 - [ ] Code in correct layer folder  
 - [ ] `pnpm verify:denis` pass  
+- [ ] `pnpm eval:denis` pass (if kernel/planner touched)  
 - [ ] `pnpm type-check` pass  
 - [ ] One M-track scope only  
+- [ ] This map updated if API, migrations, or rollout behaviour changed  
 
 ---
 
-## 11. Operator prompt
+## 10. Operator prompt (M11+)
 
 ```
-Denis M-track mode. Read docs/architecture/denis-implementation-map.md + ADR-005.
-Implement next open track only. Run pnpm verify:denis before finish.
+Denis mode. Read docs/architecture/denis-implementation-map.md §3–4 (as-built + gaps).
+M0–M10 done — implement next open track only (M11+). Run pnpm verify:denis && pnpm eval:denis.
 Do not commit unless asked.
 ```

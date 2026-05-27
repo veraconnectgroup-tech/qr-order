@@ -41,6 +41,17 @@ export {
 } from "@/lib/denis/platform/flow-engine";
 export { foldFlowProjection, emptyFlowProjection } from "@/lib/denis/platform/fold-flow";
 export { getFlowPreset, parseFlowDefinition } from "@/lib/denis/platform/load-flow-preset";
+export {
+  denisSenseRequestSchema,
+  denisSenseChannelSchema,
+  manualCartSnapshotSchema,
+  senseChannelToPerception,
+} from "@/lib/denis/platform/sense-types";
+export type {
+  DenisSenseChannel,
+  DenisSenseRequest,
+  ManualCartSnapshotInput,
+} from "@/lib/denis/platform/sense-types";
 
 /** L1 Platform layer marker — M2 timeline, M3 Flow DSL. */
 export const DENIS_PLATFORM_LAYER = "platform" as const;

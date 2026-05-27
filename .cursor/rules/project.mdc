@@ -64,8 +64,9 @@ Track A: one PR per step (A1→A8). Never rewrite `create-order.ts` from scratch
 ## Denis Maximum (AI Concierge)
 
 North star: `docs/architecture/ADR-005-denis-maximum.md`  
-Implementation map: `docs/architecture/denis-implementation-map.md`  
-Code layout: `src/lib/denis/` (layers L1–L5 + runtime + acl)
+Implementation map (as-built M0–M10): `docs/architecture/denis-implementation-map.md`  
+Code layout: `src/lib/denis/` (layers L1–L5 + runtime + acl + eval)
 
-**Before any Denis PR:** read implementation map · one M-track per PR · run `pnpm verify:denis`  
+**Spine status:** M0–M10 implemented; next tracks M11–M14 (GA gate).  
+**Before any Denis PR:** read map §3–4 · one M-track per PR · `pnpm verify:denis` · `pnpm eval:denis`  
 **Cursor rule:** `.cursor/rules/denis-architecture.mdc`

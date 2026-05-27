@@ -14,9 +14,10 @@ alwaysApply: false
 
 ## Before coding
 
-1. Read `docs/architecture/denis-implementation-map.md`
+1. Read `docs/architecture/denis-implementation-map.md` — **§3 as-built** and **§4 gaps**
 2. North star: `docs/architecture/ADR-005-denis-maximum.md`
-3. Identify **one M-track** only (M1 config, M2 timeline, …)
+3. **M0–M10 complete** — next work is **M11+** unless fixing spine bugs
+4. Identify **one M-track** only
 
 ## Where code goes
 
@@ -32,7 +33,8 @@ alwaysApply: false
 | Learning | `src/lib/denis/learning/` |
 | Eval | `src/lib/denis/eval/` |
 
-**Do not** add new Denis business logic to `src/lib/ai/chat-service.ts`. Legacy only until M7.
+**Do not** add new Denis business logic to `src/lib/ai/chat-service.ts` (wrapper only).  
+Legacy LLM/ordering stays in `src/lib/ai/execute-chat-turn.ts` until `runtime/narrate/` cutover.
 
 ## Invariants
 
@@ -40,13 +42,14 @@ alwaysApply: false
 - T3 narrates facts only — never decides cart/submit
 - `denis_timeline` append-only
 - No module-level `Map`/`Set` in `src/lib/denis/`
-- OpenAI only in `runtime/narrate/` and `runtime/perceive/`
+- OpenAI in `denis/` only under `runtime/narrate/` and `runtime/perceive/` (future)
 - One PR = one M-track
 
 ## Before finish
 
 ```bash
 pnpm verify:denis
+pnpm eval:denis    # if kernel/planner/runtime planning touched
 pnpm type-check
 ```
 

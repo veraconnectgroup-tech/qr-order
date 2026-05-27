@@ -1,6 +1,6 @@
 # L2 — Kernel
 
-**Tracks:** M3 ✅, M4 ✅, M5 ✅, M6 ✅, M8  
+**Tracks:** M3 ✅, M4 ✅, M5 ✅, M6 ✅, M8 ✅  
 **ADR:** [ADR-004 §7](../../../docs/architecture/ADR-004-denis-kernel.md)
 
 - `reflex-rules.ts` — T0 confirm/decline/done/corrections (no LLM)
@@ -9,5 +9,6 @@
 - `cart-projection.ts` — kernel cart + undo stack
 - `conflict/` — AI vs manual cart resolver (M6)
 - `vkg/` — venue knowledge graph (M5)
+- `scheduler/` — anticipation jobs + T1 proactive eval (M8)
 
 **May import:** config, platform only.

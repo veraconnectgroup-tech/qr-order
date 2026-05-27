@@ -91,4 +91,16 @@ export type {
   UnifiedCartView,
 } from "@/lib/denis/kernel/conflict";
 
+export {
+  buildScheduleDrafts,
+  claimDueDenisSchedules,
+  evaluateScheduledIntent,
+  upsertDenisSchedules,
+} from "@/lib/denis/kernel/scheduler";
+export type {
+  ProactiveEvaluation,
+  ScheduledIntentDraft,
+  ScheduleTickResult,
+} from "@/lib/denis/kernel/scheduler";
+
 export const DENIS_KERNEL_LAYER = "kernel" as const;

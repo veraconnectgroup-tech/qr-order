@@ -29,6 +29,12 @@ export {
   resolveConciergeLlmRuntime,
 } from "@/lib/denis/config/load-concierge-config";
 export type { LoadConciergeConfigOptions } from "@/lib/denis/config/load-concierge-config";
-
-/** Config layer marker — M1 ConciergeConfig. */
+export {
+  guestSeesLegacyPath,
+  kernelTimelineEnabled,
+  parseRolloutModeFromEnv,
+  resolveEffectiveRollout,
+  shouldRunShadowDiff,
+} from "@/lib/denis/config/rollout";
+export type { ConciergeRollout, ConciergeRolloutMode } from "@/lib/denis/config/rollout";
 export const DENIS_CONFIG_LAYER = "config" as const;

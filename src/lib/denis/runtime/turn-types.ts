@@ -1,0 +1,47 @@
+import { z } from "zod";
+import { aiChatRequestSchema } from "@/lib/ai/execute-chat-turn";
+import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
+import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import type { DenisCartState } from "@/lib/denis/kernel/cart-projection";
+import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
+import { manualCartSnapshotSchema } from "@/lib/denis/platform/sense-types";
+import type { ManualCartSnapshot } from "@/lib/denis/runtime/adapters/map-legacy-draft";
+
+export type DenisChannel = "chat" | "proactive" | "status_poll";
+
+export { manualCartSnapshotSchema };
+
+export const denisChatBodySchema = aiChatRequestSchema.extend({
+  manualCartSnapshot: manualCartSnapshotSchema.optional(),
+});
+
+export type DenisChatBody = z.infer<typeof denisChatBodySchema>;
+
+export type DenisTurnRunInput = {
+  channel: DenisChannel;
+  rawBody: unknown;
+};
+
+export type DenisTurnContext = {
+  locationId: string;
+  aiSessionId?: string;
+  config: ConciergeConfig;
+  flowNodeId: FlowNodeId;
+  aiCartState: DenisCartState;
+  manualCartDraft?: DenisCartDraft;
+  foodUpsellAsked: boolean;
+};
+
+export type DenisTurnMeta = {
+  traceId: string;
+  conflictPrompt: string | null;
+  flowNodeId: FlowNodeId;
+  topGoal: string | null;
+  channel: DenisChannel;
+  narrationTier?: "template" | "T3";
+  lintPassed?: boolean;
+  usedNarrationFallback?: boolean;
+  rolloutMode?: string;
+};
+
+export type { ManualCartSnapshot };

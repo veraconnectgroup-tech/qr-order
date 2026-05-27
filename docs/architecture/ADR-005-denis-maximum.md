@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | **Proposed** — **ultimate north star** (supersedes [ADR-004](./ADR-004-denis-kernel.md) as product ceiling) |
-| **Implementation map** | [denis-implementation-map.md](./denis-implementation-map.md) — layers, M-tracks, `pnpm verify:denis` |
+| **Status** | **Proposed** (north star) — **kernel spine M0–M10 implemented** May 2026; see [map §3](./denis-implementation-map.md#3-as-built-snapshot-m0m10-) |
+| **Implementation map** | [denis-implementation-map.md](./denis-implementation-map.md) — as-built inventory, gaps, M-tracks, `pnpm verify:denis` |
 | **Control plane** | [ADR-006](./ADR-006-denis-control-plane.md) — risk R0–R5, rollout, observability |
 | **Date** | 2026-05-27 |
 | **Codename** | **Denis** |
@@ -558,10 +558,9 @@ Replace fat `chat-service.ts` with thin `POST /api/denis/turn` → `runDenisTurn
 
 ```
 ADR Denis Maximum mode.
-Read ADR-005-denis-maximum.md (+ ADR-004 kernel sections + ADR-003 timeline).
-Implement next open M-track only. One PR per track.
-Shadow mode until M10 green. Do not commit unless asked.
-Session report: track completed, metrics, next track.
+Read denis-implementation-map.md §3–4 (as-built + gaps) + ADR-005/004/003 as needed.
+M0–M10 done — implement M11+ only. One PR per track.
+Default rollout: shadow. Run pnpm verify:denis && pnpm eval:denis. Do not commit unless asked.
 ```
 
 ---
