@@ -81,12 +81,13 @@ export async function resilientFetch<T = unknown>(
 
       if (!res.ok) {
         if (parseJson) {
-          const json = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
+          const json = (await res.json().catch(() => ({}))) as T;
+          const message =
+            (json as { error?: string | null }).error ??
+            `Request failed (${res.status})`;
           return {
-            data: null,
-            error: json.error ?? `Request failed (${res.status})`,
+            data: json,
+            error: message,
             retried,
             status: res.status,
             response: res,

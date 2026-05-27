@@ -1,4 +1,7 @@
-import { isDemoGuestTableToken } from "@/lib/demo-guest";
+import {
+  getDemoGuestSession,
+  isDemoGuestTableToken,
+} from "@/lib/demo-guest";
 import type { CreateOrderInput } from "@/lib/orders/create/schema";
 import { orderError, sessionValidationError } from "@/lib/orders/create/pipeline/errors";
 import { err, ok, type OrderCreateError, type Result } from "@/lib/orders/create/result";
@@ -18,14 +21,24 @@ export async function resolveGuestOrderContext(
   input: Pick<CreateOrderInput, "tableToken" | "sessionToken">
 ): Promise<Result<GuestContextResult, OrderCreateError>> {
   if (isDemoGuestTableToken(input.tableToken)) {
-    if (!input.sessionToken) {
-      return err(orderError("session_required", "Session required.", 401));
+    const contextResult = await resolveOrderContext(admin, input.tableToken);
+    if (!contextResult.ok) {
+      return err(contextResult.error);
+    }
+
+    const demoSessionToken = getDemoGuestSession().sessionToken;
+    const hasRealSessionToken =
+      input.sessionToken && input.sessionToken !== demoSessionToken;
+
+    if (!hasRealSessionToken) {
+      // Public demo UI uses a static token — fall through to approval ordering.
+      return ok({ context: contextResult.value });
     }
 
     const sessionResult = await validateTableSession(
       admin,
       input.tableToken,
-      input.sessionToken
+      input.sessionToken!
     );
 
     if ("error" in sessionResult) {

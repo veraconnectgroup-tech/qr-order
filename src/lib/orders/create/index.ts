@@ -1,5 +1,4 @@
 import { criticalPath } from "@/lib/orders/critical-path-events";
-import { isDemoGuestTableToken } from "@/lib/demo-guest";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertOrderAccess } from "@/lib/orders/create/pipeline/assert-access";
@@ -21,7 +20,6 @@ export async function createOrderFromCart(
   options?: { idempotencyKey?: string | null }
 ): Promise<CreateOrderResult> {
   const admin = createAdminClient();
-  const isDemo = isDemoGuestTableToken(input.tableToken);
   const ctxResult = await resolveGuestOrderContext(admin, input);
   if (!ctxResult.ok) return toApi(ctxResult.error);
 

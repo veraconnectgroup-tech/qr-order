@@ -17,7 +17,7 @@ import {
   getOrCreateDeviceFingerprint,
   getStoredDeviceToken,
 } from "@/lib/guest/device-storage";
-import { ensureTableSession } from "@/lib/guest/ensure-table-session";
+import { ensureTableSession, isSessionExpiredError } from "@/lib/guest/ensure-table-session";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -246,22 +246,12 @@ export function CheckoutForm({
       { baseDelayMs: 2000, maxRetries: 3 }
     );
 
-    if (fetchError) {
-      throw new Error(
-        "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
-      );
-    }
-
     if (!parsed) {
-      throw new Error(
-        "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
-      );
+      throw new TypeError(fetchError ?? "Network error");
     }
 
     if (status && isServerErrorStatus(status)) {
-      throw new Error(
-        "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
-      );
+      throw new Error(tUI("error.orderFailed"));
     }
 
     const json = parsed;
@@ -281,10 +271,7 @@ export function CheckoutForm({
           toast.error(tUI("cart.unavailableProduct", { name }));
         }
       }
-      throw new Error(
-        json.error ??
-          "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
-      );
+      throw new Error(json.error ?? tUI("error.orderFailed"));
     }
 
     return json.data;
@@ -379,11 +366,12 @@ export function CheckoutForm({
         setProcessing(false);
         return;
       }
-      setError(
-        e instanceof Error && e.message.includes("Bestellung konnte nicht")
-          ? e.message
-          : "Bestellung konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
-      );
+      if (isSessionExpiredError(message)) {
+        setError(tUI("ai.overlay.sessionExpired"));
+        setProcessing(false);
+        return;
+      }
+      setError(e instanceof Error ? e.message : tUI("error.generic"));
       setProcessing(false);
     }
   }
