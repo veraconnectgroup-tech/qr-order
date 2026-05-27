@@ -41,8 +41,8 @@ export async function createOrderFromCart(
   });
   if (!pricing.ok) return toApi(pricing.error);
 
-  const modeResult = isDemo
-    ? ok({ kind: "demo" as const, sessionId: demoSessionId! })
+  const modeResult = demoSessionId
+    ? ok({ kind: "demo" as const, sessionId: demoSessionId })
     : await assertOrderAccess(admin, input, context);
   if (!modeResult.ok) return toApi(modeResult.error);
 

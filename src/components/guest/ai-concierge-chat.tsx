@@ -529,61 +529,21 @@ export function AiConciergeChat({
       allergySelectionRef.current = [];
     }
 
-    if (hasKnownAllergies) {
-      const initialMessages: ChatMessage[] = [];
-      if (resolvedWelcomeMessage) {
-        initialMessages.push({
-          id: nextId(),
-          role: "assistant",
-          content: resolvedWelcomeMessage,
-        });
-      }
+    const initialMessages: ChatMessage[] = [];
+    if (resolvedWelcomeMessage) {
       initialMessages.push({
         id: nextId(),
         role: "assistant",
-        content: tUI("ai.chat.moodQuestion"),
-        quickPicks: {
-          options: moodOptions,
-          mode: "single",
-          confirmed: false,
-        },
+        content: resolvedWelcomeMessage,
       });
-      setMessages(initialMessages);
-      setPhase("mood");
-    } else if (resolvedWelcomeMessage) {
-      setMessages([
-        {
-          id: nextId(),
-          role: "assistant",
-          content: resolvedWelcomeMessage,
-        },
-        {
-          id: nextId(),
-          role: "assistant",
-          content: tUI("ai.chat.welcome"),
-          quickPicks: {
-            options: allergyOptions,
-            mode: "multi",
-            confirmed: false,
-          },
-        },
-      ]);
-      setPhase("allergies");
-    } else {
-      setMessages([
-        {
-          id: nextId(),
-          role: "assistant",
-          content: tUI("ai.chat.welcome"),
-          quickPicks: {
-            options: allergyOptions,
-            mode: "multi",
-            confirmed: false,
-          },
-        },
-      ]);
-      setPhase("allergies");
     }
+    initialMessages.push({
+      id: nextId(),
+      role: "assistant",
+      content: tUI("ai.chat.greeting"),
+    });
+    setMessages(initialMessages);
+    setPhase("chat");
 
     setIsTyping(false);
     setInput("");
@@ -874,9 +834,8 @@ export function AiConciergeChat({
             id: nextId(),
             role: "assistant",
             content: data.message,
-            recommendations: data.recommendations,
-            quickReplies: data.quickReplies?.length
-              ? data.quickReplies
+            recommendations: data.recommendations?.length
+              ? data.recommendations
               : undefined,
           },
         ]);
@@ -1126,11 +1085,7 @@ export function AiConciergeChat({
                 ? handleQuickPickConfirm
                 : undefined
             }
-            onQuickReply={
-              message.quickReplies?.length && !message.quickRepliesUsed
-                ? handleQuickReply
-                : undefined
-            }
+            onQuickReply={undefined}
             onAddRecommendation={handleAddRecommendation}
           />
         ))}
@@ -1157,11 +1112,9 @@ export function AiConciergeChat({
             onChange={(e) => setInput(e.target.value)}
             disabled={!inputEnabled}
             placeholder={
-              phase === "chat"
-                ? orderingDisabled
-                  ? tUI("ai.chat.placeholder")
-                  : tUI("ai.chat.orderPlaceholder")
-                : tUI("ai.chat.setupHint")
+              orderingDisabled
+                ? tUI("ai.chat.placeholder")
+                : tUI("ai.chat.orderPlaceholder")
             }
             className="min-w-0 flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-600 disabled:opacity-50"
           />

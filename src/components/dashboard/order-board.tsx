@@ -40,6 +40,7 @@ import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { canStornoOrder } from "@/lib/orders/storno";
+import { orderApprovedToastMessage } from "@/lib/kitchen/menu-section";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import {
   buildTransferSourceMap,
@@ -387,7 +388,12 @@ export function OrderBoard() {
         if (!res.ok) {
           throw new Error(json.error ?? "Approval failed");
         }
-        toast.success("Order approved — sent to kitchen");
+        const order = orders.find((o) => o.id === orderId);
+        toast.success(
+          order
+            ? orderApprovedToastMessage(order)
+            : "Order approved"
+        );
         await refreshAlerts();
       } catch (e) {
         const message = e instanceof Error ? e.message : "Approval failed";
@@ -401,7 +407,7 @@ export function OrderBoard() {
         await fetchOrders();
       }
     },
-    [fetchOrders, refreshAlerts]
+    [fetchOrders, refreshAlerts, orders]
   );
 
   const rejectAccess = useCallback(

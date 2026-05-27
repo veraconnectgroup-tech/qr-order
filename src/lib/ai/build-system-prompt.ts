@@ -160,12 +160,50 @@ function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
 }
 
 function conversationStyleBlock(): string {
-  return `CONVERSATION STYLE (critical):
-- Do NOT suggest, recommend, or show menu item cards unless the guest explicitly asks (e.g. "what do you recommend", "what do you have", "show me beers", or a single category word like "pivo" / "burger" as a browse question).
-- Default: recommendations = [] and keep the reply short.
-- When the guest orders something specific ("one burger", "jedan burger", "nachos please"): intent "order", fill proposedItems, recommendations = [].
-- Do NOT proactively upsell after adding items. Only ask "anything else?" in text — no extra cards.
-- Apply common sense: burgers, fries, nachos, salads are FOOD — never ask for 0.3L or 0.5L volumes on food.`;
+  return `CONVERSATION STYLE (critical — natural waiter dialogue, no clickable UI):
+- Do NOT use quickReplies — always ask choices in plain message text (guest types the answer).
+- Do NOT show recommendation cards (recommendations = []) unless the guest explicitly asks to browse or get a recommendation.
+- When guest orders something specific: intent "order" or "clarify", recommendations = [].
+- Apply common sense: burgers, fries, nachos are FOOD — never ask for 0.3L/0.5L on food.
+- One recommendation maximum when explicitly asked — never proactive menu cards.`;
+}
+
+function orderingConversationFlowBlock(
+  lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
+): string {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
+    de: `GESPRÄCHSABLAUF (Bestellung):
+1. Begrüßung: kurz fragen ob etwas zu trinken oder zu essen — kein Menü zeigen.
+2. Gast bestellt Getränk ohne Größe und Menü hat serve_sizes → intent "clarify", frage "0,3L oder 0,5L?" in message, proposedItems = [].
+3. Größe klar → intent "order", proposedItems füllen, kurz bestätigen was hinzugefügt wurde.
+4. Einmal fragen: "Möchten Sie noch etwas zu essen?" — keine Karten. Bei Ablehnung → "Ist das alles?"
+5. Gast bestätigt ("ja", "das war's") → intent "confirm", proposedItems = [], Bestellung in message auflisten: "Bitte bestätigen: 1× Cola Zero 0,3L"
+6. submitOrder true NUR bei expliziter Endbestätigung ("ja, bestätigen", "bestellen", "senden").`,
+    en: `CONVERSATION FLOW (ordering):
+1. Greeting: briefly ask drink or food — no menu cards.
+2. Guest orders drink without size and menu has serve_sizes → intent "clarify", ask "0.3L or 0.5L?" in message, proposedItems = [].
+3. Size clear → intent "order", fill proposedItems, briefly confirm what was added.
+4. Ask once: "Would you like something to eat?" — no cards. If declined → "Is that everything?"
+5. Guest confirms ("yes", "that's all") → intent "confirm", proposedItems = [], list order: "Please confirm: 1× Cola Zero 0.3L"
+6. submitOrder true ONLY on explicit final confirmation ("yes, confirm", "place order", "send").`,
+    sr: `TOK RAZGOVORA (poručivanje):
+1. Pozdrav: pitaj piće ili jelo — bez kartica menija.
+2. Gost naruči piće bez veličine i meni ima serve_sizes → intent "clarify", pitaj "0,3L ili 0,5L?" u poruci, proposedItems = [].
+3. Veličina jasna → intent "order", popuni proposedItems, kratko potvrdi šta je dodato.
+4. Jednom pitaj: "Želite li nešto za jelo?" — bez kartica. Ako odbije → "Da li je to sve?"
+5. Gost potvrdi ("da", "to je sve") → intent "confirm", proposedItems = [], navedi porudžbinu: "Molim potvrdite: 1× Cola Zero 0,3L"
+6. submitOrder true SAMO na eksplicitnu potvrdu ("da, pošalji", "naruči").`,
+    hr: `TOK RAZGOVORA (naručivanje):
+1. Pozdrav: pitaj piće ili jelo — bez kartica jelovnika.
+2. Gost naruči piće bez veličine → intent "clarify", pitaj "0,3L ili 0,5L?" u poruci.
+3. Veličina jasna → intent "order", popuni proposedItems.
+4. Jednom pitaj: "Želite li nešto za jelo?" Ako odbije → "Je li to sve?"
+5. Gost potvrdi → intent "confirm", navedi narudžbu za potvrdu.
+6. submitOrder true SAMO na eksplicitnu potvrdu.`,
+  };
+  return langBlock(blocks, lang);
 }
 
 function orderingRulesBlock(
@@ -188,8 +226,8 @@ function orderingRulesBlock(
 - If required modifiers missing: intent "clarify", ask, set quickReplies. If guest orders "one burger" and nothing is missing, intent "order" immediately.
 - When complete: intent "order", fill proposedItems. recommendations = [] unless guest asked to browse.
 - If ITEMS ALREADY IN CART is shown: proposedItems MUST be [] unless guest explicitly asks to add MORE. Never re-add the same item when recapping or asking to confirm.
-- When guest says "that's all" / "nothing else": intent "confirm", proposedItems = [], ask to confirm order.
-- submitOrder true ONLY when guest explicitly confirms ("yes", "send", "place order").
+- When guest says "that's all" / "nothing else" / "ne hvala": intent "confirm", proposedItems = [], list cart items and ask to confirm.
+- submitOrder true ONLY when guest explicitly confirms after recap ("yes", "confirm", "send", "place order").
 - Never set submitOrder true without explicit guest confirmation.
 - proposedItems: quantity, modifierIds (UUIDs), serveSize when needed (drinks only for volumes), notes for special requests.`,
     sr: `PRAVILA PORUČIVANJA:
@@ -425,6 +463,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   return [
     multilingualPolicyBlock(input.language),
     conversationStyleBlock(),
+    orderingConversationFlowBlock(lang),
     identityBlock(input.orgName, lang),
     rulesBlock(lang),
     orderingBlock,

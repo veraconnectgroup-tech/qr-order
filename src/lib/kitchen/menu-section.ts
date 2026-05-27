@@ -36,6 +36,19 @@ export function isDrinksOnlyOrder(
   );
 }
 
+/** Staff toast after approving a guest order awaiting table access. */
+export function orderApprovedToastMessage(
+  order: Pick<OrderWithDetails, "order_items">
+): string {
+  if (isDrinksOnlyOrder(order)) {
+    return "Order approved — sent to bar";
+  }
+  if (orderHasKitchenItems(order)) {
+    return "Order approved — sent to kitchen";
+  }
+  return "Order approved";
+}
+
 export type OrderItemWithSection = OrderItem & {
   menu_section?: MenuSection | null;
 };
