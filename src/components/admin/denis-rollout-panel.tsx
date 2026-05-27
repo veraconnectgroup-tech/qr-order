@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
 
 const ROLLOUT_MODES: Array<{
   value: ConciergeRolloutMode;
@@ -132,18 +133,18 @@ export function DenisRolloutPanel({ initial }: Props) {
     form.actSubmitEnabled && form.actLayerEnabled && !form.actDryRun;
 
   return (
-    <div className="max-w-2xl rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">Denis rollout</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+    <QrCard className="max-w-2xl">
+      <QrCardTitle>Denis rollout</QrCardTitle>
+      <QrCardDescription>
         Ops cutover ladder for this location — stored in{" "}
-        <code className="rounded bg-neutral-100 px-1 text-xs">
+        <code className="rounded bg-muted px-1 text-xs text-foreground">
           ai_concierge_config
         </code>
         .
-      </p>
+      </QrCardDescription>
 
       {flags.envOverride && (
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
           Platform env <strong>DENIS_ROLLOUT_MODE={flags.envOverride}</strong>{" "}
           overrides location rollout until removed.
         </p>
@@ -162,7 +163,7 @@ export function DenisRolloutPanel({ initial }: Props) {
           </Button>
         ))}
       </div>
-      <p className="mt-2 text-xs text-neutral-500">
+      <p className="mt-2 text-xs text-muted-foreground">
         Presets set recommended flags — review before saving.
       </p>
 
@@ -186,7 +187,7 @@ export function DenisRolloutPanel({ initial }: Props) {
               ))}
             </SelectContent>
           </Select>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             {ROLLOUT_MODES.find((m) => m.value === form.rolloutMode)?.hint}
           </p>
         </div>
@@ -208,16 +209,16 @@ export function DenisRolloutPanel({ initial }: Props) {
                 )
               }
             />
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               ~{form.canaryPercent}% of table sessions (by QR token) see Denis
               guest path. Per-session assignment is stable.
             </p>
           </div>
         )}
 
-        <dl className="grid grid-cols-3 gap-2 rounded-md border border-neutral-100 bg-neutral-50 p-3 text-xs">
+        <dl className="grid grid-cols-3 gap-2 rounded-md border border-border bg-muted p-3 text-xs">
           <div>
-            <dt className="text-neutral-500">Guest path</dt>
+            <dt className="text-muted-foreground">Guest path</dt>
             <dd className="font-medium">
               {form.rolloutMode === "canary"
                 ? `~${form.canaryPercent}% Denis`
@@ -227,21 +228,21 @@ export function DenisRolloutPanel({ initial }: Props) {
             </dd>
           </div>
           <div>
-            <dt className="text-neutral-500">Timeline</dt>
+            <dt className="text-muted-foreground">Timeline</dt>
             <dd className="font-medium">
               {flags.timelineEnabled ? "On" : "Off"}
             </dd>
           </div>
           <div>
-            <dt className="text-neutral-500">Shadow diff</dt>
+            <dt className="text-muted-foreground">Shadow diff</dt>
             <dd className="font-medium">
               {flags.shadowDiffEnabled ? "On" : "Off"}
             </dd>
           </div>
         </dl>
 
-        <div className="space-y-3 border-t border-neutral-100 pt-4">
-          <p className="text-sm font-medium text-neutral-800">Feature flags</p>
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-sm font-medium text-foreground">Feature flags</p>
 
           <FlagRow
             label="T3 narrate with LLM"
@@ -296,7 +297,7 @@ export function DenisRolloutPanel({ initial }: Props) {
         </div>
 
         {actSubmitRisk && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
             Order submit via Denis ACL is enabled. Confirm venue is ready for
             cutover from legacy executor.
           </p>
@@ -309,18 +310,18 @@ export function DenisRolloutPanel({ initial }: Props) {
         </Button>
         <Link
           href="/admin/denis-debug"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-primary hover:underline"
         >
           Open Denis debugger →
         </Link>
         <Link
           href="/admin/denis-sim"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-primary hover:underline"
         >
           Venue sim →
         </Link>
       </div>
-    </div>
+    </QrCard>
   );
 }
 
@@ -340,8 +341,8 @@ function FlagRow({
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <p className="text-sm font-medium text-neutral-800">{label}</p>
-        <p className="text-xs text-neutral-500">{description}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <Switch
         checked={checked}

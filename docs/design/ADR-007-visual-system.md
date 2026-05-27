@@ -2,10 +2,11 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | **Proposed** — design north star (May 2026) |
+| **Status** | **Accepted** — **v4 Denis Spatial adopted** (May 2026) |
 | **Relates to** | [ADR-005 Denis Maximum](../architecture/ADR-005-denis-maximum.md), `.cursor/rules/project.mdc` |
+| **Implementation plan** | **[denis-spatial-implementation-plan.md](./denis-spatial-implementation-plan.md)** (DS-01…DS-14) |
 | **As-built audit** | 4 disconnected visual silos (see §2) |
-| **Implementation** | Tracks **V0–V8** (§9), one PR per track |
+| **Legacy roadmap** | V0–V8 (§9) — superseded by **DS-tracks** in implementation plan |
 
 ---
 
@@ -38,33 +39,38 @@ Backend and Denis architecture (M0–M27) are coherent. **Visual layer is not.**
 
 ---
 
-## 3. Brand architecture
+## 3. Brand architecture (locked)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  QR ORDER (platform)                                         │
-│  Wordmark · zinc neutrals · ember accent #f97316            │
+│  VERA GROUP (corporate)                                      │
+│  Hospitality platform · legal · DE market                    │
 ├─────────────────────────────────────────────────────────────┤
-│  DENIS (AI layer)                                            │
-│  Mark · subtle aurora gradient · chip grammar · voice ring   │
-│  Never replaces platform orange — extends it                 │
+│  DENIS (public product brand)                                │
+│  Primary wordmark · AI concierge · guest-facing story        │
+│  Tagline: “Part of Vera Group” (always secondary, smaller)   │
+├─────────────────────────────────────────────────────────────┤
+│  VISUAL SPINE (all apps)                                     │
+│  Zinc neutrals · ember accent #f97316 · dark pro ops shells  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Naming (decision required)
+### Naming (decided)
 
-| Option | Marketing | Product chrome | Recommendation |
-|--------|-----------|----------------|----------------|
-| A | **Vera** (DE hospitality) | QR Order in app | Align `page.tsx` metadata with dashboard “Skyline” tenants |
-| B | **QR Order** everywhere | Drop Vera on landing | Simpler B2B |
-| C | **Vera** product + “powered by Denis” | Denis only for AI surfaces | Best for premium AI story |
+| Layer | Name | Where |
+|-------|------|--------|
+| **Public / product** | **Denis** | Landing hero (V7), guest AI, admin sidebar, marketing |
+| **Attribution** | **Part of Vera Group** | Subline under Denis lockup; footer legal still “Vera Group” |
+| **Tenant** | Venue name (e.g. Skyline Lounge) | Dashboard sidebar — unchanged |
+| **Internal code** | `qr-order`, `/api/ai/*` | Repo URLs unchanged |
 
-**Proposal: C** — Vera for public site; in-app sidebar “Denis” with shared tokens; footer “Vera by …” optional.
+**Not used in guest-facing chrome:** “QR Order” as headline (infra name only).
 
 ### Logo / mark
 
-- **Platform:** Wordmark, no icon required in v1.
-- **Denis mark:** Minimal monogram (e.g. stylised “D” in ember gradient ring) — 24×24 nav, 40×40 chat header. Not generic `Sparkles` as primary identity.
+- **Denis lockup:** Sparkles-in-ember ring (v1) + **Denis** bold + **Part of Vera Group** 11px muted — `AdminBrandMark`, reuse on platform shell.
+- **Tenant ops:** Venue logo + name in dashboard (unchanged).
+- **Future:** Custom Denis monogram “D” ring replaces Sparkles when brand asset exists.
 
 ---
 
@@ -105,17 +111,15 @@ Backend and Denis architecture (M0–M27) are coherent. **Visual layer is not.**
 | `--denis-chip-border` | `rgba(249,115,22,0.25)` | Chip outline |
 | `--denis-voice-pulse` | `--qr-ember-glow` | Mic recording |
 
-### 4.3 Admin / platform mode (converge to dark pro)
+### 4.3 Admin / platform mode — **dark pro (implemented V3)**
 
-**Do not keep light blue admin** for Denis-era product.
-
-| Token | Light (legacy, deprecate) | **Admin pro (target)** |
-|-------|-------------------------|-------------------------|
+| Token | Light (legacy, deprecate) | **Admin pro (`admin-theme`)** |
+|-------|-------------------------|-------------------------------|
 | Background | `#fafafa` | `#09090b` |
 | Primary | `#2563eb` | `#f97316` |
 | Card | `#ffffff` | `#131316` |
 
-Implement as `.admin-theme` mirroring `.dashboard-theme` with **wider content** (max-w-6xl forms) and **lighter density** than KDS.
+**As-built:** `.admin-theme` shares tokens with `.dashboard-theme` in `globals.css`. Legacy `bg-white` / `text-neutral-*` on admin pages remap via scoped CSS until components migrate to `QrCard`.
 
 ### 4.4 Marketing mode
 
@@ -283,7 +287,7 @@ One PR per track. Run `pnpm type-check` + visual smoke on Vercel preview.
 | **V0** | This ADR + `docs/design/visual-audit.md` screenshot checklist | — |
 | **V1** | Token aliases `--qr-*`, `QrCard`, `QrButton`, `QrKpi` | V0 |
 | **V2** | Overview cockpit layout (§6.1) | V1 |
-| **V3** | `admin-theme` + refactor `AdminSidebar` to match dashboard | V1 |
+| **V3** | `admin-theme` + `AdminBrandMark` + sidebars (admin/platform) | V1 — **in progress** |
 | **V4** | `DenisChip`, `DenisAvatar`, `DenisPanel`; guest chat refactor | V1 |
 | **V5** | Admin Denis pages + rollout panel visual pass | V3, V4 |
 | **V6** | Dashboard `/dashboard/denis` + `AiIntelligenceCard` → collapsible | V2, V4 |
@@ -375,17 +379,77 @@ Import from `globals.css` via `@import` — no duplicate theme blocks.
 ## 14. Operator prompt
 
 ```
-Visual system mode. Read docs/design/ADR-007-visual-system.md.
-Implement next V-track only (V0–V8). Reuse tables floor pattern for overview.
-Run pnpm type-check. Do not commit unless asked.
+Denis Spatial mode. Read docs/design/denis-spatial-implementation-plan.md.
+One DS-track per PR. pnpm type-check. Do not commit unless asked.
 ```
 
 ---
 
-## 15. Immediate recommendation
+## 16. Denis Spatial (v4) — north star adopted
 
-**Start with V2 (Overview cockpit)** — highest pain from screenshots; uses existing table components, no admin migration yet.
+**Metaphor:** The product is a floor plan; Denis lights up tables. **`FloorTile`** is the single atomic UI unit (extracted from `/dashboard/tables`).
 
-**Parallel decision:** confirm **Vera vs QR Order** naming (§3) before V7 landing work.
+### Brand
 
-**Denis identity:** ship `DenisAvatar` + `DenisChip` in guest (V4) so AI feels premium before admin light theme is removed.
+- **Denis** — public product; **Part of Vera Group** — subline always secondary  
+- **Table D mark** — vertical + horizontal ember lines (not Sparkles)  
+- **Presence line** — 2px ember bar under “Denis”; animates on listen/think  
+
+### Palette (product surfaces)
+
+| Token | Hex |
+|-------|-----|
+| void-stone | `#0A0908` |
+| surface | `#141210` |
+| elevated | `#1C1917` |
+| ivory | `#F5F0EB` |
+| ember | `#E85D04` (may ship as `#f97316` until DS-10 approval) |
+
+**Landing only:** keep corporate void `#08080c` + indigo mesh; CTAs ember.
+
+### Tile states
+
+| State | Visual |
+|-------|--------|
+| available | dashed border |
+| occupied | solid + **2px ember top bar** + subtle glow |
+| attention / payment | existing red/amber semantics |
+
+### Execution
+
+See **[denis-spatial-implementation-plan.md](./denis-spatial-implementation-plan.md)** for file-level tasks, APIs, sprint order, and acceptance criteria.
+
+**Critical path:** DS-01 → DS-02 → DS-03 → DS-04 → DS-09 (~6–7 days).
+
+---
+
+## 17. Immediate recommendation
+
+**Sprint A:** DS-01 tokens → DS-02 FloorTile → DS-03 tables refactor → DS-04 overview cockpit → DS-09 Denis strip.
+
+**Sprint B:** DS-05 brand → DS-06 guest → DS-07 landing → DS-08 admin finish.
+
+Do not start DS-07 before DS-02 (floor hero reuses tiles).
+
+---
+
+## Appendix A — Spatial v4 token table (DS-01)
+
+Defined on `.dashboard-theme`, `.admin-theme`, `.guest-theme` in `src/app/globals.css`. Ember ships as `#f97316` until DS-10 palette shift.
+
+| Token | Value | Role |
+|-------|-------|------|
+| `--qr-void` | `#0a0908` | App void / deepest background |
+| `--qr-surface` | `#141210` | Card / tile surface |
+| `--qr-elevated` | `#1c1917` | Raised panels, assistant bubble |
+| `--qr-ivory` | `#f5f0eb` | Warm primary text on dark |
+| `--qr-muted` | `#9c958c` | Secondary meta text |
+| `--qr-ember` | `#f97316` | Primary accent (→ `#e85d04` in DS-10) |
+| `--qr-ember-hover` | `#ea580c` | Hover / pressed |
+| `--qr-ember-muted` | `rgba(249,115,22,0.15)` | Active / selected bg |
+| `--qr-ember-glow` | `rgba(249,115,22,0.22)` | Focus halo, occupied tile glow |
+| `--denis-bubble-assistant` | `var(--qr-elevated)` | Denis assistant message |
+| `--denis-bubble-user` | `var(--qr-surface)` | Denis user message |
+| `--denis-chip-border` | `rgba(249,115,22,0.28)` | Quick-reply chip outline |
+
+**Bridge:** `--dash-accent` → `var(--qr-ember)` (no visual break on existing dashboard screens).

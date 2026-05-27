@@ -71,6 +71,17 @@
   --color-dash-accent-hover: var(--dash-accent-hover);
   --color-dash-accent-muted: var(--dash-accent-muted);
   --color-dash-accent-subtle: var(--dash-accent-subtle);
+  --color-qr-void: var(--qr-void);
+  --color-qr-surface: var(--qr-surface);
+  --color-qr-elevated: var(--qr-elevated);
+  --color-qr-ivory: var(--qr-ivory);
+  --color-qr-muted: var(--qr-muted);
+  --color-qr-ember: var(--qr-ember);
+  --color-qr-ember-hover: var(--qr-ember-hover);
+  --color-qr-ember-muted: var(--qr-ember-muted);
+  --color-qr-ember-glow: var(--qr-ember-glow);
+  --color-denis-bubble-assistant: var(--denis-bubble-assistant);
+  --color-denis-bubble-user: var(--denis-bubble-user);
   --color-status-new: var(--status-new);
   --color-status-new-bg: var(--status-new-bg);
   --color-status-new-text: var(--status-new-text);
@@ -120,7 +131,27 @@
   --sidebar-ring: #2563eb;
 }
 
-.dashboard-theme {
+/* Spatial v4 — warm stone + Denis chrome (DS-01). kitchen-theme excluded. */
+.dashboard-theme,
+.admin-theme,
+.guest-theme {
+  --qr-void: #0a0908;
+  --qr-surface: #141210;
+  --qr-elevated: #1c1917;
+  --qr-ivory: #f5f0eb;
+  --qr-muted: #9c958c;
+  /* Legacy ember until DS-10 palette shift approved */
+  --qr-ember: #f97316;
+  --qr-ember-hover: #ea580c;
+  --qr-ember-muted: rgba(249, 115, 22, 0.15);
+  --qr-ember-glow: rgba(249, 115, 22, 0.22);
+  --denis-bubble-assistant: var(--qr-elevated);
+  --denis-bubble-user: var(--qr-surface);
+  --denis-chip-border: rgba(249, 115, 22, 0.28);
+}
+
+.dashboard-theme,
+.admin-theme {
   /* ── Surfaces ─────────────────────────────────── */
   --background: #09090b;
   --foreground: #fafafa;
@@ -153,9 +184,9 @@
   --dash-text-secondary: #d4d4d8;
   --dash-text-muted: #71717a;
   --dash-text-disabled: #52525b;
-  --dash-accent: #f97316;
-  --dash-accent-hover: #ea580c;
-  --dash-accent-muted: rgba(249, 115, 22, 0.15);
+  --dash-accent: var(--qr-ember);
+  --dash-accent-hover: var(--qr-ember-hover);
+  --dash-accent-muted: var(--qr-ember-muted);
   --dash-accent-subtle: rgba(249, 115, 22, 0.07);
 
   /* ── Status — JEDINI izvor istine ─────────────── */
@@ -198,25 +229,51 @@
   --chart-5: #ef4444;
 }
 
+/* Admin pages still use legacy neutral utilities — remap under admin-theme */
+.admin-theme :where(.bg-white) {
+  background-color: var(--card);
+}
+.admin-theme :where(.bg-neutral-50, .bg-neutral-50\/80) {
+  background-color: var(--muted);
+}
+.admin-theme :where(.border-neutral-200, .border-neutral-100) {
+  border-color: var(--border);
+}
+.admin-theme :where(.text-neutral-950, .text-neutral-900) {
+  color: var(--foreground);
+}
+.admin-theme :where(.text-neutral-600, .text-neutral-700) {
+  color: var(--muted-foreground);
+}
+.admin-theme :where(.text-neutral-500, .text-neutral-400) {
+  color: var(--muted-foreground);
+}
+.admin-theme :where(.text-blue-600) {
+  color: var(--primary);
+}
+.admin-theme :where(.shadow-sm) {
+  box-shadow: var(--shadow-card);
+}
+
 .guest-theme {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --popover: #27272a;
-  --popover-foreground: #fafafa;
-  --primary: #f97316;
+  --background: var(--qr-void);
+  --foreground: var(--qr-ivory);
+  --card: var(--qr-surface);
+  --card-foreground: var(--qr-ivory);
+  --popover: var(--qr-elevated);
+  --popover-foreground: var(--qr-ivory);
+  --primary: var(--qr-ember);
   --primary-foreground: #ffffff;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #f97316;
+  --secondary: var(--qr-elevated);
+  --secondary-foreground: var(--qr-ivory);
+  --muted: var(--qr-elevated);
+  --muted-foreground: var(--qr-muted);
+  --accent: var(--qr-ember);
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --border: #27272a;
-  --input: #3f3f46;
-  --ring: #f97316;
+  --border: var(--qr-elevated);
+  --input: var(--qr-surface);
+  --ring: var(--qr-ember);
   --radius: 0.625rem;
 }
 
@@ -357,6 +414,8 @@
   --lp-accent: #818cf8;
   --lp-accent-hover: #6366f1;
   --lp-accent-soft: rgba(129, 140, 248, 0.08);
+  --lp-ember: #f97316;
+  --lp-ember-hover: #ea580c;
   --lp-dark: #08080c;
   --lp-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
   --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.3);
@@ -621,14 +680,14 @@
 }
 
 .landing-btn-accent {
-  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  background: var(--lp-ember) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.35);
 }
 .landing-btn-accent:hover {
-  background: linear-gradient(135deg, #5558e6, #7578f5) !important;
-  box-shadow: 0 0 28px rgba(99, 102, 241, 0.45);
+  background: var(--lp-ember-hover) !important;
+  box-shadow: 0 0 28px rgba(249, 115, 22, 0.45);
 }
 
 .landing-hero-dark {
@@ -850,6 +909,86 @@
   }
   .landing-module-card:hover {
     transform: none;
+  }
+}
+
+/* ── Spatial motion (DS-10) — 200ms enter · ease-out ─────────── */
+
+@keyframes spatial-tile-occupy {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes spatial-denis-listen {
+  0%,
+  100% {
+    transform: scaleX(0.55);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.spatial-tile-occupy::before {
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: spatial-tile-occupy 200ms ease-out forwards;
+}
+
+.denis-presence-line {
+  display: block;
+  height: 2px;
+  width: 100%;
+  margin-top: 3px;
+  border-radius: 9999px;
+  background: var(--qr-ember);
+  transform-origin: left center;
+}
+
+.denis-presence-line--listen {
+  animation: spatial-denis-listen 1.8s ease-in-out infinite;
+}
+
+.denis-mark-think.denis-presence-line,
+.denis-presence-line.denis-mark-think {
+  position: relative;
+  overflow: hidden;
+}
+
+.denis-mark-think.denis-presence-line::after,
+.denis-presence-line.denis-mark-think::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spatial-tile-occupy::before {
+    animation: none !important;
+    transform: scaleX(1) !important;
+  }
+
+  .spatial-tile-occupy,
+  .spatial-denis-listen,
+  .denis-mark-think,
+  .denis-presence-line--listen,
+  .denis-presence-line--think {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

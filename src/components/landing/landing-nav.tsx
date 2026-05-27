@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -70,8 +71,14 @@ export function LandingNav() {
       >
         <LandingContainer wide className="flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-[17px] font-bold tracking-[-0.04em] text-white">
-              vera
+            <span className="hidden sm:block">
+              <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
+            </span>
+            <span className="sm:hidden">
+              <DenisBrandMark
+                markOnly
+                className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white"
+              />
             </span>
           </Link>
 

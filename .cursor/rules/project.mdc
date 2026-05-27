@@ -16,10 +16,11 @@ Next.js App Router + TypeScript + Tailwind 4 + shadcn/ui + Supabase + Stripe Con
 
 ## Design
 
-Follow the enterprise design spec exactly:
-- **Guest app**: Dark luxury theme (`guest-theme`), orange accent `#f97316`, Inter font
-- **Dashboard**: Light theme, large readable text, color-coded order status
-- **Admin**: Light theme, blue accent `#2563eb`
+Follow [ADR-007](../docs/design/ADR-007-visual-system.md) + [Denis Spatial plan](../docs/design/denis-spatial-implementation-plan.md):
+- **Brand**: **Denis** (public) · subline **Part of Vera Group** · tenant name in dashboard
+- **Guest app**: Dark luxury (`guest-theme`), ember `#f97316`, Inter
+- **Dashboard / Admin / Platform**: Dark pro (`dashboard-theme` / `admin-theme`), same ember accent
+- **Admin (legacy)**: Do not add light `neutral-50` / blue primary — use semantic `bg-card`, `text-dash-*`
 - **Kitchen**: Dark high-contrast, very large text
 - No spinners (skeleton loaders only), 200ms animations, min 48px touch targets
 

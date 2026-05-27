@@ -3,6 +3,7 @@
 import { Brain, ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { QrCard, QrCardHeading } from "@/components/design-system/qr-card";
 import { useAiInsights } from "@/hooks/use-ai-insights";
 import { formatPrice } from "@/lib/format";
 import type { AiInsightsRange } from "@/lib/dashboard/ai-insights-data";
@@ -29,9 +30,9 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
+      <QrCard variant="muted" padding="md">
         <p className="text-sm text-dash-text-muted">{error}</p>
-      </div>
+      </QrCard>
     );
   }
 
@@ -46,11 +47,11 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
   const conversionPct = Math.round(summary.conversionRate * 100);
 
   return (
-    <section className={cn("rounded-xl border border-dash-border bg-dash-surface/50 p-4", className)}>
+    <QrCard as="section" variant="muted" padding="md" className={className}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Brain className="size-4 text-dash-accent" />
-          <h3 className="text-sm font-semibold text-dash-text">Denis</h3>
+          <QrCardHeading className="text-dash-text">Denis</QrCardHeading>
         </div>
         <label className="relative">
           <select
@@ -166,6 +167,6 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
           )}
         </div>
       </div>
-    </section>
+    </QrCard>
   );
 }

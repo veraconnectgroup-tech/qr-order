@@ -1,4 +1,5 @@
 import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
+import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { createServerClient } from "@/lib/supabase/server";
 import { TablesManager } from "@/components/admin/tables-manager";
 import type { Staff, Table, Zone } from "@/types";
@@ -16,7 +17,8 @@ export default async function AdminTablesPage() {
 
   const supabase = await createServerClient();
 
-  const [{ data: tables }, { data: zones }, { data: staffRows }] = await Promise.all([
+  const [{ data: tables }, { data: zones }, { data: staffRows }, { data: location }] =
+    await Promise.all([
     supabase
       .from("tables")
       .select("*")
@@ -35,7 +37,22 @@ export default async function AdminTablesPage() {
       .eq("is_active", true)
       .is("deleted_at", null)
       .order("name"),
+    supabase
+      .from("locations")
+      .select("menu_locale, default_locale")
+      .eq("id", locationId)
+      .single(),
   ]);
+
+  const locationRow = location as {
+    menu_locale: string | null;
+    default_locale: string | null;
+  } | null;
+
+  const menuLocale = parseMenuLocaleFromDb(
+    locationRow?.menu_locale,
+    locationRow?.default_locale
+  );
 
   return (
     <div className="p-6">
@@ -45,6 +62,7 @@ export default async function AdminTablesPage() {
         staffMembers={(staffRows ?? []) as Pick<Staff, "id" | "name">[]}
         orgSlug={staff.organizations?.slug ?? ""}
         orgName={staff.organizations?.name ?? ""}
+        menuLocale={menuLocale}
       />
     </div>
   );

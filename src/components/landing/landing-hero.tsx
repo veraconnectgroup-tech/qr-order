@@ -1,55 +1,21 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   HeroItem,
   HeroStagger,
   AnimateInView,
 } from "@/components/landing/animate-in-view";
-import { HeroWordRotation } from "@/components/landing/hero-word-rotation";
+import { LandingFloorHero } from "@/components/landing/landing-floor-hero";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 
-const LandingHeroVisual = dynamic(
-  () =>
-    import("@/components/landing/landing-hero-visual").then((m) => ({
-      default: m.LandingHeroVisual,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="aspect-[4/3] w-full animate-pulse rounded-2xl border border-[#1e1e2e] bg-zinc-900/60 lg:min-h-[460px]"
-        aria-hidden
-      />
-    ),
-  }
-);
-
 function HeroAuroraOrbs() {
-  const reduce = useReducedMotion();
-
-  if (reduce) return null;
-
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <motion.div
-        className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-indigo-500/20 blur-[120px]"
-        animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-violet-500/12 blur-[120px]"
-        animate={{ x: [0, -35, 25, 0], y: [0, 25, -15, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      />
-      <motion.div
-        className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-indigo-400/10 blur-[120px]"
-        animate={{ x: [0, 30, -25, 0], y: [0, -20, 30, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-      />
+      <div className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-indigo-500/20 blur-[120px]" />
+      <div className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-violet-500/12 blur-[120px]" />
+      <div className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-indigo-400/10 blur-[120px]" />
     </div>
   );
 }
@@ -62,22 +28,22 @@ export function LandingHero() {
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-16">
           <HeroStagger className="max-w-[620px] lg:max-w-none">
             <HeroItem>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-indigo-400">
-                Die Plattform für Gastronomie
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-400">
+                Part of Vera Group
               </p>
             </HeroItem>
             <HeroItem>
-              <h1 className="font-display text-[clamp(2.5rem,5.5vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.045em]">
-                <span className="landing-gradient-text">
-                  Alles in einer Plattform.
-                </span>
+              <h1 className="font-display text-[clamp(3rem,7vw,4.5rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-white">
+                Denis
               </h1>
             </HeroItem>
             <HeroItem>
-              <HeroWordRotation />
+              <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-300 sm:text-[18px]">
+                Der Concierge für Ihren Gastraum.
+              </p>
             </HeroItem>
             <HeroItem>
-              <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
+              <p className="mt-3 max-w-[540px] text-[15px] leading-relaxed text-zinc-500">
                 Bestellung, Küchendisplay, Tischverwaltung, Kartenzahlung und
                 DATEV-Export — ein System statt fünf.
               </p>
@@ -111,7 +77,9 @@ export function LandingHero() {
           </HeroStagger>
 
           <AnimateInView className="relative lg:min-h-[460px]" delay={0.15}>
-            <LandingHeroVisual />
+            <div className="aspect-[4/3] w-full lg:min-h-[460px]">
+              <LandingFloorHero className="min-h-[280px] lg:min-h-[460px]" />
+            </div>
           </AnimateInView>
         </div>
       </LandingContainer>

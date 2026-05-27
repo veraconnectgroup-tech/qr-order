@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
-import { Download, Plus, QrCode } from "lucide-react";
+import { Download, Plus, Printer, QrCode } from "lucide-react";
+import { QrTableCardPreview } from "@/components/design-system";
 import { createTable, createZone, assignTableStaff } from "@/lib/admin/actions";
 import { useAppBaseUrl } from "@/hooks/use-app-base-url";
 import { guestTableUrl } from "@/lib/app-url";
+import {
+  buildQrTableCardPrintHtml,
+  generateTableQrDataUrl,
+  openQrTableCardPrintWindow,
+  prepareQrTableCardItems,
+  resolveQrTableCardLocale,
+} from "@/lib/print/qr-table-card-print";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,51 +36,78 @@ function QrPreview({
   table,
   orgSlug,
   orgName,
+  zoneName,
+  menuLocale,
 }: {
   table: Table;
   orgSlug: string;
   orgName: string;
+  zoneName?: string | null;
+  menuLocale?: string | null;
 }) {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const appUrl = useAppBaseUrl();
   const scanUrl = guestTableUrl(orgSlug, table.qr_token, appUrl);
+  const cardLocale = resolveQrTableCardLocale(menuLocale);
 
   useEffect(() => {
-    QRCode.toDataURL(scanUrl, {
-      width: 280,
-      margin: 2,
-      color: { dark: "#000000", light: "#ffffff" },
-      errorCorrectionLevel: "H",
-    }).then(setQrUrl);
+    generateTableQrDataUrl(scanUrl, 280).then(setQrUrl);
   }, [scanUrl]);
 
-  function downloadPng() {
-    if (!qrUrl) return;
+  async function downloadPng() {
+    const dataUrl = await generateTableQrDataUrl(scanUrl, 840);
     const a = document.createElement("a");
-    a.href = qrUrl;
+    a.href = dataUrl;
     a.download = `qr-${table.name.replace(/\s+/g, "-").toLowerCase()}.png`;
     a.click();
+  }
+
+  async function printCard() {
+    const [item] = await prepareQrTableCardItems([
+      {
+        tableName: table.name,
+        zoneName,
+        scanUrl,
+      },
+    ]);
+    const html = buildQrTableCardPrintHtml({
+      venueName: orgName,
+      items: [item],
+      locale: cardLocale,
+      autoPrint: true,
+    });
+    openQrTableCardPrintWindow(html);
   }
 
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>QR code — {table.name}</DialogTitle>
+        <DialogTitle>Table ordering — {table.name}</DialogTitle>
       </DialogHeader>
       <div className="flex flex-col items-center gap-4 py-4">
-        {qrUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={qrUrl} alt={`QR code for ${table.name}`} className="rounded-lg" />
-        ) : (
-          <div className="size-[280px] animate-pulse rounded-lg bg-neutral-100" />
-        )}
-        <p className="text-lg font-bold">{table.name}</p>
-        <p className="text-sm text-neutral-500">{orgName}</p>
-        <p className="break-all text-center text-xs text-neutral-400">{scanUrl}</p>
-        <Button onClick={downloadPng} disabled={!qrUrl}>
-          <Download className="mr-2 size-4" />
-          Download PNG
-        </Button>
+        <QrTableCardPreview
+          venueName={orgName}
+          tableName={table.name}
+          zoneName={zoneName}
+          qrDataUrl={qrUrl}
+          locale={menuLocale}
+          className="w-full max-w-xs"
+        />
+        <div className="flex w-full flex-col gap-2 sm:flex-row">
+          <Button onClick={printCard} disabled={!qrUrl} className="flex-1">
+            <Printer className="mr-2 size-4" />
+            Print card
+          </Button>
+          <Button
+            onClick={downloadPng}
+            disabled={!qrUrl}
+            variant="outline"
+            className="flex-1"
+          >
+            <Download className="mr-2 size-4" />
+            Download PNG
+          </Button>
+        </div>
       </div>
     </DialogContent>
   );
@@ -85,12 +119,14 @@ export function TablesManager({
   staffMembers,
   orgSlug,
   orgName,
+  menuLocale,
 }: {
   tables: Table[];
   zones: Zone[];
   staffMembers: Pick<Staff, "id" | "name">[];
   orgSlug: string;
   orgName: string;
+  menuLocale?: string | null;
 }) {
   const [tableOpen, setTableOpen] = useState(false);
   const [zoneOpen, setZoneOpen] = useState(false);
@@ -201,7 +237,13 @@ export function TablesManager({
 
       <Dialog open={!!qrTable} onOpenChange={(o) => !o && setQrTable(null)}>
         {qrTable && (
-          <QrPreview table={qrTable} orgSlug={orgSlug} orgName={orgName} />
+          <QrPreview
+            table={qrTable}
+            orgSlug={orgSlug}
+            orgName={orgName}
+            zoneName={zones.find((zone) => zone.id === qrTable.zone_id)?.name}
+            menuLocale={menuLocale}
+          />
         )}
       </Dialog>
 

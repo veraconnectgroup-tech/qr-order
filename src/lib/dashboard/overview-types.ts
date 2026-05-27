@@ -19,6 +19,8 @@ export type OverviewTableStatus = {
   name: string;
   status: "available" | "occupied" | "payment";
   sessionTotal?: number;
+  zoneId?: string | null;
+  zoneName?: string | null;
 };
 
 export type OverviewStatsSnapshot = {

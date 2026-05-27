@@ -14,6 +14,7 @@ import {
   computeHourlyOrders,
   computeTopItems,
 } from "@/lib/analytics/order-analytics";
+import { QrCard, QrCardHeading } from "@/components/design-system/qr-card";
 import { formatPrice } from "@/lib/format";
 import type { OrderWithDetails } from "@/types";
 
@@ -25,10 +26,12 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-dash-border bg-dash-surface p-4 sm:p-5">
-      <h3 className="mb-4 text-sm font-medium text-dash-text-muted">{title}</h3>
+    <QrCard padding="md" className="sm:p-5">
+      <QrCardHeading className="mb-4 font-medium text-dash-text-muted">
+        {title}
+      </QrCardHeading>
       {children}
-    </div>
+    </QrCard>
   );
 }
 
@@ -68,9 +71,13 @@ export function AnalyticsCharts({
 
   if (!orders.length) {
     return (
-      <div className="mb-8 rounded-xl border border-dash-border bg-dash-surface/50 py-12 text-center text-dash-text-disabled">
+      <QrCard
+        variant="muted"
+        padding="md"
+        className="mb-8 py-12 text-center text-dash-text-disabled"
+      >
         No data for charts in this period
-      </div>
+      </QrCard>
     );
   }
 

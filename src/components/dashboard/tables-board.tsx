@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
 import { AnimatePresence, motion } from "framer-motion";
 import { Download, Plus, RefreshCw, ArrowRightLeft, Receipt, X } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +23,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FloorTile } from "@/components/design-system";
+import { tableTileStatus } from "@/lib/dashboard/table-tile-status";
+import {
+  buildQrTableCardPrintHtml,
+  generateTableQrDataUrl,
+  openQrTableCardPrintWindow,
+  prepareQrTableCardItems,
+  resolveQrTableCardLocale,
+} from "@/lib/print/qr-table-card-print";
 import { cn } from "@/lib/utils";
 import type { Order, Table, TableSession, Zone } from "@/types";
 
@@ -89,7 +97,8 @@ function startOfTodayIso() {
 
 
 export function TablesBoard() {
-  const { locationId, orgId, orgSlug: contextOrgSlug, orgName, currency } = useDashboard();
+  const { locationId, orgId, orgSlug: contextOrgSlug, orgName, currency, menuLocale } =
+    useDashboard();
   const appUrl = useAppBaseUrl();
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState(contextOrgSlug);
   const guestUrlUnsafe = isUnsafeGuestBaseUrl(appUrl);
@@ -319,7 +328,7 @@ export function TablesBoard() {
       return;
     }
     const url = guestTableUrl(resolvedOrgSlug, selected.qr_token, appUrl);
-    QRCode.toDataURL(url, { width: 200, margin: 2 }).then(setQrUrl);
+    generateTableQrDataUrl(url, 200).then(setQrUrl);
   }, [selected, appUrl, resolvedOrgSlug]);
 
   async function regenerateToken(tableId: string) {
@@ -444,55 +453,25 @@ export function TablesBoard() {
   }
 
   async function downloadAllQrCodes() {
-    const qrItems = await Promise.all(
-      tables.map(async (table) => {
-        const url = guestTableUrl(resolvedOrgSlug, table.qr_token, appUrl);
-        const dataUrl = await QRCode.toDataURL(url, { width: 160, margin: 1 });
-        return { name: table.name, zone: table.zone?.name ?? "—", dataUrl, url };
-      })
+    const items = await prepareQrTableCardItems(
+      tables.map((table) => ({
+        tableName: table.name,
+        zoneName: table.zone?.name,
+        scanUrl: guestTableUrl(resolvedOrgSlug, table.qr_token, appUrl),
+      }))
     );
 
-    const html = `<!DOCTYPE html>
-<html><head><title>${orgName} — QR Codes</title>
-<style>
-  body { font-family: system-ui, sans-serif; padding: 24px; }
-  h1 { font-size: 20px; margin-bottom: 24px; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .card { text-align: center; page-break-inside: avoid; border: 1px solid #ddd; padding: 16px; border-radius: 12px; }
-  .card img { width: 160px; height: 160px; }
-  .name { font-weight: bold; font-size: 18px; margin-top: 8px; }
-  .zone { color: #666; font-size: 12px; }
-  @media print { .grid { grid-template-columns: repeat(3, 1fr); } }
-</style></head><body>
-<h1>${orgName} — Table QR Codes</h1>
-<div class="grid">
-${qrItems
-  .map(
-    (item) => `<div class="card">
-  <img src="${item.dataUrl}" alt="${item.name}" />
-  <div class="name">${item.name}</div>
-  <div class="zone">${item.zone}</div>
-</div>`
-  )
-  .join("\n")}
-</div>
-<script>window.onload = () => { window.print(); }</script>
-</body></html>`;
+    const html = buildQrTableCardPrintHtml({
+      venueName: orgName,
+      items,
+      locale: resolveQrTableCardLocale(menuLocale),
+      autoPrint: true,
+    });
 
-    const win = window.open("", "_blank");
+    const win = openQrTableCardPrintWindow(html);
     if (!win) {
       toast.error("Allow pop-ups to download QR codes");
-      return;
     }
-    win.document.write(html);
-    win.document.close();
-  }
-
-  function tableStatus(table: TableRow) {
-    if (table.hasWaiterCall) return "attention" as const;
-    if (table.hasPaymentRequest) return "payment" as const;
-    if (table.session || table.activeOrders.length > 0) return "occupied" as const;
-    return "available" as const;
   }
 
   if (loading) {
@@ -629,31 +608,23 @@ ${qrItems
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
             {group.tables.map((table) => {
-              const status = tableStatus(table);
+              const status = tableTileStatus(table);
               const isActive = status !== "available";
 
               return (
-                <button
+                <FloorTile
                   key={table.id}
-                  type="button"
+                  as="button"
+                  variant="floor"
+                  status={status}
+                  label={table.name}
+                  sublabel={`${table.seats} seats`}
                   onClick={() => setSelected(table)}
-                  className={cn(
-                    "cursor-pointer rounded-xl border bg-dash-surface p-3 text-center transition hover:border-dash-surface-overlay sm:p-5",
-                    status === "available" &&
-                      "border-dashed border-dash-surface-overlay bg-dash-bg/50",
-                    status === "attention" &&
-                      "animate-pulse border-red-500 ring-1 ring-emerald-500/30",
-                    status === "payment" &&
-                      "animate-pulse border-amber-500 ring-1 ring-emerald-500/30",
-                    status === "occupied" &&
-                      "border-emerald-500/40 ring-1 ring-emerald-500/30 animate-pulse"
-                  )}
+                  className={status === "occupied" ? "animate-pulse" : undefined}
                 >
-                  <p className="font-mono text-base font-bold text-dash-text sm:text-xl">
-                    {table.name}
-                  </p>
-                  <p className="mt-1 text-sm text-dash-text-disabled">{table.seats} seats</p>
-                  {table.session && <TableSessionTimer openedAt={table.session.opened_at} />}
+                  {table.session && (
+                    <TableSessionTimer openedAt={table.session.opened_at} />
+                  )}
                   {status === "attention" ? (
                     <p className="mt-2 text-sm text-red-400">
                       <span className="mr-1 inline-block size-2 rounded-full bg-red-500" />
@@ -681,7 +652,7 @@ ${qrItems
                       Available
                     </p>
                   )}
-                </button>
+                </FloorTile>
               );
             })}
           </div>
@@ -725,9 +696,9 @@ ${qrItems
               <p className="mt-3 text-sm text-dash-text-muted">
                 Zone: {selected.zone?.name ?? "—"} · {selected.seats} seats ·
                 Status:{" "}
-                {tableStatus(selected) === "attention" ||
-                tableStatus(selected) === "payment" ||
-                tableStatus(selected) === "occupied"
+                {tableTileStatus(selected) === "attention" ||
+                tableTileStatus(selected) === "payment" ||
+                tableTileStatus(selected) === "occupied"
                   ? "Occupied"
                   : "Available"}
               </p>

@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/landing-page";
 
 export const metadata: Metadata = {
-  title: "Vera — Die Hospitality-Plattform",
+  title: "Denis — Hospitality AI · Vera Group",
   description:
-    "Bestellung, Küche, Zahlung und Analyse für Gastronomie in Deutschland. KassenSichV-konform. 0 € / Monat.",
+    "Der Concierge für Ihren Gastraum. Bestellung, Küche, Zahlung und Analyse — Part of Vera Group. KassenSichV-konform. 0 € / Monat.",
   openGraph: {
-    title: "Vera — Die Hospitality-Plattform",
+    title: "Denis — Hospitality AI · Vera Group",
     description:
-      "Bestellung, Küche, Zahlung und Analyse für Gastronomie in Deutschland. KassenSichV-konform. 0 € / Monat.",
+      "Der Concierge für Ihren Gastraum. Bestellung, Küche, Zahlung und Analyse — Part of Vera Group.",
     locale: "de_DE",
   },
 };

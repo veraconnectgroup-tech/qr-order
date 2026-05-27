@@ -8,7 +8,9 @@ import {
   FlaskConical,
   LayoutDashboard,
   LogOut,
+  Palette,
 } from "lucide-react";
+import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ const navItems = [
   { href: "/platform/orgs", label: "Organizations", icon: Building2 },
   { href: "/platform/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/platform/denis-eval", label: "Denis eval", icon: FlaskConical },
+  { href: "/platform/design-system", label: "Design system", icon: Palette },
   { href: "/dashboard/orders", label: "Staff dashboard", icon: BarChart3 },
 ];
 
@@ -25,10 +28,12 @@ export function PlatformSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-violet-200 bg-white">
-      <div className="flex h-16 items-center gap-2 border-b border-violet-200 px-5">
-        <LayoutDashboard className="size-5 text-violet-600" />
-        <span className="font-bold tracking-tight">Platform</span>
+    <aside className="flex w-[260px] shrink-0 flex-col border-r border-dash-border-subtle bg-sidebar">
+      <div className="space-y-2 border-b border-dash-border-subtle px-5 pb-4 pt-5">
+        <DenisBrandMark />
+        <p className="text-[11px] font-medium uppercase tracking-wider text-dash-text-disabled">
+          Platform console
+        </p>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
@@ -39,22 +44,35 @@ export function PlatformSidebar() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
                 active
-                  ? "bg-violet-50 font-semibold text-violet-900"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                  ? "bg-dash-accent-muted font-semibold text-dash-accent"
+                  : "text-dash-text-muted hover:bg-dash-surface hover:text-dash-text"
               )}
             >
-              <Icon className="size-4" />
+              <Icon
+                className={cn(
+                  "size-[18px] shrink-0",
+                  active
+                    ? "text-dash-accent"
+                    : "text-dash-text-muted group-hover:text-dash-text-secondary"
+                )}
+                strokeWidth={1.75}
+              />
               {label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-violet-200 p-4">
+      <div className="border-t border-dash-border-subtle p-4">
         <form action={logoutAction}>
-          <Button variant="outline" size="sm" className="w-full" type="submit">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-dash-border bg-dash-surface text-dash-text-secondary hover:bg-dash-surface-raised hover:text-dash-text"
+            type="submit"
+          >
             <LogOut className="me-2 size-4" />
             Sign out
           </Button>

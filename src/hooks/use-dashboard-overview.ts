@@ -63,7 +63,7 @@ export function useDashboardOverview(initial?: OverviewInitial) {
         .neq("status", "rejected"),
       supabase
         .from("tables")
-        .select("id, name")
+        .select("id, name, zone_id, zone:zones(id, name)")
         .eq("location_id", locationId)
         .is("deleted_at", null),
     ]);
@@ -126,16 +126,26 @@ export function useDashboardOverview(initial?: OverviewInitial) {
       });
     }
 
-    const allTables = (tablesRows ?? []) as Array<{ id: string; name: string }>;
+    const allTables = (tablesRows ?? []) as unknown as Array<{
+      id: string;
+      name: string;
+      zone_id: string | null;
+      zone: { id: string; name: string } | null;
+    }>;
     setTableStatuses(
       allTables.map((table) => {
         const session = sessionByTable.get(table.id);
-        if (!session) {
-          return { id: table.id, name: table.name, status: "available" as const };
-        }
-        return {
+        const base = {
           id: table.id,
           name: table.name,
+          zoneId: table.zone_id,
+          zoneName: table.zone?.name ?? null,
+        };
+        if (!session) {
+          return { ...base, status: "available" as const };
+        }
+        return {
+          ...base,
           status: session.hasPaymentRequest
             ? ("payment" as const)
             : ("occupied" as const),

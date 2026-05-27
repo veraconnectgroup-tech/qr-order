@@ -15,6 +15,7 @@ import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel"
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import type { AiCreditPackage } from "@/types";
+import { QrCard, QrCardTitle } from "@/components/design-system/qr-card";
 
 export default async function AdminSettingsPage() {
   const staff = await requireAdmin();
@@ -117,31 +118,31 @@ export default async function AdminSettingsPage() {
       : null;
 
   return (
-    <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold">Settings</h1>
+    <div>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">Settings</h1>
 
       <div className="space-y-6">
-        <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Restoran</h2>
+        <QrCard className="max-w-lg">
+          <QrCardTitle>Restoran</QrCardTitle>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Naziv</dt>
-              <dd className="font-medium">{orgRow?.name}</dd>
+              <dt className="text-muted-foreground">Naziv</dt>
+              <dd className="font-medium text-foreground">{orgRow?.name}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Email</dt>
-              <dd>{orgRow?.email ?? "—"}</dd>
+              <dt className="text-muted-foreground">Email</dt>
+              <dd className="text-foreground">{orgRow?.email ?? "—"}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Valuta</dt>
-              <dd>{orgRow?.currency}</dd>
+              <dt className="text-muted-foreground">Valuta</dt>
+              <dd className="text-foreground">{orgRow?.currency}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-neutral-500">PDV</dt>
-              <dd>{orgRow?.default_tax_percent}%</dd>
+              <dt className="text-muted-foreground">PDV</dt>
+              <dd className="text-foreground">{orgRow?.default_tax_percent}%</dd>
             </div>
           </dl>
-        </div>
+        </QrCard>
 
         {locationRow && (
           <>
