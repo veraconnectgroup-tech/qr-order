@@ -1,11 +1,33 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import {
+  CakeSlice,
+  Clock,
+  MessageCircle,
+  Plus,
+  Wine,
+  X,
+} from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
-import type { SmartNudge } from "@/hooks/use-smart-nudges";
+import type { SmartNudge, SmartNudgeKind } from "@/hooks/use-smart-nudges";
 import { hapticClick } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+
+function NudgeIcon({ kind }: { kind: SmartNudgeKind }) {
+  const className = "size-4";
+  switch (kind) {
+    case "dessert_nudge":
+      return <CakeSlice className={className} aria-hidden />;
+    case "slow_kitchen":
+      return <Clock className={className} aria-hidden />;
+    case "drink_pairing":
+      return <Wine className={className} aria-hidden />;
+    case "browse_nudge":
+    default:
+      return <MessageCircle className={className} aria-hidden />;
+  }
+}
 
 export function AiSmartNudgeBanner({
   nudge,
@@ -53,6 +75,9 @@ export function AiSmartNudgeBanner({
               nudge.kind !== "drink_pairing" && "cursor-pointer active:scale-[0.99]"
             )}
           >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-orange-400">
+              <NudgeIcon kind={nudge.kind} />
+            </span>
             <p className="min-w-0 flex-1 text-sm leading-snug text-zinc-100">
               {nudge.message}
             </p>
