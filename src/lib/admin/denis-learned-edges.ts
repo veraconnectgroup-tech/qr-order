@@ -21,8 +21,6 @@ export type LearnedEdgeRow = {
   suggested_weight: number;
   status: LearnedEdgeStatus;
   created_at: string;
-  from_product?: { name: string } | null;
-  to_product?: { name: string } | null;
 };
 
 type SessionRow = {
@@ -38,7 +36,7 @@ export async function loadLearnedEdgeQueue(
   const { data, error } = await admin
     .from("denis_learned_edges" as never)
     .select(
-      "id, edge_type, from_product_id, to_product_id, impressions, accepts, accept_rate, suggested_weight, status, created_at, from_product:products!denis_learned_edges_from_product_id_fkey(name), to_product:products!denis_learned_edges_to_product_id_fkey(name)"
+      "id, edge_type, from_product_id, to_product_id, impressions, accepts, accept_rate, suggested_weight, status, created_at"
     )
     .eq("location_id", locationId)
     .eq("status", status)
@@ -153,9 +151,7 @@ export async function promoteLearnedEdgeToUpsellRule(
 ): Promise<{ error?: string; upsellRuleId?: string }> {
   const { data: edgeRow, error: loadError } = await admin
     .from("denis_learned_edges" as never)
-    .select(
-      "id, location_id, from_product_id, to_product_id, suggested_weight, status, to_product:products!denis_learned_edges_to_product_id_fkey(name)"
-    )
+    .select("id, location_id, from_product_id, to_product_id, suggested_weight, status")
     .eq("id", input.edgeId)
     .eq("location_id", input.locationId)
     .maybeSingle();
