@@ -1,5 +1,6 @@
 import {
   ConciergeConfigSchema,
+  PartialConciergeConfigSchema,
   type ConciergeConfig,
   type PartialConciergeConfig,
 } from "@/lib/denis/config/concierge-config.schema";
@@ -35,6 +36,18 @@ function mergeConciergeLayer(
   }
 
   return merged;
+}
+
+/** Deep-merge partial location/org overrides (M25 admin saves). */
+export function mergePartialConciergeConfig(
+  base: PartialConciergeConfig | null | undefined,
+  patch: PartialConciergeConfig
+): PartialConciergeConfig {
+  const merged = mergeConciergeLayer(
+    structuredClone((base ?? {}) as Record<string, unknown>),
+    patch as Record<string, unknown>
+  );
+  return PartialConciergeConfigSchema.parse(merged);
 }
 
 /** Deep merge with array replace — platform → org → location. */

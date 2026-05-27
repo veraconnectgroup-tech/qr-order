@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
+import { DenisRolloutPanel } from "@/components/admin/denis-rollout-panel";
+import { loadDenisRolloutAdminState } from "@/lib/admin/denis-rollout-actions";
 import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
@@ -105,6 +107,15 @@ export default async function AdminSettingsPage() {
     locationRow?.default_locale
   );
 
+  const denisRolloutState =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadDenisRolloutAdminState()
+      : null;
+  const denisRollout =
+    denisRolloutState && !("error" in denisRolloutState)
+      ? denisRolloutState
+      : null;
+
   return (
     <div className="p-6">
       <h1 className="mb-6 text-2xl font-bold">Settings</h1>
@@ -153,6 +164,10 @@ export default async function AdminSettingsPage() {
                 canEdit
               />
             </Suspense>
+
+            {locationRow.ai_concierge_enabled && denisRollout && (
+              <DenisRolloutPanel initial={denisRollout} />
+            )}
 
             {locationRow.ai_concierge_enabled && (
               <AiPlaybookPanel

@@ -12,6 +12,7 @@
     "test:run": "vitest run",
     "verify:denis": "vitest run src/__tests__/denis-architecture-compliance.test.ts",
     "eval:denis": "vitest run src/__tests__/denis-eval.test.ts",
+    "eval:denis:record": "tsx scripts/record-denis-eval-run.ts",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
     "test:load": "BASE_URL=$(node k6/resolve-base-url.mjs) k6 run k6/guest-flow.js",

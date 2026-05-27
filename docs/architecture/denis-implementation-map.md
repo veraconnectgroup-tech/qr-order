@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
-| **As-built through** | **M23** (May 2026) — act layer + DenisOrderCommand ACL |
+| **As-built through** | **M26** (May 2026) — CI Denis gates + eval run detail |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
@@ -36,7 +36,7 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ---
 
-## 3. As-built snapshot (M0–M23 ✅)
+## 3. As-built snapshot (M0–M26 ✅)
 
 ### 3.1 Request flow (production today)
 
@@ -91,6 +91,9 @@ sequenceDiagram
 | M18 | `surfaces/voice/*`, `hooks/use-denis-voice`, guest mic UI | `inputSurface: voice`; timeline `voice.transcript` |
 | M19 | `kernel/session-debug-graph`, `/admin/denis-debug`, session graph API | beliefs + goals + flow + timeline replay |
 | M20 | `eval/run-venue-sim`, `/admin/denis-sim`, `POST /api/admin/denis-venue-sim` | counterfactual config replay on timeline |
+| M24 | `eval/persist-eval-run.ts`, `/platform/denis-eval` | `pnpm eval:denis:record`; migration `00093` |
+| M25 | `config/rollout-cutover.ts`, `denis-rollout-panel` on `/admin/settings` | ops ladder presets + per-location flags |
+| M26 | `eval/record-eval-suite.ts`, CI workflow, `/platform/denis-eval/[runId]` | `verify:denis` + `eval:denis` in CI; optional persist on main |
 
 ### 3.3 API routes (actual)
 
@@ -122,6 +125,7 @@ sequenceDiagram
 | `00090_denis_ops_beliefs.sql` | `denis_operating_mode`, `denis_kds_stress`, `denis_staff_table_hints` | M13 |
 | `00091_denis_learned_edges.sql` | `denis_learned_edges` L3 queue | M16 |
 | `00092_denis_guest_memory.sql` | `denis_guest_memory` consented prefs | M17 |
+| `00093_denis_eval_runs.sql` | `denis_eval_runs` CI regression history | M24 |
 
 ### 3.5 Legacy bridge (still active — intentional)
 
@@ -142,18 +146,14 @@ Honest delta after M10 — do not assume these exist:
 
 | ADR target | Status | Next track |
 |------------|--------|------------|
-| `runtime/perceive/slot-extract.ts` (T2) | ❌ stub folder only | post-M10 |
+| `runtime/perceive/slot-extract.ts` (T2) | ✅ opt-in (`ordering.slotExtractEnabled`) | ops enable per location |
 | `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ✅ opt-in (`llm.narrateWithLlm` + `denis_only`) | ops enable per location |
 | `runtime/act/*` skill executor | ✅ dry-run default; submit via ACL when enabled | ops `actSubmitEnabled` |
 | `src/lib/denis/acl/` DenisOrderCommand | ✅ `executeDenisOrderCommand` | legacy executor still allowlisted |
-| `src/lib/denis/venue/` | ✅ party + ops + floor + copilot (M15) | M16 learning |
-| `src/lib/denis/learning/` | ✅ learned edges + guest memory (M17) | M20 venue sim |
-| `menu_knowledge_edges` / L3 learned VKG | ✅ `denis_learned_edges` (M16) | promote only via admin |
-| Consented return-guest memory | ✅ `denis_guest_memory` (M17) | GA gate `memory.returnGuestEnabled` |
-| `denis_eval_runs` table | ❌ CI in-memory only | optional |
+| `denis_eval_runs` table | ✅ migration `00093`; CI records on main when Supabase secrets set | push migration `00093` |
 | Guest UI `manualCartSnapshot` on sense | ✅ | `menu-view` + `use-denis-sense` debounce |
 | `use-smart-nudges` → server proactive | ✅ | `system.proactive_tick` via `fetchServerProactive` |
-| Rollout `canary` / `denis_only` in production | ⚠️ config exists; ops must set explicitly | ops |
+| Rollout `canary` / `denis_only` in production | ✅ Admin Settings → Denis rollout (M25) | enable per location; watch `DENIS_ROLLOUT_MODE` env |
 | Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
 
 ---
@@ -220,8 +220,11 @@ Honest delta after M10 — do not assume these exist:
 | **M21** | ✅ | T3 `narrate-llm` facts-only path (opt-in cutover) |
 | **M22** | ✅ | T2 slot extract (heuristic + optional LLM, timeline signal) |
 | **M23** | ✅ | Act layer + `DenisOrderCommand` ACL (dry-run default) |
+| **M24** | ✅ | `denis_eval_runs` + platform eval history UI |
+| **M25** | ✅ | Admin rollout cutover panel + ladder presets |
+| **M26** | ✅ | CI Denis gates + eval run detail UI |
 
-**Next recommended:** ops cutover ladder — `shadow` → `denis_only` + feature flags; optional `denis_eval_runs` table (§4).
+**Next recommended:** production cutover per venue (`shadow` → `denis_only`); push migrations `00089`–`00093`; add `SUPABASE_*` secrets to GitHub for eval history on main.
 
 ---
 

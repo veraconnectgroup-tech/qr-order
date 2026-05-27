@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Building2, LayoutDashboard, LogOut } from "lucide-react";
+import {
+  BarChart3,
+  Building2,
+  FlaskConical,
+  LayoutDashboard,
+  LogOut,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
@@ -11,6 +17,7 @@ const navItems = [
   { href: "/platform", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/platform/orgs", label: "Organizations", icon: Building2 },
   { href: "/platform/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/platform/denis-eval", label: "Denis eval", icon: FlaskConical },
   { href: "/dashboard/orders", label: "Staff dashboard", icon: BarChart3 },
 ];
 

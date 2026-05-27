@@ -16,8 +16,19 @@ export {
 } from "@/lib/denis/config/concierge-defaults";
 export {
   mergeConciergeConfig,
+  mergePartialConciergeConfig,
   resolveConciergeConfig,
 } from "@/lib/denis/config/merge-concierge-config";
+export {
+  DENIS_ROLLOUT_PRESETS,
+  denisRolloutFormFromEffective,
+  denisRolloutFormFromPreset,
+  denisRolloutPatchFromForm,
+} from "@/lib/denis/config/rollout-cutover";
+export type {
+  DenisRolloutFormState,
+  DenisRolloutPresetId,
+} from "@/lib/denis/config/rollout-cutover";
 export type { ResolveConciergeConfigInput } from "@/lib/denis/config/merge-concierge-config";
 export {
   getCachedConciergeConfig,

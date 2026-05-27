@@ -8,5 +8,6 @@
 - `merge-concierge-config.ts` — org → location deep merge
 - `config-cache.ts` — Redis `ai:config:{locationId}`
 - `load-concierge-config.ts` — DB load + cache
+- `rollout-cutover.ts` — ops ladder presets (M25 admin UI)
 
 Migration: `00086_ai_concierge_config.sql`

@@ -32,6 +32,22 @@ jobs:
       - name: Unit tests
         run: pnpm test:run
 
+      - name: Denis architecture compliance
+        run: pnpm verify:denis
+
+      - name: Denis golden eval
+        run: pnpm eval:denis
+
+      - name: Record Denis eval run (main, optional)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SUPABASE_URL != ''
+        continue-on-error: true
+        run: pnpm eval:denis:record
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+
       - name: Build
         run: pnpm build
         env:

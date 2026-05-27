@@ -20,6 +20,17 @@ export { assertRiskBoundaries, maxRiskClass } from "@/lib/denis/eval/assert-risk
 export {
   runDenisEvalSuite,
 } from "@/lib/denis/eval/run-fixtures";
+export {
+  persistDenisEvalRun,
+  type DenisEvalRunSource,
+  type PersistEvalRunInput,
+  type PersistEvalRunResult,
+} from "@/lib/denis/eval/persist-eval-run";
+export {
+  runEvalSuiteAndMaybePersist,
+  type RecordEvalSuiteOptions,
+  type RecordEvalSuiteResult,
+} from "@/lib/denis/eval/record-eval-suite";
 export { runVenueSim } from "@/lib/denis/eval/run-venue-sim";
 export { applyVenueSimOverrides } from "@/lib/denis/eval/apply-venue-sim-overrides";
 export { extractTimelineReplayTurns } from "@/lib/denis/eval/extract-timeline-turns";
