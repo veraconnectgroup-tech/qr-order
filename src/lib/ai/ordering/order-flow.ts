@@ -31,10 +31,35 @@ export function isGuestDecliningMore(message: string): boolean {
 export function isGuestDoneOrdering(message: string): boolean {
   const text = normalizeMessage(message);
   return (
-    /to je sve|samo to|gotovo|ništa više|nista vise/.test(text) ||
-    /das war(\s+)?('|)s|das reicht|nichts mehr|nur das|fertig/.test(text) ||
-    /that('s| is) all|nothing else|just that/.test(text)
+    /ne?\s*to je sve|to je sve|samo to|to je to|sve hvala|gotovo/.test(text) ||
+    /ništa više|nista vise|ništa drugo|nista drugo|nema ništa|nema nista/.test(
+      text
+    ) ||
+    /das war(\s+)?('|)s|das reicht|nichts mehr|nur das|fertig|sonst nichts/.test(
+      text
+    ) ||
+    /that('s| is) all|nothing else|just that|no more|all set/.test(text)
   );
+}
+
+/** Flow-control replies — handle without LLM when cart already has items. */
+export function shouldHandleOrderFlowWithoutLlm(
+  message: string,
+  draft: AiOrderDraft
+): boolean {
+  if (draft.items.length === 0 || draft.pending) return false;
+
+  if (isGuestDoneOrdering(message)) return true;
+
+  if (draft.flow?.awaitingFinalConfirm && isGuestFinalConfirm(message)) {
+    return true;
+  }
+
+  if (draft.flow?.foodUpsellAsked && isGuestDecliningMore(message)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function isGuestFinalConfirm(message: string): boolean {

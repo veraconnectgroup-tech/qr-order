@@ -1,0 +1,53 @@
+---
+description: Denis Maximum AI — layer boundaries, M-tracks, compliance
+globs:
+  - src/lib/denis/**
+  - src/lib/ai/**
+  - src/app/api/ai/**
+  - src/app/api/denis/**
+  - docs/architecture/ADR-00*-denis*.md
+  - docs/architecture/denis-implementation-map.md
+alwaysApply: false
+---
+
+# Denis Architecture (ADR-005 Maximum)
+
+## Before coding
+
+1. Read `docs/architecture/denis-implementation-map.md`
+2. North star: `docs/architecture/ADR-005-denis-maximum.md`
+3. Identify **one M-track** only (M1 config, M2 timeline, …)
+
+## Where code goes
+
+| Layer | Path |
+|-------|------|
+| Config | `src/lib/denis/config/` |
+| Platform / timeline | `src/lib/denis/platform/` |
+| Kernel | `src/lib/denis/kernel/` |
+| Venue OS | `src/lib/denis/venue/` |
+| Runtime PPAN+ | `src/lib/denis/runtime/` |
+| Surfaces | `src/lib/denis/surfaces/` |
+| Order Core ACL | `src/lib/denis/acl/` |
+| Learning | `src/lib/denis/learning/` |
+| Eval | `src/lib/denis/eval/` |
+
+**Do not** add new Denis business logic to `src/lib/ai/chat-service.ts`. Legacy only until M7.
+
+## Invariants
+
+- Only ACL (+ legacy `order-executor.ts`) → Order Core / `create-order`
+- T3 narrates facts only — never decides cart/submit
+- `denis_timeline` append-only
+- No module-level `Map`/`Set` in `src/lib/denis/`
+- OpenAI only in `runtime/narrate/` and `runtime/perceive/`
+- One PR = one M-track
+
+## Before finish
+
+```bash
+pnpm verify:denis
+pnpm type-check
+```
+
+Fix all compliance **errors** before commit.

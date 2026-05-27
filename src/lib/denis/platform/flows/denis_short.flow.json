@@ -1,0 +1,59 @@
+{
+  "id": "denis_short",
+  "version": 1,
+  "entry": "welcome",
+  "nodes": {
+    "welcome": {
+      "on": {
+        "ORDER": "collect",
+        "BROWSE": "browse",
+        "SMALLTALK": "welcome"
+      },
+      "narrate": "template:welcome"
+    },
+    "collect": {
+      "skills": ["cart.add_or_clarify"],
+      "on": {
+        "DRAFT_DRINKS_ONLY": "upsell_food",
+        "DRAFT_HAS_FOOD": "collect",
+        "DONE": "recap"
+      }
+    },
+    "upsell_food": {
+      "guard": "config.upsell.foodAfterDrinks",
+      "skills": ["upsell.ask_food_once"],
+      "on": {
+        "DECLINE": "recap",
+        "ORDER": "collect",
+        "DONE": "recap"
+      }
+    },
+    "recap": {
+      "skills": ["cart.recap"],
+      "on": {
+        "CONFIRM": "submit",
+        "ORDER": "collect"
+      }
+    },
+    "submit": {
+      "skills": ["order.submit"],
+      "on": {
+        "SUCCESS": "post_submit",
+        "FAIL": "recap"
+      }
+    },
+    "post_submit": {
+      "on": {
+        "ORDER": "collect",
+        "STATUS": "status"
+      },
+      "narrate": "template:order_sent"
+    },
+    "browse": {
+      "skills": ["browse.search"]
+    },
+    "status": {
+      "skills": ["status.table"]
+    }
+  }
+}

@@ -3,7 +3,9 @@ import { emptyOrderDraft, type AiOrderDraft } from "@/lib/ai/ordering/draft-type
 import {
   finalizeOrderFlow,
   isGuestDecliningMore,
+  isGuestDoneOrdering,
   isGuestFinalConfirm,
+  shouldHandleOrderFlowWithoutLlm,
 } from "@/lib/ai/ordering/order-flow";
 
 function draftWithCola(): AiOrderDraft {
@@ -32,6 +34,24 @@ describe("order-flow guards", () => {
     expect(isGuestDecliningMore("da")).toBe(false);
   });
 
+  it("detects done-ordering phrases in Croatian", () => {
+    expect(isGuestDoneOrdering("ne to je sve")).toBe(true);
+    expect(isGuestDoneOrdering("to je sve nista drugo hvala")).toBe(true);
+    expect(isGuestDoneOrdering("samo to")).toBe(true);
+  });
+
+  it("skips LLM for done-ordering when cart has items", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { foodUpsellAsked: true },
+    };
+
+    expect(shouldHandleOrderFlowWithoutLlm("ne to je sve", draft)).toBe(true);
+    expect(shouldHandleOrderFlowWithoutLlm("ne to je sve", emptyOrderDraft())).toBe(
+      false
+    );
+  });
+
   it("after drink added asks food once", () => {
     const result = finalizeOrderFlow({
       userMessage: "Eine Cola Zero 0,3L",
@@ -46,6 +66,27 @@ describe("order-flow guards", () => {
     expect(result.message).toContain("essen");
     expect(result.submitOrder).toBe(false);
     expect(result.draft.flow?.foodUpsellAsked).toBe(true);
+  });
+
+  it("ne to je sve goes straight to confirm recap", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { foodUpsellAsked: true },
+    };
+
+    const result = finalizeOrderFlow({
+      userMessage: "ne to je sve",
+      draft,
+      llmMessage: "Sorry, I didn't catch that — could you try again?",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(result.message).toContain("Cola Zero");
+    expect(result.message).toContain("potvrdite");
+    expect(result.submitOrder).toBe(false);
+    expect(result.draft.flow?.awaitingFinalConfirm).toBe(true);
   });
 
   it("ne hvala goes straight to confirm recap", () => {

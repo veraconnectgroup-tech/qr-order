@@ -89,14 +89,18 @@ export function processOrderingTurn(input: {
   let cartActions: ValidatedCartAction[] = [];
   let quickReplies = input.structured.quickReplies;
 
+  const hasProposed =
+    input.structured.proposedItems.length > 0 && !input.structured.submitOrder;
+  const cartEmpty = draft.items.length === 0 && !draft.pending;
+
+  // Always apply when cart is empty (LLM sometimes uses intent "confirm" on first item).
+  // When cart has items, skip on recap/browse intents so we don't re-add the same line.
   const shouldApplyProposedItems =
-    input.structured.proposedItems.length > 0 &&
-    !input.structured.submitOrder &&
-    input.structured.intent !== "confirm" &&
-    input.structured.intent !== "status" &&
-    input.structured.intent !== "chat" &&
-    input.structured.intent !== "menu_info" &&
-    input.structured.intent !== "recommend";
+    hasProposed &&
+    (cartEmpty ||
+      !["confirm", "status", "chat", "menu_info", "recommend"].includes(
+        input.structured.intent
+      ));
 
   if (shouldApplyProposedItems) {
     try {

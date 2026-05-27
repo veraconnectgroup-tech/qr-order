@@ -23,7 +23,10 @@ import {
 } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
+import {
+  finalizeOrderFlow,
+  shouldHandleOrderFlowWithoutLlm,
+} from "@/lib/ai/ordering/order-flow";
 import {
   AiCircuitOpenError,
   AiOpenAiError,
@@ -617,6 +620,94 @@ export async function handleAiChat(body: unknown) {
       quickReplies: preTurn.quickReplies,
       intent: preTurn.intent,
       submitOrder: false,
+      creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
+      sessionId,
+    });
+  }
+
+  if (
+    allowOrdering &&
+    shouldHandleOrderFlowWithoutLlm(input.message, workingDraft)
+  ) {
+    const flowResult = finalizeOrderFlow({
+      userMessage: input.message,
+      draft: workingDraft,
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language,
+    });
+    workingDraft = flowResult.draft;
+
+    const assistantMessage: StoredMessage = {
+      role: "assistant",
+      content: assistantContent(flowResult.message, []),
+      timestamp: new Date().toISOString(),
+    };
+    const updatedMessages = [...priorMessages, userMessage, assistantMessage];
+    const scrollContext = input.browsingContext
+      ? parseBrowsingContextToScrollContext(input.browsingContext)
+      : null;
+
+    let sessionId = sessionRow?.id;
+    const sessionPatch = {
+      messages: updatedMessages,
+      language,
+      guest_preferences: guestPrefs as import("@/types/database").Json,
+      order_draft: workingDraft as unknown as import("@/types/database").Json,
+      ...(scrollContext ? { scroll_context: scrollContext } : {}),
+    };
+
+    if (sessionRow) {
+      const { error: updateError } = await admin
+        .from("ai_sessions")
+        .update(sessionPatch)
+        .eq("id", sessionRow.id);
+      if (updateError) {
+        logger.error("AI session update failed", { error: updateError.message });
+        return apiError("Could not update session.", 500);
+      }
+    } else {
+      const { data: inserted, error: insertError } = await admin
+        .from("ai_sessions")
+        .insert({
+          org_id: orgId,
+          location_id: input.locationId,
+          table_id: input.tableId,
+          session_token: input.sessionToken,
+          messages: updatedMessages,
+          tokens_used: 0,
+          credits_used: 0,
+          products_recommended: [],
+          products_added: [],
+          conversion_count: 0,
+          status: "active",
+          order_draft: workingDraft as unknown as import("@/types/database").Json,
+          language,
+          guest_preferences: guestPrefs,
+          ...(scrollContext ? { scroll_context: scrollContext } : {}),
+        })
+        .select("id")
+        .single();
+      if (insertError || !inserted) {
+        return apiError("Could not create session.", 500);
+      }
+      sessionId = (inserted as { id: string }).id;
+    }
+
+    const { data: creditsRow } = await admin
+      .from("ai_credits")
+      .select("balance")
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    return apiSuccess({
+      message: flowResult.message,
+      recommendations: [],
+      cartActions: [],
+      quickReplies: [],
+      intent: flowResult.intent,
+      submitOrder: flowResult.submitOrder,
       creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
       sessionId,
     });

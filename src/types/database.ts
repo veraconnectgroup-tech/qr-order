@@ -49,6 +49,7 @@ type Tables = {
       | "unpaid"
       | null;
     feature_flags: Json;
+    ai_concierge_config: Json | null;
     created_at: string;
     updated_at: string;
   };
@@ -117,6 +118,7 @@ type Tables = {
     ordering_enabled: boolean;
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
+    ai_concierge_config: Json | null;
     rejection_ban_threshold: number;
     rejection_ban_minutes: number;
     rejection_strike_window_minutes: number;

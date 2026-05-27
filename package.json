@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
+    "verify:denis": "vitest run src/__tests__/denis-architecture-compliance.test.ts",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
     "test:load": "BASE_URL=$(node k6/resolve-base-url.mjs) k6 run k6/guest-flow.js",

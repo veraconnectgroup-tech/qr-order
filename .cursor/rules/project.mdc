@@ -60,3 +60,12 @@ Approved architecture: `docs/architecture/ADR-001-universal-ordering-platform.md
 Track A: one PR per step (A1→A8). Never rewrite `create-order.ts` from scratch.
 
 **Pre-commit rules (side effects, dead code, serverless):** `.cursor/rules/commit-checklist.mdc`
+
+## Denis Maximum (AI Concierge)
+
+North star: `docs/architecture/ADR-005-denis-maximum.md`  
+Implementation map: `docs/architecture/denis-implementation-map.md`  
+Code layout: `src/lib/denis/` (layers L1–L5 + runtime + acl)
+
+**Before any Denis PR:** read implementation map · one M-track per PR · run `pnpm verify:denis`  
+**Cursor rule:** `.cursor/rules/denis-architecture.mdc`
