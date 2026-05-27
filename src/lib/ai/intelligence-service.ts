@@ -193,7 +193,7 @@ function analyzeLocationSessions(
       location_id: locationId,
       type: "demand_signal",
       severity: "info",
-      title: "Top AI recommendations",
+      title: "Top Denis recommendations",
       detail: lines.join("; "),
       metadata: {
         recommended: topRecommended.map(([productId, count]) => ({
