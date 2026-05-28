@@ -174,7 +174,7 @@ function formatDenisPinMessage(
   tUI: (key: string, vars?: Record<string, string | number>) => string,
   tablePin: string
 ) {
-  return `${tUI("session.pinRevealTitle")}\n\n${tablePin}\n\n${tUI("session.pinRevealHint")}`;
+  return tUI("ai.order.tablePinReveal", { pin: tablePin });
 }
 
 function DenisRecommendList({

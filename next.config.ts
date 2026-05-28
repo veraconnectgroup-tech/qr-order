@@ -65,6 +65,9 @@ const withPWA = require("next-pwa")({
     {
       urlPattern: /\/_next\/static\/.*/i,
       handler: "NetworkOnly",
+      options: {
+        cacheName: "next-static",
+      },
     },
   ],
 });

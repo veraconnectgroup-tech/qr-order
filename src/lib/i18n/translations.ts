@@ -270,6 +270,8 @@ const de: TranslationMap = {
   "ai.chat.orderPlaceholder": "z. B. Cola Zero, ein Burger…",
   "ai.order.addedMultiple": "{count} Artikel hinzugefügt",
   "ai.order.submitSuccess": "Bestellung #{number} wurde gesendet!",
+  "ai.order.tablePinReveal":
+    "Euer Tisch-PIN ist {pin}. Speichert ihn — andere Handys am Tisch brauchen ihn zum Bestellen.",
   "ai.order.submitApproval": "Bestellung #{number} wartet auf Freigabe am Tisch.",
   "ai.order.submitFailed": "Bestellung konnte nicht gesendet werden.",
   "ai.order.emptyCart":
@@ -643,6 +645,8 @@ const en: TranslationMap = {
   "ai.chat.orderPlaceholder": "e.g. Cola Zero, a burger…",
   "ai.order.addedMultiple": "{count} items added",
   "ai.order.submitSuccess": "Order #{number} has been sent!",
+  "ai.order.tablePinReveal":
+    "Your table PIN is {pin}. Save it — other phones at your table need it to order.",
   "ai.order.submitApproval": "Order #{number} is waiting for table approval.",
   "ai.order.submitFailed": "Could not place the order.",
   "ai.order.emptyCart":
@@ -1006,6 +1010,8 @@ const sr: TranslationMap = {
 
   "ai.order.addedMultiple": "Dodato {count} stavki",
   "ai.order.submitSuccess": "Porudžbina #{number} je poslata!",
+  "ai.order.tablePinReveal":
+    "Vaš PIN stola je {pin}. Sačuvajte ga — drugi telefoni za stolom ga trebaju za poručivanje.",
   "ai.order.submitApproval": "Porudžbina #{number} čeka odobrenje za stolom.",
   "ai.order.submitFailed": "Porudžbina nije mogla biti poslata.",
   "ai.order.emptyCart":
@@ -1374,6 +1380,8 @@ const hr: TranslationMap = {
   "ai.chat.orderPlaceholder": "npr. Cola Zero, burger…",
   "ai.order.addedMultiple": "Dodato {count} stavki",
   "ai.order.submitSuccess": "Porudžbina #{number} je poslata!",
+  "ai.order.tablePinReveal":
+    "Vaš PIN stola je {pin}. Sačuvajte ga — drugi telefoni za stolom ga trebaju za poručivanje.",
   "ai.order.submitApproval": "Porudžbina #{number} čeka odobrenje za stolom.",
   "ai.order.submitFailed": "Porudžbina nije mogla biti poslata.",
   "ai.order.emptyCart":
