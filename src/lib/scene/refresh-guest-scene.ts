@@ -12,6 +12,7 @@ type SceneRefreshPayload = SceneRefreshOverrides & {
     action?: ComposeSceneInput["banners"][number]["action"];
     productId?: string;
     productName?: string;
+    orderId?: string;
   } | null;
 };
 

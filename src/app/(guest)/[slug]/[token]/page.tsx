@@ -80,6 +80,9 @@ export default async function GuestMenuPage({
         ordering_enabled,
         ai_concierge_enabled,
         google_review_url,
+        payment_online_enabled,
+        payment_at_bar_enabled,
+        payment_card_at_table_enabled,
         timezone,
         organization:organizations!inner(
           id,
@@ -87,7 +90,8 @@ export default async function GuestMenuPage({
           slug,
           logo_url,
           default_tax_percent,
-          currency
+          currency,
+          stripe_onboarded
         )
       )
     `
@@ -111,6 +115,9 @@ export default async function GuestMenuPage({
       ordering_enabled: boolean;
       ai_concierge_enabled: boolean;
       google_review_url: string | null;
+      payment_online_enabled: boolean;
+      payment_at_bar_enabled: boolean;
+      payment_card_at_table_enabled: boolean;
       timezone: string;
       organization: {
         id: string;
@@ -119,6 +126,7 @@ export default async function GuestMenuPage({
         logo_url: string | null;
         default_tax_percent: number;
         currency: string;
+        stripe_onboarded: boolean;
       };
     };
   };
@@ -206,6 +214,10 @@ export default async function GuestMenuPage({
       voiceEnabled={conciergeConfig.surfaces.voiceEnabled}
       voiceTtsEnabled={conciergeConfig.surfaces.voiceTtsEnabled}
       googleReviewUrl={table.location.google_review_url}
+      stripeOnboarded={org.stripe_onboarded}
+      paymentOnlineEnabled={table.location.payment_online_enabled}
+      paymentAtBarEnabled={table.location.payment_at_bar_enabled}
+      paymentCardAtTableEnabled={table.location.payment_card_at_table_enabled}
     />
   );
 }

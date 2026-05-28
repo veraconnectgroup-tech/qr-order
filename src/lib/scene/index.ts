@@ -30,6 +30,13 @@ export {
   enqueueGuestSceneRefresh,
   scheduleGuestSceneRefresh,
 } from "./enqueue-scene-refresh";
+export { scheduleOrderSceneRefresh } from "./schedule-order-scene-refresh";
+export {
+  resolveTableActionChips,
+  resolveSituationOrderAction,
+  isTableActionChipId,
+  TABLE_ACTION_CHIP_IDS,
+} from "./resolve-table-actions";
 export { extractPersistedSceneLayers } from "./extract-scene-layer-state";
 export {
   sceneBannerLayers,

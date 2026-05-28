@@ -14,6 +14,7 @@ export type ActSubmitOutcome = {
   /** Act ran order.submit outside dry-run. */
   attempted: boolean;
   orderNumber?: number;
+  orderId?: string;
   submitError?: string;
   guestBlockedReason?: string;
 };
@@ -43,7 +44,11 @@ export function resolveActSubmitOutcome(
       typeof submit.detail?.orderNumber === "number"
         ? submit.detail.orderNumber
         : undefined;
-    return { attempted: true, orderNumber };
+    const orderId =
+      typeof submit.detail?.orderId === "string"
+        ? submit.detail.orderId
+        : undefined;
+    return { attempted: true, orderNumber, orderId };
   }
 
   const submitError = submit.error ?? "submit_failed";

@@ -46,11 +46,7 @@ export function AllergenBadges({
             size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-xs"
           )}
         >
-          {allergen.emoji ? (
-            <span aria-hidden>{allergen.emoji}</span>
-          ) : (
-            <span className="capitalize">{allergen.label}</span>
-          )}
+          <span>{labelFor(allergen, tUI)}</span>
         </span>
       ))}
     </div>
@@ -75,7 +71,6 @@ export function AllergenList({
           key={`${allergen.id ?? allergen.raw}`}
           className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200"
         >
-          {allergen.emoji && <span aria-hidden>{allergen.emoji}</span>}
           <span>{labelFor(allergen, tUI)}</span>
         </li>
       ))}

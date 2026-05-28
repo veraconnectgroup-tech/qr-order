@@ -13,6 +13,8 @@ import {
 import { hapticClick } from "@/lib/haptics";
 import { buildManualCartSnapshot, manualCartRevision } from "@/lib/guest/manual-cart-snapshot";
 import { useCart } from "@/hooks/use-cart";
+import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 
 const DenisGuestDock = dynamic(
   () =>
@@ -26,6 +28,22 @@ const AiConciergeChat = dynamic(
   () =>
     import("@/components/guest/ai-concierge-chat").then((m) => ({
       default: m.AiConciergeChat,
+    })),
+  { ssr: false }
+);
+
+const GuestOrderFocusSheet = dynamic(
+  () =>
+    import("@/components/guest/guest-order-focus-sheet").then((m) => ({
+      default: m.GuestOrderFocusSheet,
+    })),
+  { ssr: false }
+);
+
+const GuestSessionBillSheet = dynamic(
+  () =>
+    import("@/components/guest/guest-session-bill-sheet").then((m) => ({
+      default: m.GuestSessionBillSheet,
     })),
   { ssr: false }
 );
@@ -49,6 +67,12 @@ export function GuestDenisLayer({
   voiceTtsEnabled = true,
   sceneRefreshBump = 0,
   dockPlacement = "bottom",
+  cartBarVisible = false,
+  stripeOnboarded = false,
+  paymentOnlineEnabled = false,
+  paymentAtBarEnabled = false,
+  paymentCardAtTableEnabled = false,
+  inPersonPaymentLocation = "bar" as InPersonPaymentLocation,
 }: {
   enabled: boolean;
   slug: string;
@@ -65,6 +89,12 @@ export function GuestDenisLayer({
   /** Increment to force scene reload (e.g. order status change). */
   sceneRefreshBump?: number;
   dockPlacement?: "bottom" | "sticky-top";
+  cartBarVisible?: boolean;
+  stripeOnboarded?: boolean;
+  paymentOnlineEnabled?: boolean;
+  paymentAtBarEnabled?: boolean;
+  paymentCardAtTableEnabled?: boolean;
+  inPersonPaymentLocation?: InPersonPaymentLocation;
 }) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const language = isEnglish ? "en" : menuLocale;
@@ -73,6 +103,8 @@ export function GuestDenisLayer({
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
   const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
+  const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
+  const [billSheetOpen, setBillSheetOpen] = useState(false);
 
   const refreshKey = sceneRefreshKey + sceneRefreshBump;
 
@@ -141,6 +173,16 @@ export function GuestDenisLayer({
   const handleSceneChipPress = useCallback(
     (chipId: string, label: string) => {
       hapticClick();
+
+      if (chipId === TABLE_ACTION_CHIP_IDS.orderMore) {
+        window.location.href = `/${slug}/${token}`;
+        return;
+      }
+
+      if (chipId === TABLE_ACTION_CHIP_IDS.viewBill) {
+        setBillSheetOpen(true);
+        return;
+      }
 
       if (chipId === "situation-waiter") {
         if (!sessionToken) {
@@ -222,13 +264,28 @@ export function GuestDenisLayer({
 
       void runSceneChipTurn({ chipId, label });
     },
-    [sessionToken, token, tUI, refreshGuestSceneView, runSceneChipTurn]
+    [sessionToken, slug, token, tUI, refreshGuestSceneView, runSceneChipTurn, locationId, tableId, language, orderingDisabled]
   );
 
   const handleSceneInlineAdd = useCallback(() => {
     hapticClick();
     setAiChatOpen(true);
   }, []);
+
+  const handleOrderPress = useCallback(
+    (orderId: string) => {
+      hapticClick();
+      const order = scene?.chrome.situation?.orders.find(
+        (row) => row.orderId === orderId
+      );
+      if (order?.primaryAction.kind === "open_bill") {
+        setBillSheetOpen(true);
+        return;
+      }
+      setFocusOrderId(orderId);
+    },
+    [scene]
+  );
 
   if (!enabled || !sessionToken) return null;
 
@@ -263,13 +320,46 @@ export function GuestDenisLayer({
           scene={scene}
           currency={currency}
           placement={dockPlacement}
+          cartBarVisible={cartBarVisible}
           subtitle={scene.chrome.situation?.headline ?? undefined}
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}
           onInlineAdd={handleSceneInlineAdd}
+          onOrderPress={handleOrderPress}
           busy={sceneTurnBusy}
         />
       ) : null}
+
+      <GuestOrderFocusSheet
+        open={focusOrderId != null}
+        onOpenChange={(open) => {
+          if (!open) setFocusOrderId(null);
+        }}
+        orderId={focusOrderId}
+        slug={slug}
+        token={token}
+        sessionToken={sessionToken}
+        currency={currency}
+        stripeOnboarded={stripeOnboarded}
+        paymentOnlineEnabled={paymentOnlineEnabled}
+        paymentAtBarEnabled={paymentAtBarEnabled}
+        paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+        inPersonPaymentLocation={inPersonPaymentLocation}
+      />
+
+      <GuestSessionBillSheet
+        open={billSheetOpen}
+        onOpenChange={setBillSheetOpen}
+        slug={slug}
+        token={token}
+        sessionToken={sessionToken}
+        currency={currency}
+        stripeOnboarded={stripeOnboarded}
+        paymentOnlineEnabled={paymentOnlineEnabled}
+        paymentAtBarEnabled={paymentAtBarEnabled}
+        paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+        inPersonPaymentLocation={inPersonPaymentLocation}
+      />
     </>
   );
 }

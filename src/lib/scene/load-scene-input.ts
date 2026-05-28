@@ -10,9 +10,11 @@ import {
   deriveGuestSituation,
   situationSupportChips,
 } from "./derive-guest-situation";
+import { resolveTableActionChips } from "./resolve-table-actions";
 import { composeScene, deriveSessionPhase } from "./compose-scene";
 import { extractPersistedSceneLayers } from "./extract-scene-layer-state";
 import type { ComposeSceneInput, Scene } from "./types";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 
 const KITCHEN_OPEN_STATUSES = new Set([
   "pending",
@@ -50,20 +52,28 @@ function resolveSceneChips(input: {
   denisActive: boolean;
   phase: ComposeSceneInput["phase"];
   situation: ComposeSceneInput["situation"];
+  hasUnpaidOrders: boolean;
 }): ComposeSceneInput["chips"] {
   if (input.override?.length) return input.override;
   if (input.persisted.length) return input.persisted;
 
-  if (
+  const tableActions = resolveTableActionChips({
+    phase: input.phase,
+    hasUnpaidOrders: input.hasUnpaidOrders,
+  }).map((chip) => ({ id: chip.id, label: chip.labelKey }));
+
+  const situationChips =
     input.situation?.hasActiveKitchen ||
     input.situation?.hasReadyOrder ||
     input.phase === "waiting"
-  ) {
-    return situationSupportChips().map((chip) => ({
-      id: chip.id,
-      label: chip.labelKey,
-    }));
-  }
+      ? situationSupportChips().map((chip) => ({
+          id: chip.id,
+          label: chip.labelKey,
+        }))
+      : [];
+
+  const merged = [...tableActions, ...situationChips];
+  if (merged.length) return merged;
 
   if (input.denisEnabled && !input.denisActive && input.phase === "browsing") {
     return defaultOnboardingChips();
@@ -172,6 +182,10 @@ export async function loadComposeSceneInput(
     estimated_prep_minutes: number | null;
     order_items: Array<{ product_name: string; quantity: number }> | null;
   }>;
+
+  const hasUnpaidOrders = orderRows.some(
+    (o) => !isPaidPaymentStatus(o.payment_status)
+  );
 
   const situation = deriveGuestSituation(orderRows);
 
@@ -295,6 +309,7 @@ export async function loadComposeSceneInput(
       denisActive,
       phase,
       situation,
+      hasUnpaidOrders,
     }),
     situation,
   };

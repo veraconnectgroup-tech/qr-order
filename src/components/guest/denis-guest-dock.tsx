@@ -38,6 +38,7 @@ export function DenisGuestDock({
   onOpenDesk,
   onChipPress,
   onInlineAdd,
+  onOrderPress,
   busy = false,
 }: {
   scene?: Scene | null;
@@ -52,6 +53,7 @@ export function DenisGuestDock({
   onOpenDesk: () => void;
   onChipPress: (chipId: string, label: string) => void;
   onInlineAdd: (productId: string) => void;
+  onOrderPress?: (orderId: string) => void;
   busy?: boolean;
 }) {
   const { tUI } = useAppLocale();
@@ -162,12 +164,12 @@ export function DenisGuestDock({
           >
             <p className="truncate text-sm font-semibold text-[var(--qr-ivory)]">
               Denis
-              {tableContext ? (
-                <span className="ms-1.5 text-[11px] font-normal text-[var(--qr-muted)]">
-                  {tableContext}
-                </span>
-              ) : null}
             </p>
+            {tableContext ? (
+              <p className="truncate text-[11px] font-medium text-[var(--qr-ivory)]/72">
+                {tableContext}
+              </p>
+            ) : null}
             <p className="truncate text-[12px] leading-snug text-[var(--qr-muted)]">
               {collapsedLine}
             </p>
@@ -203,7 +205,10 @@ export function DenisGuestDock({
         {showExpandedContent ? (
           <div className="border-t border-[var(--qr-elevated)]/80">
             {situation?.orders.length ? (
-              <DenisSituationView situation={situation} />
+              <DenisSituationView
+                situation={situation}
+                onOrderPress={onOrderPress}
+              />
             ) : null}
 
             {chipsLayer?.options.length ? (

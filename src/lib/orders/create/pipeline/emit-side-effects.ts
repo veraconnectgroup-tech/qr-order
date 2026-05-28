@@ -3,6 +3,7 @@ import type {
   OrderDraft,
 } from "@/lib/orders/create/types";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
+import { scheduleOrderSceneRefresh } from "@/lib/scene/schedule-order-scene-refresh";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -33,5 +34,16 @@ export async function emitOrderSideEffects(
       .from("table_sessions")
       .update({ guest_email: draft.input.guestEmail })
       .eq("id", draft.mode.sessionId);
+  }
+
+  if (draft.mode.kind === "normal" || draft.mode.kind === "demo") {
+    void scheduleOrderSceneRefresh(admin, {
+      sessionId: draft.mode.sessionId,
+      orderId: result.orderId,
+      orderNumber: result.orderNumber,
+      placed: phase === "created",
+    }).catch(() => {
+      /* scene refresh is best-effort; outbox retry via commerce path */
+    });
   }
 }

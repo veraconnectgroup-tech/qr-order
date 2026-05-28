@@ -73,7 +73,9 @@ import {
 } from "@/lib/guest/manual-cart-snapshot";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
 import { sceneBannerLayers } from "@/lib/scene/layer-utils";
+import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
 import { useGuestScene } from "@/hooks/use-guest-scene";
+import type { InPersonPaymentLocation } from "@/lib/constants";
 
 const AiCartPairingBanner = dynamic(
   () =>
@@ -100,6 +102,20 @@ const AiConciergeChat = dynamic(
   () =>
     import("@/components/guest/ai-concierge-chat").then((m) => ({
       default: m.AiConciergeChat,
+    })),
+  { ssr: false }
+);
+const GuestOrderFocusSheet = dynamic(
+  () =>
+    import("@/components/guest/guest-order-focus-sheet").then((m) => ({
+      default: m.GuestOrderFocusSheet,
+    })),
+  { ssr: false }
+);
+const GuestSessionBillSheet = dynamic(
+  () =>
+    import("@/components/guest/guest-session-bill-sheet").then((m) => ({
+      default: m.GuestSessionBillSheet,
     })),
   { ssr: false }
 );
@@ -141,6 +157,11 @@ export function MenuView({
   voiceEnabled = false,
   voiceTtsEnabled = true,
   googleReviewUrl = null,
+  stripeOnboarded = false,
+  paymentOnlineEnabled = false,
+  paymentAtBarEnabled = false,
+  paymentCardAtTableEnabled = false,
+  inPersonPaymentLocation = "bar" as InPersonPaymentLocation,
 }: {
   slug: string;
   token: string;
@@ -164,6 +185,11 @@ export function MenuView({
   voiceEnabled?: boolean;
   voiceTtsEnabled?: boolean;
   googleReviewUrl?: string | null;
+  stripeOnboarded?: boolean;
+  paymentOnlineEnabled?: boolean;
+  paymentAtBarEnabled?: boolean;
+  paymentCardAtTableEnabled?: boolean;
+  inPersonPaymentLocation?: InPersonPaymentLocation;
 }) {
   const { tUI, tName, menuLocale, isEnglish } = useAppLocale();
   const router = useRouter();
@@ -185,6 +211,8 @@ export function MenuView({
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
   const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
+  const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
+  const [billSheetOpen, setBillSheetOpen] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -477,7 +505,7 @@ export function MenuView({
     sessionToken,
     enabled: aiConciergeEnabled && !!sessionToken,
     refreshKey: sceneRefreshKey,
-    fastPoll: hasLiveKitchenOrders || itemCount > 0,
+    fastPoll: hasLiveKitchenOrders || itemCount > 0 || sessionOrders.length > 0,
   });
 
   const sceneBanners = useMemo(
@@ -989,6 +1017,16 @@ export function MenuView({
     (chipId: string, label: string) => {
       hapticClick();
 
+      if (chipId === TABLE_ACTION_CHIP_IDS.orderMore) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      if (chipId === TABLE_ACTION_CHIP_IDS.viewBill) {
+        setBillSheetOpen(true);
+        return;
+      }
+
       if (chipId === "situation-waiter") {
         if (!sessionToken) {
           toast.error(tUI("waiter.sessionError"), {
@@ -1112,9 +1150,32 @@ export function MenuView({
     void refreshGuestSceneView();
   }, [refreshGuestSceneView]);
 
+  const handleOrderPress = useCallback(
+    (orderId: string) => {
+      hapticClick();
+      const order = scene?.chrome.situation?.orders.find(
+        (row) => row.orderId === orderId
+      );
+      if (order?.primaryAction.kind === "open_bill") {
+        setBillSheetOpen(true);
+        return;
+      }
+      setFocusOrderId(orderId);
+    },
+    [scene]
+  );
+
   const handleSceneBannerAction = useCallback(
     (banner: (typeof sceneBanners)[number]) => {
       hapticClick();
+      if (banner.action === "view_order" && banner.orderId) {
+        setFocusOrderId(banner.orderId);
+        return;
+      }
+      if (banner.action === "view_bill") {
+        setBillSheetOpen(true);
+        return;
+      }
       if (banner.action === "add_product" && banner.productId) {
         const product = productById.get(banner.productId);
         if (product) {
@@ -1436,9 +1497,44 @@ export function MenuView({
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}
           onInlineAdd={handleSceneInlineAdd}
+          onOrderPress={handleOrderPress}
           busy={sceneTurnBusy}
         />
       )}
+
+      {sessionToken ? (
+        <>
+          <GuestOrderFocusSheet
+            open={focusOrderId != null}
+            onOpenChange={(open) => {
+              if (!open) setFocusOrderId(null);
+            }}
+            orderId={focusOrderId}
+            slug={slug}
+            token={token}
+            sessionToken={sessionToken}
+            currency={currency}
+            stripeOnboarded={stripeOnboarded}
+            paymentOnlineEnabled={paymentOnlineEnabled}
+            paymentAtBarEnabled={paymentAtBarEnabled}
+            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+            inPersonPaymentLocation={inPersonPaymentLocation}
+          />
+          <GuestSessionBillSheet
+            open={billSheetOpen}
+            onOpenChange={setBillSheetOpen}
+            slug={slug}
+            token={token}
+            sessionToken={sessionToken}
+            currency={currency}
+            stripeOnboarded={stripeOnboarded}
+            paymentOnlineEnabled={paymentOnlineEnabled}
+            paymentAtBarEnabled={paymentAtBarEnabled}
+            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+            inPersonPaymentLocation={inPersonPaymentLocation}
+          />
+        </>
+      ) : null}
     </>
   );
 }

@@ -112,7 +112,6 @@ export function AllergenFilter({
                   : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
               )}
             >
-              <span aria-hidden>{allergen.emoji}</span>
               {allergenLabel(allergen.id, allergen.label, tUI)}
             </button>
           );

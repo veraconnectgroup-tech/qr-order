@@ -1,11 +1,15 @@
 /** Pure guest situation from live orders — SC-8 situation projection. */
 
+import { resolveSituationOrderAction } from "./resolve-table-actions";
+
 export type GuestSituationOrder = {
   orderId: string;
   orderNumber: number;
   status: string;
   itemsLabel: string;
   prepMinutes: number | null;
+  paymentStatus: string;
+  primaryAction: import("./types").SceneSituationAction;
 };
 
 export type GuestSituation = {
@@ -19,9 +23,27 @@ type SituationOrderRow = {
   id: string;
   order_number: number | null;
   status: string;
+  payment_status: string;
   estimated_prep_minutes: number | null;
   order_items: Array<{ product_name: string; quantity: number }> | null;
 };
+
+function mapSituationOrder(order: SituationOrderRow): GuestSituationOrder {
+  const paymentStatus = order.payment_status ?? "pending";
+  return {
+    orderId: order.id,
+    orderNumber: order.order_number ?? 0,
+    status: order.status,
+    itemsLabel: formatItemsLabel(order.order_items ?? []),
+    prepMinutes: order.estimated_prep_minutes,
+    paymentStatus,
+    primaryAction: resolveSituationOrderAction({
+      orderId: order.id,
+      status: order.status,
+      paymentStatus,
+    }),
+  };
+}
 
 const KITCHEN_ACTIVE = new Set(["pending", "confirmed", "preparing"]);
 const KITCHEN_READY = new Set(["ready"]);
@@ -67,13 +89,7 @@ export function deriveGuestSituation(
 
   const mapped: GuestSituationOrder[] = orders
     .filter((o) => o.status !== "delivered" && o.status !== "cancelled")
-    .map((order) => ({
-      orderId: order.id,
-      orderNumber: order.order_number ?? 0,
-      status: order.status,
-      itemsLabel: formatItemsLabel(order.order_items ?? []),
-      prepMinutes: order.estimated_prep_minutes,
-    }))
+    .map(mapSituationOrder)
     .filter((o) => o.itemsLabel.length > 0);
 
   if (!mapped.length) {
@@ -81,13 +97,7 @@ export function deriveGuestSituation(
       .reverse()
       .find((o) => o.status === "delivered");
     if (!lastDelivered) return null;
-    const delivered: GuestSituationOrder = {
-      orderId: lastDelivered.id,
-      orderNumber: lastDelivered.order_number ?? 0,
-      status: "delivered",
-      itemsLabel: formatItemsLabel(lastDelivered.order_items ?? []),
-      prepMinutes: null,
-    };
+    const delivered = mapSituationOrder(lastDelivered);
     return {
       headline: statusHeadline(delivered),
       orders: [delivered],

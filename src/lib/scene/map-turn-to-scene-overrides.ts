@@ -8,6 +8,14 @@ export type SceneRefreshOverrides = {
   sheetOpen?: boolean;
   chips?: ComposeSceneInput["chips"];
   inlineRecommendations?: ComposeSceneInput["inlineRecommendations"];
+  proactiveBanner?: {
+    id: string;
+    message: string;
+    action?: ComposeSceneInput["banners"][number]["action"];
+    productId?: string;
+    productName?: string;
+    orderId?: string;
+  } | null;
 };
 
 type TurnRecommendation = AiRecommendation & {

@@ -19,6 +19,7 @@ import { processRefund } from "@/lib/stripe/refund";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
+import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
 import type { PaymentMethod } from "@/lib/constants";
 
 function parseSessionToken(value: string | null) {
@@ -142,6 +143,7 @@ type StaffAccess = {
   order: {
     id: string;
     location_id: string;
+    session_id: string | null;
     status: string;
     order_number: number;
     payment_status: string;
@@ -175,7 +177,7 @@ async function verifyStaffOrderAccess(
   const { data: order } = await admin
     .from("orders")
     .select(
-      "id, location_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, tip_amount, created_at, tse_signature"
+      "id, location_id, session_id, status, order_number, payment_status, payment_method, stripe_payment_intent_id, total, tip_amount, created_at, tse_signature"
     )
     .eq("id", orderId)
     .single();
@@ -514,6 +516,17 @@ export const PATCH = withErrorHandler(
         order_id: orderId,
         status,
       });
+    }
+
+    if (access.order.session_id) {
+      void scheduleGuestSceneRefresh(admin, {
+        sessionId: access.order.session_id,
+      }).catch((err) =>
+        logger.warn("scene refresh failed on order status change", {
+          orderId,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      );
     }
 
     return apiSuccess({ ok: true });

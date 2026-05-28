@@ -59,6 +59,7 @@ export function composeScene(
       action: banner.action,
       productId: banner.productId,
       productName: banner.productName,
+      orderId: banner.orderId,
     });
   }
 

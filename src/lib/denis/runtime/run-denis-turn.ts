@@ -546,6 +546,19 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       thinking: false,
     });
 
+    if (
+      actSubmitOutcome.attempted &&
+      actSubmitOutcome.orderId &&
+      actSubmitOutcome.orderNumber != null
+    ) {
+      sceneOverrides.proactiveBanner = {
+        id: `order-placed-${actSubmitOutcome.orderId}`,
+        message: `#${actSubmitOutcome.orderNumber}`,
+        action: "view_order",
+        orderId: actSubmitOutcome.orderId,
+      };
+    }
+
     void scheduleGuestSceneRefresh(admin, sceneOverrides).catch((error) => {
       logger.warn("Denis turn scene refresh failed", {
         traceId,

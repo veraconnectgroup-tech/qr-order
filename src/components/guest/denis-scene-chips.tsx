@@ -5,9 +5,13 @@ import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { Scene } from "@/lib/scene/types";
 import { sceneChipsLayer } from "@/lib/scene/layer-utils";
 
+import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
+
 const CHIP_I18N: Record<string, string> = {
   "situation-wrong": "scene.situation.chipWrong",
   "situation-waiter": "scene.situation.chipWaiter",
+  [TABLE_ACTION_CHIP_IDS.orderMore]: "scene.action.orderMore",
+  [TABLE_ACTION_CHIP_IDS.viewBill]: "scene.action.viewBill",
 };
 
 function resolveChipLabel(

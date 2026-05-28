@@ -12,7 +12,18 @@ export type SceneMarkState = "idle" | "listen" | "think";
 
 export type SceneBlockingReason = "consent" | "payment" | "conflict";
 
-export type SceneBannerAction = "open_sheet" | "add_product" | "dismiss" | "feedback";
+export type SceneBannerAction =
+  | "open_sheet"
+  | "add_product"
+  | "dismiss"
+  | "feedback"
+  | "view_order"
+  | "view_bill";
+
+export type SceneSituationAction =
+  | { kind: "open_order"; orderId: string }
+  | { kind: "open_bill"; scope: "order" | "session"; orderId?: string }
+  | { kind: "open_menu" };
 
 export type SceneLayer =
   | { kind: "ambient" }
@@ -34,6 +45,7 @@ export type SceneLayer =
       action?: SceneBannerAction;
       productId?: string;
       productName?: string;
+      orderId?: string;
     }
   | {
       kind: "inline";
@@ -53,6 +65,8 @@ export type SceneSituationOrder = {
   status: string;
   itemsLabel: string;
   prepMinutes: number | null;
+  paymentStatus: string;
+  primaryAction: SceneSituationAction;
 };
 
 export type SceneSituation = {
@@ -99,6 +113,7 @@ export type ComposeSceneInput = {
     action?: SceneBannerAction;
     productId?: string;
     productName?: string;
+    orderId?: string;
   }>;
   inlineRecommendations: Array<{
     productId: string;

@@ -33,6 +33,15 @@ export function DenisSceneBanners({
   const dismissed = useDismissedIds();
   const visible = banners.filter((banner) => !dismissed.isDismissed(banner.id));
 
+  function bannerMessage(banner: SceneBannerLayer) {
+    if (banner.id.startsWith("order-placed-") && banner.message.startsWith("#")) {
+      return tUI("scene.banner.orderPlaced", {
+        number: banner.message.slice(1),
+      });
+    }
+    return banner.message;
+  }
+
   if (visible.length === 0) return null;
 
   return (
@@ -61,7 +70,7 @@ export function DenisSceneBanners({
         >
           <DenisMarkBadge size="md" />
           <p className="min-w-0 flex-1 text-sm leading-snug text-[var(--qr-ivory)]">
-            {banner.message}
+            {bannerMessage(banner)}
           </p>
           <button
             type="button"

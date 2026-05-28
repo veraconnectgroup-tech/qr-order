@@ -920,6 +920,7 @@ export function AiConciergeChat({
             clearCart();
             hapticSuccess();
             recordGuestOrderPlaced();
+            onOpenChange(false);
           }
           setMessages((prev) => [
             ...prev,
