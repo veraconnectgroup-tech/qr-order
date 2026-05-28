@@ -35,7 +35,7 @@ export default async function AdminSettingsPage() {
       ? admin
           .from("locations")
           .select(
-            "name, menu_locale, default_locale, google_review_url, ordering_enabled, ai_concierge_enabled, ai_playbook"
+            "name, menu_locale, default_locale, google_review_url, ordering_enabled, require_first_table_approval, ai_concierge_enabled, ai_playbook"
           )
           .eq("id", locationId)
           .single()
@@ -99,6 +99,7 @@ export default async function AdminSettingsPage() {
     default_locale: string | null;
     google_review_url: string | null;
     ordering_enabled: boolean;
+    require_first_table_approval: boolean;
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
   } | null;
@@ -165,6 +166,9 @@ export default async function AdminSettingsPage() {
               menuLocale={menuLocale}
               googleReviewUrl={locationRow.google_review_url}
               orderingEnabled={locationRow.ordering_enabled}
+              requireFirstTableApproval={
+                locationRow.require_first_table_approval ?? true
+              }
               aiConciergeEnabled={locationRow.ai_concierge_enabled}
               canEdit
             />

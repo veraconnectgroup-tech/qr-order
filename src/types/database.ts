@@ -116,6 +116,7 @@ type Tables = {
     available_locales: string[];
     google_review_url: string | null;
     ordering_enabled: boolean;
+    require_first_table_approval: boolean;
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
     ai_concierge_config: Json | null;

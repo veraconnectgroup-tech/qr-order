@@ -184,6 +184,7 @@ function DenisMessageRow({
   onQuickReply,
   onAddRecommendation,
   continueLabel,
+  markState = "idle",
 }: {
   message: ChatMessage;
   currency: string;
@@ -193,6 +194,7 @@ function DenisMessageRow({
   onQuickReply?: (messageId: string, label: string) => void;
   onAddRecommendation: (rec: ProductRecommendation) => void;
   continueLabel: string;
+  markState?: "idle" | "listen" | "think";
 }) {
   if (message.role === "user") {
     return (
@@ -201,7 +203,7 @@ function DenisMessageRow({
   }
 
   return (
-    <DenisMessageBlock role="assistant">
+    <DenisMessageBlock role="assistant" markState={markState}>
       <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-[var(--qr-ivory)]">
         {message.content}
       </p>
@@ -1192,7 +1194,7 @@ export function AiConciergeChat({
         </DenisPanelHeader>
 
         <DenisPanelBody ref={scrollRef}>
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <DenisMessageRow
               key={message.id}
               message={message}
@@ -1200,6 +1202,11 @@ export function AiConciergeChat({
               orderingDisabled={orderingDisabled}
               addedIds={addedIds}
               continueLabel={tUI("ai.chat.continue")}
+              markState={
+                isTyping && index === messages.length - 1 && message.role === "assistant"
+                  ? "think"
+                  : "idle"
+              }
               onQuickPickConfirm={
                 message.quickPicks && !message.quickPicks.confirmed
                   ? handleQuickPickConfirm
@@ -1209,7 +1216,9 @@ export function AiConciergeChat({
               onAddRecommendation={handleAddRecommendation}
             />
           ))}
-          {isTyping && sceneChrome ? null : isTyping ? (
+          {isTyping &&
+          (messages.length === 0 ||
+            messages[messages.length - 1]?.role === "user") ? (
             <DenisMessageThinking />
           ) : null}
         </DenisPanelBody>

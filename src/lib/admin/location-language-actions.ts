@@ -116,3 +116,30 @@ export async function updateLocationOrderingEnabled(orderingEnabled: boolean) {
   revalidatePath("/", "layout");
   return { success: true };
 }
+
+export async function updateLocationRequireFirstTableApproval(
+  requireFirstTableApproval: boolean
+) {
+  const staff = await requireAdmin();
+  const locationId = await getStaffLocationId(staff);
+
+  if (!locationId) {
+    return { error: "Location not found." };
+  }
+
+  const admin = createAdminClient();
+
+  const { error } = await admin
+    .from("locations")
+    .update({
+      require_first_table_approval: requireFirstTableApproval,
+      updated_at: new Date().toISOString(),
+    } as never)
+    .eq("id", locationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout");
+  return { success: true };
+}

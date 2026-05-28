@@ -8,6 +8,7 @@ export type DenisTableMarkProps = {
   className?: string;
 };
 
+/** Table D — vertical spine + top bar + leg (Denis spatial v4, ADR-007). */
 export function DenisTableMark({
   size = 24,
   state = "idle",
@@ -20,34 +21,41 @@ export function DenisTableMark({
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
-      className={cn("shrink-0 text-[var(--qr-ember)]", className)}
+      className={cn(
+        "shrink-0 text-[var(--qr-ember)]",
+        state === "listen" && "denis-table-mark--listen",
+        state === "think" && "denis-table-mark--think",
+        className
+      )}
     >
-      <line
-        x1="6"
-        y1="4"
-        x2="6"
-        y2="20"
+      {/* Left spine */}
+      <path
+        d="M6 4v16"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.25"
         strokeLinecap="round"
       />
-      <line
-        x1="6"
-        y1="4"
-        x2="16"
-        y2="4"
+      {/* Top bar */}
+      <path
+        d="M6 4h10"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.25"
         strokeLinecap="round"
       />
-      <line
-        x1="16"
-        y1="4"
-        x2="16"
-        y2="13"
+      {/* Upper leg */}
+      <path
+        d="M16 4v9"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.25"
         strokeLinecap="round"
+      />
+      {/* D bowl — diagonal close so mark reads as D, not a sparkle */}
+      <path
+        d="M16 13L6 20"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

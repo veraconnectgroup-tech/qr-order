@@ -13,11 +13,13 @@ import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTableContext } from "@/hooks/use-table-context";
 import { ApprovalWaiting } from "@/components/guest/approval-waiting";
 import { TablePinGate } from "@/components/guest/table-pin-gate";
+import { TablePinReveal } from "@/components/guest/table-pin-reveal";
 import {
   getOrCreateDeviceFingerprint,
   getStoredDeviceToken,
+  setStoredDeviceToken,
 } from "@/lib/guest/device-storage";
-import { ensureTableSession, isSessionExpiredError } from "@/lib/guest/ensure-table-session";
+import { ensureTableSession, isSessionExpiredError, syncTableSessionStores } from "@/lib/guest/ensure-table-session";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -172,6 +174,8 @@ export function CheckoutForm({
   const [isTakeaway, setIsTakeaway] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
   const [approvalOrderId, setApprovalOrderId] = useState<string | null>(null);
+  const [autoOpenedPin, setAutoOpenedPin] = useState<string | null>(null);
+  const [autoOpenedOrderId, setAutoOpenedOrderId] = useState<string | null>(null);
   const [pinVerified, setPinVerified] = useState(false);
 
   const breakdown = taxBreakdown(isTakeaway, taxPercent);
@@ -222,7 +226,16 @@ export function CheckoutForm({
     const { data: parsed, error: fetchError, status } = await resilientFetch<{
       error?: string;
       details?: { products?: string[] };
-      data?: { orderId: string; awaitingApproval?: boolean };
+      data?: {
+        orderId: string;
+        awaitingApproval?: boolean;
+        sessionOpened?: {
+          sessionId: string;
+          sessionToken: string;
+          deviceToken: string;
+          tablePin?: string;
+        };
+      };
     }>(
       "/api/orders",
       {
@@ -317,6 +330,36 @@ export function CheckoutForm({
         return;
       }
 
+      if (result.sessionOpened) {
+        setStoredDeviceToken(
+          locationId,
+          context?.tableId ?? tableId ?? "",
+          result.sessionOpened.deviceToken
+        );
+        syncTableSessionStores(
+          slug,
+          token,
+          {
+            sessionId: result.sessionOpened.sessionId,
+            sessionToken: result.sessionOpened.sessionToken,
+            tableId: context?.tableId ?? tableId ?? "",
+            tableName: context?.tableName ?? tableName ?? "",
+            locationId,
+          },
+          context?.tableId ?? tableId
+        );
+        activeSessionToken = result.sessionOpened.sessionToken;
+      }
+
+      if (result.sessionOpened?.tablePin) {
+        orderPlacedRef.current = true;
+        setAutoOpenedPin(result.sessionOpened.tablePin);
+        setAutoOpenedOrderId(result.orderId);
+        clearCart();
+        setProcessing(false);
+        return;
+      }
+
       if (activeSessionToken && guestEmail.trim()) {
         await saveGuestEmail(activeSessionToken, guestEmail);
       }
@@ -397,6 +440,17 @@ export function CheckoutForm({
           Try again
         </Button>
       </div>
+    );
+  }
+
+  if (autoOpenedPin && autoOpenedOrderId) {
+    return (
+      <TablePinReveal
+        tablePin={autoOpenedPin}
+        onContinue={() =>
+          router.replace(`/${slug}/${token}/order/${autoOpenedOrderId}?placed=1`)
+        }
+      />
     );
   }
 

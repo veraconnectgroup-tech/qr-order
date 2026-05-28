@@ -14,8 +14,10 @@ import {
 import type { OrderCreateMode, ResolvedContext } from "@/lib/orders/create/types";
 import { assertDeviceNotBlocked } from "@/lib/sessions/order-blocks";
 import {
+  createActiveSessionWithPin,
   getActiveTableSession,
   getPendingApprovalOrder,
+  trustSessionDevice,
 } from "@/lib/sessions/session-devices";
 import { isSessionOrderBlocked } from "@/lib/sessions/session-lifecycle";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -57,6 +59,35 @@ export async function assertOrderAccess(
     const existingPending = await getPendingApprovalOrder(admin, ctx.table.id);
     if (existingPending) {
       return err(orderError("awaiting_approval", "awaiting_approval", 409));
+    }
+
+    if (!ctx.location.require_first_table_approval) {
+      const opened = await createActiveSessionWithPin(admin, {
+        tableId: ctx.table.id,
+        locationId: ctx.table.location_id,
+      });
+
+      if ("error" in opened) {
+        return err(
+          orderError("internal", opened.error, opened.status)
+        );
+      }
+
+      const { deviceToken } = await trustSessionDevice(admin, {
+        sessionId: opened.sessionId,
+        deviceFingerprint: input.deviceFingerprint,
+      });
+
+      return ok({
+        kind: "normal",
+        sessionId: opened.sessionId,
+        sessionOpened: {
+          sessionId: opened.sessionId,
+          sessionToken: opened.sessionToken,
+          deviceToken,
+          ...(opened.pinPlain ? { tablePin: opened.pinPlain } : {}),
+        },
+      });
     }
 
     return ok({

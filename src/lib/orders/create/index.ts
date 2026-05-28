@@ -74,5 +74,10 @@ export async function createOrderFromCart(
       locationId: table.location_id,
     }
   );
-  return { data: result.value };
+  const data =
+    draft.mode.kind === "normal" && draft.mode.sessionOpened
+      ? { ...result.value, sessionOpened: draft.mode.sessionOpened }
+      : result.value;
+
+  return { data };
 }

@@ -6,6 +6,7 @@ import {
   updateLocationGoogleReviewUrl,
   updateLocationMenuLocale,
   updateLocationOrderingEnabled,
+  updateLocationRequireFirstTableApproval,
 } from "@/lib/admin/location-language-actions";
 import { updateLocationAiConciergeEnabled } from "@/lib/admin/ai-actions";
 import { MENU_LOCALES } from "@/lib/i18n/locale-config";
@@ -28,6 +29,7 @@ export function LocationSettings({
   menuLocale: initialMenuLocale,
   googleReviewUrl: initialGoogleReviewUrl,
   orderingEnabled: initialOrderingEnabled,
+  requireFirstTableApproval: initialRequireFirstTableApproval,
   aiConciergeEnabled: initialAiConciergeEnabled,
   canEdit,
 }: {
@@ -35,6 +37,7 @@ export function LocationSettings({
   menuLocale: MenuLocale;
   googleReviewUrl: string | null;
   orderingEnabled: boolean;
+  requireFirstTableApproval: boolean;
   aiConciergeEnabled: boolean;
   canEdit: boolean;
 }) {
@@ -43,6 +46,9 @@ export function LocationSettings({
     initialGoogleReviewUrl ?? ""
   );
   const [orderingEnabled, setOrderingEnabled] = useState(initialOrderingEnabled);
+  const [requireFirstTableApproval, setRequireFirstTableApproval] = useState(
+    initialRequireFirstTableApproval
+  );
   const [aiConciergeEnabled, setAiConciergeEnabled] = useState(
     initialAiConciergeEnabled
   );
@@ -51,11 +57,12 @@ export function LocationSettings({
   async function handleSave() {
     setSaving(true);
 
-    const [localeResult, reviewResult, orderingResult, aiResult] =
+    const [localeResult, reviewResult, orderingResult, approvalResult, aiResult] =
       await Promise.all([
         updateLocationMenuLocale(menuLocale),
         updateLocationGoogleReviewUrl(googleReviewUrl),
         updateLocationOrderingEnabled(orderingEnabled),
+        updateLocationRequireFirstTableApproval(requireFirstTableApproval),
         updateLocationAiConciergeEnabled(aiConciergeEnabled),
       ]);
 
@@ -71,6 +78,10 @@ export function LocationSettings({
     }
     if (orderingResult?.error) {
       toast.error(orderingResult.error);
+      return;
+    }
+    if (approvalResult?.error) {
+      toast.error(approvalResult.error);
       return;
     }
     if (aiResult?.error) {
@@ -102,6 +113,22 @@ export function LocationSettings({
           id="online-ordering"
           checked={orderingEnabled}
           onCheckedChange={setOrderingEnabled}
+          disabled={!canEdit}
+        />
+      </AdminPanelSection>
+
+      <AdminPanelSection className="mt-5 flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="first-table-approval">First table confirmation</Label>
+          <p className="text-xs text-muted-foreground">
+            When on, staff must approve the first order at an empty table. When
+            off, the table session opens automatically on the first order.
+          </p>
+        </div>
+        <Switch
+          id="first-table-approval"
+          checked={requireFirstTableApproval}
+          onCheckedChange={setRequireFirstTableApproval}
           disabled={!canEdit}
         />
       </AdminPanelSection>

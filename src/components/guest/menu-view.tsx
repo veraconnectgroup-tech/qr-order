@@ -82,20 +82,6 @@ const AiCartPairingBanner = dynamic(
     })),
   { ssr: false }
 );
-const DenisSceneShell = dynamic(
-  () =>
-    import("@/components/guest/denis-scene-shell").then((m) => ({
-      default: m.DenisSceneShell,
-    })),
-  { ssr: false }
-);
-const DenisSceneShellSkeleton = dynamic(
-  () =>
-    import("@/components/guest/denis-scene-shell-skeleton").then((m) => ({
-      default: m.DenisSceneShellSkeleton,
-    })),
-  { ssr: false }
-);
 const DenisGuestDock = dynamic(
   () =>
     import("@/components/guest/denis-guest-dock").then((m) => ({
@@ -1148,7 +1134,7 @@ export function MenuView({
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
         <div
           className={
-            aiConciergeEnabled && scene && !aiChatOpen
+            aiConciergeEnabled && sessionToken && !aiChatOpen
               ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))]"
               : "min-h-dvh pb-cart-offset"
           }
@@ -1173,29 +1159,6 @@ export function MenuView({
             </div>
           )}
 
-          {aiConciergeEnabled && sessionToken && !aiChatOpen && scene && (
-            <DenisSceneShell
-              scene={scene}
-              currency={currency}
-              subtitle={
-                scene.chrome.situation?.headline ??
-                welcomeBackMessage ??
-                undefined
-              }
-              onOpenDesk={handleOpenDenisDesk}
-              onChipPress={handleSceneChipPress}
-              onInlineAdd={handleSceneInlineAdd}
-              busy={sceneTurnBusy}
-            />
-          )}
-
-          {aiConciergeEnabled && sessionToken && !aiChatOpen && !scene && sceneLoading && (
-            <DenisSceneShellSkeleton
-              tableName={tableName}
-              venueName={locationName}
-            />
-          )}
-
           {showMemoryConsent && (
             <DenisMemoryConsentBanner
               onAccept={() => void acceptMemoryConsent()}
@@ -1212,7 +1175,7 @@ export function MenuView({
             />
           )}
 
-          {aiConciergeEnabled && !useSceneBannerUi && (
+          {!aiConciergeEnabled && !useSceneBannerUi && (
             <AiSmartNudgeBanner
               nudge={activeNudge}
               orderingDisabled={!canPlaceOrders}
@@ -1253,6 +1216,7 @@ export function MenuView({
 
 
           {!filtered &&
+            !aiConciergeEnabled &&
             aiActive &&
             showRecommendedSection &&
             aiRecommendations.length > 0 && (
@@ -1407,12 +1371,15 @@ export function MenuView({
             />
           )}
 
-          {aiConciergeEnabled && scene && !aiChatOpen && (
+          {aiConciergeEnabled && sessionToken && !aiChatOpen && (
             <DenisGuestDock
               scene={scene}
               currency={currency}
+              tableName={tableName}
+              venueName={locationName}
+              loading={sceneLoading && !scene}
               subtitle={
-                scene.chrome.situation?.headline ??
+                scene?.chrome.situation?.headline ??
                 welcomeBackMessage ??
                 undefined
               }
