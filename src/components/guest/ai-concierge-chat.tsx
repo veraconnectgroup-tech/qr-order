@@ -442,6 +442,7 @@ export function AiConciergeChat({
   const cartItems = useCart((s) => s.items);
   const clearCart = useCart((s) => s.clearCart);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const chatInitKeyRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("allergies");
@@ -563,21 +564,61 @@ export function AiConciergeChat({
     }
 
     const scrollY = window.scrollY;
+    const body = document.body;
     const html = document.documentElement;
     const prev = {
       htmlOverflow: html.style.overflow,
-      bodyOverflow: document.body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      bodyOverflow: body.style.overflow,
     };
 
     html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
 
     return () => {
       html.style.overflow = prev.htmlOverflow;
-      document.body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.left = prev.bodyLeft;
+      body.style.right = prev.bodyRight;
+      body.style.width = prev.bodyWidth;
+      body.style.overflow = prev.bodyOverflow;
       window.scrollTo(0, scrollY);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const overlay = overlayRef.current;
+    const viewport = window.visualViewport;
+    if (!overlay || !viewport) return;
+
+    const sync = () => {
+      overlay.style.setProperty(
+        "--denis-vv-offset",
+        `${Math.max(0, viewport.offsetTop)}px`
+      );
+    };
+
+    sync();
+    viewport.addEventListener("resize", sync);
+    viewport.addEventListener("scroll", sync);
+    return () => {
+      viewport.removeEventListener("resize", sync);
+      viewport.removeEventListener("scroll", sync);
+      overlay.style.removeProperty("--denis-vv-offset");
+    };
+  }, [open, inputFocused]);
 
   const voice = useDenisVoice({
     enabled: voiceEnabled && open,
@@ -1145,7 +1186,10 @@ export function AiConciergeChat({
   const situationHeadline = sceneChrome?.situation?.headline ?? null;
 
   const overlay = (
-    <div className="guest-theme denis-chat-overlay sm:justify-end sm:bg-black/70">
+    <div
+      ref={overlayRef}
+      className="guest-theme denis-chat-overlay sm:justify-end sm:bg-black/70"
+    >
       <DenisPanel
         className={cn(
           "denis-chat-panel relative mx-0 mb-0 h-full min-h-0 max-h-full flex-1 rounded-none sm:mx-3 sm:mb-3 sm:h-auto sm:max-h-[min(88dvh,720px)] sm:w-auto sm:flex-none sm:rounded-2xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:bg-[var(--qr-ember)] before:content-['']"
@@ -1224,7 +1268,7 @@ export function AiConciergeChat({
         </DenisPanelBody>
 
         <DenisPanelFooter
-          className="w-full min-w-0 max-w-full shrink-0 overflow-hidden border-t border-[var(--qr-elevated)] !px-3 !pb-2 py-2 sm:!px-3"
+          className="w-full min-w-0 max-w-full shrink-0 overflow-hidden border-t border-[var(--qr-elevated)] !px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] sm:!px-3"
         >
           <form onSubmit={handleSend} className="w-full min-w-0 max-w-full">
             <div className="denis-chat-input-row flex w-full min-w-0 max-w-full items-center gap-1.5 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-2 py-1.5">
