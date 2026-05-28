@@ -212,6 +212,8 @@ export async function executePlannedSkill(
       detail: {
         orderId: result.data.orderId,
         orderNumber: result.data.orderNumber,
+        awaitingApproval: result.data.awaitingApproval ?? false,
+        sessionOpened: result.data.sessionOpened ?? null,
         idempotentReplay: result.idempotentReplay ?? false,
       },
     };

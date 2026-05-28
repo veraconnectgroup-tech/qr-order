@@ -2,6 +2,8 @@ import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { getAiRedis } from "@/lib/ai/redis";
 import { createOrderFromCart } from "@/lib/orders/create-order";
+import type { CreateOrderSuccess } from "@/lib/orders/create/types";
+import type { OrderSessionOpened } from "@/lib/orders/create/types";
 import { logger } from "@/lib/logger";
 
 export type AiOrderSubmitInput = {
@@ -21,6 +23,7 @@ export type AiOrderSubmitResult =
         orderNumber: number;
         awaitingApproval?: boolean;
         total: number;
+        sessionOpened?: OrderSessionOpened;
       };
     }
   | { error: string; status: number; blockedUntil?: string };
@@ -142,12 +145,11 @@ export async function submitAiOrderDraft(
     };
   }
 
-  const data = result.data as {
-    orderId: string;
-    orderNumber: number;
-    total: number;
-    awaitingApproval?: boolean;
-  };
+  if (!result.data) {
+    return { error: "Order failed.", status: 500 };
+  }
+
+  const data = result.data as CreateOrderSuccess;
 
   await storeIdempotency(input.aiSessionId, input.draft.cartRevision, {
     orderId: data.orderId,
@@ -167,6 +169,7 @@ export async function submitAiOrderDraft(
       orderNumber: data.orderNumber,
       total: data.total,
       awaitingApproval: data.awaitingApproval,
+      sessionOpened: data.sessionOpened,
     },
   };
 }

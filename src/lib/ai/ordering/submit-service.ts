@@ -125,5 +125,6 @@ export async function handleAiOrderSubmit(input: {
     orderNumber: result.data.orderNumber,
     total: result.data.total,
     awaitingApproval: result.data.awaitingApproval ?? false,
+    sessionOpened: result.data.sessionOpened,
   });
 }

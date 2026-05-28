@@ -12,6 +12,10 @@ const withPWA = require("next-pwa")({
   fallbacks: {
     document: "/offline",
   },
+  /** Guest QR menu must always hit network — never serve stale offline shell. */
+  navigateFallbackDenylist: [
+    /^\/(?!admin|dashboard|enterprise|invite|login|offline|platform|signup|waiter|w(?:\/|$))[^/]+\/[^/]+/,
+  ],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/(products|categories)(\/|\?).*/i,
@@ -60,12 +64,7 @@ const withPWA = require("next-pwa")({
     },
     {
       urlPattern: /\/_next\/static\/.*/i,
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "next-static",
-        networkTimeoutSeconds: 3,
-        expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
-      },
+      handler: "NetworkOnly",
     },
   ],
 });

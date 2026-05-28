@@ -41,7 +41,10 @@ const handoffPaymentMethodSchema = z.enum([
 
 export const denisChatBodySchema = aiChatRequestSchema.extend({
   manualCartSnapshot: manualCartSnapshotSchema.optional(),
+  /** Active table session token (distinct from QR `sessionToken`). */
+  tableSessionToken: z.string().trim().min(1).max(128).optional(),
   deviceFingerprint: z.string().trim().min(8).max(128).optional(),
+  deviceToken: z.string().trim().min(1).max(128).optional(),
   /** Guest input surface — voice uses same body as chat with STT transcript (M18). */
   inputSurface: z.enum(["chat", "voice"]).optional(),
   /** M28 — structured chip / UI command (bypasses free-text LLM routing). */

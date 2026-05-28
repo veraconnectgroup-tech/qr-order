@@ -1,5 +1,6 @@
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
+import type { OrderSessionOpened } from "@/lib/orders/create/types";
 
 /** ADR-010 F8-3 — live ACL submit (not dry-run preview). */
 export function isActSubmitLive(config: ConciergeConfig): boolean {
@@ -15,6 +16,8 @@ export type ActSubmitOutcome = {
   attempted: boolean;
   orderNumber?: number;
   orderId?: string;
+  awaitingApproval?: boolean;
+  sessionOpened?: OrderSessionOpened;
   submitError?: string;
   guestBlockedReason?: string;
 };
@@ -48,7 +51,20 @@ export function resolveActSubmitOutcome(
       typeof submit.detail?.orderId === "string"
         ? submit.detail.orderId
         : undefined;
-    return { attempted: true, orderNumber, orderId };
+    const awaitingApproval =
+      submit.detail?.awaitingApproval === true ? true : undefined;
+    const sessionOpened =
+      submit.detail?.sessionOpened &&
+      typeof submit.detail.sessionOpened === "object"
+        ? (submit.detail.sessionOpened as OrderSessionOpened)
+        : undefined;
+    return {
+      attempted: true,
+      orderNumber,
+      orderId,
+      awaitingApproval,
+      sessionOpened,
+    };
   }
 
   const submitError = submit.error ?? "submit_failed";

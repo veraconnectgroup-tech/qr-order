@@ -277,8 +277,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       tableId: parsed.data.tableId,
       locationId: parsed.data.locationId,
       tableToken: parsed.data.sessionToken,
-      sessionToken: parsed.data.sessionToken,
+      sessionToken: parsed.data.tableSessionToken,
       deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
+      deviceToken: parsed.data.deviceToken ?? undefined,
       cartDraft: cartDraftForAct,
       catalog,
       legacySubmitOrder: legacyWantsSubmit,
@@ -498,6 +499,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     submitOrder: guestSubmitOrder,
     creditsRemaining,
     sessionId: data.sessionId,
+    ...(actSubmitOutcome.attempted && actSubmitOutcome.orderId
+      ? {
+          orderSubmit: {
+            orderId: actSubmitOutcome.orderId,
+            orderNumber: actSubmitOutcome.orderNumber,
+            awaitingApproval: actSubmitOutcome.awaitingApproval ?? false,
+            sessionOpened: actSubmitOutcome.sessionOpened,
+          },
+        }
+      : {}),
   };
 
   const responseMeta = {

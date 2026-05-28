@@ -60,6 +60,11 @@ import {
   getOrCreateDeviceFingerprint,
   getStoredDeviceToken,
 } from "@/lib/guest/device-storage";
+import {
+  applyDenisOrderSessionOpened,
+  pollDenisApprovalPin,
+  type DenisOrderSubmitPayload,
+} from "@/lib/guest/apply-denis-order-submit";
 import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
 import { useAiOrderStatus } from "@/hooks/use-ai-order-status";
 import { toastAddedToCart } from "@/lib/cart-toast";
@@ -142,6 +147,34 @@ function mapAiChatError(
 
 function nextId() {
   return crypto.randomUUID();
+}
+
+function parseStoredAssistantContent(content: string): {
+  text: string;
+  recommendations?: ProductRecommendation[];
+} {
+  try {
+    const parsed = JSON.parse(content) as {
+      message?: string;
+      recommendations?: ProductRecommendation[];
+    };
+    if (typeof parsed.message === "string") {
+      return {
+        text: parsed.message,
+        recommendations: parsed.recommendations,
+      };
+    }
+  } catch {
+    // Plain text fallback
+  }
+  return { text: content };
+}
+
+function formatDenisPinMessage(
+  tUI: (key: string, vars?: Record<string, string | number>) => string,
+  tablePin: string
+) {
+  return `${tUI("session.pinRevealTitle")}\n\n${tablePin}\n\n${tUI("session.pinRevealHint")}`;
 }
 
 function DenisRecommendList({
@@ -445,6 +478,8 @@ export function AiConciergeChat({
   const overlayRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const chatInitKeyRef = useRef<string | null>(null);
+  const historyLoadedForRef = useRef<string | null>(null);
+  const approvalPollCleanupRef = useRef<(() => void) | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("allergies");
   const [isTyping, setIsTyping] = useState(false);
@@ -486,65 +521,204 @@ export function AiConciergeChat({
   }, []);
 
   useEffect(() => {
-    if (!open) {
-      chatInitKeyRef.current = null;
-      return;
-    }
+    return () => {
+      approvalPollCleanupRef.current?.();
+      approvalPollCleanupRef.current = null;
+    };
+  }, []);
 
-    const initKey = `${locationId}:${sessionToken ?? token ?? ""}`;
-    if (chatInitKeyRef.current === initKey) return;
-    chatInitKeyRef.current = initKey;
+  const tableName = sceneChrome?.tableName ?? "";
 
-    const hasKnownAllergies = resolvedAllergySelection.length > 0;
+  const handleDenisOrderSubmit = useCallback(
+    (payload: DenisOrderSubmitPayload) => {
+      if (payload.sessionOpened) {
+        applyDenisOrderSessionOpened({
+          slug,
+          tableToken: token,
+          locationId,
+          tableId,
+          tableName,
+          sessionOpened: payload.sessionOpened,
+        });
+      }
 
-    if (hasKnownAllergies) {
-      const sheetIds = resolvedAllergySelection;
-      preferencesRef.current = apiPreferencesFromSheet({
-        allergies: sheetIds,
-        mood: null,
+      const appendPinMessage = (tablePin: string) => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "assistant",
+            content: formatDenisPinMessage(tUI, tablePin),
+          },
+        ]);
+      };
+
+      if (payload.sessionOpened?.tablePin) {
+        appendPinMessage(payload.sessionOpened.tablePin);
+        return;
+      }
+
+      if (!payload.awaitingApproval) return;
+
+      approvalPollCleanupRef.current?.();
+      approvalPollCleanupRef.current = pollDenisApprovalPin({
+        orderId: payload.orderId,
+        tableToken: token,
+        slug,
+        locationId,
+        tableId,
+        tableName,
+        onPin: appendPinMessage,
+        onRejected: (reason) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content:
+                reason ?? tUI("session.approvalRejected"),
+            },
+          ]);
+        },
       });
-      allergySelectionRef.current = sheetIds;
-    } else {
-      preferencesRef.current = { allergies: [], mood: "" };
-      allergySelectionRef.current = [];
-    }
+    },
+    [slug, token, locationId, tableId, tableName, tUI]
+  );
 
-    const initialMessages: ChatMessage[] = [];
-    if (resolvedWelcomeMessage) {
+  useEffect(() => {
+    if (!open || isDemo) return;
+
+    const initKey = `${locationId}:${token}`;
+    if (chatInitKeyRef.current === initKey && messages.length > 0) return;
+
+    let cancelled = false;
+
+    async function bootstrapChat() {
+      const storedSessionId =
+        aiSessionId ??
+        readAiSessionIdForGuest(locationId, token, [sessionToken]);
+
+      if (
+        storedSessionId &&
+        historyLoadedForRef.current === storedSessionId &&
+        messages.length > 0
+      ) {
+        chatInitKeyRef.current = initKey;
+        return;
+      }
+
+      const hasKnownAllergies = resolvedAllergySelection.length > 0;
+      if (hasKnownAllergies) {
+        const sheetIds = resolvedAllergySelection;
+        preferencesRef.current = apiPreferencesFromSheet({
+          allergies: sheetIds,
+          mood: null,
+        });
+        allergySelectionRef.current = sheetIds;
+      } else {
+        preferencesRef.current = { allergies: [], mood: "" };
+        allergySelectionRef.current = [];
+      }
+
+      if (storedSessionId) {
+        const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
+        if (aiContextToken) {
+          try {
+            const params = new URLSearchParams({
+              sessionId: storedSessionId,
+              locationId,
+              tableId,
+              sessionToken: aiContextToken,
+            });
+            const res = await fetch(`/api/ai/session?${params}`);
+            if (res.ok) {
+              const json = (await res.json()) as {
+                data?: {
+                  messages: Array<{
+                    role: "user" | "assistant";
+                    content: string;
+                  }>;
+                  language?: string;
+                };
+              };
+              const history = json.data?.messages ?? [];
+              if (!cancelled && history.length > 0) {
+                const hydrated: ChatMessage[] = history.map((entry) => {
+                  if (entry.role === "assistant") {
+                    const parsed = parseStoredAssistantContent(entry.content);
+                    return {
+                      id: nextId(),
+                      role: "assistant" as const,
+                      content: parsed.text,
+                      recommendations: parsed.recommendations,
+                    };
+                  }
+                  return {
+                    id: nextId(),
+                    role: "user" as const,
+                    content: entry.content,
+                  };
+                });
+                setMessages(hydrated);
+                setPhase("chat");
+                setChatLanguage(json.data?.language ?? defaultLanguage);
+                setAiSessionId(storedSessionId);
+                historyLoadedForRef.current = storedSessionId;
+                chatInitKeyRef.current = initKey;
+                return;
+              }
+            }
+          } catch {
+            // Fall through to greeting for new session UX
+          }
+        }
+      }
+
+      if (cancelled || messages.length > 0) {
+        chatInitKeyRef.current = initKey;
+        return;
+      }
+
+      const initialMessages: ChatMessage[] = [];
+      if (resolvedWelcomeMessage) {
+        initialMessages.push({
+          id: nextId(),
+          role: "assistant",
+          content: resolvedWelcomeMessage,
+        });
+      }
       initialMessages.push({
         id: nextId(),
         role: "assistant",
-        content: resolvedWelcomeMessage,
+        content: tUI("ai.chat.greeting"),
       });
+      setMessages(initialMessages);
+      setPhase("chat");
+      setChatLanguage(defaultLanguage);
+      setAiSessionId(storedSessionId);
+      chatInitKeyRef.current = initKey;
     }
-    initialMessages.push({
-      id: nextId(),
-      role: "assistant",
-      content: tUI("ai.chat.greeting"),
-    });
-    setMessages(initialMessages);
-    setPhase("chat");
-    setChatLanguage(defaultLanguage);
 
     setIsTyping(false);
     setInput("");
     setAddedIds(new Set());
-    setAiSessionId(
-      token
-        ? readAiSessionIdForGuest(locationId, token, [sessionToken])
-        : null
-    );
+    void bootstrapChat();
+    return () => {
+      cancelled = true;
+    };
   }, [
     open,
+    isDemo,
     locationId,
     token,
     sessionToken,
+    tableId,
     tUI,
-    allergyOptions,
-    moodOptions,
     resolvedWelcomeMessage,
     resolvedAllergySelection,
     defaultLanguage,
+    aiSessionId,
+    messages.length,
   ]);
 
   const CHAT_FETCH_TIMEOUT_MS = 45_000;
@@ -686,6 +860,8 @@ export function AiConciergeChat({
             locationId,
             tableId,
             sessionToken: aiContextToken,
+            tableSessionToken: sessionToken ?? undefined,
+            deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
             message,
             language: requestLanguage,
             sessionId,
@@ -719,6 +895,7 @@ export function AiConciergeChat({
           sessionId: string;
           voice?: { speakText: string; ttsRecommended: boolean };
           denis?: DenisGuestApiMeta;
+          orderSubmit?: DenisOrderSubmitPayload;
         };
       };
 
@@ -795,7 +972,9 @@ export function AiConciergeChat({
   );
 
   const trySubmitOrder = useCallback(
-    async (sessionId: string): Promise<string | null> => {
+    async (
+      sessionId: string
+    ): Promise<{ message: string; orderSubmit?: DenisOrderSubmitPayload } | null> => {
       if (orderingDisabled || isDemo) return null;
 
       const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
@@ -819,11 +998,7 @@ export function AiConciergeChat({
 
         const json = (await res.json()) as {
           error?: string;
-          data?: {
-            orderId: string;
-            orderNumber: number;
-            awaitingApproval?: boolean;
-          };
+          data?: DenisOrderSubmitPayload;
         };
 
         if (!res.ok || !json.data) {
@@ -831,26 +1006,48 @@ export function AiConciergeChat({
             json.error === "empty_cart" ||
             json.error === "No items to order."
           ) {
-            return tChat("ai.order.emptyCart");
+            return { message: tChat("ai.order.emptyCart") };
           }
-          return json.error ?? tChat("ai.order.submitFailed");
+          return { message: json.error ?? tChat("ai.order.submitFailed") };
         }
 
         clearCart();
         hapticSuccess();
         recordGuestOrderPlaced();
 
-        if (json.data.awaitingApproval) {
-          return tChat("ai.order.submitApproval", {
-            number: String(json.data.orderNumber),
-          });
+        const orderSubmit: DenisOrderSubmitPayload = {
+          orderId: json.data.orderId,
+          orderNumber: json.data.orderNumber,
+          awaitingApproval: json.data.awaitingApproval,
+          sessionOpened: json.data.sessionOpened,
+        };
+
+        if (orderSubmit.awaitingApproval) {
+          return {
+            message: tChat("ai.order.submitApproval", {
+              number: String(orderSubmit.orderNumber),
+            }),
+            orderSubmit,
+          };
         }
 
-        return tChat("ai.order.submitSuccess", {
-          number: String(json.data.orderNumber),
-        });
+        if (orderSubmit.sessionOpened?.tablePin) {
+          return {
+            message: tChat("ai.order.submitSuccess", {
+              number: String(orderSubmit.orderNumber),
+            }),
+            orderSubmit,
+          };
+        }
+
+        return {
+          message: tChat("ai.order.submitSuccess", {
+            number: String(orderSubmit.orderNumber),
+          }),
+          orderSubmit,
+        };
       } catch {
-        return tChat("ai.order.submitFailed");
+        return { message: tChat("ai.order.submitFailed") };
       }
     },
     [
@@ -920,7 +1117,9 @@ export function AiConciergeChat({
             clearCart();
             hapticSuccess();
             recordGuestOrderPlaced();
-            onOpenChange(false);
+          }
+          if (data.orderSubmit) {
+            handleDenisOrderSubmit(data.orderSubmit);
           }
           setMessages((prev) => [
             ...prev,
@@ -944,14 +1143,17 @@ export function AiConciergeChat({
         }
 
         if (data.submitOrder && data.sessionId) {
-          const submitMessage = await trySubmitOrder(data.sessionId);
+          const submitResult = await trySubmitOrder(data.sessionId);
+          if (submitResult?.orderSubmit) {
+            handleDenisOrderSubmit(submitResult.orderSubmit);
+          }
           setMessages((prev) => [
             ...prev,
             {
               id: nextId(),
               role: "assistant",
               content:
-                submitMessage ??
+                submitResult?.message ??
                 tUI("ai.order.submitFailed"),
             },
           ]);
@@ -1005,6 +1207,7 @@ export function AiConciergeChat({
       tUI,
       voice,
       onSceneRefresh,
+      handleDenisOrderSubmit,
     ]
   );
 

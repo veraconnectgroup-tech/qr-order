@@ -3,21 +3,27 @@ const STALE_CACHE_PREFIXES = [
   "workbox-runtime",
   "next-static",
   "start-url",
+  "pages",
+  "api-cache",
+  "dashboard-pages",
 ];
 
-export async function clearStaleGuestSwCaches(): Promise<void> {
+/** Drop SW caches that pin stale HTML/CSS after deploy (guest QR must never use old bundles). */
+export async function clearStaleGuestSwCaches(options?: {
+  aggressive?: boolean;
+}): Promise<void> {
   if (typeof window === "undefined" || !("caches" in window)) return;
 
   const keys = await caches.keys();
-  await Promise.all(
-    keys
-      .filter((key) =>
+  const targets = options?.aggressive
+    ? keys
+    : keys.filter((key) =>
         STALE_CACHE_PREFIXES.some(
           (prefix) => key === prefix || key.startsWith(`${prefix}-`)
         )
-      )
-      .map((key) => caches.delete(key))
-  );
+      );
+
+  await Promise.all(targets.map((key) => caches.delete(key)));
 }
 
 export async function unregisterGuestServiceWorkers(): Promise<void> {

@@ -56,6 +56,34 @@ describe("F8-3 act submit outcome", () => {
     expect(resolveActSubmitOutcome(phase)).toEqual({
       attempted: true,
       orderNumber: 42,
+      orderId: "ord-1",
+    });
+  });
+
+  it("resolveActSubmitOutcome forwards approval and sessionOpened", () => {
+    const phase: ActPhaseResult = {
+      enabled: true,
+      dryRun: false,
+      results: [
+        {
+          skillId: "order.submit",
+          riskClass: "R5",
+          dryRun: false,
+          ok: true,
+          detail: {
+            orderNumber: 7,
+            orderId: "ord-7",
+            awaitingApproval: true,
+            sessionOpened: null,
+          },
+        },
+      ],
+    };
+    expect(resolveActSubmitOutcome(phase)).toEqual({
+      attempted: true,
+      orderNumber: 7,
+      orderId: "ord-7",
+      awaitingApproval: true,
     });
   });
 

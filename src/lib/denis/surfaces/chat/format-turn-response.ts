@@ -11,6 +11,17 @@ export type LegacyChatSuccessData = {
   submitOrder?: boolean;
   creditsRemaining?: number;
   sessionId?: string;
+  orderSubmit?: {
+    orderId: string;
+    orderNumber?: number;
+    awaitingApproval?: boolean;
+    sessionOpened?: {
+      sessionId: string;
+      sessionToken: string;
+      deviceToken: string;
+      tablePin?: string;
+    };
+  };
 };
 
 /** L4 — chat API envelope (no business logic). */

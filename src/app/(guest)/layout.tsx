@@ -8,6 +8,12 @@ export default function GuestLayout({
 }) {
   return (
     <div className="guest-theme min-h-dvh overflow-x-hidden bg-background text-foreground">
+      {/* Fallback if a stale SW blocked Tailwind — keeps menu readable until reload */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `.guest-theme{background:#0a0a0a;color:#fafafa;font-family:var(--font-sans,system-ui,sans-serif)}`,
+        }}
+      />
       <GuestPwaTracker />
       {children}
       <GuestPwaInstallSheet />

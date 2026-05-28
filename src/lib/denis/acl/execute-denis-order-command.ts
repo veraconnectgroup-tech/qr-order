@@ -6,6 +6,8 @@ import {
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { getAiRedis } from "@/lib/ai/redis";
 import { createOrderFromCart } from "@/lib/orders/create-order";
+import type { CreateOrderSuccess } from "@/lib/orders/create/types";
+import type { OrderSessionOpened } from "@/lib/orders/create/types";
 import { logger } from "@/lib/logger";
 
 export type DenisOrderAck = {
@@ -13,6 +15,7 @@ export type DenisOrderAck = {
   orderNumber: number;
   total: number;
   awaitingApproval?: boolean;
+  sessionOpened?: OrderSessionOpened;
 };
 
 export type ExecuteDenisOrderCommandResult =
@@ -78,12 +81,17 @@ export async function executeDenisOrderCommand(input: {
     };
   }
 
-  const data = result.data as DenisOrderAck & { awaitingApproval?: boolean };
+  if (!result.data) {
+    return { ok: false, error: "Order failed.", status: 500 };
+  }
+
+  const data = result.data as CreateOrderSuccess;
   const ack: DenisOrderAck = {
     orderId: data.orderId,
     orderNumber: data.orderNumber,
     total: data.total,
     awaitingApproval: data.awaitingApproval,
+    sessionOpened: data.sessionOpened,
   };
 
   await writeIdempotency(idemKey, ack);
