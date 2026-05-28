@@ -21,8 +21,9 @@ const STATUS_KEYS: Record<string, string> = {
 };
 
 /**
- * Single Denis surface on guest menu — fixed bottom dock.
- * Menu stays primary; desk sheet opens only on explicit tap.
+ * Denis surface on guest pages.
+ * - bottom: fixed above cart bar (menu)
+ * - sticky-top: sticks under safe area (order tracking — avoids floating mid-screen)
  */
 export function DenisGuestDock({
   scene,
@@ -31,6 +32,7 @@ export function DenisGuestDock({
   tableName,
   venueName,
   loading = false,
+  placement = "bottom",
   onOpenDesk,
   onChipPress,
   onInlineAdd,
@@ -42,6 +44,7 @@ export function DenisGuestDock({
   tableName?: string;
   venueName?: string;
   loading?: boolean;
+  placement?: "bottom" | "sticky-top";
   onOpenDesk: () => void;
   onChipPress: (chipId: string, label: string) => void;
   onInlineAdd: (productId: string) => void;
@@ -116,13 +119,18 @@ export function DenisGuestDock({
   return (
     <div
       className={cn(
-        "pointer-events-none fixed inset-x-0 z-40 px-3",
-        "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]"
+        "pointer-events-none z-40 px-3",
+        placement === "bottom"
+          ? "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]"
+          : "sticky top-[max(0px,env(safe-area-inset-top))] -mx-1 mb-4"
       )}
     >
       <section
         className={cn(
-          "denis-scene-shell pointer-events-auto overflow-hidden rounded-2xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]/95 shadow-[0_-8px_40px_rgba(0,0,0,0.45)] backdrop-blur-md",
+          "denis-scene-shell pointer-events-auto overflow-hidden rounded-2xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]/95 backdrop-blur-md",
+          placement === "bottom"
+            ? "shadow-[0_-8px_40px_rgba(0,0,0,0.45)]"
+            : "shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
           (busy || scene?.chrome.markState === "think" || loading) &&
             "denis-scene-shell--think",
           situation?.hasReadyOrder && "ring-1 ring-[var(--qr-ember)]/40"

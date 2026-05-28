@@ -348,13 +348,7 @@ export function OrderStatusTracker({
   }
 
   return (
-    <div
-      className={
-        aiConciergeEnabled
-          ? "min-h-dvh px-4 pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-4"
-          : "min-h-dvh px-4 pb-safe pt-4"
-      }
-    >
+    <div className="min-h-dvh px-4 pb-safe pt-4">
       {showPlacedOverlay && (
         <OrderPlacedOverlay
           orderNumber={order.order_number}
@@ -369,6 +363,24 @@ export function OrderStatusTracker({
       <div className="mb-3 flex justify-end">
         <LanguageSelector compact />
       </div>
+
+      <GuestDenisLayer
+        enabled={aiConciergeEnabled}
+        slug={slug}
+        token={token}
+        locationId={locationId}
+        tableId={tableId}
+        sessionToken={sessionToken}
+        currency={currency}
+        taxPercent={taxPercent}
+        orderingDisabled={isClosed}
+        dockPlacement="sticky-top"
+        fastPoll
+        voiceEnabled={voiceEnabled}
+        voiceTtsEnabled={voiceTtsEnabled}
+        sceneRefreshBump={order.status === "ready" ? 2 : stepIdx}
+      />
+
       {/* Status hero */}
       <section className="pb-5 text-center" aria-live="polite" aria-atomic="true">
         {isRejected ? (
@@ -636,22 +648,6 @@ export function OrderStatusTracker({
           </Button>
         )}
       </section>
-
-      <GuestDenisLayer
-        enabled={aiConciergeEnabled}
-        slug={slug}
-        token={token}
-        locationId={locationId}
-        tableId={tableId}
-        sessionToken={sessionToken}
-        currency={currency}
-        taxPercent={taxPercent}
-        orderingDisabled={isClosed}
-        fastPoll
-        voiceEnabled={voiceEnabled}
-        voiceTtsEnabled={voiceTtsEnabled}
-        sceneRefreshBump={order.status === "ready" ? 2 : stepIdx}
-      />
     </div>
   );
 }

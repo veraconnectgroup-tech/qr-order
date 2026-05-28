@@ -48,6 +48,7 @@ export function GuestDenisLayer({
   voiceEnabled = false,
   voiceTtsEnabled = true,
   sceneRefreshBump = 0,
+  dockPlacement = "bottom",
 }: {
   enabled: boolean;
   slug: string;
@@ -63,6 +64,7 @@ export function GuestDenisLayer({
   voiceTtsEnabled?: boolean;
   /** Increment to force scene reload (e.g. order status change). */
   sceneRefreshBump?: number;
+  dockPlacement?: "bottom" | "sticky-top";
 }) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const language = isEnglish ? "en" : menuLocale;
@@ -221,6 +223,7 @@ export function GuestDenisLayer({
         <DenisGuestDock
           scene={scene}
           currency={currency}
+          placement={dockPlacement}
           subtitle={scene.chrome.situation?.headline ?? undefined}
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}
