@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { TRACE_HEADER, getTraceId } from "@/lib/resilience/trace-id";
+import { isGuestQrPath } from "@/lib/pwa/guest-route";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -48,8 +49,14 @@ function applyCorsHeaders(response: NextResponse) {
   return response;
 }
 
-function withResponseHeaders(response: NextResponse, cors: boolean) {
+function withResponseHeaders(response: NextResponse, cors: boolean, pathname?: string) {
   if (cors) applyCorsHeaders(response);
+  if (pathname && isGuestQrPath(pathname)) {
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, max-age=0"
+    );
+  }
   return applySecurityHeaders(response);
 }
 
@@ -110,7 +117,7 @@ export async function middleware(request: NextRequest) {
 
   if (!needsAuth) {
     const response = withTraceHeaders(request);
-    return withResponseHeaders(response, false);
+    return withResponseHeaders(response, false, pathname);
   }
 
   let supabaseResponse = withTraceHeaders(request);

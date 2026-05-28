@@ -1,3 +1,38 @@
+const GUEST_RESERVED_SEGMENTS = new Set([
+  "admin",
+  "dashboard",
+  "enterprise",
+  "invite",
+  "login",
+  "offline",
+  "platform",
+  "signup",
+  "waiter",
+  "w",
+]);
+
+function isGuestQrPath(pathname) {
+  const match = pathname.match(/^\/([^/]+)\/([^/]+)/);
+  if (!match) return false;
+  return !GUEST_RESERVED_SEGMENTS.has(match[1]);
+}
+
+/** Guest QR must always hit network — never serve cached HTML/CSS from an old deploy. */
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (!isGuestQrPath(url.pathname)) return;
+
+  event.respondWith(
+    fetch(event.request).catch(async () => {
+      const offline = await caches.match("/offline");
+      return offline ?? Response.error();
+    })
+  );
+});
+
 function resolveNotificationUrl(rawUrl) {
   const fallback = "/waiter";
   const path = rawUrl || fallback;

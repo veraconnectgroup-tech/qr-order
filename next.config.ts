@@ -5,7 +5,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const withPWA = require("next-pwa")({
   dest: "public",
-  register: true,
+  /** Staff routes register manually via PwaRegister — avoid SW on guest QR paths. */
+  register: false,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
   importScripts: ["/custom-sw.js"],

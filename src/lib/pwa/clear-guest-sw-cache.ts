@@ -6,6 +6,7 @@ const STALE_CACHE_PREFIXES = [
   "pages",
   "api-cache",
   "dashboard-pages",
+  "menu-data",
 ];
 
 /** Drop SW caches that pin stale HTML/CSS after deploy (guest QR must never use old bundles). */
