@@ -62,6 +62,13 @@ export function deriveGoalStack(ctx: GoalDerivationContext): GoalStack {
     goals.push({ type: "HANDOFF", kind: "waiter", priority: 96 });
   }
   if (ctx.lastIntent === "HANDOFF_PAY") {
+    if (!ctx.handoffPaymentMethod) {
+      goals.push({
+        type: "CLARIFY_SLOT",
+        slot: { kind: "payment_method" },
+        priority: 80,
+      });
+    }
     goals.push({ type: "HANDOFF", kind: "payment", priority: 96 });
   }
 

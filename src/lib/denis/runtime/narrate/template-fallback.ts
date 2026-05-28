@@ -26,6 +26,10 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
     return committed.blockedReason;
   }
 
+  if (committed.handoffMessage) {
+    return committed.handoffMessage;
+  }
+
   if (committed.orderNumber != null) {
     return `Narudžbina #${committed.orderNumber} je poslata.`;
   }
@@ -53,7 +57,11 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
   }
 
   if (goal === "HANDOFF") {
-    return "Pozivam konobara — samo trenutak.";
+    return "Na putu sam — samo trenutak.";
+  }
+
+  if (goal === "CLARIFY_SLOT") {
+    return "Kako plaćate — kes, kartica na stolu, ili online?";
   }
 
   return `Ja sam ${persona.name}. Recite šta želite, pa ću dodati u narudžbinu.`;

@@ -9,7 +9,12 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     role: "Head waiter",
     tone: "warm_short",
     greetingStyle: "offer_drink_or_food",
-    forbiddenPhrases: [],
+    forbiddenPhrases: [
+      "samo digitalni konobar",
+      "digital waiter",
+      "ne mogu da pozovem",
+      "cannot call",
+    ],
     emoji: false,
     maxWordsPerReply: 45,
   },
@@ -79,6 +84,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
   handoff: {
     waiterCall: true,
     paymentHint: true,
+    liveExecution: true,
     phrases: [],
   },
   experiments: {

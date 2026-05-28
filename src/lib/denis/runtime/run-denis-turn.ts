@@ -35,6 +35,10 @@ import {
   shouldRunSlotExtract,
 } from "@/lib/denis/runtime/perceive";
 import { executeActPhase, isActSubmitLive, resolveActSubmitOutcome } from "@/lib/denis/runtime/act";
+import {
+  handoffActEnabled,
+  resolveActHandoffOutcome,
+} from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
 import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import {
   elapsedMs,
@@ -63,6 +67,23 @@ import { resolveActiveTableSessionId } from "@/lib/denis/venue/party";
 import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
 import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
 import type { AiRecommendation } from "@/lib/ai/types";
+
+function dedupeHandoffQuickReplies(
+  primary: string[],
+  handoff?: string[]
+): string[] {
+  if (!handoff?.length) return primary;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const chip of [...handoff, ...primary]) {
+    const trimmed = chip.trim();
+    const key = trimmed.toLowerCase();
+    if (!trimmed || seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out.slice(0, 6);
+}
 
 function isSupportedTurnChannel(
   channel: DenisTurnRunInput["channel"]
@@ -143,6 +164,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     peerManualCartDraft: ctx.peerManualCartDraft,
     foodUpsellAsked: ctx.foodUpsellAsked,
     skipUpsell: ctx.opsEffects?.skipUpsell ?? false,
+    structuredIntent: parsed.data.structuredIntent,
+    handoffPaymentMethod: parsed.data.handoffPaymentMethod,
   });
 
   const slotExtract = shouldRunSlotExtract(ctx.config, reflexTurn)
@@ -230,11 +253,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     dryRun: true,
     results: [],
   };
-  if (ctx.config.ordering.actLayerEnabled) {
+  const shouldRunAct =
+    ctx.config.ordering.actLayerEnabled ||
+    (handoffActEnabled(ctx.config) && reflexTurn.handoffCommand !== null);
+
+  if (shouldRunAct) {
     let catalog;
     const legacyWantsSubmit = Boolean(data.submitOrder);
-    const needsCatalog =
-      actSubmitLive && legacyWantsSubmit;
+    const needsCatalog = actSubmitLive && legacyWantsSubmit;
     if (needsCatalog) {
       try {
         catalog = await getCachedMenuForLocation(parsed.data.locationId);
@@ -248,6 +274,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       config: ctx.config,
       reflexTurn,
       aiSessionId: data.sessionId,
+      tableId: parsed.data.tableId,
+      locationId: parsed.data.locationId,
       tableToken: parsed.data.sessionToken,
       sessionToken: parsed.data.sessionToken,
       deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
@@ -259,6 +287,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   const actSubmitOutcome = resolveActSubmitOutcome(actPhase);
+  const actHandoffOutcome = resolveActHandoffOutcome(
+    actPhase,
+    parsed.data.language
+  );
 
   const rollout = resolveEffectiveRollout(ctx.config);
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
@@ -276,6 +308,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     recommendations: data.recommendations,
     orderNumber: actSubmitOutcome.orderNumber ?? null,
     blockedReason: actSubmitOutcome.guestBlockedReason ?? null,
+    handoffMessage: actHandoffOutcome.guestMessage ?? null,
     venueOps: ctx.venueOps,
     opsEffects: ctx.opsEffects,
   });
@@ -291,17 +324,22 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     resolvedNarration.draftMessage,
     narrationFacts
   );
-  const quickReplies = resolveTurnQuickReplies({
-    reflexTurn,
-    facts: narrationFacts,
-    narration,
-    legacyQuickReplies: data.quickReplies,
-    language: parsed.data.language,
-  });
+  const quickReplies = dedupeHandoffQuickReplies(
+    resolveTurnQuickReplies({
+      reflexTurn,
+      facts: narrationFacts,
+      narration,
+      legacyQuickReplies: data.quickReplies,
+      language: parsed.data.language,
+    }),
+    actHandoffOutcome.quickReplies
+  );
   const guestMessage =
-    guestUsesLegacy && !resolvedNarration.usedDenisNarrator
-      ? data.message
-      : narration.message;
+    actHandoffOutcome.overrideLegacy && actHandoffOutcome.guestMessage
+      ? actHandoffOutcome.guestMessage
+      : guestUsesLegacy && !resolvedNarration.usedDenisNarrator
+        ? data.message
+        : narration.message;
   timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {

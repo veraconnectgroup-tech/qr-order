@@ -7,8 +7,15 @@ import {
   type AiSheetMoodId,
   type AiSheetSelections,
 } from "@/lib/ai/guest-sheet-preferences";
-import { resolveGuestAiContextToken, readAiSessionIdForGuest, writeAiSessionIdForGuest } from "@/lib/ai/guest-ai-token";
+import {
+  resolveGuestAiContextToken,
+  readAiSessionIdForGuest,
+  writeAiSessionIdForGuest,
+} from "@/lib/ai/guest-ai-token";
+import { chipIdToHandoff } from "@/lib/denis/commands/perceive-table-guest-command";
+import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
+import type { SelectablePaymentMethod } from "@/lib/payment-methods";
 
 export type GuestDenisTurnResult = {
   sessionId: string | null;
@@ -38,6 +45,18 @@ export function parseSceneChipSelections(
   return null;
 }
 
+/** Map scene chip to Denis structured handoff intent (M28). */
+export function parseSceneHandoffChip(
+  chipId: string,
+  label: string
+): {
+  structuredIntent?: GuestIntent;
+  handoffPaymentMethod?: SelectablePaymentMethod;
+} | null {
+  return chipIdToHandoff({ chipId, label });
+}
+
+/** @deprecated Use runGuestDenisSceneTurn with structuredIntent — kept for tests. */
 export async function postGuestWaiterCall(input: {
   tableToken: string;
   sessionToken: string;
@@ -68,6 +87,8 @@ export async function runGuestDenisSceneTurn(input: {
   browsingContext?: string;
   selections?: AiSheetSelections;
   allowOrdering?: boolean;
+  structuredIntent?: GuestIntent;
+  handoffPaymentMethod?: SelectablePaymentMethod;
 }): Promise<GuestDenisTurnResult> {
   const aiContextToken = resolveGuestAiContextToken(
     input.tableToken,
@@ -107,6 +128,8 @@ export async function runGuestDenisSceneTurn(input: {
       includeOrderContext: true,
       allowOrdering: input.allowOrdering ?? true,
       browsingContext: input.browsingContext,
+      structuredIntent: input.structuredIntent,
+      handoffPaymentMethod: input.handoffPaymentMethod,
     }),
   });
 

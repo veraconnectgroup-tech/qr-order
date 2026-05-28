@@ -17,6 +17,7 @@ export const NarrationCommittedSchema = z.object({
   staffHint: z.string().trim().max(300).optional(),
   opsEmpathyNote: z.string().trim().max(300).optional(),
   returnGuestWelcome: z.string().trim().max(400).optional(),
+  handoffMessage: z.string().trim().max(400).optional(),
 });
 
 export const NarrationFactsSchema = z.object({

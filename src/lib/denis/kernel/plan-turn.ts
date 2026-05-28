@@ -30,6 +30,7 @@ export type PlanTurnInput = {
   hasOpenOrders?: boolean;
   submitOutcome?: "SUCCESS" | "FAIL" | null;
   skipUpsell?: boolean;
+  handoffPaymentMethod?: string | null;
 };
 
 export type PlannedSkill = SkillDefinition;
@@ -97,6 +98,7 @@ export function planTurn(input: PlanTurnInput): PlanTurnResult {
     foodUpsellAsked: input.foodUpsellAsked ?? false,
     hasOpenOrders: input.hasOpenOrders ?? false,
     lastIntent: input.intent,
+    handoffPaymentMethod: input.handoffPaymentMethod ?? null,
     skipUpsell: input.skipUpsell ?? false,
   });
 

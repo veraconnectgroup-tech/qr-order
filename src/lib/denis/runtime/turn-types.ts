@@ -19,11 +19,34 @@ export type DenisChannel = "chat" | "voice" | "proactive" | "status_poll";
 
 export { manualCartSnapshotSchema };
 
+const guestIntentSchema = z.enum([
+  "ORDER",
+  "CLARIFY_REPLY",
+  "CONFIRM",
+  "DECLINE",
+  "DONE",
+  "BROWSE",
+  "STATUS",
+  "HANDOFF_WAITER",
+  "HANDOFF_PAY",
+  "SMALLTALK",
+  "UNKNOWN",
+]);
+
+const handoffPaymentMethodSchema = z.enum([
+  "online",
+  "at_bar",
+  "card_at_table",
+]);
+
 export const denisChatBodySchema = aiChatRequestSchema.extend({
   manualCartSnapshot: manualCartSnapshotSchema.optional(),
   deviceFingerprint: z.string().trim().min(8).max(128).optional(),
   /** Guest input surface — voice uses same body as chat with STT transcript (M18). */
   inputSurface: z.enum(["chat", "voice"]).optional(),
+  /** M28 — structured chip / UI command (bypasses free-text LLM routing). */
+  structuredIntent: guestIntentSchema.optional(),
+  handoffPaymentMethod: handoffPaymentMethodSchema.optional(),
 });
 
 export type DenisChatBody = z.infer<typeof denisChatBodySchema>;

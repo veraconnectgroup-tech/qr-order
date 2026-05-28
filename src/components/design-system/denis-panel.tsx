@@ -59,16 +59,17 @@ export const DenisPanelBody = forwardRef<
   );
 });
 
-export function DenisPanelFooter({
-  className,
-  children,
-}: {
-  className?: string;
-  children: React.ReactNode;
-}) {
+export const DenisPanelFooter = forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & { className?: string; children: React.ReactNode }
+>(function DenisPanelFooter({ className, children, ...props }, ref) {
   return (
-    <div className={cn("shrink-0 px-5 pt-2 pb-safe sm:px-6", className)}>
+    <div
+      ref={ref}
+      className={cn("shrink-0 px-5 pt-2 pb-safe sm:px-6", className)}
+      {...props}
+    >
       {children}
     </div>
   );
-}
+});

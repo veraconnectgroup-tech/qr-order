@@ -48,6 +48,7 @@ export type BuildNarrationFactsInput = {
   orderNumber?: number | null;
   statusSummary?: string | null;
   blockedReason?: string | null;
+  handoffMessage?: string | null;
   venueOps?: VenueOpsBeliefs;
   opsEffects?: OpsPlannerEffects;
 };
@@ -89,6 +90,7 @@ export function buildNarrationFacts(
   if (summary) committed.cartSummary = summary;
   if (addedItems.length > 0) committed.addedItems = addedItems;
   if (input.blockedReason) committed.blockedReason = input.blockedReason;
+  if (input.handoffMessage) committed.handoffMessage = input.handoffMessage;
   if (input.orderNumber != null) committed.orderNumber = input.orderNumber;
   if (input.statusSummary) committed.statusSummary = input.statusSummary;
   if (input.reflexTurn.conflict?.guestPrompt) {

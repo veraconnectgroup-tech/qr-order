@@ -443,6 +443,7 @@ export function AiConciergeChat({
   const clearCart = useCart((s) => s.clearCart);
   const scrollRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
   const chatInitKeyRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("allergies");
@@ -608,17 +609,30 @@ export function AiConciergeChat({
         "--denis-vv-offset",
         `${Math.max(0, viewport.offsetTop)}px`
       );
+      overlay.style.setProperty("--denis-vv-height", `${viewport.height}px`);
     };
 
     sync();
     viewport.addEventListener("resize", sync);
     viewport.addEventListener("scroll", sync);
+    window.addEventListener("orientationchange", sync);
     return () => {
       viewport.removeEventListener("resize", sync);
       viewport.removeEventListener("scroll", sync);
+      window.removeEventListener("orientationchange", sync);
       overlay.style.removeProperty("--denis-vv-offset");
+      overlay.style.removeProperty("--denis-vv-height");
     };
   }, [open, inputFocused]);
+
+  useEffect(() => {
+    if (!open || !inputFocused) return;
+    const timer = window.setTimeout(() => {
+      footerRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+      scrollToBottom();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [open, inputFocused, scrollToBottom]);
 
   const voice = useDenisVoice({
     enabled: voiceEnabled && open,
@@ -1268,6 +1282,7 @@ export function AiConciergeChat({
         </DenisPanelBody>
 
         <DenisPanelFooter
+          ref={footerRef}
           className="w-full min-w-0 max-w-full shrink-0 overflow-hidden border-t border-[var(--qr-elevated)] !px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] sm:!px-3"
         >
           <form onSubmit={handleSend} className="w-full min-w-0 max-w-full">

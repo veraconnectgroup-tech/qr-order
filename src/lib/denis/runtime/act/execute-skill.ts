@@ -1,3 +1,6 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
+import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { executeDenisOrderCommand } from "@/lib/denis/acl/execute-denis-order-command";
 import { buildDenisOrderCommand } from "@/lib/denis/runtime/act/build-order-command";
 import type { ActSkillResult } from "@/lib/denis/runtime/act/act-types";
@@ -6,19 +9,24 @@ import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
+import type { SelectablePaymentMethod } from "@/lib/payment-methods";
 
 export type ExecuteSkillContext = {
   config: ConciergeConfig;
   dryRun: boolean;
   allowSubmit: boolean;
+  liveHandoff: boolean;
   skillId: DenisSkillId;
   aiSessionId?: string;
+  tableId?: string;
+  locationId?: string;
   tableToken?: string;
   sessionToken?: string;
   deviceFingerprint?: string;
   deviceToken?: string;
   cartDraft?: DenisCartDraft;
   catalog?: AiCatalog;
+  handoffPaymentMethod?: SelectablePaymentMethod | null;
 };
 
 export async function executePlannedSkill(
@@ -26,6 +34,115 @@ export async function executePlannedSkill(
 ): Promise<ActSkillResult> {
   const skill = resolveSkill(ctx.skillId);
   const riskClass = skill?.riskClass ?? "R0";
+
+  if (ctx.skillId === "handoff.waiter") {
+    if (!ctx.liveHandoff || !ctx.config.handoff.waiterCall) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: true,
+        ok: true,
+        detail: { previewOnly: true, reason: "handoff_disabled" },
+      };
+    }
+
+    if (!ctx.tableId || !ctx.locationId || !ctx.sessionToken) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: "missing_handoff_context",
+      };
+    }
+
+    const admin = createAdminClient();
+    const result = await executeDenisWaiterHandoff(admin, {
+      tableId: ctx.tableId,
+      locationId: ctx.locationId,
+      sessionToken: ctx.sessionToken,
+    });
+
+    if (!result.ok) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: result.error,
+      };
+    }
+
+    return {
+      skillId: ctx.skillId,
+      riskClass,
+      dryRun: false,
+      ok: true,
+      detail: { tableName: result.tableName },
+    };
+  }
+
+  if (ctx.skillId === "handoff.payment") {
+    if (!ctx.liveHandoff || !ctx.config.handoff.paymentHint) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: true,
+        ok: true,
+        detail: { previewOnly: true, reason: "handoff_disabled" },
+      };
+    }
+
+    if (!ctx.tableId || !ctx.locationId || !ctx.sessionToken) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: "missing_handoff_context",
+      };
+    }
+
+    const admin = createAdminClient();
+    const result = await executeDenisPaymentHandoff(admin, {
+      tableId: ctx.tableId,
+      locationId: ctx.locationId,
+      sessionToken: ctx.sessionToken,
+      paymentMethod: ctx.handoffPaymentMethod ?? null,
+    });
+
+    if (!result.ok) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: result.error,
+      };
+    }
+
+    if (result.needsMethod) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: true,
+        detail: { needsMethod: true },
+      };
+    }
+
+    return {
+      skillId: ctx.skillId,
+      riskClass,
+      dryRun: false,
+      ok: true,
+      detail: {
+        needsMethod: false,
+        paymentMethod: result.paymentMethod,
+        openPaymentSheet: result.openPaymentSheet ?? false,
+      },
+    };
+  }
 
   if (ctx.skillId === "order.submit") {
     if (!ctx.aiSessionId || !ctx.tableToken || !ctx.deviceFingerprint) {

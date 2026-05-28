@@ -4,11 +4,14 @@ import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { executePlannedSkill } from "@/lib/denis/runtime/act/execute-skill";
 import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
+import { handoffActEnabled } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
 
 export type ActPhaseInput = {
   config: ConciergeConfig;
   reflexTurn: ReflexTurnResult;
   aiSessionId?: string;
+  tableId?: string;
+  locationId?: string;
   tableToken?: string;
   sessionToken?: string;
   deviceFingerprint?: string;
@@ -18,11 +21,21 @@ export type ActPhaseInput = {
   legacySubmitOrder?: boolean;
 };
 
-/** M23 — run planned skills; default dry-run (timeline only). */
+function plannedHandoffSkills(reflexTurn: ReflexTurnResult): boolean {
+  return reflexTurn.plan.skills.some((skill) =>
+    skill.id.startsWith("handoff.")
+  );
+}
+
+/** M23 + M28 — run planned skills; handoffs live by default. */
 export async function executeActPhase(
   input: ActPhaseInput
 ): Promise<ActPhaseResult> {
-  if (!input.config.ordering.actLayerEnabled) {
+  const liveHandoff = handoffActEnabled(input.config);
+  const hasHandoff = plannedHandoffSkills(input.reflexTurn);
+  const orderActEnabled = input.config.ordering.actLayerEnabled;
+
+  if (!orderActEnabled && !(liveHandoff && hasHandoff)) {
     return { enabled: false, dryRun: true, results: [] };
   }
 
@@ -35,25 +48,37 @@ export async function executeActPhase(
   const results = [];
 
   for (const planned of input.reflexTurn.plan.skills) {
+    const isHandoff = planned.id.startsWith("handoff.");
+    const skillDryRun = isHandoff
+      ? !liveHandoff
+      : dryRun || planned.id !== "order.submit";
+
     const result = await executePlannedSkill({
       config: input.config,
-      dryRun: dryRun || planned.id !== "order.submit",
+      dryRun: skillDryRun,
       allowSubmit,
+      liveHandoff,
       skillId: planned.id,
       aiSessionId: input.aiSessionId,
+      tableId: input.tableId,
+      locationId: input.locationId,
       tableToken: input.tableToken,
       sessionToken: input.sessionToken,
       deviceFingerprint: input.deviceFingerprint,
       deviceToken: input.deviceToken,
       cartDraft: input.cartDraft,
       catalog: input.catalog,
+      handoffPaymentMethod: input.reflexTurn.handoffPaymentMethod,
     });
     results.push(result);
   }
 
   return {
     enabled: true,
-    dryRun: dryRun && !allowSubmit,
+    dryRun:
+      !allowSubmit &&
+      dryRun &&
+      !results.some((row) => row.skillId.startsWith("handoff.") && !row.dryRun),
     results,
   };
 }

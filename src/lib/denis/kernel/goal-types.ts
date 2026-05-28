@@ -1,7 +1,7 @@
 export type UpsellCategory = "food" | "dessert" | "pairing";
 
 export type PendingSlot = {
-  kind: "serve_size" | "modifier" | "product";
+  kind: "serve_size" | "modifier" | "product" | "payment_method";
   productId?: string;
 };
 
@@ -24,5 +24,6 @@ export type GoalDerivationContext = {
   foodUpsellAsked: boolean;
   hasOpenOrders: boolean;
   lastIntent: string | null;
+  handoffPaymentMethod?: string | null;
   skipUpsell?: boolean;
 };

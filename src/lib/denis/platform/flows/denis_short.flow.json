@@ -7,7 +7,10 @@
       "on": {
         "ORDER": "collect",
         "BROWSE": "browse",
-        "SMALLTALK": "welcome"
+        "SMALLTALK": "welcome",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay",
+        "STATUS": "status"
       },
       "narrate": "template:welcome"
     },
@@ -16,7 +19,9 @@
       "on": {
         "DRAFT_DRINKS_ONLY": "upsell_food",
         "DRAFT_HAS_FOOD": "collect",
-        "DONE": "recap"
+        "DONE": "recap",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
       }
     },
     "upsell_food": {
@@ -25,14 +30,18 @@
       "on": {
         "DECLINE": "recap",
         "ORDER": "collect",
-        "DONE": "recap"
+        "DONE": "recap",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
       }
     },
     "recap": {
       "skills": ["cart.recap"],
       "on": {
         "CONFIRM": "submit",
-        "ORDER": "collect"
+        "ORDER": "collect",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
       }
     },
     "submit": {
@@ -45,15 +54,39 @@
     "post_submit": {
       "on": {
         "ORDER": "collect",
-        "STATUS": "status"
+        "STATUS": "status",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
       },
       "narrate": "template:order_sent"
     },
     "browse": {
-      "skills": ["browse.search"]
+      "skills": ["browse.search"],
+      "on": {
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
+      }
     },
     "status": {
-      "skills": ["status.table"]
+      "skills": ["status.table"],
+      "on": {
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
+      }
+    },
+    "handoff_waiter": {
+      "skills": ["handoff.waiter"],
+      "on": {
+        "ORDER": "collect",
+        "STATUS": "status"
+      }
+    },
+    "handoff_pay": {
+      "skills": ["handoff.payment"],
+      "on": {
+        "ORDER": "collect",
+        "STATUS": "status"
+      }
     }
   }
 }

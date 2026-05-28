@@ -44,7 +44,7 @@ import {
 } from "@/lib/ai/guest-sheet-preferences";
 import {
   parseSceneChipSelections,
-  postGuestWaiterCall,
+  parseSceneHandoffChip,
   runGuestDenisSceneTurn,
 } from "@/lib/guest/denis-scene-turn";
 import {
@@ -998,9 +998,18 @@ export function MenuView({
         }
         void (async () => {
           try {
-            await postGuestWaiterCall({ tableToken: token, sessionToken });
+            const result = await runGuestDenisSceneTurn({
+              locationId,
+              tableId,
+              tableToken: token,
+              sessionToken,
+              message: tUI("scene.situation.chipWaiter"),
+              language,
+              structuredIntent: "HANDOFF_WAITER",
+              allowOrdering: canPlaceOrders,
+            });
             toast.success(tUI("waiter.notified"), {
-              description: tUI("waiter.notifiedBody"),
+              description: result.message || tUI("waiter.notifiedBody"),
             });
             setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();
@@ -1008,6 +1017,36 @@ export function MenuView({
             toast.error(tUI("waiter.error"), {
               description: tUI("waiter.errorHint"),
             });
+          }
+        })();
+        return;
+      }
+
+      const handoffChip = parseSceneHandoffChip(chipId, label);
+      if (handoffChip?.structuredIntent) {
+        if (!sessionToken) {
+          toast.error(tUI("waiter.sessionError"), {
+            description: tUI("waiter.sessionErrorHint"),
+          });
+          return;
+        }
+        void (async () => {
+          try {
+            await runGuestDenisSceneTurn({
+              locationId,
+              tableId,
+              tableToken: token,
+              sessionToken,
+              message: label,
+              language,
+              structuredIntent: handoffChip.structuredIntent,
+              handoffPaymentMethod: handoffChip.handoffPaymentMethod,
+              allowOrdering: canPlaceOrders,
+            });
+            setSceneRefreshKey((key) => key + 1);
+            await refreshGuestSceneView();
+          } catch {
+            toast.error(tUI("ai.overlay.error"));
           }
         })();
         return;

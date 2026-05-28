@@ -110,6 +110,8 @@ const ConciergeLlmSchema = z.object({
 const ConciergeHandoffSchema = z.object({
   waiterCall: z.boolean(),
   paymentHint: z.boolean(),
+  /** M28 — execute handoff ACL even when order act layer is dry-run. */
+  liveExecution: z.boolean(),
   phrases: z.array(z.string().trim().max(120)).max(30),
 });
 
