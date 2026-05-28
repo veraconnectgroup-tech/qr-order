@@ -1174,7 +1174,12 @@ export function MenuView({
         <div
           className={
             aiConciergeEnabled && sessionToken && !aiChatOpen
-              ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))]"
+              ? orderingEnabled &&
+                !detailProduct &&
+                !aiChatOpen &&
+                itemCount > 0
+                ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))]"
+                : "min-h-dvh pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
               : "min-h-dvh pb-cart-offset"
           }
         >
@@ -1410,26 +1415,30 @@ export function MenuView({
             />
           )}
 
-          {aiConciergeEnabled && sessionToken && !aiChatOpen && (
-            <DenisGuestDock
-              scene={scene}
-              currency={currency}
-              tableName={tableName}
-              venueName={locationName}
-              loading={sceneLoading && !scene}
-              subtitle={
-                scene?.chrome.situation?.headline ??
-                welcomeBackMessage ??
-                undefined
-              }
-              onOpenDesk={handleOpenDenisDesk}
-              onChipPress={handleSceneChipPress}
-              onInlineAdd={handleSceneInlineAdd}
-              busy={sceneTurnBusy}
-            />
-          )}
         </div>
       </PullToRefresh>
+
+      {aiConciergeEnabled && sessionToken && !aiChatOpen && (
+        <DenisGuestDock
+          scene={scene}
+          currency={currency}
+          tableName={tableName}
+          venueName={locationName}
+          loading={sceneLoading && !scene}
+          cartBarVisible={
+            orderingEnabled && !detailProduct && itemCount > 0
+          }
+          subtitle={
+            scene?.chrome.situation?.headline ??
+            welcomeBackMessage ??
+            undefined
+          }
+          onOpenDesk={handleOpenDenisDesk}
+          onChipPress={handleSceneChipPress}
+          onInlineAdd={handleSceneInlineAdd}
+          busy={sceneTurnBusy}
+        />
+      )}
     </>
   );
 }

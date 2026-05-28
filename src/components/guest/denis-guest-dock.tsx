@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
@@ -33,6 +34,7 @@ export function DenisGuestDock({
   venueName,
   loading = false,
   placement = "bottom",
+  cartBarVisible = false,
   onOpenDesk,
   onChipPress,
   onInlineAdd,
@@ -45,6 +47,8 @@ export function DenisGuestDock({
   venueName?: string;
   loading?: boolean;
   placement?: "bottom" | "sticky-top";
+  /** When true, sit above the fixed cart summary bar (menu). */
+  cartBarVisible?: boolean;
   onOpenDesk: () => void;
   onChipPress: (chipId: string, label: string) => void;
   onInlineAdd: (productId: string) => void;
@@ -116,12 +120,17 @@ export function DenisGuestDock({
       Boolean(chipsLayer?.options.length) ||
       inlineLayers.length > 0);
 
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const dock = (
     <div
       className={cn(
         "pointer-events-none z-40 px-3",
         placement === "bottom"
-          ? "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]"
+          ? cartBarVisible
+            ? "fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
+            : "fixed inset-x-0 bottom-0 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
           : "sticky top-[max(0px,env(safe-area-inset-top))] -mx-1 mb-4"
       )}
     >
@@ -218,4 +227,10 @@ export function DenisGuestDock({
       </section>
     </div>
   );
+
+  if (placement === "bottom" && mounted) {
+    return createPortal(dock, document.body);
+  }
+
+  return dock;
 }
