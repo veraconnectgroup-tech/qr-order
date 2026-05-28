@@ -7,6 +7,8 @@ export { DenisChip } from "./denis-chip";
 export type { DenisChipProps } from "./denis-chip";
 export { DenisBrandMark } from "./denis-brand-mark";
 export { DenisTableMark } from "./denis-table-mark";
+export { DenisMarkBadge, DenisNavIcon } from "./denis-mark-badge";
+export type { DenisMarkBadgeProps } from "./denis-mark-badge";
 export {
   DenisPanel,
   DenisPanelBody,

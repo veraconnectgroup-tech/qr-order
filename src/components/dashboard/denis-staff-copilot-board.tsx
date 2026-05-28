@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
-  Bot,
   Clock,
   RefreshCw,
   UtensilsCrossed,
@@ -59,7 +58,7 @@ export function DenisStaffCopilotBoard() {
   if (!data?.enabled) {
     return (
       <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-6 text-center">
-        <Bot className="mx-auto size-8 text-dash-text-disabled" />
+        <DenisTableMark size={32} state="idle" className="mx-auto opacity-50" />
         <p className="mt-3 text-sm text-dash-text-muted">
           Denis is not enabled for this location. Turn on Denis in admin
           settings.

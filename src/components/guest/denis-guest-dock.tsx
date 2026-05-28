@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { DenisSceneChips } from "@/components/guest/denis-scene-chips";
 import { DenisSceneInlineRecommendations } from "@/components/guest/denis-scene-inline";
@@ -106,7 +106,7 @@ export function DenisGuestDock({
         />
 
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <DenisBrandMark markSize={24} markState={markState} markOnly />
+          <DenisMarkBadge size="md" markState={markState} />
 
           <button
             type="button"

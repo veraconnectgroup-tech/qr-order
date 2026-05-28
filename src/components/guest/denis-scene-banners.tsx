@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { SceneBannerLayer } from "@/lib/scene/layer-utils";
 import { hapticClick } from "@/lib/haptics";
@@ -59,9 +59,7 @@ export function DenisSceneBanners({
             banner.action !== "add_product" && "cursor-pointer active:scale-[0.99]"
           )}
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--qr-ember-muted)] ring-1 ring-[var(--qr-border)]">
-            <DenisTableMark size={24} state="idle" className="size-4" />
-          </span>
+          <DenisMarkBadge size="md" />
           <p className="min-w-0 flex-1 text-sm leading-snug text-[var(--qr-ivory)]">
             {banner.message}
           </p>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { Check, Sparkles, X } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { toast } from "sonner";
 import {
   approveDenisLearnedEdge,
@@ -40,7 +41,7 @@ export function DenisLearnedEdgesManager({
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <Sparkles className="mt-0.5 size-5 text-blue-600" />
+        <DenisMarkBadge size="md" className="mt-0.5 bg-dash-accent-muted ring-dash-border" />
         <div>
           <h2 className="text-lg font-semibold">Denis Insights</h2>
           <p className="mt-1 text-sm text-muted-foreground">

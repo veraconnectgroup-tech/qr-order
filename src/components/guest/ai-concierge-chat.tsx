@@ -1171,28 +1171,19 @@ export function AiConciergeChat({
     >
       <DenisPanel className="relative mx-0 mb-0 min-h-0 max-h-none w-full min-w-0 max-w-full flex-1 rounded-none before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:bg-[var(--qr-ember)] before:content-[''] sm:mx-3 sm:mb-3 sm:max-h-[min(88dvh,720px)] sm:w-auto sm:flex-none sm:rounded-2xl">
         <DenisPanelHeader className="relative border-b border-[var(--qr-elevated)] pt-5">
-          {sceneChrome ? (
-            <div className="min-w-0 flex-1">
-              <DenisBrandMark
-                markSize={24}
-                markState={
-                  isTyping
-                    ? "think"
-                    : voice.listening
-                      ? "listen"
-                      : sceneChrome.markState
-                }
-                className="[&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
-              />
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--qr-ember)]/80">
-                {tUI("scene.deskLabel")}
-              </p>
-            </div>
-          ) : (
-            <p className="min-w-0 flex-1 text-sm font-medium tracking-wide text-[var(--qr-ivory)]">
-              Denis
-            </p>
-          )}
+          <div className="min-w-0 flex-1">
+            <DenisBrandMark
+              markSize={24}
+              markState={
+                isTyping
+                  ? "think"
+                  : voice.listening
+                    ? "listen"
+                    : sceneChrome?.markState ?? "idle"
+              }
+              className="[&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
+            />
+          </div>
           {sceneChrome ? (
             <p className="hidden shrink-0 text-[11px] text-[var(--qr-muted)] sm:block">
               {sceneChrome.tableName}

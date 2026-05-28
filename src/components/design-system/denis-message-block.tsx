@@ -1,6 +1,6 @@
 "use client";
 
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { cn } from "@/lib/utils";
 
 export function DenisMessageBlock({
@@ -31,7 +31,7 @@ export function DenisMessageBlock({
       )}
     >
       <div className="flex items-center gap-2">
-        <DenisTableMark size={24} state="idle" className="size-5 opacity-90" />
+        <DenisMarkBadge size="sm" />
         <span className="text-xs tracking-wide text-[var(--qr-muted)]">Denis</span>
       </div>
       {children}

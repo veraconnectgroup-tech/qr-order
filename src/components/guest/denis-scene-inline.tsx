@@ -1,7 +1,7 @@
 "use client";
 
 import { GuestProductRow } from "@/components/design-system/guest-product-row";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { Scene } from "@/lib/scene/types";
 import { sceneInlineLayers } from "@/lib/scene/layer-utils";
@@ -30,7 +30,7 @@ export function DenisSceneInlineRecommendations({
       )}
     >
       <div className="flex items-center gap-2 border-b border-[var(--qr-elevated)]/80 px-4 py-2.5">
-        <DenisTableMark size={24} state="idle" className="size-5" />
+        <DenisMarkBadge size="sm" />
         <p className="text-xs font-semibold text-[var(--qr-ivory)]">
           {tUI("scene.inline.title")}
         </p>

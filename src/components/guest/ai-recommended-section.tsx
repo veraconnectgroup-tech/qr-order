@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import {
   ProductRecommendationCard,
   type ProductRecommendation,
@@ -27,8 +28,9 @@ export function AiRecommendedSection({
 
   return (
     <section className="px-4 py-6 sm:px-5">
-      <div className="mb-4 flex items-baseline justify-between gap-4">
-        <h2 className="text-sm font-medium text-[var(--qr-ivory)]">
+      <div className="mb-4 flex items-center gap-2.5">
+        <DenisMarkBadge size="sm" />
+        <h2 className="min-w-0 flex-1 text-sm font-semibold text-[var(--qr-ivory)]">
           {tUI("ai.smart.recommendedTitle")}
         </h2>
         <button

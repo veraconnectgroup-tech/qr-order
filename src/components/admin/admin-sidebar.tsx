@@ -17,11 +17,11 @@ import {
   ScrollText,
   Settings,
   ShoppingBag,
-  Sparkles,
   Tags,
   Ticket,
   Users,
 } from "lucide-react";
+import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
 import { AdminBrandMark } from "@/components/admin/admin-brand-mark";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/auth/actions";
@@ -46,7 +46,7 @@ const navItems = [
 const marketingItems = [
   { href: "/admin/promos", label: "Promo codes", icon: Ticket },
   { href: "/admin/upsells", label: "Upsell rules", icon: Megaphone },
-  { href: "/admin/denis-insights", label: "Denis Insights", icon: Sparkles },
+  { href: "/admin/denis-insights", label: "Denis Insights", icon: DenisNavIcon },
   { href: "/admin/denis-debug", label: "Denis Debugger", icon: Activity },
   { href: "/admin/denis-sim", label: "Venue Sim", icon: FlaskConical },
 ];

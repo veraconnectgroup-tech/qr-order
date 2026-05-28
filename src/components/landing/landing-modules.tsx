@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import {
   BarChart3,
   ChefHat,
@@ -9,11 +9,10 @@ import {
   LayoutGrid,
   QrCode,
   Smartphone,
-  Sparkles,
   Split,
   Users,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
 import {
   AnimateInView,
   StaggerInView,
@@ -44,7 +43,7 @@ const categories = ["Alle", "Gast", "Betrieb", "Zahlung"] as const;
 type ModulePreview = React.ComponentType;
 
 const modules: Array<{
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   title: string;
   description: string;
   category: Exclude<(typeof categories)[number], "Alle">;
@@ -69,10 +68,10 @@ const modules: Array<{
     Preview: ModulePreviewSession,
   },
   {
-    icon: Sparkles,
+    icon: DenisNavIcon,
     title: "Denis",
     description:
-      "Intelligenter Kellner — Allergien, Stimmung, personalisierte Empfehlungen.",
+      "Am Tisch — Empfehlungen, Allergien und Bestellstatus in Echtzeit.",
     category: "Gast",
     Preview: ModulePreviewAi,
   },
