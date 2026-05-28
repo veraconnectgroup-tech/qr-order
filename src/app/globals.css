@@ -284,6 +284,32 @@
   font-size: 16px;
 }
 
+/* Denis chat overlay — visualViewport CSS vars synced by useVisualViewport. */
+.denis-chat-overlay {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgb(0 0 0 / 0.72);
+  top: var(--visual-viewport-offset-top, 0px);
+  left: var(--visual-viewport-offset-left, 0px);
+  width: var(--visual-viewport-width, 100%);
+  height: var(--visual-viewport-height, 100dvh);
+  max-width: 100%;
+  max-height: 100dvh;
+}
+
+.denis-chat-input-row {
+  touch-action: manipulation;
+}
+
+.denis-chat-input-row input {
+  min-width: 0;
+  width: 100%;
+}
+
 .kitchen-theme {
   --background: #0a0a0a;
   --foreground: #fafafa;

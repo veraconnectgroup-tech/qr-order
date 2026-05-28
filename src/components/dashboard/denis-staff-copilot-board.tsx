@@ -1,17 +1,11 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import {
-  AlertTriangle,
-  Clock,
-  RefreshCw,
-  UtensilsCrossed,
-} from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
-import {
-  StaffCopilotTableList,
-} from "@/components/dashboard/denis-staff-copilot-parts";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
+import { QrCard } from "@/components/design-system/qr-card";
+import { StaffCopilotTableList } from "@/components/dashboard/denis-staff-copilot-parts";
 import { useDenisStaffCopilot } from "@/hooks/use-denis-staff-copilot";
 import {
   setDenisKdsStress,
@@ -28,6 +22,14 @@ const MODE_OPTIONS: Array<{ value: VenueOperatingMode; label: string }> = [
   { value: "rush", label: "Rush" },
   { value: "kitchen_closed", label: "Kitchen closed" },
 ];
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+      {children}
+    </p>
+  );
+}
 
 export function DenisStaffCopilotBoard() {
   const { data, loading, error, refresh } = useDenisStaffCopilot();
@@ -49,21 +51,24 @@ export function DenisStaffCopilotBoard() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
+      <QrCard variant="muted" padding="md">
         <p className="text-sm text-dash-text-muted">{error}</p>
-      </div>
+      </QrCard>
     );
   }
 
   if (!data?.enabled) {
     return (
-      <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-6 text-center">
-        <DenisTableMark size={32} state="idle" className="mx-auto opacity-50" />
+      <QrCard variant="muted" padding="lg" className="text-center">
+        <DenisMarkBadge
+          size="lg"
+          className="mx-auto bg-dash-accent-muted ring-dash-border-subtle"
+        />
         <p className="mt-3 text-sm text-dash-text-muted">
           Denis is not enabled for this location. Turn on Denis in admin
           settings.
         </p>
-      </div>
+      </QrCard>
     );
   }
 
@@ -118,19 +123,24 @@ export function DenisStaffCopilotBoard() {
     data.kdsBacklogMinutes >= data.autoRushBacklogMinutes;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-dash-text-disabled">
-            Venue OS
-          </p>
-          <h2 className="mt-1 flex items-center gap-2 text-xl font-bold text-dash-text sm:text-2xl">
-            <DenisTableMark size={24} state="idle" />
-            Denis
-          </h2>
-          <p className="mt-1 text-sm text-dash-text-muted">
-            Floor priorities, rush mode, and table hints.
-          </p>
+        <div className="flex min-w-0 items-start gap-3">
+          <DenisMarkBadge
+            size="md"
+            className="mt-0.5 bg-dash-accent-muted ring-dash-border-subtle"
+          />
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wider text-dash-text-disabled">
+              Venue OS
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-dash-text sm:text-2xl">
+              Floor & ops
+            </h2>
+            <p className="mt-1 text-sm text-dash-text-muted">
+              Priorities, rush mode, and table hints.
+            </p>
+          </div>
         </div>
         <Button
           type="button"
@@ -146,10 +156,8 @@ export function DenisStaffCopilotBoard() {
       </div>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4 lg:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-            House status
-          </p>
+        <QrCard variant="muted" padding="md" className="lg:col-span-2">
+          <SectionLabel>House status</SectionLabel>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <p className="text-xs text-dash-text-disabled">KDS backlog</p>
@@ -191,13 +199,11 @@ export function DenisStaffCopilotBoard() {
               min).
             </p>
           ) : null}
-        </div>
+        </QrCard>
 
         {data.canManageOps ? (
-          <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-              Ops controls
-            </p>
+          <QrCard variant="muted" padding="md">
+            <SectionLabel>Ops controls</SectionLabel>
             <div className="mt-3 space-y-3">
               <div>
                 <p className="mb-2 text-xs text-dash-text-muted">Mode</p>
@@ -242,32 +248,24 @@ export function DenisStaffCopilotBoard() {
                 </div>
               </div>
             </div>
-          </div>
+          </QrCard>
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
-        <div className="mb-4 flex items-center gap-2">
-          <Clock className="size-4 text-dash-accent" />
-          <h3 className="text-sm font-semibold text-dash-text">
-            Priority tables
-          </h3>
+      <QrCard variant="muted" padding="md">
+        <SectionLabel>Priority tables</SectionLabel>
+        <div className="mt-3">
+          <StaffCopilotTableList
+            tables={data.priorityTables}
+            emptyMessage="No tables need attention right now."
+          />
         </div>
-        <StaffCopilotTableList
-          tables={data.priorityTables}
-          emptyMessage="No tables need attention right now."
-        />
-      </section>
+      </QrCard>
 
       {data.canSetTableHints ? (
-        <section className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
-          <div className="mb-4 flex items-center gap-2">
-            <UtensilsCrossed className="size-4 text-dash-accent" />
-            <h3 className="text-sm font-semibold text-dash-text">
-              Table hint for Denis
-            </h3>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <QrCard variant="muted" padding="md">
+          <SectionLabel>Table hint for Denis</SectionLabel>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="text-xs font-medium text-dash-text-muted">
                 Table
@@ -301,12 +299,16 @@ export function DenisStaffCopilotBoard() {
                 className="mt-1 min-h-12 w-full rounded-lg border border-dash-border bg-dash-bg px-3 text-sm text-dash-text outline-none focus:border-dash-accent/50"
               >
                 <option value="denis_only">Denis only (internal)</option>
-                <option value="guest_safe">Guest-safe (may appear in chat)</option>
+                <option value="guest_safe">
+                  Guest-safe (may appear in chat)
+                </option>
               </select>
             </label>
           </div>
           <label className="mt-3 block">
-            <span className="text-xs font-medium text-dash-text-muted">Hint</span>
+            <span className="text-xs font-medium text-dash-text-muted">
+              Hint
+            </span>
             <textarea
               value={hintText}
               onChange={(e) => setHintText(e.target.value)}
@@ -324,7 +326,7 @@ export function DenisStaffCopilotBoard() {
           >
             Save hint
           </Button>
-        </section>
+        </QrCard>
       ) : null}
 
       <p className="text-[11px] text-dash-text-disabled">

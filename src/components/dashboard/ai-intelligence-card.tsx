@@ -1,8 +1,9 @@
 "use client";
 
-import { Brain, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { QrCard, QrCardHeading } from "@/components/design-system/qr-card";
 import { useAiInsights } from "@/hooks/use-ai-insights";
 import { formatPrice } from "@/lib/format";
@@ -18,13 +19,32 @@ function guestLabel(count: number) {
   return count === 1 ? "1 Gast" : `${count} Gäste`;
 }
 
+function InsightSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 export function AiIntelligenceCard({ className }: { className?: string }) {
   const { currency } = useDashboard();
   const { data, loading, error, range, setRange } = useAiInsights("today");
 
   if (loading && !data) {
     return (
-      <Skeleton className={cn("h-[360px] rounded-xl bg-dash-surface-raised", className)} />
+      <Skeleton
+        className={cn("h-[280px] rounded-xl bg-dash-surface-raised", className)}
+      />
     );
   }
 
@@ -38,22 +58,23 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
 
   if (!data?.enabled) return null;
 
-  const {
-    summary,
-    menuGaps,
-    topProducts,
-    alerts,
-  } = data;
+  const { summary, menuGaps, topProducts, alerts } = data;
   const conversionPct = Math.round(summary.conversionRate * 100);
 
   return (
     <QrCard as="section" variant="muted" padding="md" className={className}>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Brain className="size-4 text-dash-accent" />
-          <QrCardHeading className="text-dash-text">Denis</QrCardHeading>
+        <div className="flex min-w-0 items-center gap-3">
+          <DenisMarkBadge
+            size="md"
+            className="bg-dash-accent-muted ring-dash-border-subtle"
+          />
+          <div className="min-w-0">
+            <QrCardHeading className="text-dash-text">Denis</QrCardHeading>
+            <p className="text-xs text-dash-text-muted">Performance & insights</p>
+          </div>
         </div>
-        <label className="relative">
+        <label className="relative shrink-0">
           <select
             value={range}
             onChange={(e) => setRange(e.target.value as AiInsightsRange)}
@@ -92,19 +113,18 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
           <p className="text-dash-text-disabled">Bewertung</p>
           <p className="mt-1 text-base font-bold tabular-nums text-dash-text">
             {summary.averageRating != null
-              ? `${summary.averageRating.toFixed(1)}★`
+              ? summary.averageRating.toFixed(1)
               : "—"}
           </p>
         </div>
       </div>
 
-      <div className="mt-4 space-y-4">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-            🚨 Menu Gaps
-          </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <InsightSection title="Menu gaps">
           {menuGaps.length === 0 ? (
-            <p className="text-sm text-dash-text-disabled">Keine Lücken erkannt.</p>
+            <p className="text-sm text-dash-text-disabled">
+              Keine Lücken erkannt.
+            </p>
           ) : (
             <ul className="space-y-1.5">
               {menuGaps.map((gap) => (
@@ -117,14 +137,13 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
               ))}
             </ul>
           )}
-        </div>
+        </InsightSection>
 
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-            📊 Top Denis-Verkäufe
-          </p>
+        <InsightSection title="Top Denis-Verkäufe">
           {topProducts.length === 0 ? (
-            <p className="text-sm text-dash-text-disabled">Noch keine Denis-Conversions.</p>
+            <p className="text-sm text-dash-text-disabled">
+              Noch keine Denis-Conversions.
+            </p>
           ) : (
             <ol className="space-y-1.5">
               {topProducts.map((product, index) => (
@@ -133,19 +152,20 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
                   className="text-sm text-dash-text-secondary"
                 >
                   {index + 1}. {product.name}{" "}
-                  <span className="text-dash-text-disabled">({product.count}x)</span>
+                  <span className="text-dash-text-disabled">
+                    ({product.count}x)
+                  </span>
                 </li>
               ))}
             </ol>
           )}
-        </div>
+        </InsightSection>
 
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-            ⚠️ Hinweise
-          </p>
+        <InsightSection title="Hinweise">
           {alerts.length === 0 ? (
-            <p className="text-sm text-dash-text-disabled">Alles im grünen Bereich.</p>
+            <p className="text-sm text-dash-text-disabled">
+              Alles im grünen Bereich.
+            </p>
           ) : (
             <ul className="space-y-1.5">
               {alerts.map((alert) => (
@@ -165,7 +185,7 @@ export function AiIntelligenceCard({ className }: { className?: string }) {
               ))}
             </ul>
           )}
-        </div>
+        </InsightSection>
       </div>
     </QrCard>
   );

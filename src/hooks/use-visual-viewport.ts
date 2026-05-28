@@ -65,11 +65,15 @@ export function useVisualViewport(enabled = true): VisualViewportState | null {
     vv.addEventListener("resize", sync);
     vv.addEventListener("scroll", sync);
     window.addEventListener("orientationchange", sync);
+    window.addEventListener("focusin", sync);
+    window.addEventListener("focusout", sync);
 
     return () => {
       vv.removeEventListener("resize", sync);
       vv.removeEventListener("scroll", sync);
       window.removeEventListener("orientationchange", sync);
+      window.removeEventListener("focusin", sync);
+      window.removeEventListener("focusout", sync);
       syncVisualViewportCss(null);
     };
   }, [enabled]);

@@ -13,7 +13,7 @@ export function DenisPanel({
   return (
     <div
       className={cn(
-        "flex max-h-[min(88dvh,720px)] min-h-[min(68dvh,540px)] flex-col overflow-hidden rounded-2xl bg-[var(--qr-void)] text-[var(--qr-ivory)]",
+        "flex max-h-[min(88dvh,720px)] min-h-0 flex-col overflow-hidden rounded-2xl bg-[var(--qr-void)] text-[var(--qr-ivory)] max-sm:max-h-full max-sm:min-h-0 max-sm:h-full sm:min-h-[min(68dvh,540px)]",
         className
       )}
     >
