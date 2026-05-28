@@ -93,6 +93,7 @@ export function composeScene(
       venueName: input.venueName,
       markState: input.markState,
       denisActive: input.denisActive,
+      situation: input.situation,
     },
     layers,
   };

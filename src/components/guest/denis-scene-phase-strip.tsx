@@ -17,7 +17,7 @@ export function DenisScenePhaseStrip({ scene }: { scene: Scene }) {
   const key = PHASE_KEYS[scene.phase];
 
   return (
-    <p className="mt-2 text-[11px] font-medium uppercase tracking-wider text-[var(--qr-ember)]/90">
+    <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--qr-ember)]/85">
       {tUI(key as "scene.phase.browsing")}
     </p>
   );

@@ -18,6 +18,7 @@ describe("scene layer utils", () => {
       banners: [{ id: "rush", message: "Kitchen busy" }],
       inlineRecommendations: [],
       chips: [],
+      situation: null,
     });
 
     expect(sceneBannerLayers(scene)).toHaveLength(1);

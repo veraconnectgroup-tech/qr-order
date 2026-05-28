@@ -5,29 +5,37 @@ import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import type { Scene } from "@/lib/scene/types";
 import { sceneInlineLayers } from "@/lib/scene/layer-utils";
+import { cn } from "@/lib/utils";
 
 export function DenisSceneInlineRecommendations({
   scene,
   currency,
   onAdd,
+  embedded = false,
 }: {
   scene: Scene;
   currency: string;
   onAdd: (productId: string) => void;
+  embedded?: boolean;
 }) {
   const { tUI } = useAppLocale();
   const inlineLayers = sceneInlineLayers(scene);
   if (!inlineLayers.length) return null;
 
   return (
-    <div className="mx-4 mb-4 overflow-hidden rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]">
-      <div className="flex items-center gap-2 border-b border-[var(--qr-elevated)] px-4 py-2.5">
+    <div
+      className={cn(
+        !embedded &&
+          "mx-4 mb-4 overflow-hidden rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]"
+      )}
+    >
+      <div className="flex items-center gap-2 border-b border-[var(--qr-elevated)]/80 px-4 py-2.5">
         <DenisTableMark size={24} state="idle" className="size-5" />
         <p className="text-xs font-semibold text-[var(--qr-ivory)]">
           {tUI("scene.inline.title")}
         </p>
       </div>
-      <div className="divide-y divide-[var(--qr-elevated)]/80">
+      <div className="divide-y divide-[var(--qr-elevated)]/80 px-1">
         {inlineLayers.map((item) => (
           <GuestProductRow
             key={item.productId}

@@ -16,6 +16,7 @@ const baseInput: ComposeSceneInput = {
   banners: [],
   inlineRecommendations: [],
   chips: [],
+  situation: null,
 };
 
 describe("deriveSessionPhase", () => {

@@ -277,6 +277,13 @@
   --radius: 0.625rem;
 }
 
+/* iOS Safari: inputs <16px trigger page zoom and break fixed overlays. */
+.guest-theme input,
+.guest-theme textarea,
+.guest-theme select {
+  font-size: 16px;
+}
+
 .kitchen-theme {
   --background: #0a0a0a;
   --foreground: #fafafa;
@@ -1032,6 +1039,12 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+.denis-scene-shell--think {
+  box-shadow:
+    0 0 0 1px rgba(232, 93, 4, 0.12),
+    0 0 32px rgba(232, 93, 4, 0.1);
 }
 
 @media (prefers-reduced-motion: reduce) {

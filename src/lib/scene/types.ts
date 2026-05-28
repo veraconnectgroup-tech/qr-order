@@ -47,11 +47,27 @@ export type SceneLayer =
       options: Array<{ id: string; label: string; selected?: boolean }>;
     };
 
+export type SceneSituationOrder = {
+  orderId: string;
+  orderNumber: number;
+  status: string;
+  itemsLabel: string;
+  prepMinutes: number | null;
+};
+
+export type SceneSituation = {
+  headline: string;
+  orders: SceneSituationOrder[];
+  hasReadyOrder: boolean;
+  hasActiveKitchen: boolean;
+};
+
 export type SceneChrome = {
   tableName: string;
   venueName: string;
   markState: SceneMarkState;
   denisActive: boolean;
+  situation: SceneSituation | null;
 };
 
 export type Scene = {
@@ -91,6 +107,7 @@ export type ComposeSceneInput = {
     priceCents?: number;
   }>;
   chips: Array<{ id: string; label: string; selected?: boolean }>;
+  situation: SceneSituation | null;
 };
 
 export type StaffTileView = {

@@ -6,6 +6,10 @@ import {
   AI_SHEET_ALLERGY_OPTIONS,
   AI_SHEET_MOOD_OPTIONS,
 } from "@/lib/ai/guest-sheet-preferences";
+import {
+  deriveGuestSituation,
+  situationSupportChips,
+} from "./derive-guest-situation";
 import { composeScene, deriveSessionPhase } from "./compose-scene";
 import { extractPersistedSceneLayers } from "./extract-scene-layer-state";
 import type { ComposeSceneInput, Scene } from "./types";
@@ -45,9 +49,22 @@ function resolveSceneChips(input: {
   denisEnabled: boolean;
   denisActive: boolean;
   phase: ComposeSceneInput["phase"];
+  situation: ComposeSceneInput["situation"];
 }): ComposeSceneInput["chips"] {
   if (input.override?.length) return input.override;
   if (input.persisted.length) return input.persisted;
+
+  if (
+    input.situation?.hasActiveKitchen ||
+    input.situation?.hasReadyOrder ||
+    input.phase === "waiting"
+  ) {
+    return situationSupportChips().map((chip) => ({
+      id: chip.id,
+      label: chip.labelKey,
+    }));
+  }
+
   if (input.denisEnabled && !input.denisActive && input.phase === "browsing") {
     return defaultOnboardingChips();
   }
@@ -127,9 +144,19 @@ export async function loadComposeSceneInput(
         .limit(1),
       admin
         .from("orders")
-        .select("id, status, payment_status")
+        .select(
+          `
+          id,
+          order_number,
+          status,
+          payment_status,
+          estimated_prep_minutes,
+          order_items (product_name, quantity)
+        `
+        )
         .eq("session_id", sessionId)
-        .not("status", "in", '("rejected","cancelled")'),
+        .not("status", "in", '("rejected","cancelled")')
+        .order("created_at", { ascending: true }),
     ]);
 
   const commerce = commerceState as {
@@ -138,9 +165,15 @@ export async function loadComposeSceneInput(
   } | null;
 
   const orderRows = (orders ?? []) as Array<{
+    id: string;
+    order_number: number | null;
     status: string;
     payment_status: string;
+    estimated_prep_minutes: number | null;
+    order_items: Array<{ product_name: string; quantity: number }> | null;
   }>;
+
+  const situation = deriveGuestSituation(orderRows);
 
   const hasOpenKitchenOrders = orderRows.some((o) =>
     KITCHEN_OPEN_STATUSES.has(o.status)
@@ -189,6 +222,17 @@ export async function loadComposeSceneInput(
 
   if (opts.proactiveBanner) {
     banners.push(opts.proactiveBanner);
+  }
+
+  if (
+    situation?.hasReadyOrder &&
+    !banners.some((b) => b.id === "order-ready")
+  ) {
+    banners.push({
+      id: "order-ready",
+      message: situation.headline,
+      action: "open_sheet",
+    });
   }
 
   if (venueOps?.staffHint?.visibility === "guest_safe" && venueOps.staffHint.text) {
@@ -250,7 +294,9 @@ export async function loadComposeSceneInput(
       denisEnabled,
       denisActive,
       phase,
+      situation,
     }),
+    situation,
   };
 }
 

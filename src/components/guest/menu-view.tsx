@@ -64,7 +64,7 @@ import {
   manualCartRevision,
 } from "@/lib/guest/manual-cart-snapshot";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
-import { sceneBannerLayers, sceneChipsLayer, sceneInlineLayers } from "@/lib/scene/layer-utils";
+import { sceneBannerLayers } from "@/lib/scene/layer-utils";
 import { useGuestScene } from "@/hooks/use-guest-scene";
 
 const AiCartPairingBanner = dynamic(
@@ -81,10 +81,10 @@ const AiConciergeIntro = dynamic(
     })),
   { ssr: false }
 );
-const DenisScenePresence = dynamic(
+const DenisGuestDock = dynamic(
   () =>
-    import("@/components/guest/denis-scene-presence").then((m) => ({
-      default: m.DenisScenePresence,
+    import("@/components/guest/denis-guest-dock").then((m) => ({
+      default: m.DenisGuestDock,
     })),
   { ssr: false }
 );
@@ -92,20 +92,6 @@ const DenisSceneBanners = dynamic(
   () =>
     import("@/components/guest/denis-scene-banners").then((m) => ({
       default: m.DenisSceneBanners,
-    })),
-  { ssr: false }
-);
-const DenisSceneChips = dynamic(
-  () =>
-    import("@/components/guest/denis-scene-chips").then((m) => ({
-      default: m.DenisSceneChips,
-    })),
-  { ssr: false }
-);
-const DenisSceneInline = dynamic(
-  () =>
-    import("@/components/guest/denis-scene-inline").then((m) => ({
-      default: m.DenisSceneInlineRecommendations,
     })),
   { ssr: false }
 );
@@ -221,19 +207,6 @@ export function MenuView({
   const cartBump = useCart((s) => s.cartBump);
   const itemCount = useCart((s) => s.itemCount());
   const sessionToken = useGuestSession((s) => s.sessionToken);
-
-  const { scene, refresh: refreshGuestSceneView } = useGuestScene({
-    tableToken: token,
-    sessionToken,
-    enabled: aiConciergeEnabled && !!sessionToken,
-    refreshKey: sceneRefreshKey,
-  });
-
-  const sceneBanners = useMemo(
-    () => (scene ? sceneBannerLayers(scene) : []),
-    [scene]
-  );
-  const useSceneBannerUi = sceneBanners.length > 0;
 
   const allergenStorageKey = allergenFilterStorageKey(slug, token);
   const { excluded, toggle, clear, replaceExcluded, count: allergenFilterCount } =
@@ -484,6 +457,32 @@ export function MenuView({
     sessionToken,
     aiConciergeEnabled && !!sessionToken
   );
+
+  const hasLiveKitchenOrders = useMemo(
+    () =>
+      sessionOrders.some(
+        (order) =>
+          order.status === "pending" ||
+          order.status === "confirmed" ||
+          order.status === "preparing" ||
+          order.status === "ready"
+      ),
+    [sessionOrders]
+  );
+
+  const { scene, refresh: refreshGuestSceneView } = useGuestScene({
+    tableToken: token,
+    sessionToken,
+    enabled: aiConciergeEnabled && !!sessionToken,
+    refreshKey: sceneRefreshKey,
+    fastPoll: hasLiveKitchenOrders || itemCount > 0,
+  });
+
+  const sceneBanners = useMemo(
+    () => (scene ? sceneBannerLayers(scene) : []),
+    [scene]
+  );
+  const useSceneBannerUi = sceneBanners.length > 0;
 
   const hasSessionOrders = sessionOrders.length > 0;
 
@@ -887,23 +886,27 @@ export function MenuView({
     tableId,
   ]);
 
-  const sceneHasChips = useMemo(
-    () => (scene ? Boolean(sceneChipsLayer(scene)?.options.length) : false),
-    [scene]
-  );
-  const sceneHasInline = useMemo(
-    () => (scene ? sceneInlineLayers(scene).length > 0 : false),
-    [scene]
-  );
-
   const handleOpenDenisDesk = useCallback(() => {
     hapticClick();
     setAiChatOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!sessionOrders.length) return;
+    void refreshGuestSceneView();
+  }, [sessionOrders, refreshGuestSceneView]);
+
   const handleSceneChipPress = useCallback(
-    (_chipId: string, _label: string) => {
+    (chipId: string, _label: string) => {
       hapticClick();
+      if (chipId === "situation-waiter") {
+        setAiChatOpen(true);
+        return;
+      }
+      if (chipId === "situation-wrong") {
+        setAiChatOpen(true);
+        return;
+      }
       setAiChatOpen(true);
     },
     []
@@ -1000,7 +1003,13 @@ export function MenuView({
     <>
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
-        <div className="min-h-dvh pb-cart-offset">
+        <div
+          className={
+            aiConciergeEnabled && scene && !aiChatOpen
+              ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))]"
+              : "min-h-dvh pb-cart-offset"
+          }
+        >
           <GuestHeader
             orgName={orgName}
             logoUrl={logoUrl}
@@ -1021,34 +1030,13 @@ export function MenuView({
             </div>
           )}
 
-          {aiConciergeEnabled && !aiChatOpen && (
-            scene ? (
-              <>
-                <DenisScenePresence
-                  scene={scene}
-                  onOpenDesk={handleOpenDenisDesk}
-                  subtitle={welcomeBackMessage ?? undefined}
-                />
-                {sceneHasChips ? (
-                  <DenisSceneChips
-                    scene={scene}
-                    onChipPress={handleSceneChipPress}
-                  />
-                ) : null}
-                {sceneHasInline ? (
-                  <DenisSceneInline
-                    scene={scene}
-                    currency={currency}
-                    onAdd={handleSceneInlineAdd}
-                  />
-                ) : null}
-              </>
-            ) : (
-              <AiConciergeIntro
-                onOpen={handleOpenDenisDesk}
-                subtitle={welcomeBackMessage ?? undefined}
-              />
-            )
+          {aiConciergeEnabled && !scene && !aiChatOpen && (
+            <AiConciergeIntro
+              onOpen={handleOpenDenisDesk}
+              subtitle={welcomeBackMessage ?? undefined}
+              tableName={tableName}
+              venueName={locationName}
+            />
           )}
 
           {showMemoryConsent && (
@@ -1259,6 +1247,17 @@ export function MenuView({
               deviceFingerprint={deviceFingerprint}
               voiceEnabled={voiceEnabled}
               voiceTtsEnabled={voiceTtsEnabled}
+            />
+          )}
+
+          {aiConciergeEnabled && scene && !aiChatOpen && (
+            <DenisGuestDock
+              scene={scene}
+              currency={currency}
+              subtitle={welcomeBackMessage ?? undefined}
+              onOpenDesk={handleOpenDenisDesk}
+              onChipPress={handleSceneChipPress}
+              onInlineAdd={handleSceneInlineAdd}
             />
           )}
         </div>

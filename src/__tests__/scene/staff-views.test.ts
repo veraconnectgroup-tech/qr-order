@@ -17,6 +17,7 @@ const input: ComposeSceneInput = {
   banners: [{ id: "rush", message: "Kitchen is busy — drinks first?" }],
   inlineRecommendations: [],
   chips: [],
+  situation: null,
 };
 
 describe("staff scene views", () => {

@@ -5,17 +5,20 @@ import { fetchGuestScene } from "@/lib/guest/guest-scene-client";
 import type { Scene } from "@/lib/scene/types";
 
 const POLL_MS = 30_000;
+const POLL_WAITING_MS = 10_000;
 
 export function useGuestScene({
   tableToken,
   sessionToken,
   enabled,
   refreshKey = 0,
+  fastPoll = false,
 }: {
   tableToken: string;
   sessionToken: string | null;
   enabled: boolean;
   refreshKey?: number;
+  fastPoll?: boolean;
 }) {
   const [scene, setScene] = useState<Scene | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,9 +48,10 @@ export function useGuestScene({
 
   useEffect(() => {
     if (!enabled || !sessionToken) return;
-    const id = window.setInterval(() => void refresh(), POLL_MS);
+    const intervalMs = fastPoll ? POLL_WAITING_MS : POLL_MS;
+    const id = window.setInterval(() => void refresh(), intervalMs);
     return () => window.clearInterval(id);
-  }, [enabled, sessionToken, refresh]);
+  }, [enabled, sessionToken, refresh, fastPoll]);
 
   return { scene, loading, error, refresh };
 }

@@ -12,6 +12,7 @@ export type {
 } from "./types";
 
 export { composeScene, deriveSessionPhase } from "./compose-scene";
+export { deriveGuestSituation, situationSupportChips } from "./derive-guest-situation";
 export { sceneStaffDetail, sceneStaffTile } from "./staff-views";
 export { loadComposeSceneInput } from "./load-scene-input";
 export {
