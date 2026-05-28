@@ -60,9 +60,10 @@ const withPWA = require("next-pwa")({
     },
     {
       urlPattern: /\/_next\/static\/.*/i,
-      handler: "CacheFirst",
+      handler: "NetworkFirst",
       options: {
         cacheName: "next-static",
+        networkTimeoutSeconds: 3,
         expiration: { maxEntries: 64, maxAgeSeconds: 86400 },
       },
     },

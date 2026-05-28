@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { AppLocaleProvider } from "@/components/guest/app-locale-provider";
 import { GuestResilienceShell } from "@/components/guest/guest-resilience-shell";
 import { GuestSkipLink } from "@/components/guest/guest-skip-link";
+import { GuestSwCacheReset } from "@/components/guest/guest-sw-cache-reset";
 import { createServerClient } from "@/lib/supabase/server";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
@@ -124,6 +125,7 @@ export default async function GuestTokenLayout({
       orgName={orgName}
       logoUrl={logoUrl}
     >
+      <GuestSwCacheReset />
       <GuestSkipLink />
       <GuestResilienceShell>
         <main id="main-content">{children}</main>

@@ -105,6 +105,7 @@ export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistrat
   const existing = await navigator.serviceWorker.getRegistration();
 
   if (existing && canReuseRegistration(existing, script)) {
+    void existing.update();
     return waitForRegistrationReady(existing, ACTIVATION_TIMEOUT_MS);
   }
 
