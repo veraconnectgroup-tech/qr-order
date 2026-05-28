@@ -10,6 +10,7 @@ export const DENIS_LAYERS = [
   "venue",
   "commercial",
   "loop",
+  "ingress",
   "runtime",
   "surfaces",
   "acl",
@@ -41,6 +42,7 @@ export const DENIS_IMPORT_MATRIX: Record<DenisLayer, readonly DenisLayer[]> = {
   venue: ["config", "platform", "kernel"],
   commercial: ["config"],
   loop: ["config", "platform", "kernel", "venue"],
+  ingress: ["config", "platform", "kernel"],
   runtime: [
     "config",
     "platform",
@@ -48,6 +50,7 @@ export const DENIS_IMPORT_MATRIX: Record<DenisLayer, readonly DenisLayer[]> = {
     "venue",
     "commercial",
     "loop",
+    "ingress",
     "surfaces",
     "acl",
   ],

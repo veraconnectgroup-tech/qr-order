@@ -308,6 +308,7 @@ export function GuestDenisLayer({
           orderingDisabled={orderingDisabled}
           voiceEnabled={voiceEnabled}
           voiceTtsEnabled={voiceTtsEnabled}
+          bootstrapTranscript={fastPoll ? view?.transcript : undefined}
           getManualCartSnapshot={() => {
           if (cartItems.length === 0) return undefined;
           return buildManualCartSnapshot(

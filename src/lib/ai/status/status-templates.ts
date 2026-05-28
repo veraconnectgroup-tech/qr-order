@@ -17,6 +17,25 @@ const STATUS_I18N_KEY: Record<string, string> = {
   delivered: "ai.order.status.delivered",
 };
 
+/** Kitchen progression — regressions (e.g. ready → preparing) must not TELL/push. */
+const STATUS_FORWARD_RANK: Record<string, number> = {
+  pending_approval: 0,
+  pending: 1,
+  accepted: 2,
+  preparing: 3,
+  ready: 4,
+  delivered: 5,
+  rejected: 6,
+  cancelled: 6,
+};
+
+function isForwardStatusTransition(previous: string, next: string): boolean {
+  const prevRank = STATUS_FORWARD_RANK[previous];
+  const nextRank = STATUS_FORWARD_RANK[next];
+  if (prevRank == null || nextRank == null) return true;
+  return nextRank > prevRank;
+}
+
 export function aiOrderStatusMessageKey(status: string): string | null {
   return STATUS_I18N_KEY[status] ?? null;
 }
@@ -33,5 +52,6 @@ export function shouldNotifyStatusChange(
   if (isTerminalOrderStatus(previous) && isTerminalOrderStatus(next)) {
     return false;
   }
+  if (!isForwardStatusTransition(previous, next)) return false;
   return aiOrderStatusMessageKey(next) != null;
 }

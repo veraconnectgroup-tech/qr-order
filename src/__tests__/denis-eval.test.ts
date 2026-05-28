@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
 import { runFoldOrderVisibilityFixture } from "@/lib/denis/eval/run-fold-fixture";
+import { runWorldTellUnificationFixture } from "@/lib/denis/eval/run-world-tell-fixture";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import { DENIS_EVAL_SCENARIOS } from "@/lib/denis/eval/fixtures/scenarios";
 import {
@@ -31,6 +32,11 @@ describe("Denis eval fixtures M10", () => {
     const result = runFoldOrderVisibilityFixture();
     expect(result.passed).toBe(true);
     expect(result.orderCount).toBe(1);
+  });
+
+  it("world tell unifies headline and push copy (Phase D)", () => {
+    const result = runWorldTellUnificationFixture();
+    expect(result.passed).toBe(true);
   });
 });
 

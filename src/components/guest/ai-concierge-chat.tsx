@@ -73,6 +73,8 @@ import { hapticClick, hapticSuccess } from "@/lib/haptics";
 import type { MenuSection } from "@/lib/menu-section";
 import type { AllergenId } from "@/lib/allergens";
 import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
+import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
+import { transcriptEntriesToChatMessages } from "@/lib/guest/view-transcript-bootstrap";
 import { useCart } from "@/hooks/use-cart";
 import { useDenisVoice } from "@/hooks/use-denis-voice";
 import { DenisVoiceMicButton } from "@/components/guest/denis-voice-mic-button";
@@ -420,6 +422,8 @@ export type AiConciergeChatProps = {
     markState: "idle" | "listen" | "think";
     situation?: SceneSituation | null;
   } | null;
+  /** ADR-019 Phase B.1 — hydrate desk from view.transcript (order page). */
+  bootstrapTranscript?: import("@/lib/denis/loop/view-types").TranscriptEntry[] | null;
   onSceneRefresh?: () => void;
 };
 
@@ -455,6 +459,7 @@ export function AiConciergeChat({
   voiceEnabled = false,
   voiceTtsEnabled = true,
   sceneChrome = null,
+  bootstrapTranscript = null,
   onSceneRefresh,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
@@ -597,7 +602,12 @@ export function AiConciergeChat({
       return;
     }
 
-    if (messages.length === 0) {
+    const viewBootstrap =
+      bootstrapTranscript && bootstrapTranscript.length > 0
+        ? transcriptEntriesToChatMessages(bootstrapTranscript)
+        : null;
+
+    if (messages.length === 0 && !viewBootstrap) {
       setMessages([
         {
           id: nextId(),
@@ -611,6 +621,19 @@ export function AiConciergeChat({
     let cancelled = false;
 
     async function bootstrapChat() {
+      if (viewBootstrap?.length) {
+        setMessages(
+          viewBootstrap.map((entry) => ({
+            id: entry.id,
+            role: entry.role,
+            content: entry.content,
+          }))
+        );
+        setPhase("chat");
+        chatInitKeyRef.current = initKey;
+        return;
+      }
+
       const storedSessionId =
         aiSessionId ??
         readAiSessionIdForGuest(locationId, token, [sessionToken]);
@@ -736,6 +759,7 @@ export function AiConciergeChat({
     defaultLanguage,
     aiSessionId,
     messages.length,
+    bootstrapTranscript,
   ]);
 
   const CHAT_FETCH_TIMEOUT_MS = 45_000;
@@ -857,28 +881,26 @@ export function AiConciergeChat({
 
       let res: Response;
       try {
-        res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
+        res = await postDenisMessageTurn(
+          {
+            tableToken: token,
+            tableSessionToken: sessionToken ?? undefined,
             locationId,
             tableId,
-            sessionToken: aiContextToken,
-            tableSessionToken: sessionToken ?? undefined,
-            deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
             message,
             language: requestLanguage,
-            sessionId,
+            aiSessionId: sessionId,
             preferences: prefs ?? preferencesRef.current,
             includeOrderContext: true,
             allowOrdering: !orderingDisabled,
             browsingContext: resolveScrollContext?.() ?? undefined,
             manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
             deviceFingerprint,
-            ...(inputSurface === "voice" ? { inputSurface: "voice" as const } : {}),
-          }),
-        });
+            deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
+            surface: inputSurface,
+          },
+          { signal: controller.signal }
+        );
       } catch (fetchError) {
         if (fetchError instanceof Error && fetchError.name === "AbortError") {
           throw new Error(tUI("ai.overlay.error"));

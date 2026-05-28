@@ -19,7 +19,7 @@ import { processRefund } from "@/lib/stripe/refund";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
-import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
+import { scheduleDenisWorldSignal } from "@/lib/outbox/enqueue-denis-world-signal";
 import type { PaymentMethod } from "@/lib/constants";
 
 function parseSessionToken(value: string | null) {
@@ -519,14 +519,13 @@ export const PATCH = withErrorHandler(
     }
 
     if (access.order.session_id) {
-      void scheduleGuestSceneRefresh(admin, {
+      scheduleDenisWorldSignal({
+        signal: "commerce.order_status",
+        orderId,
         sessionId: access.order.session_id,
-      }).catch((err) =>
-        logger.warn("scene refresh failed on order status change", {
-          orderId,
-          error: err instanceof Error ? err.message : String(err),
-        })
-      );
+        status,
+        previousStatus: access.order.status,
+      });
     }
 
     return apiSuccess({ ok: true });

@@ -24,8 +24,8 @@
 |------|--------|------------------------|
 | **A — FOLD** | ✅ | `src/lib/denis/loop/fold-table-session-state.ts` |
 | **B — VIEW** | ✅ | `GET /api/denis/view`, `project-view.ts` |
-| **C — SIGNAL** | 📋 | `POST /api/denis/signal`, thin wrappers |
-| **D — WORLD** | 📋 | outbox → `commerce.*` signals → TELL + guest push |
+| **C — SIGNAL** | ✅ | `POST /api/denis/signal`, thin wrappers |
+| **D — WORLD** | ✅ | outbox → `commerce.*` signals → TELL + guest push |
 | **E — ACTOR** | 📋 | queue/lock per `table_session_id`, view SSE |
 | **F — TRUTH** | 📋 | transcript iz timeline; smanji `ai_sessions` drift |
 

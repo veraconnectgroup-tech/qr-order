@@ -57,12 +57,6 @@ export type TableSessionView = {
 };
 
 export type ProjectViewInput = {
-  version: number;
   sessionId: string;
   venueName: string;
-  denisActive: boolean;
-  headline: string;
-  phase: SessionPhase;
-  markState?: SceneMarkState;
-  layers: SceneLayer[];
 };

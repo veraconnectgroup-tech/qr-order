@@ -19,6 +19,7 @@ export type OutboxEventType =
   | "billing.staff_hint"
   | "commerce.projection.refresh"
   | "commerce.alert.staff"
+  | "commerce.denis.world"
   | "session.scene.refresh";
 
 export type OutboxInsert = {

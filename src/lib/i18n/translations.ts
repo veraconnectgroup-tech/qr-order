@@ -365,6 +365,12 @@ const de: TranslationMap = {
   "waiter.error": "Kellner konnte nicht gerufen werden",
   "waiter.errorHint": "Bitte erneut versuchen.",
 
+  "push.optIn.title": "Status-Benachrichtigungen",
+  "push.optIn.body": "Denis meldet sich, wenn deine Bestellung fertig ist.",
+  "push.optIn.enable": "Aktivieren",
+  "push.optIn.enabled": "Benachrichtigungen aktiviert",
+  "push.optIn.denied": "Benachrichtigungen sind in den Browser-Einstellungen blockiert.",
+
   "bill.paid": "Rechnung bezahlt",
   "bill.thankYou": "Danke!",
   "bill.myBill": "Meine Rechnung",
@@ -740,6 +746,12 @@ const en: TranslationMap = {
   "waiter.error": "Could not call waiter",
   "waiter.errorHint": "Please try again.",
 
+  "push.optIn.title": "Order status alerts",
+  "push.optIn.body": "Denis will notify you when your order is ready.",
+  "push.optIn.enable": "Enable",
+  "push.optIn.enabled": "Notifications enabled",
+  "push.optIn.denied": "Notifications are blocked in your browser settings.",
+
   "bill.paid": "Bill paid",
   "bill.thankYou": "Thank you!",
   "bill.myBill": "My bill",
@@ -966,6 +978,12 @@ const sr: TranslationMap = {
   "waiter.error": "Nije moguće pozvati konobara",
   "waiter.errorHint": "Pokušajte ponovo.",
 
+  "push.optIn.title": "Obaveštenja o statusu",
+  "push.optIn.body": "Denis će vas obavestiti kada porudžbina bude spremna.",
+  "push.optIn.enable": "Uključi",
+  "push.optIn.enabled": "Obaveštenja uključena",
+  "push.optIn.denied": "Obaveštenja su blokirana u postavkama browsera.",
+
   "bill.paid": "Račun plaćen",
   "bill.thankYou": "Hvala!",
   "bill.myBill": "Moj račun",
@@ -1130,6 +1148,12 @@ const tr: TranslationMap = {
   "waiter.error": "Garson çağrılamadı",
   "waiter.errorHint": "Lütfen tekrar deneyin.",
 
+  "push.optIn.title": "Sipariş durumu bildirimleri",
+  "push.optIn.body": "Siparişiniz hazır olunca Denis sizi bilgilendirir.",
+  "push.optIn.enable": "Aç",
+  "push.optIn.enabled": "Bildirimler açıldı",
+  "push.optIn.denied": "Bildirimler tarayıcı ayarlarında engellenmiş.",
+
   "bill.paid": "Hesap ödendi",
   "bill.thankYou": "Teşekkürler!",
   "bill.myBill": "Hesabım",
@@ -1279,6 +1303,12 @@ const hr: TranslationMap = {
   "waiter.sessionErrorHint": "Osvježite stranicu i pokušajte ponovno.",
   "waiter.error": "Nije moguće pozvati konobara",
   "waiter.errorHint": "Pokušajte ponovno.",
+
+  "push.optIn.title": "Obavijesti o statusu",
+  "push.optIn.body": "Denis će vas obavijestiti kad narudžba bude spremna.",
+  "push.optIn.enable": "Uključi",
+  "push.optIn.enabled": "Obavijesti uključene",
+  "push.optIn.denied": "Obavijesti su blokirane u postavkama preglednika.",
 
   "bill.paid": "Račun plaćen",
   "bill.thankYou": "Hvala!",

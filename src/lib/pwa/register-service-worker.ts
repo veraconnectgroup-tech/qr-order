@@ -1,5 +1,7 @@
 const PRODUCTION_SW = "/sw.js";
 const DEV_SW = "/push-sw.js";
+/** Minimal push-only SW for guest QR — no Workbox precache (ADR-019 Phase D). */
+export const GUEST_PUSH_SW = "/push-sw.js";
 const ACTIVATION_TIMEOUT_MS = 12_000;
 const SW_UPDATE_DEFER_MS = 60_000;
 
@@ -222,6 +224,42 @@ async function registerAppServiceWorkerInternal(): Promise<ServiceWorkerRegistra
       );
     }
   }
+}
+
+function isGuestPushRegistration(
+  registration: ServiceWorkerRegistration
+): boolean {
+  const scriptUrl =
+    registration.active?.scriptURL ??
+    registration.waiting?.scriptURL ??
+    registration.installing?.scriptURL;
+  return scriptUrl?.endsWith(GUEST_PUSH_SW) ?? false;
+}
+
+/** Register minimal push SW for guest QR (no Workbox — avoids stale menu CSS). */
+export async function registerGuestPushServiceWorker(): Promise<ServiceWorkerRegistration> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+    throw new ServiceWorkerUnavailableError(
+      "Service workers are not supported in this browser."
+    );
+  }
+
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (existing && isGuestPushRegistration(existing)) {
+    if (isRegistrationActive(existing)) {
+      return existing;
+    }
+    return waitForRegistrationReady(existing, ACTIVATION_TIMEOUT_MS);
+  }
+
+  if (existing && !isGuestPushRegistration(existing)) {
+    await existing.unregister();
+  }
+
+  const registered = await navigator.serviceWorker.register(GUEST_PUSH_SW, {
+    scope: "/",
+  });
+  return waitForRegistrationReady(registered, ACTIVATION_TIMEOUT_MS);
 }
 
 /** Register the app service worker and wait until it is ready (with timeout). */

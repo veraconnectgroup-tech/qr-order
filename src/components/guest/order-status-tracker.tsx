@@ -33,6 +33,7 @@ import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
 import { GuestDenisLayer } from "@/components/guest/guest-denis-layer";
+import { GuestPushOptIn } from "@/components/guest/guest-push-opt-in";
 
 type OrderData = {
   id: string;
@@ -385,6 +386,14 @@ export function OrderStatusTracker({
         paymentCardAtTableEnabled={paymentCardAtTableEnabled}
         inPersonPaymentLocation={inPersonPaymentLocation}
       />
+
+      {!isClosed && !showPlacedOverlay ? (
+        <GuestPushOptIn
+          tableToken={token}
+          sessionToken={sessionToken}
+          className="mb-4"
+        />
+      ) : null}
 
       {/* Status hero */}
       <section className="pb-5 text-center" aria-live="polite" aria-atomic="true">

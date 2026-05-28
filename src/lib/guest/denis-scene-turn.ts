@@ -8,11 +8,11 @@ import {
   type AiSheetSelections,
 } from "@/lib/ai/guest-sheet-preferences";
 import {
-  resolveGuestAiContextToken,
   readAiSessionIdForGuest,
   writeAiSessionIdForGuest,
 } from "@/lib/ai/guest-ai-token";
 import { chipIdToHandoff } from "@/lib/denis/commands/perceive-table-guest-command";
+import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
@@ -80,14 +80,6 @@ export async function runGuestDenisSceneTurn(input: {
   structuredIntent?: GuestIntent;
   handoffPaymentMethod?: SelectablePaymentMethod;
 }): Promise<GuestDenisTurnResult> {
-  const aiContextToken = resolveGuestAiContextToken(
-    input.tableToken,
-    input.sessionToken
-  );
-  if (!aiContextToken) {
-    throw new Error("session-unavailable");
-  }
-
   const sessionId =
     readAiSessionIdForGuest(input.locationId, input.tableToken, [
       input.sessionToken,
@@ -104,29 +96,26 @@ export async function runGuestDenisSceneTurn(input: {
       ? buildSmartMenuPrompt(input.selections)
       : input.message;
 
-  const res = await fetch("/api/ai/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      locationId: input.locationId,
-      tableId: input.tableId,
-      sessionToken: aiContextToken,
-      message,
-      language: input.language,
-      sessionId,
-      preferences,
-      includeOrderContext: true,
-      allowOrdering: input.allowOrdering ?? true,
-      browsingContext: input.browsingContext,
-      structuredIntent: input.structuredIntent,
-      handoffPaymentMethod: input.handoffPaymentMethod,
-    }),
+  const res = await postDenisMessageTurn({
+    tableToken: input.tableToken,
+    tableSessionToken: input.sessionToken,
+    locationId: input.locationId,
+    tableId: input.tableId,
+    message,
+    language: input.language,
+    aiSessionId: sessionId,
+    preferences,
+    includeOrderContext: true,
+    allowOrdering: input.allowOrdering ?? true,
+    browsingContext: input.browsingContext,
+    structuredIntent: input.structuredIntent,
+    handoffPaymentMethod: input.handoffPaymentMethod,
   });
 
   const json = (await res.json()) as {
     error?: string;
     data?: {
-      message: string;
+      message?: string;
       recommendations?: ProductRecommendation[];
       sessionId?: string;
     };
@@ -136,7 +125,7 @@ export async function runGuestDenisSceneTurn(input: {
     throw new Error(json.error ?? "denis-turn-failed");
   }
 
-  const data = json.data!;
+  const data = json.data ?? {};
   if (data.sessionId) {
     writeAiSessionIdForGuest(
       input.locationId,
@@ -148,6 +137,6 @@ export async function runGuestDenisSceneTurn(input: {
   return {
     sessionId: data.sessionId ?? null,
     recommendations: data.recommendations ?? [],
-    message: data.message,
+    message: data.message ?? "",
   };
 }

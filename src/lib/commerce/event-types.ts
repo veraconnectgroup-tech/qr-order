@@ -30,6 +30,7 @@ export type CommerceEventType =
 export const COMMERCE_OUTBOX_TYPES = {
   projectionRefresh: "commerce.projection.refresh",
   alertStaff: "commerce.alert.staff",
+  denisWorld: "commerce.denis.world",
   memorySync: "commerce.memory.sync",
   analyticsRollup: "commerce.analytics.rollup",
   preorderRelease: "commerce.preorder.release",

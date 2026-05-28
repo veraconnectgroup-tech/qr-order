@@ -254,8 +254,8 @@ Legacy wrappers deleted at end of Phase D. Pilot gate: `denis_only` on one venue
 |-------|--------|-------------|
 | **A — FOLD** | 📋 | `foldTableSessionState()` before every DECIDE |
 | **B — VIEW** | 📋 | `GET /api/denis/view` — single guest read model |
-| **C — SIGNAL** | 📋 | `POST /api/denis/signal` — single guest write |
-| **D — WORLD** | 📋 | Order/status events → loop → TELL + guest push |
+| **C — SIGNAL** | ✅ | `POST /api/denis/signal` — single guest write |
+| **D — WORLD** | ✅ | Order/status events → loop → TELL + guest push |
 | **E — ACTOR** | 📋 | Table Session Actor + view stream + ADR-013 → signals |
 | **F — TRUTH** | 📋 | Single TRUTH stream; transcript from timeline |
 

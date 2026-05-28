@@ -45,6 +45,7 @@ type TableSessionRow = {
   access_state: string | null;
   session_token: string;
   table: { name: string };
+  location: { ai_concierge_enabled: boolean };
 };
 
 /**
@@ -91,7 +92,7 @@ export async function foldTableSessionState(
 
   const manualCartDraft = manualSnapshotToDenisDraft(input.manualCartSnapshot);
 
-  const [venueBundle, timeline, sessionRow, commerceState, tableSessionRow] =
+  const [venueBundle, timeline, sessionRow, commerceState, tableSessionRow, aiSessions] =
     await Promise.all([
       loadEffectiveVenueOps(admin, {
         locationId: input.locationId,
@@ -111,7 +112,7 @@ export async function foldTableSessionState(
       tableSessionId
         ? admin
             .from("guest_session_commerce_state" as never)
-            .select("bill_settled")
+            .select("bill_settled, feedback_submitted")
             .eq("session_id", tableSessionId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -124,12 +125,35 @@ export async function foldTableSessionState(
               status,
               access_state,
               session_token,
-              table:tables!inner(name)
+              table:tables!inner(name),
+              location:locations!inner(ai_concierge_enabled)
             `
             )
             .eq("id", tableSessionId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
+      tableSessionId
+        ? admin
+            .from("table_sessions")
+            .select("session_token, table_id")
+            .eq("id", tableSessionId)
+            .maybeSingle()
+            .then(async ({ data }) => {
+              const row = data as {
+                session_token: string;
+                table_id: string;
+              } | null;
+              if (!row) return [];
+              const { data: sessions } = await admin
+                .from("ai_sessions")
+                .select("id")
+                .eq("session_token", row.session_token)
+                .eq("table_id", row.table_id)
+                .eq("status", "active")
+                .limit(1);
+              return sessions ?? [];
+            })
+        : Promise.resolve([]),
     ]);
 
   const orders = tableSessionId
@@ -158,7 +182,12 @@ export async function foldTableSessionState(
   }
 
   const tableSession = tableSessionRow.data as TableSessionRow | null;
-  const commerce = commerceState.data as { bill_settled?: boolean } | null;
+  const commerce = commerceState.data as {
+    bill_settled?: boolean;
+    feedback_submitted?: boolean;
+  } | null;
+  const denisEnabled = Boolean(tableSession?.location.ai_concierge_enabled);
+  const denisActive = denisEnabled && aiSessions.length > 0;
 
   const hasCartActivity =
     aiCartState.draft.items.length > 0 ||
@@ -183,6 +212,10 @@ export async function foldTableSessionState(
       id: tableSessionId ?? "",
       status: tableSession?.status ?? "active",
       accessState: tableSession?.access_state ?? null,
+      billSettled: Boolean(commerce?.bill_settled),
+      feedbackSubmitted: Boolean(commerce?.feedback_submitted),
+      denisEnabled,
+      denisActive,
     },
     commerce: {
       orders,

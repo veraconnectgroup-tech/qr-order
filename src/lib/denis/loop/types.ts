@@ -46,6 +46,10 @@ export type TableSessionState = {
     id: string;
     status: string;
     accessState: string | null;
+    billSettled: boolean;
+    feedbackSubmitted: boolean;
+    denisEnabled: boolean;
+    denisActive: boolean;
   };
   commerce: {
     orders: OrderFact[];

@@ -1,15 +1,10 @@
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
 import { deriveGuestSituation } from "@/lib/scene/derive-guest-situation";
-import type { Scene, SceneSituation } from "@/lib/scene/types";
+import type { Scene } from "@/lib/scene/types";
 
-function situationFromView(view: TableSessionView): SceneSituation | null {
-  const activeOrders = view.orders.filter(
-    (order) => order.status !== "delivered" && order.status !== "cancelled"
-  );
-
-  if (!activeOrders.length && !view.orders.length) return null;
-
-  return deriveGuestSituation(
+/** Bridge TableSessionView → legacy Scene for dock/chat renderers (Phase B). */
+export function tableSessionViewToScene(view: TableSessionView): Scene {
+  const situation = deriveGuestSituation(
     view.orders.map((order) => ({
       id: order.id,
       order_number: order.orderNumber,
@@ -22,14 +17,6 @@ function situationFromView(view: TableSessionView): SceneSituation | null {
       })),
     }))
   );
-}
-
-/** Bridge TableSessionView → legacy Scene for dock/chat renderers (Phase B). */
-export function tableSessionViewToScene(
-  view: TableSessionView,
-  fallback?: Scene | null
-): Scene {
-  const situation = situationFromView(view);
 
   return {
     version: view.version,
@@ -52,8 +39,8 @@ export function tableSessionViewToScene(
               hasReadyOrder: false,
               hasActiveKitchen: false,
             }
-          : (fallback?.chrome.situation ?? null),
+          : null,
     },
-    layers: view.layers.length ? view.layers : (fallback?.layers ?? []),
+    layers: view.layers,
   };
 }

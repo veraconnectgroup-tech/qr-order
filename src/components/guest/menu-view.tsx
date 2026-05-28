@@ -73,6 +73,7 @@ import {
   buildManualCartSnapshot,
   manualCartRevision,
 } from "@/lib/guest/manual-cart-snapshot";
+import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
 import { sceneBannerLayers } from "@/lib/scene/layer-utils";
 import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
@@ -614,20 +615,17 @@ export function MenuView({
         undefined;
 
       try {
-        const res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            locationId,
-            tableId,
-            sessionToken: aiContextToken,
-            message: prompt,
-            language,
-            sessionId,
-            preferences: { allergies: guestAllergies, mood: guestMood },
-            includeOrderContext: false,
-            browsingContext: getAiContext(),
-          }),
+        const res = await postDenisMessageTurn({
+          tableToken: token,
+          tableSessionToken: sessionToken ?? undefined,
+          locationId,
+          tableId,
+          message: prompt,
+          language,
+          aiSessionId: sessionId,
+          preferences: { allergies: guestAllergies, mood: guestMood },
+          includeOrderContext: false,
+          browsingContext: getAiContext(),
         });
         const json = await res.json();
         if (!res.ok) return null;
@@ -787,19 +785,16 @@ export function MenuView({
         undefined;
 
       try {
-        const res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            locationId,
-            tableId,
-            sessionToken: aiContextToken,
-            message: buildDrinkPairingPrompt(dishName),
-            language,
-            sessionId,
-            preferences: { allergies: guestAllergies, mood: guestMood },
-            includeOrderContext: false,
-          }),
+        const res = await postDenisMessageTurn({
+          tableToken: token,
+          tableSessionToken: sessionToken ?? undefined,
+          locationId,
+          tableId,
+          message: buildDrinkPairingPrompt(dishName),
+          language,
+          aiSessionId: sessionId,
+          preferences: { allergies: guestAllergies, mood: guestMood },
+          includeOrderContext: false,
         });
 
         const json = await res.json();

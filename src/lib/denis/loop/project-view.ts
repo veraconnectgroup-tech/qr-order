@@ -1,7 +1,14 @@
 import { emptyCartDraft } from "@/lib/denis/kernel/cart-projection";
 import { resolveCartConflict } from "@/lib/denis/kernel/conflict";
 import { foldTranscriptFromTimeline } from "@/lib/denis/loop/fold-transcript";
-import type { TableSessionState } from "@/lib/denis/loop/types";
+import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
+import {
+  buildViewHeadline,
+  buildViewLayers,
+  buildViewMarkState,
+  buildViewSituation,
+  viewVersionFromTimeline,
+} from "@/lib/denis/loop/project-view-layers";
 import type {
   AvailableAction,
   CartView,
@@ -54,11 +61,11 @@ function buildCartView(state: TableSessionState): CartView {
 }
 
 function buildActions(
-  input: ProjectViewInput,
+  meta: FoldMeta,
   orders: OrderSummary[]
 ): AvailableAction[] {
   const actions: AvailableAction[] = resolveTableActionChips({
-    phase: input.phase,
+    phase: meta.phase,
     hasUnpaidOrders: sessionHasUnpaidOrders(
       orders.map((order) => ({
         id: order.id,
@@ -99,26 +106,40 @@ function buildActions(
  */
 export function projectTableSessionView(
   state: TableSessionState,
+  meta: FoldMeta,
   tellResult: TellResult,
   input: ProjectViewInput
 ): TableSessionView {
   const orders = mapOrders(state.commerce.orders);
+  const situation = buildViewSituation(state);
+  const headline = buildViewHeadline(
+    situation,
+    meta.phase,
+    tellResult?.headline
+  );
+  const markState = buildViewMarkState(
+    state,
+    situation,
+    tellResult?.markState
+  );
+  const layers = buildViewLayers(state, meta, situation);
+  const transcript = foldTranscriptFromTimeline(state.timeline);
 
   return {
-    version: input.version,
+    version: viewVersionFromTimeline(state),
     sessionId: input.sessionId,
-    phase: input.phase,
+    phase: meta.phase,
     chrome: {
       tableName: state.table.name,
       venueName: input.venueName,
-      headline: tellResult?.headline ?? input.headline,
-      markState: tellResult?.markState ?? input.markState ?? "idle",
-      denisActive: input.denisActive,
+      headline,
+      markState,
+      denisActive: state.session.denisActive,
     },
-    layers: input.layers,
-    transcript: foldTranscriptFromTimeline(state.timeline),
+    layers,
+    transcript,
     cart: buildCartView(state),
     orders,
-    actions: buildActions(input, orders),
+    actions: buildActions(meta, orders),
   };
 }

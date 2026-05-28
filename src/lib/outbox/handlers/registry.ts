@@ -3,6 +3,7 @@ import {
   handleBillingStaffHint,
 } from "@/lib/outbox/handlers/billing-low-balance";
 import { handleCommerceProjectionRefresh } from "@/lib/commerce/projections/refresh-session-state";
+import { handleCommerceDenisWorld } from "@/lib/outbox/handlers/commerce-denis-world";
 import { handleCommerceStaffAlert } from "@/lib/outbox/handlers/commerce-staff-alert";
 import { handleSceneRefresh } from "@/lib/scene/refresh-guest-scene";
 import { handleFulfillCloudPrint } from "@/lib/outbox/handlers/cloud-print";
@@ -32,6 +33,7 @@ const handlers: Record<OutboxEventType, OutboxHandler> = {
   "billing.staff_hint": handleBillingStaffHint,
   "commerce.projection.refresh": handleCommerceProjectionRefresh,
   "commerce.alert.staff": handleCommerceStaffAlert,
+  "commerce.denis.world": handleCommerceDenisWorld,
   "session.scene.refresh": handleSceneRefresh,
 };
 

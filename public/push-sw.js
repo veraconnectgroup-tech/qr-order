@@ -1,21 +1,21 @@
 /* Minimal push service worker — used in development (next-pwa is disabled in dev). */
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? {
-    title: "QR Order",
+    title: "Denis",
     body: "New notification",
   };
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/icon-192.png",
-      data: { url: data.url || "/dashboard" },
+      data: { url: data.url || "/" },
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/dashboard";
+  const url = event.notification.data?.url || "/";
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
