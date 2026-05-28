@@ -50,10 +50,12 @@ import {
 } from "@/lib/ai/guest-sheet-preferences";
 import {
   clearAiSessionIdForGuest,
+  legacyTokensForAiSession,
   readAiSessionIdForGuest,
   resolveGuestAiContextToken,
   writeAiSessionIdForGuest,
 } from "@/lib/ai/guest-ai-token";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import {
   trackAiConversion,
 } from "@/lib/ai/guest-session-storage";
@@ -136,6 +138,13 @@ function mapAiChatError(
   if (status === 401 || error?.includes("Session expired")) {
     return tUI("ai.overlay.sessionExpired");
   }
+  if (
+    status === 410 ||
+    error?.includes("no longer active") ||
+    error?.includes("message limit")
+  ) {
+    return tUI("ai.overlay.sessionExpired");
+  }
   if (status === 403 && error?.includes("Session does not match")) {
     return tUI("ai.overlay.sessionExpired");
   }
@@ -146,6 +155,30 @@ function mapAiChatError(
     return tUI("ai.overlay.unavailable");
   }
   return error ?? tUI("ai.overlay.error");
+}
+
+function aiLegacySessionTokens(
+  tableId: string,
+  sessionToken: string | null | undefined
+) {
+  return legacyTokensForAiSession(
+    tableId,
+    sessionToken,
+    useGuestSession.getState().tableId
+  );
+}
+
+function isStaleAiSessionResponse(
+  status: number,
+  error: string | undefined,
+  sessionId: string | undefined
+) {
+  if (!sessionId) return false;
+  if (status === 401 || status === 404 || status === 410) return true;
+  return (
+    error?.includes("no longer active") === true ||
+    error?.includes("message limit") === true
+  );
 }
 
 function nextId() {
@@ -636,7 +669,11 @@ export function AiConciergeChat({
 
       const storedSessionId =
         aiSessionId ??
-        readAiSessionIdForGuest(locationId, token, [sessionToken]);
+        readAiSessionIdForGuest(
+          locationId,
+          token,
+          aiLegacySessionTokens(tableId, sessionToken)
+        );
 
       if (
         storedSessionId &&
@@ -722,6 +759,18 @@ export function AiConciergeChat({
                 chatInitKeyRef.current = initKey;
                 return;
               }
+            } else if (
+              isStaleAiSessionResponse(res.status, undefined, storedSessionId)
+            ) {
+              clearAiSessionIdForGuest(
+                locationId,
+                token,
+                aiLegacySessionTokens(tableId, sessionToken)
+              );
+              if (!cancelled) {
+                setAiSessionId(null);
+                historyLoadedForRef.current = null;
+              }
             }
           } catch {
             // Fall through to greeting for new session UX
@@ -734,7 +783,7 @@ export function AiConciergeChat({
       }
 
       setPhase("chat");
-      setAiSessionId(storedSessionId);
+      setAiSessionId(null);
       chatInitKeyRef.current = initKey;
     }
 
@@ -861,10 +910,11 @@ export function AiConciergeChat({
         throw new Error(tUI("ai.overlay.unavailable"));
       }
 
+      const legacyTokens = aiLegacySessionTokens(tableId, sessionToken);
       const sessionId = retryWithoutSession
         ? undefined
         : (aiSessionId ??
-          readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
+          readAiSessionIdForGuest(locationId, token, legacyTokens) ??
           undefined);
 
       const controller = new AbortController();
@@ -929,10 +979,13 @@ export function AiConciergeChat({
       if (!res.ok) {
         if (
           !retryWithoutSession &&
-          (res.status === 401 || res.status === 404) &&
-          sessionId
+          isStaleAiSessionResponse(res.status, json.error, sessionId)
         ) {
-          clearAiSessionIdForGuest(locationId, token, [sessionToken, aiContextToken]);
+          clearAiSessionIdForGuest(locationId, token, [
+            sessionToken,
+            aiContextToken,
+            ...legacyTokens,
+          ]);
           setAiSessionId(null);
           return callAiChat(message, prefs, true, inputSurface);
         }

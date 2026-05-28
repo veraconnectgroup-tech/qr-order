@@ -8,9 +8,11 @@ import {
   type AiSheetSelections,
 } from "@/lib/ai/guest-sheet-preferences";
 import {
+  legacyTokensForAiSession,
   readAiSessionIdForGuest,
   writeAiSessionIdForGuest,
 } from "@/lib/ai/guest-ai-token";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { chipIdToHandoff } from "@/lib/denis/commands/perceive-table-guest-command";
 import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
@@ -81,9 +83,15 @@ export async function runGuestDenisSceneTurn(input: {
   handoffPaymentMethod?: SelectablePaymentMethod;
 }): Promise<GuestDenisTurnResult> {
   const sessionId =
-    readAiSessionIdForGuest(input.locationId, input.tableToken, [
-      input.sessionToken,
-    ]) ?? undefined;
+    readAiSessionIdForGuest(
+      input.locationId,
+      input.tableToken,
+      legacyTokensForAiSession(
+        input.tableId,
+        input.sessionToken,
+        useGuestSession.getState().tableId
+      )
+    ) ?? undefined;
 
   const preferences =
     input.preferences ??

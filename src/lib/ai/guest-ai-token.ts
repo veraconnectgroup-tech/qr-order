@@ -15,6 +15,20 @@ export function resolveGuestAiContextToken(
   return qrToken;
 }
 
+/**
+ * Legacy table-session tokens may still hold an AI session id for the same table.
+ * Never pass a token from another table — that copied chat history across QRs.
+ */
+export function legacyTokensForAiSession(
+  tableId: string,
+  sessionToken: string | null | undefined,
+  guestTableId: string | null | undefined
+): string[] {
+  if (!sessionToken || sessionToken.trim().length === 0) return [];
+  if (guestTableId && guestTableId !== tableId) return [];
+  return [sessionToken];
+}
+
 /** AI session ids are stored under the stable QR token for this table. */
 export function readAiSessionIdForGuest(
   locationId: string,
@@ -55,5 +69,20 @@ export function clearAiSessionIdForGuest(
     if (legacy && legacy !== qrToken) {
       clearAiSessionId(locationId, legacy);
     }
+  }
+}
+
+/** Drop stale guest + AI state when the guest scans a different table QR. */
+export function resetGuestStoresForTableSwitch(
+  locationId: string,
+  qrToken: string,
+  tableId: string,
+  legacyTokens: Array<string | null | undefined> = []
+) {
+  clearAiSessionIdForGuest(locationId, qrToken, legacyTokens);
+  try {
+    localStorage.setItem(`denis-bound-table-${locationId}`, tableId);
+  } catch {
+    // ignore
   }
 }

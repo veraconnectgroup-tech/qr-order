@@ -166,6 +166,48 @@ function staffHandoffBlock(): string {
 - Do not explain limitations; confirm that someone is on the way or ask how they want to pay.`;
 }
 
+function seatedGuestContextBlock(
+  lang: (typeof AI_SUPPORTED_LANGUAGES)[number]
+): string {
+  const blocks: Partial<
+    Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
+  > & { en: string } = {
+    de: `GAST-KONTEXT (QR am Tisch):
+- Der Gast ist BEREITS am Tisch — QR-Code wurde gescannt.
+- NIEMALS Tischreservierung, freie Tische suchen oder Datum/Uhrzeit für Reservierung erfragen.
+- Hilf mit Speisekarte, Bestellung, Bezahlung und Kellner-Ruf.`,
+    en: `GUEST CONTEXT (table QR scan):
+- The guest is ALREADY seated at their table — they scanned the table QR.
+- NEVER offer table reservations, finding available tables, or ask for booking date/time.
+- Help with menu, ordering, payment, and calling staff.`,
+    sr: `KONTEKST GOSTA (QR kod za sto):
+- Gost je VEĆ sedeo za stolom — skenirao je QR kod stola.
+- NIKADA ne nudi rezervaciju stola, traženje slobodnih stolova niti datum/vreme rezervacije.
+- Pomaži oko menija, porudžbine, plaćanja i poziva osoblja.`,
+    hr: `KONTEKST GOSTA (QR kod za stol):
+- Gost je VEĆ sjeo za stolom — skenirao je QR kod stola.
+- NIKADA ne nudi rezervaciju stola niti traži datum/vrijeme rezervacije.
+- Pomaži oko jelovnika, narudžbe, plaćanja i poziva osoblja.`,
+    tr: `MİSAFİR BAĞLAMI (masa QR):
+- Misafir ZATEN masada oturuyor — masa QR kodunu taradı.
+- Asla masa rezervasyonu veya boş masa arama teklif etme.
+- Menü, sipariş, ödeme ve garson çağırma konusunda yardım et.`,
+    fr: `CONTEXTE CLIENT (QR table):
+- Le client est DÉJÀ assis à sa table — il a scanné le QR de la table.
+- Ne propose JAMAIS de réservation de table ni de recherche de tables libres.
+- Aide pour la carte, la commande, le paiement et appeler le staff.`,
+    es: `CONTEXTO DEL CLIENTE (QR de mesa):
+- El cliente YA está sentado en su mesa — escaneó el QR de la mesa.
+- NUNCA ofrezcas reservas de mesa ni buscar mesas disponibles.
+- Ayuda con menú, pedido, pago y llamar al personal.`,
+    it: `CONTESTO OSPITE (QR tavolo):
+- L'ospite è GIÀ seduto al tavolo — ha scansionato il QR del tavolo.
+- Non offrire MAI prenotazioni tavolo o ricerca tavoli liberi.
+- Aiuta con menu, ordine, pagamento e chiamata staff.`,
+  };
+  return langBlock(blocks, lang);
+}
+
 function conversationStyleBlock(): string {
   return `CONVERSATION STYLE (critical — natural waiter dialogue, no clickable UI):
 - Do NOT use quickReplies — always ask choices in plain message text (guest types the answer).
@@ -473,6 +515,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   return [
     multilingualPolicyBlock(input.language),
     staffHandoffBlock(),
+    seatedGuestContextBlock(lang),
     conversationStyleBlock(),
     orderingConversationFlowBlock(lang),
     identityBlock(input.orgName, lang),

@@ -351,11 +351,17 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     facts: narrationFacts,
     config: ctx.config,
     rolloutMode: rollout.mode,
+    guestUsesLegacy,
   });
-  const narration = sanitizeNarrationOutput(
-    resolvedNarration.draftMessage,
-    narrationFacts
-  );
+  const narration = resolvedNarration.usedDenisNarrator
+    ? sanitizeNarrationOutput(resolvedNarration.draftMessage, narrationFacts)
+    : {
+        message: resolvedNarration.draftMessage.trim(),
+        tier: "legacy" as const,
+        lintPassed: true,
+        issues: [],
+        usedFallback: false,
+      };
   const quickReplies = dedupeHandoffQuickReplies(
     resolveTurnQuickReplies({
       reflexTurn,
@@ -369,7 +375,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const guestMessage =
     actHandoffOutcome.overrideLegacy && actHandoffOutcome.guestMessage
       ? actHandoffOutcome.guestMessage
-      : guestUsesLegacy && !resolvedNarration.usedDenisNarrator
+      : !resolvedNarration.usedDenisNarrator
         ? data.message
         : narration.message;
   timings.narrateMs = elapsedMs(narrateStarted);

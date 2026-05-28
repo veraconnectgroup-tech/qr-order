@@ -39,7 +39,6 @@ export async function updateLocationMenuLocale(menuLocale: MenuLocale) {
     .update({
       menu_locale: parsed.data,
       default_locale: parsed.data,
-      available_locales: [parsed.data, "en"],
       updated_at: new Date().toISOString(),
     } as never)
     .eq("id", locationId);

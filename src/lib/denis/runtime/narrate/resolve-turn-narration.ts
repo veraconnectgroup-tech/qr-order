@@ -1,7 +1,8 @@
+import type { NarrationFacts } from "@/lib/denis/runtime/narrate/narration-facts.schema";
+import { shouldKeepLegacyConversationReply } from "@/lib/denis/runtime/narrate/has-committed-narration-facts";
+import { narrateFromFacts } from "@/lib/denis/runtime/narrate/narrate-llm";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { ConciergeRolloutMode } from "@/lib/denis/config/rollout";
-import { narrateFromFacts } from "@/lib/denis/runtime/narrate/narrate-llm";
-import type { NarrationFacts } from "@/lib/denis/runtime/narrate/narration-facts.schema";
 import { shouldUseDenisNarration } from "@/lib/denis/runtime/narrate/should-use-denis-narration";
 import { templateNarrationFallback } from "@/lib/denis/runtime/narrate/template-fallback";
 
@@ -23,6 +24,16 @@ export async function resolveTurnNarrationMessage(input: {
     !shouldUseDenisNarration(input.config, input.rolloutMode, {
       guestUsesLegacy: input.guestUsesLegacy,
     })
+  ) {
+    return {
+      draftMessage: input.legacyMessage,
+      usedDenisNarrator: false,
+      usedTemplateFallback: false,
+    };
+  }
+
+  if (
+    shouldKeepLegacyConversationReply(input.facts, input.legacyMessage)
   ) {
     return {
       draftMessage: input.legacyMessage,

@@ -49,7 +49,9 @@ import {
   runGuestDenisSceneTurn,
 } from "@/lib/guest/denis-scene-turn";
 import {
+  legacyTokensForAiSession,
   readAiSessionIdForGuest,
+  resetGuestStoresForTableSwitch,
   resolveGuestAiContextToken,
 } from "@/lib/ai/guest-ai-token";
 import { trackAiConversion } from "@/lib/ai/guest-session-storage";
@@ -240,6 +242,12 @@ export function MenuView({
   const cartBump = useCart((s) => s.cartBump);
   const itemCount = useCart((s) => s.itemCount());
   const sessionToken = useGuestSession((s) => s.sessionToken);
+  const guestTableId = useGuestSession((s) => s.tableId);
+  const clearGuestSession = useGuestSession((s) => s.clearSession);
+  const aiLegacyTokens = useMemo(
+    () => legacyTokensForAiSession(tableId, sessionToken, guestTableId),
+    [tableId, sessionToken, guestTableId]
+  );
 
   const allergenStorageKey = allergenFilterStorageKey(slug, token);
   const { excluded, toggle, clear, replaceExcluded, count: allergenFilterCount } =
@@ -343,8 +351,17 @@ export function MenuView({
     : locationName;
 
   useEffect(() => {
+    if (guestTableId && guestTableId !== tableId) {
+      resetGuestStoresForTableSwitch(
+        locationId,
+        token,
+        tableId,
+        legacyTokensForAiSession(guestTableId, sessionToken, guestTableId)
+      );
+      clearGuestSession();
+    }
     void ensureTableSession(slug, token, tableId);
-  }, [token, slug, tableId]);
+  }, [token, slug, tableId, locationId, guestTableId, sessionToken, clearGuestSession]);
 
   useEffect(() => {
     if (restoredScroll.current) return;
@@ -521,7 +538,7 @@ export function MenuView({
 
   useEffect(() => {
     if (!aiConciergeEnabled || !sessionToken) return;
-    const stored = readAiSessionIdForGuest(locationId, token, [sessionToken]);
+    const stored = readAiSessionIdForGuest(locationId, token, aiLegacyTokens);
     if (stored) setAiSessionId(stored);
   }, [aiConciergeEnabled, sessionToken, locationId, token]);
 
@@ -611,7 +628,7 @@ export function MenuView({
 
       const sessionId =
         aiSessionId ??
-        readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
+        readAiSessionIdForGuest(locationId, token, aiLegacyTokens) ??
         undefined;
 
       try {
@@ -694,7 +711,7 @@ export function MenuView({
 
       const sessionId =
         aiSessionId ??
-        readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
+        readAiSessionIdForGuest(locationId, token, aiLegacyTokens) ??
         undefined;
 
       const result = await postDenisSense({
@@ -781,7 +798,7 @@ export function MenuView({
 
       const sessionId =
         aiSessionId ??
-        readAiSessionIdForGuest(locationId, token, [sessionToken]) ??
+        readAiSessionIdForGuest(locationId, token, aiLegacyTokens) ??
         undefined;
 
       try {
@@ -839,7 +856,7 @@ export function MenuView({
 
       const sid =
         aiSessionId ??
-        readAiSessionIdForGuest(locationId, token, [sessionToken]);
+        readAiSessionIdForGuest(locationId, token, aiLegacyTokens);
       if (sid) {
         void trackAiConversion({
           sessionId: sid,
@@ -891,7 +908,7 @@ export function MenuView({
 
     const sid =
       aiSessionId ??
-      readAiSessionIdForGuest(locationId, token, [sessionToken]);
+      readAiSessionIdForGuest(locationId, token, aiLegacyTokens);
     if (sid) {
       void trackAiConversion({
         sessionId: sid,
