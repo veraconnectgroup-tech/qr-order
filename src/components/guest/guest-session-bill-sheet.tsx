@@ -3,6 +3,7 @@
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
 import type { InPersonPaymentLocation } from "@/lib/constants";
+import { GUEST_SHEET_OVERLAY } from "@/components/guest/guest-sheet-styles";
 import {
   Sheet,
   SheetContent,
@@ -41,12 +42,11 @@ export function GuestSessionBillSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        overlayClassName={GUEST_SHEET_OVERLAY}
         className="max-h-[min(92dvh,var(--denis-vv-height,100dvh))] overflow-y-auto rounded-t-2xl border-[var(--qr-elevated)] bg-[var(--qr-surface)] pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
-        <SheetHeader className="text-start">
-          <SheetTitle className="text-[var(--qr-ivory)]">
-            {tUI("scene.action.viewBill")}
-          </SheetTitle>
+        <SheetHeader className="sr-only">
+          <SheetTitle>{tUI("bill.myBill")}</SheetTitle>
         </SheetHeader>
 
         <div className="mt-4">

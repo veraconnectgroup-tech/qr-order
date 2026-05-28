@@ -10,14 +10,15 @@ import { orderStatusHeadlineKey } from "@/lib/i18n/translations";
 import { orderStatusStepIndex } from "@/lib/orders/order-status-display";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import type { InPersonPaymentLocation } from "@/lib/constants";
+import { GUEST_SHEET_OVERLAY } from "@/components/guest/guest-sheet-styles";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 
 type OrderData = {
@@ -127,6 +128,7 @@ export function GuestOrderFocusSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        overlayClassName={GUEST_SHEET_OVERLAY}
         className="max-h-[min(92dvh,var(--denis-vv-height,100dvh))] overflow-y-auto rounded-t-2xl border-[var(--qr-elevated)] bg-[var(--qr-surface)] pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <SheetHeader className="text-start">
