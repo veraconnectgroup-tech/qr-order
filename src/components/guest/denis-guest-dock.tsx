@@ -128,7 +128,7 @@ export function DenisGuestDock({
   const dock = (
     <div
       className={cn(
-        "pointer-events-none z-40 px-3",
+        "guest-theme pointer-events-none z-50 px-3",
         placement === "bottom"
           ? cartBarVisible
             ? "fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
@@ -138,7 +138,7 @@ export function DenisGuestDock({
     >
       <section
         className={cn(
-          "denis-scene-shell pointer-events-auto overflow-hidden rounded-2xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]/95 backdrop-blur-md",
+          "denis-scene-shell pointer-events-auto mx-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]/95 text-[var(--qr-ivory)] backdrop-blur-md",
           placement === "bottom"
             ? "shadow-[0_-8px_40px_rgba(0,0,0,0.45)]"
             : "shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
