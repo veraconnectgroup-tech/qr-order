@@ -2,8 +2,15 @@ import type { MenuSection } from "@/lib/menu-section";
 import type { IdempotentOrderData } from "@/lib/orders/idempotency";
 import type { CreateOrderInput } from "@/lib/orders/create/schema";
 
+export type OrderSessionOpened = {
+  sessionId: string;
+  sessionToken: string;
+  deviceToken: string;
+  tablePin?: string;
+};
+
 export type OrderCreateMode =
-  | { kind: "normal"; sessionId: string }
+  | { kind: "normal"; sessionId: string; sessionOpened?: OrderSessionOpened }
   | { kind: "approval"; deviceFingerprint: string }
   | { kind: "demo"; sessionId: string };
 
@@ -23,6 +30,7 @@ export type ResolvedContext = {
     payment_online_enabled: boolean;
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
+    require_first_table_approval: boolean;
   };
   org: {
     id: string;
@@ -79,6 +87,7 @@ export type CreateOrderSuccess = {
   orgId: string;
   locationId: string;
   awaitingApproval?: true;
+  sessionOpened?: OrderSessionOpened;
 };
 
 export type CreateOrderResult =

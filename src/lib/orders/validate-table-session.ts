@@ -24,6 +24,7 @@ export type ValidatedTableSession = {
     payment_online_enabled: boolean;
     payment_at_bar_enabled: boolean;
     payment_card_at_table_enabled: boolean;
+    require_first_table_approval: boolean;
   };
   org: {
     id: string;
@@ -55,7 +56,7 @@ export async function resolveTableForOrdering(
   const { data: location } = await admin
     .from("locations")
     .select(
-      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled, require_first_table_approval"
     )
     .eq("id", tableRow.location_id)
     .single();
@@ -64,7 +65,15 @@ export async function resolveTableForOrdering(
     return { error: "Location not found", status: 404 };
   }
 
-  const locationRow = location as ValidatedTableSession["location"];
+  const locationRow = {
+    ...(location as Omit<
+      ValidatedTableSession["location"],
+      "require_first_table_approval"
+    >),
+    require_first_table_approval:
+      (location as { require_first_table_approval?: boolean })
+        .require_first_table_approval ?? true,
+  } satisfies ValidatedTableSession["location"];
 
   if (!locationRow.ordering_enabled) {
     return { error: "Online ordering is not available.", status: 403 };
@@ -123,7 +132,7 @@ export async function validateTableSession(
   const { data: location } = await admin
     .from("locations")
     .select(
-      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled, require_first_table_approval"
     )
     .eq("id", tableRow.location_id)
     .single();
@@ -132,7 +141,15 @@ export async function validateTableSession(
     return { error: "Location not found", status: 404 };
   }
 
-  const locationRow = location as ValidatedTableSession["location"];
+  const locationRow = {
+    ...(location as Omit<
+      ValidatedTableSession["location"],
+      "require_first_table_approval"
+    >),
+    require_first_table_approval:
+      (location as { require_first_table_approval?: boolean })
+        .require_first_table_approval ?? true,
+  } satisfies ValidatedTableSession["location"];
 
   if (!locationRow.ordering_enabled) {
     return { error: "Online ordering is not available.", status: 403 };

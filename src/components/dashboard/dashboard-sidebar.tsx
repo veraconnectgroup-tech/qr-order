@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
+import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
 import {
   BarChart3,
   Bell,
@@ -13,7 +14,6 @@ import {
   LayoutGrid,
   Plus,
   Settings,
-  Sparkles,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
@@ -80,7 +80,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       {
         href: "/dashboard/denis",
         label: "Denis",
-        icon: Sparkles,
+        icon: DenisNavIcon,
         requiresDenis: true,
       },
     ],

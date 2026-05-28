@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { QrCard } from "@/components/design-system/qr-card";
 import { cn } from "@/lib/utils";
 
 export function AnalyticsMetricCard({
@@ -18,18 +19,15 @@ export function AnalyticsMetricCard({
   const positive = (changePct ?? 0) >= 0;
 
   return (
-    <div
+    <QrCard
       className={cn(
-        "rounded-lg border bg-white p-6 shadow-sm",
-        tone === "warning"
-          ? "border-amber-200 bg-amber-50/50"
-          : "border-neutral-200"
+        tone === "warning" && "border-amber-500/30 bg-amber-500/5"
       )}
     >
       <p
         className={cn(
           "text-sm",
-          tone === "warning" ? "text-amber-700" : "text-neutral-500"
+          tone === "warning" ? "text-amber-700" : "text-muted-foreground"
         )}
       >
         {label}
@@ -37,7 +35,7 @@ export function AnalyticsMetricCard({
       <p
         className={cn(
           "mt-2 font-mono text-3xl font-bold",
-          tone === "warning" ? "text-amber-900" : "text-neutral-900"
+          tone === "warning" ? "text-amber-900" : "text-foreground"
         )}
       >
         {value}
@@ -57,7 +55,7 @@ export function AnalyticsMetricCard({
           {Math.abs(changePct).toFixed(1)}% vs previous period
         </p>
       )}
-      {hint && <p className="mt-1 text-xs text-neutral-500">{hint}</p>}
-    </div>
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    </QrCard>
   );
 }

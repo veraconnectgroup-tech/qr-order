@@ -1,7 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { Check, Sparkles, X } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { toast } from "sonner";
 import {
   approveDenisLearnedEdge,
@@ -40,17 +41,17 @@ export function DenisLearnedEdgesManager({
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <Sparkles className="mt-0.5 size-5 text-blue-600" />
+        <DenisMarkBadge size="md" className="mt-0.5 bg-dash-accent-muted ring-dash-border" />
         <div>
           <h2 className="text-lg font-semibold">Denis Insights</h2>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Learned pairings from guest sessions — approve before they go live
             in upsell rules.
           </p>
           {!learnedEnabled ? (
             <p className="mt-2 text-sm text-amber-700">
               Queue is off — enable{" "}
-              <code className="rounded bg-neutral-100 px-1">
+              <code className="rounded bg-muted/50 px-1">
                 learning.learnedEdgesEnabled
               </code>{" "}
               in Denis config to auto-collect candidates.
@@ -60,14 +61,14 @@ export function DenisLearnedEdgesManager({
       </div>
 
       {edges.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-neutral-200 p-6 text-sm text-neutral-500">
+        <p className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
           No pending pairing suggestions. Denis needs more session data or cron
           aggregate runs.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-neutral-200">
+        <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
+            <thead className="bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">After</th>
                 <th className="px-4 py-3">Suggest</th>
@@ -80,17 +81,17 @@ export function DenisLearnedEdgesManager({
               {edges.map((edge) => {
                 const ratePct = Math.round(Number(edge.accept_rate) * 100);
                 return (
-                  <tr key={edge.id} className="border-t border-neutral-100">
-                    <td className="px-4 py-3 font-medium text-neutral-800">
+                  <tr key={edge.id} className="border-t border-border">
+                    <td className="px-4 py-3 font-medium text-foreground">
                       {productNames[edge.from_product_id] ?? "—"}
                     </td>
-                    <td className="px-4 py-3 font-medium text-neutral-800">
+                    <td className="px-4 py-3 font-medium text-foreground">
                       {productNames[edge.to_product_id] ?? "—"}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-blue-700">
                       {ratePct}%
                     </td>
-                    <td className="px-4 py-3 tabular-nums text-neutral-500">
+                    <td className="px-4 py-3 tabular-nums text-muted-foreground">
                       {edge.accepts}/{edge.impressions}
                     </td>
                     <td className="px-4 py-3">

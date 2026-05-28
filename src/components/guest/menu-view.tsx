@@ -20,7 +20,7 @@ import {
   registerMenuPeriodicSync,
   usePwaServiceWorkerMessages,
 } from "@/lib/pwa/sw-messages";
-import { ProductCard } from "@/components/guest/product-card";
+import { MenuListItem } from "@/components/guest/menu-list-item";
 import { ProductDetailSheet } from "@/components/guest/product-detail-sheet";
 import { PullToRefresh } from "@/components/guest/pull-to-refresh";
 import {
@@ -39,7 +39,14 @@ import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import {
   buildDrinkPairingPrompt,
+  allergenIdsFromSheetSelections,
+  apiPreferencesFromSheet,
 } from "@/lib/ai/guest-sheet-preferences";
+import {
+  parseSceneChipSelections,
+  postGuestWaiterCall,
+  runGuestDenisSceneTurn,
+} from "@/lib/guest/denis-scene-turn";
 import {
   readAiSessionIdForGuest,
   resolveGuestAiContextToken,
@@ -48,6 +55,7 @@ import { trackAiConversion } from "@/lib/ai/guest-session-storage";
 import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
+import { toast } from "sonner";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
 import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
@@ -64,6 +72,8 @@ import {
   manualCartRevision,
 } from "@/lib/guest/manual-cart-snapshot";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
+import { sceneBannerLayers } from "@/lib/scene/layer-utils";
+import { useGuestScene } from "@/hooks/use-guest-scene";
 
 const AiCartPairingBanner = dynamic(
   () =>
@@ -72,10 +82,17 @@ const AiCartPairingBanner = dynamic(
     })),
   { ssr: false }
 );
-const AiConciergeIntro = dynamic(
+const DenisGuestDock = dynamic(
   () =>
-    import("@/components/guest/ai-concierge-intro").then((m) => ({
-      default: m.AiConciergeIntro,
+    import("@/components/guest/denis-guest-dock").then((m) => ({
+      default: m.DenisGuestDock,
+    })),
+  { ssr: false }
+);
+const DenisSceneBanners = dynamic(
+  () =>
+    import("@/components/guest/denis-scene-banners").then((m) => ({
+      default: m.DenisSceneBanners,
     })),
   { ssr: false }
 );
@@ -166,6 +183,8 @@ export function MenuView({
   );
   const [returnGlow, setReturnGlow] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
+  const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -440,6 +459,32 @@ export function MenuView({
     sessionToken,
     aiConciergeEnabled && !!sessionToken
   );
+
+  const hasLiveKitchenOrders = useMemo(
+    () =>
+      sessionOrders.some(
+        (order) =>
+          order.status === "pending" ||
+          order.status === "confirmed" ||
+          order.status === "preparing" ||
+          order.status === "ready"
+      ),
+    [sessionOrders]
+  );
+
+  const { scene, loading: sceneLoading, refresh: refreshGuestSceneView } = useGuestScene({
+    tableToken: token,
+    sessionToken,
+    enabled: aiConciergeEnabled && !!sessionToken,
+    refreshKey: sceneRefreshKey,
+    fastPoll: hasLiveKitchenOrders || itemCount > 0,
+  });
+
+  const sceneBanners = useMemo(
+    () => (scene ? sceneBannerLayers(scene) : []),
+    [scene]
+  );
+  const useSceneBannerUi = sceneBanners.length > 0;
 
   const hasSessionOrders = sessionOrders.length > 0;
 
@@ -843,11 +888,205 @@ export function MenuView({
     tableId,
   ]);
 
+  const handleOpenDenisDesk = useCallback(() => {
+    hapticClick();
+    setAiChatOpen(true);
+  }, []);
+
+  const applySceneChipSelections = useCallback(
+    (selections: ReturnType<typeof parseSceneChipSelections>) => {
+      if (!selections) return;
+
+      const prefs = apiPreferencesFromSheet(selections);
+      setGuestAllergies(prefs.allergies);
+      if (selections.mood) {
+        setGuestMood(prefs.mood);
+      }
+
+      const allergenIds = allergenIdsFromSheetSelections(selections.allergies);
+      if (allergenIds.length > 0) {
+        if (!preAiExcludedRef.current) {
+          preAiExcludedRef.current = new Set(excluded);
+        }
+        replaceExcluded(allergenIds);
+      }
+
+      void saveGuestAllergies(prefs.allergies, selections.allergies);
+    },
+    [excluded, replaceExcluded, saveGuestAllergies]
+  );
+
+  const runSceneChipTurn = useCallback(
+    async (input: {
+      chipId: string;
+      label: string;
+      message?: string;
+      selections?: ReturnType<typeof parseSceneChipSelections>;
+    }) => {
+      if (!sessionToken || sceneTurnBusy) return;
+
+      setSceneTurnBusy(true);
+      try {
+        const result = await runGuestDenisSceneTurn({
+          locationId,
+          tableId,
+          tableToken: token,
+          sessionToken,
+          message: input.message ?? input.label,
+          language,
+          browsingContext: getAiContext(),
+          selections: input.selections ?? undefined,
+          allowOrdering: canPlaceOrders,
+          preferences:
+            input.selections != null
+              ? apiPreferencesFromSheet(input.selections)
+              : {
+                  allergies: guestAllergies,
+                  mood: guestMood,
+                },
+        });
+
+        if (result.sessionId) {
+          setAiSessionId(result.sessionId);
+        }
+
+        if (result.recommendations.length) {
+          setAiRecommendations(result.recommendations);
+          setAiActive(true);
+          setShowRecommendedSection(true);
+        }
+
+        setSceneRefreshKey((key) => key + 1);
+        await refreshGuestSceneView();
+      } catch {
+        toast.error(tUI("ai.overlay.error"));
+      } finally {
+        setSceneTurnBusy(false);
+      }
+    },
+    [
+      sessionToken,
+      sceneTurnBusy,
+      locationId,
+      tableId,
+      token,
+      language,
+      getAiContext,
+      guestAllergies,
+      guestMood,
+      refreshGuestSceneView,
+      tUI,
+      canPlaceOrders,
+    ]
+  );
+
+  useEffect(() => {
+    if (!sessionOrders.length) return;
+    void refreshGuestSceneView();
+  }, [sessionOrders, refreshGuestSceneView]);
+
+  const handleSceneChipPress = useCallback(
+    (chipId: string, label: string) => {
+      hapticClick();
+
+      if (chipId === "situation-waiter") {
+        if (!sessionToken) {
+          toast.error(tUI("waiter.sessionError"), {
+            description: tUI("waiter.sessionErrorHint"),
+          });
+          return;
+        }
+        void (async () => {
+          try {
+            await postGuestWaiterCall({ tableToken: token, sessionToken });
+            toast.success(tUI("waiter.notified"), {
+              description: tUI("waiter.notifiedBody"),
+            });
+            setSceneRefreshKey((key) => key + 1);
+            await refreshGuestSceneView();
+          } catch {
+            toast.error(tUI("waiter.error"), {
+              description: tUI("waiter.errorHint"),
+            });
+          }
+        })();
+        return;
+      }
+
+      if (chipId === "situation-wrong") {
+        void runSceneChipTurn({
+          chipId,
+          label,
+          message: tUI("scene.situation.chipWrong"),
+        });
+        return;
+      }
+
+      const selections = parseSceneChipSelections(chipId);
+      if (selections) {
+        applySceneChipSelections(selections);
+        void runSceneChipTurn({ chipId, label, selections });
+        return;
+      }
+
+      void runSceneChipTurn({ chipId, label });
+    },
+    [
+      sessionToken,
+      token,
+      tUI,
+      refreshGuestSceneView,
+      runSceneChipTurn,
+      applySceneChipSelections,
+    ]
+  );
+
+  const handleSceneInlineAdd = useCallback(
+    (productId: string) => {
+      const product = productById.get(productId);
+      if (!product) return;
+      handleAddAiRecommendation({
+        productId,
+        name: product.name,
+        price: Number(product.price),
+        reason: "",
+        imageUrl: product.image_url ?? null,
+      });
+    },
+    [productById, handleAddAiRecommendation]
+  );
+
   const handleNudgeAction = useCallback(() => {
     hapticClick();
     setAiChatOpen(true);
     dismissNudge();
   }, [dismissNudge]);
+
+  const handleAiChatOpenChange = useCallback((open: boolean) => {
+    setAiChatOpen(open);
+    if (!open) {
+      setSceneRefreshKey((key) => key + 1);
+    }
+  }, []);
+
+  const handleGuestSceneRefresh = useCallback(() => {
+    void refreshGuestSceneView();
+  }, [refreshGuestSceneView]);
+
+  const handleSceneBannerAction = useCallback(
+    (banner: (typeof sceneBanners)[number]) => {
+      hapticClick();
+      if (banner.action === "add_product" && banner.productId) {
+        const product = productById.get(banner.productId);
+        if (product) {
+          openProductDetail(product);
+          return;
+        }
+      }
+      setAiChatOpen(true);
+    },
+    [productById, openProductDetail]
+  );
 
   const handleNudgeAdd = useCallback(() => {
     if (!activeNudge?.recommendation) return;
@@ -884,6 +1123,7 @@ export function MenuView({
       setAiRecommendations(recommendations);
       setAiActive(true);
       setShowRecommendedSection(true);
+      setSceneRefreshKey((key) => key + 1);
     },
     [excluded, replaceExcluded]
   );
@@ -892,7 +1132,13 @@ export function MenuView({
     <>
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
-        <div className="min-h-dvh pb-cart-offset">
+        <div
+          className={
+            aiConciergeEnabled && sessionToken && !aiChatOpen
+              ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))]"
+              : "min-h-dvh pb-cart-offset"
+          }
+        >
           <GuestHeader
             orgName={orgName}
             logoUrl={logoUrl}
@@ -913,13 +1159,6 @@ export function MenuView({
             </div>
           )}
 
-          {aiConciergeEnabled && !aiActive && (
-            <AiConciergeIntro
-              onOpen={() => setAiChatOpen(true)}
-              subtitle={welcomeBackMessage ?? undefined}
-            />
-          )}
-
           {showMemoryConsent && (
             <DenisMemoryConsentBanner
               onAccept={() => void acceptMemoryConsent()}
@@ -928,7 +1167,15 @@ export function MenuView({
             />
           )}
 
-          {aiConciergeEnabled && (
+          {aiConciergeEnabled && useSceneBannerUi && (
+            <DenisSceneBanners
+              banners={sceneBanners}
+              onBannerAction={handleSceneBannerAction}
+              onDismiss={() => setSceneRefreshKey((key) => key + 1)}
+            />
+          )}
+
+          {!aiConciergeEnabled && !useSceneBannerUi && (
             <AiSmartNudgeBanner
               nudge={activeNudge}
               orderingDisabled={!canPlaceOrders}
@@ -969,6 +1216,7 @@ export function MenuView({
 
 
           {!filtered &&
+            !aiConciergeEnabled &&
             aiActive &&
             showRecommendedSection &&
             aiRecommendations.length > 0 && (
@@ -995,9 +1243,9 @@ export function MenuView({
                     {tUI("menu.noResults", { query: searchQuery })}
                   </p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                  <div className="divide-y divide-[var(--qr-elevated)]/80">
                     {filtered.map((product) => (
-                      <ProductCard
+                      <MenuListItem
                         key={product.id}
                         product={product}
                         currency={currency}
@@ -1006,7 +1254,6 @@ export function MenuView({
                         }
                         orderingDisabled={!canPlaceOrders}
                         onOpenDetail={() => openProductDetail(product)}
-                        aiReason={aiReasonByProductId?.get(product.id) ?? null}
                       />
                     ))}
                   </div>
@@ -1056,7 +1303,7 @@ export function MenuView({
                   onDismiss={() => setPairingRecommendation(null)}
                 />
               )}
-              {!detailProduct && (
+              {!detailProduct && !aiChatOpen && (
                 <CartSummaryBar
                   slug={slug}
                   token={token}
@@ -1084,13 +1331,16 @@ export function MenuView({
           {aiConciergeEnabled && (
             <AiConciergeChat
               open={aiChatOpen}
-              onOpenChange={setAiChatOpen}
+              onOpenChange={handleAiChatOpenChange}
+              onSceneRefresh={handleGuestSceneRefresh}
+              sceneChrome={scene?.chrome ?? null}
               slug={slug}
               token={token}
               locationId={locationId}
               tableId={tableId}
               sessionToken={sessionToken}
               currency={currency}
+              taxPercent={taxPercent}
               orderingDisabled={!canPlaceOrders}
               isDemo={isDemoGuestRoute(slug, token)}
               menuCategories={menuCategories}
@@ -1118,6 +1368,25 @@ export function MenuView({
               deviceFingerprint={deviceFingerprint}
               voiceEnabled={voiceEnabled}
               voiceTtsEnabled={voiceTtsEnabled}
+            />
+          )}
+
+          {aiConciergeEnabled && sessionToken && !aiChatOpen && (
+            <DenisGuestDock
+              scene={scene}
+              currency={currency}
+              tableName={tableName}
+              venueName={locationName}
+              loading={sceneLoading && !scene}
+              subtitle={
+                scene?.chrome.situation?.headline ??
+                welcomeBackMessage ??
+                undefined
+              }
+              onOpenDesk={handleOpenDenisDesk}
+              onChipPress={handleSceneChipPress}
+              onInlineAdd={handleSceneInlineAdd}
+              busy={sceneTurnBusy}
             />
           )}
         </div>

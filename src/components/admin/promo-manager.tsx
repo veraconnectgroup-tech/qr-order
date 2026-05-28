@@ -27,7 +27,7 @@ const STATUS_LABEL: Record<
   { label: string; className: string }
 > = {
   active: { label: "Active", className: "text-green-600" },
-  inactive: { label: "Inactive", className: "text-neutral-400" },
+  inactive: { label: "Inactive", className: "text-muted-foreground/70" },
   expired: { label: "Expired", className: "text-amber-600" },
   exhausted: { label: "Exhausted", className: "text-red-600" },
   scheduled: { label: "Scheduled", className: "text-blue-600" },
@@ -66,7 +66,7 @@ function PromoForm({
             id="discount_type"
             name="discount_type"
             defaultValue={promo?.discount_type ?? "percent"}
-            className="mt-1 flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+            className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
           >
             <option value="percent">Percent (%)</option>
             <option value="fixed">Fixed ({currency})</option>
@@ -147,7 +147,7 @@ function PromoForm({
           name="is_active"
           type="checkbox"
           defaultChecked={promo?.is_active ?? true}
-          className="size-4 rounded border-neutral-300"
+          className="size-4 rounded border-border"
         />
         <Label htmlFor="is_active">Active</Label>
       </div>
@@ -205,8 +205,8 @@ export function PromoManager({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Promo codes</h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <h1 className="text-2xl font-bold text-foreground">Promo codes</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Discounts for guests at checkout
           </p>
         </div>
@@ -232,13 +232,13 @@ export function PromoManager({
       </div>
 
       {!promos.length ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">No promo codes yet.</p>
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">No promo codes yet.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
-            <thead className="border-b bg-neutral-50 text-left">
+            <thead className="border-b bg-muted/30 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Discount</th>
@@ -262,12 +262,12 @@ export function PromoManager({
                         ? `${promo.discount_value}%`
                         : formatPrice(Number(promo.discount_value), currency)}
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {Number(promo.min_order_amount) > 0
                         ? formatPrice(Number(promo.min_order_amount), currency)
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {promo.used_count}
                       {promo.max_uses != null ? ` / ${promo.max_uses}` : ""}
                     </td>

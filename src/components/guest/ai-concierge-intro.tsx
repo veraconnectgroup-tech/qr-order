@@ -1,36 +1,55 @@
 "use client";
 
-import { MessageCircle, Sparkles } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 
+/** Fallback before guest_scene loads — same rail grammar as DenisSceneShell. */
 export function AiConciergeIntro({
   onOpen,
   subtitle,
+  tableName,
+  venueName,
 }: {
   onOpen: () => void;
   subtitle?: string;
+  tableName?: string;
+  venueName?: string;
 }) {
   const { tUI } = useAppLocale();
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group mx-4 mb-3 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl border border-orange-500/30 bg-gradient-to-r from-orange-500/15 via-zinc-900 to-zinc-900 px-4 py-3 text-start transition active:scale-[0.99] hover:border-orange-500/50"
-    >
-      <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-orange-400">
-        <span className="absolute inset-0 animate-pulse rounded-full bg-orange-500/10" />
-        <Sparkles className="relative size-5 animate-pulse" />
-        <MessageCircle className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-zinc-950 text-orange-300" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-zinc-100">
-          {tUI("ai.intro.title")}
+    <section className="denis-scene-shell relative mx-4 mb-3 overflow-hidden rounded-2xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)] shadow-[0_0_40px_rgba(232,93,4,0.06)]">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-[var(--qr-ember)]"
+        aria-hidden
+      />
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition active:opacity-90"
+      >
+        <DenisMarkBadge size="md" markState="idle" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <p className="text-sm font-semibold tracking-tight text-[var(--qr-ivory)]">
+              {tUI("ai.intro.title")}
+            </p>
+            {tableName && venueName ? (
+              <span className="text-[11px] text-[var(--qr-muted)]">
+                {tableName} · {venueName}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 text-[13px] leading-snug text-[var(--qr-muted)]">
+            {subtitle ?? tUI("ai.intro.subtitle")}
+          </p>
+        </div>
+        <span className="flex shrink-0 items-center gap-0.5 text-[11px] font-medium uppercase tracking-wide text-[var(--qr-ember)]">
+          {tUI("scene.askDenisShort")}
+          <ChevronRight className="size-3.5" />
         </span>
-        <span className="mt-0.5 block text-xs text-zinc-400">
-          {subtitle ?? tUI("ai.intro.subtitle")}
-        </span>
-      </span>
-    </button>
+      </button>
+    </section>
   );
 }

@@ -31,7 +31,7 @@ export function OrdersByHourChart({
       className={cn("h-full", className)}
     >
       {data.every((p) => p.orders === 0) ? (
-        <p className="py-12 text-center text-sm text-neutral-500">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           No orders in this period
         </p>
       ) : (

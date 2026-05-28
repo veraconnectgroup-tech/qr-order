@@ -86,7 +86,7 @@ export async function resolveOrderContext(
   const { data: location, error: locationError } = await admin
     .from("locations")
     .select(
-      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+      "id, org_id, accepting_orders, ordering_enabled, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled, require_first_table_approval"
     )
     .eq("id", tableRow.location_id)
     .single();
@@ -95,7 +95,12 @@ export async function resolveOrderContext(
     return err(orderError("invalid_qr", "Location not found", 404));
   }
 
-  const locationRow = location as ResolvedContext["location"];
+  const locationRow = {
+    ...(location as Omit<ResolvedContext["location"], "require_first_table_approval">),
+    require_first_table_approval:
+      (location as { require_first_table_approval?: boolean })
+        .require_first_table_approval ?? true,
+  } satisfies ResolvedContext["location"];
 
   if (!locationRow.ordering_enabled) {
     return err(

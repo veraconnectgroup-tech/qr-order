@@ -12,7 +12,7 @@ import {
   SHOWCASE_ORDER_COLUMNS,
 } from "@/components/landing/showcase-static/order-columns";
 import { ShowcaseOrderCard } from "@/components/landing/showcase-static/showcase-order-card";
-import { formatPrice } from "@/lib/format";
+import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ShowcaseTheme } from "@/components/landing/showcase-frame";
 import type { OrderWithDetails } from "@/types";
@@ -35,15 +35,95 @@ function trimOrderItems(order: OrderWithDetails, maxItems = 3): OrderWithDetails
 }
 
 /** Static guest menu UI for landing previews — no guest app deps. */
-export function GuestMenuContent({ variant = "hero" }: { variant?: "feature" | "hero" }) {
+export function GuestMenuContent({
+  variant = "hero",
+}: {
+  variant?: "feature" | "hero" | "cinematic";
+}) {
   const [activeCategory, setActiveCategory] = useState(
     DEMO_MENU_CATEGORIES[0]?.id ?? ""
   );
   const pillCategories = DEMO_MENU_CATEGORIES.map(({ id, name }) => ({ id, name }));
   const isHero = variant === "hero";
+  const isCinematic = variant === "cinematic";
   const activeProducts = DEMO_MENU_CATEGORIES.find(
     (c) => c.id === activeCategory
-  )?.products.slice(0, isHero ? 2 : 4);
+  )?.products.slice(0, isCinematic ? 2 : isHero ? 2 : 4);
+
+  if (isCinematic) {
+    const products = activeProducts?.slice(0, 2) ?? [];
+    const cartPreviewTotal = products.reduce(
+      (sum, product) => sum + Number(product.price),
+      0
+    );
+
+    return (
+      <div className="pointer-events-none flex h-full min-h-[420px] w-full flex-col bg-[#09090b]">
+        <header className="shrink-0 border-b border-zinc-800/80 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[13px] font-semibold leading-tight text-zinc-100">
+                Skyline Lounge
+              </p>
+              <p className="text-[10px] text-zinc-500">Table 8 · Rooftop</p>
+            </div>
+            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-400 ring-1 ring-zinc-800">
+              Drinks
+            </span>
+          </div>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-2.5 px-3 py-3">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="flex items-center gap-3 rounded-lg bg-zinc-950/90 p-2.5 ring-1 ring-zinc-800/70"
+            >
+              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-zinc-800">
+                {product.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={product.image_url}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-sm font-semibold text-zinc-600">
+                    {product.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium text-zinc-100">
+                  {product.name}
+                </p>
+                {product.prep_time_minutes != null && (
+                  <p className="text-[10px] text-zinc-500">
+                    {product.prep_time_minutes} min
+                  </p>
+                )}
+              </div>
+              <p className="font-mono text-[12px] tabular-nums text-zinc-300">
+                {formatPrice(Number(product.price), DEMO_CURRENCY)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <footer className="shrink-0 border-t border-zinc-800/80 px-3 py-3">
+          <div className="flex items-center justify-between rounded-lg bg-[#e85d04] px-3 py-2.5 text-white">
+            <span className="text-[11px] font-medium">
+              {products.length} {products.length === 1 ? "item" : "items"}
+            </span>
+            <span className="text-[11px] font-semibold">Cart →</span>
+            <span className="font-mono text-[12px] font-bold tabular-nums">
+              {formatPrice(cartPreviewTotal, DEMO_CURRENCY)}
+            </span>
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -175,15 +255,64 @@ export function OrdersBoardContent({
   variant = "feature",
   theme = "dark",
 }: {
-  variant?: "hero" | "feature";
+  variant?: "hero" | "feature" | "cinematic";
   theme?: ShowcaseTheme;
 }) {
   const isHero = variant === "hero";
+  const isCinematic = variant === "cinematic";
   const light = theme === "light";
   const cardAppearance = light ? "light" : "default";
-  const columns = isHero
+  const columns = isHero || isCinematic
     ? SHOWCASE_ORDER_COLUMNS.filter((c) => ["new", "preparing", "ready"].includes(c.id))
     : SHOWCASE_ORDER_COLUMNS;
+
+  if (isCinematic) {
+    const primaryOrder = DEMO_ORDERS.find((o) => o.status === "pending");
+    const preparingOrder = DEMO_ORDERS.find((o) => o.status === "preparing");
+
+    if (!primaryOrder) return null;
+
+    return (
+      <div className="pointer-events-none select-none">
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Operations
+            </p>
+            <p className="mt-1 text-lg font-semibold tracking-tight text-zinc-100">
+              Live Orders
+            </p>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Skyline Lounge{" "}
+            <span className="font-medium text-emerald-500">● Live</span>
+          </p>
+        </div>
+
+        <div className="flex items-start gap-6 lg:gap-10">
+          <ShowcaseOrderCard
+            order={trimOrderItems(primaryOrder, 2)}
+            currency={DEMO_CURRENCY}
+            appearance="cinematic"
+          />
+          {preparingOrder && (
+            <div className="hidden min-w-[160px] flex-1 pt-10 opacity-[0.38] sm:block">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+                Preparing
+              </p>
+              <p className="font-mono text-xl font-medium text-zinc-400">
+                {formatOrderNumber(preparingOrder.order_number)}
+              </p>
+              <p className="mt-2 text-[12px] text-zinc-600">
+                {preparingOrder.tables?.name ?? "Bar"} ·{" "}
+                {preparingOrder.order_items?.[0]?.product_name}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isHero) {
     return (

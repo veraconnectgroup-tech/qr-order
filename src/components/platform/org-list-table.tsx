@@ -25,7 +25,7 @@ const STATUS_COLORS: Record<OrgTrialStatus, string> = {
   active: "bg-emerald-100 text-emerald-800",
   trial: "bg-amber-100 text-amber-800",
   expired: "bg-red-100 text-red-800",
-  setup: "bg-neutral-100 text-neutral-700",
+  setup: "bg-muted/50 text-foreground/90",
 };
 
 const COMPLIANCE_COLORS: Record<OrgComplianceStatus, string> = {
@@ -81,7 +81,7 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                 "rounded-full px-3 py-1 text-xs font-medium transition",
                 (filter === key || (key === "all" && filter === "all"))
                   ? "bg-violet-600 text-white"
-                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted/50"
               )}
             >
               {label}
@@ -90,9 +90,9 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <table className="w-full text-sm">
-          <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
+          <thead className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Organization</th>
               <th className="px-4 py-3">Status</th>
@@ -107,7 +107,7 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
             {orgs.map((org) => {
               const compliance = orgComplianceStatus(org);
               return (
-              <tr key={org.id} className="border-b border-neutral-100 last:border-0">
+              <tr key={org.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span
@@ -130,7 +130,7 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                       >
                         {org.name}
                       </Link>
-                      <p className="text-xs text-neutral-500">{org.slug}</p>
+                      <p className="text-xs text-muted-foreground">{org.slug}</p>
                     </div>
                   </div>
                 </td>
@@ -157,7 +157,7 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                     title={org.fiskaly_tss_id ? "TSE aktiv" : "TSE nicht eingerichtet"}
                   />
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-neutral-600">
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {org.steuernummer?.trim()
                     ? truncateSteuernummer(org.steuernummer)
                     : "—"}
@@ -166,7 +166,7 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                   {org.stripe_onboarded ? (
                     <span className="text-emerald-600">Connected</span>
                   ) : (
-                    <span className="text-neutral-400">—</span>
+                    <span className="text-muted-foreground/70">—</span>
                   )}
                 </td>
               </tr>
@@ -175,7 +175,7 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
           </tbody>
         </table>
         {orgs.length === 0 && (
-          <p className="py-12 text-center text-sm text-neutral-500">
+          <p className="py-12 text-center text-sm text-muted-foreground">
             No organizations match your filters.
           </p>
         )}

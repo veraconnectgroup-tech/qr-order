@@ -33,14 +33,14 @@ export async function TipsKpiCard({
   const totalTips = sumTips(paid as Array<{ tip_amount?: number }>);
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <p className="text-sm text-neutral-500">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <p className="text-sm text-muted-foreground">
         Total tips ({formatAnalyticsRangeLabel(range).toLowerCase()})
       </p>
-      <p className="mt-2 font-mono text-3xl font-bold text-neutral-900">
+      <p className="mt-2 font-mono text-3xl font-bold text-foreground">
         {formatPrice(totalTips, currency)}
       </p>
-      <p className="mt-1 text-xs text-neutral-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         VAT-free · paid orders only
       </p>
     </div>

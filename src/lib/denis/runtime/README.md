@@ -12,7 +12,10 @@
 | `build-turn-context.ts` | Config, flow fold, cart projections |
 | `narrate/` | T3 facts + lint + template fallback |
 | `shadow-diff.ts` | Legacy vs kernel parity (shadow mode) |
-| `record-chat-turn-timeline.ts` | Deprecated — use `runDenisTurn` |
+| `ga-gate.ts` | ADR-010 rollout promotion checks (admin UI) |
+| `turn-observability.ts` | Structured `denis.turn.completed` logs + phase timings |
+
+**F8:** Legacy adapter slim (F8-2+) — see [ADR-010](../../../docs/architecture/ADR-010-denis-ordering-cutover.md).
 
 **M22:** `perceive/slot-extract.ts` (opt-in timeline signal)  
 **M23:** `act/*` + `acl/DenisOrderCommand` (dry-run default)

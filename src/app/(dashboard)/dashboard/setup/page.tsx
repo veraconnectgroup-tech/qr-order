@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { OnboardingWizard } from "@/components/dashboard/onboarding-wizard";
 import { getStaffLocationId, requireStaff } from "@/lib/auth/session";
 import { getServerAppUrl } from "@/lib/app-url";
+import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isStripePlatformConfigured } from "@/lib/stripe/connect";
 
@@ -36,7 +37,7 @@ export default async function SetupPage() {
         .single(),
       admin
         .from("locations")
-        .select("name, address, city, postal_code, timezone")
+        .select("name, address, city, postal_code, timezone, menu_locale, default_locale")
         .eq("id", locationId)
         .single(),
       admin
@@ -98,7 +99,14 @@ export default async function SetupPage() {
     city: string | null;
     postal_code: string | null;
     timezone: string;
+    menu_locale: string | null;
+    default_locale: string | null;
   } | null;
+
+  const menuLocale = parseMenuLocaleFromDb(
+    locationRow?.menu_locale,
+    locationRow?.default_locale
+  );
 
   return (
     <OnboardingWizard
@@ -135,6 +143,7 @@ export default async function SetupPage() {
       categoryCount={categoryCount ?? 0}
       tableCount={tableCount ?? 0}
       appUrl={getServerAppUrl()}
+      menuLocale={menuLocale}
     />
   );
 }

@@ -1,118 +1,55 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import {
-  HeroItem,
-  HeroStagger,
-  AnimateInView,
-} from "@/components/landing/animate-in-view";
-import { HeroWordRotation } from "@/components/landing/hero-word-rotation";
+import { HeroItem, HeroStagger } from "@/components/landing/animate-in-view";
+import { LandingHeroVisual } from "@/components/landing/landing-hero-visual";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 
-const LandingHeroVisual = dynamic(
-  () =>
-    import("@/components/landing/landing-hero-visual").then((m) => ({
-      default: m.LandingHeroVisual,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="aspect-[4/3] w-full animate-pulse rounded-2xl border border-[#1e1e2e] bg-zinc-900/60 lg:min-h-[460px]"
-        aria-hidden
-      />
-    ),
-  }
-);
-
-function HeroAuroraOrbs() {
-  const reduce = useReducedMotion();
-
-  if (reduce) return null;
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <motion.div
-        className="absolute -left-[10%] top-[8%] size-[420px] rounded-full bg-indigo-500/20 blur-[120px]"
-        animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute right-[5%] top-[18%] size-[360px] rounded-full bg-violet-500/12 blur-[120px]"
-        animate={{ x: [0, -35, 25, 0], y: [0, 25, -15, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      />
-      <motion.div
-        className="absolute bottom-[5%] left-[30%] size-[320px] rounded-full bg-indigo-400/10 blur-[120px]"
-        animate={{ x: [0, 30, -25, 0], y: [0, -20, 30, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-      />
-    </div>
-  );
-}
-
 export function LandingHero() {
   return (
-    <section className="landing-hero-dark landing-dot-grid landing-glow-top relative overflow-hidden pt-20 pb-12">
-      <HeroAuroraOrbs />
-      <LandingContainer wide className="relative z-[2]">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 xl:gap-16">
-          <HeroStagger className="max-w-[620px] lg:max-w-none">
+    <section className="overflow-hidden bg-black pt-32 pb-16 md:pt-36 md:pb-20">
+      <LandingContainer wide>
+        <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-10 xl:gap-14">
+          <HeroStagger className="w-full max-w-[540px] shrink-0 lg:max-w-[480px] xl:max-w-[520px]">
             <HeroItem>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-indigo-400">
-                Die Plattform für Gastronomie
+              <p className="text-[13px] tracking-wide text-zinc-600">
+                Denis · Part of Vera Group
               </p>
             </HeroItem>
             <HeroItem>
-              <h1 className="font-display text-[clamp(2.5rem,5.5vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.045em]">
-                <span className="landing-gradient-text">
-                  Alles in einer Plattform.
-                </span>
+              <h1 className="mt-4 font-display text-[clamp(2.25rem,4.8vw,3.75rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white">
+                Hospitality operations,
+                <span className="text-zinc-500"> one system.</span>
               </h1>
             </HeroItem>
             <HeroItem>
-              <HeroWordRotation />
-            </HeroItem>
-            <HeroItem>
-              <p className="mt-5 max-w-[540px] text-[17px] leading-relaxed text-zinc-400 sm:text-[18px]">
-                Bestellung, Küchendisplay, Tischverwaltung, Kartenzahlung und
-                DATEV-Export — ein System statt fünf.
+              <p className="mt-6 max-w-[460px] text-[17px] leading-[1.75] text-zinc-500">
+                Guest ordering, kitchen, staff coordination, and payments —
+                designed for the floor, not for demos.
               </p>
             </HeroItem>
             <HeroItem>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="mt-8">
                 <Button
                   size="lg"
                   asChild
-                  className="landing-btn-accent h-12 rounded-full px-8 text-sm font-semibold"
+                  className="h-12 rounded-md bg-[var(--qr-ember)] px-8 text-sm font-medium text-white hover:bg-[var(--qr-ember-hover)]"
                 >
-                  <Link href="/signup">Kostenlos starten</Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  asChild
-                  className="h-12 rounded-full border-[#2a2a3e] bg-transparent px-8 text-sm font-medium text-zinc-200 hover:bg-[#12121a] hover:text-white"
-                >
-                  <Link href="/skyline-lounge/demo-table-8">
-                    Live-Demo ansehen →
-                  </Link>
+                  <Link href="/signup">Get started</Link>
                 </Button>
               </div>
             </HeroItem>
             <HeroItem>
-              <p className="mt-6 text-[13px] leading-relaxed text-zinc-500">
-                0 € / Monat · KassenSichV-konform · Live in unter 30 Minuten
+              <p className="mt-6 text-[13px] text-zinc-600">
+                €0 / month · KassenSichV · Under 30 minutes to live
               </p>
             </HeroItem>
           </HeroStagger>
 
-          <AnimateInView className="relative lg:min-h-[460px]" delay={0.15}>
+          <div className="w-full min-w-0 lg:flex-1">
             <LandingHeroVisual />
-          </AnimateInView>
+          </div>
         </div>
       </LandingContainer>
     </section>

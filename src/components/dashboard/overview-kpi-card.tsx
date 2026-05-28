@@ -2,6 +2,7 @@
 
 import type { ComponentType, ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QrCard } from "@/components/design-system/qr-card";
 import { cn } from "@/lib/utils";
 
 export function OverviewKpiCard({
@@ -24,7 +25,7 @@ export function OverviewKpiCard({
   }
 
   return (
-    <div className="rounded-xl border border-dash-border bg-dash-surface/50 p-4">
+    <QrCard variant="muted" padding="md">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wider text-dash-text-disabled">
           {label}
@@ -40,6 +41,6 @@ export function OverviewKpiCard({
         {value}
       </p>
       {compare}
-    </div>
+    </QrCard>
   );
 }

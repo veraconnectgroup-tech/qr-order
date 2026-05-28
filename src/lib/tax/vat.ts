@@ -5,6 +5,19 @@ export const REDUCED_VAT_RATE = 7;
 
 export type TaxBreakdownLine = { rate: number; amount: number };
 
+export type VatLineBreakdown = {
+  rate: number;
+  gross: number;
+  net: number;
+  tax: number;
+  /** DSFinV-K field alias */
+  ust: number;
+};
+
+export function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export function resolveItemTaxRate(params: {
   productTaxRate: number | null | undefined;
   menuSection: MenuSection;
@@ -32,8 +45,45 @@ export function resolveItemTaxRate(params: {
   return STANDARD_VAT_RATE;
 }
 
+/** Menu line totals are gross (inkl. MwSt) — extract net from gross. */
+export function grossToNet(gross: number, taxRate: number): number {
+  return roundMoney(gross / (1 + taxRate / 100));
+}
+
+/** VAT portion extracted from a gross line total. */
+export function grossTaxAmount(gross: number, taxRate: number): number {
+  return roundMoney(gross - grossToNet(gross, taxRate));
+}
+
+/** @deprecated Use grossTaxAmount — line totals are gross-inclusive. */
 export function itemTaxAmount(lineTotal: number, taxRate: number): number {
-  return lineTotal * (taxRate / 100);
+  return grossTaxAmount(lineTotal, taxRate);
+}
+
+export function lineVatBreakdown(gross: number, taxRate: number): VatLineBreakdown {
+  const net = grossToNet(gross, taxRate);
+  const tax = roundMoney(gross - net);
+  return {
+    rate: taxRate,
+    gross: roundMoney(gross),
+    net,
+    tax,
+    ust: tax,
+  };
+}
+
+export function groupGrossByRate(
+  items: Array<{ gross: number; taxRate: number }>
+): VatLineBreakdown[] {
+  const buckets = new Map<number, number>();
+
+  for (const item of items) {
+    buckets.set(item.taxRate, (buckets.get(item.taxRate) ?? 0) + item.gross);
+  }
+
+  return [...buckets.entries()]
+    .sort(([a], [b]) => b - a)
+    .map(([rate, gross]) => lineVatBreakdown(gross, rate));
 }
 
 export function calculateOrderTaxFromItems(
@@ -45,21 +95,26 @@ export function calculateOrderTaxFromItems(
   breakdown: TaxBreakdownLine[];
   effectiveTaxPercent: number;
 } {
-  const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const grossTotal = roundMoney(
+    items.reduce((sum, item) => sum + item.lineTotal, 0)
+  );
   const byRate = new Map<number, number>();
 
   for (const item of items) {
-    const tax = itemTaxAmount(item.lineTotal, item.taxRate);
+    const tax = grossTaxAmount(item.lineTotal, item.taxRate);
     byRate.set(item.taxRate, (byRate.get(item.taxRate) ?? 0) + tax);
   }
 
   const breakdown = [...byRate.entries()]
-    .map(([rate, amount]) => ({ rate, amount }))
+    .map(([rate, amount]) => ({ rate, amount: roundMoney(amount) }))
     .filter((line) => line.amount > 0)
     .sort((a, b) => b.rate - a.rate);
 
-  const taxAmount = breakdown.reduce((sum, line) => sum + line.amount, 0);
-  const total = subtotal + taxAmount;
+  const taxAmount = roundMoney(
+    breakdown.reduce((sum, line) => sum + line.amount, 0)
+  );
+  const total = grossTotal;
+  const subtotal = roundMoney(total - taxAmount);
   const effectiveTaxPercent =
     subtotal > 0 ? Math.round((taxAmount / subtotal) * 10000) / 100 : 0;
 
@@ -69,18 +124,12 @@ export function calculateOrderTaxFromItems(
 export function taxBreakdownFromOrderItems(
   items: Array<{ total: number; tax_rate: number }>
 ): TaxBreakdownLine[] {
-  const byRate = new Map<number, number>();
-
-  for (const item of items) {
-    const rate = Number(item.tax_rate);
-    const tax = itemTaxAmount(Number(item.total), rate);
-    byRate.set(rate, (byRate.get(rate) ?? 0) + tax);
-  }
-
-  return [...byRate.entries()]
-    .map(([rate, amount]) => ({ rate, amount }))
-    .filter((line) => line.amount > 0)
-    .sort((a, b) => b.rate - a.rate);
+  return calculateOrderTaxFromItems(
+    items.map((item) => ({
+      lineTotal: Number(item.total),
+      taxRate: Number(item.tax_rate),
+    }))
+  ).breakdown;
 }
 
 export function cartTaxBreakdown(

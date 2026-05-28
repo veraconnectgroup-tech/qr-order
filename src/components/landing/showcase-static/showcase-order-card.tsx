@@ -1,16 +1,9 @@
-import { Clock } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
-import { demoElapsedSeconds } from "@/components/landing/demo-data";
 import { cn } from "@/lib/utils";
 import { getShowcaseOrderColumnId } from "@/components/landing/showcase-static/order-columns";
 import type { OrderWithDetails } from "@/types";
 
-function formatTimerMinutes(createdAt: string) {
-  const seconds = demoElapsedSeconds(createdAt);
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+type CardAppearance = "default" | "light" | "cinematic";
 
 /** Static order card for landing previews — no dashboard deps. */
 export function ShowcaseOrderCard({
@@ -20,12 +13,53 @@ export function ShowcaseOrderCard({
 }: {
   order: OrderWithDetails;
   currency: string;
-  appearance?: "default" | "light";
+  appearance?: CardAppearance;
 }) {
   const light = appearance === "light";
+  const cinematic = appearance === "cinematic";
   const columnId = getShowcaseOrderColumnId(order.status);
   const tableName = order.tables?.name ?? "—";
   const items = order.order_items ?? [];
+
+  if (cinematic) {
+    return (
+      <article className="max-w-[320px] rounded-xl border border-zinc-800/90 bg-zinc-950/90 p-5 border-l-2 border-l-[#e85d04]">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-mono text-[1.75rem] font-semibold leading-none tracking-[-0.03em] text-zinc-50">
+            {formatOrderNumber(order.order_number)}
+          </p>
+          <span className="shrink-0 rounded-md bg-zinc-800/90 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
+            {tableName}
+          </span>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-400">
+            New
+          </span>
+          <span className="text-[11px] text-zinc-600">· just now</span>
+        </div>
+
+        <ul className="mt-4 space-y-1.5 text-[13px] leading-snug text-zinc-300">
+          {items.slice(0, 2).map((line) => (
+            <li key={line.id}>
+              {line.quantity}× {line.product_name}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-5 flex items-center justify-between border-t border-zinc-800/80 pt-4">
+          <span className="font-mono text-sm font-semibold tabular-nums text-zinc-200">
+            {formatPrice(Number(order.total), currency)}
+          </span>
+          <span className="rounded-lg bg-[#e85d04] px-3.5 py-1.5 text-[11px] font-semibold text-white">
+            Accept
+          </span>
+        </div>
+      </article>
+    );
+  }
 
   if (columnId === "delivered") {
     return (
@@ -79,15 +113,6 @@ export function ShowcaseOrderCard({
         >
           {formatOrderNumber(order.order_number)}
         </p>
-        <span
-          className={cn(
-            "flex items-center gap-1 font-mono text-xs tabular-nums",
-            light ? "text-zinc-500" : "text-zinc-500"
-          )}
-        >
-          <Clock className="size-3" />
-          {formatTimerMinutes(order.created_at)}
-        </span>
       </div>
 
       <div className="mt-2">

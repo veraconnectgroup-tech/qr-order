@@ -6,10 +6,12 @@ import {
   updateLocationGoogleReviewUrl,
   updateLocationMenuLocale,
   updateLocationOrderingEnabled,
+  updateLocationRequireFirstTableApproval,
 } from "@/lib/admin/location-language-actions";
 import { updateLocationAiConciergeEnabled } from "@/lib/admin/ai-actions";
 import { MENU_LOCALES } from "@/lib/i18n/locale-config";
 import { LOCALE_LABELS, type MenuLocale } from "@/lib/i18n/translations";
+import { AdminPanel, AdminPanelSection } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +29,7 @@ export function LocationSettings({
   menuLocale: initialMenuLocale,
   googleReviewUrl: initialGoogleReviewUrl,
   orderingEnabled: initialOrderingEnabled,
+  requireFirstTableApproval: initialRequireFirstTableApproval,
   aiConciergeEnabled: initialAiConciergeEnabled,
   canEdit,
 }: {
@@ -34,6 +37,7 @@ export function LocationSettings({
   menuLocale: MenuLocale;
   googleReviewUrl: string | null;
   orderingEnabled: boolean;
+  requireFirstTableApproval: boolean;
   aiConciergeEnabled: boolean;
   canEdit: boolean;
 }) {
@@ -42,6 +46,9 @@ export function LocationSettings({
     initialGoogleReviewUrl ?? ""
   );
   const [orderingEnabled, setOrderingEnabled] = useState(initialOrderingEnabled);
+  const [requireFirstTableApproval, setRequireFirstTableApproval] = useState(
+    initialRequireFirstTableApproval
+  );
   const [aiConciergeEnabled, setAiConciergeEnabled] = useState(
     initialAiConciergeEnabled
   );
@@ -50,13 +57,14 @@ export function LocationSettings({
   async function handleSave() {
     setSaving(true);
 
-    const [localeResult, reviewResult, orderingResult, aiResult] =
+    const [localeResult, reviewResult, orderingResult, approvalResult, aiResult] =
       await Promise.all([
-      updateLocationMenuLocale(menuLocale),
-      updateLocationGoogleReviewUrl(googleReviewUrl),
-      updateLocationOrderingEnabled(orderingEnabled),
-      updateLocationAiConciergeEnabled(aiConciergeEnabled),
-    ]);
+        updateLocationMenuLocale(menuLocale),
+        updateLocationGoogleReviewUrl(googleReviewUrl),
+        updateLocationOrderingEnabled(orderingEnabled),
+        updateLocationRequireFirstTableApproval(requireFirstTableApproval),
+        updateLocationAiConciergeEnabled(aiConciergeEnabled),
+      ]);
 
     setSaving(false);
 
@@ -72,6 +80,10 @@ export function LocationSettings({
       toast.error(orderingResult.error);
       return;
     }
+    if (approvalResult?.error) {
+      toast.error(approvalResult.error);
+      return;
+    }
     if (aiResult?.error) {
       toast.error(aiResult.error);
       return;
@@ -81,17 +93,19 @@ export function LocationSettings({
   }
 
   return (
-    <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">Location settings</h2>
-      <p className="mt-1 text-sm text-neutral-500">
-        Configuration for{" "}
-        <span className="font-medium text-neutral-700">{locationName}</span>.
-      </p>
-
-      <div className="mt-6 flex items-start justify-between gap-4 rounded-lg border border-neutral-200 p-4">
+    <AdminPanel
+      title="Location settings"
+      description={
+        <>
+          Configuration for{" "}
+          <span className="font-medium text-foreground">{locationName}</span>.
+        </>
+      }
+    >
+      <AdminPanelSection className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <Label htmlFor="online-ordering">Online ordering</Label>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             When off, guests browse menu but cannot place orders
           </p>
         </div>
@@ -101,12 +115,28 @@ export function LocationSettings({
           onCheckedChange={setOrderingEnabled}
           disabled={!canEdit}
         />
-      </div>
+      </AdminPanelSection>
 
-      <div className="mt-5 flex items-start justify-between gap-4 rounded-lg border border-neutral-200 p-4">
+      <AdminPanelSection className="mt-5 flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="first-table-approval">First table confirmation</Label>
+          <p className="text-xs text-muted-foreground">
+            When on, staff must approve the first order at an empty table. When
+            off, the table session opens automatically on the first order.
+          </p>
+        </div>
+        <Switch
+          id="first-table-approval"
+          checked={requireFirstTableApproval}
+          onCheckedChange={setRequireFirstTableApproval}
+          disabled={!canEdit}
+        />
+      </AdminPanelSection>
+
+      <AdminPanelSection className="mt-5 flex items-start justify-between gap-4">
         <div className="space-y-1">
           <Label htmlFor="ai-concierge">Denis aktivieren</Label>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             Gäste erhalten Denis-Empfehlungen im Menü
           </p>
         </div>
@@ -116,7 +146,7 @@ export function LocationSettings({
           onCheckedChange={setAiConciergeEnabled}
           disabled={!canEdit}
         />
-      </div>
+      </AdminPanelSection>
 
       <div className="mt-5 space-y-2">
         <Label htmlFor="menu-locale">Primary language</Label>
@@ -136,7 +166,7 @@ export function LocationSettings({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           Enter product names in {LOCALE_LABELS[menuLocale]} in the primary field,
           and the English translation in the English field.
         </p>
@@ -152,7 +182,7 @@ export function LocationSettings({
           placeholder="https://g.page/r/..."
           disabled={!canEdit}
         />
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           Guests see review prompt after payment
         </p>
       </div>
@@ -167,6 +197,6 @@ export function LocationSettings({
           {saving ? "Saving…" : "Save"}
         </Button>
       )}
-    </div>
+    </AdminPanel>
   );
 }

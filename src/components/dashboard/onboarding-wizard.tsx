@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import QRCode from "qrcode";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { QrTableCardPreview } from "@/components/design-system";
 import {
   OnboardingFiscalStep,
   OnboardingGoLiveStep,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { guestTableUrl } from "@/lib/app-url";
+import { generateTableQrDataUrl } from "@/lib/print/qr-table-card-print";
 import {
   completeOnboarding,
   saveOnboardingFiscal,
@@ -59,6 +60,7 @@ export function OnboardingWizard({
   categoryCount,
   tableCount,
   appUrl,
+  menuLocale,
 }: {
   orgName: string;
   orgSlug: string;
@@ -81,6 +83,7 @@ export function OnboardingWizard({
   categoryCount: number;
   tableCount: number;
   appUrl: string;
+  menuLocale?: string | null;
 }) {
   const [step, setStep] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -146,7 +149,7 @@ export function OnboardingWizard({
       return;
     }
     const url = guestTableUrl(orgSlug, previewTable.qr_token, appUrl);
-    QRCode.toDataURL(url, { width: 180, margin: 2 }).then(setQrDataUrl);
+    generateTableQrDataUrl(url, 280).then(setQrDataUrl);
   }, [previewTable, orgSlug, appUrl]);
 
   const filledProducts = useMemo(
@@ -453,16 +456,17 @@ export function OnboardingWizard({
                 + Add table
               </Button>
             )}
-            {qrDataUrl && previewTable && (
-              <div className="mt-6 flex flex-col items-center rounded-xl border border-dash-border bg-dash-surface/60 p-4">
-                <p className="text-sm font-medium text-dash-text-secondary">QR preview</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={qrDataUrl}
-                  alt={`QR code for ${previewTable.name}`}
-                  className="mt-3 size-[180px] rounded-lg bg-white p-2"
+            {previewTable && (
+              <div className="mt-6 max-w-xs">
+                <p className="mb-3 text-sm font-medium text-dash-text-secondary">
+                  QR preview
+                </p>
+                <QrTableCardPreview
+                  venueName={venue.orgName}
+                  tableName={previewTable.name}
+                  qrDataUrl={qrDataUrl}
+                  locale={menuLocale}
                 />
-                <p className="mt-2 text-xs text-dash-text-disabled">{previewTable.name}</p>
               </div>
             )}
           </div>

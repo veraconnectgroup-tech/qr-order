@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,15 +14,15 @@ import {
   Megaphone,
   MessageSquare,
   Monitor,
-  QrCode,
   ScrollText,
   Settings,
   ShoppingBag,
-  Sparkles,
   Tags,
   Ticket,
   Users,
 } from "lucide-react";
+import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
+import { AdminBrandMark } from "@/components/admin/admin-brand-mark";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
@@ -45,67 +46,88 @@ const navItems = [
 const marketingItems = [
   { href: "/admin/promos", label: "Promo codes", icon: Ticket },
   { href: "/admin/upsells", label: "Upsell rules", icon: Megaphone },
-  { href: "/admin/denis-insights", label: "Denis Insights", icon: Sparkles },
+  { href: "/admin/denis-insights", label: "Denis Insights", icon: DenisNavIcon },
   { href: "/admin/denis-debug", label: "Denis Debugger", icon: Activity },
   { href: "/admin/denis-sim", label: "Venue Sim", icon: FlaskConical },
 ];
+
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+}: {
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+        active
+          ? "bg-dash-accent-muted font-semibold text-dash-accent"
+          : "text-dash-text-muted hover:bg-dash-surface hover:text-dash-text"
+      )}
+    >
+      <Icon
+        className={cn(
+          "size-[18px] shrink-0 transition-colors",
+          active
+            ? "text-dash-accent"
+            : "text-dash-text-muted group-hover:text-dash-text-secondary"
+        )}
+        strokeWidth={1.75}
+      />
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
 
 export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-neutral-200 bg-white">
-      <div className="flex h-16 items-center gap-2 border-b border-neutral-200 px-5">
-        <QrCode className="size-5 text-blue-600" />
-        <span className="font-bold tracking-tight">Admin</span>
+    <aside className="flex w-[260px] shrink-0 flex-col border-r border-dash-border-subtle bg-sidebar">
+      <div className="border-b border-dash-border-subtle px-5 pb-4 pt-5">
+        <AdminBrandMark />
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
-        {navItems.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-neutral-100 text-neutral-900 font-semibold"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        {navItems.map(({ href, label, icon, exact }) => (
+          <NavLink
+            key={href}
+            href={href}
+            label={label}
+            icon={icon}
+            active={exact ? pathname === href : pathname.startsWith(href)}
+          />
+        ))}
 
-        <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          Marketing
+        <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-dash-text-disabled">
+          Denis & marketing
         </p>
-        {marketingItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-neutral-100 text-neutral-900 font-semibold"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          );
-        })}
+        {marketingItems.map(({ href, label, icon }) => (
+          <NavLink
+            key={href}
+            href={href}
+            label={label}
+            icon={icon}
+            active={pathname.startsWith(href)}
+          />
+        ))}
       </nav>
 
-      <div className="border-t border-neutral-200 p-4">
+      <div className="border-t border-dash-border-subtle p-4">
         <form action={logoutAction}>
-          <Button variant="outline" size="sm" className="w-full" type="submit">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-dash-border bg-dash-surface text-dash-text-secondary hover:bg-dash-surface-raised hover:text-dash-text"
+            type="submit"
+          >
             Sign out
           </Button>
         </form>

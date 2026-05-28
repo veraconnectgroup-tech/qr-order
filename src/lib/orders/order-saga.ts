@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { runCommerceExperience } from "@/lib/commerce/runtime/run-commerce-experience";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { resolveFiscalBehavior } from "@/lib/fulfillment/resolve-fiscal-behavior";
 import { criticalPath } from "@/lib/orders/critical-path-events";
@@ -413,6 +414,23 @@ export async function executeOrderSaga(
         });
       }
     }
+
+    void runCommerceExperience(
+      admin,
+      { kind: "payment_settled", orderId },
+      { traceId, idempotencyKey: `payment_settled:${orderId}` }
+    ).catch((commerceError) => {
+      const message =
+        commerceError instanceof Error
+          ? commerceError.message
+          : String(commerceError);
+      logStep(traceId, "commerce_experience", "warn", "Commerce experience deferred failed", {
+        orderId,
+        error: message,
+      });
+    });
+
+    deferredSteps.push("commerce_experience");
 
     logStep(traceId, "complete", "info", "Order saga completed", {
       orderId,

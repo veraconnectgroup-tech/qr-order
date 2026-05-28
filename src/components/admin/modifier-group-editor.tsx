@@ -81,7 +81,7 @@ function InlineEdit({
     <button
       type="button"
       className={cn(
-        "rounded px-1 text-left hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+        "rounded px-1 text-left hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
         className
       )}
       onClick={() => {
@@ -132,7 +132,7 @@ function ModifierRow({
   }
 
   return (
-    <div className="flex items-center gap-3 border-t border-neutral-100 px-4 py-2">
+    <div className="flex items-center gap-3 border-t border-border px-4 py-2">
       <InlineEdit
         value={modifier.name}
         onSave={saveName}
@@ -142,16 +142,16 @@ function ModifierRow({
         value={String(Number(modifier.price))}
         onSave={savePrice}
         type="number"
-        className="w-24 tabular-nums text-neutral-600"
+        className="w-24 tabular-nums text-muted-foreground"
         inputClassName="w-24"
       />
-      <span className="hidden w-20 text-xs text-neutral-400 sm:inline">
+      <span className="hidden w-20 text-xs text-muted-foreground/70 sm:inline">
         {Number(modifier.price) > 0
           ? formatPrice(Number(modifier.price), currency)
           : "Free"}
       </span>
       <div className="flex items-center gap-2">
-        <Label htmlFor={`default-${modifier.id}`} className="text-xs text-neutral-500">
+        <Label htmlFor={`default-${modifier.id}`} className="text-xs text-muted-foreground">
           Default
         </Label>
         <Switch
@@ -249,11 +249,11 @@ function GroupCard({
   );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex items-center gap-2 px-4 py-3">
         <button
           type="button"
-          className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+          className="rounded p-1 text-muted-foreground/70 hover:bg-muted/50 hover:text-muted-foreground"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           aria-label={expanded ? "Collapse group" : "Expand group"}
@@ -272,7 +272,7 @@ function GroupCard({
             Required
           </Badge>
         )}
-        <div className="ml-auto flex items-center gap-2 text-xs text-neutral-500">
+        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           <span>Min</span>
           <InlineEdit
             value={String(group.min_select)}
@@ -301,7 +301,7 @@ function GroupCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-neutral-100 bg-neutral-50/50">
+        <div className="border-t border-border bg-muted/30/50">
           {modifiers.map((modifier) => (
             <ModifierRow
               key={modifier.id}
@@ -316,7 +316,7 @@ function GroupCard({
           {addingModifier ? (
             <form
               onSubmit={(e) => void handleAddModifier(e)}
-              className="flex flex-wrap items-end gap-2 border-t border-neutral-100 px-4 py-3"
+              className="flex flex-wrap items-end gap-2 border-t border-border px-4 py-3"
             >
               <div className="min-w-[140px] flex-1">
                 <Label className="text-xs">Name</Label>
@@ -363,7 +363,7 @@ function GroupCard({
           ) : (
             <button
               type="button"
-              className="flex w-full items-center gap-2 border-t border-neutral-100 px-4 py-2 text-sm text-blue-600 hover:bg-neutral-100"
+              className="flex w-full items-center gap-2 border-t border-border px-4 py-2 text-sm text-blue-600 hover:bg-muted/50"
               onClick={() => setAddingModifier(true)}
             >
               <Plus className="size-4" />
@@ -422,13 +422,13 @@ export function ModifierGroupEditor({
   }
 
   return (
-    <div className="space-y-3 bg-neutral-50 px-4 py-4">
-      <p className="text-sm font-medium text-neutral-700">
+    <div className="space-y-3 bg-muted/30 px-4 py-4">
+      <p className="text-sm font-medium text-foreground/90">
         Modifiers for {productName}
       </p>
 
       {!groups.length && !addingGroup && (
-        <p className="text-sm text-neutral-500">No modifier groups yet.</p>
+        <p className="text-sm text-muted-foreground">No modifier groups yet.</p>
       )}
 
       {sortedGroups.map((group) => (
@@ -443,7 +443,7 @@ export function ModifierGroupEditor({
       {addingGroup ? (
         <form
           onSubmit={(e) => void handleAddGroup(e)}
-          className="rounded-lg border border-neutral-200 bg-white p-4"
+          className="rounded-lg border border-border bg-card p-4"
         >
           <p className="mb-3 text-sm font-medium">New modifier group</p>
           <div className="grid gap-3 sm:grid-cols-3">

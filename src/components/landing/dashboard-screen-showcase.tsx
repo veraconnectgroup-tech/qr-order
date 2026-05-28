@@ -20,16 +20,58 @@ import type { ShowcaseTheme } from "@/components/landing/showcase-frame";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const CINEMATIC_FLOOR_TABLES = ["t7", "t9", "t4"] as const;
+
 function TableCard({
   table,
   compact = false,
+  cinematic = false,
   theme = "dark",
 }: {
   table: DemoTable;
   compact?: boolean;
+  cinematic?: boolean;
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
+
+  if (cinematic) {
+    return (
+      <div
+        className={cn(
+          "min-w-[92px] rounded-lg border px-3 py-3 text-center",
+          table.status === "attention" &&
+            "border-red-500/50 bg-red-500/[0.06]",
+          table.status === "occupied" &&
+            "border-green-500/35 bg-zinc-950/90",
+          table.status === "available" && "border-zinc-800 bg-zinc-950/70"
+        )}
+      >
+        <p className="font-mono text-sm font-semibold text-zinc-100">{table.name}</p>
+        {table.status === "attention" ? (
+          <p className="mt-2 text-[10px] font-medium text-red-400">
+            <span className="mr-1 inline-block size-1 rounded-full bg-red-500" />
+            Call
+          </p>
+        ) : table.status === "occupied" ? (
+          <>
+            <p className="mt-2 text-[10px] text-green-400">
+              <span className="mr-1 inline-block size-1 rounded-full bg-green-500" />
+              Active
+            </p>
+            {table.sessionTotal != null && (
+              <p className="mt-1 font-mono text-[11px] tabular-nums text-zinc-400">
+                {formatPrice(table.sessionTotal, DEMO_CURRENCY)}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="mt-2 text-[10px] text-zinc-500">Open</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -87,68 +129,99 @@ function TableCard({
 
 export function TablesShowcaseContent({
   compact = false,
+  cinematic = false,
   theme = "dark",
 }: {
   compact?: boolean;
+  cinematic?: boolean;
   theme?: ShowcaseTheme;
 }) {
   const light = theme === "light";
+  const tables = cinematic
+    ? CINEMATIC_FLOOR_TABLES.map(
+        (id) => DEMO_TABLES.find((table) => table.id === id)!
+      )
+    : DEMO_TABLES;
+
   return (
     <>
-      <div
-        className={cn(
-          "mb-4 flex flex-wrap items-center justify-between gap-3",
-          compact && "mb-2 gap-2"
-        )}
-      >
+      {cinematic && (
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+              Floor
+            </p>
+            <p className="mt-1 text-lg font-semibold tracking-tight text-zinc-100">
+              Tables
+            </p>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Rooftop <span className="font-medium text-emerald-500">● Live</span>
+          </p>
+        </div>
+      )}
+      {!cinematic && (
         <div
           className={cn(
-            "flex flex-wrap gap-4 border-b pb-1.5",
-            compact && "gap-2",
-            light ? "border-zinc-200" : "border-zinc-800"
+            "mb-4 flex flex-wrap items-center justify-between gap-3",
+            compact && "mb-2 gap-2"
           )}
         >
-          <span
+          <div
             className={cn(
-              "border-b-2 border-orange-500 pb-1.5 font-medium",
-              compact ? "text-[10px]" : "text-xs",
-              light ? "text-zinc-900" : "text-white"
+              "flex flex-wrap gap-4 border-b pb-1.5",
+              compact && "gap-2",
+              light ? "border-zinc-200" : "border-zinc-800"
             )}
           >
-            All ({DEMO_TABLES.length})
-          </span>
-          {DEMO_ZONES.map((zone) => (
             <span
-              key={zone.id}
               className={cn(
-                "pb-1.5 font-medium text-zinc-400",
-                compact ? "text-[10px]" : "text-xs"
+                "border-b-2 border-orange-500 pb-1.5 font-medium",
+                compact ? "text-[10px]" : "text-xs",
+                light ? "text-zinc-900" : "text-white"
               )}
             >
-              {zone.name} ({zone.count})
+              All ({DEMO_TABLES.length})
             </span>
-          ))}
-        </div>
-        {!compact && (
-          <div className="flex gap-2">
-            <span className={cn("rounded-lg px-3 py-1.5 text-[11px]", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300")}>
-              Download All QR Codes
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white">
-              <Plus className="size-3" />
-              Add Table
-            </span>
+            {DEMO_ZONES.map((zone) => (
+              <span
+                key={zone.id}
+                className={cn(
+                  "pb-1.5 font-medium text-zinc-400",
+                  compact ? "text-[10px]" : "text-xs"
+                )}
+              >
+                {zone.name} ({zone.count})
+              </span>
+            ))}
           </div>
-        )}
-      </div>
+          {!compact && (
+            <div className="flex gap-2">
+              <span className={cn("rounded-lg px-3 py-1.5 text-[11px]", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300")}>
+                Download All QR Codes
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white">
+                <Plus className="size-3" />
+                Add Table
+              </span>
+            </div>
+          )}
+        </div>
+      )}
       <div
         className={cn(
-          "grid grid-cols-6 gap-2.5",
-          compact && "grid-cols-6 gap-1.5"
+          cinematic ? "flex gap-3" : "grid grid-cols-6 gap-2.5",
+          compact && !cinematic && "grid-cols-6 gap-1.5"
         )}
       >
-        {DEMO_TABLES.map((table) => (
-          <TableCard key={table.id} table={table} compact={compact} theme={theme} />
+        {tables.map((table) => (
+          <TableCard
+            key={table.id}
+            table={table}
+            compact={compact || cinematic}
+            cinematic={cinematic}
+            theme={theme}
+          />
         ))}
       </div>
     </>

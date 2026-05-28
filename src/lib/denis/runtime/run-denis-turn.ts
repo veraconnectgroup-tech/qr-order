@@ -1,5 +1,12 @@
 import { apiError } from "@/lib/api-response";
 import { executeChatTurn } from "@/lib/ai/execute-chat-turn";
+import {
+  assertSufficientCredits,
+  finalizeTurnMetering,
+  maybeEnqueueLowBalanceAlert,
+  refreshOrgAiOpsProjection,
+  resolveAiTurnOrg,
+} from "@/lib/denis/commercial";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -27,8 +34,21 @@ import {
   extractOrderSlots,
   shouldRunSlotExtract,
 } from "@/lib/denis/runtime/perceive";
-import { executeActPhase } from "@/lib/denis/runtime/act";
+import { executeActPhase, isActSubmitLive, resolveActSubmitOutcome } from "@/lib/denis/runtime/act";
+import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
+import {
+  elapsedMs,
+  emptyTurnTimings,
+  logDenisTurnObservability,
+} from "@/lib/denis/runtime/turn-observability";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
+import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
+import type { AiStructuredResponse } from "@/lib/ai/types";
+import {
+  mergeKernelOrderingIntoTurn,
+  persistKernelOrderingDraft,
+} from "@/lib/denis/runtime/act/apply-kernel-ordering";
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
@@ -39,6 +59,10 @@ import type {
   TurnEnvelope,
 } from "@/lib/denis/platform/timeline-types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveActiveTableSessionId } from "@/lib/denis/venue/party";
+import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
+import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
+import type { AiRecommendation } from "@/lib/ai/types";
 
 function isSupportedTurnChannel(
   channel: DenisTurnRunInput["channel"]
@@ -56,6 +80,8 @@ type LegacyChatPayload = {
     quickReplies?: string[];
     submitOrder?: boolean;
     creditsRemaining?: number;
+    creditsCharged?: number;
+    deferredOrdering?: AiStructuredResponse;
   };
 };
 
@@ -77,7 +103,27 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const admin = createAdminClient();
   const traceId = createTurnTraceId();
+  const turnStarted = performance.now();
+  const timings = emptyTurnTimings();
+  let shadowParityScore: number | undefined;
+
+  const orgResult = await resolveAiTurnOrg(admin, {
+    locationId: parsed.data.locationId,
+    tableId: parsed.data.tableId,
+    sessionToken: parsed.data.sessionToken,
+  });
+  if (!orgResult.ok) {
+    return apiError(orgResult.error, orgResult.status);
+  }
+
+  const creditCheck = await assertSufficientCredits(admin, orgResult.data.orgId);
+  if (!creditCheck.ok) {
+    return apiError("insufficient_credits", 402);
+  }
+
+  const ctxStarted = performance.now();
   const ctx = await buildDenisTurnContext(admin, parsed.data);
+  timings.contextMs = elapsedMs(ctxStarted);
 
   if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
     return apiError("Voice is not enabled for this location.", 403);
@@ -107,7 +153,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       })
     : null;
 
+  const legacyStarted = performance.now();
   const legacyResponse = await executeChatTurn(parsed.data);
+  timings.legacyMs = elapsedMs(legacyStarted);
   if (legacyResponse.status !== 200) {
     return legacyResponse;
   }
@@ -119,6 +167,64 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     return legacyResponse;
   }
 
+  let cartDraftForAct = ctx.aiCartState.draft;
+  const actSubmitLive = isActSubmitLive(ctx.config);
+
+  if (data.deferredOrdering && data.sessionId) {
+    const { data: sessionRow, error: sessionError } = await admin
+      .from("ai_sessions")
+      .select("order_draft, messages")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+
+    if (!sessionError && sessionRow) {
+      try {
+        const menuPayload = await getCachedMenuForLocation(parsed.data.locationId, {
+          useEnglish: false,
+        });
+        const catalog = {
+          menuText: menuPayload.menuText,
+          productMap: menuPayload.productMap,
+          catalog: menuPayload.catalog,
+          currency: menuPayload.currency,
+          cachedAt: menuPayload.cachedAt,
+        };
+        const priorMessages =
+          (sessionRow.messages as Array<{
+            role: "user" | "assistant";
+            content: string;
+          }>) ?? [];
+
+        const kernel = applyPostLlmOrdering({
+          userMessage: parsed.data.message,
+          allowOrdering: true,
+          orderDraft: initDraftFromStorage(sessionRow.order_draft),
+          catalog,
+          structured: data.deferredOrdering,
+          priorMessages,
+          language: parsed.data.language,
+        });
+
+        await persistKernelOrderingDraft(admin, data.sessionId, kernel.draft);
+
+        cartDraftForAct = aiOrderDraftToDenisCartState(kernel.draft).draft;
+
+        const merged = mergeKernelOrderingIntoTurn(data.message, kernel);
+        data.message = merged.message;
+        data.cartActions = merged.cartActions;
+        data.quickReplies = merged.quickReplies;
+        data.intent = merged.intent;
+        data.submitOrder = merged.submitOrder;
+      } catch (error) {
+        logger.warn("Kernel ordering bridge failed", {
+          traceId,
+          sessionId: data.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
   let actPhase: Awaited<ReturnType<typeof executeActPhase>> = {
     enabled: false,
     dryRun: true,
@@ -126,10 +232,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   };
   if (ctx.config.ordering.actLayerEnabled) {
     let catalog;
+    const legacyWantsSubmit = Boolean(data.submitOrder);
     const needsCatalog =
-      ctx.config.ordering.actSubmitEnabled &&
-      !ctx.config.ordering.actDryRun &&
-      Boolean(data.submitOrder);
+      actSubmitLive && legacyWantsSubmit;
     if (needsCatalog) {
       try {
         catalog = await getCachedMenuForLocation(parsed.data.locationId);
@@ -138,6 +243,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       }
     }
 
+    const actStarted = performance.now();
     actPhase = await executeActPhase({
       config: ctx.config,
       reflexTurn,
@@ -145,11 +251,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       tableToken: parsed.data.sessionToken,
       sessionToken: parsed.data.sessionToken,
       deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
-      cartDraft: ctx.aiCartState.draft,
+      cartDraft: cartDraftForAct,
       catalog,
-      legacySubmitOrder: data.submitOrder,
+      legacySubmitOrder: legacyWantsSubmit,
     });
+    timings.actMs = elapsedMs(actStarted);
   }
+
+  const actSubmitOutcome = resolveActSubmitOutcome(actPhase);
 
   const rollout = resolveEffectiveRollout(ctx.config);
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
@@ -165,10 +274,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     guestMemory: ctx.guestMemory,
     cartActions: data.cartActions,
     recommendations: data.recommendations,
+    orderNumber: actSubmitOutcome.orderNumber ?? null,
+    blockedReason: actSubmitOutcome.guestBlockedReason ?? null,
     venueOps: ctx.venueOps,
     opsEffects: ctx.opsEffects,
   });
 
+  const narrateStarted = performance.now();
   const resolvedNarration = await resolveTurnNarrationMessage({
     legacyMessage: data.message,
     facts: narrationFacts,
@@ -190,6 +302,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     guestUsesLegacy && !resolvedNarration.usedDenisNarrator
       ? data.message
       : narration.message;
+  timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {
     const shadowDiff = diffShadowTurn({
@@ -217,9 +330,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       slotItemCount: slotExtract?.items.length ?? 0,
       slotTier: slotExtract?.tier ?? null,
     });
+    shadowParityScore = shadowDiff.parityScore;
   }
 
   if (data.sessionId && kernelTimelineEnabled(rollout.mode)) {
+    const timelineStarted = performance.now();
     const intent = resolveTurnIntent(
       reflexTurn.reflex?.intent,
       data.intent ?? "UNKNOWN"
@@ -270,7 +385,71 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         },
       });
     }
+    timings.timelineMs = elapsedMs(timelineStarted);
   }
+
+  let creditsRemaining =
+    data.creditsRemaining ?? creditCheck.balanceAfter;
+  const creditsCharged = data.creditsCharged ?? 0;
+
+  if (data.sessionId && creditsCharged > 0) {
+    const meteringStarted = performance.now();
+    const metering = await finalizeTurnMetering(admin, {
+      orgId: orgResult.data.orgId,
+      aiSessionId: data.sessionId,
+      traceId,
+    });
+
+    if (metering.ok) {
+      creditsRemaining = metering.balanceAfter;
+      await maybeEnqueueLowBalanceAlert(admin, {
+        orgId: orgResult.data.orgId,
+        locationId: parsed.data.locationId,
+        balanceAfter: metering.balanceAfter,
+        traceId,
+      });
+      void refreshOrgAiOpsProjection(admin, orgResult.data.orgId).catch(
+        (error) => {
+          logger.warn("Denis turn org_ai_ops refresh failed", {
+            orgId: orgResult.data.orgId,
+            traceId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      );
+    } else {
+      logger.error("Denis turn metering finalize failed", {
+        traceId,
+        aiSessionId: data.sessionId,
+        orgId: orgResult.data.orgId,
+        code: metering.code,
+      });
+    }
+    timings.meteringMs = elapsedMs(meteringStarted);
+  }
+
+  timings.totalMs = elapsedMs(turnStarted);
+
+  logDenisTurnObservability({
+    traceId,
+    locationId: parsed.data.locationId,
+    channel: input.channel,
+    rolloutMode: rollout.mode,
+    guestUsesLegacy,
+    narrationTier: narration.tier,
+    lintPassed: narration.lintPassed,
+    creditsCharged,
+    actDryRun: actPhase.dryRun,
+    actEnabled: actPhase.enabled,
+    actSubmitLive,
+    actSubmitAttempted: actSubmitOutcome.attempted,
+    actOrderNumber: actSubmitOutcome.orderNumber,
+    shadowParityScore,
+    timings,
+  });
+
+  const guestSubmitOrder =
+    actSubmitLive ? false : Boolean(data.submitOrder);
 
   const responseData = {
     message: guestMessage,
@@ -278,8 +457,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     cartActions: data.cartActions,
     quickReplies,
     intent: data.intent,
-    submitOrder: data.submitOrder,
-    creditsRemaining: data.creditsRemaining,
+    submitOrder: guestSubmitOrder,
+    creditsRemaining,
     sessionId: data.sessionId,
   };
 
@@ -299,7 +478,44 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     sharedAiSessionId: ctx.party?.sharedAiSessionId ?? null,
     operatingMode: ctx.venueOps?.operatingMode,
     kdsStress: ctx.venueOps?.kdsStress,
+    actSubmitLive,
+    actSubmitAttempted: actSubmitOutcome.attempted,
+    actOrderNumber: actSubmitOutcome.orderNumber,
   };
+
+  const tableSessionId = await resolveActiveTableSessionId(admin, {
+    tableId: parsed.data.tableId,
+    locationId: parsed.data.locationId,
+    sessionToken: parsed.data.sessionToken,
+  });
+
+  if (tableSessionId) {
+    const menuCache = await getCachedMenuForLocation(parsed.data.locationId);
+    const productNames: Record<string, string> = {};
+    if (menuCache?.productMap) {
+      for (const [id, product] of Object.entries(menuCache.productMap)) {
+        productNames[id] = product.name;
+      }
+    }
+
+    const sceneOverrides = mapTurnToSceneOverrides({
+      tableSessionId,
+      quickReplies,
+      recommendations: (data.recommendations ?? []) as AiRecommendation[],
+      productNames,
+      markState: "idle",
+      sheetOpen: false,
+      thinking: false,
+    });
+
+    void scheduleGuestSceneRefresh(admin, sceneOverrides).catch((error) => {
+      logger.warn("Denis turn scene refresh failed", {
+        traceId,
+        tableSessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
 
   if (input.channel === "voice") {
     return formatVoiceTurnApiResponse(responseData, responseMeta, {

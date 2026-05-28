@@ -15,13 +15,14 @@ import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel"
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import type { AiCreditPackage } from "@/types";
+import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
 
 export default async function AdminSettingsPage() {
   const staff = await requireAdmin();
   const admin = createAdminClient();
   const locationId = await getStaffLocationId(staff);
 
-  const [{ data: org }, { data: location }, { data: credits }, { data: packages }, { data: apiKeys }, { data: webhooks }, { data: aiExamples }] =
+  const [{ data: org }, { data: location }, { data: credits }, { data: aiOps }, { data: packages }, { data: apiKeys }, { data: webhooks }, { data: aiExamples }] =
     await Promise.all([
     admin
       .from("organizations")
@@ -34,7 +35,7 @@ export default async function AdminSettingsPage() {
       ? admin
           .from("locations")
           .select(
-            "name, menu_locale, default_locale, google_review_url, ordering_enabled, ai_concierge_enabled, ai_playbook"
+            "name, menu_locale, default_locale, google_review_url, ordering_enabled, require_first_table_approval, ai_concierge_enabled, ai_playbook"
           )
           .eq("id", locationId)
           .single()
@@ -42,6 +43,13 @@ export default async function AdminSettingsPage() {
     admin
       .from("ai_credits")
       .select("balance, lifetime_used")
+      .eq("org_id", staff.org_id)
+      .maybeSingle(),
+    admin
+      .from("org_ai_ops")
+      .select(
+        "turns_24h, timeline_events_24h, low_balance, refreshed_at"
+      )
       .eq("org_id", staff.org_id)
       .maybeSingle(),
     admin
@@ -91,6 +99,7 @@ export default async function AdminSettingsPage() {
     default_locale: string | null;
     google_review_url: string | null;
     ordering_enabled: boolean;
+    require_first_table_approval: boolean;
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
   } | null;
@@ -98,6 +107,13 @@ export default async function AdminSettingsPage() {
   const creditsRow = credits as {
     balance: number;
     lifetime_used: number;
+  } | null;
+
+  const aiOpsRow = aiOps as {
+    turns_24h: number;
+    timeline_events_24h: number;
+    low_balance: boolean;
+    refreshed_at: string;
   } | null;
 
   const creditPackages = (packages ?? []) as AiCreditPackage[];
@@ -117,31 +133,31 @@ export default async function AdminSettingsPage() {
       : null;
 
   return (
-    <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold">Settings</h1>
+    <div>
+      <h1 className="mb-6 text-2xl font-bold text-foreground">Settings</h1>
 
       <div className="space-y-6">
-        <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Restoran</h2>
+        <QrCard className="max-w-lg">
+          <QrCardTitle>Organization</QrCardTitle>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Naziv</dt>
-              <dd className="font-medium">{orgRow?.name}</dd>
+              <dt className="text-muted-foreground">Name</dt>
+              <dd className="font-medium text-foreground">{orgRow?.name}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Email</dt>
-              <dd>{orgRow?.email ?? "—"}</dd>
+              <dt className="text-muted-foreground">Email</dt>
+              <dd className="text-foreground">{orgRow?.email ?? "—"}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Valuta</dt>
-              <dd>{orgRow?.currency}</dd>
+              <dt className="text-muted-foreground">Currency</dt>
+              <dd className="text-foreground">{orgRow?.currency}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-neutral-500">PDV</dt>
-              <dd>{orgRow?.default_tax_percent}%</dd>
+              <dt className="text-muted-foreground">VAT</dt>
+              <dd className="text-foreground">{orgRow?.default_tax_percent}%</dd>
             </div>
           </dl>
-        </div>
+        </QrCard>
 
         {locationRow && (
           <>
@@ -150,6 +166,9 @@ export default async function AdminSettingsPage() {
               menuLocale={menuLocale}
               googleReviewUrl={locationRow.google_review_url}
               orderingEnabled={locationRow.ordering_enabled}
+              requireFirstTableApproval={
+                locationRow.require_first_table_approval ?? true
+              }
               aiConciergeEnabled={locationRow.ai_concierge_enabled}
               canEdit
             />
@@ -159,6 +178,16 @@ export default async function AdminSettingsPage() {
                 locationName={locationRow.name}
                 creditsBalance={creditsRow?.balance ?? 0}
                 creditsLifetimeUsed={creditsRow?.lifetime_used ?? 0}
+                aiOps={
+                  aiOpsRow
+                    ? {
+                        turns24h: aiOpsRow.turns_24h,
+                        timelineEvents24h: aiOpsRow.timeline_events_24h,
+                        lowBalance: aiOpsRow.low_balance,
+                        refreshedAt: aiOpsRow.refreshed_at,
+                      }
+                    : null
+                }
                 packages={creditPackages}
                 currency={orgRow?.currency ?? "EUR"}
                 canEdit

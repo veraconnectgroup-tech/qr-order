@@ -1,4 +1,10 @@
-export type OutboxDomain = "fulfillment" | "fiscal" | "integration" | "session";
+export type OutboxDomain =
+  | "fulfillment"
+  | "fiscal"
+  | "integration"
+  | "session"
+  | "billing"
+  | "commerce";
 
 export type OutboxEventType =
   | "fulfill.notify_staff"
@@ -8,7 +14,12 @@ export type OutboxEventType =
   | "fiscal.tse_sign"
   | "fiscal.beleg"
   | "fiscal.send_receipt"
-  | "integration.webhook";
+  | "integration.webhook"
+  | "billing.low_balance"
+  | "billing.staff_hint"
+  | "commerce.projection.refresh"
+  | "commerce.alert.staff"
+  | "session.scene.refresh";
 
 export type OutboxInsert = {
   aggregate_type?: "order" | "session";

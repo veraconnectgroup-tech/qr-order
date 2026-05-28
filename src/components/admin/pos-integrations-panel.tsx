@@ -56,7 +56,7 @@ function statusBadge(status: PosIntegrationRow["status"]) {
     );
   }
   return (
-    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
+    <span className="rounded-full bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
       Getrennt
     </span>
   );
@@ -180,11 +180,11 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
   }
 
   return (
-    <div className="max-w-2xl rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+    <div className="max-w-2xl rounded-lg border border-border bg-card p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">POS-Integration</h2>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Kassensystem-Anbindung für diesen Standort. Bei aktiver Verbindung
             werden Bestellungen an das POS weitergeleitet.
           </p>
@@ -196,39 +196,39 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
       </div>
 
       {loading ? (
-        <p className="mt-6 text-sm text-neutral-500">Wird geladen…</p>
+        <p className="mt-6 text-sm text-muted-foreground">Wird geladen…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-6 text-sm text-neutral-500">
+        <p className="mt-6 text-sm text-muted-foreground">
           Noch keine POS-Integrationen konfiguriert.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-neutral-100">
+        <ul className="mt-6 divide-y divide-border">
           {rows.map((row) => (
             <li
               key={row.id}
               className="flex flex-wrap items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
             >
               <div className="flex items-start gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-muted/50 text-foreground/90">
                   <Monitor className="size-5" />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-neutral-900">
+                    <p className="font-medium text-foreground">
                       {PROVIDER_LABELS[row.provider]}
                     </p>
                     {statusBadge(row.status)}
                   </div>
                   {row.external_location_id && (
-                    <p className="mt-1 text-sm text-neutral-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       Externe Standort-ID: {row.external_location_id}
                     </p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-400">
+                  <p className="mt-1 text-xs text-muted-foreground/70">
                     Letzte Sync: {formatSyncAt(row.last_sync_at)}
                   </p>
                   {row.status === "connected" && (
-                    <p className="mt-1 font-mono text-xs text-neutral-500">
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
                       Inbound: /api/pos/inbound/{row.id}
                     </p>
                   )}
@@ -236,8 +236,8 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
                     <p className="mt-2 text-sm text-red-600">{row.last_error}</p>
                   )}
                   {row.status === "connected" && (
-                    <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
-                      <p className="text-xs text-neutral-600">
+                    <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                      <p className="text-xs text-muted-foreground">
                         Tisch-Mappings für eingehende POS-Bestellungen
                       </p>
                       <Button

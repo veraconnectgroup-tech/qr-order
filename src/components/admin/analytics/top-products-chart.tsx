@@ -27,14 +27,14 @@ function TopItemTooltip({
   const item = payload[0].payload;
   return (
     <div
-      className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm"
+      className="rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-sm"
       style={tooltipStyle}
     >
-      <p className="font-medium text-neutral-900">
+      <p className="font-medium text-foreground">
         #{item.rank} {item.name}
       </p>
-      <p className="mt-0.5 text-neutral-600">{item.quantity} sold</p>
-      <p className="text-neutral-600">{formatPrice(item.revenue, currency)}</p>
+      <p className="mt-0.5 text-muted-foreground">{item.quantity} sold</p>
+      <p className="text-muted-foreground">{formatPrice(item.revenue, currency)}</p>
     </div>
   );
 }
@@ -61,7 +61,7 @@ export function TopProductsChart({
       className={cn("h-full", className)}
     >
       {data.length === 0 ? (
-        <p className="py-12 text-center text-sm text-neutral-500">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           No items sold in this period
         </p>
       ) : (

@@ -128,16 +128,16 @@ sequenceDiagram
 | `00092_denis_guest_memory.sql` | `denis_guest_memory` consented prefs | M17 |
 | `00093_denis_eval_runs.sql` | `denis_eval_runs` CI regression history | M24 |
 
-### 3.5 Legacy bridge (still active — intentional)
+### 3.5 Legacy bridge (post F8-4)
 
-| Legacy path | Role until cutover |
-|-------------|-------------------|
-| `src/lib/ai/execute-chat-turn.ts` (~937 lines) | OpenAI, ordering, session persist, credits |
-| `src/lib/ai/chat-service.ts` (11 lines) | thin export → `runDenisTurn` |
-| `src/lib/ai/proactive-triggers.ts` | server evaluate via sense (M11) | legacy client fallback if no fingerprint |
-| `src/lib/ai/ordering/order-executor.ts` | Order Core create (ACL allowlist) |
+| Path | Role |
+|------|------|
+| `src/lib/ai/execute-chat-turn.ts` (~620 lines) | OpenAI + session persist only; `deferredOrdering` → kernel bridge |
+| `src/lib/ai/chat-service.ts` | thin export → `runDenisTurn` |
+| `src/lib/ai/ordering/kernel-ordering-bridge.ts` | cart mutations in `runDenisTurn` |
+| `src/lib/ai/ordering/order-executor.ts` | guest `/api/ai/order/submit` until act submit pilot (F8-3) |
 
-**OpenAI today:** ordering/planning in `execute-chat-turn.ts`; optional T3 narration in `runtime/narrate/narrate-llm.ts` when `llm.narrateWithLlm` + rollout `denis_only`.
+**OpenAI:** legacy adapter for structured LLM; optional T3 narration in `runtime/narrate/narrate-llm.ts` when `llm.narrateWithLlm` + rollout `denis_only`.
 
 ---
 
@@ -188,7 +188,7 @@ Honest delta after M10 — do not assume these exist:
 | learning | ✓ | ✓ | | | | | | — | |
 | eval | ✓ | ✓ | ✓ | | ✓ | | | | — |
 
-**OpenAI (compliance):** allowed paths under `src/lib/denis/` are `runtime/narrate/` and `runtime/perceive/` only. Legacy OpenAI remains in `src/lib/ai/execute-chat-turn.ts` until narrate cutover.
+**OpenAI (compliance):** allowed paths under `src/lib/denis/` are `runtime/narrate/` and `runtime/perceive/` only. Legacy OpenAI adapter: `src/lib/ai/execute-chat-turn.ts` (session + LLM; F8-4).
 
 **Shadow diff:** lives in `runtime/shadow-diff.ts` (not `eval/`) — import-matrix constraint.
 
@@ -227,7 +227,7 @@ Honest delta after M10 — do not assume these exist:
 | **M26** | ✅ | CI Denis gates + eval run detail UI |
 | **M27** | ✅ | Canary cohort % (`rollout.canaryPercent`) |
 
-**Next recommended:** production cutover per venue (`shadow` → `canary` → `denis_only`); push migrations `00089`–`00093`; GitHub `SUPABASE_*` secrets for eval history on main.
+**Next recommended:** commit + deploy F8; push migrations `00094`–`00096`; pilot `denis_act_submit_pilot` on one venue; retire guest `order-executor` path after act submit GA.
 
 ---
 
@@ -255,6 +255,24 @@ Override: env `DENIS_ROLLOUT_MODE`.
 
 ---
 
+## 11. Commercial spine (ADR-009 F1–F5)
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| **F1** | All chat APIs → `runDenisTurn`; `executeChatTurn` adapter only | ✅ |
+| **F2** | `finalize_denis_turn_metering` RPC (debit + timeline + session) | ✅ migration `00094` |
+| **F3** | `src/lib/denis/commercial/` metering module | ✅ |
+| **F4** | Outbox `billing.low_balance` + push handler | ✅ |
+| **F5** | `org_ai_ops` projection + `refresh_org_ai_ops` | ✅ migration `00095` |
+| **F6** | `denis_only` cutover; retire dual-write | ✅ removed `record-chat-turn-timeline`; metering only via commercial |
+| **F7** | Stripe `applyCreditPurchase` + admin + landing copy | ✅ migration `00096`, pricing FAQ, `LandingDenisCreditsNote` |
+
+**Verify F1:** `grep -rn executeChatTurn src/` → only `run-denis-turn.ts` + legacy file.
+
+See **§13 F8** for ordering cutover (legacy adapter retirement).
+
+---
+
 ## 9. Verification
 
 ```bash
@@ -271,6 +289,48 @@ pnpm type-check
 - [ ] `pnpm type-check` pass  
 - [ ] One M-track scope only  
 - [ ] This map updated if API, migrations, or rollout behaviour changed  
+
+---
+
+## 12. Design enterprise tracks (ADR-008 DE-01…DE-10)
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| DE-01 | Landing enterprise (hero, trust, 4× FeatureRow, pricing, FAQ) | ✅ |
+| DE-02 | Auth split shell + showcase panel | ✅ |
+| DE-03 | DenisPanel + DenisMessageBlock gramat | ✅ |
+| DE-04 | `GuestProductRow` (menu + Denis + landing) | ✅ |
+| DE-05 | Overview cockpit (`QrKpi`, floor, Denis strip) | ✅ |
+| DE-06 | Admin full dark | ✅ |
+| DE-07 | Dashboard Denis staff copilot drawer | ✅ |
+| DE-08 | Landing Denis showcase | ✅ |
+| DE-09 | ADR-007 appendix B component gallery | ✅ |
+| DE-10 | Motion + a11y (48px, reduced-motion) | ✅ |
+
+**Also:** Platform `(platform)/**` dark tokens aligned with `admin-theme` (May 2026).
+
+**Doc:** [ADR-008](../design/ADR-008-web-design-architecture.md) · [ADR-007 Appendix B](../design/ADR-007-visual-system.md)
+
+---
+
+## 13. Ordering cutover (ADR-010 F8)
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| **F8-1** | GA gate (`ga-gate.ts`) + turn observability logs | ✅ |
+| **F8-2** | Kernel ordering bridge in `runDenisTurn` | ✅ |
+| **F8-3** | Live `actSubmitEnabled` pilot + legacy submit suppressed | ✅ |
+| **F8-4** | Legacy adapter slim — session + LLM only | ✅ |
+
+**Post-F8 ops:** shadow → canary → `denis_only` → `denis_act_submit_pilot`; `pnpm eval:denis` before act submit.
+
+| Track | Scope | Status |
+|-------|-------|--------|
+| **F9** | Guest client act submit — `denis.actSubmitLive` meta, no legacy `/api/ai/order/submit` | ✅ |
+
+**Remaining:** retire `order-executor.ts` + `/api/ai/order/submit` when all pilot venues on act submit.
+
+**Doc:** [ADR-010](./ADR-010-denis-ordering-cutover.md) · ADR-006 accepted (May 2026)
 
 ---
 

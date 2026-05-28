@@ -13,6 +13,7 @@ import {
   WEBHOOK_EVENT_LABELS,
   type WebhookEvent,
 } from "@/lib/webhooks/events";
+import { AdminPanel } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,13 +62,11 @@ export function WebhooksPanel({
   }
 
   return (
-    <div className="max-w-2xl rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">Webhooks</h2>
-      <p className="mt-1 text-sm text-neutral-500">
-        Outbound HTTPS notifications with HMAC-SHA256 signatures. Auto-disabled after
-        10 failures.
-      </p>
-
+    <AdminPanel
+      className="max-w-2xl"
+      title="Webhooks"
+      description="Outbound HTTPS notifications with HMAC-SHA256 signatures. Auto-disabled after 10 failures."
+    >
       {canEdit && (
         <form onSubmit={handleCreate} className="mt-4 space-y-3">
           <div>
@@ -92,8 +91,8 @@ export function WebhooksPanel({
                   onClick={() => toggleEvent(event)}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
                     events.includes(event)
-                      ? "bg-violet-600 text-white"
-                      : "bg-neutral-100 text-neutral-600"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {WEBHOOK_EVENT_LABELS[event]}
@@ -111,16 +110,16 @@ export function WebhooksPanel({
         {webhooks.map((hook) => (
           <li
             key={hook.id}
-            className="rounded-lg border border-neutral-100 px-3 py-3 text-sm"
+            className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm"
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{hook.url}</p>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="truncate font-medium text-foreground">{hook.url}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   {hook.events.join(", ")}
                 </p>
                 {!hook.is_active && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
+                  <p className="mt-1 text-xs font-medium text-red-400">
                     Auto-disabled ({hook.failure_count} failures)
                   </p>
                 )}
@@ -181,9 +180,9 @@ export function WebhooksPanel({
           </li>
         ))}
         {webhooks.length === 0 && (
-          <p className="text-sm text-neutral-500">No webhooks configured.</p>
+          <p className="text-sm text-muted-foreground">No webhooks configured.</p>
         )}
       </ul>
-    </div>
+    </AdminPanel>
   );
 }

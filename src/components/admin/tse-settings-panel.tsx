@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShieldCheck, ShieldOff } from "lucide-react";
 import { updateOrgFiscalFields } from "@/lib/admin/fiscal-settings-actions";
+import { AdminPanel } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,11 +87,11 @@ export function TseSettingsPanel({
   }
 
   return (
-    <div className="max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+    <AdminPanel title="TSE (KassenSichV)" description="Fiskaly Cloud-TSE für gesetzeskonforme Beleg-Signaturen.">
       <div className="flex items-start gap-3">
         <div
           className={`flex size-10 items-center justify-center rounded-lg ${
-            isActive ? "bg-green-50 text-green-600" : "bg-neutral-100 text-neutral-500"
+            isActive ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
           }`}
         >
           {isActive ? (
@@ -99,35 +100,30 @@ export function TseSettingsPanel({
             <ShieldOff className="size-5" />
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold">TSE (KassenSichV)</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            Fiskaly Cloud-TSE für gesetzeskonforme Beleg-Signaturen.
-          </p>
-        </div>
+        <div className="min-w-0 flex-1" />
       </div>
 
       <div className="mt-4">
         {isActive ? (
-          <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
+          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
             TSE aktiv
           </span>
         ) : (
-          <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-600">
+          <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
             TSE nicht konfiguriert
           </span>
         )}
       </div>
 
       {isActive && (
-        <dl className="mt-4 space-y-2 text-xs text-neutral-500">
+        <dl className="mt-4 space-y-2 text-xs text-muted-foreground">
           <div className="flex justify-between gap-4">
             <dt>TSS ID</dt>
-            <dd className="truncate font-mono text-neutral-700">{activeTssId}</dd>
+            <dd className="truncate font-mono text-foreground">{activeTssId}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt>Client ID</dt>
-            <dd className="truncate font-mono text-neutral-700">
+            <dd className="truncate font-mono text-foreground">
               {activeClientId}
             </dd>
           </div>
@@ -135,7 +131,7 @@ export function TseSettingsPanel({
       )}
 
       {!platformConfigured && (
-        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
           Platform Fiskaly credentials are not set. Contact support to enable
           TSE provisioning.
         </p>
@@ -165,20 +161,20 @@ export function TseSettingsPanel({
       )}
 
       {error && (
-        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-red-300">
           {error}
         </p>
       )}
 
       {success && (
-        <p className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+        <p className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
           {success}
         </p>
       )}
 
-      <div className="mt-6 border-t border-neutral-200 pt-6">
-        <h3 className="text-sm font-semibold text-neutral-900">Fiskaldaten</h3>
-        <p className="mt-1 text-sm text-neutral-600">
+      <div className="mt-6 border-t border-border pt-6">
+        <h3 className="text-sm font-semibold text-foreground">Fiskaldaten</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Steuernummer oder USt-IdNr erscheint auf dem gesetzlichen Beleg (§14
           UStG).
         </p>
@@ -215,17 +211,17 @@ export function TseSettingsPanel({
         </div>
 
         {fiscalError && (
-          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-red-300">
             {fiscalError}
           </p>
         )}
 
         {fiscalSuccess && (
-          <p className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
             {fiscalSuccess}
           </p>
         )}
       </div>
-    </div>
+    </AdminPanel>
   );
 }

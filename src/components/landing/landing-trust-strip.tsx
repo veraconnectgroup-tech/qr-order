@@ -4,12 +4,12 @@ import { TrustLogoList } from "@/components/landing/trust-logos";
 export function LandingTrustStrip() {
   return (
     <section
-      aria-label="Integrationen und Zertifizierungen"
-      className="border-y border-[#1e1e2e] bg-[#08080c]/90 py-6"
+      aria-label="Integrations and compliance"
+      className="border-y border-white/[0.06] bg-black py-6"
     >
       <LandingContainer wide>
         <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-          Integrations &amp; Zertifizierungen
+          Trusted by hospitality teams · Integrations &amp; compliance
         </p>
 
         {/* Mobile: horizontal scroll — avoids squashing wide payment marks */}

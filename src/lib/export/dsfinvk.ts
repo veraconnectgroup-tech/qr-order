@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { escapeCsvField } from "@/lib/security/escape";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
 import { parseDatevDateRange } from "@/lib/export/datev";
+import { lineVatBreakdown, roundMoney } from "@/lib/tax/vat";
 import packageJson from "../../../package.json";
 
 const BERLIN_TZ = "Europe/Berlin";
@@ -85,9 +86,7 @@ export function formatDsfinvkAmount(value: number): string {
   return roundMoney(value).toFixed(2);
 }
 
-export function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
-}
+export { lineVatBreakdown } from "@/lib/tax/vat";
 
 export function mapUstSchluessel(taxRate: number): number {
   if (taxRate === 7) return 2;
@@ -206,13 +205,6 @@ export function orderBusinessDate(
 
 export function berlinTimestamp(iso: string): string {
   return formatInTimeZone(new Date(iso), BERLIN_TZ, "yyyy-MM-dd'T'HH:mm:ss");
-}
-
-export function lineVatBreakdown(gross: number, taxRate: number) {
-  const rate = taxRate === 7 ? 7 : taxRate === 0 ? 0 : 19;
-  const net = roundMoney(gross / (1 + rate / 100));
-  const ust = roundMoney(gross - net);
-  return { gross: roundMoney(gross), net, ust, rate };
 }
 
 export function operatorForOrder(

@@ -96,6 +96,16 @@ export async function saveDenisRolloutConfig(
   }
 
   if (
+    parsed.data.actSubmitEnabled &&
+    !parsed.data.actDryRun &&
+    parsed.data.rolloutMode !== "denis_only"
+  ) {
+    return {
+      error: "Live act submit (F8-3) requires rollout mode denis_only.",
+    };
+  }
+
+  if (
     parsed.data.narrateWithLlm &&
     parsed.data.rolloutMode !== "denis_only" &&
     parsed.data.rolloutMode !== "canary"

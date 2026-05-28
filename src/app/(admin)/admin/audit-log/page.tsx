@@ -64,8 +64,8 @@ export default async function AdminAuditLogPage({
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-8">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Audit log</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-2xl font-semibold text-foreground">Audit log</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Who changed what and when — for compliance and troubleshooting.
         </p>
       </div>
@@ -74,9 +74,9 @@ export default async function AdminAuditLogPage({
         <AuditLogFilters />
       </Suspense>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <table className="min-w-full text-sm">
-          <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
+          <thead className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Timestamp</th>
               <th className="px-4 py-3">User</th>
@@ -88,14 +88,14 @@ export default async function AdminAuditLogPage({
           <tbody>
             {result.rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   No audit entries found.
                 </td>
               </tr>
             ) : (
               result.rows.map((row) => (
-                <tr key={row.id} className="border-b border-neutral-100">
-                  <td className="px-4 py-3 tabular-nums text-neutral-600">
+                <tr key={row.id} className="border-b border-border">
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
                     {new Date(row.created_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">{row.userLabel}</td>
@@ -103,12 +103,12 @@ export default async function AdminAuditLogPage({
                   <td className="px-4 py-3">
                     {row.entity_type}
                     {row.entity_id ? (
-                      <span className="block text-xs text-neutral-400">
+                      <span className="block text-xs text-muted-foreground/70">
                         {row.entity_id}
                       </span>
                     ) : null}
                   </td>
-                  <td className="max-w-xs truncate px-4 py-3 text-neutral-600">
+                  <td className="max-w-xs truncate px-4 py-3 text-muted-foreground">
                     {formatDetails(row)}
                   </td>
                 </tr>
@@ -118,7 +118,7 @@ export default async function AdminAuditLogPage({
         </table>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-neutral-600">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
           Page {result.page} of {totalPages} · {result.total} entries
         </span>

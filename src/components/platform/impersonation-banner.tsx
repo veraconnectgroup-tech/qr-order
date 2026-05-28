@@ -18,7 +18,7 @@ export function ImpersonationBanner({ orgName }: { orgName: string }) {
           type="submit"
           size="sm"
           variant="secondary"
-          className="h-7 bg-white/15 text-white hover:bg-white/25"
+          className="h-7 bg-foreground/15 text-white hover:bg-foreground/25"
         >
           Exit
         </Button>

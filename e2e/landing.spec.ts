@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Landing page", () => {
-  test("shows hero section", async ({ page }) => {
+  test("shows Denis hero section", async ({ page }) => {
     await page.goto("/");
 
-    await expect(
-      page.getByRole("heading", {
-        name: /operating system for modern hospitality/i,
-      })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Denis", exact: true })).toBeVisible();
+    await expect(page.getByText("Part of Vera Group").first()).toBeVisible();
+    await expect(page.getByText("Der Concierge für Ihren Gastraum.")).toBeVisible();
   });
 
   test("nav links point to platform, enterprise, and pricing", async ({ page }) => {

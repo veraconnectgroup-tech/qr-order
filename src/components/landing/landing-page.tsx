@@ -4,15 +4,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureCheck } from "@/components/landing/product-showcases";
-import { LandingClosingShowcase } from "@/components/landing/landing-closing-showcase";
 import { LandingFaq } from "@/components/landing/landing-faq";
+import { LandingDenisCreditsNote } from "@/components/landing/landing-denis-credits-note";
+import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHero } from "@/components/landing/landing-hero";
-import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingNav } from "@/components/landing/landing-nav";
-import { LandingPhilosophy } from "@/components/landing/landing-philosophy";
 import { LandingTrustStrip } from "@/components/landing/landing-trust-strip";
-import { LandingTestimonials } from "@/components/landing/landing-testimonials";
-import { LandingWorkflows } from "@/components/landing/landing-workflows";
 import {
   LandingContainer,
   LandingEyebrow,
@@ -25,18 +22,18 @@ import { cn } from "@/lib/utils";
 
 const TRANSACTION_FEE = platformFeeDescriptionEn();
 
-const LandingProductTabs = dynamic(
+const LandingFeatures = dynamic(
   () =>
-    import("@/components/landing/landing-product-tabs").then((m) => ({
-      default: m.LandingProductTabs,
+    import("@/components/landing/landing-features").then((m) => ({
+      default: m.LandingFeatures,
     })),
   {
     loading: () => (
       <div
-        className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 md:py-20"
+        className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 md:py-28"
         aria-hidden
       >
-        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-zinc-900/40" />
+        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-white/[0.03]" />
       </div>
     ),
   }
@@ -57,69 +54,67 @@ const plans: Array<{
   {
     name: "Standard",
     price: "€0",
-    period: "/ Monat",
+    period: "/ month",
     fee: TRANSACTION_FEE,
-    description: "Volle Plattform. Zahlen Sie nur wenn Gäste mit Karte bezahlen.",
+    description:
+      "Full platform. Pay only when guests checkout with card.",
     features: [
-      "QR-Speisekarte & Live-Bestellungen",
-      "Küchendisplay & Kellnerruf",
-      "Stripe Connect Kartenzahlung",
-      "Bar-, Theken- & Tischkasse",
-      "Analyse & CSV-Export",
-      "Mitarbeiter & Rollen",
+      "QR menu & live ordering",
+      "Kitchen display & waiter call",
+      "Stripe Connect card payments",
+      "Bar, counter & table checkout",
+      "Analytics & CSV export",
+      "Staff accounts & roles",
+      "Denis AI credits (optional, pay as you go)",
     ],
-    cta: "Kostenlos starten",
+    cta: "Start free",
     href: "/signup",
     primary: true,
-    complianceNote: "KassenSichV • DSGVO • DATEV • TSE inklusive",
+    complianceNote: "KassenSichV • GDPR • DATEV • TSE included",
   },
   {
     name: "Enterprise",
-    price: "Individuell",
+    price: "Custom",
     period: "",
-    fee: "Mengenrabatt & persönliches Onboarding",
-    description: "Für Ketten, Hotel-F&B und Betriebe mit hohem Volumen.",
+    fee: "Volume pricing & dedicated onboarding",
+    description: "For chains, hotel F&B, and high-volume venues.",
     features: [
-      "Alles aus Standard",
-      "Multi-Standort Rollout-Support",
-      "Individuelle Integrationen",
-      "Prioritäts-Support & SLA-Optionen",
-      "Persönlicher Ansprechpartner",
+      "Everything in Standard",
+      "Multi-location rollout support",
+      "Custom integrations",
+      "Priority support & SLA options",
+      "Dedicated account manager",
     ],
-    cta: "Vertrieb kontaktieren",
+    cta: "Contact sales",
     href: "/enterprise",
     primary: false,
-    complianceNote: "KassenSichV • DATEV • TSE inklusive",
+    complianceNote: "KassenSichV • DATEV • TSE included",
   },
 ];
 
 export function LandingPage() {
   return (
-    <div className="landing-page landing-raycast relative min-h-screen overflow-x-hidden bg-[#08080c] antialiased">
+    <div className="landing-page relative min-h-screen overflow-x-hidden bg-black antialiased">
       <LandingNav />
 
       <main className="relative z-[2]">
         <LandingHero />
         <LandingTrustStrip />
-        <LandingPhilosophy />
-        <LandingModules />
-        <LandingProductTabs />
-        <LandingTestimonials />
-        <LandingWorkflows />
+        <LandingFeatures />
 
         <section
           id="pricing"
-          className="scroll-mt-24 border-t border-[#1e1e2e] bg-[#08080c] py-16 text-white md:py-20"
+          className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 text-white md:py-28"
         >
           <LandingContainer wide>
             <AnimateInView className="max-w-[480px]">
-              <LandingEyebrow inverted>Preise</LandingEyebrow>
+              <LandingEyebrow inverted>Pricing</LandingEyebrow>
               <LandingHeadline inverted className="mt-3">
-                Transparente Preise
+                Transparent pricing
               </LandingHeadline>
               <LandingLead inverted className="mt-4">
-                Keine monatliche Plattformgebühr. Kartenabwicklung über Stripe
-                mit klarer Gebühr pro Bestellung.
+                No monthly platform fee. Card processing via Stripe with a clear
+                per-order fee.
               </LandingLead>
             </AnimateInView>
 
@@ -128,15 +123,15 @@ export function LandingPage() {
                 <AnimateInView key={plan.name}>
                   <div
                     className={cn(
-                      "landing-glow-border relative flex h-full flex-col rounded-xl border p-8 sm:p-10",
+                      "relative flex h-full flex-col rounded-2xl border p-8 sm:p-10",
                       plan.primary
-                        ? "landing-pricing-border landing-pricing-glass ring-1 ring-white/10"
-                        : "border-[#1e1e2e] bg-zinc-900/40"
+                        ? "border-white/[0.12] bg-white/[0.03] ring-1 ring-white/[0.08]"
+                        : "border-white/[0.06] bg-white/[0.02]"
                     )}
                   >
                     {plan.primary && (
-                      <span className="absolute -top-3 left-8 rounded-full bg-indigo-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
-                        Beliebteste Wahl
+                      <span className="absolute -top-3 left-8 rounded-full bg-[var(--qr-ember)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
+                        Most popular
                       </span>
                     )}
                     <p className="text-[13px] font-medium uppercase tracking-wider text-zinc-500">
@@ -152,13 +147,13 @@ export function LandingPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-[14px] font-medium text-[var(--lp-accent)]">
+                    <p className="mt-2 text-[14px] font-medium text-[var(--qr-ember)]">
                       {plan.fee}
                     </p>
                     <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
                       {plan.description}
                     </p>
-                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-[#1e1e2e] pt-8">
+                    <ul className="mt-8 flex-1 space-y-2.5 border-t border-white/[0.06] pt-8">
                       {plan.features.map((feat) => (
                         <FeatureCheck key={feat} accent>
                           {feat}
@@ -173,10 +168,10 @@ export function LandingPage() {
                     <Button
                       asChild
                       className={cn(
-                        "mt-8 h-11 w-full rounded-full text-sm font-semibold",
+                        "mt-8 h-12 w-full rounded-full text-sm font-semibold",
                         plan.primary
-                          ? "landing-btn-accent"
-                          : "border border-[#2a2a3e] bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-white"
+                          ? "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
+                          : "border border-white/[0.12] bg-transparent text-zinc-200 hover:bg-white/[0.04] hover:text-white"
                       )}
                       variant={plan.primary ? "default" : "outline"}
                     >
@@ -186,13 +181,15 @@ export function LandingPage() {
                 </AnimateInView>
               ))}
             </div>
+
+            <LandingDenisCreditsNote />
           </LandingContainer>
         </section>
 
         <LandingFaq />
-
-        <LandingClosingShowcase />
       </main>
+
+      <LandingFooter />
     </div>
   );
 }

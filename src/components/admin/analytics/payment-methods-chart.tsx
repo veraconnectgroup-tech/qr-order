@@ -40,7 +40,7 @@ export function PaymentMethodsChart({
       className={cn("h-full", className)}
     >
       {data.length === 0 ? (
-        <p className="py-12 text-center text-sm text-neutral-500">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           No paid orders in this period
         </p>
       ) : (
@@ -91,13 +91,13 @@ export function PaymentMethodsChart({
                         PAYMENT_COLORS[method.key] ?? ZINC_500,
                     }}
                   />
-                  <span className="text-neutral-700">{method.name}</span>
+                  <span className="text-foreground/90">{method.name}</span>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium tabular-nums text-neutral-900">
+                  <p className="font-medium tabular-nums text-foreground">
                     {formatPrice(method.total, currency)}
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-muted-foreground">
                     {method.percent.toFixed(1)}%
                   </p>
                 </div>

@@ -10,43 +10,79 @@ export function ShowcaseWindow({
   title,
   className,
   theme = "dark",
+  presentation = "default",
 }: {
   children: React.ReactNode;
   url?: string;
   title?: string;
   className?: string;
   theme?: ShowcaseTheme;
+  presentation?: "default" | "cinematic";
 }) {
   const barLabel = url ?? title;
   const isLight = theme === "light";
+  const cinematic = presentation === "cinematic";
+
+  if (cinematic) {
+    return (
+      <div className={cn("overflow-hidden bg-[#09090b]", className)}>{children}</div>
+    );
+  }
 
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.18)]",
-        isLight
-          ? "border-zinc-200/90 bg-white"
-          : "border-white/[0.08] bg-[#09090b] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]",
+        "overflow-hidden",
+        cinematic
+          ? "rounded-none bg-[#09090b]"
+          : cn(
+              "rounded-xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.18)]",
+              isLight
+                ? "border-zinc-200/90 bg-white"
+                : "border-white/[0.08] bg-[#09090b] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]"
+            ),
         className
       )}
     >
       <div
         className={cn(
-          "flex items-center gap-2.5 border-b px-3 py-2",
+          "flex items-center gap-2.5 border-b",
+          cinematic ? "px-4 py-2" : "px-3 py-2",
           isLight
             ? "border-zinc-200 bg-zinc-50"
-            : "border-white/[0.06] bg-white/[0.02]"
+            : cinematic
+              ? "border-white/[0.04] bg-white/[0.015]"
+              : "border-white/[0.06] bg-white/[0.02]"
         )}
       >
-        <div className="flex shrink-0 gap-1.5">
-          <div className={cn("size-2.5 rounded-full", isLight ? "bg-red-400/80" : "bg-zinc-700/80")} />
-          <div className={cn("size-2.5 rounded-full", isLight ? "bg-amber-400/80" : "bg-zinc-700/80")} />
-          <div className={cn("size-2.5 rounded-full", isLight ? "bg-emerald-400/80" : "bg-zinc-700/80")} />
+        <div className={cn("flex shrink-0", cinematic ? "gap-1" : "gap-1.5")}>
+          <div
+            className={cn(
+              "rounded-full",
+              cinematic ? "size-2" : "size-2.5",
+              isLight ? "bg-red-400/80" : "bg-zinc-700/80"
+            )}
+          />
+          <div
+            className={cn(
+              "rounded-full",
+              cinematic ? "size-2" : "size-2.5",
+              isLight ? "bg-amber-400/80" : "bg-zinc-700/80"
+            )}
+          />
+          <div
+            className={cn(
+              "rounded-full",
+              cinematic ? "size-2" : "size-2.5",
+              isLight ? "bg-emerald-400/80" : "bg-zinc-700/80"
+            )}
+          />
         </div>
         {barLabel && (
           <div
             className={cn(
-              "min-w-0 flex-1 truncate rounded-md px-2.5 py-0.5 text-center text-[10px]",
+              "min-w-0 flex-1 truncate rounded-md text-center",
+              cinematic ? "px-2 py-0.5 text-[9px] tracking-wide" : "px-2.5 py-0.5 text-[10px]",
               isLight
                 ? "bg-white text-zinc-500 ring-1 ring-zinc-200"
                 : "bg-zinc-950/90 text-zinc-500"
@@ -91,7 +127,7 @@ export function ShowcaseStage({
     <div
       className={cn(
         "relative mx-auto w-full max-w-[min(100%,720px)] overflow-visible",
-        "aspect-[5/4] min-h-[340px] sm:aspect-[16/11] sm:min-h-[400px] lg:min-h-[460px]",
+        "aspect-[5/4] min-h-[360px] sm:aspect-[16/12] sm:min-h-[440px] lg:min-h-[520px] xl:min-h-[560px]",
         className
       )}
     >
@@ -220,26 +256,50 @@ export function ShowcasePhone({
   shortLabel,
   className,
   hideLabel = false,
+  presentation = "default",
 }: {
   children: React.ReactNode;
   label?: string;
   shortLabel?: string;
   className?: string;
   hideLabel?: boolean;
+  presentation?: "default" | "float";
 }) {
+  const floating = presentation === "float";
+
   return (
     <div
       className={cn(
-        "mx-auto w-full min-w-0 max-w-[min(100%,280px)] sm:max-w-[300px]",
+        "mx-auto w-full min-w-0",
+        floating ? "max-w-none" : "max-w-[min(100%,280px)] sm:max-w-[300px]",
         className
       )}
     >
-      <div className="relative rounded-[2rem] border-[3px] border-zinc-700 bg-zinc-950 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] sm:rounded-[2.5rem] sm:p-2">
-        <div className="absolute left-1/2 top-0 z-10 h-5 w-[96px] -translate-x-1/2 rounded-b-2xl bg-zinc-950 sm:h-6 sm:w-[108px]" />
-        <div className="overflow-hidden rounded-[1.65rem] bg-[#09090b] sm:rounded-[2rem]">
+      <div
+        className={cn(
+          "relative bg-zinc-950",
+          floating
+            ? "rounded-[2rem] border border-zinc-800/80 bg-[#0a0a0a] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.88)] sm:rounded-[2.125rem]"
+            : "rounded-[2rem] border-[3px] border-zinc-700 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] sm:rounded-[2.5rem] sm:p-2"
+        )}
+      >
+        <div
+          className={cn(
+            "absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b-2xl bg-zinc-950",
+            floating ? "h-3.5 w-[64px] sm:h-4 sm:w-[72px]" : "h-5 w-[96px] sm:h-6 sm:w-[108px]"
+          )}
+        />
+        <div
+          className={cn(
+            "overflow-hidden bg-[#09090b]",
+            floating ? "rounded-[1.75rem] sm:rounded-[1.875rem]" : "rounded-[1.65rem] sm:rounded-[2rem]"
+          )}
+        >
           {children}
         </div>
-        <div className="mx-auto mt-1.5 h-1 w-20 rounded-full bg-zinc-800 sm:mt-2 sm:w-24" />
+        {!floating && (
+          <div className="mx-auto mt-1.5 h-1 w-20 rounded-full bg-zinc-800 sm:mt-2 sm:w-24" />
+        )}
       </div>
       {!hideLabel && (
         <DeviceCaption

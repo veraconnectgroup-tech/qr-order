@@ -10,6 +10,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminPanel } from "@/components/admin/admin-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -290,14 +291,12 @@ export function PrinterSettingsPanel() {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Printers</h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            ESC/POS kitchen, bar, and receipt printers for this location.
-          </p>
-        </div>
+    <AdminPanel
+      className="max-w-none"
+      title="Printers"
+      description="ESC/POS kitchen, bar, and receipt printers for this location."
+    >
+      <div className="-mt-1 mb-4 flex justify-end">
         <Button type="button" onClick={openCreateDialog}>
           <Plus className="size-4" />
           Add Printer
@@ -305,12 +304,12 @@ export function PrinterSettingsPanel() {
       </div>
 
       {loading ? (
-        <div className="mt-6 flex items-center gap-2 text-sm text-neutral-500">
+        <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
           Loading printers…
         </div>
       ) : (setup?.configs.length ?? 0) === 0 ? (
-        <p className="mt-6 text-sm text-neutral-500">
+        <p className="mt-6 text-sm text-muted-foreground">
           No printers configured. Browser print fallback remains active.
         </p>
       ) : (
@@ -318,29 +317,29 @@ export function PrinterSettingsPanel() {
           {setup?.configs.map((printer) => (
             <div
               key={printer.id}
-              className="rounded-lg border border-neutral-200 p-4"
+              className="rounded-lg border border-border p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Printer className="size-4 text-neutral-500" />
-                    <h3 className="font-semibold text-neutral-900">
+                    <Printer className="size-4 text-muted-foreground" />
+                    <h3 className="font-semibold text-foreground">
                       {printer.name}
                     </h3>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium uppercase text-neutral-700">
+                    <span className="rounded-full bg-muted/50 px-2.5 py-0.5 text-xs font-medium uppercase text-foreground/90">
                       {printer.type}
                     </span>
                     <PrinterStatusBadge printer={printer} />
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-600">
+                    <span className="rounded-full bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
                       {printer.paper_width}mm
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-neutral-600">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Print for: {printForLabel(printer.print_for)}
                   </p>
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-muted-foreground">
                     Auto-print: {printer.auto_print ? "On" : "Off"}
                   </p>
                 </div>
@@ -473,9 +472,9 @@ export function PrinterSettingsPanel() {
                   }
                   placeholder="AA:BB:CC:DD:EE:FF"
                 />
-                <p className="text-sm text-neutral-600">
+                <p className="text-sm text-muted-foreground">
                   Star printer polls{" "}
-                  <code className="rounded bg-neutral-100 px-1">
+                  <code className="rounded bg-muted/50 px-1">
                     /api/printer/cloudprnt
                   </code>
                   .
@@ -484,7 +483,7 @@ export function PrinterSettingsPanel() {
             )}
 
             {form.type === "usb" && !editing && (
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-muted-foreground">
                 After saving, your browser will open the USB pairing dialog.
               </p>
             )}
@@ -552,6 +551,6 @@ export function PrinterSettingsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPanel>
   );
 }

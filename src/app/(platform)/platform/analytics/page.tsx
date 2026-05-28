@@ -9,8 +9,8 @@ export default async function PlatformAnalyticsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Platform analytics</h1>
-        <p className="mt-1 text-sm text-neutral-500">Last 30 days across all venues.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Platform analytics</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Last 30 days across all venues.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

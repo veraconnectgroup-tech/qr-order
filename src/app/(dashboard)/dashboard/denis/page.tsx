@@ -1,5 +1,5 @@
-import { DenisStaffCopilotBoard } from "@/components/dashboard/denis-staff-copilot-board";
+import { DenisDashboardView } from "@/components/dashboard/denis-dashboard-view";
 
 export default function DenisCopilotPage() {
-  return <DenisStaffCopilotBoard />;
+  return <DenisDashboardView />;
 }

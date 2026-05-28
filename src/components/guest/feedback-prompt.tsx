@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, Sparkles } from "lucide-react";
+import { Star } from "lucide-react";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -93,7 +94,7 @@ export function FeedbackPrompt({
   return (
     <section className="mb-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
       <h2 className="flex items-center justify-center gap-2 text-base font-semibold text-zinc-100">
-        <Sparkles className="size-4 text-orange-400" aria-hidden />
+        <DenisMarkBadge size="sm" className="ring-0" />
         {tUI("feedback.title")}
       </h2>
       <p className="mt-1 text-center text-sm text-zinc-500">

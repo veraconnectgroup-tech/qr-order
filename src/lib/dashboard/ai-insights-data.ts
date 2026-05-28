@@ -8,6 +8,7 @@ export type AiInsightsSummary = {
   conversionRate: number;
   addedCount: number;
   recommendedCount: number;
+  sessionCount: number;
   averageRating: number | null;
   avgMinutesToFirstOrder: number | null;
 };
@@ -219,6 +220,7 @@ export async function fetchAiInsightsDashboard(
       conversionRate: 0,
       addedCount: 0,
       recommendedCount: 0,
+      sessionCount: 0,
       averageRating: null,
       avgMinutesToFirstOrder: null,
     },
@@ -413,6 +415,7 @@ export async function fetchAiInsightsDashboard(
         recommendedCount > 0 ? addedCount / recommendedCount : 0,
       addedCount,
       recommendedCount,
+      sessionCount: sessions.length,
       averageRating,
       avgMinutesToFirstOrder,
     },

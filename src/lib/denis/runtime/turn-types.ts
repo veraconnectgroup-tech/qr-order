@@ -65,6 +65,10 @@ export type DenisTurnMeta = {
   sharedAiSessionId?: string | null;
   operatingMode?: string;
   kdsStress?: string;
+  /** F8-3 — live ACL submit; guest must not call /api/ai/order/submit. */
+  actSubmitLive?: boolean;
+  actSubmitAttempted?: boolean;
+  actOrderNumber?: number;
 };
 
 export type { ManualCartSnapshot };

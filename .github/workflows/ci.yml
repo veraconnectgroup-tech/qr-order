@@ -39,7 +39,7 @@ jobs:
         run: pnpm eval:denis
 
       - name: Record Denis eval run (main, optional)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SUPABASE_URL != ''
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         continue-on-error: true
         run: pnpm eval:denis:record
         env:

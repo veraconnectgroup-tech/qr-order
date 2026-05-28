@@ -92,7 +92,7 @@ function SortableCategoryRow({
       <td className="px-2 py-3">
         <button
           type="button"
-          className="cursor-grab touch-none text-neutral-400 hover:text-neutral-600"
+          className="cursor-grab touch-none text-muted-foreground/70 hover:text-muted-foreground"
           aria-label="Reorder"
           {...attributes}
           {...listeners}
@@ -101,13 +101,13 @@ function SortableCategoryRow({
         </button>
       </td>
       <td className="px-4 py-3 font-medium">{category.name}</td>
-      <td className="px-4 py-3 text-neutral-600">
+      <td className="px-4 py-3 text-muted-foreground">
         {category.name_en || "—"}
       </td>
       <td className="px-4 py-3">
         <Badge variant="outline">{MENU_SECTION_LABELS[section]}</Badge>
       </td>
-      <td className="max-w-xs px-4 py-3 text-neutral-600">
+      <td className="max-w-xs px-4 py-3 text-muted-foreground">
         {scheduleBadge ? (
           <span title={summary ?? undefined}>{scheduleBadge}</span>
         ) : (
@@ -117,7 +117,7 @@ function SortableCategoryRow({
       <td className="px-4 py-3">
         <span
           className={
-            category.is_active ? "text-green-600" : "text-neutral-400"
+            category.is_active ? "text-green-600" : "text-muted-foreground/70"
           }
         >
           {category.is_active ? "Active" : "Inactive"}
@@ -217,7 +217,7 @@ function CategoryForm({
           {(["food", "drinks"] as const).map((section) => (
             <label
               key={section}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
             >
               <input
                 type="radio"
@@ -229,17 +229,17 @@ function CategoryForm({
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Drinks use 19% VAT. Food can use reduced 7% for takeaway.
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 p-1">
+      <div className="rounded-lg border border-border p-1">
         <CategoryScheduleFields value={schedule} onChange={setSchedule} />
       </div>
 
       {schedule.schedule_enabled && (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           {formatScheduleBadge({
             schedule_enabled: true,
             schedule_start: schedule.schedule_start,
@@ -350,21 +350,21 @@ export function CategoriesManager({
       </div>
 
       {!categories.length ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <p className="text-neutral-600">No categories yet.</p>
-          <p className="mt-1 text-sm text-neutral-400">
+        <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">No categories yet.</p>
+          <p className="mt-1 text-sm text-muted-foreground/70">
             Add your first category to organize the menu.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={(e) => void handleDragEnd(e)}
           >
             <table className="w-full text-sm">
-              <thead className="border-b bg-neutral-50 text-left">
+              <thead className="border-b bg-muted/30 text-left">
                 <tr>
                   <th className="w-10 px-2 py-3" />
                   <th className="px-4 py-3 font-medium">Name</th>

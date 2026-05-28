@@ -22,7 +22,7 @@ export function QuantitySelector({
         type="button"
         variant="outline"
         size="icon"
-        className="size-10 rounded-full border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700"
+        className="size-12 rounded-full border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700"
         onClick={() => {
           hapticLight();
           onChange(Math.max(min, value - 1));
@@ -37,7 +37,7 @@ export function QuantitySelector({
         type="button"
         variant="outline"
         size="icon"
-        className="size-10 rounded-full border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700"
+        className="size-12 rounded-full border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700"
         onClick={() => {
           hapticLight();
           onChange(value + 1);

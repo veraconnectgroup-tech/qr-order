@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 
 const columns = [
   {
     title: "Product",
     links: [
-      { href: "/#product", label: "Platform" },
+      { href: "/#features-guest", label: "Platform" },
       { href: "/enterprise", label: "Enterprise" },
       { href: "/#pricing", label: "Pricing" },
       { href: "/skyline-lounge/demo-table-8", label: "Live demo" },
@@ -87,12 +88,10 @@ export function LandingFooter() {
       <LandingContainer wide>
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2">
-              <span className="text-[16px] font-bold tracking-[-0.04em] text-white">vera</span>
-            </Link>
+            <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
-              Die All-in-One Plattform für Gastronomie — Bestellung, Küche,
-              Zahlung, Analyse.
+              Denis — hospitality operating system for ordering, kitchen,
+              payments, and compliance. Part of Vera Group.
             </p>
           </div>
           {columns.map((col) => (
@@ -131,7 +130,7 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-6 flex flex-col gap-2 border-t border-[#1e1e2e] pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px]">© 2026 Vera · Hamburg, Deutschland</p>
+          <p className="text-[12px]">© 2026 Vera Group · Hamburg, Deutschland</p>
           <p className="text-[12px] text-zinc-500">
             Payments powered by Stripe Connect
           </p>

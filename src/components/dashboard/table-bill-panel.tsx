@@ -232,7 +232,7 @@ export function TableBillPanel({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90dvh] flex-col border-dash-border bg-dash-surface text-dash-text sm:max-w-md">
+        <DialogContent className="dashboard-theme flex max-h-[90dvh] flex-col border-dash-border bg-dash-surface text-dash-text ring-dash-border-subtle sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-left text-xl font-bold text-dash-text">
               Račun — {tableName}
@@ -263,7 +263,7 @@ export function TableBillPanel({
                   return (
                     <li
                       key={order.id}
-                      className="rounded-xl border border-dash-border-subtle bg-dash-bg/40 px-3 py-3"
+                      className="rounded-xl border border-dash-border-subtle bg-dash-bg/40 px-3 py-3 transition-colors hover:border-dash-border hover:bg-dash-surface-raised/40"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-mono text-sm font-bold text-dash-text">
@@ -347,10 +347,10 @@ export function TableBillPanel({
                         type="button"
                         onClick={() => setPaymentMethod(method)}
                         className={cn(
-                          "min-h-10 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-[0.98]",
+                          "min-h-10 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-dash-accent/40 focus-visible:outline-none",
                           paymentMethod === method
                             ? "bg-dash-accent text-white"
-                            : "bg-dash-surface-raised text-dash-text-secondary hover:bg-dash-surface-overlay"
+                            : "bg-dash-surface-raised text-dash-text-secondary hover:bg-dash-surface-overlay hover:text-dash-text"
                         )}
                       >
                         {method === "at_bar"
@@ -365,7 +365,7 @@ export function TableBillPanel({
           )}
 
           {bill && bill.orders.length > 0 && (
-            <DialogFooter className="border-t border-dash-border-subtle pt-4 sm:justify-stretch">
+            <DialogFooter className="shrink-0 border-t border-dash-border-subtle bg-dash-surface px-0 pt-4 sm:justify-stretch mx-0 mb-0 rounded-none">
               <Button
                 type="button"
                 disabled={settling}
@@ -385,7 +385,7 @@ export function TableBillPanel({
       </Dialog>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="border-dash-border bg-dash-surface text-dash-text sm:max-w-sm">
+        <DialogContent className="dashboard-theme border-dash-border bg-dash-surface text-dash-text ring-dash-border-subtle sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>
               {bill?.all_paid ? "Zatvori sto?" : "Naplati i zatvori?"}

@@ -74,7 +74,7 @@ export default async function AdminMenuPage() {
   if (!locationId) {
     return (
       <div className="p-6">
-        <p className="text-neutral-600">Location not found.</p>
+        <p className="text-muted-foreground">Location not found.</p>
       </div>
     );
   }

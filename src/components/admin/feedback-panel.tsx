@@ -34,7 +34,7 @@ function StarRating({
             size === "lg" ? "size-5" : "size-3.5",
             value <= rating
               ? "fill-amber-400 text-amber-400"
-              : "text-neutral-300"
+              : "text-muted-foreground/40"
           )}
         />
       ))}
@@ -71,21 +71,21 @@ export function FeedbackPanel({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Guest feedback</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-2xl font-bold text-foreground">Guest feedback</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Post-delivery ratings and comments from guests.
         </p>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-neutral-500">Average rating</p>
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+        <p className="text-sm text-muted-foreground">Average rating</p>
         <div className="mt-2 flex items-end gap-3">
-          <p className="font-mono text-4xl font-bold text-neutral-900">
+          <p className="font-mono text-4xl font-bold text-foreground">
             {formatAverageRating(avg)}
           </p>
           {avg != null && <StarRating rating={Math.round(avg)} size="lg" />}
         </div>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           {filtered.length} ratings in selected period
         </p>
       </div>
@@ -94,7 +94,7 @@ export function FeedbackPanel({
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as PeriodValue)}
-          className="h-10 rounded-md border border-neutral-200 bg-white px-3 text-sm"
+          className="h-10 rounded-md border border-border bg-card px-3 text-sm"
         >
           {PERIOD_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -106,7 +106,7 @@ export function FeedbackPanel({
         <select
           value={ratingFilter}
           onChange={(e) => setRatingFilter(e.target.value)}
-          className="h-10 rounded-md border border-neutral-200 bg-white px-3 text-sm"
+          className="h-10 rounded-md border border-border bg-card px-3 text-sm"
         >
           <option value="all">All ratings</option>
           {[5, 4, 3, 2, 1].map((value) => (
@@ -117,38 +117,38 @@ export function FeedbackPanel({
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-neutral-200 text-sm">
-          <thead className="bg-neutral-50">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <table className="min-w-full divide-y divide-border text-sm">
+          <thead className="bg-muted/30">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-neutral-600">
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Date
               </th>
-              <th className="px-4 py-3 text-left font-medium text-neutral-600">
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Order
               </th>
-              <th className="px-4 py-3 text-left font-medium text-neutral-600">
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Rating
               </th>
-              <th className="px-4 py-3 text-left font-medium text-neutral-600">
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                 Comment
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100">
+          <tbody className="divide-y divide-border">
             {filtered.length === 0 ? (
               <tr>
                 <td
                   colSpan={4}
-                  className="px-4 py-8 text-center text-neutral-500"
+                  className="px-4 py-8 text-center text-muted-foreground"
                 >
                   No ratings match the selected filters.
                 </td>
               </tr>
             ) : (
               filtered.map((row) => (
-                <tr key={row.id} className="hover:bg-neutral-50/80">
-                  <td className="whitespace-nowrap px-4 py-3 text-neutral-700">
+                <tr key={row.id} className="hover:bg-muted/30/80">
+                  <td className="whitespace-nowrap px-4 py-3 text-foreground/90">
                     {new Date(row.created_at).toLocaleString("en-GB", {
                       day: "2-digit",
                       month: "2-digit",
@@ -157,17 +157,17 @@ export function FeedbackPanel({
                       minute: "2-digit",
                     })}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-neutral-900">
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-foreground">
                     #{row.order_number}
                   </td>
                   <td className="px-4 py-3">
                     <StarRating rating={row.rating} />
                   </td>
-                  <td className="max-w-md px-4 py-3 text-neutral-600">
+                  <td className="max-w-md px-4 py-3 text-muted-foreground">
                     {row.comment?.trim() ? (
                       row.comment
                     ) : (
-                      <span className="text-neutral-400">—</span>
+                      <span className="text-muted-foreground/70">—</span>
                     )}
                   </td>
                 </tr>

@@ -1,6 +1,7 @@
 # QR Order — Universal Ordering System (Reliability v2)
 
 > **Canonical architecture:** [ADR-001-universal-ordering-platform.md](./ADR-001-universal-ordering-platform.md)  
+> **Fiscal target (post-audit):** [ADR-011-fiscal-compliance-spine.md](./ADR-011-fiscal-compliance-spine.md) — supersedes §Standalone fiscal backlog below  
 > **Implementation traps:** [ADR-001-implementation-warnings.md](./ADR-001-implementation-warnings.md) — **read before every PR**
 
 > Master plan for Cursor / engineering.  

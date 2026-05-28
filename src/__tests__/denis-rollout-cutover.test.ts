@@ -22,6 +22,15 @@ describe("Denis rollout cutover M25", () => {
     expect(form?.actSubmitEnabled).toBe(false);
   });
 
+  it("act submit pilot preset enables live ACL submit", () => {
+    const form = denisRolloutFormFromPreset("denis_act_submit_pilot");
+    expect(form?.rolloutMode).toBe("denis_only");
+    expect(form?.narrateWithLlm).toBe(true);
+    expect(form?.actLayerEnabled).toBe(true);
+    expect(form?.actDryRun).toBe(false);
+    expect(form?.actSubmitEnabled).toBe(true);
+  });
+
   it("merges location override without dropping version", () => {
     const patch = denisRolloutPatchFromForm({
       rolloutMode: "denis_only",

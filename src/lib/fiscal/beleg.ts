@@ -9,6 +9,7 @@ import {
   wrapText,
 } from "@/lib/printer/escpos-builder";
 import { escapeHtml } from "@/lib/security/escape";
+import { groupGrossByRate, type VatLineBreakdown } from "@/lib/tax/vat";
 
 export type BelegTseData = {
   tss_serial?: string;
@@ -48,13 +49,6 @@ export type BelegData = {
   orderUrl?: string;
 };
 
-type VatGroup = {
-  rate: number;
-  gross: number;
-  net: number;
-  tax: number;
-};
-
 function formatBelegDateTime(iso: string) {
   return new Date(iso).toLocaleString("de-DE", {
     dateStyle: "medium",
@@ -62,25 +56,13 @@ function formatBelegDateTime(iso: string) {
   });
 }
 
-function groupByVatRate(items: BelegItem[]): VatGroup[] {
-  const buckets = new Map<number, number>();
-
-  for (const item of items) {
-    const rate = Number(item.tax_rate ?? 19);
-    buckets.set(rate, (buckets.get(rate) ?? 0) + Number(item.total));
-  }
-
-  return [...buckets.entries()]
-    .sort(([a], [b]) => b - a)
-    .map(([rate, gross]) => {
-      const net = gross / (1 + rate / 100);
-      return {
-        rate,
-        gross,
-        net,
-        tax: gross - net,
-      };
-    });
+function groupByVatRate(items: BelegItem[]): VatLineBreakdown[] {
+  return groupGrossByRate(
+    items.map((item) => ({
+      gross: Number(item.total),
+      taxRate: Number(item.tax_rate ?? 19),
+    }))
+  );
 }
 
 async function buildTseQrDataUrl(qrPayload: string | undefined): Promise<string | null> {

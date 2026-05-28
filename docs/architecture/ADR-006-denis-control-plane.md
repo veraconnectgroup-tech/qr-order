@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | **Proposed** — operational overlay (does **not** supersede [ADR-005](./ADR-005-denis-maximum.md)) |
+| **Status** | **Accepted** — operational overlay (does **not** supersede [ADR-005](./ADR-005-denis-maximum.md)) |
 | **Date** | 2026-05-27 |
 | **Depends on** | [ADR-003](./ADR-003-denis-platform-v2.md) · [ADR-004](./ADR-004-denis-kernel.md) · [ADR-005](./ADR-005-denis-maximum.md) |
 

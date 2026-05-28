@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { applyCreditPurchase } from "@/lib/denis/commercial/apply-credit-purchase";
 import { logger } from "@/lib/logger";
 import { executeOrderSagaFromPaymentIntent } from "@/lib/orders/order-saga";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
@@ -299,25 +300,28 @@ async function processStripeWebhookEvent(
         break;
       }
 
-      const { data: newBalance, error } = await admin.rpc("add_ai_credits", {
-        p_org_id: orgId,
-        p_amount: credits,
+      const purchase = await applyCreditPurchase(admin, {
+        orgId,
+        amount: credits,
+        source: "stripe",
+        referenceId: session.id,
+        packageId,
       });
 
-      if (error) {
-        logger.error("AI credits add failed", {
+      if (!purchase.ok) {
+        logger.error("AI credits purchase failed", {
           orgId,
           packageId,
-          error: error.message,
+          code: purchase.code,
         });
-        throw error;
+        throw new Error(`AI credits purchase failed: ${purchase.code}`);
       }
 
       logger.info("AI credits purchased", {
         orgId,
         packageId,
         credits,
-        balance: newBalance,
+        balance: purchase.balanceAfter,
         checkoutSessionId: session.id,
       });
       break;

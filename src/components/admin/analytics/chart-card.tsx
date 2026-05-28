@@ -1,4 +1,8 @@
-import { cn } from "@/lib/utils";
+import {
+  QrCard,
+  QrCardDescription,
+  QrCardTitle,
+} from "@/components/design-system/qr-card";
 
 export const ORANGE = "#f97316";
 export const ZINC_500 = "#71717a";
@@ -26,19 +30,12 @@ export function ChartCard({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-lg border border-neutral-200 bg-white p-6 shadow-sm",
-        className
-      )}
-    >
+    <QrCard className={className}>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
-        {description && (
-          <p className="mt-1 text-sm text-neutral-500">{description}</p>
-        )}
+        <QrCardTitle>{title}</QrCardTitle>
+        {description ? <QrCardDescription>{description}</QrCardDescription> : null}
       </div>
       {children}
-    </div>
+    </QrCard>
   );
 }

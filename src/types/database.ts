@@ -116,6 +116,7 @@ type Tables = {
     available_locales: string[];
     google_review_url: string | null;
     ordering_enabled: boolean;
+    require_first_table_approval: boolean;
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
     ai_concierge_config: Json | null;
@@ -648,8 +649,35 @@ type Tables = {
     id: string;
     order_id: string;
     location_id: string;
+    org_id: string | null;
+    session_id: string | null;
     rating: number;
     comment: string | null;
+    sentiment: "positive" | "neutral" | "negative" | null;
+    category: "food" | "service" | "wait_time" | "other" | null;
+    guest_token: string | null;
+    google_review_clicked: boolean;
+    staff_response: string | null;
+    responded_by: string | null;
+    responded_at: string | null;
+    trigger_moment: "session_bill" | "order_delivered" | "payment";
+    created_at: string;
+  };
+  feedback_inbox: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    session_id: string;
+    order_id: string | null;
+    commerce_event_id: string;
+    sentiment: "positive" | "neutral" | "negative";
+    category: "food" | "service" | "wait_time" | "other" | null;
+    rating: number | null;
+    comment: string | null;
+    needs_response: boolean;
+    staff_response: string | null;
+    responded_by: string | null;
+    responded_at: string | null;
     created_at: string;
   };
   table_transfers: {
@@ -761,6 +789,47 @@ type Tables = {
     sort_order: number;
     created_at: string;
   };
+  org_ai_ops: {
+    org_id: string;
+    credit_balance: number;
+    lifetime_used: number;
+    turns_24h: number;
+    timeline_events_24h: number;
+    low_balance: boolean;
+    refreshed_at: string;
+  };
+  org_billing_events: {
+    id: string;
+    org_id: string;
+    event_type: string;
+    payload: Json;
+    reference_id: string | null;
+    created_at: string;
+  };
+  commerce_experience_events: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    session_id: string;
+    order_id: string | null;
+    command_type: string;
+    event_type: string;
+    schema_version: number;
+    payload: Json;
+    idempotency_key: string;
+    trace_id: string | null;
+    created_at: string;
+  };
+  guest_session_commerce_state: {
+    session_id: string;
+    org_id: string;
+    location_id: string;
+    last_payment_settled_order_id: string | null;
+    last_payment_settled_at: string | null;
+    bill_settled: boolean;
+    feedback_submitted: boolean;
+    updated_at: string;
+  };
 };
 
 type TableDef<T extends keyof Tables> = {
@@ -791,6 +860,35 @@ export interface Database {
       };
       add_ai_credits: {
         Args: { p_org_id: string; p_amount: number };
+        Returns: number;
+      };
+      finalize_denis_turn_metering: {
+        Args: {
+          p_org_id: string;
+          p_ai_session_id: string;
+          p_amount: number;
+          p_trace_id: string;
+          p_payload?: Json;
+        };
+        Returns: number;
+      };
+      finalize_commerce_experience_command: {
+        Args: {
+          p_org_id: string;
+          p_location_id: string;
+          p_session_id: string;
+          p_order_id: string | null;
+          p_command_type: string;
+          p_event_type: string;
+          p_payload: Json;
+          p_idempotency_key: string;
+          p_trace_id?: string | null;
+          p_schema_version?: number;
+        };
+        Returns: string;
+      };
+      refresh_org_ai_ops: {
+        Args: { p_org_id?: string | null };
         Returns: number;
       };
       claim_outbox_events: {

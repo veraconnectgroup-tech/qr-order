@@ -71,50 +71,50 @@ function LocationDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+            <label className="mb-1.5 block text-sm font-medium text-foreground/90">
               Name
             </label>
             <input
               name="name"
               required
               defaultValue={location?.name ?? ""}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+            <label className="mb-1.5 block text-sm font-medium text-foreground/90">
               Address
             </label>
             <input
               name="address"
               defaultValue={location?.address ?? ""}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+              <label className="mb-1.5 block text-sm font-medium text-foreground/90">
                 City
               </label>
               <input
                 name="city"
                 defaultValue={location?.city ?? ""}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+              <label className="mb-1.5 block text-sm font-medium text-foreground/90">
                 Postal code
               </label>
               <input
                 name="postal_code"
                 defaultValue={location?.postal_code ?? ""}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm"
               />
             </div>
           </div>
           {isEdit ? (
-            <label className="flex items-center gap-2 text-sm text-neutral-700">
+            <label className="flex items-center gap-2 text-sm text-foreground/90">
               <input
                 type="checkbox"
                 name="is_active"
@@ -169,7 +169,7 @@ export function LocationsManager({ locations }: { locations: LocationRow[] }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Locations</h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage venues in your organization. Each location has its own menu,
             tables, and staff access.
           </p>
@@ -180,10 +180,10 @@ export function LocationsManager({ locations }: { locations: LocationRow[] }) {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            <tr className="border-b border-border bg-muted/30 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="px-4 py-3">Location</th>
               <th className="px-4 py-3">Address</th>
               <th className="px-4 py-3">Status</th>
@@ -193,7 +193,7 @@ export function LocationsManager({ locations }: { locations: LocationRow[] }) {
           <tbody>
             {locations.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-neutral-500">
+                <td colSpan={4} className="px-4 py-12 text-center text-muted-foreground">
                   No locations yet.
                 </td>
               </tr>
@@ -201,15 +201,15 @@ export function LocationsManager({ locations }: { locations: LocationRow[] }) {
               locations.map((location) => (
                 <tr
                   key={location.id}
-                  className="border-b border-neutral-100 last:border-0"
+                  className="border-b border-border last:border-0"
                 >
                   <td className="px-4 py-4">
-                    <div className="flex items-center gap-2 font-medium text-neutral-900">
+                    <div className="flex items-center gap-2 font-medium text-foreground">
                       <MapPin className="size-4 text-blue-600" />
                       {location.name}
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-neutral-600">
+                  <td className="px-4 py-4 text-muted-foreground">
                     {[location.address, location.city, location.postal_code]
                       .filter(Boolean)
                       .join(", ") || "—"}
@@ -220,7 +220,7 @@ export function LocationsManager({ locations }: { locations: LocationRow[] }) {
                         "rounded-full px-2.5 py-1 text-xs font-medium",
                         location.is_active
                           ? "bg-green-100 text-green-700"
-                          : "bg-neutral-100 text-neutral-600"
+                          : "bg-muted/50 text-muted-foreground"
                       )}
                     >
                       {location.is_active ? "Active" : "Inactive"}

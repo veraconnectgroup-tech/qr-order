@@ -12,6 +12,7 @@ src/lib/denis/
 ├── platform/       M2 ✅ timeline, M3 flow, M8 sense-types
 ├── kernel/         M3–M6, M8 ✅ goals, VKG, conflict, scheduler
 ├── venue/          M12+ stub
+├── commercial/     F3 ✅ metering + billing spine (ADR-009)
 ├── runtime/        M7–M10 ✅ runDenisTurn, sense, narrate lint, shadow-diff
 ├── surfaces/       M7 ✅ chat formatters
 ├── acl/            stub — Order Core cutover pending
@@ -37,5 +38,6 @@ src/lib/denis/
 
 | File | Role |
 |------|------|
-| `src/lib/ai/execute-chat-turn.ts` | OpenAI + ordering + session (until narrate/act cutover) |
+| `src/lib/ai/execute-chat-turn.ts` | Legacy narrate adapter — **only** called from `runDenisTurn` (ADR-009 F1) |
+| `src/lib/denis/commercial/` | Credit check, atomic finalize RPC, low-balance outbox (ADR-009 F2–F4) |
 | `src/lib/ai/chat-service.ts` | 11-line wrapper → `runDenisTurn` |
