@@ -18,6 +18,9 @@ Next.js App Router + TypeScript + Tailwind 4 + shadcn/ui + Supabase + Stripe Con
 
 Follow [ADR-007](../docs/design/ADR-007-visual-system.md) + [Denis Spatial plan](../docs/design/denis-spatial-implementation-plan.md):
 - **Brand**: **Denis** (public) · subline **Part of Vera Group** · tenant name in dashboard
+- **Vision**: [ADR-020](../docs/architecture/ADR-020-denis-table-operating-system.md) — Denis Table OS (Ko·Gde·Kad·Kako)
+- **Engineering**: [ADR-019](../docs/architecture/ADR-019-denis-unified-brain.md) — signal/view loop, Phase A→E
+- **Full map**: [ARCHITECTURE-INDEX](../docs/architecture/ARCHITECTURE-INDEX.md)
 - **Guest app**: Dark luxury (`guest-theme`), ember `#f97316`, Inter
 - **Dashboard / Admin / Platform**: Dark pro (`dashboard-theme` / `admin-theme`), same ember accent
 - **Admin (legacy)**: Do not add light `neutral-50` / blue primary — use semantic `bg-card`, `text-dash-*`
@@ -52,7 +55,7 @@ Approved architecture: `docs/architecture/ADR-001-universal-ordering-platform.md
 
 **Fiscal compliance (KassenSichV / GoBD):** tactical fixes `docs/architecture/ADR-011-fiscal-compliance-spine.md` · **structural target** `docs/architecture/ADR-012-fiscal-journal-spine.md` (append-only journal + `runFiscalPipeline`, ADR-009 pattern).
 
-**Guest journey / competitive pack:** MVP `docs/architecture/ADR-013-competitive-guest-journey.md` · **enterprise** `docs/architecture/ADR-014-commerce-experience-platform.md` (event store, consent ledger, capability registry, CQRS).
+**Guest journey / competitive pack:** MVP [ADR-013](../docs/architecture/ADR-013-competitive-guest-journey.md) · enterprise [ADR-014](../docs/architecture/ADR-014-commerce-experience-platform.md) — **implement as Denis signals only** ([ADR-020 §17](../docs/architecture/ADR-020-denis-table-operating-system.md)).
 
 **Copy-paste session prompts (autonomous work):** `docs/architecture/ADR-001-session-prompts.md`
 
@@ -68,10 +71,11 @@ Track A: one PR per step (A1→A8). Never rewrite `create-order.ts` from scratch
 
 ## Denis Maximum (AI Concierge)
 
-North star: `docs/architecture/ADR-005-denis-maximum.md`  
-Implementation map (as-built M0–M10): `docs/architecture/denis-implementation-map.md`  
+North star: [ADR-020](../docs/architecture/ADR-020-denis-table-operating-system.md) · engineering [ADR-019](../docs/architecture/ADR-019-denis-unified-brain.md)  
+Full doc map: [ARCHITECTURE-INDEX](../docs/architecture/ARCHITECTURE-INDEX.md) · as-built: [denis-implementation-map.md](../docs/architecture/denis-implementation-map.md)  
 Code layout: `src/lib/denis/` (layers L1–L5 + runtime + acl + eval)
 
-**Spine status:** M0–M10 implemented; next tracks M11–M14 (GA gate).  
-**Before any Denis PR:** read map §3–4 · one M-track per PR · `pnpm verify:denis` · `pnpm eval:denis`  
-**Cursor rule:** `.cursor/rules/denis-architecture.mdc`
+**Spine status:** M0–M28 implemented; ship **Phase A→E** (+ F) per [ADR-019](../docs/architecture/ADR-019-denis-unified-brain.md).  
+**Implement agent:** [ADR-019-operator](../docs/architecture/ADR-019-operator.md) · [session-prompts](../docs/architecture/ADR-019-session-prompts.md)  
+**Review agent:** [verification-checklist](../docs/architecture/ADR-019-verification-checklist.md)  
+**Before any Denis PR:** one phase per PR · `pnpm verify:denis` · `pnpm eval:denis` · `.cursor/rules/denis-architecture.mdc`

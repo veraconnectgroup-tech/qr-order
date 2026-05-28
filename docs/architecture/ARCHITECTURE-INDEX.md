@@ -1,0 +1,245 @@
+# Architecture Index — QR Order / Denis / Vera Group
+
+| Field | Value |
+|-------|--------|
+| **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
+| **Updated** | 2026-05-28 |
+| **Start here** | This file → then the doc for your track |
+
+---
+
+## 1. How to read the stack (top → bottom)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ PRODUCT VISION     ADR-020 Table OS · Ko·Gde·Kad·Kako     │
+│ ENGINEERING SPINE  ADR-019 · Truth·Mind·Face · Phases A–E   │
+├─────────────────────────────────────────────────────────────┤
+│ DENIS COGNITIVE    ADR-005 Maximum · ADR-004 Kernel         │
+│ DENIS PLATFORM     ADR-003 PPAN · timeline · Flow DSL       │
+│ DENIS CONTROL      ADR-006 rollout · risk · eval              │
+├─────────────────────────────────────────────────────────────┤
+│ GUEST PRESENTATION ADR-017 Scene-first · ADR-016 Scene API  │
+│ GUEST COMMANDS     ADR-018 handoff spine (M28 ✅)           │
+│ DESIGN             ADR-007 · ADR-008 · denis-spatial plan   │
+├─────────────────────────────────────────────────────────────┤
+│ ORDER / RELIABILITY ADR-001 · outbox · idempotency (A1–A8) │
+│ DENIS COMMERCIAL   ADR-009 F1–F7 · credits · metering       │
+│ DENIS ORDERING     ADR-010 F8–F9 · act submit cutover       │
+├─────────────────────────────────────────────────────────────┤
+│ FISCAL             ADR-011 tactical · ADR-012 journal spine  │
+│ GUEST JOURNEY      ADR-013 MVP · ADR-014 enterprise         │
+│                    ⚠ subsume into Denis signals (ADR-020 §17)│
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Operational truth:** [denis-implementation-map.md](./denis-implementation-map.md) — as-built M0–M28, gaps §4, phases §7/§7b.
+
+---
+
+## 2. Document catalog (every architecture MD)
+
+### 2.1 Denis — read these for AI / guest brain
+
+| Doc | Role | Status | When to read |
+|-----|------|--------|--------------|
+| [ADR-020](./ADR-020-denis-table-operating-system.md) | **Category** — Table OS, goals, Ko·Gde·Kad·Kako, §14–21 refinements | Accepted | Product, pitch, “why us” |
+| [ADR-019](./ADR-019-denis-unified-brain.md) | **Engineering** — loop, signal/view, phases A–E | Accepted | Every Denis PR |
+| [denis-implementation-map.md](./denis-implementation-map.md) | **As-built** — code paths, M-tracks, verify | Active | Before any Denis code |
+| [ADR-005](./ADR-005-denis-maximum.md) | Cognitive + Venue OS + surfaces layers | Proposed (M0–M28 largely built) | Kernel/venue features |
+| [ADR-004](./ADR-004-denis-kernel.md) | Beliefs, goals, VKG, scheduler | Proposed | Planner/beliefs work |
+| [ADR-003](./ADR-003-denis-platform-v2.md) | PPAN, timeline, T0–T3 | Proposed | Platform/timeline |
+| [ADR-006](./ADR-006-denis-control-plane.md) | Rollout, shadow, risk R0–R5 | Accepted | Ops, canary, denis_only |
+| [ADR-009](./ADR-009-atomic-turn-commercial-spine.md) | Metering, credits, timeline debit | Accepted F1–F7 | Commercial/billing |
+| [ADR-010](./ADR-010-denis-ordering-cutover.md) | Act submit, GA gate, legacy retire | Accepted F8–F9 | Ordering path |
+| [ADR-018](./ADR-018-table-guest-commands.md) | Waiter/bill T0 + ACL | M28 ✅ | Handoff chips |
+| [ADR-002](./ADR-002-ai-concierge-orchestrator.md) | Bootstrap orchestrator (superseded by 003+) | Proposed | Historical / config V1–V18 |
+| [ADR-002 detail](./ADR-002-denis-architecture-detail.md) | Deep bootstrap spec | Proposed | Session/context types |
+
+### 2.2 Guest UI & scene
+
+| Doc | Role | Status |
+|-----|------|--------|
+| [ADR-017](./ADR-017-denis-scene-first-presentation.md) | Scene-first, desk = sheet layer | Accepted SC-6/7 |
+| [ADR-016](./ADR-016-guest-scene-contract.md) | `composeScene`, `guest_scene`, refresh | SC-1–7 ✅, SC-5 pending |
+| [ADR-007](../design/ADR-007-visual-system.md) | Tokens, Denis Spatial v4 | Accepted |
+| [ADR-008](../design/ADR-008-web-design-architecture.md) | Enterprise web components | Draft |
+| [denis-spatial-implementation-plan.md](../design/denis-spatial-implementation-plan.md) | Floor tiles, dashboard spatial | Approved |
+
+### 2.3 Order platform & reliability
+
+| Doc | Role | Status |
+|-----|------|--------|
+| [ADR-001](./ADR-001-universal-ordering-platform.md) | Order core, outbox, POS, channels | Approved |
+| [ADR-001 warnings](./ADR-001-implementation-warnings.md) | Traps (create-order, PIN, migrations) | Mandatory before A-track |
+| [ADR-001 safe rollout](./ADR-001-safe-rollout.md) | Supabase push rules | Mandatory before db push |
+| [ADR-001 operator](./ADR-001-operator.md) | One-line prompts for Jovica | Ops |
+| [ADR-001 session prompts](./ADR-001-session-prompts.md) | A1–A8 copy-paste | Autonomous agents |
+| [supabase-migration-baseline.md](./supabase-migration-baseline.md) | Hybrid migration history | DB work |
+| [reliability-v2-fiscal-hybrid.md](./reliability-v2-fiscal-hybrid.md) | POS/fiscal hybrid notes | Reference |
+
+### 2.4 Fiscal
+
+| Doc | Role | Status |
+|-----|------|--------|
+| [ADR-011](./ADR-011-fiscal-compliance-spine.md) | Tactical KassenSichV fixes | Proposed |
+| [ADR-012](./ADR-012-fiscal-journal-spine.md) | Append-only fiscal journal (target) | Proposed |
+
+### 2.5 Guest journey & commerce experience
+
+| Doc | Role | Status | ⚠ |
+|-----|------|--------|---|
+| [ADR-013](./ADR-013-competitive-guest-journey.md) | Feedback, tips, reorder, Für dich | Proposed MVP | **Do not build `runGuestExperiencePipeline` as second brain** — triggers → Denis signals ([ADR-020 §17](./ADR-020-denis-table-operating-system.md)) |
+| [ADR-014](./ADR-014-commerce-experience-platform.md) | Enterprise CE, capability registry | Proposed | Capabilities emit **signals**, not parallel UX writers |
+
+---
+
+## 3. Canonical model (resolve naming chaos)
+
+Use **one vocabulary** everywhere (ADR-020 §15):
+
+| Term | Meaning | Code / DB |
+|------|---------|-----------|
+| **TRUTH** | Immutable facts | `denis_timeline`, orders, fiscal journal |
+| **MIND** | Folded cognition (discarded each loop) | `foldTableSessionState()` / `TableSessionState` |
+| **FACE** | What UI shows (versioned projection) | `TableSessionView`, `guest_scene` slice |
+
+**Loop** (ADR-019): `SIGNAL → FOLD → DECIDE → ACT → TELL → PROJECT`
+
+**Guest API target** (ADR-019):
+
+- Write: `POST /api/denis/signal`
+- Read: `GET /api/denis/view` (+ SSE Phase E)
+
+**Today (hybrid — retire in Phase D):**
+
+- `/api/ai/chat`, `/api/denis/turn`, `/api/denis/sense`
+- `GET /api/guest/scene` + chat session + Zustand cart + order poll
+- Direct `/api/waiter-calls` from some guest paths
+- Legacy `/api/ai/order/submit`
+
+---
+
+## 4. As-built vs destination (honest)
+
+| Capability | Built (M0–M28, F1–F9) | Destination gap |
+|------------|------------------------|-----------------|
+| Kernel PPAN, timeline, eval | ✅ | Wire **FOLD** before every DECIDE (Phase A) |
+| Scene compose + guest_scene | ✅ | Merge into **FACE** (Phase B) |
+| Handoff commands M28 | ✅ | Enforce no direct waiter REST (Phase C/D) |
+| Proactive tick (menu only) | ✅ | Order page + **WORLD** events (Phase D) |
+| Act submit pilot | ✅ | `denis_only` on pilot venue |
+| Staff push (VAPID) | ✅ | Guest push (Phase D) |
+| Party, floor, ops, VKG | ✅ | Feed **MIND** only via FOLD |
+| Shadow rollout default | ✅ | **`denis_only`** for product truth |
+| Table Session Actor | ❌ | Phase E |
+| View SSE / no poll | ❌ | Phase E |
+| ADR-013 pipeline | ❌ not started | **Signals only** — do not duplicate orchestrator |
+
+---
+
+## 5. Known contradictions (resolve like this)
+
+| Tension | Resolution |
+|---------|------------|
+| ADR-005 says “north star” vs ADR-020 “category vision” | **ADR-020** = product category; **ADR-005** = cognitive layers; **ADR-019** = ship path |
+| ADR-018 M29 “beliefs loader” vs ADR-019 Phase A | **Same work** — `foldTableSessionState()`; M29 label deprecated → Phase A |
+| ADR-013 `runGuestExperiencePipeline` vs ADR-019 one brain | **ADR-020 §17 wins** — experience = Denis signals |
+| ADR-014 `runCommerceExperience` vs Denis | Enterprise registry OK; **handlers enqueue signals**, no FACE writers |
+| ADR-016 depends on ADR-014 | Scene contract stays; **FACE projection** absorbs scene + transcript |
+| ADR-003 Phase C/D vs ADR-019 Phase A–E | ADR-003 platform phases = historical; **use ADR-019 A–E** for guest brain |
+| Scene-first (ADR-017) vs chat as brain | **Scene = FACE layer**; chat = transcript slice — not separate intelligence |
+| `denis-implementation-map` “one M-track per PR” vs Phase A–E | **One phase step per PR** (A1, A2… within Phase A if needed) |
+
+---
+
+## 6. Recommended execution order (best path)
+
+### Now — Phase A (FOLD / Mind)
+
+**Why first:** Without unified FOLD, every other doc is vision on a hybrid codebase.
+
+1. `src/lib/denis/loop/fold-table-session-state.ts` (or `runtime/`)
+2. Wire into `runDenisTurn`, `runDenisSense`, proactive tick
+3. Timeline event `mind.fold_completed` with version hash
+4. Eval fixtures assert MIND sees orders + cart + ops
+5. Enable **`denis_only`** on Skyline pilot (ops)
+
+**Do not start:** ADR-013 pipeline, ADR-014 event store, or new guest REST.
+
+### Next — Phase B (FACE / view)
+
+1. `table_session_view` materialized row (or extend `guest_scene` + transcript blob)
+2. `GET /api/denis/view`
+3. Guest UI reads view only on order page first (highest pain)
+
+### Then — Phase C (SIGNAL)
+
+1. `POST /api/denis/signal` wraps chat/chips/telemetry
+2. Delete direct waiter REST from guest components
+3. Thin deprecate `/api/ai/chat` body routing
+
+### Then — Phase D (WORLD)
+
+1. Order status outbox → Denis signal → TELL + `session.message` + guest push
+2. Acceptance: push + transcript + dock headline identical (ADR-019 §12 test #1)
+
+### Before chain / multi-device — Phase E (ACTOR)
+
+1. Per-table signal queue + lock
+2. Supabase Realtime on `view.version`
+3. ADR-013 triggers as signal types only
+
+### After E — Phase F (single TRUTH)
+
+1. Transcript = timeline only (`tell.committed`, `signal.message`)
+2. Retire dual-write to `ai_sessions.messages`
+3. Dispute replay = timeline + Order Core rows
+
+### Parallel (non-blocking) tracks
+
+| Track | Doc | Note |
+|-------|-----|------|
+| Fiscal journal | ADR-012 | Independent of Denis phases |
+| ADR-001 A4–A8 | warnings | If not already complete |
+| SC-5 dashboard tile | ADR-016 | Reads same FACE |
+| Design DE-* | ADR-008 | UI polish on FACE renderers |
+
+---
+
+## 7. What to read before which PR
+
+| PR type | Read |
+|---------|------|
+| Any Denis | This index · map §3–4 · ADR-019 · ADR-020 §15–16 |
+| Guest UI | ADR-017 · ADR-007 · target FACE from ADR-019 §2 |
+| Handoff / waiter | ADR-018 |
+| Order create / outbox | ADR-001 · warnings |
+| Fiscal | ADR-011 or ADR-012 |
+| Guest journey feature | ADR-013 spec **but implement as Denis signal** |
+| Rollout / canary | ADR-006 · map rollout table |
+| DB migration | baseline · safe-rollout |
+
+---
+
+## 8. Cursor / agent entry points
+
+| File | Role |
+|------|------|
+| [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc) | Always-on stack + ADR links |
+| [.cursor/rules/denis-architecture.mdc](../../.cursor/rules/denis-architecture.mdc) | Denis PR checklist |
+| [.cursor/rules/commit-checklist.mdc](../../.cursor/rules/commit-checklist.mdc) | Outbox, serverless, no duplicate side effects |
+| [ADR-019-operator.md](./ADR-019-operator.md) | **Jovica:** one-line prompts |
+| [ADR-019-session-prompts.md](./ADR-019-session-prompts.md) | **Implement agent:** Phase A→F detail |
+| [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md) | **Review agent:** verify implementation |
+
+**Denis implement one-liner:** `ADR-019-operator.md` → default prompt.  
+**Denis review one-liner:** verification checklist + Phase [X].
+
+---
+
+## 9. Single sentence for the company
+
+> **TRUTH in the timeline, MIND in the loop, FACE for the guest** — one Denis actor per table, one signal in, one view out, commerce only through ACL.
+
+That is the architecture. Everything else in `docs/` is either **built spine** (M0–M28), **domain ADR** (fiscal, order), or **presentation** (scene, design).

@@ -1,13 +1,8 @@
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
-import {
-  aiOrderDraftToDenisCartState,
-  manualSnapshotToDenisDraft,
-} from "@/lib/denis/runtime/adapters/map-legacy-draft";
+import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
+import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
 import { mapGuestOrdersToSchedulerSnapshot } from "@/lib/denis/runtime/adapters/map-scheduler-orders";
-import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
-import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
-import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import {
   buildScheduleDrafts,
@@ -27,17 +22,14 @@ import {
 import { resolveTurnQuickReplies } from "@/lib/denis/runtime/narrate/build-turn-quick-replies";
 import { buildNarrationFacts } from "@/lib/denis/runtime/narrate/build-narration-facts";
 import {
-  loadEffectiveVenueOps,
-} from "@/lib/denis/venue/ops";
-import {
   loadTableParty,
   registerPartyDevice,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
 } from "@/lib/denis/venue/party";
-import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
-import { mergePeerManualDraft } from "@/lib/denis/runtime/adapters/map-party-manual";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import type { AiGuestOrder } from "@/lib/ai/order-context";
+import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type DenisSenseResult = {
@@ -52,9 +44,34 @@ export type DenisSenseResult = {
   partyDeviceCount?: number;
   isPrimaryDevice?: boolean;
   sharedAiSessionId?: string | null;
+  foldOrderCount?: number;
+  foldPhase?: string;
 };
 
-/** Ingest sensory event without chat — timeline + optional schedules (M8). */
+function orderFactsToGuestOrders(
+  orders: Array<{
+    id: string;
+    status: string;
+    createdAt: string;
+    items: Array<{ productName: string; quantity: number }>;
+  }>
+): AiGuestOrder[] {
+  return orders.map((order) => ({
+    id: order.id,
+    status: order.status,
+    created_at: order.createdAt,
+    delivered_at: order.status === "delivered" ? order.createdAt : null,
+    order_items: order.items.map((item) => ({
+      product_id: null,
+      product_name: item.productName,
+      unit_price: 0,
+      quantity: item.quantity,
+      menu_section: "food" as const,
+    })),
+  }));
+}
+
+/** Ingest sensory event without chat — timeline + optional schedules (M8 + ADR-019 A). */
 export async function runDenisSense(
   input: DenisSenseRequest
 ): Promise<Response> {
@@ -74,21 +91,6 @@ export async function runDenisSense(
 
   const aiSessionId = input.aiSessionId ?? null;
   const config = await loadConciergeConfigForLocation(input.locationId);
-  const { venueOps, opsEffects } = await loadEffectiveVenueOps(admin, {
-    locationId: input.locationId,
-    tableId: input.tableId,
-    config,
-  });
-  let draftAiSessionId = aiSessionId;
-  let aiCartState = emptyCartState();
-  let schedulesUpserted = 0;
-  let conflictPrompt: string | null = null;
-  let proactiveNudge: GuestProactiveNudge | null = null;
-  let quickReplies: string[] | undefined;
-  let partyDeviceCount = 0;
-  let isPrimaryDevice = false;
-  let sharedAiSessionId: string | null = null;
-  let peerManualCartDraft: DenisCartDraft | undefined;
 
   const tableSessionId = await resolveActiveTableSessionId(admin, {
     tableId: input.tableId,
@@ -96,6 +98,7 @@ export async function runDenisSense(
     sessionToken: input.sessionToken,
   });
 
+  let party = null;
   if (tableSessionId && input.deviceFingerprint) {
     await registerPartyDevice(admin, {
       tableSessionId,
@@ -107,56 +110,51 @@ export async function runDenisSense(
       manualCartRevision: input.manualCartSnapshot?.revision ?? 0,
     });
 
-    const party = await loadTableParty(admin, {
+    party = await loadTableParty(admin, {
       tableSessionId,
       partyMode: config.party.mode,
       deviceFingerprint: input.deviceFingerprint,
     });
-
-    if (party) {
-      partyDeviceCount = party.activeDeviceCount;
-      isPrimaryDevice = party.isCurrentDevicePrimary;
-      sharedAiSessionId = party.sharedAiSessionId;
-      peerManualCartDraft = mergePeerManualDraft(
-        party.devices,
-        input.deviceFingerprint
-      );
-      draftAiSessionId =
-        resolveDraftAiSessionId(
-          config.party.mode,
-          aiSessionId ?? undefined,
-          party.sharedAiSessionId
-        ) ?? aiSessionId;
-    }
   }
 
+  const draftAiSessionId =
+    resolveDraftAiSessionId(
+      config.party.mode,
+      aiSessionId ?? undefined,
+      party?.sharedAiSessionId ?? null
+    ) ?? aiSessionId;
+
+  const fold = await foldTableSessionState(admin, {
+    locationId: input.locationId,
+    tableId: input.tableId,
+    sessionToken: input.sessionToken,
+    aiSessionId: aiSessionId ?? undefined,
+    draftAiSessionId: draftAiSessionId ?? undefined,
+    deviceFingerprint: input.deviceFingerprint,
+    manualCartSnapshot: input.manualCartSnapshot,
+    config,
+    tableSessionId,
+    party,
+  });
+
+  const { state } = fold;
+  const aiCartState = state.commerce.cart.ai;
+  const peerManualCartDraft = state.commerce.cart.peerManual;
+  const venueOps = state.venue.ops;
+  const opsEffects = state.venue.opsEffects;
+  const guestOrders = orderFactsToGuestOrders(state.commerce.orders);
+
+  let schedulesUpserted = 0;
+  let conflictPrompt: string | null = null;
+  let proactiveNudge: GuestProactiveNudge | null = null;
+  let quickReplies: string[] | undefined;
+
   if (draftAiSessionId) {
-    const { data: sessionRow } = await admin
-      .from("ai_sessions")
-      .select("id, order_draft, location_id, table_id")
-      .eq("id", draftAiSessionId)
-      .maybeSingle();
-
-    const row = sessionRow as {
-      id: string;
-      order_draft: unknown;
-      location_id: string;
-      table_id: string;
-    } | null;
-
-    if (
-      !row ||
-      row.location_id !== input.locationId ||
-      row.table_id !== input.tableId
-    ) {
-      if (aiSessionId === draftAiSessionId) {
-        return apiError("Session not found.", 404);
-      }
-    } else {
-      aiCartState = aiOrderDraftToDenisCartState(
-        initDraftFromStorage(row.order_draft)
-      );
-    }
+    await appendMindFoldCompleted(admin, {
+      aiSessionId: draftAiSessionId,
+      traceId,
+      meta: fold.meta,
+    });
   }
 
   if (aiSessionId) {
@@ -197,7 +195,7 @@ export async function runDenisSense(
     const reflexTurn = planTurnWithReflex({
       config,
       message: "",
-      flowNodeId: "recap",
+      flowNodeId: state.conversation.flowNodeId,
       cartState: aiCartState,
       manualCartDraft: manualSnapshotToDenisDraft(input.manualCartSnapshot),
       peerManualCartDraft,
@@ -241,12 +239,6 @@ export async function runDenisSense(
     }
   }
 
-  const guestOrders = await loadGuestOrdersForAi(
-    admin,
-    input.tableId,
-    input.sessionToken
-  );
-
   if (
     aiSessionId &&
     (input.channel === "realtime.order_status" ||
@@ -271,7 +263,12 @@ export async function runDenisSense(
     proactiveNudge = evaluateGuestProactiveTick({
       config,
       orders: guestOrders,
-      payload,
+      payload: {
+        ...payload,
+        hasSessionOrders: state.commerce.orders.length > 0,
+        dismissedNudgeKeys:
+          payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
+      },
       messages: {
         browse: payload.browseMessage ?? "Treba vam pomoć pri biranju?",
         dessert: payload.dessertMessage ?? "Spremni za desert?",
@@ -291,8 +288,10 @@ export async function runDenisSense(
     proactiveNudge,
     quickReplies,
     partyMode: config.party.mode,
-    partyDeviceCount,
-    isPrimaryDevice,
-    sharedAiSessionId,
+    partyDeviceCount: party?.activeDeviceCount ?? 0,
+    isPrimaryDevice: party?.isCurrentDevicePrimary ?? false,
+    sharedAiSessionId: party?.sharedAiSessionId ?? null,
+    foldOrderCount: fold.meta.orderCount,
+    foldPhase: fold.meta.phase,
   } satisfies DenisSenseResult);
 }

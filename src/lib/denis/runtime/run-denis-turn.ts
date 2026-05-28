@@ -10,6 +10,7 @@ import {
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
+import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import {
   kernelTimelineEnabled,
@@ -145,6 +146,18 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const ctxStarted = performance.now();
   const ctx = await buildDenisTurnContext(admin, parsed.data);
   timings.contextMs = elapsedMs(ctxStarted);
+
+  if (
+    ctx.draftAiSessionId &&
+    ctx.foldMeta &&
+    kernelTimelineEnabled(resolveEffectiveRollout(ctx.config).mode)
+  ) {
+    await appendMindFoldCompleted(admin, {
+      aiSessionId: ctx.draftAiSessionId,
+      traceId,
+      meta: ctx.foldMeta,
+    });
+  }
 
   if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
     return apiError("Voice is not enabled for this location.", 403);

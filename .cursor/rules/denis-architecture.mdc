@@ -15,9 +15,12 @@ alwaysApply: false
 ## Before coding
 
 1. Read `docs/architecture/denis-implementation-map.md` — **§3 as-built** and **§4 gaps**
-2. North star: `docs/architecture/ADR-005-denis-maximum.md`
-3. **M0–M10 complete** — next work is **M11+** unless fixing spine bugs
-4. Identify **one M-track** only
+2. Category vision: `docs/architecture/ADR-020-denis-table-operating-system.md` (Table OS — Ko·Gde·Kad·Kako)
+3. Engineering spine: `docs/architecture/ADR-019-denis-unified-brain.md`
+4. Cognitive core: `docs/architecture/ADR-005-denis-maximum.md`
+4. **M0–M28 complete** — next work is **ADR-019 Phase A→F** unless fixing spine bugs
+5. Identify **one phase** only (A, B, C, D, E, or F)
+6. Operator prompts: `docs/architecture/ADR-019-operator.md` · review: `ADR-019-verification-checklist.md`
 
 ## Where code goes
 
@@ -27,7 +30,9 @@ alwaysApply: false
 | Platform / timeline | `src/lib/denis/platform/` |
 | Kernel | `src/lib/denis/kernel/` |
 | Venue OS | `src/lib/denis/venue/` |
-| Runtime PPAN+ | `src/lib/denis/runtime/` |
+| Runtime loop | `src/lib/denis/loop/` (Phase A+) — `run-denis-loop`, `fold-table-session-state` |
+| Runtime PPAN+ | `src/lib/denis/runtime/` — migrate into `loop/` |
+| Guest API | `src/app/api/denis/signal` + `view` (Phase B/C) |
 | Surfaces | `src/lib/denis/surfaces/` |
 | Order Core ACL | `src/lib/denis/acl/` |
 | Learning | `src/lib/denis/learning/` |
@@ -43,6 +48,7 @@ Legacy LLM/ordering stays in `src/lib/ai/execute-chat-turn.ts` until `runtime/na
 - `denis_timeline` append-only
 - No module-level `Map`/`Set` in `src/lib/denis/`
 - OpenAI in `denis/` only under `runtime/narrate/` and `runtime/perceive/` (future)
+- Guest UI → Denis ingress only — no direct Order Core imports (M36)
 - One PR = one M-track
 
 ## Before finish

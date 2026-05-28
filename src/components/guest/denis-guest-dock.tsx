@@ -29,6 +29,7 @@ const STATUS_KEYS: Record<string, string> = {
 export function DenisGuestDock({
   scene,
   currency,
+  headline,
   subtitle,
   tableName,
   venueName,
@@ -43,6 +44,8 @@ export function DenisGuestDock({
 }: {
   scene?: Scene | null;
   currency: string;
+  /** ADR-019 view headline — preferred over situation/subtitle on order page. */
+  headline?: string | null;
   subtitle?: string | null;
   tableName?: string;
   venueName?: string;
@@ -90,6 +93,7 @@ export function DenisGuestDock({
           : "idle";
 
   const collapsedLine = useMemo(() => {
+    if (headline) return headline;
     const lead = situation?.orders[0];
     if (lead) {
       const statusKey =
@@ -106,7 +110,7 @@ export function DenisGuestDock({
       return tUI(`scene.phase.${scene.phase}` as "scene.phase.browsing");
     }
     return tUI("ai.intro.subtitle");
-  }, [situation, subtitle, loading, scene, tUI]);
+  }, [headline, situation, subtitle, loading, scene, tUI]);
 
   const tableContext = useMemo(() => {
     const table = scene?.chrome.tableName ?? tableName;

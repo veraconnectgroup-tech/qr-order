@@ -31,6 +31,7 @@ import {
   type ProductRecommendation,
 } from "@/components/guest/product-recommendation-card";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { resolveAiPromptLanguage, type AI_SUPPORTED_LANGUAGES } from "@/lib/ai/config";
 import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
@@ -397,6 +398,7 @@ export type AiConciergeChatProps = {
   onOpenProductDetail?: (productId: string) => void;
   /** Alias for onSetupComplete */
   onRecommendations?: AiConciergeChatProps["onSetupComplete"];
+  /** @deprecated Welcome-back is shown on the dock subtitle only, not in chat. */
   welcomeBackMessage?: string | null;
   knownAllergySelection?: AiSheetAllergyId[];
   onSaveAllergies?: (
@@ -440,12 +442,12 @@ export function AiConciergeChat({
   getBrowsingContext,
   scrollContext,
   guestProfile,
-  isReturning = false,
+  isReturning: _isReturning = false,
   onAddToCart,
   customizableProductIds,
   onOpenProductDetail,
   onRecommendations,
-  welcomeBackMessage,
+  welcomeBackMessage: _welcomeBackMessage,
   knownAllergySelection,
   onSaveAllergies,
   getManualCartSnapshot,
@@ -457,31 +459,31 @@ export function AiConciergeChat({
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
-  const [chatLanguage, setChatLanguage] = useState(defaultLanguage);
+  const venueGreeting = useMemo(
+    () => tForAiGuestLanguage("ai.chat.greeting", menuLocale),
+    [menuLocale]
+  );
+  const [chatLanguage, setChatLanguage] = useState<
+    (typeof AI_SUPPORTED_LANGUAGES)[number]
+  >(resolveAiPromptLanguage(menuLocale));
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
   const handleRecommendations = onRecommendations ?? onSetupComplete;
   const resolvedAllergySelection =
     guestProfile?.allergySheetIds?.length
       ? guestProfile.allergySheetIds
       : (knownAllergySelection ?? []);
-  const resolvedWelcomeMessage = useMemo(() => {
-    if (welcomeBackMessage) return welcomeBackMessage;
-    if (!isReturning || !guestProfile?.lastVisitItems.length) return null;
-    return tUI("ai.memory.welcomeBack", {
-      items: guestProfile.lastVisitItems.slice(0, 4).join(", "),
-    });
-  }, [welcomeBackMessage, isReturning, guestProfile?.lastVisitItems, tUI]);
   const addItem = useCart((s) => s.addItem);
   const cartItems = useCart((s) => s.items);
   const clearCart = useCart((s) => s.clearCart);
   const scrollRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const chatInitKeyRef = useRef<string | null>(null);
   const historyLoadedForRef = useRef<string | null>(null);
   const approvalPollCleanupRef = useRef<(() => void) | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [phase, setPhase] = useState<ChatPhase>("allergies");
+  const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
@@ -589,7 +591,22 @@ export function AiConciergeChat({
     if (!open || isDemo) return;
 
     const initKey = `${locationId}:${token}`;
-    if (chatInitKeyRef.current === initKey && messages.length > 0) return;
+    setPhase("chat");
+
+    if (chatInitKeyRef.current === initKey && messages.length > 0) {
+      return;
+    }
+
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: nextId(),
+          role: "assistant",
+          content: venueGreeting,
+        },
+      ]);
+      setChatLanguage(resolveAiPromptLanguage(menuLocale));
+    }
 
     let cancelled = false;
 
@@ -604,6 +621,7 @@ export function AiConciergeChat({
         messages.length > 0
       ) {
         chatInitKeyRef.current = initKey;
+        setPhase("chat");
         return;
       }
 
@@ -630,7 +648,19 @@ export function AiConciergeChat({
               tableId,
               sessionToken: aiContextToken,
             });
-            const res = await fetch(`/api/ai/session?${params}`);
+            const controller = new AbortController();
+            const historyTimeoutId = window.setTimeout(
+              () => controller.abort(),
+              5_000
+            );
+            let res: Response;
+            try {
+              res = await fetch(`/api/ai/session?${params}`, {
+                signal: controller.signal,
+              });
+            } finally {
+              window.clearTimeout(historyTimeoutId);
+            }
             if (res.ok) {
               const json = (await res.json()) as {
                 data?: {
@@ -661,7 +691,9 @@ export function AiConciergeChat({
                 });
                 setMessages(hydrated);
                 setPhase("chat");
-                setChatLanguage(json.data?.language ?? defaultLanguage);
+                setChatLanguage(
+                  resolveAiPromptLanguage(json.data?.language ?? menuLocale)
+                );
                 setAiSessionId(storedSessionId);
                 historyLoadedForRef.current = storedSessionId;
                 chatInitKeyRef.current = initKey;
@@ -674,27 +706,11 @@ export function AiConciergeChat({
         }
       }
 
-      if (cancelled || messages.length > 0) {
-        chatInitKeyRef.current = initKey;
+      if (cancelled) {
         return;
       }
 
-      const initialMessages: ChatMessage[] = [];
-      if (resolvedWelcomeMessage) {
-        initialMessages.push({
-          id: nextId(),
-          role: "assistant",
-          content: resolvedWelcomeMessage,
-        });
-      }
-      initialMessages.push({
-        id: nextId(),
-        role: "assistant",
-        content: tUI("ai.chat.greeting"),
-      });
-      setMessages(initialMessages);
       setPhase("chat");
-      setChatLanguage(defaultLanguage);
       setAiSessionId(storedSessionId);
       chatInitKeyRef.current = initKey;
     }
@@ -714,7 +730,8 @@ export function AiConciergeChat({
     sessionToken,
     tableId,
     tUI,
-    resolvedWelcomeMessage,
+    venueGreeting,
+    menuLocale,
     resolvedAllergySelection,
     defaultLanguage,
     aiSessionId,
@@ -733,41 +750,30 @@ export function AiConciergeChat({
   }, [open, inputFocused, scrollToBottom]);
 
   useEffect(() => {
+    if (!open) return;
+    document.documentElement.classList.add("denis-chat-open");
+    return () => {
+      document.documentElement.classList.remove("denis-chat-open");
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!open) {
       setInputFocused(false);
       return;
     }
 
-    const scrollY = window.scrollY;
-    const body = document.body;
     const html = document.documentElement;
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop: body.style.top,
-      bodyLeft: body.style.left,
-      bodyRight: body.style.right,
-      bodyWidth: body.style.width,
-      bodyOverflow: body.style.overflow,
-    };
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
 
     html.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
     body.style.overflow = "hidden";
 
     return () => {
-      html.style.overflow = prev.htmlOverflow;
-      body.style.position = prev.bodyPosition;
-      body.style.top = prev.bodyTop;
-      body.style.left = prev.bodyLeft;
-      body.style.right = prev.bodyRight;
-      body.style.width = prev.bodyWidth;
-      body.style.overflow = prev.bodyOverflow;
-      window.scrollTo(0, scrollY);
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, [open]);
 
@@ -802,7 +808,6 @@ export function AiConciergeChat({
   useEffect(() => {
     if (!open || !inputFocused) return;
     const timer = window.setTimeout(() => {
-      footerRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
       scrollToBottom();
     }, 120);
     return () => window.clearTimeout(timer);
@@ -1406,7 +1411,10 @@ export function AiConciergeChat({
   const overlay = (
     <div
       ref={overlayRef}
-      className="guest-theme denis-chat-overlay sm:justify-end sm:bg-black/70"
+      className={cn(
+        "guest-theme denis-chat-overlay sm:justify-end sm:bg-black/70",
+        inputFocused && "denis-chat-overlay--keyboard"
+      )}
     >
       <DenisPanel
         className={cn(
@@ -1487,7 +1495,7 @@ export function AiConciergeChat({
 
         <DenisPanelFooter
           ref={footerRef}
-          className="w-full min-w-0 max-w-full shrink-0 overflow-hidden border-t border-[var(--qr-elevated)] !px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] sm:!px-3"
+          className="w-full min-w-0 max-w-full shrink-0 overflow-hidden border-t border-[var(--qr-elevated)] bg-[var(--qr-void)] !px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] sm:!px-3"
         >
           <form onSubmit={handleSend} className="w-full min-w-0 max-w-full">
             <div className="denis-chat-input-row flex w-full min-w-0 max-w-full items-center gap-1.5 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-2 py-1.5">
@@ -1504,8 +1512,12 @@ export function AiConciergeChat({
                 />
               )}
               <input
+                ref={inputRef}
                 type="text"
                 enterKeyHint="send"
+                inputMode="text"
+                autoComplete="off"
+                autoCorrect="on"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => {

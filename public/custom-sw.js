@@ -59,7 +59,7 @@ self.addEventListener("notificationclick", (e) => {
   const targetUrl = resolveNotificationUrl(e.notification.data?.url);
 
   e.waitUntil(
-    clients
+    self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((windowClients) => {
         for (const client of windowClients) {
@@ -71,7 +71,7 @@ self.addEventListener("notificationclick", (e) => {
             return focused;
           });
         }
-        return clients.openWindow(targetUrl);
+        return self.clients.openWindow(targetUrl);
       })
   );
 });

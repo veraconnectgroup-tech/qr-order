@@ -101,6 +101,21 @@ async function loadPushConfig(): Promise<{
   }
 }
 
+async function registerAppServiceWorkerWithRetry(): Promise<ServiceWorkerRegistration> {
+  try {
+    return await registerAppServiceWorker();
+  } catch (firstError) {
+    if (!(firstError instanceof ServiceWorkerUnavailableError)) {
+      throw firstError;
+    }
+
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+    return registerAppServiceWorker();
+  }
+}
+
 export function PushOptIn({
   className,
   variant = "topbar",
@@ -199,7 +214,7 @@ export function PushOptIn({
         return;
       }
 
-      const registration = await registerAppServiceWorker();
+      const registration = await registerAppServiceWorkerWithRetry();
       let subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {

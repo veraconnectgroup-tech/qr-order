@@ -3,8 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Active — enforce on every Denis PR |
+| **Architecture index** | [ARCHITECTURE-INDEX.md](./ARCHITECTURE-INDEX.md) — **read first** for full doc map |
 | **As-built through** | **M27** (May 2026) — canary cohort rollout % |
 | **North star** | [ADR-005 Maximum](./ADR-005-denis-maximum.md) |
+| **Category vision** | [ADR-020 Table OS](./ADR-020-denis-table-operating-system.md) |
+| **Engineering spine** | [ADR-019 Unified Brain](./ADR-019-denis-unified-brain.md) — loop + Truth·Mind·Face |
 | **Kernel** | [ADR-004](./ADR-004-denis-kernel.md) |
 | **Platform spine** | [ADR-003](./ADR-003-denis-platform-v2.md) |
 | **Control plane** | [ADR-006](./ADR-006-denis-control-plane.md) |
@@ -157,6 +160,24 @@ Honest delta after M10 — do not assume these exist:
 | Rollout `canary` / `denis_only` in production | ✅ Admin Settings → Denis rollout (M25) | enable per location; watch `DENIS_ROLLOUT_MODE` env |
 | Guest language stickiness (SR chat → EN confirm) | ✅ `resolveStickyGuestLanguage` + `sr` `ai.order.*` i18n | follows conversation, not UI splash |
 | Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
+| **Unified brain — signal/view, one loop, world events** | 📋 [ADR-019](./ADR-019-denis-unified-brain.md) | **Phase A→E** — see [ARCHITECTURE-INDEX](./ARCHITECTURE-INDEX.md) |
+
+---
+
+## 7b. ADR-019 phases (replaces M29–M36 laundry list)
+
+| Phase | Deliverable | Replaces |
+|-------|-------------|----------|
+| **A — FOLD** | Mind from TRUTH (`foldTableSessionState`) | scattered belief loads |
+| **B — VIEW** | FACE API — `GET /api/denis/view` | scene + chat + poll |
+| **C — SIGNAL** | `POST /api/denis/signal` | 3+ guest write APIs |
+| **D — WORLD** | order/status → loop → TELL + guest push | passive guest UI |
+| **E — ACTOR** | serialized Table Session Actor + view SSE + ADR-013 → signals | races, dual orchestrator, polling |
+| **F — TRUTH** | transcript from timeline only; retire `ai_sessions` drift | dual-write, dispute replay |
+
+Legacy wrappers deleted at end of Phase D. Pilot gate: `denis_only` on one venue. Scale gate: Phase E. Phase F after E.
+
+**Operator:** [ADR-019-operator.md](./ADR-019-operator.md) · **Implement:** [ADR-019-session-prompts.md](./ADR-019-session-prompts.md) · **Review:** [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md)
 
 ---
 
@@ -227,7 +248,20 @@ Honest delta after M10 — do not assume these exist:
 | **M26** | ✅ | CI Denis gates + eval run detail UI |
 | **M27** | ✅ | Canary cohort % (`rollout.canaryPercent`) |
 
-**Next recommended:** commit + deploy F8; push migrations `00094`–`00096`; pilot `denis_act_submit_pilot` on one venue; retire guest `order-executor` path after act submit GA.
+**Unified brain ([ADR-019](./ADR-019-denis-unified-brain.md)):** Phase A→F — signal/view, one Denis loop.
+
+| Phase | Status | Deliverable |
+|-------|--------|-------------|
+| **A — FOLD** | 📋 | `foldTableSessionState()` before every DECIDE |
+| **B — VIEW** | 📋 | `GET /api/denis/view` — single guest read model |
+| **C — SIGNAL** | 📋 | `POST /api/denis/signal` — single guest write |
+| **D — WORLD** | 📋 | Order/status events → loop → TELL + guest push |
+| **E — ACTOR** | 📋 | Table Session Actor + view stream + ADR-013 → signals |
+| **F — TRUTH** | 📋 | Single TRUTH stream; transcript from timeline |
+
+**Next recommended:** Phase A on pilot; B→C→D for product; **E before chain scale**; F after E. [ADR-020 §15–§20](./ADR-020-denis-table-operating-system.md).
+
+See also §7b below.
 
 ---
 
@@ -334,10 +368,14 @@ pnpm type-check
 
 ---
 
-## 10. Operator prompt (M11+)
+## 10. Operator prompt (Phase A→F)
+
+**Jovica (jedna linija):** [ADR-019-operator.md](./ADR-019-operator.md)
 
 ```
-Denis mode. Read docs/architecture/denis-implementation-map.md §3–4 (as-built + gaps).
-M0–M10 done — implement next open track only (M11+). Run pnpm verify:denis && pnpm eval:denis.
-Do not commit unless asked.
+Denis brain operator mode. Pročitaj docs/architecture/ADR-019-session-prompts.md.
+Uradi sledeću nedovršenu fazu (A→F). pnpm verify:denis && pnpm eval:denis.
+Session report. Ne commit-uj osim ako kažem.
 ```
+
+**Review (posle implement agenta):** [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md)

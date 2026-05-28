@@ -358,7 +358,7 @@ body:has(.dashboard-theme) [data-slot="sheet-content"] ::selection {
   right: 0;
   top: var(--denis-vv-offset, 0px);
   height: var(--denis-vv-height, 100dvh);
-  z-index: 50;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -366,9 +366,19 @@ body:has(.dashboard-theme) [data-slot="sheet-content"] ::selection {
   box-sizing: border-box;
   width: 100%;
   max-width: 100vw;
-  background: rgb(0 0 0 / 0.72);
+  background: var(--qr-void, #0a0a0a);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+.denis-chat-overlay--keyboard {
+  background: var(--qr-void, #0a0a0a);
+}
+
+html.denis-chat-open,
+html.denis-chat-open body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
 }
 
 .denis-chat-panel {

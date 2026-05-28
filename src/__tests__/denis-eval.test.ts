@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
+import { runFoldOrderVisibilityFixture } from "@/lib/denis/eval/run-fold-fixture";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import { DENIS_EVAL_SCENARIOS } from "@/lib/denis/eval/fixtures/scenarios";
 import {
@@ -24,6 +25,12 @@ describe("Denis eval fixtures M10", () => {
     );
     expect(result.passed).toBe(true);
     expect(result.actual.topGoal).toBe("RECONCILE_CART");
+  });
+
+  it("fold sees submitted order in commerce.orders (Phase A)", () => {
+    const result = runFoldOrderVisibilityFixture();
+    expect(result.passed).toBe(true);
+    expect(result.orderCount).toBe(1);
   });
 });
 

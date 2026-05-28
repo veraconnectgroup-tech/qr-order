@@ -1,63 +1,24 @@
-import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
-import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
-import {
-  aiOrderDraftToDenisCartState,
-  manualSnapshotToDenisDraft,
-} from "@/lib/denis/runtime/adapters/map-legacy-draft";
+import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { mapFoldToTurnContext } from "@/lib/denis/runtime/map-fold-to-turn-context";
 import type {
   DenisChatBody,
   DenisTurnContext,
 } from "@/lib/denis/runtime/turn-types";
-import { foldFlowProjection } from "@/lib/denis/platform/fold-flow";
-import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
-import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import {
   loadTableParty,
   registerPartyDevice,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
 } from "@/lib/denis/venue/party";
-import { mergePeerManualDraft } from "@/lib/denis/runtime/adapters/map-party-manual";
-import {
-  loadEffectiveVenueOps,
-} from "@/lib/denis/venue/ops";
-import { loadGuestMemoryProjection } from "@/lib/guest/denis-guest-memory-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type SessionDraftRow = {
-  order_draft: unknown;
-  messages?: unknown;
-};
-
-function lastAssistantMessageFromSession(messages: unknown): string | null {
-  if (!Array.isArray(messages)) return null;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const row = messages[i] as { role?: string; content?: string };
-    if (row.role !== "assistant" || typeof row.content !== "string") continue;
-    const newline = row.content.indexOf("\n");
-    return newline >= 0 ? row.content.slice(0, newline) : row.content;
-  }
-  return null;
-}
-
-/** Load Denis planning context before legacy narrate (M7). */
+/** Load Denis planning context via FOLD before legacy narrate (M7 + ADR-019 A). */
 export async function buildDenisTurnContext(
   admin: SupabaseClient,
   input: DenisChatBody
 ): Promise<DenisTurnContext> {
   const config = await loadConciergeConfigForLocation(input.locationId);
-  const { venueOps, opsEffects } = await loadEffectiveVenueOps(admin, {
-    locationId: input.locationId,
-    tableId: input.tableId,
-    config,
-  });
-  let flowNodeId: FlowNodeId = "welcome";
-  let aiCartState = emptyCartState();
-  let foodUpsellAsked = false;
-  let party = null;
-  let peerManualCartDraft = undefined;
-  let draftAiSessionId = input.sessionId;
 
   const tableSessionId = await resolveActiveTableSessionId(admin, {
     tableId: input.tableId,
@@ -65,6 +26,7 @@ export async function buildDenisTurnContext(
     sessionToken: input.sessionToken,
   });
 
+  let party = null;
   if (tableSessionId && input.deviceFingerprint) {
     await registerPartyDevice(admin, {
       tableSessionId,
@@ -81,67 +43,29 @@ export async function buildDenisTurnContext(
       partyMode: config.party.mode,
       deviceFingerprint: input.deviceFingerprint,
     });
-
-    if (party) {
-      peerManualCartDraft = mergePeerManualDraft(
-        party.devices,
-        input.deviceFingerprint
-      );
-      draftAiSessionId = resolveDraftAiSessionId(
-        config.party.mode,
-        input.sessionId,
-        party.sharedAiSessionId
-      );
-    }
   }
 
-  let lastAssistantMessage: string | null = null;
+  const draftAiSessionId = resolveDraftAiSessionId(
+    config.party.mode,
+    input.sessionId,
+    party?.sharedAiSessionId ?? null
+  );
 
-  if (draftAiSessionId) {
-    const events = await loadDenisTimeline(admin, draftAiSessionId);
-    flowNodeId = foldFlowProjection(events, "welcome").currentNodeId;
+  const fold = await foldTableSessionState(admin, {
+    locationId: input.locationId,
+    tableId: input.tableId,
+    sessionToken: input.sessionToken,
+    aiSessionId: input.sessionId,
+    draftAiSessionId: draftAiSessionId ?? undefined,
+    deviceFingerprint: input.deviceFingerprint,
+    manualCartSnapshot: input.manualCartSnapshot,
+    config,
+    tableSessionId,
+    party,
+  });
 
-    const { data } = await admin
-      .from("ai_sessions")
-      .select("order_draft, messages")
-      .eq("id", draftAiSessionId)
-      .maybeSingle();
-
-    const draft = initDraftFromStorage(
-      (data as SessionDraftRow | null)?.order_draft ?? null
-    );
-    aiCartState = aiOrderDraftToDenisCartState(draft);
-    foodUpsellAsked = draft.flow?.foodUpsellAsked ?? false;
-    lastAssistantMessage = lastAssistantMessageFromSession(
-      (data as SessionDraftRow | null)?.messages
-    );
-  }
-
-  let guestMemory = null;
-  if (
-    config.memory.returnGuestEnabled &&
-    input.deviceFingerprint
-  ) {
-    guestMemory = await loadGuestMemoryProjection(admin, {
-      locationId: input.locationId,
-      deviceFingerprint: input.deviceFingerprint,
-    });
-  }
-
-  return {
+  return mapFoldToTurnContext(fold, {
     locationId: input.locationId,
     aiSessionId: input.sessionId,
-    draftAiSessionId,
-    config,
-    flowNodeId,
-    aiCartState,
-    manualCartDraft: manualSnapshotToDenisDraft(input.manualCartSnapshot),
-    peerManualCartDraft,
-    party,
-    venueOps,
-    opsEffects,
-    foodUpsellAsked,
-    guestMemory,
-    lastAssistantMessage,
-  };
+  });
 }

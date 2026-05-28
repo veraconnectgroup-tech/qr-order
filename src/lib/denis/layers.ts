@@ -9,6 +9,7 @@ export const DENIS_LAYERS = [
   "kernel",
   "venue",
   "commercial",
+  "loop",
   "runtime",
   "surfaces",
   "acl",
@@ -39,11 +40,21 @@ export const DENIS_IMPORT_MATRIX: Record<DenisLayer, readonly DenisLayer[]> = {
   kernel: ["config", "platform"],
   venue: ["config", "platform", "kernel"],
   commercial: ["config"],
-  runtime: ["config", "platform", "kernel", "venue", "commercial", "surfaces", "acl"],
+  loop: ["config", "platform", "kernel", "venue"],
+  runtime: [
+    "config",
+    "platform",
+    "kernel",
+    "venue",
+    "commercial",
+    "loop",
+    "surfaces",
+    "acl",
+  ],
   surfaces: ["config", "runtime"],
   acl: [],
   learning: ["config", "platform"],
-  eval: ["config", "platform", "kernel", "runtime"],
+  eval: ["config", "platform", "kernel", "loop", "runtime"],
 };
 
 /** Paths that may import Order Core until full ACL migration (M7). */

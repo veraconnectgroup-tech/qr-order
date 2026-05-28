@@ -14,6 +14,7 @@ import type {
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
 
 export type DenisChannel = "chat" | "voice" | "proactive" | "status_poll";
 
@@ -74,6 +75,9 @@ export type DenisTurnContext = {
   foodUpsellAsked: boolean;
   guestMemory?: GuestMemoryProjection | null;
   lastAssistantMessage?: string | null;
+  /** ADR-019 Phase A — FOLD metadata for timeline + idempotency. */
+  foldMeta?: FoldMeta;
+  tableSessionState?: TableSessionState;
 };
 
 export type DenisTurnMeta = {

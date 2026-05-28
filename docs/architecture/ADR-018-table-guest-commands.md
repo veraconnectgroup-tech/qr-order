@@ -44,5 +44,5 @@
 | Track | Scope |
 |-------|-------|
 | **M28** ✅ | T0 + ACL + narrate override + chip `structuredIntent` |
-| M29 | Table beliefs loader before plan |
-| M30 | Online payment sheet bridge from turn meta |
+| Phase **A** | `foldTableSessionState()` — was “M29 beliefs loader” |
+| Phase **B** | Online payment sheet bridge from turn meta (was M30) |

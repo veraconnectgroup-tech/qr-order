@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useGuestScene } from "@/hooks/use-guest-scene";
+import { useDenisView } from "@/hooks/use-denis-view";
 import {
   parseSceneChipSelections,
   parseSceneHandoffChip,
@@ -109,13 +110,25 @@ export function GuestDenisLayer({
 
   const refreshKey = sceneRefreshKey + sceneRefreshBump;
 
-  const { scene, refresh: refreshGuestSceneView } = useGuestScene({
+  const sceneQuery = useGuestScene({
     tableToken: token,
     sessionToken,
-    enabled: enabled && !!sessionToken,
+    enabled: enabled && !!sessionToken && !fastPoll,
     refreshKey,
     fastPoll,
   });
+
+  const viewQuery = useDenisView({
+    tableToken: token,
+    sessionToken,
+    enabled: enabled && !!sessionToken && fastPoll,
+    refreshKey,
+    fastPoll,
+  });
+
+  const scene = fastPoll ? viewQuery.scene : sceneQuery.scene;
+  const view = fastPoll ? viewQuery.view : null;
+  const refreshGuestSceneView = fastPoll ? viewQuery.refresh : sceneQuery.refresh;
 
   const handleOpenDenisDesk = useCallback(() => {
     hapticClick();
@@ -310,6 +323,7 @@ export function GuestDenisLayer({
           currency={currency}
           placement={dockPlacement}
           cartBarVisible={cartBarVisible}
+          headline={view?.chrome.headline ?? scene.chrome.situation?.headline}
           subtitle={scene.chrome.situation?.headline ?? undefined}
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}

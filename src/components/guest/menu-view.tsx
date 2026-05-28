@@ -16,6 +16,7 @@ import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { OfflineIndicator } from "@/components/guest/offline-indicator";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { readMenuCache, writeMenuCache } from "@/lib/pwa/menu-cache";
+import { cn } from "@/lib/utils";
 import {
   registerMenuPeriodicSync,
   usePwaServiceWorkerMessages,
@@ -1222,7 +1223,7 @@ export function MenuView({
       <OfflineIndicator />
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
         <div
-          className={
+          className={cn(
             aiConciergeEnabled && !aiChatOpen
               ? orderingEnabled &&
                 !detailProduct &&
@@ -1230,8 +1231,9 @@ export function MenuView({
                 itemCount > 0
                 ? "min-h-dvh pb-[calc(11rem+env(safe-area-inset-bottom,0px))]"
                 : "min-h-dvh pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
-              : "min-h-dvh pb-cart-offset"
-          }
+              : "min-h-dvh pb-cart-offset",
+            aiChatOpen && "pointer-events-none select-none"
+          )}
         >
           <GuestHeader
             orgName={orgName}

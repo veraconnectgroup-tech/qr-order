@@ -85,7 +85,8 @@ export type DenisTimelineEventType =
   | "narration.sent"
   | "realtime.ingested"
   | "proactive.emitted"
-  | "belief.revision";
+  | "belief.revision"
+  | "mind.fold_completed";
 
 export type DenisTimelineRow = {
   id: string;
