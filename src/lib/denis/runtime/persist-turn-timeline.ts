@@ -39,6 +39,19 @@ export async function persistDenisTurnTimeline(
   try {
     await appendDenisTimelineEvent(admin, {
       aiSessionId: input.aiSessionId,
+      eventType: "signal.message",
+      traceId: input.traceId,
+      payload: {
+        type: "signal.message",
+        text: input.guestMessage,
+        channel: input.channel ?? "chat.message",
+        intent: input.intent,
+        envelope,
+      },
+    });
+
+    await appendDenisTimelineEvent(admin, {
+      aiSessionId: input.aiSessionId,
       eventType: "perception.ingested",
       traceId: input.traceId,
       payload: {
@@ -123,6 +136,21 @@ export async function persistDenisTurnTimeline(
         })),
         topGoal: plan.topGoal?.type ?? null,
         envelope,
+      },
+    });
+
+    await appendDenisTimelineEvent(admin, {
+      aiSessionId: input.aiSessionId,
+      eventType: "tell.committed",
+      traceId: input.traceId,
+      payload: {
+        type: "tell.committed",
+        message: input.assistantMessage,
+        tier:
+          input.narrationTier ??
+          (input.intentTier === "T0" ? "template" : "T3"),
+        source: "turn.narrate",
+        linted: input.narrationTier !== undefined,
       },
     });
 

@@ -37,6 +37,19 @@ export async function persistWorldTell(
 
   await appendDenisTimelineEvent(admin, {
     aiSessionId: input.aiSessionId,
+    eventType: "tell.committed",
+    traceId,
+    payload: {
+      type: "tell.committed",
+      message: input.message,
+      tier: "template",
+      source: "world.commerce",
+      linted: true,
+    },
+  });
+
+  await appendDenisTimelineEvent(admin, {
+    aiSessionId: input.aiSessionId,
     eventType: "narration.sent",
     traceId,
     payload: {

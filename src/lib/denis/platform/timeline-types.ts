@@ -58,18 +58,22 @@ export type DenisTimelineEventPayload =
       intent: GuestIntent;
       tier: "T0" | "T2";
       envelope?: TurnEnvelope;
+      evidence?: unknown;
     }
   | {
       type: "plan.created";
       actions: Array<{ skillId: string; riskClass: DenisRiskClass }>;
       envelope?: TurnEnvelope;
+      topGoal?: string | null;
     }
   | { type: "policy.blocked"; ruleId: string; riskClass: DenisRiskClass }
-  | { type: "draft.changed"; cartRevision: number }
+  | { type: "draft.changed"; cartRevision: number; diff?: unknown; guestMessage?: string }
   | { type: "order.command.ack"; orderId: string }
-  | { type: "narration.sent"; message: string; tier: "template" | "T3" }
-  | { type: "realtime.ingested"; source: string; payload: unknown }
-  | { type: "belief.revision"; keys: string[] }
+  | { type: "narration.sent"; message: string; tier: "template" | "T3"; linted?: boolean; source?: string }
+  | { type: "signal.message"; text: string; channel?: PerceptionChannel; intent?: GuestIntent | null; envelope?: TurnEnvelope }
+  | { type: "tell.committed"; message: string; tier?: "template" | "T3"; source?: string; linted?: boolean }
+  | { type: "realtime.ingested"; source: string; payload: unknown; envelope?: TurnEnvelope }
+  | { type: "belief.revision"; keys: string[]; conflicts?: unknown; strategy?: string | null; guestPrompt?: string | null; channel?: string }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -83,6 +87,8 @@ export type DenisTimelineEventType =
   | "order.command.sent"
   | "order.command.ack"
   | "narration.sent"
+  | "signal.message"
+  | "tell.committed"
   | "realtime.ingested"
   | "proactive.emitted"
   | "belief.revision"

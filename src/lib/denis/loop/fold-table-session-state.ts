@@ -6,6 +6,7 @@ import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { extractDismissedNudges } from "@/lib/denis/loop/extract-dismissed-nudges";
 import { loadOrderFactsForSession } from "@/lib/denis/loop/load-order-facts";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
+import { lastTellFromTimeline } from "@/lib/denis/loop/fold-transcript";
 import type { FoldInput, FoldResult, TableSessionState } from "@/lib/denis/loop/types";
 import {
   aiOrderDraftToDenisCartState,
@@ -25,19 +26,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SessionDraftRow = {
   order_draft: unknown;
-  messages?: unknown;
 };
-
-function lastAssistantMessageFromSession(messages: unknown): string | null {
-  if (!Array.isArray(messages)) return null;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const row = messages[i] as { role?: string; content?: string };
-    if (row.role !== "assistant" || typeof row.content !== "string") continue;
-    const newline = row.content.indexOf("\n");
-    return newline >= 0 ? row.content.slice(0, newline) : row.content;
-  }
-  return null;
-}
 
 type TableSessionRow = {
   id: string;
@@ -105,7 +94,7 @@ export async function foldTableSessionState(
       draftAiSessionId
         ? admin
             .from("ai_sessions")
-            .select("order_draft, messages")
+            .select("order_draft")
             .eq("id", draftAiSessionId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -168,9 +157,7 @@ export async function foldTableSessionState(
 
   const flowNodeId = foldFlowProjection(timeline, "welcome").currentNodeId;
   const foodUpsellAsked = draft.flow?.foodUpsellAsked ?? false;
-  const lastAssistantMessage = lastAssistantMessageFromSession(
-    draftRow?.messages
-  );
+  const lastAssistantMessage = lastTellFromTimeline(timeline);
   const dismissedNudges = extractDismissedNudges(timeline);
 
   let guestMemory = null;

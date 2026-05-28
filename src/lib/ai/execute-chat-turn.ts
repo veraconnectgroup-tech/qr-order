@@ -18,6 +18,8 @@ import { moderateGuestInput } from "@/lib/ai/moderation";
 import { formatDraftForPrompt } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
+import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import {
   AiCircuitOpenError,
   AiOpenAiError,
@@ -90,6 +92,11 @@ export const aiChatRequestSchema = z.object({
 });
 
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
+
+export type ExecuteChatTurnOpts = {
+  /** Phase F — when false, transcript is timeline-only (no ai_sessions.messages write). */
+  persistMessages?: boolean;
+};
 
 type StoredMessage = {
   role: "user" | "assistant";
@@ -247,7 +254,11 @@ async function resolveStructuredResponse(
 }
 
 /** Legacy LLM + session adapter — ordering deferred to runDenisTurn (ADR-010 F8-4). */
-export async function executeChatTurn(body: unknown) {
+export async function executeChatTurn(
+  body: unknown,
+  opts: ExecuteChatTurnOpts = {}
+) {
+  const persistMessages = opts.persistMessages !== false;
   const parsed = aiChatRequestSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("Invalid input.", 400);
@@ -380,10 +391,21 @@ export async function executeChatTurn(body: unknown) {
     return apiError("Session is no longer active.", 410);
   }
 
-  if (
-    sessionRow &&
-    sessionRow.messages.length + 2 > AI_CONFIG.maxMessagesPerSession
-  ) {
+  let priorMessages: StoredMessage[] = sessionRow?.messages ?? [];
+  if (sessionRow && !persistMessages) {
+    priorMessages = timelineToStoredMessages(
+      await loadDenisTimeline(admin, sessionRow.id)
+    );
+  }
+
+  if (sessionRow && priorMessages.length + 2 > AI_CONFIG.maxMessagesPerSession) {
+    await admin
+      .from("ai_sessions")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", sessionRow.id);
     return apiError("Session message limit reached.", 410);
   }
 
@@ -418,7 +440,6 @@ export async function executeChatTurn(body: unknown) {
     }
   }
 
-  const priorMessages = sessionRow?.messages ?? [];
   const userMessage: StoredMessage = {
     role: "user",
     content: input.message,
@@ -547,7 +568,7 @@ export async function executeChatTurn(body: unknown) {
     const { error: updateError } = await admin
       .from("ai_sessions")
       .update({
-        messages: updatedMessages,
+        ...(persistMessages ? { messages: updatedMessages } : {}),
         tokens_used: tokensUsed,
         credits_used: creditsUsed,
         products_recommended: recommendedIds,
@@ -572,7 +593,7 @@ export async function executeChatTurn(body: unknown) {
         session_token: input.sessionToken,
         language,
         guest_preferences: guestPrefs,
-        messages: updatedMessages,
+        messages: persistMessages ? updatedMessages : [],
         tokens_used: tokensUsed,
         credits_used: creditsUsed,
         products_recommended: recommendedIds,

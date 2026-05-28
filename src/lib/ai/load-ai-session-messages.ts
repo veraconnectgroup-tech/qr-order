@@ -1,4 +1,6 @@
 import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
+import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
+import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type AiSessionHistoryMessage = {
@@ -73,12 +75,18 @@ export async function loadAiSessionHistory(input: {
     ? (session.messages as AiSessionHistoryMessage[])
     : [];
 
-  const messages = rawMessages.filter(
-    (entry) =>
-      (entry.role === "user" || entry.role === "assistant") &&
-      typeof entry.content === "string" &&
-      entry.content.trim().length > 0
-  );
+  const timeline = await loadDenisTimeline(admin, session.id);
+  const timelineMessages = timelineToStoredMessages(timeline);
+
+  const messages =
+    timelineMessages.length > 0
+      ? timelineMessages
+      : rawMessages.filter(
+          (entry) =>
+            (entry.role === "user" || entry.role === "assistant") &&
+            typeof entry.content === "string" &&
+            entry.content.trim().length > 0
+        );
 
   const prefs =
     session.guest_preferences &&

@@ -11,7 +11,9 @@ import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
+import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
+import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import {
   kernelTimelineEnabled,
   resolveEffectiveRollout,
@@ -189,8 +191,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       })
     : null;
 
+  const rollout = resolveEffectiveRollout(ctx.config);
+  const timelineEnabled = kernelTimelineEnabled(rollout.mode);
+
   const legacyStarted = performance.now();
-  const legacyResponse = await executeChatTurn(parsed.data);
+  const legacyResponse = await executeChatTurn(parsed.data, {
+    persistMessages: !timelineEnabled,
+  });
   timings.legacyMs = elapsedMs(legacyStarted);
   if (legacyResponse.status !== 200) {
     return legacyResponse;
@@ -209,7 +216,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   if (data.deferredOrdering && data.sessionId) {
     const { data: sessionRow, error: sessionError } = await admin
       .from("ai_sessions")
-      .select("order_draft, messages")
+      .select("order_draft")
       .eq("id", data.sessionId)
       .maybeSingle();
 
@@ -225,11 +232,23 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
           currency: menuPayload.currency,
           cachedAt: menuPayload.cachedAt,
         };
-        const priorMessages =
-          (sessionRow.messages as Array<{
-            role: "user" | "assistant";
-            content: string;
-          }>) ?? [];
+        const priorMessages: Array<{
+          role: "user" | "assistant";
+          content: string;
+        }> = timelineEnabled
+          ? timelineToStoredMessages(
+              await loadDenisTimeline(admin, data.sessionId)
+            )
+          : ((
+              await admin
+                .from("ai_sessions")
+                .select("messages")
+                .eq("id", data.sessionId)
+                .maybeSingle()
+            ).data?.messages as Array<{
+              role: "user" | "assistant";
+              content: string;
+            }> | null) ?? [];
 
         const kernel = applyPostLlmOrdering({
           userMessage: parsed.data.message,
@@ -306,7 +325,6 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     parsed.data.language
   );
 
-  const rollout = resolveEffectiveRollout(ctx.config);
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
     cohortKey: parsed.data.sessionToken,
     canaryPercent: ctx.config.rollout.canaryPercent,
