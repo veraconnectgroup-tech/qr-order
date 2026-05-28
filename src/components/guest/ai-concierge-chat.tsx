@@ -21,6 +21,7 @@ import {
   DenisPanelFooter,
   DenisPanelHeader,
 } from "@/components/design-system/denis-panel";
+import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import {
   DenisCartHeaderLink,
   DenisCartTiles,
@@ -375,6 +376,11 @@ export type AiConciergeChatProps = {
   /** Premium — location `surfaces.voiceEnabled` (M18). */
   voiceEnabled?: boolean;
   voiceTtsEnabled?: boolean;
+  sceneChrome?: {
+    tableName: string;
+    venueName: string;
+    markState: "idle" | "listen" | "think";
+  } | null;
 };
 
 export function AiConciergeChat({
@@ -408,6 +414,7 @@ export function AiConciergeChat({
   deviceFingerprint,
   voiceEnabled = false,
   voiceTtsEnabled = true,
+  sceneChrome = null,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
@@ -1144,10 +1151,29 @@ export function AiConciergeChat({
       }
     >
       <DenisPanel className="mx-0 mb-0 min-h-0 max-h-none flex-1 rounded-none sm:mx-3 sm:mb-3 sm:max-h-[min(88dvh,720px)] sm:flex-none sm:rounded-2xl">
-        <DenisPanelHeader>
-          <p className="min-w-0 flex-1 text-sm font-medium tracking-wide text-[var(--qr-ivory)]">
-            Denis
-          </p>
+        <DenisPanelHeader className="border-b border-[var(--qr-elevated)]">
+          {sceneChrome ? (
+            <DenisBrandMark
+              markSize={24}
+              markState={
+                isTyping
+                  ? "think"
+                  : voice.listening
+                    ? "listen"
+                    : sceneChrome.markState
+              }
+              className="min-w-0 flex-1 [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
+            />
+          ) : (
+            <p className="min-w-0 flex-1 text-sm font-medium tracking-wide text-[var(--qr-ivory)]">
+              Denis
+            </p>
+          )}
+          {sceneChrome ? (
+            <p className="hidden shrink-0 text-[11px] text-[var(--qr-muted)] sm:block">
+              {sceneChrome.tableName}
+            </p>
+          ) : null}
           {!orderingDisabled && (
             <DenisCartHeaderLink
               slug={slug}

@@ -4,6 +4,7 @@ import {
 } from "@/lib/outbox/handlers/billing-low-balance";
 import { handleCommerceProjectionRefresh } from "@/lib/commerce/projections/refresh-session-state";
 import { handleCommerceStaffAlert } from "@/lib/outbox/handlers/commerce-staff-alert";
+import { handleSceneRefresh } from "@/lib/scene/refresh-guest-scene";
 import { handleFulfillCloudPrint } from "@/lib/outbox/handlers/cloud-print";
 import { handleSessionPaidOnline } from "@/lib/outbox/handlers/session-paid-online";
 import { handleFulfillPushPos } from "@/lib/outbox/handlers/push-pos";
@@ -31,6 +32,7 @@ const handlers: Record<OutboxEventType, OutboxHandler> = {
   "billing.staff_hint": handleBillingStaffHint,
   "commerce.projection.refresh": handleCommerceProjectionRefresh,
   "commerce.alert.staff": handleCommerceStaffAlert,
+  "session.scene.refresh": handleSceneRefresh,
 };
 
 export function getOutboxHandler(

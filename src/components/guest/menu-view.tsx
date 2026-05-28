@@ -64,6 +64,8 @@ import {
   manualCartRevision,
 } from "@/lib/guest/manual-cart-snapshot";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
+import { sceneBannerLayers } from "@/lib/scene/layer-utils";
+import { useGuestScene } from "@/hooks/use-guest-scene";
 
 const AiCartPairingBanner = dynamic(
   () =>
@@ -76,6 +78,20 @@ const AiConciergeIntro = dynamic(
   () =>
     import("@/components/guest/ai-concierge-intro").then((m) => ({
       default: m.AiConciergeIntro,
+    })),
+  { ssr: false }
+);
+const DenisScenePresence = dynamic(
+  () =>
+    import("@/components/guest/denis-scene-presence").then((m) => ({
+      default: m.DenisScenePresence,
+    })),
+  { ssr: false }
+);
+const DenisSceneBanners = dynamic(
+  () =>
+    import("@/components/guest/denis-scene-banners").then((m) => ({
+      default: m.DenisSceneBanners,
     })),
   { ssr: false }
 );
@@ -166,6 +182,7 @@ export function MenuView({
   );
   const [returnGlow, setReturnGlow] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -190,6 +207,19 @@ export function MenuView({
   const cartBump = useCart((s) => s.cartBump);
   const itemCount = useCart((s) => s.itemCount());
   const sessionToken = useGuestSession((s) => s.sessionToken);
+
+  const { scene, refresh: _refreshGuestSceneView } = useGuestScene({
+    tableToken: token,
+    sessionToken,
+    enabled: aiConciergeEnabled && !!sessionToken,
+    refreshKey: sceneRefreshKey,
+  });
+
+  const sceneBanners = useMemo(
+    () => (scene ? sceneBannerLayers(scene) : []),
+    [scene]
+  );
+  const useSceneBannerUi = sceneBanners.length > 0;
 
   const allergenStorageKey = allergenFilterStorageKey(slug, token);
   const { excluded, toggle, clear, replaceExcluded, count: allergenFilterCount } =
@@ -849,6 +879,28 @@ export function MenuView({
     dismissNudge();
   }, [dismissNudge]);
 
+  const handleAiChatOpenChange = useCallback((open: boolean) => {
+    setAiChatOpen(open);
+    if (!open) {
+      setSceneRefreshKey((key) => key + 1);
+    }
+  }, []);
+
+  const handleSceneBannerAction = useCallback(
+    (banner: (typeof sceneBanners)[number]) => {
+      hapticClick();
+      if (banner.action === "add_product" && banner.productId) {
+        const product = productById.get(banner.productId);
+        if (product) {
+          openProductDetail(product);
+          return;
+        }
+      }
+      setAiChatOpen(true);
+    },
+    [productById, openProductDetail]
+  );
+
   const handleNudgeAdd = useCallback(() => {
     if (!activeNudge?.recommendation) return;
     handleAddAiRecommendation(activeNudge.recommendation);
@@ -884,6 +936,7 @@ export function MenuView({
       setAiRecommendations(recommendations);
       setAiActive(true);
       setShowRecommendedSection(true);
+      setSceneRefreshKey((key) => key + 1);
     },
     [excluded, replaceExcluded]
   );
@@ -914,10 +967,18 @@ export function MenuView({
           )}
 
           {aiConciergeEnabled && !aiActive && (
-            <AiConciergeIntro
-              onOpen={() => setAiChatOpen(true)}
-              subtitle={welcomeBackMessage ?? undefined}
-            />
+            scene ? (
+              <DenisScenePresence
+                scene={scene}
+                onOpen={() => setAiChatOpen(true)}
+                subtitle={welcomeBackMessage ?? undefined}
+              />
+            ) : (
+              <AiConciergeIntro
+                onOpen={() => setAiChatOpen(true)}
+                subtitle={welcomeBackMessage ?? undefined}
+              />
+            )
           )}
 
           {showMemoryConsent && (
@@ -928,7 +989,15 @@ export function MenuView({
             />
           )}
 
-          {aiConciergeEnabled && (
+          {aiConciergeEnabled && useSceneBannerUi && (
+            <DenisSceneBanners
+              banners={sceneBanners}
+              onBannerAction={handleSceneBannerAction}
+              onDismiss={() => setSceneRefreshKey((key) => key + 1)}
+            />
+          )}
+
+          {aiConciergeEnabled && !useSceneBannerUi && (
             <AiSmartNudgeBanner
               nudge={activeNudge}
               orderingDisabled={!canPlaceOrders}
@@ -1083,7 +1152,8 @@ export function MenuView({
           {aiConciergeEnabled && (
             <AiConciergeChat
               open={aiChatOpen}
-              onOpenChange={setAiChatOpen}
+              onOpenChange={handleAiChatOpenChange}
+              sceneChrome={scene?.chrome ?? null}
               slug={slug}
               token={token}
               locationId={locationId}

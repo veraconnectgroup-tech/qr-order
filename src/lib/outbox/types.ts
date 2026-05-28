@@ -18,7 +18,8 @@ export type OutboxEventType =
   | "billing.low_balance"
   | "billing.staff_hint"
   | "commerce.projection.refresh"
-  | "commerce.alert.staff";
+  | "commerce.alert.staff"
+  | "session.scene.refresh";
 
 export type OutboxInsert = {
   aggregate_type?: "order" | "session";

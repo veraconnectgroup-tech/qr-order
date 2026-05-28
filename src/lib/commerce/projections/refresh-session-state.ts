@@ -82,6 +82,16 @@ export async function refreshGuestSessionCommerceState(
   if (upsertError) {
     throw new Error(upsertError.message);
   }
+
+  try {
+    const { refreshGuestScene } = await import("@/lib/scene/refresh-guest-scene");
+    await refreshGuestScene(admin, { sessionId: input.sessionId });
+  } catch (err) {
+    logger.warn("commerce projection refresh: scene refresh failed", {
+      sessionId: input.sessionId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 export async function handleCommerceProjectionRefresh(
