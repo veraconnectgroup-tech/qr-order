@@ -2,20 +2,8 @@
 
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
-import {
-  DenisPanel,
-  DenisPanelBody,
-  DenisPanelFooter,
-  DenisPanelHeader,
-} from "@/components/design-system/denis-panel";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
-import {
-  DenisMessageBlock,
-  DenisThreadLabel,
-} from "@/components/design-system/denis-message-block";
-import {
-  DenisStaffTableBrief,
-} from "@/components/dashboard/denis-staff-copilot-parts";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
+import { DenisStaffTableBrief } from "@/components/dashboard/denis-staff-copilot-parts";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDenisStaffCopilot } from "@/hooks/use-denis-staff-copilot";
 import { cn } from "@/lib/utils";
 
-/** DE-07 — right drawer with DenisPanel gramat for floor copilot. */
+/** Right drawer — floor priorities at a glance (overview quick open). */
 export function DenisStaffCopilotDrawer({
   open,
   onOpenChange,
@@ -42,28 +30,34 @@ export function DenisStaffCopilotDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full gap-0 border-dash-border bg-[var(--qr-void)] p-0 sm:max-w-md"
+        className="dashboard-theme w-full gap-0 border-dash-border bg-dash-bg p-0 sm:max-w-md"
         showCloseButton
       >
-        <SheetHeader className="border-b border-dash-border px-4 py-3 text-left">
-          <SheetTitle className="sr-only">Denis staff copilot</SheetTitle>
+        <SheetHeader className="space-y-0 border-b border-dash-border px-4 py-4 text-left">
+          <SheetTitle className="sr-only">Denis floor copilot</SheetTitle>
           <SheetDescription className="sr-only">
-            Floor priorities and table hints
+            Priority tables and house status
           </SheetDescription>
-          <div className="flex items-center justify-between gap-2 pe-8">
-            <div className="flex items-center gap-2">
-              <DenisTableMark size={24} state="idle" />
-              <span className="text-sm font-semibold text-[var(--qr-ivory)]">
-                Denis
-              </span>
+          <div className="flex items-start justify-between gap-3 pe-8">
+            <div className="flex min-w-0 items-start gap-3">
+              <DenisMarkBadge
+                size="md"
+                className="mt-0.5 bg-dash-accent-muted ring-dash-border-subtle"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-dash-text">Denis</p>
+                <p className="mt-0.5 text-xs text-dash-text-muted">
+                  Floor priorities & table hints
+                </p>
+              </div>
             </div>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               disabled={loading}
               onClick={() => void refresh()}
-              className="min-h-10 gap-1.5 text-[var(--qr-muted)] hover:text-[var(--qr-ivory)]"
+              className="min-h-10 shrink-0 gap-1.5 border-dash-border bg-dash-surface text-dash-text-secondary hover:bg-dash-surface-raised hover:text-dash-text"
             >
               <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
               Refresh
@@ -71,62 +65,74 @@ export function DenisStaffCopilotDrawer({
           </div>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {loading && !data ? (
-            <Skeleton className="m-4 h-40 rounded-xl bg-dash-surface-raised" />
+            <Skeleton className="h-40 rounded-xl bg-dash-surface-raised" />
           ) : error ? (
-            <p className="p-4 text-sm text-dash-text-muted">{error}</p>
+            <p className="text-sm text-dash-text-muted">{error}</p>
           ) : !data?.enabled ? (
-            <p className="p-4 text-sm text-dash-text-muted">
+            <p className="text-sm text-dash-text-muted">
               Denis is not enabled for this location.
             </p>
           ) : (
-            <DenisPanel className="mx-3 my-3 max-h-none min-h-0 flex-1 rounded-xl border border-[var(--qr-elevated)]">
-              <DenisPanelHeader className="border-b border-[var(--qr-elevated)] px-4 py-3 sm:px-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-[var(--qr-muted)]">
+            <div className="space-y-4">
+              <div className="rounded-xl border border-dash-border bg-dash-surface/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
                   House status
                 </p>
-                <p className="mt-1 text-sm text-[var(--qr-ivory)]">
-                  {data.activeOrderCount} active orders ·{" "}
-                  <span className="capitalize">
-                    {data.operatingMode.replace("_", " ")}
-                  </span>
-                  {data.kdsBacklogMinutes != null
-                    ? ` · KDS ${data.kdsBacklogMinutes} min`
-                    : ""}
-                </p>
-              </DenisPanelHeader>
-
-              <DenisPanelBody className="px-4 py-3 sm:px-4">
-                {data.priorityTables.length === 0 ? (
-                  <DenisMessageBlock role="assistant">
-                    <DenisThreadLabel />
-                    <p className="text-sm leading-relaxed text-[var(--qr-ivory)]">
-                      No tables need attention right now. Floor looks clear.
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-dash-text-muted">Active orders</p>
+                    <p className="mt-1 font-bold tabular-nums text-dash-text">
+                      {data.activeOrderCount}
                     </p>
-                  </DenisMessageBlock>
+                  </div>
+                  <div>
+                    <p className="text-xs text-dash-text-muted">KDS backlog</p>
+                    <p className="mt-1 font-bold tabular-nums text-dash-text">
+                      {data.kdsBacklogMinutes != null
+                        ? `${data.kdsBacklogMinutes} min`
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-dash-text-muted">Operating mode</p>
+                    <p className="mt-1 font-semibold capitalize text-dash-text-secondary">
+                      {data.operatingMode.replace("_", " ")} · KDS {data.kdsStress}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+                  Priority tables
+                </p>
+                {data.priorityTables.length === 0 ? (
+                  <p className="rounded-xl border border-dash-border bg-dash-surface/80 px-4 py-6 text-center text-sm text-dash-text-muted">
+                    No tables need attention right now.
+                  </p>
                 ) : (
-                  <div className="space-y-3">
-                    {data.priorityTables.slice(0, 6).map((table) => (
+                  <div className="space-y-2">
+                    {data.priorityTables.slice(0, 8).map((table) => (
                       <DenisStaffTableBrief key={table.tableId} table={table} />
                     ))}
                   </div>
                 )}
-              </DenisPanelBody>
-
-              <DenisPanelFooter className="border-t border-[var(--qr-elevated)] px-4 py-3 sm:px-4">
-                <Button
-                  asChild
-                  variant="outline"
-                  className="min-h-12 w-full border-[var(--qr-elevated)] bg-transparent text-[var(--qr-ivory)] hover:bg-[var(--qr-surface)]"
-                >
-                  <Link href="/dashboard/denis" onClick={() => onOpenChange(false)}>
-                    Open full copilot →
-                  </Link>
-                </Button>
-              </DenisPanelFooter>
-            </DenisPanel>
+              </div>
+            </div>
           )}
+        </div>
+
+        <div className="border-t border-dash-border p-4">
+          <Button
+            asChild
+            className="min-h-12 w-full bg-dash-accent text-white hover:bg-dash-accent-hover"
+          >
+            <Link href="/dashboard/denis" onClick={() => onOpenChange(false)}>
+              Open full Denis →
+            </Link>
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

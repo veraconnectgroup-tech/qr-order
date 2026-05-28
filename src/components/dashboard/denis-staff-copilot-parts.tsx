@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DenisMessageBlock,
-  DenisThreadLabel,
-} from "@/components/design-system/denis-message-block";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import {
   floorHintLabel,
   type StaffCopilotTableRow,
@@ -37,7 +34,6 @@ export function HintBadge({
   );
 }
 
-/** DE-07 — staff hints use Denis block gramat (same as guest panel). */
 export function DenisStaffHintBlock({
   tableName,
   text,
@@ -48,17 +44,23 @@ export function DenisStaffHintBlock({
   visibility: "denis_only" | "guest_safe";
 }) {
   return (
-    <DenisMessageBlock role="assistant" className="mt-3 rounded-xl bg-[var(--qr-void)]/40 p-2">
-      <DenisThreadLabel />
-      <p className="text-sm leading-relaxed text-[var(--qr-ivory)]">
-        <span className="font-medium">{tableName}</span> — {text}
-      </p>
-      <p className="mt-1 text-[11px] text-[var(--qr-muted)]">
-        {visibility === "guest_safe"
-          ? "Guest-safe — may appear in Denis chat"
-          : "Denis only — internal staff hint"}
-      </p>
-    </DenisMessageBlock>
+    <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-dash-border border-l-2 border-l-dash-accent bg-dash-bg/70 px-3 py-2.5">
+      <DenisMarkBadge
+        size="sm"
+        className="mt-0.5 bg-dash-accent-muted ring-dash-border-subtle"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm leading-relaxed text-dash-text-secondary">
+          <span className="font-medium text-dash-text">{tableName}</span> —{" "}
+          {text}
+        </p>
+        <p className="mt-1 text-[11px] text-dash-text-muted">
+          {visibility === "guest_safe"
+            ? "Guest-safe — may appear in Denis chat"
+            : "Denis only — internal staff hint"}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -96,28 +98,33 @@ export function DenisStaffTableBrief({ table }: { table: StaffCopilotTableRow })
   const hintLabel = floorHintLabel(table.operatingHint);
 
   return (
-    <DenisMessageBlock role="assistant" className="rounded-xl border border-[var(--qr-elevated)]/80 p-3">
-      <DenisThreadLabel />
-      <p className="text-sm font-semibold text-[var(--qr-ivory)]">
-        {table.tableName}
-      </p>
-      <p className="mt-1 text-xs text-[var(--qr-muted)]">
-        {table.hasActiveSession
-          ? table.seatedMinutes != null
-            ? `Seated ${table.seatedMinutes} min`
-            : "Active session"
-          : "No session"}
-        {table.openOrderCount > 0
-          ? ` · ${table.openOrderCount} open order${table.openOrderCount === 1 ? "" : "s"}`
-          : ""}
-        {hintLabel ? ` · ${hintLabel}` : ""}
-      </p>
-      {table.staffHint ? (
-        <p className="mt-2 text-sm leading-relaxed text-[var(--qr-ivory)]">
-          {table.staffHint.text}
-        </p>
-      ) : null}
-    </DenisMessageBlock>
+    <div className="rounded-lg border border-dash-border border-l-2 border-l-dash-accent bg-dash-bg/70 p-3">
+      <div className="flex items-start gap-2.5">
+        <DenisMarkBadge
+          size="sm"
+          className="mt-0.5 bg-dash-accent-muted ring-dash-border-subtle"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-dash-text">{table.tableName}</p>
+          <p className="mt-1 text-xs text-dash-text-muted">
+            {table.hasActiveSession
+              ? table.seatedMinutes != null
+                ? `Seated ${table.seatedMinutes} min`
+                : "Active session"
+              : "No session"}
+            {table.openOrderCount > 0
+              ? ` · ${table.openOrderCount} open order${table.openOrderCount === 1 ? "" : "s"}`
+              : ""}
+            {hintLabel ? ` · ${hintLabel}` : ""}
+          </p>
+          {table.staffHint ? (
+            <p className="mt-2 text-sm leading-relaxed text-dash-text-secondary">
+              {table.staffHint.text}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 

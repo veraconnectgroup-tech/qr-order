@@ -1,11 +1,5 @@
-import { AiIntelligenceCard } from "@/components/dashboard/ai-intelligence-card";
-import { DenisStaffCopilotBoard } from "@/components/dashboard/denis-staff-copilot-board";
+import { DenisDashboardView } from "@/components/dashboard/denis-dashboard-view";
 
 export default function DenisCopilotPage() {
-  return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
-      <AiIntelligenceCard />
-      <DenisStaffCopilotBoard />
-    </div>
-  );
+  return <DenisDashboardView />;
 }

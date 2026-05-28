@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { DenisStaffCopilotDrawer } from "@/components/dashboard/denis-staff-copilot-drawer";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
-import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import { QrCard } from "@/components/design-system/qr-card";
 import { useAiInsights } from "@/hooks/use-ai-insights";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -122,7 +122,7 @@ export function OverviewDenisStrip() {
             aria-expanded={expanded}
             className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition hover:bg-dash-surface-raised/50"
           >
-            <DenisTableMark size={24} state="idle" className="size-4 shrink-0" />
+            <DenisMarkBadge size="sm" className="bg-dash-accent-muted ring-dash-border-subtle" />
             <span className="shrink-0 text-sm font-semibold text-dash-text">
               Denis
             </span>
@@ -142,8 +142,9 @@ export function OverviewDenisStrip() {
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[var(--qr-ember)] transition hover:bg-[var(--qr-ember-muted)] hover:text-[var(--qr-ember-hover)]"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-dash-border bg-dash-surface-raised px-3 py-2 text-xs font-medium text-dash-text transition hover:border-dash-accent/40 hover:bg-dash-accent-muted hover:text-dash-accent"
           >
+            <DenisMarkBadge size="sm" className="size-7 bg-dash-accent-muted ring-0" />
             Open Denis
           </button>
           <Link

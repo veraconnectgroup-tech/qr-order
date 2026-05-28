@@ -26,6 +26,10 @@ export const DASHBOARD_PAGES: Record<
     title: "Waiter Calls",
     subtitle: "Guest requests",
   },
+  "/dashboard/denis": {
+    title: "Denis",
+    subtitle: "Performance, floor ops, and table hints",
+  },
   "/dashboard/history": {
     title: "History",
     subtitle: "Orders & analytics",
@@ -45,11 +49,16 @@ export const DASHBOARD_PAGES: Record<
 };
 
 export function getDashboardPageMeta(pathname: string) {
-  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+  const normalized = pathname.replace(/\/$/, "") || "/dashboard";
+
+  if (normalized === "/dashboard") {
     return DASHBOARD_PAGES["/dashboard"];
   }
-  const match = Object.entries(DASHBOARD_PAGES).find(([path]) =>
-    pathname.startsWith(path)
-  );
+
+  const match = Object.entries(DASHBOARD_PAGES)
+    .filter(([path]) => path !== "/dashboard")
+    .sort(([a], [b]) => b.length - a.length)
+    .find(([path]) => normalized.startsWith(path));
+
   return match?.[1] ?? { title: "Dashboard" };
 }

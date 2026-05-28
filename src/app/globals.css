@@ -229,6 +229,73 @@
   --chart-5: #ef4444;
 }
 
+/*
+ * Radix dialog/sheet portals mount on document.body — outside .dashboard-theme.
+ * Without these tokens, modals inherit :root (white popover, blue focus ring).
+ */
+body:has(.dashboard-theme) [data-slot="dialog-overlay"],
+body:has(.dashboard-theme) [data-slot="sheet-overlay"],
+body:has(.admin-theme) [data-slot="dialog-overlay"],
+body:has(.admin-theme) [data-slot="sheet-overlay"] {
+  background-color: rgb(0 0 0 / 0.65);
+}
+
+body:has(.dashboard-theme) [data-slot="dialog-content"],
+body:has(.dashboard-theme) [data-slot="sheet-content"],
+body:has(.admin-theme) [data-slot="dialog-content"],
+body:has(.admin-theme) [data-slot="sheet-content"] {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #131316;
+  --card-foreground: #fafafa;
+  --popover: #1c1c21;
+  --popover-foreground: #fafafa;
+  --primary: #e85d04;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c21;
+  --secondary-foreground: #d4d4d8;
+  --muted: #1c1c21;
+  --muted-foreground: #71717a;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --border: #232329;
+  --input: #2a2a32;
+  --ring: #e85d04;
+  --qr-ember: #e85d04;
+  --qr-ember-hover: #d14d04;
+  --qr-ember-muted: rgba(232, 93, 4, 0.12);
+  --dash-bg: #09090b;
+  --dash-surface: #131316;
+  --dash-surface-raised: #1c1c21;
+  --dash-surface-overlay: #2a2a32;
+  --dash-border: #232329;
+  --dash-border-subtle: #1a1a1f;
+  --dash-text: #fafafa;
+  --dash-text-secondary: #d4d4d8;
+  --dash-text-muted: #71717a;
+  --dash-text-disabled: #52525b;
+  --dash-accent: #e85d04;
+  --dash-accent-hover: #d14d04;
+  --dash-accent-muted: rgba(232, 93, 4, 0.12);
+  background-color: var(--dash-surface);
+  color: var(--dash-text);
+  border-color: var(--dash-border);
+  --tw-ring-color: rgb(232 93 4 / 0.45);
+}
+
+body:has(.dashboard-theme) [data-slot="dialog-footer"],
+body:has(.admin-theme) [data-slot="dialog-footer"] {
+  background-color: var(--dash-surface);
+  border-color: var(--dash-border-subtle);
+}
+
+body:has(.dashboard-theme) [data-slot="dialog-content"] ::selection,
+body:has(.dashboard-theme) [data-slot="sheet-content"] ::selection {
+  background-color: rgba(232, 93, 4, 0.35);
+  color: #fafafa;
+}
+
 /* Admin pages still use legacy neutral utilities — remap under admin-theme */
 .admin-theme :where(.bg-white) {
   background-color: var(--card);
