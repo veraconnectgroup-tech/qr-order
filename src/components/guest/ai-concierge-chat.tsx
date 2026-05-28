@@ -30,6 +30,7 @@ import {
   type ProductRecommendation,
 } from "@/components/guest/product-recommendation-card";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
@@ -535,6 +536,22 @@ export function AiConciergeChat({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
+
+  const visualViewport = useVisualViewport(open);
+
+  useEffect(() => {
+    if (!open) return;
+    scrollToBottom();
+  }, [open, visualViewport?.height, visualViewport?.offsetTop, scrollToBottom]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
 
   const voice = useDenisVoice({
     enabled: voiceEnabled && open,
@@ -1099,8 +1116,18 @@ export function AiConciergeChat({
   const canSend = inputEnabled && !isTyping && input.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70">
-      <DenisPanel className="mx-2 mb-2 sm:mx-3 sm:mb-3">
+    <div
+      className="fixed inset-x-0 z-50 flex flex-col bg-black/70 sm:inset-0 sm:justify-end"
+      style={
+        visualViewport
+          ? {
+              top: visualViewport.offsetTop,
+              height: visualViewport.height,
+            }
+          : { top: 0, bottom: 0 }
+      }
+    >
+      <DenisPanel className="mx-0 mb-0 min-h-0 max-h-none flex-1 rounded-none sm:mx-3 sm:mb-3 sm:max-h-[min(88dvh,720px)] sm:flex-none sm:rounded-2xl">
         <DenisPanelHeader>
           <p className="min-w-0 flex-1 text-sm font-medium tracking-wide text-[var(--qr-ivory)]">
             Denis

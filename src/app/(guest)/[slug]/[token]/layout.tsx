@@ -50,6 +50,8 @@ export async function generateMetadata({
 
 export const viewport: Viewport = {
   themeColor: "#f97316",
+  // Resize layout when mobile keyboard opens (iOS 15+ / Chrome 108+).
+  interactiveWidget: "resizes-content",
 };
 
 export default async function GuestTokenLayout({
