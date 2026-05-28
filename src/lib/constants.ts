@@ -44,7 +44,7 @@ export const SESSION_MAX_AGE_HOURS = 12;
 export const WAITER_CALL_COOLDOWN_SECONDS = 60;
 
 /** Fast poll when Supabase Realtime is unavailable. */
-export const REALTIME_FALLBACK_POLL_MS = 3_000;
+export const REALTIME_FALLBACK_POLL_MS = 5_000;
 
 /** KDS poll interval when Realtime is disconnected. */
 export const KDS_REALTIME_FALLBACK_POLL_MS = 10_000;

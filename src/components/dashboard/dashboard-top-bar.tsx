@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { getDashboardPageMeta } from "@/lib/dashboard/page-meta";
 import { formatPrice } from "@/lib/format";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
+import type { OverviewStatsSnapshot } from "@/lib/dashboard/overview-types";
 import { DashboardMobileMenu } from "@/components/dashboard/dashboard-mobile-menu";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { PushOptIn } from "@/components/dashboard/push-opt-in";
@@ -16,8 +18,22 @@ export function DashboardTopBar() {
   const pathname = usePathname();
   const { title } = getDashboardPageMeta(pathname);
   const { currency, todayRevenue: contextRevenue } = useDashboard();
-  const { todayRevenue, loading: statsLoading } = useDashboardStats();
-  const displayRevenue = statsLoading ? contextRevenue : todayRevenue;
+  const statsInitial = useMemo<OverviewStatsSnapshot>(
+    () => ({
+      todayRevenue: contextRevenue,
+      todayOrderCount: 0,
+      todayAvgTicket: 0,
+      yesterdayRevenue: 0,
+      yesterdayOrderCount: 0,
+      yesterdayAvgTicket: 0,
+      activeSessions: 0,
+      totalTables: 0,
+      pendingWaiterCalls: 0,
+    }),
+    [contextRevenue]
+  );
+  const { todayRevenue } = useDashboardStats(statsInitial);
+  const displayRevenue = todayRevenue;
   const { pendingOrders, pendingPaymentRequests, totalPendingAlerts } =
     useDashboardAlerts();
   const isOrdersPage = pathname.startsWith("/dashboard/orders");

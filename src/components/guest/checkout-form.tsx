@@ -20,6 +20,7 @@ import {
   setStoredDeviceToken,
 } from "@/lib/guest/device-storage";
 import { ensureTableSession, isSessionExpiredError, syncTableSessionStores } from "@/lib/guest/ensure-table-session";
+import { resolveActiveApprovalOrderId } from "@/lib/guest/resolve-active-approval-order";
 import { formatPrice } from "@/lib/format";
 import { CheckoutSkeleton } from "@/components/guest/checkout-skeleton";
 import { UpsellBar } from "@/components/guest/upsell-bar";
@@ -187,6 +188,11 @@ export function CheckoutForm({
     Math.round((preDiscountTotal - discountAmount) * 100) / 100
   );
 
+  const activeApprovalOrderId = resolveActiveApprovalOrderId(
+    approvalOrderId,
+    context
+  );
+
   useEffect(() => {
     if (useCart.persist.hasHydrated()) {
       setCartHydrated(true);
@@ -196,7 +202,7 @@ export function CheckoutForm({
 
   useEffect(() => {
     if (!storeReady || orderPlacedRef.current) return;
-    if (!items.length) {
+    if (!items.length && !activeApprovalOrderId) {
       router.replace(`/${slug}/${token}/cart`);
       return;
     }
@@ -207,7 +213,24 @@ export function CheckoutForm({
     if (!contextLoading) {
       setReady(true);
     }
-  }, [storeReady, items.length, isDemo, slug, token, router, contextLoading]);
+  }, [
+    storeReady,
+    items.length,
+    isDemo,
+    slug,
+    token,
+    router,
+    contextLoading,
+    activeApprovalOrderId,
+  ]);
+
+  useEffect(() => {
+    if (isDemo || !activeApprovalOrderId || orderPlacedRef.current) return;
+    orderPlacedRef.current = true;
+    if (items.length > 0) {
+      clearCart();
+    }
+  }, [isDemo, activeApprovalOrderId, items.length, clearCart]);
 
   async function submitOrder(activeSessionToken?: string) {
     if (activeSessionToken && guestEmail.trim()) {
@@ -276,6 +299,9 @@ export function CheckoutForm({
       if (json.error === "device_blocked") {
         throw new Error("device_blocked");
       }
+      if (json.error === "awaiting_approval") {
+        throw new Error("awaiting_approval");
+      }
       if (
         json.error === "unavailable_products" &&
         Array.isArray(json.details?.products)
@@ -305,6 +331,17 @@ export function CheckoutForm({
       !pinVerified
     ) {
       setError(tUI("session.pinRequiredBeforeOrder"));
+      return;
+    }
+
+    if (activeApprovalOrderId) {
+      orderPlacedRef.current = true;
+      if (!approvalOrderId) {
+        setApprovalOrderId(activeApprovalOrderId);
+      }
+      if (items.length > 0) {
+        clearCart();
+      }
       return;
     }
 
@@ -382,6 +419,19 @@ export function CheckoutForm({
         setProcessing(false);
         return;
       }
+      if (message === "awaiting_approval") {
+        const refreshed = await refreshContext();
+        const pendingId = resolveActiveApprovalOrderId(null, refreshed);
+        if (pendingId) {
+          orderPlacedRef.current = true;
+          setApprovalOrderId(pendingId);
+          clearCart();
+        } else {
+          setError(tUI("session.approvalWaitingHint"));
+        }
+        setProcessing(false);
+        return;
+      }
       if (!navigator.onLine || e instanceof TypeError) {
         const resolvedTableId = context?.tableId ?? tableId ?? "";
         const deviceFingerprint = getOrCreateDeviceFingerprint();
@@ -454,12 +504,12 @@ export function CheckoutForm({
     );
   }
 
-  if (approvalOrderId && (context || tableId)) {
+  if (activeApprovalOrderId && (context?.tableId || tableId || locationId)) {
     return (
       <ApprovalWaiting
         slug={slug}
         token={token}
-        orderId={approvalOrderId}
+        orderId={activeApprovalOrderId}
         tableId={context?.tableId ?? tableId ?? ""}
         tableName={context?.tableName ?? tableName ?? ""}
         locationId={context?.locationId ?? locationId}

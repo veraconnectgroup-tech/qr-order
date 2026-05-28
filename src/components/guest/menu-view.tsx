@@ -53,6 +53,7 @@ import {
 } from "@/lib/ai/guest-ai-token";
 import { trackAiConversion } from "@/lib/ai/guest-session-storage";
 import { ensureTableSession } from "@/lib/guest/ensure-table-session";
+import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { toast } from "sonner";
@@ -1028,26 +1029,14 @@ export function MenuView({
       }
 
       if (chipId === "situation-waiter") {
-        if (!sessionToken) {
-          toast.error(tUI("waiter.sessionError"), {
-            description: tUI("waiter.sessionErrorHint"),
-          });
-          return;
-        }
         void (async () => {
           try {
-            const result = await runGuestDenisSceneTurn({
-              locationId,
-              tableId,
+            await requestGuestWaiterCall({
               tableToken: token,
               sessionToken,
-              message: tUI("scene.situation.chipWaiter"),
-              language,
-              structuredIntent: "HANDOFF_WAITER",
-              allowOrdering: canPlaceOrders,
             });
             toast.success(tUI("waiter.notified"), {
-              description: result.message || tUI("waiter.notifiedBody"),
+              description: tUI("waiter.notifiedBody"),
             });
             setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();

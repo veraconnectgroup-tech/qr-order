@@ -13,6 +13,7 @@ import {
   writeAiSessionIdForGuest,
 } from "@/lib/ai/guest-ai-token";
 import { chipIdToHandoff } from "@/lib/denis/commands/perceive-table-guest-command";
+import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
 import type { SelectablePaymentMethod } from "@/lib/payment-methods";
@@ -56,23 +57,12 @@ export function parseSceneHandoffChip(
   return chipIdToHandoff({ chipId, label });
 }
 
-/** @deprecated Use runGuestDenisSceneTurn with structuredIntent — kept for tests. */
+/** @deprecated Use requestGuestWaiterCall — kept for tests. */
 export async function postGuestWaiterCall(input: {
   tableToken: string;
-  sessionToken: string;
+  sessionToken?: string | null;
 }): Promise<void> {
-  const res = await fetch("/api/waiter-calls", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      tableToken: input.tableToken,
-      sessionToken: input.sessionToken,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error("waiter-call-failed");
-  }
+  return requestGuestWaiterCall(input);
 }
 
 /** Scene chip / banner action — Denis turn without opening the chat sheet. */

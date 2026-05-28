@@ -151,26 +151,39 @@ export function TablesBoard() {
   const load = useCallback(async () => {
     const supabase = createClient();
 
-    const { data: zonesData } = await supabase
-      .from("zones")
-      .select("*")
-      .eq("location_id", locationId)
-      .eq("is_active", true)
-      .order("sort_order");
-
-    const { data: tablesData } = await supabase
-      .from("tables")
-      .select("*, zone:zones(*)")
-      .eq("location_id", locationId)
-      .eq("is_active", true)
-      .is("deleted_at", null)
-      .order("name");
-
-    const { data: sessions } = await supabase
-      .from("table_sessions")
-      .select("id, table_id, opened_at")
-      .eq("location_id", locationId)
-      .eq("status", "active");
+    const [
+      { data: zonesData },
+      { data: tablesData },
+      { data: sessions },
+      { data: orders },
+    ] = await Promise.all([
+      supabase
+        .from("zones")
+        .select("*")
+        .eq("location_id", locationId)
+        .eq("is_active", true)
+        .order("sort_order"),
+      supabase
+        .from("tables")
+        .select("*, zone:zones(*)")
+        .eq("location_id", locationId)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("name"),
+      supabase
+        .from("table_sessions")
+        .select("id, table_id, opened_at")
+        .eq("location_id", locationId)
+        .eq("status", "active"),
+      supabase
+        .from("orders")
+        .select(
+          "id, table_id, session_id, order_number, total, status, created_at, payment_requested_at, payment_status, payment_method"
+        )
+        .eq("location_id", locationId)
+        .gte("created_at", startOfTodayIso())
+        .neq("status", "rejected"),
+    ]);
 
     const sessionMap = new Map(
       (sessions ?? []).map((s) => [
@@ -178,15 +191,6 @@ export function TablesBoard() {
         s as Pick<TableSession, "id" | "opened_at">,
       ])
     );
-
-    const { data: orders } = await supabase
-      .from("orders")
-      .select(
-        "id, table_id, session_id, order_number, total, status, created_at, payment_requested_at, payment_status, payment_method"
-      )
-      .eq("location_id", locationId)
-      .gte("created_at", startOfTodayIso())
-      .neq("status", "rejected");
 
     const ordersByTable = new Map<string, TableOrder[]>();
     for (const o of orders ?? []) {

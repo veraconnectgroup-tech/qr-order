@@ -102,9 +102,11 @@ export function useDashboardStats(initial?: OverviewStatsSnapshot) {
   }, [locationId]);
 
   useEffect(() => {
+    if (initial) return;
+
     let cancelled = false;
     (async () => {
-      if (!initial) setLoading(true);
+      setLoading(true);
       await refresh();
       if (!cancelled) setLoading(false);
     })();
@@ -130,21 +132,6 @@ export function useDashboardStats(initial?: OverviewStatsSnapshot) {
     onChange: refresh,
     backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
-
-  useEffect(() => {
-    const id = window.setInterval(refresh, 30_000);
-    return () => window.clearInterval(id);
-  }, [refresh]);
-
-  useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState === "visible") {
-        void refresh();
-      }
-    }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [refresh]);
 
   return {
     loading,

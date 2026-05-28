@@ -2,10 +2,8 @@ import { redirect } from "next/navigation";
 import { OnboardingGuard } from "@/components/dashboard/onboarding-guard";
 import { WaiterShell } from "@/components/waiter/waiter-shell";
 import {
-  getCurrentStaff,
   getEffectiveStaff,
-  getStaffAccessibleLocations,
-  getStaffLocationId,
+  getStaffLocationContext,
 } from "@/lib/auth/session";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,11 +20,6 @@ export default async function WaiterAppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const current = await getCurrentStaff();
-  if (!current) {
-    redirect("/waiter/login");
-  }
-
   const staff = await getEffectiveStaff();
 
   if (staff.role === "kitchen") {
@@ -37,10 +30,7 @@ export default async function WaiterAppLayout({
     redirect("/dashboard");
   }
 
-  const [locationId, accessibleLocations] = await Promise.all([
-    getStaffLocationId(staff),
-    getStaffAccessibleLocations(staff),
-  ]);
+  const { locationId, accessibleLocations } = await getStaffLocationContext(staff);
 
   if (!locationId) {
     return (

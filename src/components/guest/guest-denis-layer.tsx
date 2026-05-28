@@ -12,6 +12,7 @@ import {
 } from "@/lib/guest/denis-scene-turn";
 import { hapticClick } from "@/lib/haptics";
 import { buildManualCartSnapshot, manualCartRevision } from "@/lib/guest/manual-cart-snapshot";
+import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import { useCart } from "@/hooks/use-cart";
 import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
 import type { InPersonPaymentLocation } from "@/lib/constants";
@@ -185,26 +186,14 @@ export function GuestDenisLayer({
       }
 
       if (chipId === "situation-waiter") {
-        if (!sessionToken) {
-          toast.error(tUI("waiter.sessionError"), {
-            description: tUI("waiter.sessionErrorHint"),
-          });
-          return;
-        }
         void (async () => {
           try {
-            const result = await runGuestDenisSceneTurn({
-              locationId,
-              tableId,
+            await requestGuestWaiterCall({
               tableToken: token,
               sessionToken,
-              message: tUI("scene.situation.chipWaiter"),
-              language,
-              structuredIntent: "HANDOFF_WAITER",
-              allowOrdering: !orderingDisabled,
             });
             toast.success(tUI("waiter.notified"), {
-              description: result.message || tUI("waiter.notifiedBody"),
+              description: tUI("waiter.notifiedBody"),
             });
             setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();

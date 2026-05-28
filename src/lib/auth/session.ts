@@ -236,3 +236,26 @@ export async function getStaffLocationId(staff: Staff) {
 
   return accessible[0];
 }
+
+/** Single round-trip for layout: accessible locations + resolved active location. */
+export async function getStaffLocationContext(staff: Staff) {
+  const accessibleLocations = await getStaffAccessibleLocations(staff);
+  const accessibleIds = accessibleLocations.map((row) => row.id);
+  if (!accessibleIds.length) {
+    return { locationId: null as string | null, accessibleLocations };
+  }
+
+  const cookieStore = await cookies();
+  const cookieLocation = cookieStore.get(LOCATION_COOKIE_NAME)?.value;
+  let locationId: string | null = null;
+
+  if (cookieLocation && accessibleIds.includes(cookieLocation)) {
+    locationId = cookieLocation;
+  } else if (staff.location_id && accessibleIds.includes(staff.location_id)) {
+    locationId = staff.location_id;
+  } else {
+    locationId = accessibleIds[0] ?? null;
+  }
+
+  return { locationId, accessibleLocations };
+}

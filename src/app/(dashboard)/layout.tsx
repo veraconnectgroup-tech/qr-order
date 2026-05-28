@@ -3,8 +3,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { OnboardingGuard } from "@/components/dashboard/onboarding-guard";
 import {
   getEffectiveStaff,
-  getStaffAccessibleLocations,
-  getStaffLocationId,
+  getStaffLocationContext,
 } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -39,10 +38,7 @@ export default async function DashboardLayout({
     redirect("/waiter");
   }
 
-  const [locationId, accessibleLocations] = await Promise.all([
-    getStaffLocationId(staff),
-    getStaffAccessibleLocations(staff),
-  ]);
+  const { locationId, accessibleLocations } = await getStaffLocationContext(staff);
 
   if (!locationId) {
     return (

@@ -156,16 +156,18 @@ export function useDashboardOverview(initial?: OverviewInitial) {
   }, [locationId]);
 
   useEffect(() => {
+    if (initial?.sparkline?.length || initial?.tableStatuses?.length) return;
+
     let cancelled = false;
     (async () => {
-      if (!initial) setLoading(true);
+      setLoading(true);
       await refresh();
       if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [refresh, initial]);
+  }, [refresh, initial?.sparkline?.length, initial?.tableStatuses?.length]);
 
   usePostgresRealtime({
     channelName: `dashboard-overview:${locationId}`,
@@ -175,21 +177,6 @@ export function useDashboardOverview(initial?: OverviewInitial) {
     onChange: refresh,
     backupPollMs: REALTIME_FALLBACK_POLL_MS,
   });
-
-  useEffect(() => {
-    const id = window.setInterval(refresh, 30_000);
-    return () => window.clearInterval(id);
-  }, [refresh]);
-
-  useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState === "visible") {
-        void refresh();
-      }
-    }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [refresh]);
 
   return {
     loading,

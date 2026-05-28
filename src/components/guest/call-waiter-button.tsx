@@ -5,6 +5,7 @@ import { BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { WAITER_CALL_COOLDOWN_SECONDS } from "@/lib/constants";
+import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,15 +52,10 @@ export function CallWaiterButton({
   async function handleCall() {
     setLoading(true);
     try {
-      const res = await fetch("/api/waiter-calls", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tableToken: token,
-          ...(sessionToken ? { sessionToken } : {}),
-        }),
+      await requestGuestWaiterCall({
+        tableToken: token,
+        sessionToken,
       });
-      if (!res.ok) throw new Error();
       setConfirmed(true);
       startCooldown();
     } catch {

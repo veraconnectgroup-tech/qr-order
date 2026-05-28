@@ -230,31 +230,32 @@ export function OrderBoard() {
     const supabase = createClient();
     setError(null);
 
-    const { data, error: fetchError } = await supabase
-      .from("orders")
-      .select(ORDER_SELECT)
-      .eq("location_id", locationId)
-      .gte("created_at", startOfTodayIso())
-      .in("status", [
-        "pending_approval",
-        "pending",
-        "accepted",
-        "preparing",
-        "ready",
-        "delivered",
-      ])
-      .order("created_at", { ascending: false });
+    const [{ data, error: fetchError }, { data: transfers }] = await Promise.all([
+      supabase
+        .from("orders")
+        .select(ORDER_SELECT)
+        .eq("location_id", locationId)
+        .gte("created_at", startOfTodayIso())
+        .in("status", [
+          "pending_approval",
+          "pending",
+          "accepted",
+          "preparing",
+          "ready",
+          "delivered",
+        ])
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("table_transfers")
+        .select("order_ids, from_table:from_table_id(name)")
+        .eq("location_id", locationId)
+        .gte("created_at", startOfTodayIso()),
+    ]);
 
     if (fetchError) {
       setError(fetchError.message);
       return;
     }
-
-    const { data: transfers } = await supabase
-      .from("table_transfers")
-      .select("order_ids, from_table:from_table_id(name)")
-      .eq("location_id", locationId)
-      .gte("created_at", startOfTodayIso());
 
     const transferMap = buildTransferSourceMap(
       (transfers ?? []) as unknown as TableTransferRow[]
@@ -281,32 +282,6 @@ export function OrderBoard() {
     return () => {
       cancelled = true;
     };
-  }, [fetchOrders]);
-
-  useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState === "visible") {
-        void fetchOrders();
-      }
-    }
-
-    function onFocus() {
-      void fetchOrders();
-    }
-
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [fetchOrders]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      void fetchOrders();
-    }, REALTIME_FALLBACK_POLL_MS);
-    return () => window.clearInterval(id);
   }, [fetchOrders]);
 
   const realtimeMode = usePostgresRealtime({
