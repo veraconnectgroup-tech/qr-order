@@ -21,13 +21,13 @@ describe("orderToDatevRows", () => {
 
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
-      umsatz: 10,
+      umsatz: 8.4,
       konto: DATEV_ACCOUNTS.revenue19,
       ustSatz: 19,
       gegenkonto: DATEV_ACCOUNTS.bankStripe,
     });
     expect(rows[1]).toMatchObject({
-      umsatz: 15,
+      umsatz: 14.02,
       konto: DATEV_ACCOUNTS.revenue7,
       ustSatz: 7,
     });

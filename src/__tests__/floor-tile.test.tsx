@@ -39,11 +39,11 @@ describe("FloorTile", () => {
     expect(tile.className).toContain("spatial-tile-occupy");
   });
 
-  it("enforces 44px minimum height for chip variant", () => {
+  it("enforces 48px minimum height for chip variant", () => {
     render(<FloorTile variant="chip" label="Potvrdi" as="button" />);
 
     const chip = screen.getByRole("button", { name: "Potvrdi" });
-    expect(chip.className).toContain("min-h-11");
+    expect(chip.className).toContain("min-h-12");
   });
 
   it("exposes accessible name from label when rendered as button", () => {
