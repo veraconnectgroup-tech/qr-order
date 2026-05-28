@@ -46,6 +46,7 @@ export function isLanguageNeutralGuestMessage(message: string): boolean {
   if (!text || text.length > 48) return false;
 
   return (
+    /^(0[,.]3|0[,.]5|0[,.]33|1|2)(\s*(l|liter|litre|litr))?$/i.test(text) ||
     /^(da|ja|yes|yep|yeah|ok|okay|okej|potvrdi|pošalji|posalji|send|confirm|bestätigen|bestellen|naruči|naruci)([\s,.!]|$)/.test(
       text
     ) ||

@@ -46,9 +46,15 @@ export function parseHandoffPaymentMethod(
   return null;
 }
 
+const HANDOFF_WAITER_WORD =
+  /\b(waiter|weiter|witer|watr|server|kellner|konobar|garson|serveur|camariere)\b/;
+
+const HANDOFF_WAITER_CALL_VERB =
+  /\b(call|bring|need|want|get|ruf|pozov|please|help|come|can you|could you|would you|may i)\b/;
+
 export function isHandoffWaiterMessage(message: string): boolean {
   const text = normalize(message);
-  return (
+  if (
     /pozov[a-zšđčćž]*\s+konobara/.test(text) ||
     /pozov[a-zšđčćž]*\s+mi\s+konobara/.test(text) ||
     /treba\s+(mi\s+)?konobar/.test(text) ||
@@ -56,7 +62,16 @@ export function isHandoffWaiterMessage(message: string): boolean {
     /(ruf(en)?\s+(den\s+)?kellner|kellner\s+(holen|rufen))/.test(text) ||
     /(call\s+(the\s+)?waiter|need\s+a\s+waiter|waiter\s+please)/.test(text) ||
     text === "konobar"
-  );
+  ) {
+    return true;
+  }
+
+  // Typos + free phrasing: "call a weiter please", "can you get a server"
+  if (HANDOFF_WAITER_WORD.test(text) && HANDOFF_WAITER_CALL_VERB.test(text)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function isHandoffBillRequestMessage(message: string): boolean {

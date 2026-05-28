@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { detectGuestMessageLanguage } from "@/lib/ai/config";
 import {
   isLanguageNeutralGuestMessage,
   resolveStickyGuestLanguage,
@@ -8,6 +9,21 @@ import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 
 describe("sticky guest language", () => {
+  it("detects German without umlauts", () => {
+    expect(detectGuestMessageLanguage("Ein Grosses bier bitte", "en")).toEqual({
+      detected: "de",
+      confidence: "high",
+    });
+    expect(
+      resolveStickyGuestLanguage("Ein Grosses bier bitte", "en", "en")
+    ).toBe("de");
+  });
+
+  it("keeps German session on drink size reply", () => {
+    expect(isLanguageNeutralGuestMessage("0.5")).toBe(true);
+    expect(resolveStickyGuestLanguage("0.5", "en", "de")).toBe("de");
+  });
+
   it("detects Serbian from Latin script message", () => {
     expect(
       resolveStickyGuestLanguage("da može hvala", "en", null)

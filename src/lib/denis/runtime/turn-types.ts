@@ -73,6 +73,7 @@ export type DenisTurnContext = {
   opsEffects?: OpsPlannerEffects;
   foodUpsellAsked: boolean;
   guestMemory?: GuestMemoryProjection | null;
+  lastAssistantMessage?: string | null;
 };
 
 export type DenisTurnMeta = {

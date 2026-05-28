@@ -13,8 +13,11 @@ function serviceWorkerScript(): string {
   return process.env.NODE_ENV === "development" ? DEV_SW : PRODUCTION_SW;
 }
 
+let inflightRegister: Promise<ServiceWorkerRegistration> | null = null;
+
 function waitForWorkerActivation(
   worker: ServiceWorker,
+  registration: ServiceWorkerRegistration,
   timeoutMs: number
 ): Promise<void> {
   if (worker.state === "activated") {
@@ -30,13 +33,22 @@ function waitForWorkerActivation(
       );
     }, timeoutMs);
 
+    const cleanup = () => window.clearTimeout(timeoutId);
+
     worker.addEventListener("statechange", () => {
       if (worker.state === "activated") {
-        window.clearTimeout(timeoutId);
+        cleanup();
         resolve();
+        return;
       }
+
       if (worker.state === "redundant") {
-        window.clearTimeout(timeoutId);
+        cleanup();
+        // A concurrent update can supersede this installing worker — use active if ready.
+        if (registration.active?.state === "activated") {
+          resolve();
+          return;
+        }
         reject(
           new ServiceWorkerUnavailableError(
             "Service worker failed to install. Reload the page and try again."
@@ -51,13 +63,13 @@ async function waitForRegistrationReady(
   registration: ServiceWorkerRegistration,
   timeoutMs: number
 ): Promise<ServiceWorkerRegistration> {
-  if (registration.active) {
+  if (registration.active?.state === "activated") {
     return registration;
   }
 
   const installing = registration.installing ?? registration.waiting;
   if (installing) {
-    await waitForWorkerActivation(installing, timeoutMs);
+    await waitForWorkerActivation(installing, registration, timeoutMs);
     return registration;
   }
 
@@ -84,7 +96,12 @@ function canReuseRegistration(
   if (script === DEV_SW) {
     return registration.active?.scriptURL.endsWith("/push-sw.js") ?? false;
   }
-  return true;
+
+  const scriptUrl = registration.active?.scriptURL ?? registration.waiting?.scriptURL;
+  if (scriptUrl?.endsWith("/sw.js")) return true;
+
+  // Registration exists but no worker yet — still reuse (install in progress).
+  return Boolean(registration.installing || registration.waiting);
 }
 
 async function registerServiceWorkerScript(
@@ -93,8 +110,7 @@ async function registerServiceWorkerScript(
   return navigator.serviceWorker.register(script, { scope: "/" });
 }
 
-/** Register the app service worker and wait until it is ready (with timeout). */
-export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistration> {
+async function registerAppServiceWorkerInternal(): Promise<ServiceWorkerRegistration> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     throw new ServiceWorkerUnavailableError(
       "Service workers are not supported in this browser."
@@ -105,7 +121,10 @@ export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistrat
   const existing = await navigator.serviceWorker.getRegistration();
 
   if (existing && canReuseRegistration(existing, script)) {
-    void existing.update();
+    // Active worker is enough for push — avoid update() races on every opt-in click.
+    if (existing.active?.state === "activated") {
+      return existing;
+    }
     return waitForRegistrationReady(existing, ACTIVATION_TIMEOUT_MS);
   }
 
@@ -129,5 +148,28 @@ export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistrat
         "Service worker is not available."
       );
     }
+  }
+}
+
+/** Register the app service worker and wait until it is ready (with timeout). */
+export async function registerAppServiceWorker(): Promise<ServiceWorkerRegistration> {
+  if (inflightRegister) {
+    return inflightRegister;
+  }
+
+  inflightRegister = registerAppServiceWorkerInternal().finally(() => {
+    inflightRegister = null;
+  });
+
+  return inflightRegister;
+}
+
+/** Check for a new sw.js once per page load (staff routes only). */
+export async function refreshAppServiceWorker(): Promise<void> {
+  try {
+    const registration = await registerAppServiceWorker();
+    await registration.update();
+  } catch {
+    // Missing when PWA plugin is disabled or build used Turbopack without SW output.
   }
 }

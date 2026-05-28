@@ -10,6 +10,15 @@ import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { resolveActHandoffOutcome } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
 
 describe("perceiveTableGuestCommand M28", () => {
+  it("detects waiter typo in English", () => {
+    expect(isHandoffWaiterMessage("Call a weiter please")).toBe(true);
+    expect(isHandoffWaiterMessage("Can you please call a weiter")).toBe(true);
+    const perceived = perceiveTableGuestCommand({
+      message: "Call a weiter please",
+    });
+    expect(perceived?.intent).toBe("HANDOFF_WAITER");
+  });
+
   it("detects waiter call in Serbian", () => {
     expect(isHandoffWaiterMessage("Možeš li da mi pozoveš konobara")).toBe(
       true

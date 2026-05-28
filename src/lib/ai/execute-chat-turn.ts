@@ -277,7 +277,7 @@ export async function executeChatTurn(body: unknown) {
     return apiError(guestContext.error, guestContext.status);
   }
 
-  const { orgId, orgName } = guestContext.data;
+  const { orgId, orgName, menuLocale: venueMenuLocale } = guestContext.data;
 
   const menuLanguageHint = resolveAiPromptLanguage(input.language);
   const useEnglishHint = menuLanguageHint === "en";
@@ -394,7 +394,7 @@ export async function executeChatTurn(body: unknown) {
 
   const language = resolveStickyGuestLanguage(
     input.message,
-    input.language,
+    venueMenuLocale,
     sessionRow?.language
   );
 

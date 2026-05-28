@@ -27,7 +27,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SessionDraftRow = {
   order_draft: unknown;
+  messages?: unknown;
 };
+
+function lastAssistantMessageFromSession(messages: unknown): string | null {
+  if (!Array.isArray(messages)) return null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const row = messages[i] as { role?: string; content?: string };
+    if (row.role !== "assistant" || typeof row.content !== "string") continue;
+    const newline = row.content.indexOf("\n");
+    return newline >= 0 ? row.content.slice(0, newline) : row.content;
+  }
+  return null;
+}
 
 /** Load Denis planning context before legacy narrate (M7). */
 export async function buildDenisTurnContext(
@@ -83,13 +95,15 @@ export async function buildDenisTurnContext(
     }
   }
 
+  let lastAssistantMessage: string | null = null;
+
   if (draftAiSessionId) {
     const events = await loadDenisTimeline(admin, draftAiSessionId);
     flowNodeId = foldFlowProjection(events, "welcome").currentNodeId;
 
     const { data } = await admin
       .from("ai_sessions")
-      .select("order_draft")
+      .select("order_draft, messages")
       .eq("id", draftAiSessionId)
       .maybeSingle();
 
@@ -98,6 +112,9 @@ export async function buildDenisTurnContext(
     );
     aiCartState = aiOrderDraftToDenisCartState(draft);
     foodUpsellAsked = draft.flow?.foodUpsellAsked ?? false;
+    lastAssistantMessage = lastAssistantMessageFromSession(
+      (data as SessionDraftRow | null)?.messages
+    );
   }
 
   let guestMemory = null;
@@ -125,5 +142,6 @@ export async function buildDenisTurnContext(
     opsEffects,
     foodUpsellAsked,
     guestMemory,
+    lastAssistantMessage,
   };
 }

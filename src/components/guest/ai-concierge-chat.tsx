@@ -846,7 +846,7 @@ export function AiConciergeChat({
 
       const requestLanguage = resolveStickyGuestLanguage(
         message,
-        defaultLanguage,
+        menuLocale,
         chatLanguage
       );
 
@@ -931,7 +931,7 @@ export function AiConciergeChat({
       sessionToken,
       aiSessionId,
       locationId,
-      defaultLanguage,
+      menuLocale,
       chatLanguage,
       tableId,
       tUI,

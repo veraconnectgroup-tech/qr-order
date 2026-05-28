@@ -121,6 +121,10 @@ const LATIN_ENGLISH_PATTERN =
 const LATIN_ITALIAN_PATTERN =
   /\b(ciao|grazie|vorrei|per favore|acqua|birra|prego)\b/i;
 
+/** German without umlauts (mobile keyboards, typos): "ein grosses bier bitte". */
+const LATIN_GERMAN_PATTERN =
+  /\b(bitte|danke|ein|eine|einen|einem|gross|groß|klein|bier|wasser|wein|cola|kaffee|tee|ich|möchte|mochte|hätte|hatte|bestellen|rechnung|kellner|hallo|guten|morgen|tag|abend|gerne|wollen|würde|wurde|noch|alles|spritz|pilsner|lager|weizen|radler)\b/i;
+
 const UNSUPPORTED_SCRIPT_PATTERN =
   /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0900-\u097F]/;
 
@@ -159,6 +163,10 @@ export function detectGuestMessageLanguage(
 
   if (LATIN_ITALIAN_PATTERN.test(lower)) {
     return { detected: "it", confidence: "high" };
+  }
+
+  if (LATIN_GERMAN_PATTERN.test(lower)) {
+    return { detected: "de", confidence: "high" };
   }
 
   if (LATIN_ENGLISH_PATTERN.test(lower)) {

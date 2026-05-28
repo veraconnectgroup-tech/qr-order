@@ -6,7 +6,9 @@ import {
   unregisterGuestServiceWorkers,
 } from "@/lib/pwa/clear-guest-sw-cache";
 import { isGuestQrPath } from "@/lib/pwa/guest-route";
-import { registerAppServiceWorker } from "@/lib/pwa/register-service-worker";
+import {
+  refreshAppServiceWorker,
+} from "@/lib/pwa/register-service-worker";
 
 export function PwaRegister() {
   useEffect(() => {
@@ -18,13 +20,7 @@ export function PwaRegister() {
       return;
     }
 
-    void registerAppServiceWorker()
-      .then((registration) => {
-        void registration.update();
-      })
-      .catch(() => {
-        // Missing when PWA plugin is disabled or build used Turbopack without SW output.
-      });
+    void refreshAppServiceWorker();
   }, []);
 
   return null;

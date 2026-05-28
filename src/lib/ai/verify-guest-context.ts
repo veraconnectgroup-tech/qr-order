@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
+import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+import type { MenuLocale } from "@/lib/i18n/translations";
 import { hasFeature } from "@/lib/platform/feature-flags";
 
 export type AiGuestContext = {
@@ -8,6 +10,7 @@ export type AiGuestContext = {
   locationId: string;
   tableId: string;
   tableSessionToken: string;
+  menuLocale: MenuLocale;
 };
 
 export async function verifyAiGuestContext(
@@ -35,6 +38,8 @@ export async function verifyAiGuestContext(
   const row = location as unknown as {
     id: string;
     org_id: string;
+    menu_locale: string | null;
+    default_locale: string | null;
     ai_concierge_enabled: boolean;
     organization: { id: string; name: string; feature_flags?: unknown } | null;
   };
@@ -72,6 +77,7 @@ export async function verifyAiGuestContext(
     locationId: row.id,
     tableId: tableRow.id,
     tableSessionToken: input.sessionToken,
+    menuLocale: parseMenuLocaleFromDb(row.menu_locale, row.default_locale),
   };
 
   // QR token is always valid for this table (browse + seated).

@@ -159,6 +159,13 @@ function rulesBlock(lang: (typeof AI_SUPPORTED_LANGUAGES)[number]): string {
   return langBlock(blocks, lang);
 }
 
+function staffHandoffBlock(): string {
+  return `STAFF HANDOFF (waiter / bill — platform executes these):
+- When the guest asks to call a waiter, bring the bill, or pay: acknowledge warmly in one short sentence.
+- NEVER say you cannot call a waiter or staff — the venue system handles waiter calls and payment handoffs automatically.
+- Do not explain limitations; confirm that someone is on the way or ask how they want to pay.`;
+}
+
 function conversationStyleBlock(): string {
   return `CONVERSATION STYLE (critical — natural waiter dialogue, no clickable UI):
 - Do NOT use quickReplies — always ask choices in plain message text (guest types the answer).
@@ -465,6 +472,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
 
   return [
     multilingualPolicyBlock(input.language),
+    staffHandoffBlock(),
     conversationStyleBlock(),
     orderingConversationFlowBlock(lang),
     identityBlock(input.orgName, lang),
