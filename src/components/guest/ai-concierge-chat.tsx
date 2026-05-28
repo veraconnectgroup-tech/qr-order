@@ -69,7 +69,6 @@ import {
   type DenisOrderSubmitPayload,
 } from "@/lib/guest/apply-denis-order-submit";
 import { recordGuestOrderPlaced } from "@/lib/pwa/install-timing";
-import { useAiOrderStatus } from "@/hooks/use-ai-order-status";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { hapticClick, hapticSuccess } from "@/lib/haptics";
 import type { MenuSection } from "@/lib/menu-section";
@@ -907,7 +906,7 @@ export function AiConciergeChat({
     ) => {
       const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken) {
-        throw new Error(tUI("ai.overlay.unavailable"));
+        throw new Error(tChat("ai.overlay.unavailable"));
       }
 
       const legacyTokens = aiLegacySessionTokens(tableId, sessionToken);
@@ -953,7 +952,7 @@ export function AiConciergeChat({
         );
       } catch (fetchError) {
         if (fetchError instanceof Error && fetchError.name === "AbortError") {
-          throw new Error(tUI("ai.overlay.error"));
+          throw new Error(tChat("ai.overlay.error"));
         }
         throw fetchError;
       } finally {
@@ -991,11 +990,15 @@ export function AiConciergeChat({
         }
 
         throw new Error(
-          mapAiChatError(json.error, res.status, json.details, tUI)
+          mapAiChatError(json.error, res.status, json.details, tChat)
         );
       }
 
-      const data = json.data!;
+      if (!json.data) {
+        throw new Error(tChat("ai.overlay.error"));
+      }
+
+      const data = json.data;
 
       if (data.sessionId) {
         writeAiSessionIdForGuest(locationId, token, data.sessionId);
@@ -1014,7 +1017,7 @@ export function AiConciergeChat({
       menuLocale,
       chatLanguage,
       tableId,
-      tUI,
+      tChat,
       resolveScrollContext,
       orderingDisabled,
       getManualCartSnapshot,
@@ -1142,21 +1145,6 @@ export function AiConciergeChat({
     ]
   );
 
-  const appendStatusMessage = useCallback((message: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId(), role: "assistant", content: message },
-    ]);
-  }, []);
-
-  useAiOrderStatus({
-    enabled: open && !orderingDisabled && !!sessionToken && phase === "chat",
-    tableToken: token,
-    sessionToken,
-    tUI,
-    onStatusMessage: appendStatusMessage,
-  });
-
   const sendUserMessage = useCallback(
     async (
       text: string,
@@ -1267,7 +1255,9 @@ export function AiConciergeChat({
             id: nextId(),
             role: "assistant",
             content:
-              err instanceof Error ? err.message : tUI("ai.overlay.error"),
+              err instanceof Error && err.message.trim().length > 0
+                ? err.message
+                : tChat("ai.overlay.error"),
           },
         ]);
       } finally {
@@ -1284,7 +1274,7 @@ export function AiConciergeChat({
       applyCartActions,
       trySubmitOrder,
       clearCart,
-      tUI,
+      tChat,
       voice,
       onSceneRefresh,
       handleDenisOrderSubmit,
@@ -1601,7 +1591,7 @@ export function AiConciergeChat({
                 }}
                 onBlur={() => setInputFocused(false)}
                 disabled={!inputEnabled}
-                placeholder={tUI("ai.chat.askDenis")}
+                placeholder={tChat("ai.chat.askDenis")}
                 className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none disabled:opacity-50"
               />
               <button
