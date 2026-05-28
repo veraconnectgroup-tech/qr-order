@@ -15,8 +15,8 @@ export function DenisMessageBlock({
 }) {
   if (role === "user") {
     return (
-      <div className={cn("flex justify-end px-1", className)}>
-        <p className="max-w-[85%] whitespace-pre-wrap rounded-xl bg-[var(--qr-surface)] px-4 py-2.5 text-right text-[15px] leading-[1.6] text-[var(--qr-muted)]">
+      <div className={cn("flex w-full min-w-0 justify-end px-1", className)}>
+        <p className="max-w-[min(85%,calc(100vw-2rem))] whitespace-pre-wrap break-words rounded-xl bg-[var(--qr-surface)] px-4 py-2.5 text-right text-[15px] leading-[1.6] text-[var(--qr-muted)]">
           {children}
         </p>
       </div>

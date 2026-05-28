@@ -20,6 +20,10 @@ export function OrderPageClient({
   paymentCardAtTableEnabled,
   googleReviewUrl,
   inPersonPaymentLocation,
+  aiConciergeEnabled = false,
+  voiceEnabled = false,
+  voiceTtsEnabled = true,
+  taxPercent = 0,
 }: {
   slug: string;
   token: string;
@@ -34,6 +38,10 @@ export function OrderPageClient({
   paymentCardAtTableEnabled: boolean;
   googleReviewUrl: string | null;
   inPersonPaymentLocation: InPersonPaymentLocation;
+  aiConciergeEnabled?: boolean;
+  voiceEnabled?: boolean;
+  voiceTtsEnabled?: boolean;
+  taxPercent?: number;
 }) {
   const { tUI } = useAppLocale();
   const { sessionToken, hydrated } = useGuestSessionToken();
@@ -81,6 +89,10 @@ export function OrderPageClient({
         paymentCardAtTableEnabled={paymentCardAtTableEnabled}
         googleReviewUrl={googleReviewUrl}
         inPersonPaymentLocation={inPersonPaymentLocation}
+        aiConciergeEnabled={aiConciergeEnabled}
+        voiceEnabled={voiceEnabled}
+        voiceTtsEnabled={voiceTtsEnabled}
+        taxPercent={taxPercent}
       />
     </Suspense>
   );

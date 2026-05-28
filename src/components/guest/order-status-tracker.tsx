@@ -32,6 +32,7 @@ import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
+import { GuestDenisLayer } from "@/components/guest/guest-denis-layer";
 
 type OrderData = {
   id: string;
@@ -112,6 +113,10 @@ export function OrderStatusTracker({
   paymentCardAtTableEnabled,
   googleReviewUrl,
   inPersonPaymentLocation,
+  aiConciergeEnabled = false,
+  voiceEnabled = false,
+  voiceTtsEnabled = true,
+  taxPercent = 0,
 }: {
   slug: string;
   token: string;
@@ -127,6 +132,10 @@ export function OrderStatusTracker({
   paymentCardAtTableEnabled: boolean;
   googleReviewUrl: string | null;
   inPersonPaymentLocation: InPersonPaymentLocation;
+  aiConciergeEnabled?: boolean;
+  voiceEnabled?: boolean;
+  voiceTtsEnabled?: boolean;
+  taxPercent?: number;
 }) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const reduceMotion = useReducedMotion();
@@ -339,7 +348,13 @@ export function OrderStatusTracker({
   }
 
   return (
-    <div className="min-h-dvh px-4 pb-safe pt-4">
+    <div
+      className={
+        aiConciergeEnabled
+          ? "min-h-dvh px-4 pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-4"
+          : "min-h-dvh px-4 pb-safe pt-4"
+      }
+    >
       {showPlacedOverlay && (
         <OrderPlacedOverlay
           orderNumber={order.order_number}
@@ -621,6 +636,22 @@ export function OrderStatusTracker({
           </Button>
         )}
       </section>
+
+      <GuestDenisLayer
+        enabled={aiConciergeEnabled}
+        slug={slug}
+        token={token}
+        locationId={locationId}
+        tableId={tableId}
+        sessionToken={sessionToken}
+        currency={currency}
+        taxPercent={taxPercent}
+        orderingDisabled={isClosed}
+        fastPoll
+        voiceEnabled={voiceEnabled}
+        voiceTtsEnabled={voiceTtsEnabled}
+        sceneRefreshBump={order.status === "ready" ? 2 : stepIdx}
+      />
     </div>
   );
 }

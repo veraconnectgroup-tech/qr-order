@@ -49,7 +49,7 @@ export const DenisPanelBody = forwardRef<
     <div
       ref={ref}
       className={cn(
-        "min-h-0 flex-1 space-y-8 overflow-y-auto overscroll-contain px-5 py-2 sm:px-6",
+        "min-h-0 flex-1 space-y-8 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-2 sm:px-6",
         className
       )}
       {...props}

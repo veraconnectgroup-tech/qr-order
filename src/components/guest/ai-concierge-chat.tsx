@@ -31,7 +31,6 @@ import {
   type ProductRecommendation,
 } from "@/components/guest/product-recommendation-card";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
-import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
@@ -446,6 +445,7 @@ export function AiConciergeChat({
   const [phase, setPhase] = useState<ChatPhase>("allergies");
   const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [aiSessionId, setAiSessionId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(() => new Set());
   const preferencesRef = useRef<{ allergies: string[]; mood: string }>({
@@ -549,22 +549,16 @@ export function AiConciergeChat({
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  const visualViewport = useVisualViewport(open);
-
   useEffect(() => {
     if (!open) return;
     scrollToBottom();
-  }, [
-    open,
-    visualViewport?.height,
-    visualViewport?.offsetTop,
-    visualViewport?.width,
-    visualViewport?.offsetLeft,
-    scrollToBottom,
-  ]);
+  }, [open, inputFocused, scrollToBottom]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setInputFocused(false);
+      return;
+    }
 
     const scrollY = window.scrollY;
     const html = document.documentElement;
@@ -1146,96 +1140,58 @@ export function AiConciergeChat({
 
   const inputEnabled = phase === "chat";
   const canSend = inputEnabled && !isTyping && input.trim().length > 0;
-  const keyboardOpen =
-    visualViewport != null &&
-    typeof window !== "undefined" &&
-    visualViewport.height < window.innerHeight * 0.82;
-
-  const overlayStyle =
-    visualViewport != null
-      ? {
-          top: visualViewport.offsetTop,
-          left: visualViewport.offsetLeft,
-          width: visualViewport.width,
-          height: visualViewport.height,
-        }
-      : undefined;
-
   const situationHeadline = sceneChrome?.situation?.headline ?? null;
 
   const overlay = (
-    <div
-      className={cn(
-        "guest-theme denis-chat-overlay sm:inset-0 sm:justify-end sm:bg-black/70",
-        keyboardOpen && "denis-chat-overlay--keyboard"
-      )}
-      style={overlayStyle}
-    >
+    <div className="guest-theme denis-chat-overlay sm:justify-end sm:bg-black/70">
       <DenisPanel
         className={cn(
-          "relative mx-0 mb-0 min-h-0 max-h-full w-full min-w-0 max-w-full flex-1 rounded-none sm:mx-3 sm:mb-3 sm:h-auto sm:max-h-[min(88dvh,720px)] sm:w-auto sm:flex-none sm:rounded-2xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:bg-[var(--qr-ember)] before:content-['']",
-          keyboardOpen
-            ? "h-auto max-h-full flex-none rounded-t-2xl before:hidden"
-            : "h-full"
+          "denis-chat-panel relative mx-0 mb-0 h-full min-h-0 max-h-full flex-1 rounded-none sm:mx-3 sm:mb-3 sm:h-auto sm:max-h-[min(88dvh,720px)] sm:w-auto sm:flex-none sm:rounded-2xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:bg-[var(--qr-ember)] before:content-['']"
         )}
       >
-        {keyboardOpen ? (
-          <div className="flex shrink-0 items-center justify-between border-b border-[var(--qr-elevated)] px-3 py-2">
+        <DenisPanelHeader
+          className={cn(
+            "relative shrink-0 border-b border-[var(--qr-elevated)]",
+            inputFocused ? "gap-2 py-2 pt-3" : "pt-5"
+          )}
+        >
+          <div className="min-w-0 flex-1 overflow-hidden">
             <DenisBrandMark
               markSize={24}
-              markState={isTyping ? "think" : "listen"}
-              className="min-w-0 [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
+              markState={
+                isTyping
+                  ? "think"
+                  : voice.listening
+                    ? "listen"
+                    : sceneChrome?.markState ?? "idle"
+              }
+              className="max-w-full [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
             />
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="touch-target inline-flex size-9 shrink-0 items-center justify-center text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
-              aria-label={tUI("ai.chat.close")}
-            >
-              <X className="size-5" strokeWidth={1.5} />
-            </button>
+            {situationHeadline && !inputFocused ? (
+              <p className="mt-1 line-clamp-1 text-[12px] text-[var(--qr-muted)]">
+                {situationHeadline}
+              </p>
+            ) : null}
           </div>
-        ) : (
-          <DenisPanelHeader className="relative border-b border-[var(--qr-elevated)] pt-5">
-            <div className="min-w-0 flex-1">
-              <DenisBrandMark
-                markSize={24}
-                markState={
-                  isTyping
-                    ? "think"
-                    : voice.listening
-                      ? "listen"
-                      : sceneChrome?.markState ?? "idle"
-                }
-                className="[&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
-              />
-              {situationHeadline ? (
-                <p className="mt-1 line-clamp-1 text-[12px] text-[var(--qr-muted)]">
-                  {situationHeadline}
-                </p>
-              ) : null}
-            </div>
-            {!orderingDisabled && (
-              <DenisCartHeaderLink
-                slug={slug}
-                token={token}
-                taxPercent={taxPercent}
-                currency={currency}
-              />
-            )}
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="touch-target inline-flex size-9 shrink-0 items-center justify-center text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
-              aria-label={tUI("ai.chat.close")}
-            >
-              <X className="size-5" strokeWidth={1.5} />
-            </button>
-          </DenisPanelHeader>
-        )}
+          {!orderingDisabled && !inputFocused ? (
+            <DenisCartHeaderLink
+              slug={slug}
+              token={token}
+              taxPercent={taxPercent}
+              currency={currency}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="touch-target inline-flex size-9 shrink-0 items-center justify-center text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
+            aria-label={tUI("ai.chat.close")}
+          >
+            <X className="size-5" strokeWidth={1.5} />
+          </button>
+        </DenisPanelHeader>
 
-        {!keyboardOpen ? (
-          <DenisPanelBody ref={scrollRef}>
+        <DenisPanelBody ref={scrollRef}>
           {messages.map((message) => (
             <DenisMessageRow
               key={message.id}
@@ -1256,20 +1212,14 @@ export function AiConciergeChat({
           {isTyping && sceneChrome ? null : isTyping ? (
             <DenisMessageThinking />
           ) : null}
-          </DenisPanelBody>
-        ) : null}
+        </DenisPanelBody>
 
         <DenisPanelFooter
-          className={cn(
-            "w-full min-w-0 max-w-full overflow-hidden border-t border-[var(--qr-elevated)] !px-3 py-2 sm:!px-3",
-            keyboardOpen
-              ? "!pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-              : undefined
-          )}
+          className="w-full min-w-0 max-w-full shrink-0 overflow-hidden border-t border-[var(--qr-elevated)] !px-3 !pb-2 py-2 sm:!px-3"
         >
           <form onSubmit={handleSend} className="w-full min-w-0 max-w-full">
             <div className="denis-chat-input-row flex w-full min-w-0 max-w-full items-center gap-1.5 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-2 py-1.5">
-              {voiceEnabled && !keyboardOpen && (
+              {voiceEnabled && !inputFocused && (
                 <DenisVoiceMicButton
                   listening={voice.listening}
                   supported={voice.supported}
@@ -1287,8 +1237,10 @@ export function AiConciergeChat({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => {
+                  setInputFocused(true);
                   scrollToBottom();
                 }}
+                onBlur={() => setInputFocused(false)}
                 disabled={!inputEnabled}
                 placeholder={tUI("ai.chat.askDenis")}
                 className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none disabled:opacity-50"

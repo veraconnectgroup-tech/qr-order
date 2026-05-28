@@ -18,6 +18,7 @@ export default async function OrderPage({
       id,
       location:locations!inner(
         id,
+        ai_concierge_enabled,
         payment_online_enabled,
         payment_at_bar_enabled,
         payment_card_at_table_enabled,
@@ -25,7 +26,8 @@ export default async function OrderPage({
         organization:organizations!inner(
           slug,
           currency,
-          stripe_onboarded
+          stripe_onboarded,
+          default_tax_percent
         )
       )
     `
@@ -41,6 +43,7 @@ export default async function OrderPage({
     id: string;
     location: {
       id: string;
+      ai_concierge_enabled: boolean;
       payment_online_enabled: boolean;
       payment_at_bar_enabled: boolean;
       payment_card_at_table_enabled: boolean;
@@ -49,6 +52,7 @@ export default async function OrderPage({
         slug: string;
         currency: string;
         stripe_onboarded: boolean;
+        default_tax_percent: number | null;
       };
     };
   };
@@ -73,6 +77,10 @@ export default async function OrderPage({
       paymentCardAtTableEnabled={table.location.payment_card_at_table_enabled}
       googleReviewUrl={table.location.google_review_url}
       inPersonPaymentLocation="bar"
+      aiConciergeEnabled={table.location.ai_concierge_enabled}
+      voiceEnabled={conciergeConfig.surfaces.voiceEnabled}
+      voiceTtsEnabled={conciergeConfig.surfaces.voiceTtsEnabled}
+      taxPercent={Number(org.default_tax_percent ?? 0)}
     />
   );
 }
