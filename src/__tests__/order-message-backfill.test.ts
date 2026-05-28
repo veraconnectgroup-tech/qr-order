@@ -36,6 +36,19 @@ function mockCatalog(): AiCatalog {
     taxRate: 19,
     allergens: [],
   };
+  const pilsner = {
+    id: "drink-3",
+    name: "Pilsner 0,3L",
+    price: 4.5,
+    imageUrl: null,
+    menuSection: "drinks" as const,
+    requiresServeSize: false,
+    serveSizePresets: ["0.3", "0.5"],
+    allowCustomServeSize: false,
+    modifierGroups: [],
+    taxRate: 19,
+    allergens: [],
+  };
   const burger = {
     id: "food-1",
     name: "Beef burger",
@@ -64,6 +77,7 @@ function mockCatalog(): AiCatalog {
   const catalog = {
     [kisela.id]: kisela,
     [pivo.id]: pivo,
+    [pilsner.id]: pilsner,
     [burger.id]: burger,
   };
 
@@ -117,6 +131,53 @@ describe("order message backfill", () => {
       ]
     );
     expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("maybeBackfill on da recovers bare product name (Pilsner)", () => {
+    const catalog = mockCatalog();
+    const result = maybeBackfillOrderDraft(
+      emptyOrderDraft(),
+      catalog,
+      "Da",
+      [
+        {
+          role: "assistant",
+          content: "Poručio si Pilsner 0,3L za 4,50 €.",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          role: "user",
+          content: "Pilsner 0,3l",
+          timestamp: new Date().toISOString(),
+        },
+      ]
+    );
+    expect(result.draft.items.length).toBe(1);
+    expect(result.draft.items[0]?.productName).toMatch(/Pilsner/i);
+  });
+
+  it("finalizeOrderFlow submits when awaiting confirm and draft has items", () => {
+    const catalog = mockCatalog();
+    const backfill = maybeBackfillOrderDraft(emptyOrderDraft(), catalog, "da", [
+      {
+        role: "user",
+        content: "Pilsner 0,3l",
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+    const draft = {
+      ...backfill.draft,
+      flow: { awaitingFinalConfirm: true },
+    };
+    const result = finalizeOrderFlow({
+      userMessage: "da",
+      draft,
+      llmMessage: "Porudžbina je još prazna.",
+      llmSubmitOrder: true,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+    expect(result.submitOrder).toBe(true);
   });
 
   it("finalizeOrderFlow does not submit with empty cart", () => {

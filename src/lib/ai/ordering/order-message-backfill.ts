@@ -37,7 +37,7 @@ export function isOrderPlacementMessage(message: string): boolean {
   if (!text || isGuestFinalConfirm(text)) return false;
   if (ORDER_PREFIX.test(text)) return true;
   if (MULTI_ITEM_SPLIT.test(text) && text.length >= 12) return true;
-  return /\b(pivo|burger|kisel|cola|pizza|steak|salat|sendvič|sendvic)\b/i.test(
+  return /\b(pivo|pilsner|lager|radler|burger|kisel|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice)\b/i.test(
     text
   );
 }
@@ -186,18 +186,34 @@ export function findLastOrderPlacementUserMessage(
   return null;
 }
 
+/** Last guest line before confirm — used when LLM narrated the item but draft stayed empty. */
+export function findLastNonConfirmUserMessage(
+  messages: ChatHistoryMessage[]
+): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const row = messages[i];
+    if (row.role !== "user") continue;
+    const text = row.content.trim();
+    if (!text || isGuestFinalConfirm(text)) continue;
+    return text;
+  }
+  return null;
+}
+
 /**
  * When the LLM recaps an order but omits proposedItems, rebuild draft from catalog search.
  */
 export function backfillDraftFromOrderMessage(
   draft: AiOrderDraft,
   catalog: AiCatalog,
-  message: string
+  message: string,
+  options?: { requirePlacementPattern?: boolean }
 ): { draft: AiOrderDraft; cartActions: ValidatedCartAction[] } {
   if (draft.items.length > 0 || draft.pending) {
     return { draft, cartActions: [] };
   }
-  if (!isOrderPlacementMessage(message)) {
+  const requirePlacementPattern = options?.requirePlacementPattern ?? true;
+  if (requirePlacementPattern && !isOrderPlacementMessage(message)) {
     return { draft, cartActions: [] };
   }
 
@@ -236,8 +252,10 @@ export function maybeBackfillOrderDraft(
     return { draft, cartActions: [] };
   }
 
-  const source = isGuestFinalConfirm(userMessage)
-    ? findLastOrderPlacementUserMessage(priorMessages)
+  const confirming = isGuestFinalConfirm(userMessage);
+  const source = confirming
+    ? (findLastOrderPlacementUserMessage(priorMessages) ??
+      findLastNonConfirmUserMessage(priorMessages))
     : isOrderPlacementMessage(userMessage)
       ? userMessage
       : null;
@@ -246,5 +264,7 @@ export function maybeBackfillOrderDraft(
     return { draft, cartActions: [] };
   }
 
-  return backfillDraftFromOrderMessage(draft, catalog, source);
+  return backfillDraftFromOrderMessage(draft, catalog, source, {
+    requirePlacementPattern: !confirming,
+  });
 }
