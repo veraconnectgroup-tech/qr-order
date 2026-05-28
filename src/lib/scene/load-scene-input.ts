@@ -2,8 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveExperienceMoment } from "@/lib/commerce/experience/resolve-experience-moment";
 import { loadEffectiveVenueOps } from "@/lib/denis/venue/ops";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import {
+  AI_SHEET_ALLERGY_OPTIONS,
+  AI_SHEET_MOOD_OPTIONS,
+} from "@/lib/ai/guest-sheet-preferences";
 import { composeScene, deriveSessionPhase } from "./compose-scene";
-import type { ComposeSceneInput } from "./types";
+import { extractPersistedSceneLayers } from "./extract-scene-layer-state";
+import type { ComposeSceneInput, Scene } from "./types";
 
 const KITCHEN_OPEN_STATUSES = new Set([
   "pending",
@@ -17,7 +22,45 @@ type LoadSceneOptions = {
   thinking?: boolean;
   markState?: ComposeSceneInput["markState"];
   proactiveBanner?: ComposeSceneInput["banners"][number] | null;
+  chips?: ComposeSceneInput["chips"];
+  inlineRecommendations?: ComposeSceneInput["inlineRecommendations"];
 };
+
+function defaultOnboardingChips(): ComposeSceneInput["chips"] {
+  return [
+    ...AI_SHEET_ALLERGY_OPTIONS.slice(0, 4).map((option) => ({
+      id: `allergy-${option.id}`,
+      label: option.label,
+    })),
+    ...AI_SHEET_MOOD_OPTIONS.slice(0, 2).map((option) => ({
+      id: `mood-${option.id}`,
+      label: option.label,
+    })),
+  ];
+}
+
+function resolveSceneChips(input: {
+  override?: ComposeSceneInput["chips"];
+  persisted: ComposeSceneInput["chips"];
+  denisEnabled: boolean;
+  denisActive: boolean;
+  phase: ComposeSceneInput["phase"];
+}): ComposeSceneInput["chips"] {
+  if (input.override?.length) return input.override;
+  if (input.persisted.length) return input.persisted;
+  if (input.denisEnabled && !input.denisActive && input.phase === "browsing") {
+    return defaultOnboardingChips();
+  }
+  return [];
+}
+
+function resolveInlineRecommendations(input: {
+  override?: ComposeSceneInput["inlineRecommendations"];
+  persisted: ComposeSceneInput["inlineRecommendations"];
+}): ComposeSceneInput["inlineRecommendations"] {
+  if (input.override?.length) return input.override;
+  return input.persisted;
+}
 
 export async function loadComposeSceneInput(
   admin: SupabaseClient,
@@ -120,6 +163,17 @@ export async function loadComposeSceneInput(
   });
 
   const denisActive = denisEnabled && Boolean(aiSessions?.length);
+
+  const { data: existingSceneRow } = await admin
+    .from("guest_scene" as never)
+    .select("scene")
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
+  const persistedLayers = extractPersistedSceneLayers(
+    (existingSceneRow as { scene?: Scene } | null)?.scene ?? null
+  );
+
   const config = denisEnabled
     ? await loadConciergeConfigForLocation(locationId)
     : null;
@@ -186,8 +240,17 @@ export async function loadComposeSceneInput(
     thinking: opts.thinking ?? false,
     blocking: null,
     banners,
-    inlineRecommendations: [],
-    chips: [],
+    inlineRecommendations: resolveInlineRecommendations({
+      override: opts.inlineRecommendations,
+      persisted: persistedLayers.inlineRecommendations,
+    }),
+    chips: resolveSceneChips({
+      override: opts.chips,
+      persisted: persistedLayers.chips,
+      denisEnabled,
+      denisActive,
+      phase,
+    }),
   };
 }
 

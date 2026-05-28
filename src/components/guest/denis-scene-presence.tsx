@@ -2,26 +2,23 @@
 
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { DenisScenePhaseStrip } from "@/components/guest/denis-scene-phase-strip";
 import type { Scene } from "@/lib/scene/types";
 
 export function DenisScenePresence({
   scene,
   subtitle,
-  onOpen,
+  onOpenDesk,
 }: {
   scene: Scene;
   subtitle?: string | null;
-  onOpen: () => void;
+  onOpenDesk: () => void;
 }) {
   const { tUI } = useAppLocale();
   const lead = subtitle ?? tUI("ai.intro.subtitle");
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="relative mx-4 mb-4 w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-emerald-500/40 bg-[var(--qr-surface)] p-4 text-left ring-1 ring-emerald-500/30 transition active:scale-[0.99] hover:border-[var(--qr-ember)]/40 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-[var(--qr-ember)] before:content-['']"
-    >
+    <div className="relative mx-4 mb-2 w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)] p-4 text-left before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-[var(--qr-ember)] before:content-['']">
       <div className="flex items-start gap-3">
         <DenisBrandMark
           markSize={24}
@@ -39,8 +36,16 @@ export function DenisScenePresence({
             {scene.chrome.tableName} · {scene.chrome.venueName}
           </p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--qr-muted)]">{lead}</p>
+          <DenisScenePhaseStrip scene={scene} />
         </div>
       </div>
-    </button>
+      <button
+        type="button"
+        onClick={onOpenDesk}
+        className="mt-3 w-full rounded-full border border-[var(--qr-ember)]/30 bg-[var(--qr-ember-muted)] px-4 py-2.5 text-sm font-medium text-[var(--qr-ivory)] transition active:scale-[0.99] hover:border-[var(--qr-ember)]/50"
+      >
+        {tUI("scene.openDesk")}
+      </button>
+    </div>
   );
 }

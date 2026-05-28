@@ -2,17 +2,14 @@ import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { composeScene } from "./compose-scene";
 import { loadComposeSceneInput } from "./load-scene-input";
-import type { Scene } from "./types";
+import type { ComposeSceneInput, Scene } from "./types";
+import type { SceneRefreshOverrides } from "./map-turn-to-scene-overrides";
 
-type SceneRefreshPayload = {
-  sessionId?: string;
-  sheetOpen?: boolean;
-  thinking?: boolean;
-  markState?: "idle" | "listen" | "think";
+type SceneRefreshPayload = SceneRefreshOverrides & {
   proactiveBanner?: {
     id: string;
     message: string;
-    action?: "open_sheet" | "add_product" | "dismiss" | "feedback";
+    action?: ComposeSceneInput["banners"][number]["action"];
     productId?: string;
     productName?: string;
   } | null;
@@ -44,6 +41,8 @@ export async function refreshGuestScene(
     thinking: payload.thinking,
     markState: payload.markState,
     proactiveBanner: payload.proactiveBanner ?? undefined,
+    chips: payload.chips,
+    inlineRecommendations: payload.inlineRecommendations,
   });
 
   if (!input) {

@@ -13,7 +13,6 @@ import { DenisChip } from "@/components/design-system/denis-chip";
 import {
   DenisMessageBlock,
   DenisMessageThinking,
-  DenisThreadLabel,
 } from "@/components/design-system/denis-message-block";
 import {
   DenisPanel,
@@ -381,6 +380,7 @@ export type AiConciergeChatProps = {
     venueName: string;
     markState: "idle" | "listen" | "think";
   } | null;
+  onSceneRefresh?: () => void;
 };
 
 export function AiConciergeChat({
@@ -415,6 +415,7 @@ export function AiConciergeChat({
   voiceEnabled = false,
   voiceTtsEnabled = true,
   sceneChrome = null,
+  onSceneRefresh,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
@@ -931,6 +932,7 @@ export function AiConciergeChat({
         ]);
       } finally {
         setIsTyping(false);
+        onSceneRefresh?.();
       }
     },
     [
@@ -944,6 +946,7 @@ export function AiConciergeChat({
       clearCart,
       tUI,
       voice,
+      onSceneRefresh,
     ]
   );
 
@@ -1150,8 +1153,8 @@ export function AiConciergeChat({
           : { top: 0, bottom: 0 }
       }
     >
-      <DenisPanel className="mx-0 mb-0 min-h-0 max-h-none flex-1 rounded-none sm:mx-3 sm:mb-3 sm:max-h-[min(88dvh,720px)] sm:flex-none sm:rounded-2xl">
-        <DenisPanelHeader className="border-b border-[var(--qr-elevated)]">
+      <DenisPanel className="relative mx-0 mb-0 min-h-0 max-h-none flex-1 rounded-none before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:bg-[var(--qr-ember)] before:content-[''] sm:mx-3 sm:mb-3 sm:max-h-[min(88dvh,720px)] sm:flex-none sm:rounded-2xl">
+        <DenisPanelHeader className="relative border-b border-[var(--qr-elevated)] pt-5">
           {sceneChrome ? (
             <DenisBrandMark
               markSize={24}
@@ -1193,7 +1196,6 @@ export function AiConciergeChat({
         </DenisPanelHeader>
 
         <DenisPanelBody ref={scrollRef}>
-          <DenisThreadLabel />
           {messages.map((message) => (
             <DenisMessageRow
               key={message.id}
@@ -1211,12 +1213,12 @@ export function AiConciergeChat({
               onAddRecommendation={handleAddRecommendation}
             />
           ))}
-          {isTyping && <DenisMessageThinking />}
+          {isTyping && sceneChrome ? null : isTyping ? <DenisMessageThinking /> : null}
         </DenisPanelBody>
 
-        <DenisPanelFooter>
+        <DenisPanelFooter className="border-t border-[var(--qr-elevated)] px-3 py-2 sm:px-3">
           <form onSubmit={handleSend}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-3 py-2">
               {voiceEnabled && (
                 <DenisVoiceMicButton
                   listening={voice.listening}
@@ -1235,20 +1237,16 @@ export function AiConciergeChat({
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={scrollToBottom}
                 disabled={!inputEnabled}
-                placeholder={
-                  orderingDisabled
-                    ? tUI("ai.chat.placeholder")
-                    : tUI("ai.chat.orderPlaceholder")
-                }
-                className="min-w-0 flex-1 border-0 border-b border-[var(--qr-elevated)] bg-transparent py-3 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-muted)] disabled:opacity-50"
+                placeholder={tUI("ai.chat.askDenis")}
+                className="min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!canSend}
                 aria-label={tUI("ai.chat.send")}
-                className="flex size-12 shrink-0 items-center justify-center rounded-full text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--qr-ember)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--qr-void)] disabled:opacity-30"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--qr-ember)] text-white transition disabled:opacity-30"
               >
-                <Send className="size-4" strokeWidth={1.5} />
+                <Send className="size-3.5" strokeWidth={1.5} />
               </button>
             </div>
           </form>

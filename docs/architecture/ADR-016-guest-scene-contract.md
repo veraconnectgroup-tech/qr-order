@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | **In progress** — SC-1…SC-3 implemented |
-| **Depends on** | [ADR-005](./ADR-005-denis-maximum.md) · [ADR-014](./ADR-014-commerce-experience-platform.md) |
+| **Status** | **In progress** — SC-1…SC-7, ID-1, ID-2 implemented |
+| **Depends on** | [ADR-005](./ADR-005-denis-maximum.md) · [ADR-014](./ADR-014-commerce-experience-platform.md) · [ADR-017](./ADR-017-denis-scene-first-presentation.md) |
 
 ## One sentence
 
@@ -25,4 +25,5 @@
 | SC-3 | `GET /api/guest/scene` | ✅ |
 | SC-4 | Guest UI `useGuestScene()` + SceneRenderer | ✅ |
 | SC-5 | Dashboard tile from `guest_scene` | pending |
-| SC-6 | Denis turn → `session.scene.refresh` outbox | pending |
+| SC-6 | Denis turn → `session.scene.refresh` outbox | ✅ |
+| SC-7 | Turn → chips/inline scene projection | ✅ |

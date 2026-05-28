@@ -59,6 +59,10 @@ import type {
   TurnEnvelope,
 } from "@/lib/denis/platform/timeline-types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveActiveTableSessionId } from "@/lib/denis/venue/party";
+import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
+import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
+import type { AiRecommendation } from "@/lib/ai/types";
 
 function isSupportedTurnChannel(
   channel: DenisTurnRunInput["channel"]
@@ -478,6 +482,40 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     actSubmitAttempted: actSubmitOutcome.attempted,
     actOrderNumber: actSubmitOutcome.orderNumber,
   };
+
+  const tableSessionId = await resolveActiveTableSessionId(admin, {
+    tableId: parsed.data.tableId,
+    locationId: parsed.data.locationId,
+    sessionToken: parsed.data.sessionToken,
+  });
+
+  if (tableSessionId) {
+    const menuCache = await getCachedMenuForLocation(parsed.data.locationId);
+    const productNames: Record<string, string> = {};
+    if (menuCache?.productMap) {
+      for (const [id, product] of Object.entries(menuCache.productMap)) {
+        productNames[id] = product.name;
+      }
+    }
+
+    const sceneOverrides = mapTurnToSceneOverrides({
+      tableSessionId,
+      quickReplies,
+      recommendations: (data.recommendations ?? []) as AiRecommendation[],
+      productNames,
+      markState: "idle",
+      sheetOpen: false,
+      thinking: false,
+    });
+
+    void scheduleGuestSceneRefresh(admin, sceneOverrides).catch((error) => {
+      logger.warn("Denis turn scene refresh failed", {
+        traceId,
+        tableSessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
 
   if (input.channel === "voice") {
     return formatVoiceTurnApiResponse(responseData, responseMeta, {

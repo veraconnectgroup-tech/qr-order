@@ -64,7 +64,7 @@ import {
   manualCartRevision,
 } from "@/lib/guest/manual-cart-snapshot";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
-import { sceneBannerLayers } from "@/lib/scene/layer-utils";
+import { sceneBannerLayers, sceneChipsLayer, sceneInlineLayers } from "@/lib/scene/layer-utils";
 import { useGuestScene } from "@/hooks/use-guest-scene";
 
 const AiCartPairingBanner = dynamic(
@@ -92,6 +92,20 @@ const DenisSceneBanners = dynamic(
   () =>
     import("@/components/guest/denis-scene-banners").then((m) => ({
       default: m.DenisSceneBanners,
+    })),
+  { ssr: false }
+);
+const DenisSceneChips = dynamic(
+  () =>
+    import("@/components/guest/denis-scene-chips").then((m) => ({
+      default: m.DenisSceneChips,
+    })),
+  { ssr: false }
+);
+const DenisSceneInline = dynamic(
+  () =>
+    import("@/components/guest/denis-scene-inline").then((m) => ({
+      default: m.DenisSceneInlineRecommendations,
     })),
   { ssr: false }
 );
@@ -208,7 +222,7 @@ export function MenuView({
   const itemCount = useCart((s) => s.itemCount());
   const sessionToken = useGuestSession((s) => s.sessionToken);
 
-  const { scene, refresh: _refreshGuestSceneView } = useGuestScene({
+  const { scene, refresh: refreshGuestSceneView } = useGuestScene({
     tableToken: token,
     sessionToken,
     enabled: aiConciergeEnabled && !!sessionToken,
@@ -873,6 +887,43 @@ export function MenuView({
     tableId,
   ]);
 
+  const sceneHasChips = useMemo(
+    () => (scene ? Boolean(sceneChipsLayer(scene)?.options.length) : false),
+    [scene]
+  );
+  const sceneHasInline = useMemo(
+    () => (scene ? sceneInlineLayers(scene).length > 0 : false),
+    [scene]
+  );
+
+  const handleOpenDenisDesk = useCallback(() => {
+    hapticClick();
+    setAiChatOpen(true);
+  }, []);
+
+  const handleSceneChipPress = useCallback(
+    (_chipId: string, _label: string) => {
+      hapticClick();
+      setAiChatOpen(true);
+    },
+    []
+  );
+
+  const handleSceneInlineAdd = useCallback(
+    (productId: string) => {
+      const product = productById.get(productId);
+      if (!product) return;
+      handleAddAiRecommendation({
+        productId,
+        name: product.name,
+        price: Number(product.price),
+        reason: "",
+        imageUrl: product.image_url ?? null,
+      });
+    },
+    [productById, handleAddAiRecommendation]
+  );
+
   const handleNudgeAction = useCallback(() => {
     hapticClick();
     setAiChatOpen(true);
@@ -885,6 +936,10 @@ export function MenuView({
       setSceneRefreshKey((key) => key + 1);
     }
   }, []);
+
+  const handleGuestSceneRefresh = useCallback(() => {
+    void refreshGuestSceneView();
+  }, [refreshGuestSceneView]);
 
   const handleSceneBannerAction = useCallback(
     (banner: (typeof sceneBanners)[number]) => {
@@ -966,16 +1021,31 @@ export function MenuView({
             </div>
           )}
 
-          {aiConciergeEnabled && !aiActive && (
+          {aiConciergeEnabled && !aiChatOpen && (
             scene ? (
-              <DenisScenePresence
-                scene={scene}
-                onOpen={() => setAiChatOpen(true)}
-                subtitle={welcomeBackMessage ?? undefined}
-              />
+              <>
+                <DenisScenePresence
+                  scene={scene}
+                  onOpenDesk={handleOpenDenisDesk}
+                  subtitle={welcomeBackMessage ?? undefined}
+                />
+                {sceneHasChips ? (
+                  <DenisSceneChips
+                    scene={scene}
+                    onChipPress={handleSceneChipPress}
+                  />
+                ) : null}
+                {sceneHasInline ? (
+                  <DenisSceneInline
+                    scene={scene}
+                    currency={currency}
+                    onAdd={handleSceneInlineAdd}
+                  />
+                ) : null}
+              </>
             ) : (
               <AiConciergeIntro
-                onOpen={() => setAiChatOpen(true)}
+                onOpen={handleOpenDenisDesk}
                 subtitle={welcomeBackMessage ?? undefined}
               />
             )
@@ -1153,6 +1223,7 @@ export function MenuView({
             <AiConciergeChat
               open={aiChatOpen}
               onOpenChange={handleAiChatOpenChange}
+              onSceneRefresh={handleGuestSceneRefresh}
               sceneChrome={scene?.chrome ?? null}
               slug={slug}
               token={token}
