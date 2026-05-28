@@ -287,7 +287,7 @@ export function GuestDenisLayer({
     [scene]
   );
 
-  if (!enabled || !sessionToken) return null;
+  if (!enabled) return null;
 
   return (
     <>
@@ -330,36 +330,40 @@ export function GuestDenisLayer({
         />
       ) : null}
 
-      <GuestOrderFocusSheet
-        open={focusOrderId != null}
-        onOpenChange={(open) => {
-          if (!open) setFocusOrderId(null);
-        }}
-        orderId={focusOrderId}
-        slug={slug}
-        token={token}
-        sessionToken={sessionToken}
-        currency={currency}
-        stripeOnboarded={stripeOnboarded}
-        paymentOnlineEnabled={paymentOnlineEnabled}
-        paymentAtBarEnabled={paymentAtBarEnabled}
-        paymentCardAtTableEnabled={paymentCardAtTableEnabled}
-        inPersonPaymentLocation={inPersonPaymentLocation}
-      />
+      {sessionToken ? (
+        <>
+          <GuestOrderFocusSheet
+            open={focusOrderId != null}
+            onOpenChange={(open) => {
+              if (!open) setFocusOrderId(null);
+            }}
+            orderId={focusOrderId}
+            slug={slug}
+            token={token}
+            sessionToken={sessionToken}
+            currency={currency}
+            stripeOnboarded={stripeOnboarded}
+            paymentOnlineEnabled={paymentOnlineEnabled}
+            paymentAtBarEnabled={paymentAtBarEnabled}
+            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+            inPersonPaymentLocation={inPersonPaymentLocation}
+          />
 
-      <GuestSessionBillSheet
-        open={billSheetOpen}
-        onOpenChange={setBillSheetOpen}
-        slug={slug}
-        token={token}
-        sessionToken={sessionToken}
-        currency={currency}
-        stripeOnboarded={stripeOnboarded}
-        paymentOnlineEnabled={paymentOnlineEnabled}
-        paymentAtBarEnabled={paymentAtBarEnabled}
-        paymentCardAtTableEnabled={paymentCardAtTableEnabled}
-        inPersonPaymentLocation={inPersonPaymentLocation}
-      />
+          <GuestSessionBillSheet
+            open={billSheetOpen}
+            onOpenChange={setBillSheetOpen}
+            slug={slug}
+            token={token}
+            sessionToken={sessionToken}
+            currency={currency}
+            stripeOnboarded={stripeOnboarded}
+            paymentOnlineEnabled={paymentOnlineEnabled}
+            paymentAtBarEnabled={paymentAtBarEnabled}
+            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+            inPersonPaymentLocation={inPersonPaymentLocation}
+          />
+        </>
+      ) : null}
     </>
   );
 }

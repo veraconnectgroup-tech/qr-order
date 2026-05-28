@@ -1234,7 +1234,7 @@ export function MenuView({
       <PullToRefresh onRefresh={handleRefresh} orgInitial={orgName.charAt(0)}>
         <div
           className={
-            aiConciergeEnabled && sessionToken && !aiChatOpen
+            aiConciergeEnabled && !aiChatOpen
               ? orderingEnabled &&
                 !detailProduct &&
                 !aiChatOpen &&
@@ -1479,13 +1479,13 @@ export function MenuView({
         </div>
       </PullToRefresh>
 
-      {aiConciergeEnabled && sessionToken && !aiChatOpen && (
+      {aiConciergeEnabled && !aiChatOpen && (
         <DenisGuestDock
           scene={scene}
           currency={currency}
           tableName={tableName}
           venueName={locationName}
-          loading={sceneLoading && !scene}
+          loading={Boolean(sessionToken) && sceneLoading && !scene}
           cartBarVisible={
             orderingEnabled && !detailProduct && itemCount > 0
           }
