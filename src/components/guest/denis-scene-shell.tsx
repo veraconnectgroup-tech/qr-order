@@ -19,6 +19,7 @@ export function DenisSceneShell({
   onChipPress,
   onInlineAdd,
   className,
+  busy = false,
 }: {
   scene: Scene;
   currency: string;
@@ -27,10 +28,11 @@ export function DenisSceneShell({
   onChipPress: (chipId: string, label: string) => void;
   onInlineAdd: (productId: string) => void;
   className?: string;
+  busy?: boolean;
 }) {
   const chipsLayer = sceneChipsLayer(scene);
   const inlineLayers = sceneInlineLayers(scene);
-  const isThinking = scene.chrome.markState === "think";
+  const isThinking = busy || scene.chrome.markState === "think";
 
   return (
     <section
@@ -47,7 +49,14 @@ export function DenisSceneShell({
       />
 
       <DenisScenePresence
-        scene={scene}
+        scene={
+          busy
+            ? {
+                ...scene,
+                chrome: { ...scene.chrome, markState: "think" },
+              }
+            : scene
+        }
         subtitle={subtitle}
         onOpenDesk={onOpenDesk}
         compact

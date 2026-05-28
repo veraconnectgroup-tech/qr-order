@@ -30,6 +30,7 @@ export function DenisGuestDock({
   onOpenDesk,
   onChipPress,
   onInlineAdd,
+  busy = false,
 }: {
   scene: Scene;
   currency: string;
@@ -37,6 +38,7 @@ export function DenisGuestDock({
   onOpenDesk: () => void;
   onChipPress: (chipId: string, label: string) => void;
   onInlineAdd: (productId: string) => void;
+  busy?: boolean;
 }) {
   const { tUI } = useAppLocale();
   const situation = scene.chrome.situation;
@@ -54,10 +56,10 @@ export function DenisGuestDock({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const markState =
-    scene.chrome.markState === "listen"
-      ? "listen"
-      : scene.chrome.markState === "think"
-        ? "think"
+    busy || scene.chrome.markState === "think"
+      ? "think"
+      : scene.chrome.markState === "listen"
+        ? "listen"
         : situation?.hasReadyOrder
           ? "listen"
           : "idle";
@@ -94,7 +96,8 @@ export function DenisGuestDock({
       <section
         className={cn(
           "denis-scene-shell pointer-events-auto overflow-hidden rounded-2xl border border-[var(--qr-elevated)] bg-[var(--qr-surface)]/95 shadow-[0_-8px_40px_rgba(0,0,0,0.45)] backdrop-blur-md",
-          scene.chrome.markState === "think" && "denis-scene-shell--think",
+          (scene.chrome.markState === "think" || busy) &&
+            "denis-scene-shell--think",
           situation?.hasReadyOrder &&
             "ring-1 ring-[var(--qr-ember)]/40"
         )}

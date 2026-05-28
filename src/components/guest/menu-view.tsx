@@ -39,7 +39,14 @@ import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import {
   buildDrinkPairingPrompt,
+  allergenIdsFromSheetSelections,
+  apiPreferencesFromSheet,
 } from "@/lib/ai/guest-sheet-preferences";
+import {
+  parseSceneChipSelections,
+  postGuestWaiterCall,
+  runGuestDenisSceneTurn,
+} from "@/lib/guest/denis-scene-turn";
 import {
   readAiSessionIdForGuest,
   resolveGuestAiContextToken,
@@ -48,6 +55,7 @@ import { trackAiConversion } from "@/lib/ai/guest-session-storage";
 import { ensureTableSession } from "@/lib/guest/ensure-table-session";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
+import { toast } from "sonner";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
 import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
@@ -74,10 +82,17 @@ const AiCartPairingBanner = dynamic(
     })),
   { ssr: false }
 );
-const AiConciergeIntro = dynamic(
+const DenisSceneShell = dynamic(
   () =>
-    import("@/components/guest/ai-concierge-intro").then((m) => ({
-      default: m.AiConciergeIntro,
+    import("@/components/guest/denis-scene-shell").then((m) => ({
+      default: m.DenisSceneShell,
+    })),
+  { ssr: false }
+);
+const DenisSceneShellSkeleton = dynamic(
+  () =>
+    import("@/components/guest/denis-scene-shell-skeleton").then((m) => ({
+      default: m.DenisSceneShellSkeleton,
     })),
   { ssr: false }
 );
@@ -183,6 +198,7 @@ export function MenuView({
   const [returnGlow, setReturnGlow] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
+  const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -470,7 +486,7 @@ export function MenuView({
     [sessionOrders]
   );
 
-  const { scene, refresh: refreshGuestSceneView } = useGuestScene({
+  const { scene, loading: sceneLoading, refresh: refreshGuestSceneView } = useGuestScene({
     tableToken: token,
     sessionToken,
     enabled: aiConciergeEnabled && !!sessionToken,
@@ -891,25 +907,152 @@ export function MenuView({
     setAiChatOpen(true);
   }, []);
 
+  const applySceneChipSelections = useCallback(
+    (selections: ReturnType<typeof parseSceneChipSelections>) => {
+      if (!selections) return;
+
+      const prefs = apiPreferencesFromSheet(selections);
+      setGuestAllergies(prefs.allergies);
+      if (selections.mood) {
+        setGuestMood(prefs.mood);
+      }
+
+      const allergenIds = allergenIdsFromSheetSelections(selections.allergies);
+      if (allergenIds.length > 0) {
+        if (!preAiExcludedRef.current) {
+          preAiExcludedRef.current = new Set(excluded);
+        }
+        replaceExcluded(allergenIds);
+      }
+
+      void saveGuestAllergies(prefs.allergies, selections.allergies);
+    },
+    [excluded, replaceExcluded, saveGuestAllergies]
+  );
+
+  const runSceneChipTurn = useCallback(
+    async (input: {
+      chipId: string;
+      label: string;
+      message?: string;
+      selections?: ReturnType<typeof parseSceneChipSelections>;
+    }) => {
+      if (!sessionToken || sceneTurnBusy) return;
+
+      setSceneTurnBusy(true);
+      try {
+        const result = await runGuestDenisSceneTurn({
+          locationId,
+          tableId,
+          tableToken: token,
+          sessionToken,
+          message: input.message ?? input.label,
+          language,
+          browsingContext: getAiContext(),
+          selections: input.selections ?? undefined,
+          allowOrdering: canPlaceOrders,
+          preferences:
+            input.selections != null
+              ? apiPreferencesFromSheet(input.selections)
+              : {
+                  allergies: guestAllergies,
+                  mood: guestMood,
+                },
+        });
+
+        if (result.sessionId) {
+          setAiSessionId(result.sessionId);
+        }
+
+        if (result.recommendations.length) {
+          setAiRecommendations(result.recommendations);
+          setAiActive(true);
+          setShowRecommendedSection(true);
+        }
+
+        setSceneRefreshKey((key) => key + 1);
+        await refreshGuestSceneView();
+      } catch {
+        toast.error(tUI("ai.overlay.error"));
+      } finally {
+        setSceneTurnBusy(false);
+      }
+    },
+    [
+      sessionToken,
+      sceneTurnBusy,
+      locationId,
+      tableId,
+      token,
+      language,
+      getAiContext,
+      guestAllergies,
+      guestMood,
+      refreshGuestSceneView,
+      tUI,
+      canPlaceOrders,
+    ]
+  );
+
   useEffect(() => {
     if (!sessionOrders.length) return;
     void refreshGuestSceneView();
   }, [sessionOrders, refreshGuestSceneView]);
 
   const handleSceneChipPress = useCallback(
-    (chipId: string, _label: string) => {
+    (chipId: string, label: string) => {
       hapticClick();
+
       if (chipId === "situation-waiter") {
-        setAiChatOpen(true);
+        if (!sessionToken) {
+          toast.error(tUI("waiter.sessionError"), {
+            description: tUI("waiter.sessionErrorHint"),
+          });
+          return;
+        }
+        void (async () => {
+          try {
+            await postGuestWaiterCall({ tableToken: token, sessionToken });
+            toast.success(tUI("waiter.notified"), {
+              description: tUI("waiter.notifiedBody"),
+            });
+            setSceneRefreshKey((key) => key + 1);
+            await refreshGuestSceneView();
+          } catch {
+            toast.error(tUI("waiter.error"), {
+              description: tUI("waiter.errorHint"),
+            });
+          }
+        })();
         return;
       }
+
       if (chipId === "situation-wrong") {
-        setAiChatOpen(true);
+        void runSceneChipTurn({
+          chipId,
+          label,
+          message: tUI("scene.situation.chipWrong"),
+        });
         return;
       }
-      setAiChatOpen(true);
+
+      const selections = parseSceneChipSelections(chipId);
+      if (selections) {
+        applySceneChipSelections(selections);
+        void runSceneChipTurn({ chipId, label, selections });
+        return;
+      }
+
+      void runSceneChipTurn({ chipId, label });
     },
-    []
+    [
+      sessionToken,
+      token,
+      tUI,
+      refreshGuestSceneView,
+      runSceneChipTurn,
+      applySceneChipSelections,
+    ]
   );
 
   const handleSceneInlineAdd = useCallback(
@@ -1030,10 +1173,24 @@ export function MenuView({
             </div>
           )}
 
-          {aiConciergeEnabled && !scene && !aiChatOpen && (
-            <AiConciergeIntro
-              onOpen={handleOpenDenisDesk}
-              subtitle={welcomeBackMessage ?? undefined}
+          {aiConciergeEnabled && sessionToken && !aiChatOpen && scene && (
+            <DenisSceneShell
+              scene={scene}
+              currency={currency}
+              subtitle={
+                scene.chrome.situation?.headline ??
+                welcomeBackMessage ??
+                undefined
+              }
+              onOpenDesk={handleOpenDenisDesk}
+              onChipPress={handleSceneChipPress}
+              onInlineAdd={handleSceneInlineAdd}
+              busy={sceneTurnBusy}
+            />
+          )}
+
+          {aiConciergeEnabled && sessionToken && !aiChatOpen && !scene && sceneLoading && (
+            <DenisSceneShellSkeleton
               tableName={tableName}
               venueName={locationName}
             />
@@ -1254,10 +1411,15 @@ export function MenuView({
             <DenisGuestDock
               scene={scene}
               currency={currency}
-              subtitle={welcomeBackMessage ?? undefined}
+              subtitle={
+                scene.chrome.situation?.headline ??
+                welcomeBackMessage ??
+                undefined
+              }
               onOpenDesk={handleOpenDenisDesk}
               onChipPress={handleSceneChipPress}
               onInlineAdd={handleSceneInlineAdd}
+              busy={sceneTurnBusy}
             />
           )}
         </div>
