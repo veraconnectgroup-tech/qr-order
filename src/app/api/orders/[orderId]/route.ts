@@ -1,6 +1,5 @@
 
 import { z } from "zod";
-import { runCommerceExperience } from "@/lib/commerce/runtime/run-commerce-experience";
 import { auditLog } from "@/lib/audit/log";
 import { safeJsonParse } from "@/lib/api/safe-json";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
@@ -20,6 +19,7 @@ import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
 import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { scheduleDenisWorldSignal } from "@/lib/outbox/enqueue-denis-world-signal";
+import { runCommerceExperience } from "@/lib/commerce/runtime/run-commerce-experience";
 import type { PaymentMethod } from "@/lib/constants";
 
 function parseSessionToken(value: string | null) {
@@ -491,20 +491,6 @@ export const PATCH = withErrorHandler(
       );
     }
 
-    if (status === "delivered") {
-      const traceId = getCurrentTraceId() ?? crypto.randomUUID();
-      void runCommerceExperience(
-        admin,
-        { kind: "order_delivered", orderId },
-        { traceId, idempotencyKey: `order_delivered:${orderId}` }
-      ).catch((err) =>
-        logger.warn("Commerce order_delivered failed", {
-          orderId,
-          error: err instanceof Error ? err.message : String(err),
-        })
-      );
-    }
-
     dispatchOrgWebhook(access.staff.org_id, "order.status_changed", {
       order_id: orderId,
       previous_status: access.order.status,
@@ -525,6 +511,25 @@ export const PATCH = withErrorHandler(
         sessionId: access.order.session_id,
         status,
         previousStatus: access.order.status,
+      });
+    }
+
+    if (status === "delivered" && access.order.session_id) {
+      void runCommerceExperience(
+        admin,
+        { kind: "order_delivered", orderId },
+        {
+          traceId: getCurrentTraceId(),
+          idempotencyKey: `order_delivered:${orderId}`,
+        }
+      ).catch((commerceError) => {
+        logger.warn("order_delivered commerce experience failed", {
+          orderId,
+          error:
+            commerceError instanceof Error
+              ? commerceError.message
+              : String(commerceError),
+        });
       });
     }
 

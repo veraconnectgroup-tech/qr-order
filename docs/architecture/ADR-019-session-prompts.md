@@ -26,7 +26,7 @@
 | **B — VIEW** | ✅ | `GET /api/denis/view`, `project-view.ts` |
 | **C — SIGNAL** | ✅ | `POST /api/denis/signal`, thin wrappers |
 | **D — WORLD** | ✅ | outbox → `commerce.*` signals → TELL + guest push |
-| **E — ACTOR** | 📋 | queue/lock per `table_session_id`, view SSE |
+| **E — ACTOR** | ✅ | queue/lock per `table_session_id`, view SSE |
 | **F — TRUTH** | 📋 | transcript iz timeline; smanji `ai_sessions` drift |
 
 **As-built motor (ne diraj osim wire):** M0–M28 u `src/lib/denis/` — kernel, venue, runtime, acl, eval.

@@ -132,9 +132,9 @@ Use **one vocabulary** everywhere (ADR-020 §15):
 | Staff push (VAPID) | ✅ | Guest push (Phase D) |
 | Party, floor, ops, VKG | ✅ | Feed **MIND** only via FOLD |
 | Shadow rollout default | ✅ | **`denis_only`** for product truth |
-| Table Session Actor | ❌ | Phase E |
-| View SSE / no poll | ❌ | Phase E |
-| ADR-013 pipeline | ❌ not started | **Signals only** — do not duplicate orchestrator |
+| Table Session Actor | ✅ | Phase E |
+| View SSE / no poll | ✅ | Phase E |
+| ADR-013 pipeline | ✅ signals via actor | **Signals only** — `runCommerceExperience` upstream facts enqueue actor |
 
 ---
 

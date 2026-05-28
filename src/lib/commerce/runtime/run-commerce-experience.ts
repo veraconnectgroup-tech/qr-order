@@ -9,6 +9,10 @@ import type {
   RunCommerceExperienceOpts,
   RunCommerceExperienceResult,
 } from "@/lib/commerce/runtime/types";
+import {
+  enqueueCommerceExperienceSignal,
+  isTableSessionActorEnabled,
+} from "@/lib/denis/actor/table-session-actor";
 import { logger } from "@/lib/logger";
 import { scheduleOutboxProcess } from "@/lib/outbox/schedule-process";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -97,6 +101,9 @@ async function loadSessionContext(
 /**
  * ADR-014: sole commerce experience entry for upstream facts and guest commands.
  * Never blocks order/fiscal paths — callers should fire-and-forget on deferrable steps.
+ *
+ * ADR-019 Phase E: payment_settled / order_delivered route through Table Session Actor
+ * when Redis is available (ADR-013 triggers as Denis signals only).
  */
 export async function runCommerceExperience(
   admin: SupabaseClient,
@@ -104,6 +111,28 @@ export async function runCommerceExperience(
   opts: RunCommerceExperienceOpts = {}
 ): Promise<RunCommerceExperienceResult> {
   void DEFAULT_COMMERCE_POLICY;
+
+  if (
+    !opts.skipActorEnqueue &&
+    isTableSessionActorEnabled() &&
+    (trigger.kind === "payment_settled" || trigger.kind === "order_delivered")
+  ) {
+    const loaded = await loadOrderForCommerce(admin, trigger.orderId);
+    if (loaded?.order.session_id) {
+      const idempotencyKey = commerceIdempotencyKey(trigger, opts);
+      await enqueueCommerceExperienceSignal(
+        loaded.order.session_id,
+        idempotencyKey,
+        {
+          triggerKind: trigger.kind,
+          orderId: trigger.orderId,
+          traceId: opts.traceId,
+          idempotencyKey,
+        }
+      );
+      return { eventId: null, skipped: false };
+    }
+  }
 
   let sessionId: string | null = null;
   let orgId: string | null = null;

@@ -1,3 +1,4 @@
+import { publishViewVersionBump } from "@/lib/denis/actor/view-version";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { projectTableSessionView } from "@/lib/denis/loop/project-view";
 import { tableSessionViewToScene } from "@/lib/denis/loop/view-to-scene";
@@ -70,6 +71,8 @@ export async function persistTableSessionView(
     });
     return null;
   }
+
+  await publishViewVersionBump(input.sessionId, view.version);
 
   return view.version;
 }

@@ -34,6 +34,8 @@ export const denisSignalContextSchema = z.object({
   locationId: zUuid().optional(),
   tableId: zUuid().optional(),
   tableSessionToken: zSessionToken().optional(),
+  /** Idempotency key — Phase E Table Session Actor dedupe. */
+  signalId: z.string().trim().min(8).max(128).optional(),
   language: z.string().trim().min(2).max(8).optional(),
   aiSessionId: zUuid().optional(),
   deviceFingerprint: deviceFingerprintSchema.optional(),

@@ -18,6 +18,8 @@ export type CommerceTrigger =
 export type RunCommerceExperienceOpts = {
   idempotencyKey?: string;
   traceId?: string;
+  /** Internal — actor worker must not re-enqueue. */
+  skipActorEnqueue?: boolean;
 };
 
 export type RunCommerceExperienceResult = {
