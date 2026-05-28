@@ -546,10 +546,26 @@ export function AiConciergeChat({
 
   useEffect(() => {
     if (!open) return;
-    const prevOverflow = document.body.style.overflow;
+
+    const scrollY = window.scrollY;
+    const prev = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
+
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
     return () => {
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = prev.overflow;
+      document.body.style.position = prev.position;
+      document.body.style.top = prev.top;
+      document.body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
     };
   }, [open]);
 
@@ -1191,13 +1207,14 @@ export function AiConciergeChat({
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onFocus={scrollToBottom}
                 disabled={!inputEnabled}
                 placeholder={
                   orderingDisabled
                     ? tUI("ai.chat.placeholder")
                     : tUI("ai.chat.orderPlaceholder")
                 }
-                className="min-w-0 flex-1 border-0 border-b border-[var(--qr-elevated)] bg-transparent py-3 text-[15px] text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-muted)] disabled:opacity-50"
+                className="min-w-0 flex-1 border-0 border-b border-[var(--qr-elevated)] bg-transparent py-3 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none focus:border-[var(--qr-muted)] disabled:opacity-50"
               />
               <button
                 type="submit"

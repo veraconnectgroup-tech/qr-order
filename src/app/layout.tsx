@@ -55,6 +55,8 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover" as const,
+  // Let the layout shrink when the mobile keyboard opens (iOS 15+ / Chrome 108+).
+  interactiveWidget: "resizes-content" as const,
 };
 
 export default function RootLayout({
