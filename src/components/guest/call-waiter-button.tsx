@@ -49,13 +49,6 @@ export function CallWaiterButton({
   }
 
   async function handleCall() {
-    if (!sessionToken) {
-      toast.error(tUI("waiter.sessionError"), {
-        description: tUI("waiter.sessionErrorHint"),
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch("/api/waiter-calls", {
@@ -63,7 +56,7 @@ export function CallWaiterButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tableToken: token,
-          sessionToken,
+          ...(sessionToken ? { sessionToken } : {}),
         }),
       });
       if (!res.ok) throw new Error();

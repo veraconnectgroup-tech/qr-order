@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { validateTableSession } from "@/lib/orders/validate-table-session";
+import { resolveWaiterCallContext } from "@/lib/sessions/resolve-waiter-call-context";
 import { checkRateLimit, getClientIp, withRateLimit } from "@/lib/rate-limit";
 import {
   zOptionalSanitizedText,
@@ -13,7 +13,7 @@ import { scheduleWaiterCallPush } from "@/lib/push/schedule-notify";
 
 const schema = z.object({
   tableToken: zTableToken(),
-  sessionToken: zSessionToken(),
+  sessionToken: zSessionToken().optional(),
   message: zOptionalSanitizedText(200),
 });
 
@@ -41,29 +41,28 @@ export const POST = withErrorHandler("waiter-calls-post", async (req, _ctx) => {
     return apiError("Too many waiter calls", 429);
   }
 
-  const sessionResult = await validateTableSession(
-    admin,
-    parsed.data.tableToken,
-    parsed.data.sessionToken
-  );
+  const ctx = await resolveWaiterCallContext(admin, {
+    tableToken: parsed.data.tableToken,
+    sessionToken: parsed.data.sessionToken,
+  });
 
-  if ("error" in sessionResult) {
-    return apiError(sessionResult.error, sessionResult.status);
+  if (!ctx.ok) {
+    return apiError(ctx.error, ctx.status);
   }
 
-  const { table: tableRow, session: sessionRow } = sessionResult.data;
+  const { tableId, locationId, tableName, sessionId } = ctx.data;
 
   const { error } = await admin.from("waiter_calls").insert({
-    table_id: tableRow.id,
-    location_id: tableRow.location_id,
-    session_id: sessionRow.id,
+    table_id: tableId,
+    location_id: locationId,
+    session_id: sessionId,
   });
 
   if (error) {
     return apiError("Waiter call could not be created.", 500);
   }
 
-  scheduleWaiterCallPush(tableRow.location_id, tableRow.name);
+  scheduleWaiterCallPush(locationId, tableName);
 
   return apiSuccess({ ok: true });
 });

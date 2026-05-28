@@ -1,4 +1,4 @@
-import { resolveHandoffSession } from "@/lib/denis/acl/resolve-handoff-session";
+import { resolveWaiterCallContext } from "@/lib/sessions/resolve-waiter-call-context";
 import { scheduleWaiterCallPush } from "@/lib/push/schedule-notify";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -12,15 +12,27 @@ export async function executeDenisWaiterHandoff(
   input: {
     tableId: string;
     locationId: string;
-    sessionToken: string;
+    tableToken: string;
+    sessionToken?: string | null;
   }
 ): Promise<ExecuteDenisWaiterHandoffResult> {
-  const resolved = await resolveHandoffSession(admin, input);
-  if (!resolved.ok) {
-    return { ok: false, error: resolved.error };
+  const ctx = await resolveWaiterCallContext(admin, {
+    tableToken: input.tableToken,
+    sessionToken: input.sessionToken,
+  });
+
+  if (!ctx.ok) {
+    return { ok: false, error: ctx.error };
   }
 
-  const { sessionId, tableId, tableName, locationId } = resolved.data;
+  if (
+    ctx.data.tableId !== input.tableId ||
+    ctx.data.locationId !== input.locationId
+  ) {
+    return { ok: false, error: "location_mismatch" };
+  }
+
+  const { tableId, tableName, locationId, sessionId } = ctx.data;
 
   const { error } = await admin.from("waiter_calls").insert({
     table_id: tableId,

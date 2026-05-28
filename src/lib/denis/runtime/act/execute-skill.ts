@@ -46,7 +46,7 @@ export async function executePlannedSkill(
       };
     }
 
-    if (!ctx.tableId || !ctx.locationId || !ctx.sessionToken) {
+    if (!ctx.tableId || !ctx.locationId || !ctx.tableToken) {
       return {
         skillId: ctx.skillId,
         riskClass,
@@ -60,6 +60,7 @@ export async function executePlannedSkill(
     const result = await executeDenisWaiterHandoff(admin, {
       tableId: ctx.tableId,
       locationId: ctx.locationId,
+      tableToken: ctx.tableToken,
       sessionToken: ctx.sessionToken,
     });
 
