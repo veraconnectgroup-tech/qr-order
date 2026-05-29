@@ -53,8 +53,9 @@ TRUTH boundary — guest path never imports integration code
 5. **Write = proposal** — owner approves config/playbook changes  
 6. **Global core** — DE/US/UK = market modules, not forks  
 7. **Comprehend-first** — ADR-030; template never interprets guest input  
+8. **Situation Pack** — ADR-031 C1; LLM sees full table truth every turn  
 
-Full list: [DENIS-TABLE-OS-ARCHITECTURE.md §18](./DENIS-TABLE-OS-ARCHITECTURE.md) · [ADR-030](./ADR-030-denis-conversation-comprehension.md)
+Full list: [DENIS-TABLE-OS-ARCHITECTURE.md §18](./DENIS-TABLE-OS-ARCHITECTURE.md) · [ADR-030](./ADR-030-denis-conversation-comprehension.md) · [ADR-031](./ADR-031-denis-maximum-cognition-phases.md)
 
 ---
 
@@ -62,9 +63,12 @@ Full list: [DENIS-TABLE-OS-ARCHITECTURE.md §18](./DENIS-TABLE-OS-ARCHITECTURE.m
 
 | Step | What | Doc |
 |------|------|-----|
-| I0 | ADR-025 cognition + waiter eval O1 | ADR-025 |
-| I1 | Operator API read + audit | ADR-029 · [VIKTOR prompts § P1](./VIKTOR-DENIS-CURSOR-PROMPTS.md) |
-| I2 | `denis.*` webhooks + session rollup | ADR-029 · [VIKTOR prompts § P2](./VIKTOR-DENIS-CURSOR-PROMPTS.md) |
+| **C1** | **Situation Pack (FSP)** — Denis sees full table | **ADR-031** ← now |
+| **C2** | ACT guarantee — slot/confirm closes loop | ADR-031 ✅ |
+| **C3** | Waiter-parity journey eval (40+) | ADR-031 ← next |
+| I0 | ADR-025/030 cognition gates | ADR-025 |
+| I1 | Operator API read + audit | ADR-029 |
+| I2 | `denis.*` webhooks + session rollup | ADR-029 |
 | I3 | OpenAPI + contract tests | ADR-029-session-prompts |
 | Partner | Viktor Skill (read-only) | ADR-028 V4 |
 

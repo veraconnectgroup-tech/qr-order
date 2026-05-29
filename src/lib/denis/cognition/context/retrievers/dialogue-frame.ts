@@ -44,7 +44,7 @@ export function buildDialogueFrameEvidence(input: {
 
   if (awaiting === "serve_size") {
     lines.push(
-      "- instruction: Guest is answering size/volume for a drink in cart. Interpret typos and natural language (e.g. veliko povo → large beer 0.5L). Use intent clarify or cart actions — never generic welcome."
+      "- instruction: Guest is answering size/volume. Map typos (veliko povo → 0.5L). Return proposedItems with the pending productId + serveSize — do NOT ask again."
     );
   }
 

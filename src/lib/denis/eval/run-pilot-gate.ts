@@ -3,6 +3,11 @@ import { DENIS_PILOT_SR_SCENARIOS } from "@/lib/denis/eval/fixtures/pilot-sr-sce
 import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import type { EvalSuiteReport, ScenarioRunResult } from "@/lib/denis/eval/types";
+import { runQualityContractEval } from "@/lib/denis/cognition/quality/contract-eval";
+import {
+  runWaiterParitySuite,
+  type WaiterParityReport,
+} from "@/lib/denis/eval/run-waiter-parity";
 import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
 import {
   hasCommittedNarrationFacts,
@@ -97,29 +102,46 @@ export type PilotGateReport = {
   ok: boolean;
   core: EvalSuiteReport;
   pilotSr: EvalSuiteReport;
+  waiterParity: WaiterParityReport;
+  qualityContract: ReturnType<typeof runQualityContractEval>;
   narration: PilotNarrationGateResult;
   presetReady: boolean;
   presetChecks: ReturnType<typeof evaluateGaGate>["checks"];
 };
 
-/** G3 — full pilot gate: core eval + SR scenarios + narration + preset readiness. */
+/** G3 — full pilot gate: core eval + SR scenarios + waiter parity + quality contract + narration. */
 export function runPilotGate(): PilotGateReport {
   const core = runDenisEvalSuite();
   const pilotSr = runPilotSrEvalSuite();
+  const waiterParity = runWaiterParitySuite();
+  const qualityContract = runQualityContractEval();
   const narration = runPilotNarrationGate();
 
   const form = denisRolloutFormFromPreset("table_os_pilot");
   const ga = form
     ? evaluateGaGate(form, {
-        recentEvalPass: core.ok && pilotSr.ok && narration.passed,
-        pilotEvalPass: pilotSr.ok && narration.passed,
+        recentEvalPass:
+          core.ok &&
+          pilotSr.ok &&
+          waiterParity.ok &&
+          qualityContract.ok &&
+          narration.passed,
+        pilotEvalPass:
+          pilotSr.ok && waiterParity.ok && qualityContract.ok && narration.passed,
       })
     : { ready: false, checks: [] };
 
   return {
-    ok: core.ok && pilotSr.ok && narration.passed,
+    ok:
+      core.ok &&
+      pilotSr.ok &&
+      waiterParity.ok &&
+      qualityContract.ok &&
+      narration.passed,
     core,
     pilotSr,
+    waiterParity,
+    qualityContract,
     narration,
     presetReady: ga.ready,
     presetChecks: ga.checks,

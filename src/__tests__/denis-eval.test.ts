@@ -4,6 +4,8 @@ import { runBeliefsCompileFixture } from "@/lib/denis/eval/run-beliefs-fixture";
 import { runFoldOrderVisibilityFixture } from "@/lib/denis/eval/run-fold-fixture";
 import { runWorldTellUnificationFixture } from "@/lib/denis/eval/run-world-tell-fixture";
 import { runPilotGate, runPilotSrEvalSuite } from "@/lib/denis/eval/run-pilot-gate";
+import { runWaiterParitySuite } from "@/lib/denis/eval/run-waiter-parity";
+import { WAITER_PARITY_SCENARIOS } from "@/lib/denis/eval/fixtures/waiter-parity/scenarios";
 import { DENIS_PILOT_SR_SCENARIOS } from "@/lib/denis/eval/fixtures/pilot-sr-scenarios";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import { DENIS_EVAL_SCENARIOS } from "@/lib/denis/eval/fixtures/scenarios";
@@ -60,6 +62,15 @@ describe("Denis eval fixtures M10", () => {
     expect(report.scenarioCount).toBe(DENIS_PILOT_SR_SCENARIOS.length);
   });
 
+  it("waiter parity journey eval passes (ADR-031 C3)", () => {
+    const report = runWaiterParitySuite();
+    if (!report.ok) {
+      console.error(JSON.stringify(report.results.filter((r) => !r.passed), null, 2));
+    }
+    expect(report.ok).toBe(true);
+    expect(report.scenarioCount).toBe(WAITER_PARITY_SCENARIOS.length);
+  });
+
   it("full pilot gate is green (G3)", () => {
     const gate = runPilotGate();
     if (!gate.ok) {
@@ -68,6 +79,8 @@ describe("Denis eval fixtures M10", () => {
           {
             coreFailed: gate.core.results.filter((r) => !r.passed),
             srFailed: gate.pilotSr.results.filter((r) => !r.passed),
+            waiterParityFailed: gate.waiterParity.results.filter((r) => !r.passed),
+            qualityContract: gate.qualityContract.violations,
             narration: gate.narration,
             presetChecks: gate.presetChecks.filter((c) => !c.passed),
           },

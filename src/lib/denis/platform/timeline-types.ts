@@ -80,6 +80,16 @@ export type DenisTimelineEventPayload =
       beliefCount: number;
       summary: Record<string, unknown>;
     }
+  | {
+      type: "mind.turn_profile";
+      tier: string;
+      planKind: string;
+      planReason: string;
+      llmUsed: boolean;
+      beliefsHash?: string;
+      evidencePointers?: string[];
+      pendingSlotActResolved?: boolean;
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -99,7 +109,8 @@ export type DenisTimelineEventType =
   | "proactive.emitted"
   | "belief.revision"
   | "mind.fold_completed"
-  | "mind.beliefs_compiled";
+  | "mind.beliefs_compiled"
+  | "mind.turn_profile";
 
 export type DenisTimelineRow = {
   id: string;

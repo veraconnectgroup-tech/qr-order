@@ -54,6 +54,7 @@
 | [ADR-023-operator.md](./ADR-023-operator.md) | **Jovica one-liner** — MR track prompts | Active | Copy-paste agent |
 | [ADR-023-session-prompts.md](./ADR-023-session-prompts.md) | **Implement agent** — MR-0→MR-9 detail | Active | Autonomous implementation |
 | [ADR-023-verification-checklist.md](./ADR-023-verification-checklist.md) | **Review agent** — verify MR | Active | Post-implement review |
+| [ADR-031](./ADR-031-denis-maximum-cognition-phases.md) | **Maximum cognition phases** — FSP, ACT, journey eval to 100% | Accepted | Brain build C1–C5 |
 | [ADR-030](./ADR-030-denis-conversation-comprehension.md) | **Comprehension-first** — dialogue frame, leadership guard | Accepted | Cognition enterprise |
 | [ADR-025 operator](./ADR-025-operator.md) | **Jovica one-liner** — T1→T3 prompts | Active | Copy-paste agent |
 | [ADR-025 session prompts](./ADR-025-session-prompts.md) | **Implement agent** — T1/T2/T3 detail | Active | Autonomous implementation |

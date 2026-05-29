@@ -157,6 +157,18 @@ describe("decideTurnPlan — slots and reflex", () => {
     expect(plan.requiresLlm).toBe(true);
   });
 
+  it("pending_slot never returns slot_extract template (ADR-031 C2)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("commerce.pending_slot", "serve_size"),
+      ]),
+      reflex: reflexFor("???"),
+      message: "???",
+    });
+    expect(plan.kind).not.toBe("slot_extract");
+    expect(plan.kind).toBe("transactional_perceive");
+  });
+
   it("pending_slot + 0.5 → transactional_perceive", () => {
     const plan = decideTurnPlan({
       beliefs: beliefGraph([

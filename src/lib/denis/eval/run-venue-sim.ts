@@ -95,17 +95,13 @@ function planTurnForSim(
   });
 }
 
-/**
- * M20 — deterministic counterfactual replay: re-run kernel planner per timeline
- * turn with baseline vs experiment config (no LLM, no guest writes).
- */
-export function runVenueSim(
+function runDualConfigSim(
   sessionId: string,
   events: DenisTimelineRow[],
   baselineConfig: ConciergeConfig,
-  overrides: VenueSimExperimentOverrides
+  counterfactualConfig: ConciergeConfig,
+  labels: { baseline: string; counterfactual: string }
 ): VenueSimReport {
-  const counterfactualConfig = applyVenueSimOverrides(baselineConfig, overrides);
   const turns = extractTimelineReplayTurns(events);
   const deltas: VenueSimTurnDelta[] = [];
 
@@ -114,7 +110,7 @@ export function runVenueSim(
 
   for (const turn of turns) {
     const foodUpsellAsked = foodUpsellAskedBeforeSeq(events, turn.firstSeq);
-    const skipBaseline = false;
+    const skipBaseline = baselineConfig.ops.rushSkipUpsell;
     const skipCounterfactual = counterfactualConfig.ops.rushSkipUpsell;
 
     const baselineReflex = planTurnForSim(baselineConfig, {
@@ -135,14 +131,13 @@ export function runVenueSim(
     baselineSnapshots.push(baseline);
     counterfactualSnapshots.push(counterfactual);
 
-    const changed = plannerChanged(baseline, counterfactual);
     deltas.push({
       traceId: turn.traceId,
       guestText: turn.guestText,
       flowNodeId: turn.flowNodeId,
       baseline,
       counterfactual,
-      plannerChanged: changed,
+      plannerChanged: plannerChanged(baseline, counterfactual),
     });
   }
 
@@ -155,8 +150,8 @@ export function runVenueSim(
 
   return {
     sessionId,
-    baselineLabel: `rollout=${baselineConfig.rollout.mode}`,
-    counterfactualLabel: describeVenueSimOverrides(overrides),
+    baselineLabel: labels.baseline,
+    counterfactualLabel: labels.counterfactual,
     turns: deltas,
     metrics: {
       baseline: baselineMetrics,
@@ -173,4 +168,32 @@ export function runVenueSim(
       },
     },
   };
+}
+
+/**
+ * M20 — deterministic counterfactual replay: re-run kernel planner per timeline
+ * turn with baseline vs experiment config (no LLM, no guest writes).
+ */
+export function runVenueSim(
+  sessionId: string,
+  events: DenisTimelineRow[],
+  baselineConfig: ConciergeConfig,
+  overrides: VenueSimExperimentOverrides
+): VenueSimReport {
+  const counterfactualConfig = applyVenueSimOverrides(baselineConfig, overrides);
+  return runDualConfigSim(sessionId, events, baselineConfig, counterfactualConfig, {
+    baseline: `rollout=${baselineConfig.rollout.mode}`,
+    counterfactual: describeVenueSimOverrides(overrides),
+  });
+}
+
+/** ADR-031 C5 — compare effective configs from manifest vN vs vN+1. */
+export function runManifestCompareSim(
+  sessionId: string,
+  events: DenisTimelineRow[],
+  baselineConfig: ConciergeConfig,
+  counterfactualConfig: ConciergeConfig,
+  labels: { baseline: string; counterfactual: string }
+): VenueSimReport {
+  return runDualConfigSim(sessionId, events, baselineConfig, counterfactualConfig, labels);
 }

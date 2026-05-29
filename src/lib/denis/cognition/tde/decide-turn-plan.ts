@@ -7,7 +7,6 @@ import {
   type TurnPlan,
   type TurnPlanKind,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
-import { shouldUseLlmForPendingSlotReply } from "@/lib/denis/cognition/tde/slot-response-match";
 import type {
   CommercePressure,
   ConversationAwaiting,
@@ -54,28 +53,17 @@ function resolveSuppressUpsell(beliefs: DecideTurnPlanInput["beliefs"]): boolean
   );
 }
 
+/** ADR-031 C2 — guest replies always comprehend or deterministic ACT; never slot template loop. */
 function planForPendingSlot(
-  slot: string,
-  message: string,
+  _slot: string,
+  _message: string,
   suppressUpsell: boolean
 ): TurnPlan {
-  if (shouldUseLlmForPendingSlotReply(slot, message)) {
-    return buildPlan("transactional_perceive", {
-      requiresLlm: true,
-      suppressUpsell,
-      reason: "commerce.pending_slot.reply",
-    });
-  }
-
-  const templateKey =
-    slot === "serve_size" ? "slot.clarify.serve_size" : "slot.clarify.generic";
-  return {
-    kind: "slot_extract",
-    requiresLlm: false,
+  return buildPlan("transactional_perceive", {
+    requiresLlm: true,
     suppressUpsell,
-    reason: "commerce.pending_slot",
-    templateKey,
-  };
+    reason: "commerce.pending_slot.reply",
+  });
 }
 
 function planForTopGoal(

@@ -5,6 +5,11 @@ import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { DenisRolloutPanel } from "@/components/admin/denis-rollout-panel";
+import { DenisQualityContractStrip } from "@/components/admin/denis-quality-contract-strip";
+import { DenisManifestPromotePanel } from "@/components/admin/denis-manifest-promote-panel";
+import { loadDenisQualityContractStrip } from "@/lib/admin/denis-quality-contract";
+import { loadDenisManifestAdminState } from "@/lib/admin/denis-manifest-actions";
+import { listDenisDebugSessions } from "@/lib/admin/denis-debug";
 import { loadDenisRolloutAdminState } from "@/lib/admin/denis-rollout-actions";
 import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
 import { LocationSettings } from "@/components/admin/location-settings";
@@ -132,6 +137,22 @@ export default async function AdminSettingsPage() {
       ? denisRolloutState
       : null;
 
+  const qualityContractStrip =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadDenisQualityContractStrip(locationId)
+      : null;
+
+  const manifestAdminState =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadDenisManifestAdminState()
+      : null;
+  const manifestSessions =
+    locationId && locationRow?.ai_concierge_enabled
+      ? (await listDenisDebugSessions(admin, locationId)).filter(
+          (row) => row.timelineEventCount > 0
+        )
+      : [];
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-foreground">Settings</h1>
@@ -197,6 +218,19 @@ export default async function AdminSettingsPage() {
             {locationRow.ai_concierge_enabled && denisRollout && (
               <DenisRolloutPanel initial={denisRollout} />
             )}
+
+            {locationRow.ai_concierge_enabled && qualityContractStrip && (
+              <DenisQualityContractStrip data={qualityContractStrip} />
+            )}
+
+            {locationRow.ai_concierge_enabled &&
+              manifestAdminState &&
+              !("error" in manifestAdminState) && (
+                <DenisManifestPromotePanel
+                  initial={manifestAdminState}
+                  sessions={manifestSessions}
+                />
+              )}
 
             {locationRow.ai_concierge_enabled && (
               <AiPlaybookPanel

@@ -1,4 +1,4 @@
-import { apiError } from "@/lib/api-response";
+import { apiError, apiSuccess } from "@/lib/api-response";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
 import { perceiveGuestChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
@@ -30,10 +30,21 @@ import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
+import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
 import {
   appendMindBeliefsCompiled,
   compileBeliefs,
+  CORE_BELIEF_KEYS,
 } from "@/lib/denis/cognition/beliefs";
+import {
+  tryResolvePendingSlotAct,
+  sessionDraftHasPendingSlot,
+  type PendingSlotActResult,
+} from "@/lib/denis/cognition/act/resolve-pending-slot-act";
+import {
+  appendMindTurnProfile,
+  buildTurnProfile,
+} from "@/lib/denis/cognition/quality/turn-profile";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import {
   kernelTimelineEnabled,
@@ -121,7 +132,42 @@ type TdePerceiveResult = {
   planKind: TurnPlanKind;
   tier: string;
   evidencePointers: string[];
+  pendingSlotActResolved?: boolean;
+  cartDraftFromAct?: DenisTurnContext["aiCartState"]["draft"];
 };
+
+function buildPendingSlotActPerceiveResult(
+  act: Extract<PendingSlotActResult, { resolved: true }>,
+  suppressUpsell: boolean,
+  tier: string
+): TdePerceiveResult {
+  const turnPlan: TurnPlan = {
+    kind: "transactional_perceive",
+    requiresLlm: false,
+    suppressUpsell,
+    reason: "act.pending_slot.resolved",
+  };
+
+  return {
+    response: apiSuccess({
+      message: act.message,
+      recommendations: [],
+      cartActions: act.cartActions,
+      quickReplies: act.quickReplies,
+      intent: act.intent,
+      submitOrder: false,
+      sessionId: act.sessionId,
+      structuredPerception: act.structuredPerception,
+    }),
+    turnPlan,
+    llmUsed: false,
+    planKind: turnPlan.kind,
+    tier,
+    evidencePointers: ["act.pending_slot"],
+    pendingSlotActResolved: true,
+    cartDraftFromAct: act.cartDraft,
+  };
+}
 
 function resolvePerceiveMode(turnPlan: TurnPlan): DenisPerceiveMode {
   if (
@@ -186,6 +232,16 @@ async function runTdePerceive(input: {
     profile,
     guestMessage: input.body.message,
     state: input.ctx.tableSessionState,
+    sessionPhase: input.ctx.foldMeta?.phase ?? null,
+    flowNodeId: input.ctx.flowNodeId,
+    transcript: input.ctx.tableSessionState?.timeline
+      ? timelineToStoredMessages(input.ctx.tableSessionState.timeline).map(
+          (entry) => ({
+            role: entry.role,
+            content: entry.content,
+          })
+        )
+      : undefined,
     guestMemory: input.ctx.guestMemory,
     venueOps: input.ctx.venueOps,
     opsEffects: input.ctx.opsEffects,
@@ -353,14 +409,50 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const rollout = resolveEffectiveRollout(ctx.config);
   const timelineEnabled = kernelTimelineEnabled(rollout.mode);
 
+  const pendingSlot = beliefGraph
+    ? getBeliefValue<string>(beliefGraph, CORE_BELIEF_KEYS.commercePendingSlot)
+    : null;
+  const aiSessionId =
+    ctx.draftAiSessionId ?? parsed.data.sessionId ?? null;
+  const { profile } = resolveRuntimeProfile(ctx.config);
+
   const perceiveStarted = performance.now();
-  const perceiveResult = await runTdePerceive({
-    body: parsed.data,
-    ctx,
-    reflexTurn,
-    beliefs: beliefGraph ?? { beliefs: [] },
-    timelineEnabled,
-  });
+  let perceiveResult: TdePerceiveResult;
+
+  if (pendingSlot && aiSessionId) {
+    const slotAct = await tryResolvePendingSlotAct({
+      admin,
+      sessionId: aiSessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      language: parsed.data.language,
+      pendingSlot,
+    });
+
+    if (slotAct.resolved) {
+      perceiveResult = buildPendingSlotActPerceiveResult(
+        slotAct,
+        ctx.opsEffects?.skipUpsell ?? false,
+        profile.tier
+      );
+    } else {
+      perceiveResult = await runTdePerceive({
+        body: parsed.data,
+        ctx,
+        reflexTurn,
+        beliefs: beliefGraph ?? { beliefs: [] },
+        timelineEnabled,
+      });
+    }
+  } else {
+    perceiveResult = await runTdePerceive({
+      body: parsed.data,
+      ctx,
+      reflexTurn,
+      beliefs: beliefGraph ?? { beliefs: [] },
+      timelineEnabled,
+    });
+  }
   const perceiveResponse = perceiveResult.response;
   timings.legacyMs = elapsedMs(perceiveStarted);
   if (perceiveResponse.status !== 200) {
@@ -374,10 +466,28 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     return perceiveResponse;
   }
 
-  let cartDraftForAct = ctx.aiCartState.draft;
-  const actSubmitLive = isActSubmitLive(ctx.config);
+  if (timelineEnabled && aiSessionId && beliefGraph) {
+    await appendMindTurnProfile(admin, {
+      aiSessionId,
+      traceId,
+      truthHash: ctx.foldMeta?.truthHash,
+      profile: buildTurnProfile({
+        turnPlan: perceiveResult.turnPlan,
+        llmUsed: perceiveResult.llmUsed,
+        tier: perceiveResult.tier,
+        beliefs: beliefGraph,
+        evidencePointers: perceiveResult.evidencePointers,
+        pendingSlotActResolved: perceiveResult.pendingSlotActResolved,
+      }),
+    });
+  }
 
-  if (data.structuredPerception && data.sessionId) {
+  let cartDraftForAct =
+    perceiveResult.cartDraftFromAct ?? ctx.aiCartState.draft;
+  const actSubmitLive = isActSubmitLive(ctx.config);
+  const pendingSlotActApplied = perceiveResult.pendingSlotActResolved === true;
+
+  if (data.structuredPerception && data.sessionId && !pendingSlotActApplied) {
     const ordered = await applyStructuredPerceptionOrdering({
       admin,
       sessionId: data.sessionId,
@@ -397,6 +507,33 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       data.quickReplies = ordered.quickReplies;
       data.intent = ordered.intent;
       data.submitOrder = ordered.submitOrder;
+    }
+  }
+
+  if (
+    pendingSlot &&
+    data.sessionId &&
+    !pendingSlotActApplied &&
+    (await sessionDraftHasPendingSlot(admin, data.sessionId)) &&
+    (data.cartActions?.length ?? 0) === 0
+  ) {
+    const retryAct = await tryResolvePendingSlotAct({
+      admin,
+      sessionId: data.sessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      language: parsed.data.language,
+      pendingSlot,
+    });
+
+    if (retryAct.resolved) {
+      cartDraftForAct = retryAct.cartDraft;
+      data.message = retryAct.message;
+      data.cartActions = retryAct.cartActions;
+      data.quickReplies = retryAct.quickReplies;
+      data.intent = retryAct.intent;
+      data.structuredPerception = retryAct.structuredPerception;
+      data.submitOrder = false;
     }
   }
 

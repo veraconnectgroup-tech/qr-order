@@ -1,6 +1,6 @@
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
+import { buildSituationPack } from "@/lib/denis/cognition/context/build-situation-pack";
 import { retrieveCommerceEvidence } from "@/lib/denis/cognition/context/retrievers/commerce-evidence";
-import { buildDialogueFrameEvidence } from "@/lib/denis/cognition/context/retrievers/dialogue-frame";
 import { retrieveGuestIntelEvidence } from "@/lib/denis/cognition/context/retrievers/guest-intel-evidence";
 import {
   isMenuRagEnabled,
@@ -13,7 +13,9 @@ import type { VenueManifestCapabilities } from "@/lib/denis/cognition/manifest/v
 import type { DenisRuntimeResolvedProfile } from "@/lib/denis/cognition/runtime-profile-types";
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { TableSessionState } from "@/lib/denis/loop/types";
+import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import type { SessionPhase } from "@/lib/scene/types";
 import type {
   OpsPlannerEffects,
   VenueOpsBeliefs,
@@ -22,6 +24,7 @@ import type {
 export type EvidencePointer =
   | "commerce.*"
   | "transcript.window"
+  | "situation.pack"
   | "dialogue.frame"
   | "guest.memory"
   | "venue.ops"
@@ -49,6 +52,8 @@ export type PlanEvidenceInput = {
   profile: DenisRuntimeResolvedProfile;
   guestMessage: string;
   state?: TableSessionState | null;
+  sessionPhase?: SessionPhase | null;
+  flowNodeId?: FlowNodeId | null;
   transcript?: TranscriptMessage[];
   guestMemory?: GuestMemoryProjection | null;
   venueOps?: VenueOpsBeliefs | null;
@@ -76,33 +81,48 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
   const pointers: EvidencePointer[] = ["commerce.*", "transcript.window"];
   const blocks: string[] = [];
 
-  const commerce = retrieveCommerceEvidence(
-    input.state,
-    input.orderContext,
-    input.orderDraftContext
-  );
-  if (commerce) blocks.push(commerce);
-
   if (input.turnPlan.requiresLlm) {
-    pointers.push("dialogue.frame");
+    pointers.push("situation.pack");
     blocks.push(
-      buildDialogueFrameEvidence({
-        beliefs: input.beliefs,
+      buildSituationPack({
         state: input.state,
+        beliefs: input.beliefs,
+        sessionPhase: input.sessionPhase,
+        flowNodeId: input.flowNodeId,
+        transcript: input.transcript,
+        orderContext: input.orderContext,
+        orderDraftContext: input.orderDraftContext,
+        guestMemory: input.guestMemory,
+        venueOps: input.venueOps,
+        opsEffects: input.opsEffects,
       })
     );
+  } else {
+    const commerce = retrieveCommerceEvidence(
+      input.state,
+      input.orderContext,
+      input.orderDraftContext
+    );
+    if (commerce) blocks.push(commerce);
+
+    const transcript = retrieveTranscriptWindowEvidence(input.transcript ?? []);
+    if (transcript) blocks.push(transcript);
   }
 
-  const transcript = retrieveTranscriptWindowEvidence(input.transcript ?? []);
-  if (transcript) blocks.push(transcript);
-
-  if (input.capabilities.guestMemory >= 2) {
+  if (
+    !input.turnPlan.requiresLlm &&
+    input.capabilities.guestMemory >= 2
+  ) {
     pointers.push("guest.memory");
     const guestIntel = retrieveGuestIntelEvidence(input.guestMemory);
     if (guestIntel) blocks.push(guestIntel);
   }
 
-  if (input.capabilities.anticipation >= 1 || input.capabilities.transactional >= 1) {
+  if (
+    !input.turnPlan.requiresLlm &&
+    (input.capabilities.anticipation >= 1 ||
+      input.capabilities.transactional >= 1)
+  ) {
     pointers.push("venue.ops");
     const ops = retrieveVenueOpsEvidence(input.venueOps, input.opsEffects);
     if (ops) blocks.push(ops);
