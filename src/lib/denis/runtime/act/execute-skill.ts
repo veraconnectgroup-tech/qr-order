@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { executeDenisGuestOrderCancel } from "@/lib/denis/acl/execute-denis-guest-order-cancel";
+import { executeDenisOrderModifyRequest } from "@/lib/denis/acl/execute-denis-order-modify-request";
 import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { executeDenisOrderCommand } from "@/lib/denis/acl/execute-denis-order-command";
@@ -141,6 +143,114 @@ export async function executePlannedSkill(
         needsMethod: false,
         paymentMethod: result.paymentMethod,
         openPaymentSheet: result.openPaymentSheet ?? false,
+      },
+    };
+  }
+
+  if (ctx.skillId === "order.cancel") {
+    if (!ctx.tableId || !ctx.locationId || !ctx.sessionToken) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: ctx.dryRun,
+        ok: false,
+        error: "missing_order_change_context",
+      };
+    }
+
+    if (ctx.dryRun) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: true,
+        ok: true,
+        detail: { previewOnly: true },
+      };
+    }
+
+    const admin = createAdminClient();
+    const result = await executeDenisGuestOrderCancel(admin, {
+      tableId: ctx.tableId,
+      locationId: ctx.locationId,
+      sessionToken: ctx.sessionToken,
+    });
+
+    if (!result.ok) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: result.error,
+      };
+    }
+
+    return {
+      skillId: ctx.skillId,
+      riskClass,
+      dryRun: false,
+      ok: true,
+      detail: {
+        kind: result.kind,
+        orderNumber:
+          result.kind === "cancelled" ? result.orderNumber : result.orderNumber,
+        orderId: result.kind === "cancelled" ? result.orderId : undefined,
+      },
+    };
+  }
+
+  if (ctx.skillId === "order.modify.request") {
+    if (
+      !ctx.tableId ||
+      !ctx.locationId ||
+      !ctx.sessionToken ||
+      !ctx.tableToken
+    ) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: ctx.dryRun,
+        ok: false,
+        error: "missing_order_change_context",
+      };
+    }
+
+    if (ctx.dryRun) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: true,
+        ok: true,
+        detail: { previewOnly: true },
+      };
+    }
+
+    const admin = createAdminClient();
+    const result = await executeDenisOrderModifyRequest(admin, {
+      tableId: ctx.tableId,
+      locationId: ctx.locationId,
+      tableToken: ctx.tableToken,
+      sessionToken: ctx.sessionToken,
+    });
+
+    if (!result.ok) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: result.error,
+      };
+    }
+
+    return {
+      skillId: ctx.skillId,
+      riskClass,
+      dryRun: false,
+      ok: true,
+      detail: {
+        kind: result.kind,
+        orderNumber: result.orderNumber,
       },
     };
   }

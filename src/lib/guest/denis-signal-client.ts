@@ -21,6 +21,8 @@ export type DenisSignalResponse = {
   voice?: { speakText: string; ttsRecommended: boolean };
   denis?: unknown;
   orderSubmit?: unknown;
+  /** M28 — open session bill sheet for online payment. */
+  openPaymentSheet?: boolean;
 };
 
 export type PostDenisMessageTurnInput = {

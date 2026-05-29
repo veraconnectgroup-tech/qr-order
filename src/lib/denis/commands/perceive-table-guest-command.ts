@@ -4,7 +4,9 @@ import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 export type TableGuestCommand =
   | { type: "WAITER.REQUEST" }
   | { type: "BILL.REQUEST" }
-  | { type: "BILL.SET_METHOD"; method: SelectablePaymentMethod };
+  | { type: "BILL.SET_METHOD"; method: SelectablePaymentMethod }
+  | { type: "ORDER.CANCEL" }
+  | { type: "ORDER.MODIFY" };
 
 function normalize(message: string): string {
   return message.trim().toLowerCase().replace(/\s+/g, " ");
@@ -77,6 +79,7 @@ export function isHandoffWaiterMessage(message: string): boolean {
 export function isHandoffBillRequestMessage(message: string): boolean {
   const text = normalize(message);
   if (parseHandoffPaymentMethod(message)) return false;
+  if (isOrderCancelMessage(message) || isOrderModifyMessage(message)) return false;
   return (
     /\b(račun|racun|rechnung|bill|checkout)\b/.test(text) ||
     /(želim|zelim|hoću|hocu|treba)\s+(da\s+)?(platim|platiti|naplatim|naplatiti)/.test(
@@ -92,6 +95,27 @@ export function isHandoffBillRequestMessage(message: string): boolean {
   );
 }
 
+export function isOrderCancelMessage(message: string): boolean {
+  const text = normalize(message);
+  return (
+    /\b(otka[žz]i\w*|poni[šs]t\w*|stornir\w*|storno|cancel(?:led)?|abbrechen|don't want|do not want|ne treba mi|obriši porud[žz]bin\w*|ukloni porud[žz]bin\w*)\b/.test(
+      text
+    ) ||
+    /\b(porud[žz]bin\w*\s+(otka|poni|stornir|cancel))\b/.test(text)
+  );
+}
+
+export function isOrderModifyMessage(message: string): boolean {
+  const text = normalize(message);
+  if (isOrderCancelMessage(message)) return false;
+  return (
+    /\b(promen[iu]|izmen[iu]|change order|modify order|drugačije|umesto|instead|ändere|andere bestellung)\b/.test(
+      text
+    ) ||
+    /\b(ne\s+(tako|to)|not that|wrong order|falsche bestellung)\b/.test(text)
+  );
+}
+
 export function mapStructuredIntentToCommand(
   intent: GuestIntent,
   paymentMethod?: SelectablePaymentMethod | null
@@ -104,6 +128,12 @@ export function mapStructuredIntentToCommand(
       return { type: "BILL.SET_METHOD", method: paymentMethod };
     }
     return { type: "BILL.REQUEST" };
+  }
+  if (intent === "ORDER_CANCEL") {
+    return { type: "ORDER.CANCEL" };
+  }
+  if (intent === "ORDER_MODIFY") {
+    return { type: "ORDER.MODIFY" };
   }
   return null;
 }
@@ -138,6 +168,22 @@ export function perceiveTableGuestCommand(input: {
     };
   }
 
+  if (input.structuredIntent === "ORDER_CANCEL") {
+    return {
+      command: { type: "ORDER.CANCEL" },
+      intent: "ORDER_CANCEL",
+      paymentMethod: null,
+    };
+  }
+
+  if (input.structuredIntent === "ORDER_MODIFY") {
+    return {
+      command: { type: "ORDER.MODIFY" },
+      intent: "ORDER_MODIFY",
+      paymentMethod: null,
+    };
+  }
+
   for (const phrase of input.customPhrases ?? []) {
     const normalized = normalize(phrase);
     if (!normalized) continue;
@@ -156,6 +202,22 @@ export function perceiveTableGuestCommand(input: {
     return {
       command: { type: "WAITER.REQUEST" },
       intent: "HANDOFF_WAITER",
+      paymentMethod: null,
+    };
+  }
+
+  if (isOrderCancelMessage(input.message)) {
+    return {
+      command: { type: "ORDER.CANCEL" },
+      intent: "ORDER_CANCEL",
+      paymentMethod: null,
+    };
+  }
+
+  if (isOrderModifyMessage(input.message)) {
+    return {
+      command: { type: "ORDER.MODIFY" },
+      intent: "ORDER_MODIFY",
       paymentMethod: null,
     };
   }

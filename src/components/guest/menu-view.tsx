@@ -1089,7 +1089,7 @@ export function MenuView({
         }
         void (async () => {
           try {
-            await runGuestDenisSceneTurn({
+            const result = await runGuestDenisSceneTurn({
               locationId,
               tableId,
               tableToken: token,
@@ -1100,6 +1100,9 @@ export function MenuView({
               handoffPaymentMethod: handoffChip.handoffPaymentMethod,
               allowOrdering: canPlaceOrders,
             });
+            if (result.openPaymentSheet) {
+              setBillSheetOpen(true);
+            }
             setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();
           } catch {
@@ -1458,6 +1461,7 @@ export function MenuView({
               open={aiChatOpen}
               onOpenChange={handleAiChatOpenChange}
               onSceneRefresh={handleGuestSceneRefresh}
+              onOpenPaymentSheet={() => setBillSheetOpen(true)}
               sceneChrome={scene?.chrome ?? null}
               slug={slug}
               token={token}

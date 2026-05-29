@@ -76,6 +76,22 @@ function injectHandoffSkills(
   }
 }
 
+function injectOrderChangeSkills(
+  plan: PlanTurnResult,
+  command: TableGuestCommand | null
+): void {
+  if (!command) return;
+  if (command.type === "ORDER.CANCEL") {
+    const skill = resolveSkill("order.cancel");
+    if (skill) plan.skills = [skill];
+    return;
+  }
+  if (command.type === "ORDER.MODIFY") {
+    const skill = resolveSkill("order.modify.request");
+    if (skill) plan.skills = [skill];
+  }
+}
+
 function resolveAwaitingConfirm(input: ReflexTurnInput): boolean {
   if (input.flowNodeId === "recap" || input.flowNodeId === "submit") {
     return true;
@@ -148,11 +164,18 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
   }
 
   if (handoffPerception) {
-    injectHandoffSkills(plan, {
-      intent,
-      config: input.config,
-      handoffPaymentMethod,
-    });
+    if (
+      handoffPerception.command.type === "ORDER.CANCEL" ||
+      handoffPerception.command.type === "ORDER.MODIFY"
+    ) {
+      injectOrderChangeSkills(plan, handoffPerception.command);
+    } else {
+      injectHandoffSkills(plan, {
+        intent,
+        config: input.config,
+        handoffPaymentMethod,
+      });
+    }
   }
 
   return {

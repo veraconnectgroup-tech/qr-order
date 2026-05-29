@@ -6,6 +6,8 @@ import type { DenisPerceiveTurnOpts } from "@/lib/denis/runtime/perceive/perceiv
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import { planEvidence } from "@/lib/denis/cognition/context/plan-evidence";
+import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
+import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
 import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
 import {
   resolvePerceiveModel,
@@ -82,6 +84,7 @@ import {
   handoffActEnabled,
   resolveActHandoffOutcome,
 } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
+import { resolveActOrderChangeOutcome } from "@/lib/denis/runtime/act/resolve-act-order-change-outcome";
 import {
   elapsedMs,
   emptyTurnTimings,
@@ -333,6 +336,7 @@ async function runTdePerceive(input: {
   reflexTurn: ReflexTurnResult;
   beliefs: BeliefGraph;
   timelineEnabled: boolean;
+  orgId: string;
 }): Promise<TdePerceiveResult> {
   const { profile, effective } = resolveRuntimeProfile(input.ctx.config);
 
@@ -364,6 +368,17 @@ async function runTdePerceive(input: {
     catalog = null;
   }
 
+  const [vkgPairingBlock, playbookBlock] = await Promise.all([
+    loadTurnVkgPairingBlock({
+      locationId: input.body.locationId,
+      config: input.ctx.config,
+      state: input.ctx.tableSessionState,
+      reflexTurn: input.reflexTurn,
+      guestAllergens: input.body.preferences?.allergies,
+    }),
+    getPlaybookPromptBlock(input.orgId, input.body.locationId).catch(() => null),
+  ]);
+
   const evidence = planEvidence({
     turnPlan,
     beliefs: input.beliefs,
@@ -385,6 +400,8 @@ async function runTdePerceive(input: {
     venueOps: input.ctx.venueOps,
     opsEffects: input.ctx.opsEffects,
     catalog,
+    playbookBlock,
+    vkgPairingBlock,
   });
 
   const perceiveMode = resolvePerceiveMode(turnPlan);
@@ -595,6 +612,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         reflexTurn,
         beliefs: beliefGraph ?? { beliefs: [] },
         timelineEnabled,
+        orgId: orgResult.data.orgId,
       });
     }
   } else {
@@ -604,6 +622,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       reflexTurn,
       beliefs: beliefGraph ?? { beliefs: [] },
       timelineEnabled,
+      orgId: orgResult.data.orgId,
     });
   }
   const perceiveResponse = perceiveResult.response;
@@ -775,6 +794,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     language: parsed.data.language,
     actHandoffOutcome: resolveActHandoffOutcome(actPhase, parsed.data.language),
   });
+  const actOrderChangeOutcome = resolveActOrderChangeOutcome(
+    actPhase,
+    parsed.data.language
+  );
 
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
     cohortKey: parsed.data.sessionToken,
@@ -794,7 +817,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       ctx.tableSessionState?.commerce.orders ?? []
     ),
     blockedReason: turnSubmitOutcome.guestBlockedReason ?? null,
-    handoffMessage: actHandoffOutcome.guestMessage ?? null,
+    handoffMessage:
+      actOrderChangeOutcome.guestMessage ??
+      actHandoffOutcome.guestMessage ??
+      null,
     venueOps: ctx.venueOps,
     opsEffects: ctx.opsEffects,
   });
@@ -827,11 +853,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     actHandoffOutcome.quickReplies
   );
   let guestMessage =
-    actHandoffOutcome.overrideLegacy && actHandoffOutcome.guestMessage
-      ? actHandoffOutcome.guestMessage
-      : !resolvedNarration.usedDenisNarrator
-        ? data.message
-        : narration.message;
+    actOrderChangeOutcome.overrideLegacy && actOrderChangeOutcome.guestMessage
+      ? actOrderChangeOutcome.guestMessage
+      : actHandoffOutcome.overrideLegacy && actHandoffOutcome.guestMessage
+        ? actHandoffOutcome.guestMessage
+        : !resolvedNarration.usedDenisNarrator
+          ? data.message
+          : narration.message;
 
   if (turnSubmitOutcome.orderId) {
     guestMessage = orderSubmitSuccessMessage({
@@ -1017,6 +1045,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     submitOrder: false,
     creditsRemaining,
     sessionId: data.sessionId,
+    ...(actHandoffOutcome.openPaymentSheet
+      ? { openPaymentSheet: true }
+      : {}),
     ...(turnSubmitOutcome.attempted && turnSubmitOutcome.orderId
       ? {
           orderSubmit: {

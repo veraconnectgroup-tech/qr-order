@@ -18,6 +18,8 @@ const guestIntentSchema = z.enum([
   "STATUS",
   "HANDOFF_WAITER",
   "HANDOFF_PAY",
+  "ORDER_CANCEL",
+  "ORDER_MODIFY",
   "SMALLTALK",
   "UNKNOWN",
 ]);

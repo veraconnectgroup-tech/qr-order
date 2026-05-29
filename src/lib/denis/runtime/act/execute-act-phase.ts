@@ -5,6 +5,7 @@ import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { executePlannedSkill } from "@/lib/denis/runtime/act/execute-skill";
 import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
 import { handoffActEnabled } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
+import { orderChangeActEnabled } from "@/lib/denis/runtime/act/resolve-act-order-change-outcome";
 import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
 import type { PlannedSkill } from "@/lib/denis/kernel/plan-turn";
 
@@ -22,6 +23,13 @@ export type ActPhaseInput = {
   catalog?: AiCatalog;
   legacySubmitOrder?: boolean;
 };
+
+function plannedOrderChangeSkills(reflexTurn: ReflexTurnResult): boolean {
+  return reflexTurn.plan.skills.some(
+    (skill) =>
+      skill.id === "order.cancel" || skill.id === "order.modify.request"
+  );
+}
 
 function plannedHandoffSkills(reflexTurn: ReflexTurnResult): boolean {
   return reflexTurn.plan.skills.some((skill) =>
@@ -47,10 +55,16 @@ export async function executeActPhase(
   input: ActPhaseInput
 ): Promise<ActPhaseResult> {
   const liveHandoff = handoffActEnabled(input.config);
+  const liveOrderChange = orderChangeActEnabled(input.config);
   const hasHandoff = plannedHandoffSkills(input.reflexTurn);
+  const hasOrderChange = plannedOrderChangeSkills(input.reflexTurn);
   const orderActEnabled = input.config.ordering.actLayerEnabled;
 
-  if (!orderActEnabled && !(liveHandoff && hasHandoff)) {
+  if (
+    !orderActEnabled &&
+    !(liveHandoff && hasHandoff) &&
+    !(liveOrderChange && hasOrderChange)
+  ) {
     return { enabled: false, dryRun: true, results: [] };
   }
 
@@ -68,9 +82,13 @@ export async function executeActPhase(
 
   for (const planned of skillsToRun) {
     const isHandoff = planned.id.startsWith("handoff.");
+    const isOrderChange =
+      planned.id === "order.cancel" || planned.id === "order.modify.request";
     const skillDryRun = isHandoff
       ? !liveHandoff
-      : dryRun || planned.id !== "order.submit";
+      : isOrderChange
+        ? !liveOrderChange
+        : dryRun || planned.id !== "order.submit";
 
     const result = await executePlannedSkill({
       config: input.config,
@@ -97,7 +115,13 @@ export async function executeActPhase(
     dryRun:
       !allowSubmit &&
       dryRun &&
-      !results.some((row) => row.skillId.startsWith("handoff.") && !row.dryRun),
+      !results.some((row) => row.skillId.startsWith("handoff.") && !row.dryRun) &&
+      !results.some(
+        (row) =>
+          (row.skillId === "order.cancel" ||
+            row.skillId === "order.modify.request") &&
+          !row.dryRun
+      ),
     results,
   };
 }

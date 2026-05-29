@@ -24,6 +24,7 @@ export type GuestDenisTurnResult = {
   sessionId: string | null;
   recommendations: ProductRecommendation[];
   message: string;
+  openPaymentSheet?: boolean;
 };
 
 export function parseSceneChipSelections(
@@ -126,6 +127,7 @@ export async function runGuestDenisSceneTurn(input: {
       message?: string;
       recommendations?: ProductRecommendation[];
       sessionId?: string;
+      openPaymentSheet?: boolean;
     };
   };
 
@@ -146,5 +148,6 @@ export async function runGuestDenisSceneTurn(input: {
     sessionId: data.sessionId ?? null,
     recommendations: data.recommendations ?? [],
     message: data.message ?? "",
+    openPaymentSheet: data.openPaymentSheet === true,
   };
 }

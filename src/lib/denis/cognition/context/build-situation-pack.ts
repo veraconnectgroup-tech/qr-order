@@ -31,6 +31,8 @@ export type SituationPackInput = {
   guestMemory?: GuestMemoryProjection | null;
   venueOps?: VenueOpsBeliefs | null;
   opsEffects?: OpsPlannerEffects | null;
+  vkgPairingBlock?: string | null;
+  playbookBlock?: string | null;
 };
 
 function buildProcessSection(input: SituationPackInput): string {
@@ -208,6 +210,10 @@ export function buildSituationPack(input: SituationPackInput): string {
 
   const transcript = retrieveTranscriptWindowEvidence(input.transcript ?? []);
   if (transcript) blocks.push(transcript);
+
+  if (input.vkgPairingBlock?.trim()) {
+    blocks.push(input.vkgPairingBlock.trim());
+  }
 
   blocks.push(buildPhaseBehaviorSection(input));
 

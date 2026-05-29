@@ -15,6 +15,14 @@ export {
   type ExecuteDenisWaiterHandoffResult,
 } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 export {
+  executeDenisGuestOrderCancel,
+  type ExecuteDenisGuestOrderCancelResult,
+} from "@/lib/denis/acl/execute-denis-guest-order-cancel";
+export {
+  executeDenisOrderModifyRequest,
+  type ExecuteDenisOrderModifyRequestResult,
+} from "@/lib/denis/acl/execute-denis-order-modify-request";
+export {
   executeDenisPaymentHandoff,
   type ExecuteDenisPaymentHandoffResult,
 } from "@/lib/denis/acl/execute-denis-payment-handoff";

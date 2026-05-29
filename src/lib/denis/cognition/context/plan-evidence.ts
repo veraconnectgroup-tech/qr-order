@@ -63,6 +63,7 @@ export type PlanEvidenceInput = {
   orderDraftContext?: string | null;
   catalog?: MenuRagCatalog | null;
   playbookBlock?: string | null;
+  vkgPairingBlock?: string | null;
 };
 
 function wantsCatalogRag(turnPlan: TurnPlan, message: string): boolean {
@@ -99,6 +100,7 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
         guestMemory: input.guestMemory,
         venueOps: input.venueOps,
         opsEffects: input.opsEffects,
+        vkgPairingBlock: input.vkgPairingBlock,
       })
     );
 

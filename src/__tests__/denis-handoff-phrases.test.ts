@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   isHandoffBillRequestMessage,
+  isOrderCancelMessage,
+  isOrderModifyMessage,
   perceiveTableGuestCommand,
 } from "@/lib/denis/commands/perceive-table-guest-command";
 import {
   orderSubmitNotAttemptedMessage,
   orderSubmitSuccessMessage,
 } from "@/lib/denis/runtime/act/commit-outcome-messages";
+import { resolveActOrderChangeOutcome } from "@/lib/denis/runtime/act/resolve-act-order-change-outcome";
 
 describe("handoff bill phrases", () => {
   it("detects Serbian pay and bill requests", () => {
@@ -23,6 +26,42 @@ describe("handoff bill phrases", () => {
     });
     expect(result?.intent).toBe("HANDOFF_PAY");
     expect(result?.command.type).toBe("BILL.REQUEST");
+  });
+});
+
+describe("order change phrases", () => {
+  it("detects cancel and modify requests", () => {
+    expect(isOrderCancelMessage("otkaži porudžbinu")).toBe(true);
+    expect(isOrderCancelMessage("poništite porudžbinu")).toBe(true);
+    expect(isOrderModifyMessage("promeni porudžbinu")).toBe(true);
+    expect(isOrderModifyMessage("ne to, drugačije")).toBe(true);
+  });
+
+  it("maps cancel to ORDER_CANCEL command", () => {
+    const result = perceiveTableGuestCommand({ message: "otkaži porudžbinu" });
+    expect(result?.intent).toBe("ORDER_CANCEL");
+    expect(result?.command.type).toBe("ORDER.CANCEL");
+  });
+
+  it("narrates guest cancel success", () => {
+    const outcome = resolveActOrderChangeOutcome(
+      {
+        enabled: true,
+        dryRun: false,
+        results: [
+          {
+            skillId: "order.cancel",
+            riskClass: "R4",
+            dryRun: false,
+            ok: true,
+            detail: { kind: "cancelled", orderNumber: 9 },
+          },
+        ],
+      },
+      "sr"
+    );
+    expect(outcome.guestMessage).toContain("#9");
+    expect(outcome.overrideLegacy).toBe(true);
   });
 });
 

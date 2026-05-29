@@ -228,6 +228,10 @@ export function GuestDenisLayer({
               structuredIntent: handoffChip.structuredIntent,
               handoffPaymentMethod: handoffChip.handoffPaymentMethod,
               allowOrdering: !orderingDisabled,
+            }).then((result) => {
+              if (result.openPaymentSheet) {
+                setBillSheetOpen(true);
+              }
             });
             setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();
@@ -286,6 +290,7 @@ export function GuestDenisLayer({
           open={aiChatOpen}
           onOpenChange={handleAiChatOpenChange}
           onSceneRefresh={() => void refreshGuestSceneView()}
+          onOpenPaymentSheet={() => setBillSheetOpen(true)}
           sceneChrome={scene?.chrome ?? null}
           slug={slug}
           token={token}

@@ -22,6 +22,8 @@ export type LegacyChatSuccessData = {
       tablePin?: string;
     };
   };
+  /** M28 — guest should open session bill sheet (online pay). */
+  openPaymentSheet?: boolean;
 };
 
 /** L4 — chat API envelope (no business logic). */

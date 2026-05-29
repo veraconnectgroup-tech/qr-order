@@ -6,6 +6,8 @@ export type DenisSkillId =
   | "cart.remove"
   | "cart.replace"
   | "order.submit"
+  | "order.cancel"
+  | "order.modify.request"
   | "browse.search"
   | "status.table"
   | "upsell.ask_food_once"
@@ -43,6 +45,16 @@ export const SKILL_REGISTRY: Record<DenisSkillId, SkillDefinition> = {
     id: "order.submit",
     riskClass: "R5",
     description: "Submit order via Order Core ACL",
+  },
+  "order.cancel": {
+    id: "order.cancel",
+    riskClass: "R4",
+    description: "Guest cancel pending order or escalate to staff",
+  },
+  "order.modify.request": {
+    id: "order.modify.request",
+    riskClass: "R4",
+    description: "Guest modify request — cancel pending or staff handoff",
   },
   "browse.search": {
     id: "browse.search",

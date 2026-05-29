@@ -147,4 +147,16 @@ describe("ADR-031 Situation Pack", () => {
     expect(pack).toContain("PENDING ORDER ITEM");
     expect(pack).toContain("missing serve_size");
   });
+
+  it("includes VKG pairing block when provided", () => {
+    const pack = buildSituationPack({
+      state: baseState(),
+      beliefs: beliefGraph([]),
+      vkgPairingBlock:
+        "VKG PAIRING (verified menu — suggest naturally when guest orders food/drink):\n- Weizen — goes with schnitzel",
+    });
+
+    expect(pack).toContain("VKG PAIRING");
+    expect(pack).toContain("Weizen");
+  });
 });

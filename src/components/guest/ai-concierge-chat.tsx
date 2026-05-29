@@ -457,6 +457,8 @@ export type AiConciergeChatProps = {
   /** ADR-019 Phase B.1 — hydrate desk from view.transcript (order page). */
   bootstrapTranscript?: import("@/lib/denis/loop/view-types").TranscriptEntry[] | null;
   onSceneRefresh?: () => void;
+  /** M28 — Denis payment handoff opens session bill sheet. */
+  onOpenPaymentSheet?: () => void;
 };
 
 export function AiConciergeChat({
@@ -493,6 +495,7 @@ export function AiConciergeChat({
   sceneChrome = null,
   bootstrapTranscript = null,
   onSceneRefresh,
+  onOpenPaymentSheet,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
@@ -976,6 +979,7 @@ export function AiConciergeChat({
           voice?: { speakText: string; ttsRecommended: boolean };
           denis?: DenisGuestApiMeta;
           orderSubmit?: DenisOrderSubmitPayload;
+          openPaymentSheet?: boolean;
         };
       };
 
@@ -1100,6 +1104,10 @@ export function AiConciergeChat({
           handleDenisOrderSubmit(data.orderSubmit);
         }
 
+        if (data.openPaymentSheet) {
+          onOpenPaymentSheet?.();
+        }
+
         setMessages((prev) => [
           ...prev,
           {
@@ -1147,6 +1155,7 @@ export function AiConciergeChat({
       tChat,
       voice,
       onSceneRefresh,
+      onOpenPaymentSheet,
       handleDenisOrderSubmit,
       recordGuestOrderPlaced,
     ]
