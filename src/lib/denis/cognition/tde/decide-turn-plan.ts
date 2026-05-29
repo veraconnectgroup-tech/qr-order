@@ -7,6 +7,11 @@ import {
   type TurnPlan,
   type TurnPlanKind,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
+import { shouldUseLlmForPendingSlotReply } from "@/lib/denis/cognition/tde/slot-response-match";
+import type {
+  CommercePressure,
+  ConversationAwaiting,
+} from "@/lib/denis/cognition/tde/turn-plan-types";
 
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
@@ -51,8 +56,17 @@ function resolveSuppressUpsell(beliefs: DecideTurnPlanInput["beliefs"]): boolean
 
 function planForPendingSlot(
   slot: string,
+  message: string,
   suppressUpsell: boolean
 ): TurnPlan {
+  if (shouldUseLlmForPendingSlotReply(slot, message)) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "commerce.pending_slot.reply",
+    });
+  }
+
   const templateKey =
     slot === "serve_size" ? "slot.clarify.serve_size" : "slot.clarify.generic";
   return {
@@ -81,8 +95,11 @@ function planForTopGoal(
   }
 
   if (goal.type === "CLARIFY_SLOT") {
-    const slotKind = goal.slot.kind;
-    return planForPendingSlot(slotKind, suppressUpsell);
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "goal.clarify_slot.reply",
+    });
   }
 
   if (goal.type === "INFORM_STATUS") {
@@ -122,17 +139,50 @@ function buildPlan(
   return { kind, ...partial };
 }
 
-function hasCommercePressure(mode: ConversationMode): boolean {
-  return mode === "ordering";
+const PURE_SOCIAL_BANTER_PATTERN =
+  /^(zdravo|ćao|cao|hello|hi|hey|guten tag|guten abend|merhaba|que tal|ciao|hola)[\s,!.-]*((kako si|how are|sta si|sta ima|legendo|legend).*)?$/i;
+
+function isPureSocialBanter(message: string): boolean {
+  const text = message.trim();
+  if (!text || text.length > 120) return false;
+  return PURE_SOCIAL_BANTER_PATTERN.test(text);
 }
 
-/** ADR-025 — state-driven perceive branch after deterministic exits. */
+function hasCommercePressure(input: DecideTurnPlanInput): boolean {
+  const pressure = getBeliefValue<CommercePressure>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePressure
+  );
+  const awaiting = getBeliefValue<ConversationAwaiting>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.conversationAwaiting
+  );
+  const mode = getBeliefValue<ConversationMode>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.conversationMode
+  );
+  const pendingSlot = getBeliefValue<string>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePendingSlot
+  );
+
+  return (
+    pressure === "open" ||
+    pressure === "confirm" ||
+    awaiting != null ||
+    Boolean(pendingSlot) ||
+    mode === "ordering"
+  );
+}
+
+/** ADR-030 — comprehend-first perceive after deterministic exits. */
 function resolvePerceivePlan(
   input: DecideTurnPlanInput,
   suppressUpsell: boolean
 ): TurnPlan {
   const mode = resolveConversationMode(input);
   const message = input.message.trim();
+  const commerceActive = hasCommercePressure(input);
 
   if (mode === "settling") {
     return buildPlan("template_tell", {
@@ -151,18 +201,20 @@ function resolvePerceivePlan(
     });
   }
 
-  if (hasCommercePressure(mode)) {
-    return buildPlan("transactional_perceive", {
+  if (!commerceActive && isPureSocialBanter(message)) {
+    return buildPlan("relational_perceive", {
       requiresLlm: true,
       suppressUpsell,
-      reason: "conversation.mode.ordering",
+      reason: "conversation.pure_social",
     });
   }
 
-  return buildPlan("relational_perceive", {
+  return buildPlan("transactional_perceive", {
     requiresLlm: true,
     suppressUpsell,
-    reason: "conversation.free_text",
+    reason: commerceActive
+      ? "commerce.pressure.comprehend"
+      : "comprehend_first.default",
   });
 }
 
@@ -186,7 +238,7 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
     CORE_BELIEF_KEYS.commercePendingSlot
   );
   if (pendingSlot) {
-    return planForPendingSlot(pendingSlot, suppressUpsell);
+    return planForPendingSlot(pendingSlot, input.message, suppressUpsell);
   }
 
   const goalPlan = planForTopGoal(input.reflex.plan.topGoal, suppressUpsell);

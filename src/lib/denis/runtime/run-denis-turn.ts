@@ -4,6 +4,7 @@ import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/
 import { perceiveGuestChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
 import type { DenisPerceiveTurnOpts } from "@/lib/denis/runtime/perceive/perceive-turn-opts";
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
+import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import { planEvidence } from "@/lib/denis/cognition/context/plan-evidence";
 import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
 import {
@@ -192,11 +193,25 @@ async function runTdePerceive(input: {
   });
 
   const perceiveMode = resolvePerceiveMode(turnPlan);
+  const pressure = getBeliefValue<string>(input.beliefs, "commerce.pressure");
+  const awaiting = getBeliefValue<string | null>(
+    input.beliefs,
+    "conversation.awaiting"
+  );
+
   const perceiveOpts: DenisPerceiveTurnOpts = {
     persistMessages: !input.timelineEnabled,
     turnPlan,
     evidence,
     perceiveMode,
+    leadershipContext: {
+      inOrderingFlow:
+        pressure === "open" ||
+        pressure === "confirm" ||
+        turnPlan.kind === "transactional_perceive",
+      awaitingAnswer: awaiting != null && awaiting !== "",
+      transactionalTurn: turnPlan.kind === "transactional_perceive",
+    },
   };
 
   if (!turnPlan.requiresLlm) {

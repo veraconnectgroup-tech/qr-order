@@ -1,5 +1,6 @@
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { retrieveCommerceEvidence } from "@/lib/denis/cognition/context/retrievers/commerce-evidence";
+import { buildDialogueFrameEvidence } from "@/lib/denis/cognition/context/retrievers/dialogue-frame";
 import { retrieveGuestIntelEvidence } from "@/lib/denis/cognition/context/retrievers/guest-intel-evidence";
 import {
   isMenuRagEnabled,
@@ -21,6 +22,7 @@ import type {
 export type EvidencePointer =
   | "commerce.*"
   | "transcript.window"
+  | "dialogue.frame"
   | "guest.memory"
   | "venue.ops"
   | "catalog.rag"
@@ -80,6 +82,16 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     input.orderDraftContext
   );
   if (commerce) blocks.push(commerce);
+
+  if (input.turnPlan.requiresLlm) {
+    pointers.push("dialogue.frame");
+    blocks.push(
+      buildDialogueFrameEvidence({
+        beliefs: input.beliefs,
+        state: input.state,
+      })
+    );
+  }
 
   const transcript = retrieveTranscriptWindowEvidence(input.transcript ?? []);
   if (transcript) blocks.push(transcript);

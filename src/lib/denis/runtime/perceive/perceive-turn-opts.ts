@@ -12,4 +12,5 @@ export type DenisPerceiveTurnOpts = PerceiveGuestChatTurnOpts & {
   model?: string;
   evidence?: TurnEvidencePack;
   templateIntent?: "chat" | "clarify" | "confirm" | "menu_info";
+  leadershipContext?: import("@/lib/ai/conversation-leadership").ConversationLeadershipContext;
 };

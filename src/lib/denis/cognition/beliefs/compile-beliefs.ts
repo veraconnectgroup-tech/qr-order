@@ -6,9 +6,12 @@ import {
   beliefGraph,
   CORE_BELIEF_KEYS,
   type BeliefGraph,
+  type CommercePressure,
+  type ConversationAwaiting,
   type ConversationMode,
   type PendingSlotKind,
 } from "@/lib/denis/cognition/beliefs/belief-types";
+import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 
 export type CompileBeliefsInput = {
   state: TableSessionState;
@@ -226,8 +229,73 @@ function isCasualSocialMessage(message: string): boolean {
   return !ORDERING_GUEST_PATTERN.test(text);
 }
 
+/** Narrow pure-social greeting — relational tier only (ADR-030). */
+const PURE_SOCIAL_BANTER_PATTERN =
+  /^(zdravo|ćao|cao|hello|hi|hey|guten tag|guten abend|merhaba|que tal|ciao|hola)[\s,!.-]*((kako si|how are|sta si|sta ima|legendo|legend).*)?$/i;
+
+export function isPureSocialBanterMessage(message: string): boolean {
+  const text = message.trim();
+  if (!text || text.length > 120) return false;
+  return PURE_SOCIAL_BANTER_PATTERN.test(text);
+}
+
+function resolveCommercePressure(
+  state: TableSessionState
+): ReturnType<typeof belief<CommercePressure>> {
+  const flowNodeId = state.conversation.flowNodeId;
+  const cartLines = state.commerce.cart.visibleLines.length;
+  const openOrders = state.commerce.orders.some(
+    (order) => order.status !== "delivered" && order.status !== "cancelled"
+  );
+  const confirmFlow: FlowNodeId[] = ["recap", "submit"];
+
+  if (confirmFlow.includes(flowNodeId) && cartLines > 0) {
+    return belief(
+      CORE_BELIEF_KEYS.commercePressure,
+      "confirm",
+      "inferred",
+      0.95
+    );
+  }
+
+  if (cartLines > 0 || openOrders) {
+    return belief(CORE_BELIEF_KEYS.commercePressure, "open", "inferred", 0.9);
+  }
+
+  return belief(CORE_BELIEF_KEYS.commercePressure, "none", "default", 0.85);
+}
+
+function resolveConversationAwaiting(
+  state: TableSessionState,
+  config: ConciergeConfig,
+  pressure: CommercePressure
+): ReturnType<typeof belief<ConversationAwaiting>> {
+  if (pressure === "confirm") {
+    return belief(
+      CORE_BELIEF_KEYS.conversationAwaiting,
+      "confirm",
+      "inferred",
+      0.92
+    );
+  }
+
+  const pending = resolvePendingSlot(state, config);
+  if (pending.value) {
+    return belief(
+      CORE_BELIEF_KEYS.conversationAwaiting,
+      pending.value as ConversationAwaiting,
+      "inferred",
+      0.9
+    );
+  }
+
+  return belief(CORE_BELIEF_KEYS.conversationAwaiting, null, "default", 0.9);
+}
+
 function resolveConversationMode(
-  input: CompileBeliefsInput
+  input: CompileBeliefsInput,
+  pressure: CommercePressure,
+  awaiting: ConversationAwaiting
 ): ReturnType<typeof belief<ConversationMode>> {
   const { state, guestMessage } = input;
 
@@ -249,44 +317,33 @@ function resolveConversationMode(
     );
   }
 
-  const hasOpenCommerce =
-    state.commerce.orders.some(
-      (order) => order.status !== "delivered" && order.status !== "cancelled"
-    ) || state.commerce.cart.visibleLines.length > 0;
-
-  if (hasOpenCommerce) {
+  if (
+    pressure !== "none" ||
+    awaiting != null ||
+    state.commerce.cart.visibleLines.length > 0
+  ) {
     return belief(
       CORE_BELIEF_KEYS.conversationMode,
       "ordering",
       "inferred",
-      0.85
+      0.9
     );
   }
 
-  if (ORDERING_GUEST_PATTERN.test(guestMessage)) {
+  const awaitingServeSize =
+    (input.config ?? input.state.config).policy.requireServeSizeForDrinks &&
+    state.commerce.cart.ai.draft.items.some((line) => !line.serveSize);
+
+  if (awaitingServeSize) {
     return belief(
       CORE_BELIEF_KEYS.conversationMode,
       "ordering",
       "inferred",
-      0.75
+      0.9
     );
   }
 
-  if (isCasualSocialMessage(guestMessage)) {
-    return belief(
-      CORE_BELIEF_KEYS.conversationMode,
-      "banter",
-      "inferred",
-      0.7
-    );
-  }
-
-  return belief(
-    CORE_BELIEF_KEYS.conversationMode,
-    "banter",
-    "inferred",
-    0.55
-  );
+  return belief(CORE_BELIEF_KEYS.conversationMode, "banter", "inferred", 0.75);
 }
 
 function resolvePendingSlot(
@@ -380,10 +437,26 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
   const config = input.config ?? input.state.config;
   const memory = input.guestMemory ?? input.state.guest;
 
+  const pressureBelief = resolveCommercePressure(input.state);
+  const pendingBelief = resolvePendingSlot(input.state, config);
+  const awaitingBelief = resolveConversationAwaiting(
+    input.state,
+    config,
+    pressureBelief.value
+  );
+
   return beliefGraph([
     resolveConversationLanguage(input, config, memory),
-    resolveConversationMode(input),
-    resolvePendingSlot(input.state, config),
+    resolveConversationMode(input, pressureBelief.value, awaitingBelief.value),
+    awaitingBelief,
+    pendingBelief,
+    pressureBelief,
+    belief(
+      CORE_BELIEF_KEYS.commerceAwaitingConfirm,
+      pressureBelief.value === "confirm",
+      "inferred",
+      pressureBelief.value === "confirm" ? 0.95 : 0.9
+    ),
     resolveVenueRush(input.state),
     resolveSkipUpsell(input.state, config),
     resolveReturnVisit(memory, config),

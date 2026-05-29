@@ -24,7 +24,10 @@ export type BeliefGraph = {
 export const CORE_BELIEF_KEYS = {
   conversationLanguage: "conversation.language",
   conversationMode: "conversation.mode",
+  conversationAwaiting: "conversation.awaiting",
   commercePendingSlot: "commerce.pending_slot",
+  commercePressure: "commerce.pressure",
+  commerceAwaitingConfirm: "commerce.awaiting_confirm",
   venueRush: "venue.rush",
   venueSkipUpsell: "venue.skip_upsell",
   guestReturnVisit: "guest.return_visit",
@@ -32,6 +35,13 @@ export const CORE_BELIEF_KEYS = {
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";
+
+export type CommercePressure = "none" | "open" | "confirm";
+
+export type ConversationAwaiting =
+  | PendingSlotKind
+  | "confirm"
+  | null;
 
 export type PendingSlotKind = "serve_size" | "modifier" | "product" | "payment_method";
 

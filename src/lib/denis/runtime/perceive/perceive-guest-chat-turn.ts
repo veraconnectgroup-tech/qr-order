@@ -459,6 +459,7 @@ export async function perceiveGuestChatTurn(
       {
         language,
         guestMessage: input.message,
+        context: opts.leadershipContext,
       }
     );
     openAiResult = {
@@ -511,6 +512,7 @@ export async function perceiveGuestChatTurn(
     structured = applyConversationLeadership(resolved.structured, {
       language,
       guestMessage: input.message,
+      context: opts.leadershipContext,
     });
   }
 

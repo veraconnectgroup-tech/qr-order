@@ -7,7 +7,7 @@
 | **Product** | **Denis** — universal hospitality platform; AI Table OS is the crown jewel |
 | **Company** | Vera Group (subline only — not product name) |
 | **Extends** | [ADR-020](./ADR-020-denis-table-operating-system.md) · [ADR-019](./ADR-019-denis-unified-brain.md) · [ADR-023](./ADR-023-denis-maximum-runtime.md) |
-| **Related** | [ADR-001](./ADR-001-universal-ordering-platform.md) · [ADR-025](./ADR-025-tde-state-driven-routing.md) · [ADR-028 Viktor partner](./ADR-028-viktor-denis-integration.md) · [denis-implementation-map.md](./denis-implementation-map.md) |
+| **Related** | [ADR-001](./ADR-001-universal-ordering-platform.md) · [ADR-025](./ADR-025-tde-state-driven-routing.md) · [ADR-029 Integration spine](./ADR-029-denis-integration-spine.md) · [ADR-028 Viktor partner](./ADR-028-viktor-denis-integration.md) · [denis-implementation-map.md](./denis-implementation-map.md) |
 | **Implement tracks** | [DENIS-TABLE-OS-session-prompts.md](./DENIS-TABLE-OS-session-prompts.md) |
 
 ---
@@ -327,7 +327,9 @@ Denis runs **while session is open** — not only on chat messages.
 
 ## 7. Integration Hub (global platform)
 
-Denis POS connects to **external systems** — one adapter pattern (ADR-001 §9).
+Denis POS connects to **external systems** through the **Integration Spine** ([ADR-029](./ADR-029-denis-integration-spine.md)) — three channels (egress, ingress, outbox connectors), contract-first, guest path isolated.
+
+**Viktor** is the first **operator** connector ([ADR-028](./ADR-028-viktor-denis-integration.md)); code must not special-case Viktor in runtime.
 
 ### 7.1 Connector model
 
@@ -558,6 +560,7 @@ Minimum **40 scenarios** in `src/lib/denis/eval/fixtures/waiter-parity/`:
 | POS speed (staff) | POS-SPEED-ARCHITECTURE |
 | Staff permissions | ADR-024 |
 | Viktor partner integration | ADR-028 |
+| **All integrations (how)** | **ADR-029** |
 | **This doc** | Whole-stack north star |
 
 ---
@@ -573,6 +576,90 @@ Minimum **40 scenarios** in `src/lib/denis/eval/fixtures/waiter-parity/`:
 - **Viktor** = owner radar on Denis Operator API — **planned product tier**, async only  
 
 Build order: **Denis at peak (O0–O1) → world + webhooks (O2) → Operator API (O4) → Viktor Skill (partner V4).**
+
+---
+
+## 18. Locked architecture decisions (do not revisit without ADR)
+
+These are **fixed** — all PRs and partner talks assume this:
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| L1 | **Denis standalone at table** — 100% guest/staff path, never waits on Viktor | Product integrity, latency, ACL |
+| L2 | **Viktor = data consumer** — Operator API + webhooks, not co-brain | Viktor’s job is wider than Denis |
+| L3 | **No sync escalation** — handoff template + async events | Serverless, single brain |
+| L4 | **State-driven perceive** (ADR-025) — not regex LLM gate | Multilingual, waiter parity |
+| L5 | **relational vs transactional** — not “all LLM → commerce JSON” | Correct cognition + cost |
+| L6 | **Write = proposal** — config/playbook via owner approve | Safety, fiscal, audit |
+| L7 | **One TRUTH** — timeline + orders; Viktor has no shadow DB | Single replay, eval |
+| L8 | **Global core + market modules** — no country fork | US/UK/EU on same Order Core |
+| L9 | **signal / view** — guest API surface | ADR-019 |
+| L10 | **ACT + ACL only** for money and submit | KassenSichV, GoBD |
+
+**Cursor analogy (GTM):** Denis = what runs the restaurant floor (like the IDE runs the codebase). Viktor = what runs the owner’s business layer (like Cursor runs the developer’s workflow). **Integration makes Denis the default hospitality connector in Viktor.**
+
+---
+
+## 19. Product flywheel — Denis × Viktor
+
+```
+                    ┌─────────────────────┐
+                    │  Restaurant owner   │
+                    │  (uses Viktor daily)│
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+     ┌─────────────────┐              ┌─────────────────┐
+     │  VIKTOR         │   read/      │  DENIS          │
+     │  Slack, finance,│◄──webhook───►│  Table OS + POS │
+     │  ops, marketing │              │  (runs the floor)│
+     └─────────────────┘              └─────────────────┘
+              │                                 │
+              └──────── "How's Denis tonight?" ─┘
+                        same TRUTH, no duplicate
+```
+
+**Why this architecture wins:**
+
+1. Owners already adopt Viktor for **many** tasks — Denis becomes the **restaurant system Viktor understands best**.  
+2. Denis is **complete** (POS, KDS, pay, AI) — not a chat plugin Viktor must glue.  
+3. Rich Operator feed (conversion, sessions, alerts) → Viktor **recommends Denis** to hospitality vertical.  
+4. Denis quality drives Viktor value; Viktor distribution drives Denis adoption — **mutual boom**.
+
+**What we must ship for flywheel to work:**
+
+| Priority | Deliverable | Enables |
+|----------|-------------|---------|
+| P0 | ADR-025 cognition | Denis actually smart — Viktor sees good metrics |
+| P1 | `/api/operator/v1/` read | Viktor Skill |
+| P2 | Webhooks + session outcome rollup | Real-time owner alerts |
+| P3 | OpenAPI + sandbox org | Viktor dev integration |
+| P4 | Admin “Connect Viktor” | Self-serve onboarding |
+| P5 | Marketplace / joint GTM | Scale |
+
+Prompts: [VIKTOR-DENIS-CURSOR-PROMPTS.md](./VIKTOR-DENIS-CURSOR-PROMPTS.md)
+
+---
+
+## 20. Single entry point for engineers
+
+**Read in order:**
+
+1. **This doc** — whole stack + locked decisions  
+2. [ADR-029](./ADR-029-denis-integration-spine.md) — **integration spine** (all partners)  
+3. [ADR-028](./ADR-028-viktor-denis-integration.md) — Viktor partner contract  
+4. [ADR-025](./ADR-025-tde-state-driven-routing.md) — cognition fix  
+5. [denis-implementation-map.md](./denis-implementation-map.md) — as-built code  
+6. [VIKTOR-DENIS-CURSOR-PROMPTS.md](./VIKTOR-DENIS-CURSOR-PROMPTS.md) — agent tasks  
+
+**Operator one-liner:**
+
+```
+Denis Table OS + Viktor integration. Pročitaj DENIS-TABLE-OS-ARCHITECTURE.md §18–19.
+Uradi sledeći track iz VIKTOR-DENIS-CURSOR-PROMPTS.md (P0 done → P1 Operator API).
+IMPLEMENTIRAJ + testovi. Ne commit-uj osim ako kažem.
+```
 
 ---
 

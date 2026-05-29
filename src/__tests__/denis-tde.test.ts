@@ -12,6 +12,7 @@ import {
   turnPlanAllowsUpsell,
   utteranceIncludesUpsellNudge,
 } from "@/lib/denis/cognition/tde";
+import { matchesT0SlotAnswer } from "@/lib/denis/cognition/tde/slot-response-match";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { deriveGoalStack, topGoal } from "@/lib/denis/kernel/goal-stack";
 import { planTurnWithReflex as reflexPlan } from "@/lib/denis/kernel/reflex-plan";
@@ -34,7 +35,7 @@ function reflexFor(
 }
 
 describe("decideTurnPlan — ADR-025 state-driven routing", () => {
-  it("routes banter belief to relational_perceive, not banter template", () => {
+  it("routes banter belief to transactional when not pure social (comprehend-first)", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "banter"),
       belief("conversation.language", "sr"),
@@ -44,11 +45,11 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("gde si legendo"),
       message: "gde si legendo",
     });
-    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.kind).toBe("transactional_perceive");
     expect(plan.requiresLlm).toBe(true);
   });
 
-  it("routes Zdravo Denise legendo to relational_perceive (not template welcome)", () => {
+  it("routes Zdravo Denise legendo to transactional comprehend-first", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "banter"),
       belief("conversation.language", "sr"),
@@ -58,8 +59,8 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("Zdravo Denise legendo", "browse"),
       message: "Zdravo Denise legendo",
     });
-    expect(plan.kind).toBe("relational_perceive");
-    expect(plan.templateKey).toBeUndefined();
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("routes Daj mi sok with ordering belief to transactional_perceive", () => {
@@ -105,29 +106,81 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.kind).toBe("transactional_perceive");
   });
 
-  it("casual social without banter belief still gets relational_perceive", () => {
+  it("pure social greeting stays relational", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "banter"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("Zdravo kako si"),
+      message: "Zdravo kako si",
+    });
+    expect(plan.kind).toBe("relational_perceive");
+  });
+
+  it("casual social without commerce pressure uses transactional comprehend-first", () => {
     expect(isCasualSocialGuestMessage("gde si legendo")).toBe(true);
     const plan = decideTurnPlan({
       beliefs: beliefGraph([]),
       reflex: reflexFor("gde si legendo", "browse"),
       message: "gde si legendo",
     });
-    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.kind).toBe("transactional_perceive");
   });
 });
 
 describe("decideTurnPlan — slots and reflex", () => {
-  it("pending_slot belief → slot_extract", () => {
+  it("pending_slot + velika (T0 label) → transactional_perceive (LLM applies size)", () => {
     const plan = decideTurnPlan({
       beliefs: beliefGraph([
         belief("commerce.pending_slot", "serve_size"),
+        belief("conversation.mode", "ordering"),
       ]),
       reflex: reflexFor("velika"),
       message: "velika",
     });
-    expect(plan.kind).toBe("slot_extract");
-    expect(plan.requiresLlm).toBe(false);
-    expect(plan.templateKey).toBe("slot.clarify.serve_size");
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.reason).toBe("commerce.pending_slot.reply");
+  });
+
+  it("pending_slot + veliko pivo → transactional_perceive (not template loop)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("commerce.pending_slot", "serve_size"),
+        belief("conversation.mode", "ordering"),
+      ]),
+      reflex: reflexFor("Pa veliko pivo"),
+      message: "Pa veliko pivo",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+  });
+
+  it("pending_slot + 0.5 → transactional_perceive", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("commerce.pending_slot", "serve_size"),
+        belief("conversation.mode", "ordering"),
+      ]),
+      reflex: reflexFor("0.5"),
+      message: "0.5",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+  });
+
+  it("Veliko povo typo with ordering belief → transactional_perceive", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "ordering"),
+        belief("commerce.pending_slot", "serve_size"),
+      ]),
+      reflex: reflexFor("Veliko povo"),
+      message: "Veliko povo",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.templateKey).toBeUndefined();
   });
 
   it("T0 da → reflex_only without LLM", () => {
@@ -158,6 +211,15 @@ describe("decideTurnPlan — slots and reflex", () => {
   it("Može without confirm context is not T0", () => {
     expect(isT0Confirm("Može")).toBe(false);
     expect(resolveT0Reflex("Može")).toBeNull();
+  });
+});
+
+describe("slot-response-match", () => {
+  it("matches T0 volume and size labels only", () => {
+    expect(matchesT0SlotAnswer("serve_size", "0.5")).toBe(true);
+    expect(matchesT0SlotAnswer("serve_size", "velika")).toBe(true);
+    expect(matchesT0SlotAnswer("serve_size", "Pa veliko pivo")).toBe(false);
+    expect(matchesT0SlotAnswer("serve_size", "Veliko povo")).toBe(false);
   });
 });
 

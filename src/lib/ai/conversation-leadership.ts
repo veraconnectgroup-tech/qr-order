@@ -62,21 +62,40 @@ export function leadershipFallbackReply(
 export type ApplyConversationLeadershipInput = {
   language: string;
   guestMessage: string;
+  /** ADR-030 — when set, never rewrite clarify to banter welcome. */
+  context?: ConversationLeadershipContext;
 };
+
+export type ConversationLeadershipContext = {
+  inOrderingFlow?: boolean;
+  awaitingAnswer?: boolean;
+  transactionalTurn?: boolean;
+};
+
+function shouldPreserveClarify(input: ApplyConversationLeadershipInput): boolean {
+  const ctx = input.context;
+  if (!ctx) return false;
+  return (
+    ctx.inOrderingFlow === true ||
+    ctx.awaitingAnswer === true ||
+    ctx.transactionalTurn === true
+  );
+}
 
 /**
  * Denis leads — never passive "I don't understand".
- * Rewrites refusal replies and misclassified social clarify turns.
+ * Rewrites refusal replies; preserves LLM clarify during ordering (ADR-030).
  */
 export function applyConversationLeadership(
   structured: AiStructuredResponse,
   input: ApplyConversationLeadershipInput
 ): AiStructuredResponse {
-  const casual = isCasualSocialGuestMessage(input.guestMessage);
   const refusal = isDenisRefusalReply(structured.message);
+  const preserveClarify = shouldPreserveClarify(input);
   const misclassifiedClarify =
+    !preserveClarify &&
     structured.intent === "clarify" &&
-    casual &&
+    isCasualSocialGuestMessage(input.guestMessage) &&
     structured.proposedItems.length === 0 &&
     structured.recommendations.length === 0;
 

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|--------|
 | **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
-| **Updated** | 2026-05-29 (Table OS master + ADR-025) |
+| **Updated** | 2026-05-29 (Table OS master + ADR-025 + ADR-029 integration spine) |
 | **Start here** | This file → then the doc for your track |
 
 ---
@@ -46,19 +46,23 @@
 | Doc | Role | Status | When to read |
 |-----|------|--------|--------------|
 | [ADR-020](./ADR-020-denis-table-operating-system.md) | **Category** — Table OS, goals, Ko·Gde·Kad·Kako, §14–21 refinements | Accepted | Product, pitch, “why us” |
-| [**DENIS-TABLE-OS-ARCHITECTURE.md**](./DENIS-TABLE-OS-ARCHITECTURE.md) | **Master spec** — 5 planes, waiter parity, integrations, phases O0–O6 | Accepted | **Start here for full stack** |
+| [**DENIS-ARCHITECTURE-START-HERE.md**](./DENIS-ARCHITECTURE-START-HERE.md) | **1-page entry** — bet, locked rules, build order | Active | **Everyone — read first** |
+| [**DENIS-TABLE-OS-ARCHITECTURE.md**](./DENIS-TABLE-OS-ARCHITECTURE.md) | **Master spec** — 5 planes, waiter parity, Viktor flywheel §19 | Accepted | Full stack |
 | [DENIS-TABLE-OS-session-prompts.md](./DENIS-TABLE-OS-session-prompts.md) | **Implement agent** — O0–O6 tracks | Active | Autonomous build |
 | [ADR-019](./ADR-019-denis-unified-brain.md) | **Engineering** — loop, signal/view, phases A–E | Accepted | Every Denis PR |
 | [ADR-023](./ADR-023-denis-maximum-runtime.md) | **Production ceiling** — Belief→Policy→Language, manifest, TDE, MR-0–9 | Accepted | Elite/enterprise, “maximum Denis” |
 | [ADR-023-operator.md](./ADR-023-operator.md) | **Jovica one-liner** — MR track prompts | Active | Copy-paste agent |
 | [ADR-023-session-prompts.md](./ADR-023-session-prompts.md) | **Implement agent** — MR-0→MR-9 detail | Active | Autonomous implementation |
 | [ADR-023-verification-checklist.md](./ADR-023-verification-checklist.md) | **Review agent** — verify MR | Active | Post-implement review |
-| [ADR-025](./ADR-025-tde-state-driven-routing.md) | **TDE fix** — state-driven routing, no regex LLM gate | Accepted | `decideTurnPlan` / perceive bugs |
+| [ADR-030](./ADR-030-denis-conversation-comprehension.md) | **Comprehension-first** — dialogue frame, leadership guard | Accepted | Cognition enterprise |
 | [ADR-025 operator](./ADR-025-operator.md) | **Jovica one-liner** — T1→T3 prompts | Active | Copy-paste agent |
 | [ADR-025 session prompts](./ADR-025-session-prompts.md) | **Implement agent** — T1/T2/T3 detail | Active | Autonomous implementation |
 | [ADR-025 verification](./ADR-025-verification-checklist.md) | **Review agent** — test matrix G1–G8 | Active | Post-implement review |
 | [ADR-028](./ADR-028-viktor-denis-integration.md) | **Viktor partner** — Operator API, webhooks, GTM | Accepted | Denis + Viktor offering |
+| [ADR-029](./ADR-029-denis-integration-spine.md) | **Integration spine** — 3 channels, contracts, I-track, guest isolation | Accepted | **All integrations — read first** |
+| [ADR-029 session prompts](./ADR-029-session-prompts.md) | **Implement agent** — I3/I4 contract + admin connect | Active | After I1/I2 |
 | [ADR-028 session prompts](./ADR-028-session-prompts.md) | **Implement agent** — V1–V3 Operator API | Active | After O1 gate |
+| [VIKTOR-DENIS-CURSOR-PROMPTS.md](./VIKTOR-DENIS-CURSOR-PROMPTS.md) | **Copy-paste agent prompts** — P0/P1/P2/P4 (corrected) | Active | Viktor integration build |
 | [denis-implementation-map.md](./denis-implementation-map.md) | **As-built** — code paths, M-tracks, verify | Active | Before any Denis code |
 | [ADR-005](./ADR-005-denis-maximum.md) | Cognitive + Venue OS + surfaces layers | Proposed (M0–M28 largely built) | Kernel/venue features |
 | [ADR-004](./ADR-004-denis-kernel.md) | Beliefs, goals, VKG, scheduler | Proposed | Planner/beliefs work |

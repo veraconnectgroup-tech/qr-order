@@ -6,14 +6,25 @@
 | **Date** | 2026-05-29 |
 | **Product** | **Denis** (platform + Table OS) · **Viktor** ([partner operator AI](https://viktor.com/integrations)) |
 | **Parent** | [DENIS-TABLE-OS-ARCHITECTURE.md](./DENIS-TABLE-OS-ARCHITECTURE.md) |
+| **Spine** | [ADR-029 Integration architecture](./ADR-029-denis-integration-spine.md) — Viktor = operator connector #1 |
 | **Implements** | Plane 5 (Enterprise/Operator) + Viktor connector in Plane 4 |
-| **Session prompts** | [ADR-028-session-prompts.md](./ADR-028-session-prompts.md) |
+| **Session prompts** | [ADR-028-session-prompts.md](./ADR-028-session-prompts.md) · [VIKTOR-DENIS-CURSOR-PROMPTS.md](./VIKTOR-DENIS-CURSOR-PROMPTS.md) |
 
 ---
 
 ## 0. One sentence
 
 **Denis runs the table and owns TRUTH; Viktor runs the owner’s Slack — reading Denis Operator API and webhooks to monitor, analyze, and recommend, never blocking the guest.**
+
+### Viktor’s broader job (clarification)
+
+Viktor is **not** a second Denis. Viktor is a **wider operator AI** (Stripe, CRM, ads, Slack, …) for which **Denis is one rich data connector** — hospitality POS + Table OS + session metrics. Integration = **data pipeline out of Denis**, not co-brain at the table.
+
+```
+Denis (standalone, 100% guest/staff)  ──read/webhook──►  Viktor (analyze, report, propose)
+                              ▲
+                              └── never waits on Viktor
+```
 
 ---
 

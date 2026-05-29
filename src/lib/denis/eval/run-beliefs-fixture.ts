@@ -74,9 +74,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 7) {
+  if (banterGraph.beliefs.length !== 10) {
     errors.push(
-      `expected 7 beliefs (6 core + require_confirm), got ${banterGraph.beliefs.length}`
+      `expected 10 beliefs (ADR-030 core), got ${banterGraph.beliefs.length}`
     );
   }
 
@@ -97,8 +97,32 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
   }
 
   const orderGraph = compileBeliefs({
-    state: baseState(),
-    guestMessage: "1x Cola 0,5L",
+    state: baseState({
+      commerce: {
+        orders: [],
+        cart: buildMergedCart({
+          ai: {
+            draft: {
+              cartRevision: 1,
+              items: [
+                {
+                  productId: "prod-cola",
+                  productName: "Cola",
+                  quantity: 1,
+                  serveSize: "0.5L",
+                  modifierIds: [],
+                  notes: "",
+                  lineTotal: 3.5,
+                  menuSection: "drinks",
+                },
+              ],
+            },
+            undoStack: [],
+          },
+        }),
+      },
+    }),
+    guestMessage: "još jedno",
     sessionLanguage: "de",
   });
   const orderMode = getBeliefValue<string>(
@@ -106,7 +130,16 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     CORE_BELIEF_KEYS.conversationMode
   );
   if (orderMode !== "ordering") {
-    errors.push(`order line: expected mode=ordering, got ${orderMode ?? "null"}`);
+    errors.push(`open cart: expected mode=ordering, got ${orderMode ?? "null"}`);
+  }
+  const orderPressure = getBeliefValue<string>(
+    orderGraph,
+    CORE_BELIEF_KEYS.commercePressure
+  );
+  if (orderPressure !== "open") {
+    errors.push(
+      `open cart: expected commerce.pressure=open, got ${orderPressure ?? "null"}`
+    );
   }
 
   const rushGraph = compileBeliefs({
@@ -198,6 +231,63 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
   if (pendingSlot !== "serve_size") {
     errors.push(
       `missing serve size: expected commerce.pending_slot=serve_size, got ${pendingSlot ?? "null"}`
+    );
+  }
+  const awaiting = getBeliefValue<string>(
+    slotGraph,
+    CORE_BELIEF_KEYS.conversationAwaiting
+  );
+  if (awaiting !== "serve_size") {
+    errors.push(
+      `missing serve size: expected conversation.awaiting=serve_size, got ${awaiting ?? "null"}`
+    );
+  }
+  const slotMode = getBeliefValue<string>(
+    slotGraph,
+    CORE_BELIEF_KEYS.conversationMode
+  );
+  if (slotMode !== "ordering") {
+    errors.push(
+      `missing serve size: expected mode=ordering, got ${slotMode ?? "null"}`
+    );
+  }
+
+  const typoGraph = compileBeliefs({
+    state: baseState({
+      commerce: {
+        orders: [],
+        cart: buildMergedCart({
+          ai: {
+            draft: {
+              cartRevision: 1,
+              items: [
+                {
+                  productId: "prod-pivo",
+                  productName: "Pivo",
+                  quantity: 1,
+                  serveSize: null,
+                  modifierIds: [],
+                  notes: "",
+                  lineTotal: 4.5,
+                  menuSection: "drinks",
+                },
+              ],
+            },
+            undoStack: [],
+          },
+        }),
+      },
+    }),
+    guestMessage: "Veliko povo",
+    sessionLanguage: "sr",
+  });
+  const typoMode = getBeliefValue<string>(
+    typoGraph,
+    CORE_BELIEF_KEYS.conversationMode
+  );
+  if (typoMode !== "ordering") {
+    errors.push(
+      `typo with pending slot: expected mode=ordering, got ${typoMode ?? "null"}`
     );
   }
 

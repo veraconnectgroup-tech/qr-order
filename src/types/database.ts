@@ -65,6 +65,30 @@ type Tables = {
     created_at: string;
     revoked_at: string | null;
   };
+  operator_api_keys: {
+    id: string;
+    org_id: string;
+    name: string;
+    key_hash: string;
+    key_prefix: string;
+    scopes: string[];
+    last_used_at: string | null;
+    expires_at: string | null;
+    created_at: string;
+    revoked_at: string | null;
+  };
+  operator_api_audit: {
+    id: string;
+    org_id: string;
+    key_id: string;
+    method: string;
+    path: string;
+    status_code: number;
+    latency_ms: number | null;
+    trace_id: string | null;
+    include_pii: boolean;
+    created_at: string;
+  };
   webhook_configs: {
     id: string;
     org_id: string;
@@ -118,6 +142,7 @@ type Tables = {
     ordering_enabled: boolean;
     require_first_table_approval: boolean;
     ai_concierge_enabled: boolean;
+    denis_operating_mode: "normal" | "rush" | "kitchen_closed" | "event";
     ai_playbook: string | null;
     ai_concierge_config: Json | null;
     rejection_ban_threshold: number;

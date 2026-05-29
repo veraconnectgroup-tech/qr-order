@@ -83,7 +83,7 @@ describe("conversation leadership", () => {
     expect(isDenisRefusalReply(out.message)).toBe(false);
   });
 
-  it("rewrites misclassified social clarify", () => {
+  it("rewrites misclassified social clarify when not in ordering context", () => {
     const out = applyConversationLeadership(
       {
         intent: "clarify",
@@ -100,6 +100,31 @@ describe("conversation leadership", () => {
     );
     expect(out.intent).toBe("chat");
     expect(out.message).toMatch(/Tu sam|piće|jelo/i);
+  });
+
+  it("preserves clarify during ordering flow (ADR-030)", () => {
+    const out = applyConversationLeadership(
+      {
+        intent: "clarify",
+        message: "Veliko od 0,5L — da potvrdim?",
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+      },
+      {
+        language: "sr",
+        guestMessage: "Veliko povo",
+        context: {
+          inOrderingFlow: true,
+          awaitingAnswer: true,
+          transactionalTurn: true,
+        },
+      }
+    );
+    expect(out.intent).toBe("clarify");
+    expect(out.message).toContain("0,5L");
+    expect(out.message).not.toMatch(/^Tu sam!/i);
   });
 
   it("provides German leadership fallback", () => {
