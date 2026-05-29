@@ -69,6 +69,23 @@ export function mergeConciergeConfig(
   return ConciergeConfigSchema.parse(withLocation);
 }
 
+/** Live ACT when venue runs Denis-only — architecture promise = waiter can submit (ADR-032). */
+function applyRolloutOrderingDefaults(config: ConciergeConfig): ConciergeConfig {
+  if (config.rollout.mode !== "denis_only") {
+    return config;
+  }
+
+  return {
+    ...config,
+    ordering: {
+      ...config.ordering,
+      actLayerEnabled: true,
+      actDryRun: false,
+      actSubmitEnabled: true,
+    },
+  };
+}
+
 export type ResolveConciergeConfigInput = {
   orgConfig?: PartialConciergeConfig | null;
   locationConfig?: PartialConciergeConfig | null;
@@ -82,10 +99,12 @@ export type ResolveConciergeConfigInput = {
 export function resolveConciergeConfig(
   input: ResolveConciergeConfigInput = {}
 ): ConciergeConfig {
-  const config = mergeConciergeConfig(
-    CONCIERGE_PLATFORM_DEFAULTS,
-    input.orgConfig,
-    input.locationConfig
+  const config = applyRolloutOrderingDefaults(
+    mergeConciergeConfig(
+      CONCIERGE_PLATFORM_DEFAULTS,
+      input.orgConfig,
+      input.locationConfig
+    )
   );
 
   if (input.locationConfig?.language?.venueDefault) {

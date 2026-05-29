@@ -504,6 +504,10 @@ export function AiConciergeChat({
     (typeof AI_SUPPORTED_LANGUAGES)[number]
   >(resolveAiPromptLanguage(menuLocale));
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
+  const resolvedDeviceFingerprint = useMemo(
+    () => deviceFingerprint ?? getOrCreateDeviceFingerprint(),
+    [deviceFingerprint]
+  );
   const handleRecommendations = onRecommendations ?? onSetupComplete;
   const resolvedAllergySelection =
     guestProfile?.allergySheetIds?.length
@@ -944,7 +948,7 @@ export function AiConciergeChat({
             allowOrdering: !orderingDisabled,
             browsingContext: resolveScrollContext?.() ?? undefined,
             manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
-            deviceFingerprint,
+            deviceFingerprint: resolvedDeviceFingerprint,
             deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
             surface: inputSurface,
           },
@@ -1021,7 +1025,7 @@ export function AiConciergeChat({
       resolveScrollContext,
       orderingDisabled,
       getManualCartSnapshot,
-      deviceFingerprint,
+      resolvedDeviceFingerprint,
     ]
   );
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
@@ -12,6 +12,7 @@ import {
 } from "@/lib/guest/denis-scene-turn";
 import { hapticClick } from "@/lib/haptics";
 import { buildManualCartSnapshot, manualCartRevision } from "@/lib/guest/manual-cart-snapshot";
+import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import { useCart } from "@/hooks/use-cart";
 import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
@@ -101,6 +102,7 @@ export function GuestDenisLayer({
   const language = isEnglish ? "en" : menuLocale;
   const cartItems = useCart((s) => s.items);
   const cartBump = useCart((s) => s.cartBump);
+  const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
   const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
@@ -295,6 +297,7 @@ export function GuestDenisLayer({
           orderingDisabled={orderingDisabled}
           voiceEnabled={voiceEnabled}
           voiceTtsEnabled={voiceTtsEnabled}
+          deviceFingerprint={deviceFingerprint}
           bootstrapTranscript={view?.transcript}
           getManualCartSnapshot={() => {
           if (cartItems.length === 0) return undefined;

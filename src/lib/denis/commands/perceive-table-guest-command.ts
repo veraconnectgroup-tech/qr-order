@@ -78,11 +78,17 @@ export function isHandoffBillRequestMessage(message: string): boolean {
   const text = normalize(message);
   if (parseHandoffPaymentMethod(message)) return false;
   return (
-    /\b(račun|racun|rechnung|bill|checkout|zaplat(i|iti|imo)|plat(i|iti|imo))\b/.test(
+    /\b(račun|racun|rechnung|bill|checkout)\b/.test(text) ||
+    /(želim|zelim|hoću|hocu|treba)\s+(da\s+)?(platim|platiti|naplatim|naplatiti)/.test(
       text
     ) ||
-    /\b(po[sš]alji(te)?\s+(nam\s+)?(račun|racun|rechnung|bill))\b/.test(text) ||
-    /\b(bring\s+(the\s+)?bill|check\s+please)\b/.test(text)
+    /\b(zaplat(i|iti|imo)|plat(i|iti|imo))\b/.test(text) ||
+    /\b(po[sš]alji(te)?\s+(mi\s+)?(račun|racun|rechnung|bill))\b/.test(text) ||
+    /\b(donesi(te)?\s+(mi\s+)?(račun|racun|rechnung|bill))\b/.test(text) ||
+    /\b(bring\s+(the\s+)?bill|check\s+please|pay\s+please|want\s+to\s+pay)\b/.test(
+      text
+    ) ||
+    /\b(kann\s+ich\s+zahlen|rechnung\s+bitte|bezahlen)\b/.test(text)
   );
 }
 

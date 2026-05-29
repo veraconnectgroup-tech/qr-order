@@ -71,6 +71,12 @@ import {
 } from "@/lib/denis/runtime/perceive";
 import { executeActPhase, isActSubmitLive, resolveActSubmitOutcome } from "@/lib/denis/runtime/act";
 import { executeTurnOrderSubmit } from "@/lib/denis/runtime/act/execute-turn-order-submit";
+import {
+  orderSubmitNotAttemptedMessage,
+  orderSubmitSuccessMessage,
+} from "@/lib/denis/runtime/act/commit-outcome-messages";
+import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
+import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { persistAiSessionAfterOrderSubmit } from "@/lib/denis/runtime/act/persist-ai-session-after-order-submit";
 import {
   handoffActEnabled,
@@ -106,6 +112,9 @@ import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { MenuSection } from "@/lib/menu-section";
 import type { OrderFact } from "@/lib/denis/loop/types";
+import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import type { ActHandoffOutcome } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
+import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
 
 function cartDraftToAiOrderDraft(draft: DenisCartDraft): AiOrderDraft {
   const base = initDraftFromStorage(null);
@@ -141,6 +150,95 @@ function buildCommerceStatusSummary(orders: OrderFact[]): string | null {
       )
     )
     .join(", ");
+}
+
+/** Direct ACL when act phase did not commit handoff (ADR-032 belt-and-suspenders). */
+async function runHandoffAclFallback(
+  admin: ReturnType<typeof createAdminClient>,
+  input: {
+    config: ConciergeConfig;
+    reflexTurn: ReflexTurnResult;
+    parsed: DenisChatBody;
+    language: string;
+    actHandoffOutcome: ActHandoffOutcome;
+  }
+): Promise<ActHandoffOutcome> {
+  if (input.actHandoffOutcome.attempted || !input.reflexTurn.handoffCommand) {
+    return input.actHandoffOutcome;
+  }
+  if (!handoffActEnabled(input.config)) {
+    return input.actHandoffOutcome;
+  }
+
+  const cmd = input.reflexTurn.handoffCommand;
+  const sessionToken =
+    input.parsed.tableSessionToken ?? input.parsed.sessionToken;
+
+  if (cmd.type === "WAITER.REQUEST") {
+    if (!input.parsed.tableId || !input.parsed.locationId) {
+      return input.actHandoffOutcome;
+    }
+    const result = await executeDenisWaiterHandoff(admin, {
+      tableId: input.parsed.tableId,
+      locationId: input.parsed.locationId,
+      tableToken: input.parsed.sessionToken,
+      sessionToken,
+    });
+    const actPhase: ActPhaseResult = {
+      enabled: true,
+      dryRun: false,
+      results: [
+        {
+          skillId: "handoff.waiter",
+          riskClass: "R3",
+          dryRun: false,
+          ok: result.ok,
+          error: result.ok ? undefined : result.error,
+        },
+      ],
+    };
+    return resolveActHandoffOutcome(actPhase, input.language);
+  }
+
+  if (!sessionToken || !input.parsed.tableId || !input.parsed.locationId) {
+    return input.actHandoffOutcome;
+  }
+
+  const paymentMethod =
+    cmd.type === "BILL.SET_METHOD"
+      ? cmd.method
+      : input.reflexTurn.handoffPaymentMethod ?? null;
+
+  const result = await executeDenisPaymentHandoff(admin, {
+    tableId: input.parsed.tableId,
+    locationId: input.parsed.locationId,
+    sessionToken,
+    paymentMethod,
+  });
+
+  const actPhase: ActPhaseResult = {
+    enabled: true,
+    dryRun: false,
+    results: [
+      {
+        skillId: "handoff.payment",
+        riskClass: "R1",
+        dryRun: false,
+        ok: result.ok,
+        error: result.ok ? undefined : result.error,
+        detail: result.ok
+          ? result.needsMethod
+            ? { needsMethod: true }
+            : {
+                needsMethod: false,
+                paymentMethod: result.paymentMethod,
+                openPaymentSheet: result.openPaymentSheet ?? false,
+              }
+          : undefined,
+      },
+    ],
+  };
+  return resolveActHandoffOutcome(actPhase, input.language);
 }
 
 function dedupeHandoffQuickReplies(
@@ -670,10 +768,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     });
   }
 
-  const actHandoffOutcome = resolveActHandoffOutcome(
-    actPhase,
-    parsed.data.language
-  );
+  const actHandoffOutcome = await runHandoffAclFallback(admin, {
+    config: ctx.config,
+    reflexTurn,
+    parsed: parsed.data,
+    language: parsed.data.language,
+    actHandoffOutcome: resolveActHandoffOutcome(actPhase, parsed.data.language),
+  });
 
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
     cohortKey: parsed.data.sessionToken,
@@ -732,8 +833,20 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         ? data.message
         : narration.message;
 
-  if (turnSubmitOutcome.guestBlockedReason && !turnSubmitOutcome.orderId) {
+  if (turnSubmitOutcome.orderId) {
+    guestMessage = orderSubmitSuccessMessage({
+      language: parsed.data.language,
+      orderNumber: turnSubmitOutcome.orderNumber,
+      awaitingApproval: turnSubmitOutcome.awaitingApproval,
+    });
+  } else if (turnSubmitOutcome.guestBlockedReason && !turnSubmitOutcome.orderId) {
     guestMessage = turnSubmitOutcome.guestBlockedReason;
+  } else if (
+    Boolean(data.submitOrder) &&
+    actSubmitLive &&
+    !turnSubmitOutcome.attempted
+  ) {
+    guestMessage = orderSubmitNotAttemptedMessage(parsed.data.language);
   }
 
   const hasOpenOrders = (ctx.tableSessionState?.commerce.orders ?? []).some(
