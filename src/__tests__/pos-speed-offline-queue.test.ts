@@ -8,6 +8,7 @@ describe("shouldQueueStaffOrderOffline", () => {
         connectionStatus: "offline",
         error: "Unauthorized.",
         httpStatus: 401,
+        retried: false,
       })
     ).toBe(true);
   });
