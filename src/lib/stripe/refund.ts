@@ -1,6 +1,5 @@
 import { REFUND_WINDOW_MS } from "@/lib/security/order-limits";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { getStripe } from "@/lib/stripe/client";
 import { logger } from "@/lib/logger";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
@@ -20,7 +19,6 @@ export type OrderForRefund = {
 export type ProcessRefundOptions = {
   amount?: number;
   skipWindowCheck?: boolean;
-  skipTseStorno?: boolean;
 };
 
 export async function processRefund(
@@ -125,10 +123,6 @@ export async function processRefund(
     amount: refundAmount,
     reason,
   } as never);
-
-  if (order.tse_signature && !options.skipTseStorno) {
-    scheduleOrderTseStorno(order.id, refundAmount);
-  }
 
   logger.info("Order refunded", {
     orderId: order.id,

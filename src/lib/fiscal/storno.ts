@@ -4,11 +4,18 @@ import { logger } from "@/lib/logger";
 import { processRefund } from "@/lib/stripe/refund";
 import type { Json } from "@/types/database";
 
+/** System actor for webhook/POS storno when no staff UUID is available. */
+export const FISCAL_STORNO_SYSTEM_ACTOR =
+  "00000000-0000-0000-0000-000000000099";
+
 export type StornoRequest = {
   orderId: string;
   reason: string;
   performedBy: string;
   amount?: number;
+  /** Set when Stripe refund already completed (e.g. dashboard webhook sync). */
+  skipStripeRefund?: boolean;
+  stripeRefundId?: string | null;
 };
 
 export type StornoResult =
@@ -21,6 +28,12 @@ const VALID_STORNO_STATUSES = [
   "ready",
   "delivered",
 ] as const;
+
+const REFUNDABLE_STRIPE_METHODS = new Set([
+  "online",
+  "card_terminal",
+  "pos_online",
+]);
 
 type StornoOrderRow = {
   id: string;
@@ -223,10 +236,20 @@ export async function performStorno(
     })
     .eq("id", order.id);
 
-  if (
-    order.payment_method === "online" &&
+  if (req.skipStripeRefund) {
+    if (req.stripeRefundId) {
+      await admin
+        .from("storno_records")
+        .update({
+          stripe_refund_id: req.stripeRefundId,
+          refund_status: "refunded",
+        })
+        .eq("id", stornoId);
+    }
+  } else if (
+    REFUNDABLE_STRIPE_METHODS.has(order.payment_method) &&
     order.stripe_payment_intent_id &&
-    order.payment_status === "paid"
+    (order.payment_status === "paid" || order.payment_status === "partial_refund")
   ) {
     const refundResult = await processRefund(
       {
@@ -244,7 +267,6 @@ export async function performStorno(
       {
         amount: stornoAmount,
         skipWindowCheck: true,
-        skipTseStorno: true,
       }
     );
 
@@ -284,4 +306,20 @@ export async function performStorno(
     stornoId,
     tseSignature: tseResult?.signature ?? null,
   };
+}
+
+/** Idempotent TSE storno when refund was processed outside performStorno (Stripe webhook). */
+export async function syncStornoForExternalRefund(
+  req: StornoRequest
+): Promise<StornoResult | { skipped: true }> {
+  const result = await performStorno({
+    ...req,
+    skipStripeRefund: true,
+  });
+
+  if ("error" in result && result.error === "Nothing left to storno") {
+    return { skipped: true };
+  }
+
+  return result;
 }

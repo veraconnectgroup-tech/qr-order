@@ -6,6 +6,8 @@ export type GaGateMetrics = {
   shadowParityPct?: number | null;
   /** Latest eval suite pass for this location/org. */
   recentEvalPass?: boolean | null;
+  /** G3 — SR pilot scenarios + narration gate (pnpm eval:denis). */
+  pilotEvalPass?: boolean | null;
 };
 
 export type GaGateCheck = {
@@ -123,6 +125,31 @@ export function evaluateGaGate(
     }
   }
 
+  if (rolloutMode === "denis_only") {
+    const pilotPass = metrics.pilotEvalPass ?? metrics.recentEvalPass;
+    if (pilotPass != null) {
+      checks.push(
+        check(
+          "pilot-eval",
+          "Pilot eval gate (SR + narration) passed",
+          pilotPass === true,
+          true,
+          "Run pnpm eval:denis — all pilot scenarios must be green."
+        )
+      );
+    } else {
+      checks.push(
+        check(
+          "pilot-eval-unknown",
+          "Pilot eval not recorded",
+          false,
+          true,
+          "Run pnpm eval:denis before Table OS pilot cutover."
+        )
+      );
+    }
+  }
+
   const actSubmitLive =
     form.actSubmitEnabled && form.actLayerEnabled && !form.actDryRun;
 
@@ -133,7 +160,7 @@ export function evaluateGaGate(
         "Act submit only in denis_only rollout",
         rolloutMode === "denis_only",
         true,
-        "Set rollout to denis_only before live order submit via ACL."
+        "Set rollout to denis_only before live act submit via ACL."
       )
     );
     checks.push(
@@ -144,26 +171,6 @@ export function evaluateGaGate(
         true
       )
     );
-    if (metrics.recentEvalPass != null) {
-      checks.push(
-        check(
-          "eval-green",
-          "Latest eval suite passed",
-          metrics.recentEvalPass === true,
-          true
-        )
-      );
-    } else {
-      checks.push(
-        check(
-          "eval-unknown",
-          "Eval status unknown for act submit",
-          false,
-          true,
-          "Run pnpm eval:denis before enabling live act submit."
-        )
-      );
-    }
   } else if (form.actSubmitEnabled) {
     checks.push(
       check(

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { handlePosOrderCancelled } from "@/lib/pos/inbound/handle-pos-order-cancelled";
 import * as refundModule from "@/lib/stripe/refund";
-import * as stornoModule from "@/lib/fiscal/sign-transaction";
+import * as stornoModule from "@/lib/fiscal/storno";
 import * as auditModule from "@/lib/audit/log";
 import * as webhookModule from "@/lib/webhooks/dispatch";
 
@@ -47,7 +47,11 @@ describe("handlePosOrderCancelled", () => {
   it("cancels pending order and dispatches webhook", async () => {
     const updates: Record<string, unknown>[] = [];
 
-    vi.spyOn(stornoModule, "signOrderStornoById").mockResolvedValue(null);
+    vi.spyOn(stornoModule, "performStorno").mockResolvedValue({
+      ok: true,
+      stornoId: "storno-1",
+      tseSignature: "sig",
+    });
     vi.spyOn(auditModule, "auditLog").mockResolvedValue(undefined);
     const webhookSpy = vi
       .spyOn(webhookModule, "dispatchOrgWebhook")
@@ -115,10 +119,13 @@ describe("handlePosOrderCancelled", () => {
     );
   });
 
-  it("refunds paid Stripe orders before cancelling", async () => {
-    const refundSpy = vi
-      .spyOn(refundModule, "processRefund")
-      .mockResolvedValue({ ok: true, refundId: "re_1", amount: 10 });
+  it("uses performStorno for TSE-signed paid Stripe orders", async () => {
+    const stornoSpy = vi.spyOn(stornoModule, "performStorno").mockResolvedValue({
+      ok: true,
+      stornoId: "storno-1",
+      tseSignature: "sig",
+    });
+    const refundSpy = vi.spyOn(refundModule, "processRefund");
 
     const admin = {
       from(table: string) {
@@ -160,9 +167,6 @@ describe("handlePosOrderCancelled", () => {
 
     vi.spyOn(auditModule, "auditLog").mockResolvedValue(undefined);
     vi.spyOn(webhookModule, "dispatchOrgWebhook").mockImplementation(() => {});
-    const stornoSpy = vi
-      .spyOn(stornoModule, "signOrderStornoById")
-      .mockResolvedValue(null);
 
     const result = await handlePosOrderCancelled(
       admin as never,
@@ -171,7 +175,9 @@ describe("handlePosOrderCancelled", () => {
     );
 
     expect(result.ok).toBe(true);
-    expect(refundSpy).toHaveBeenCalled();
-    expect(stornoSpy).not.toHaveBeenCalled();
+    expect(stornoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: "order-2" })
+    );
+    expect(refundSpy).not.toHaveBeenCalled();
   });
 });

@@ -28,14 +28,18 @@
 | **D — WORLD** | ✅ | outbox → `commerce.*` signals → TELL + guest push |
 | **E — ACTOR** | ✅ | queue/lock per `table_session_id`, view SSE |
 | **F — TRUTH** | ✅ | transcript iz timeline; ai_sessions.messages read-only |
+| **G1 — unified READ** | ✅ | Guest UI → `useDenisView` only (`guest-denis-layer`, `menu-view`) |
+| **G2 — unified SUBMIT** | ✅ | ACL submit in `runDenisTurn`; guest `/api/ai/order/submit` removed |
+| **G3 — pilot cutover** | ✅ | `table_os_pilot` preset + SR eval gate (`runPilotGate`) |
+| **G4 — legacy delete** | ✅ | `perceiveGuestChatTurn` in `runtime/perceive/`; loop owns ordering |
 
 **As-built motor (ne diraj osim wire):** M0–M28 u `src/lib/denis/` — kernel, venue, runtime, acl, eval.
 
-**Hibrid danas (retire u B–D):**
+**Hibrid danas (retire u G4 — done):**
 
-- Write: `/api/ai/chat`, `/api/denis/turn`, `/api/denis/sense`
-- Read: `GET /api/guest/scene`, `ai_sessions`, Zustand cart, order poll
-- `buildDenisTurnContext` + `load-scene-input` = **dva loadera** → Phase A spaja u FOLD
+- Write: `/api/denis/signal` (chat/meni ✅; submit server-side in turn ✅)
+- Read: `GET /api/denis/view` ✅
+- Perceive: `runtime/perceive/perceive-guest-chat-turn.ts` ✅ — loop owns ordering/act/tell
 
 ---
 
@@ -196,6 +200,78 @@ Eliminisati drift između `denis_timeline` i `ai_sessions.messages`.
 1. Transcript u FACE = fold iz timeline (`tell.committed`, `signal.message`)
 2. `ai_sessions.messages` — read-only legacy / deprecate write
 3. Replay dispute = timeline + orders only
+
+---
+
+## Phase G3 — Pilot cutover (Table OS)
+
+### Cilj
+
+Jedna pilot lokacija (npr. iota / Skyline) na pun Denis guest path — posle G1+G2.
+
+### Pre cutover-a (obavezno)
+
+```bash
+pnpm eval:denis    # core + SR pilot + narration gate
+pnpm verify:denis
+pnpm type-check && pnpm build
+```
+
+### Admin — pilot lokacija
+
+1. **Admin → Settings → Denis rollout**
+2. Izaberi lokaciju (pilot venue)
+3. Preset: **Table OS pilot (G3)** (`table_os_pilot`)
+4. Sačuvaj — proveri GA gate panel (shadow parity mora biti zelen ili ops override)
+
+### Šta preset uključuje
+
+| Flag | Vrednost |
+|------|----------|
+| `rollout.mode` | `denis_only` |
+| `llm.narrateWithLlm` | `true` |
+| `ordering.actLayerEnabled` | `true` |
+| `ordering.actSubmitEnabled` | `true` |
+| `ordering.actDryRun` | `false` |
+| `memory.returnGuestEnabled` | `true` |
+
+G2: chat submit ide server-side u turnu (ACL) — ne zavisi od guest API-ja.
+
+### Manual smoke (SR)
+
+1. Skeniraj QR → otvori chat → *„već sedim za stolom, hoću 2 mojita“*
+2. Potvrdi → *„da, pošalji“* → order u dock/view + KDS
+3. Network tab: samo `/api/denis/signal` + `/api/denis/view` — nema `/api/ai/order/submit`
+
+### Eval scenariji (automatski)
+
+`src/lib/denis/eval/fixtures/pilot-sr-scenarios.ts` — 5 SR kernel scenarija + narration gate u `run-pilot-gate.ts`.
+
+---
+
+## Phase G4 — Perceive-only (single loop)
+
+### Cilj
+
+Jedan mozak: **perceive → plan → act → tell**. LLM samo strukturira utterance; Denis loop mutira korpu i šalje porudžbinu.
+
+### As-built
+
+| Komponenta | Put |
+|------------|-----|
+| Perceive | `runtime/perceive/perceive-guest-chat-turn.ts` |
+| Ordering | `runtime/perceive/apply-structured-perception-ordering.ts` |
+| Orchestrator | `runDenisTurn` |
+| Shim | `execute-chat-turn.ts` (deprecated re-export) |
+
+### grep acceptance
+
+```bash
+grep -rn "perceiveGuestChatTurn" src/
+# mora: run-denis-turn.ts only (+ perceive module + execute shim)
+grep -rn "deferredOrdering" src/
+# prazno
+```
 
 ---
 

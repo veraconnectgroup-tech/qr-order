@@ -39,9 +39,9 @@ const REQUIRED_PATHS = [
 const DENIS_IMPORT_RE = /from\s+["']@\/lib\/denis\/([^/"']+)/g;
 const MODULE_LEVEL_MAP_SET_RE =
   /^(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Map|Set)\s*[<(]/m;
-const EXECUTE_CHAT_TURN_FN_IMPORT_RE =
-  /import\s+(?:type\s+)?\{[^}]*\bexecuteChatTurn\b/;
-const EXECUTE_CHAT_TURN_ALLOWED_CALLER =
+const PERCEIVE_GUEST_CHAT_TURN_FN_IMPORT_RE =
+  /import\s+(?:type\s+)?\{[^}]*\bperceiveGuestChatTurn\b/;
+const PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLER =
   "src/lib/denis/runtime/run-denis-turn.ts";
 const CREATE_ORDER_IMPORT_RE = /from\s+["']@\/lib\/orders\/create-order["']/;
 
@@ -167,19 +167,24 @@ function isOrderCoreAllowlisted(filePath: string): boolean {
   );
 }
 
-function checkExecuteChatTurnSingleCaller(report: ComplianceReport): void {
+function checkPerceiveGuestChatTurnSingleCaller(report: ComplianceReport): void {
   const srcRoot = join(REPO_ROOT, "src");
   for (const file of walkTsFiles(srcRoot)) {
     const normalized = rel(file);
-    if (normalized === "src/lib/ai/execute-chat-turn.ts") continue;
+    if (
+      normalized === "src/lib/denis/runtime/perceive/perceive-guest-chat-turn.ts" ||
+      normalized === "src/lib/ai/execute-chat-turn.ts"
+    ) {
+      continue;
+    }
     const content = readFileSync(file, "utf8");
-    if (!EXECUTE_CHAT_TURN_FN_IMPORT_RE.test(content)) continue;
-    if (normalized !== EXECUTE_CHAT_TURN_ALLOWED_CALLER) {
+    if (!PERCEIVE_GUEST_CHAT_TURN_FN_IMPORT_RE.test(content)) continue;
+    if (normalized !== PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLER) {
       pushIssue(report, {
         severity: "error",
-        code: "EXECUTE_CHAT_TURN_SINGLE_CALLER",
+        code: "PERCEIVE_GUEST_CHAT_TURN_SINGLE_CALLER",
         message:
-          "executeChatTurn may only be imported from run-denis-turn.ts (ADR-009 F1)",
+          "perceiveGuestChatTurn may only be imported from run-denis-turn.ts (ADR-019 G4)",
         file: normalized,
       });
     }
@@ -198,7 +203,7 @@ function checkOrderCoreBoundary(report: ComplianceReport): void {
         severity: "error",
         code: "ORDER_CORE_BOUNDARY",
         message:
-          "create-order import only allowed in src/lib/denis/acl/ and legacy order-executor.ts",
+          "create-order import only allowed in src/lib/denis/acl/",
         file: rel(file),
       });
     }
@@ -258,7 +263,7 @@ export function runDenisArchitectureCompliance(): ComplianceReport {
   checkDenisImportMatrix(report);
   checkModuleLevelMutableState(report);
   checkOrderCoreBoundary(report);
-  checkExecuteChatTurnSingleCaller(report);
+  checkPerceiveGuestChatTurnSingleCaller(report);
   checkChatServiceLineBudget(report);
   checkOpenAiBoundary(report);
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { DenisOrderCommandSchema } from "@/lib/denis/acl/denis-order-command.schema";
 import { buildDenisOrderCommand } from "@/lib/denis/runtime/act/build-order-command";
+import { actSubmitGuestBlockedMessage } from "@/lib/denis/runtime/act/resolve-act-submit-outcome";
 import { executeActPhase } from "@/lib/denis/runtime/act/execute-act-phase";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
@@ -37,6 +38,10 @@ describe("Denis M23 act + ACL", () => {
     expect(command?.lines).toHaveLength(1);
     expect(command?.idempotencyKey).toContain("00000000");
     expect(() => DenisOrderCommandSchema.parse(command)).not.toThrow();
+  });
+
+  it("maps submit errors to guest-visible messages", () => {
+    expect(actSubmitGuestBlockedMessage("empty_cart")).toContain("prazna");
   });
 
   it("runs act phase in dry-run without side effects", async () => {

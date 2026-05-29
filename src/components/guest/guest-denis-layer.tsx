@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
-import { useGuestScene } from "@/hooks/use-guest-scene";
 import { useDenisView } from "@/hooks/use-denis-view";
 import {
   parseSceneChipSelections,
@@ -110,25 +109,13 @@ export function GuestDenisLayer({
 
   const refreshKey = sceneRefreshKey + sceneRefreshBump;
 
-  const sceneQuery = useGuestScene({
+  const { scene, view, refresh: refreshGuestSceneView } = useDenisView({
     tableToken: token,
     sessionToken,
-    enabled: enabled && !!sessionToken && !fastPoll,
+    enabled: enabled && !!sessionToken,
     refreshKey,
     fastPoll,
   });
-
-  const viewQuery = useDenisView({
-    tableToken: token,
-    sessionToken,
-    enabled: enabled && !!sessionToken && fastPoll,
-    refreshKey,
-    fastPoll,
-  });
-
-  const scene = fastPoll ? viewQuery.scene : sceneQuery.scene;
-  const view = fastPoll ? viewQuery.view : null;
-  const refreshGuestSceneView = fastPoll ? viewQuery.refresh : sceneQuery.refresh;
 
   const handleOpenDenisDesk = useCallback(() => {
     hapticClick();
@@ -308,7 +295,7 @@ export function GuestDenisLayer({
           orderingDisabled={orderingDisabled}
           voiceEnabled={voiceEnabled}
           voiceTtsEnabled={voiceTtsEnabled}
-          bootstrapTranscript={fastPoll ? view?.transcript : undefined}
+          bootstrapTranscript={view?.transcript}
           getManualCartSnapshot={() => {
           if (cartItems.length === 0) return undefined;
           return buildManualCartSnapshot(

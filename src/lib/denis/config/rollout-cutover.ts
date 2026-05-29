@@ -9,7 +9,8 @@ export type DenisRolloutPresetId =
   | "denis_guest_narration"
   | "denis_kernel_ordering"
   | "denis_full_shadow_act"
-  | "denis_act_submit_pilot";
+  | "denis_act_submit_pilot"
+  | "table_os_pilot";
 
 export type DenisRolloutPreset = {
   id: DenisRolloutPresetId;
@@ -135,6 +136,25 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
         actSubmitEnabled: true,
       },
       memory: { returnGuestEnabled: false },
+      surfaces: { voiceEnabled: false },
+    },
+  },
+  {
+    id: "table_os_pilot",
+    label: "Table OS pilot (G3)",
+    description:
+      "Pilot venue: denis_only + T3 narrate + act timeline + G2 server ACL submit. Run pnpm eval:denis first.",
+    patch: {
+      version: 1,
+      rollout: { mode: "denis_only" },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: {
+        slotExtractEnabled: true,
+        actLayerEnabled: true,
+        actDryRun: false,
+        actSubmitEnabled: true,
+      },
+      memory: { returnGuestEnabled: true },
       surfaces: { voiceEnabled: false },
     },
   },

@@ -37,7 +37,7 @@ async function writeIdempotency(key: string, ack: DenisOrderAck): Promise<void> 
 }
 
 /**
- * M23 — sole Denis path to Order Core (besides legacy order-executor allowlist).
+ * M23 — sole Denis path to Order Core create path.
  */
 export async function executeDenisOrderCommand(input: {
   command: DenisOrderCommand;

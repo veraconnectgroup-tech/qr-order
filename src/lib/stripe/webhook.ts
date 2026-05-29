@@ -3,7 +3,11 @@ import { applyCreditPurchase } from "@/lib/denis/commercial/apply-credit-purchas
 import { logger } from "@/lib/logger";
 import { executeOrderSagaFromPaymentIntent } from "@/lib/orders/order-saga";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
-import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
+import {
+  FISCAL_STORNO_SYSTEM_ACTOR,
+  syncStornoForExternalRefund,
+} from "@/lib/fiscal/storno";
+import { roundMoney } from "@/lib/tax/vat";
 import { getCurrentTraceId } from "@/lib/resilience/trace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
@@ -211,7 +215,7 @@ async function processStripeWebhookEvent(
       const { data: order } = await admin
         .from("orders")
         .select(
-          "id, total, payment_status, refund_id, refund_reason, refunded_by, refunded_at, tse_signature"
+          "id, total, payment_status, refund_id, refund_reason, refunded_by, refunded_at, tse_signature, storno_total"
         )
         .eq("stripe_payment_intent_id", piId)
         .maybeSingle();
@@ -227,6 +231,7 @@ async function processStripeWebhookEvent(
         refunded_by: string | null;
         refunded_at: string | null;
         tse_signature: string | null;
+        storno_total: number | null;
       };
 
       const isFullRefund = charge.amount_refunded >= charge.amount;
@@ -252,13 +257,27 @@ async function processStripeWebhookEvent(
 
       await admin.from("orders").update(updates as never).eq("id", orderRow.id);
 
-      if (
-        orderRow.tse_signature &&
-        orderRow.payment_status !== "refunded" &&
-        orderRow.payment_status !== "partial_refund"
-      ) {
-        const refundAmount = charge.amount_refunded / 100;
-        scheduleOrderTseStorno(orderRow.id, refundAmount);
+      if (orderRow.tse_signature) {
+        const totalRefundedEur = charge.amount_refunded / 100;
+        const alreadyStornoed = Number(orderRow.storno_total ?? 0);
+        const increment = roundMoney(totalRefundedEur - alreadyStornoed);
+
+        if (increment > 0) {
+          const syncResult = await syncStornoForExternalRefund({
+            orderId: orderRow.id,
+            amount: increment,
+            reason: orderRow.refund_reason ?? "Stripe refund (webhook sync)",
+            performedBy: orderRow.refunded_by ?? FISCAL_STORNO_SYSTEM_ACTOR,
+            stripeRefundId: refundId,
+          });
+
+          if ("error" in syncResult) {
+            logger.warn("TSE storno sync failed on charge.refunded webhook", {
+              orderId: orderRow.id,
+              error: syncResult.error,
+            });
+          }
+        }
       }
 
       logger.info("Charge refunded (webhook sync)", {

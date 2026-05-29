@@ -26,22 +26,13 @@ describe("buildOutboxEvents", () => {
     expect(events).toEqual([]);
   });
 
-  it("includes notify_staff and fiscal.tse_sign in standalone mode", () => {
-    const events = buildOutboxEvents(baseContext(), "created");
-    expect(events.map((e) => e.event_type)).toEqual([
-      "fulfill.notify_staff",
-      "fiscal.tse_sign",
-    ]);
-  });
-
-  it("passes guestEmail in fiscal.tse_sign payload for chained beleg/receipt", () => {
+  it("does not enqueue fiscal events on order create (FC-2: TSE at payment)", () => {
     const events = buildOutboxEvents(
       baseContext({ guestEmail: "guest@example.com" }),
       "created"
     );
-    const tseEvent = events.find((e) => e.event_type === "fiscal.tse_sign");
-    expect(tseEvent?.payload.guestEmail).toBe("guest@example.com");
-    expect(events.map((e) => e.event_type)).not.toContain("fiscal.send_receipt");
+    expect(events.map((e) => e.event_type)).toEqual(["fulfill.notify_staff"]);
+    expect(events.some((e) => e.domain === "fiscal")).toBe(false);
   });
 
   it("skips fulfill.push_pos for pos-origin orders", () => {

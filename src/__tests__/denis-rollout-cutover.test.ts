@@ -31,6 +31,16 @@ describe("Denis rollout cutover M25", () => {
     expect(form?.actSubmitEnabled).toBe(true);
   });
 
+  it("table OS pilot preset enables denis_only + act submit (G3)", () => {
+    const form = denisRolloutFormFromPreset("table_os_pilot");
+    expect(form?.rolloutMode).toBe("denis_only");
+    expect(form?.narrateWithLlm).toBe(true);
+    expect(form?.actLayerEnabled).toBe(true);
+    expect(form?.actDryRun).toBe(false);
+    expect(form?.actSubmitEnabled).toBe(true);
+    expect(form?.returnGuestEnabled).toBe(true);
+  });
+
   it("merges location override without dropping version", () => {
     const patch = denisRolloutPatchFromForm({
       rolloutMode: "denis_only",

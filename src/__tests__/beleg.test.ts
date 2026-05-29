@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildBelegHtml, parseBelegTseData } from "@/lib/fiscal/beleg";
+import {
+  appendBelegTseEscPos,
+  buildBelegHtml,
+  formatTseTimestamp,
+  parseBelegTseData,
+} from "@/lib/fiscal/beleg";
+import { EscPosBuilder } from "@/lib/printer/escpos-builder";
 
 const sampleBeleg = {
   orgName: "Café Berlin",
@@ -39,6 +45,10 @@ const sampleBeleg = {
     tss_serial: "TSS-1234567890",
     signature_counter: 42,
     qr_code_data: "V0;1234567890;42;2026-05-23T12:00:00;2026-05-23T12:00:01;abc123",
+    start_time: 1_748_006_400,
+    end_time: 1_748_006_401,
+    tx_id: "fiskaly-tx-uuid-1",
+    client_id: "client-1",
   },
 };
 
@@ -49,13 +59,29 @@ describe("parseBelegTseData", () => {
         tss_serial: "TSS-1",
         signature_counter: 1,
         qr_code_data: "V0;data",
+        start_time: 1_700_000_000,
+        end_time: 1_700_000_005,
+        tx_id: "tx-1",
+        client_id: "client-1",
       })
     ).toEqual({
       tss_serial: "TSS-1",
       signature_counter: 1,
       signature: undefined,
       qr_code_data: "V0;data",
+      start_time: 1_700_000_000,
+      end_time: 1_700_000_005,
+      tx_id: "tx-1",
+      client_id: "client-1",
     });
+  });
+});
+
+describe("formatTseTimestamp", () => {
+  it("formats Unix seconds in de-DE locale", () => {
+    const formatted = formatTseTimestamp(1_748_006_400);
+    expect(formatted).toMatch(/\d/);
+    expect(formatted.length).toBeGreaterThan(8);
   });
 });
 
@@ -67,6 +93,10 @@ describe("buildBelegHtml", () => {
     expect(html).toContain("Café Berlin");
     expect(html).toContain("TSE-signiert");
     expect(html).toContain("TSE-Seriennummer: TSS-1234567890");
+    expect(html).toContain("TSE-Start:");
+    expect(html).toContain("Vorgangsbeendigung:");
+    expect(html).toContain("Transaktions-ID: fiskaly-tx-uuid-1");
+    expect(html).toContain("Prüfwert:");
     expect(html).toContain("Signaturzähler: 42");
     expect(html).toContain("MwSt 19%");
     expect(html).toContain("MwSt 7%");
@@ -88,5 +118,18 @@ describe("buildBelegHtml", () => {
     });
     expect(html).toContain("USt-IdNr: DE123456789");
     expect(html).not.toContain("St.-Nr.:");
+  });
+});
+
+describe("appendBelegTseEscPos", () => {
+  it("includes TSE start and end timestamps on ESC/POS output", () => {
+    const builder = new EscPosBuilder();
+    appendBelegTseEscPos(builder, sampleBeleg, 80);
+    const output = new TextDecoder().decode(builder.build());
+
+    expect(output).toContain("TSE-Start:");
+    expect(output).toContain("Vorgangsbeendigung:");
+    expect(output).toContain("Transaktions-ID: fiskaly-tx-uuid-1");
+    expect(output).toContain("Prüfwert:");
   });
 });

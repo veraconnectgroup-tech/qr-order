@@ -63,10 +63,9 @@ export const DENIS_IMPORT_MATRIX: Record<DenisLayer, readonly DenisLayer[]> = {
   eval: ["config", "platform", "kernel", "loop", "runtime"],
 };
 
-/** Paths that may import Order Core until full ACL migration (M7). */
+/** Paths that may import Order Core (ACL only — G2 retired legacy submit). */
 export const ORDER_CORE_LEGACY_ALLOWLIST = [
   "src/lib/denis/acl/",
-  "src/lib/ai/ordering/order-executor.ts",
 ] as const;
 
 /** Legacy chat-service must shrink after M7 — guard against growth during migration. */

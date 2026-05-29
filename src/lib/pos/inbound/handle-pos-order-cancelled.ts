@@ -1,5 +1,8 @@
 import { auditLog } from "@/lib/audit/log";
-import { signOrderStornoById } from "@/lib/fiscal/sign-transaction";
+import {
+  FISCAL_STORNO_SYSTEM_ACTOR,
+  performStorno,
+} from "@/lib/fiscal/storno";
 import { logger } from "@/lib/logger";
 import { buildPosOrderIdempotencyKey } from "@/lib/pos/inbound/create-pos-order";
 import type { InboundWebhookResult } from "@/lib/pos/inbound/types";
@@ -82,13 +85,35 @@ export async function handlePosOrderCancelled(
 
   let refundedViaStripe = false;
 
-  if (
+  if (order.tse_signature) {
+    const stornoResult = await performStorno({
+      orderId: order.id,
+      reason: "Cancelled by POS",
+      performedBy: FISCAL_STORNO_SYSTEM_ACTOR,
+    });
+
+    if ("error" in stornoResult) {
+      logger.warn("POS cancel storno failed", {
+        orderId: order.id,
+        integrationId: integration.id,
+        externalOrderId: trimmedExternalId,
+        error: stornoResult.error,
+      });
+      return {
+        ok: false,
+        status: 409,
+        message: stornoResult.error,
+      };
+    }
+
+    refundedViaStripe = Boolean(order.stripe_payment_intent_id);
+  } else if (
     (order.payment_status === "paid" || order.payment_status === "pos_online") &&
     order.stripe_payment_intent_id
   ) {
     const refundResult = await processRefund(
       order as OrderForRefund,
-      `pos:${integration.id}`,
+      FISCAL_STORNO_SYSTEM_ACTOR,
       "Cancelled by POS",
       { skipWindowCheck: true }
     );
@@ -125,18 +150,6 @@ export async function handlePosOrderCancelled(
       error: updateError.message,
     });
     return { ok: false, status: 500, message: "Order could not be cancelled" };
-  }
-
-  if (order.tse_signature && !refundedViaStripe) {
-    try {
-      await signOrderStornoById(order.id);
-    } catch (error) {
-      logger.error("POS cancel TSE storno failed", {
-        orderId: order.id,
-        integrationId: integration.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
   }
 
   const { data: location } = await admin

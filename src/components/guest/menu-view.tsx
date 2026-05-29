@@ -79,7 +79,7 @@ import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
 import { sceneBannerLayers } from "@/lib/scene/layer-utils";
 import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
-import { useGuestScene } from "@/hooks/use-guest-scene";
+import { useDenisView } from "@/hooks/use-denis-view";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 
 const AiCartPairingBanner = dynamic(
@@ -520,7 +520,12 @@ export function MenuView({
     [sessionOrders]
   );
 
-  const { scene, loading: sceneLoading, refresh: refreshGuestSceneView } = useGuestScene({
+  const {
+    scene,
+    view: denisView,
+    loading: sceneLoading,
+    refresh: refreshGuestSceneView,
+  } = useDenisView({
     tableToken: token,
     sessionToken,
     enabled: aiConciergeEnabled && !!sessionToken,
@@ -1491,6 +1496,9 @@ export function MenuView({
           loading={Boolean(sessionToken) && sceneLoading && !scene}
           cartBarVisible={
             orderingEnabled && !detailProduct && itemCount > 0
+          }
+          headline={
+            denisView?.chrome.headline ?? scene?.chrome.situation?.headline
           }
           subtitle={
             scene?.chrome.situation?.headline ??

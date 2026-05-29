@@ -16,6 +16,12 @@ export type BelegTseData = {
   signature_counter?: number;
   signature?: string;
   qr_code_data?: string;
+  /** Unix seconds from Fiskaly time_start */
+  start_time?: number;
+  /** Unix seconds from Fiskaly time_end */
+  end_time?: number;
+  tx_id?: string;
+  client_id?: string;
 };
 
 export type BelegItem = {
@@ -53,6 +59,14 @@ function formatBelegDateTime(iso: string) {
   return new Date(iso).toLocaleString("de-DE", {
     dateStyle: "medium",
     timeStyle: "short",
+  });
+}
+
+/** KassenSichV §6 — TSE transaction timestamps (Unix seconds → de-DE). */
+export function formatTseTimestamp(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleString("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "medium",
   });
 }
 
@@ -124,6 +138,15 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
   const tssSerial = data.tseData.tss_serial?.trim();
   const signatureCounter = data.tseData.signature_counter;
   const signaturePreview = data.tseSignature.slice(0, 24);
+  const tseStart =
+    data.tseData.start_time != null
+      ? formatTseTimestamp(data.tseData.start_time)
+      : null;
+  const tseEnd =
+    data.tseData.end_time != null
+      ? formatTseTimestamp(data.tseData.end_time)
+      : null;
+  const tseTxId = data.tseData.tx_id?.trim();
 
   const trackLink = data.orderUrl
     ? `<p style="margin:20px 0 0"><a href="${escapeHtml(data.orderUrl)}" style="color:#f97316;text-decoration:none">Bestellstatus ansehen →</a></p>`
@@ -205,11 +228,26 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
             : ""
         }
         ${
+          tseStart
+            ? `<p style="margin:0 0 4px;font-size:12px;color:#a1a1aa">TSE-Start: ${escapeHtml(tseStart)}</p>`
+            : ""
+        }
+        ${
+          tseEnd
+            ? `<p style="margin:0 0 4px;font-size:12px;color:#a1a1aa">Vorgangsbeendigung: ${escapeHtml(tseEnd)}</p>`
+            : ""
+        }
+        ${
           signatureCounter != null
             ? `<p style="margin:0 0 4px;font-size:12px;color:#a1a1aa">Signaturzähler: ${escapeHtml(String(signatureCounter))}</p>`
             : ""
         }
-        <p style="margin:0;font-size:11px;color:#71717a;word-break:break-all">Signatur: ${escapeHtml(signaturePreview)}…</p>
+        ${
+          tseTxId
+            ? `<p style="margin:0 0 4px;font-size:11px;color:#71717a;word-break:break-all">Transaktions-ID: ${escapeHtml(tseTxId)}</p>`
+            : ""
+        }
+        <p style="margin:0;font-size:11px;color:#71717a;word-break:break-all">Prüfwert: ${escapeHtml(signaturePreview)}… (vollständig im QR-Code)</p>
         ${qrBlock}
       </div>
     </div>
@@ -252,11 +290,29 @@ export function appendBelegTseEscPos(
     builder.text(`TSE-SN: ${data.tseData.tss_serial}`).newline();
   }
 
+  if (data.tseData.start_time != null) {
+    builder
+      .text(`TSE-Start: ${formatTseTimestamp(data.tseData.start_time)}`)
+      .newline();
+  }
+
+  if (data.tseData.end_time != null) {
+    builder
+      .text(
+        `Vorgangsbeendigung: ${formatTseTimestamp(data.tseData.end_time)}`
+      )
+      .newline();
+  }
+
   if (data.tseData.signature_counter != null) {
     builder.text(`Signaturzähler: ${data.tseData.signature_counter}`).newline();
   }
 
-  builder.text(`Signatur: ${data.tseSignature.slice(0, 32)}`).newline();
+  builder.text(`Prüfwert: ${data.tseSignature.slice(0, 32)}`).newline();
+
+  if (data.tseData.tx_id) {
+    builder.text(`Transaktions-ID: ${data.tseData.tx_id}`).newline();
+  }
 
   if (qrPayload) {
     builder.newline().align("center");
@@ -289,6 +345,11 @@ export function parseBelegTseData(raw: unknown): BelegTseData | null {
     signature: typeof row.signature === "string" ? row.signature : undefined,
     qr_code_data:
       typeof row.qr_code_data === "string" ? row.qr_code_data : undefined,
+    start_time:
+      typeof row.start_time === "number" ? row.start_time : undefined,
+    end_time: typeof row.end_time === "number" ? row.end_time : undefined,
+    tx_id: typeof row.tx_id === "string" ? row.tx_id : undefined,
+    client_id: typeof row.client_id === "string" ? row.client_id : undefined,
   };
 }
 

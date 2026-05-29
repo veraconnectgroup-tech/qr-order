@@ -4,6 +4,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getCurrentStaff } from "@/lib/auth/session";
+import { performStorno } from "@/lib/fiscal/storno";
 import { processRefund } from "@/lib/stripe/refund";
 import { withRateLimit } from "@/lib/rate-limit";
 import { sanitizeOrderNotes } from "@/lib/security/sanitize";
@@ -86,6 +87,30 @@ export const POST = withErrorHandler(
 
     if (!location || (location as { org_id: string }).org_id !== staff.org_id) {
       return apiError("Forbidden.", 403);
+    }
+
+    if (orderRow.tse_signature) {
+      const stornoResult = await performStorno({
+        orderId,
+        reason: parsed.data.reason,
+        performedBy: staff.id,
+        amount: parsed.data.amount,
+      });
+
+      if ("error" in stornoResult) {
+        return apiError(stornoResult.error, stornoResult.code);
+      }
+
+      return apiSuccess({
+        ok: true,
+        stornoId: stornoResult.stornoId,
+        tseSignature: stornoResult.tseSignature,
+        paymentStatus:
+          parsed.data.amount != null &&
+          parsed.data.amount >= Number(orderRow.total) - 0.01
+            ? "refunded"
+            : "partial_refund",
+      });
     }
 
     const result = await processRefund(

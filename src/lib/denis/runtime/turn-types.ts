@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiChatRequestSchema } from "@/lib/ai/execute-chat-turn";
+import { aiChatRequestSchema } from "@/lib/ai/chat-request.schema";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type {
   DenisCartDraft,
@@ -97,7 +97,7 @@ export type DenisTurnMeta = {
   sharedAiSessionId?: string | null;
   operatingMode?: string;
   kdsStress?: string;
-  /** F8-3 — live ACL submit; guest must not call /api/ai/order/submit. */
+  /** G2 — server-side ACL submit in turn; response includes orderSubmit when placed. */
   actSubmitLive?: boolean;
   actSubmitAttempted?: boolean;
   actOrderNumber?: number;

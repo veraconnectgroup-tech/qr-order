@@ -1,4 +1,3 @@
-import { resolveFiscalBehavior } from "@/lib/fulfillment/resolve-fiscal-behavior";
 import { resolvePosPaymentState } from "@/lib/outbox/resolve-pos-payment-state";
 import type {
   OrderOutboxContext,
@@ -65,17 +64,7 @@ export function buildOutboxEvents(
     });
   }
 
-  if (resolveFiscalBehavior(ctx.posIntegration) === "standalone") {
-    events.push({
-      aggregate_id: ctx.orderId,
-      domain: "fiscal",
-      event_type: "fiscal.tse_sign",
-      payload: {
-        orderId: ctx.orderId,
-        guestEmail: ctx.guestEmail ?? null,
-      },
-    });
-  }
+  // FC-2: fiscal.tse_sign runs at payment completion (order-saga), not on create.
 
   for (const webhook of ctx.activeWebhooks) {
     events.push({

@@ -131,14 +131,16 @@ sequenceDiagram
 | `00092_denis_guest_memory.sql` | `denis_guest_memory` consented prefs | M17 |
 | `00093_denis_eval_runs.sql` | `denis_eval_runs` CI regression history | M24 |
 
-### 3.5 Legacy bridge (post F8-4)
+### 3.5 Legacy bridge (post G4)
 
 | Path | Role |
 |------|------|
-| `src/lib/ai/execute-chat-turn.ts` (~620 lines) | OpenAI + session persist only; `deferredOrdering` → kernel bridge |
+| `src/lib/denis/runtime/perceive/perceive-guest-chat-turn.ts` | **G4** — LLM perceive + session metadata only |
+| `src/lib/denis/runtime/perceive/apply-structured-perception-ordering.ts` | Denis loop applies structured LLM → cart |
+| `src/lib/ai/execute-chat-turn.ts` | Re-export shim (deprecated `executeChatTurn`) |
+| `src/lib/ai/chat-request.schema.ts` | Guest chat request schema |
 | `src/lib/ai/chat-service.ts` | thin export → `runDenisTurn` |
-| `src/lib/ai/ordering/kernel-ordering-bridge.ts` | cart mutations in `runDenisTurn` |
-| `src/lib/ai/ordering/order-executor.ts` | guest `/api/ai/order/submit` until act submit pilot (F8-3) |
+| `src/lib/ai/ordering/kernel-ordering-bridge.ts` | cart mutations (called from perceive apply) |
 
 **OpenAI:** legacy adapter for structured LLM; optional T3 narration in `runtime/narrate/narrate-llm.ts` when `llm.narrateWithLlm` + rollout `denis_only`.
 
@@ -153,14 +155,14 @@ Honest delta after M10 — do not assume these exist:
 | `runtime/perceive/slot-extract.ts` (T2) | ✅ opt-in (`ordering.slotExtractEnabled`) | ops enable per location |
 | `runtime/narrate/narrate-llm.ts` (T3-only LLM) | ✅ opt-in (`llm.narrateWithLlm` + `denis_only`) | ops enable per location |
 | `runtime/act/*` skill executor | ✅ dry-run default; submit via ACL when enabled | ops `actSubmitEnabled` |
-| `src/lib/denis/acl/` DenisOrderCommand | ✅ `executeDenisOrderCommand` | legacy executor still allowlisted |
+| `src/lib/denis/acl/` DenisOrderCommand | ✅ `executeDenisOrderCommand` — sole Order Core path (G2) |
 | `denis_eval_runs` table | ✅ migration `00093`; CI records on main when Supabase secrets set | push migration `00093` |
 | Guest UI `manualCartSnapshot` on sense | ✅ | `menu-view` + `use-denis-sense` debounce |
 | `use-smart-nudges` → server proactive | ✅ | `system.proactive_tick` via `fetchServerProactive` |
 | Rollout `canary` / `denis_only` in production | ✅ Admin Settings → Denis rollout (M25) | enable per location; watch `DENIS_ROLLOUT_MODE` env |
 | Guest language stickiness (SR chat → EN confirm) | ✅ `resolveStickyGuestLanguage` + `sr` `ai.order.*` i18n | follows conversation, not UI splash |
 | Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
-| **Unified brain — signal/view, one loop, world events** | 📋 [ADR-019](./ADR-019-denis-unified-brain.md) | **Phase A→E** — see [ARCHITECTURE-INDEX](./ARCHITECTURE-INDEX.md) |
+| **Unified brain — signal/view, one loop, world events** | ✅ A–F built; **G2–G4 hybrid retire** in progress | [ADR-019-session-prompts](./ADR-019-session-prompts.md) §G1–G4 |
 
 ---
 
@@ -252,14 +254,18 @@ Legacy wrappers deleted at end of Phase D. Pilot gate: `denis_only` on one venue
 
 | Phase | Status | Deliverable |
 |-------|--------|-------------|
-| **A — FOLD** | 📋 | `foldTableSessionState()` before every DECIDE |
-| **B — VIEW** | 📋 | `GET /api/denis/view` — single guest read model |
+| **A — FOLD** | ✅ | `foldTableSessionState()` before every DECIDE |
+| **B — VIEW** | ✅ | `GET /api/denis/view` — single guest read model |
 | **C — SIGNAL** | ✅ | `POST /api/denis/signal` — single guest write |
 | **D — WORLD** | ✅ | Order/status events → loop → TELL + guest push |
-| **E — ACTOR** | 📋 | Table Session Actor + view stream + ADR-013 → signals |
-| **F — TRUTH** | 📋 | Single TRUTH stream; transcript from timeline |
+| **E — ACTOR** | ✅ | Table Session Actor + view SSE (when Redis) |
+| **F — TRUTH** | ✅ | Transcript from timeline; ai_sessions read-only |
+| **G1 — unified READ** | ✅ | Guest UI → `useDenisView` only (no `/api/guest/scene`) |
+| **G2 — unified SUBMIT** | ✅ | ACL submit in turn; `/api/ai/order/submit` removed |
+| **G3 — pilot cutover** | ✅ | `table_os_pilot` preset + `runPilotGate()` SR eval |
+| **G4 — legacy delete** | ✅ | `perceiveGuestChatTurn`; `execute-chat-turn.ts` re-export only |
 
-**Next recommended:** Phase A on pilot; B→C→D for product; **E before chain scale**; F after E. [ADR-020 §15–§20](./ADR-020-denis-table-operating-system.md).
+**Next recommended:** G2 (submit) → G3 (pilot) → G4 (legacy delete). [ADR-020 §15–§20](./ADR-020-denis-table-operating-system.md).
 
 See also §7b below.
 

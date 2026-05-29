@@ -22,7 +22,7 @@ export type ActSubmitOutcome = {
   guestBlockedReason?: string;
 };
 
-function guestMessageForSubmitError(error: string): string {
+export function actSubmitGuestBlockedMessage(error: string): string {
   switch (error) {
     case "empty_cart":
       return "Korpa je prazna — dodajte stavke pre slanja porudžbine.";
@@ -71,6 +71,6 @@ export function resolveActSubmitOutcome(
   return {
     attempted: true,
     submitError,
-    guestBlockedReason: guestMessageForSubmitError(submitError),
+    guestBlockedReason: actSubmitGuestBlockedMessage(submitError),
   };
 }

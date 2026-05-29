@@ -1,5 +1,6 @@
 import { apiError } from "@/lib/api-response";
-import { executeChatTurn } from "@/lib/ai/execute-chat-turn";
+import { perceiveGuestChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
+import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
 import {
   assertSufficientCredits,
   finalizeTurnMetering,
@@ -11,9 +12,7 @@ import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
-import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
-import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import {
   kernelTimelineEnabled,
   resolveEffectiveRollout,
@@ -38,24 +37,19 @@ import {
   shouldRunSlotExtract,
 } from "@/lib/denis/runtime/perceive";
 import { executeActPhase, isActSubmitLive, resolveActSubmitOutcome } from "@/lib/denis/runtime/act";
+import { executeTurnOrderSubmit } from "@/lib/denis/runtime/act/execute-turn-order-submit";
+import { persistAiSessionAfterOrderSubmit } from "@/lib/denis/runtime/act/persist-ai-session-after-order-submit";
 import {
   handoffActEnabled,
   resolveActHandoffOutcome,
 } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
-import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import {
   elapsedMs,
   emptyTurnTimings,
   logDenisTurnObservability,
 } from "@/lib/denis/runtime/turn-observability";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
-import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
 import type { AiStructuredResponse } from "@/lib/ai/types";
-import {
-  mergeKernelOrderingIntoTurn,
-  persistKernelOrderingDraft,
-} from "@/lib/denis/runtime/act/apply-kernel-ordering";
 import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
@@ -94,7 +88,7 @@ function isSupportedTurnChannel(
   return channel === "chat" || channel === "voice";
 }
 
-type LegacyChatPayload = {
+type PerceiveChatPayload = {
   data?: {
     sessionId?: string;
     message?: string;
@@ -105,12 +99,12 @@ type LegacyChatPayload = {
     submitOrder?: boolean;
     creditsRemaining?: number;
     creditsCharged?: number;
-    deferredOrdering?: AiStructuredResponse;
+    structuredPerception?: AiStructuredResponse;
   };
 };
 
 /**
- * Denis PPAN+ entry — perceive → plan → legacy narrate → lint → timeline (M7–M9).
+ * Denis PPAN+ entry — perceive → plan → act → tell → timeline (G4 single loop).
  */
 export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> {
   if (!isSupportedTurnChannel(input.channel)) {
@@ -194,89 +188,45 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const rollout = resolveEffectiveRollout(ctx.config);
   const timelineEnabled = kernelTimelineEnabled(rollout.mode);
 
-  const legacyStarted = performance.now();
-  const legacyResponse = await executeChatTurn(parsed.data, {
+  const perceiveStarted = performance.now();
+  const perceiveResponse = await perceiveGuestChatTurn(parsed.data, {
     persistMessages: !timelineEnabled,
   });
-  timings.legacyMs = elapsedMs(legacyStarted);
-  if (legacyResponse.status !== 200) {
-    return legacyResponse;
+  timings.legacyMs = elapsedMs(perceiveStarted);
+  if (perceiveResponse.status !== 200) {
+    return perceiveResponse;
   }
 
-  const payload = (await legacyResponse.json()) as LegacyChatPayload;
+  const payload = (await perceiveResponse.json()) as PerceiveChatPayload;
   const data = payload.data;
 
   if (!data?.message) {
-    return legacyResponse;
+    return perceiveResponse;
   }
 
   let cartDraftForAct = ctx.aiCartState.draft;
   const actSubmitLive = isActSubmitLive(ctx.config);
 
-  if (data.deferredOrdering && data.sessionId) {
-    const { data: sessionRow, error: sessionError } = await admin
-      .from("ai_sessions")
-      .select("order_draft")
-      .eq("id", data.sessionId)
-      .maybeSingle();
+  if (data.structuredPerception && data.sessionId) {
+    const ordered = await applyStructuredPerceptionOrdering({
+      admin,
+      sessionId: data.sessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      language: parsed.data.language,
+      structured: data.structuredPerception,
+      timelineEnabled,
+      fallbackDraft: cartDraftForAct,
+      traceId,
+    });
 
-    if (!sessionError && sessionRow) {
-      try {
-        const menuPayload = await getCachedMenuForLocation(parsed.data.locationId, {
-          useEnglish: false,
-        });
-        const catalog = {
-          menuText: menuPayload.menuText,
-          productMap: menuPayload.productMap,
-          catalog: menuPayload.catalog,
-          currency: menuPayload.currency,
-          cachedAt: menuPayload.cachedAt,
-        };
-        const priorMessages: Array<{
-          role: "user" | "assistant";
-          content: string;
-        }> = timelineEnabled
-          ? timelineToStoredMessages(
-              await loadDenisTimeline(admin, data.sessionId)
-            )
-          : ((
-              await admin
-                .from("ai_sessions")
-                .select("messages")
-                .eq("id", data.sessionId)
-                .maybeSingle()
-            ).data?.messages as Array<{
-              role: "user" | "assistant";
-              content: string;
-            }> | null) ?? [];
-
-        const kernel = applyPostLlmOrdering({
-          userMessage: parsed.data.message,
-          allowOrdering: true,
-          orderDraft: initDraftFromStorage(sessionRow.order_draft),
-          catalog,
-          structured: data.deferredOrdering,
-          priorMessages,
-          language: parsed.data.language,
-        });
-
-        await persistKernelOrderingDraft(admin, data.sessionId, kernel.draft);
-
-        cartDraftForAct = aiOrderDraftToDenisCartState(kernel.draft).draft;
-
-        const merged = mergeKernelOrderingIntoTurn(data.message, kernel);
-        data.message = merged.message;
-        data.cartActions = merged.cartActions;
-        data.quickReplies = merged.quickReplies;
-        data.intent = merged.intent;
-        data.submitOrder = merged.submitOrder;
-      } catch (error) {
-        logger.warn("Kernel ordering bridge failed", {
-          traceId,
-          sessionId: data.sessionId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+    if (ordered) {
+      cartDraftForAct = ordered.cartDraft;
+      data.message = ordered.message || data.message;
+      data.cartActions = ordered.cartActions;
+      data.quickReplies = ordered.quickReplies;
+      data.intent = ordered.intent;
+      data.submitOrder = ordered.submitOrder;
     }
   }
 
@@ -320,6 +270,37 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   const actSubmitOutcome = resolveActSubmitOutcome(actPhase);
+
+  let turnSubmitOutcome = actSubmitOutcome;
+  if (Boolean(data.submitOrder) && !turnSubmitOutcome.attempted && data.sessionId) {
+    const unifiedStarted = performance.now();
+    turnSubmitOutcome = await executeTurnOrderSubmit(admin, {
+      aiSessionId: data.sessionId,
+      locationId: parsed.data.locationId,
+      tableToken: parsed.data.sessionToken,
+      sessionToken: parsed.data.tableSessionToken,
+      deviceFingerprint: parsed.data.deviceFingerprint,
+      deviceToken: parsed.data.deviceToken,
+      cartDraft: cartDraftForAct,
+    });
+    timings.actMs = (timings.actMs ?? 0) + elapsedMs(unifiedStarted);
+  }
+
+  if (
+    actSubmitOutcome.attempted &&
+    actSubmitOutcome.orderId &&
+    data.sessionId &&
+    turnSubmitOutcome.orderId === actSubmitOutcome.orderId
+  ) {
+    await persistAiSessionAfterOrderSubmit(admin, {
+      aiSessionId: data.sessionId,
+      orderId: actSubmitOutcome.orderId,
+      orderNumber: actSubmitOutcome.orderNumber,
+      awaitingApproval: actSubmitOutcome.awaitingApproval,
+      source: "denis_act_acl",
+    });
+  }
+
   const actHandoffOutcome = resolveActHandoffOutcome(
     actPhase,
     parsed.data.language
@@ -338,8 +319,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     guestMemory: ctx.guestMemory,
     cartActions: data.cartActions,
     recommendations: data.recommendations,
-    orderNumber: actSubmitOutcome.orderNumber ?? null,
-    blockedReason: actSubmitOutcome.guestBlockedReason ?? null,
+    orderNumber: turnSubmitOutcome.orderNumber ?? null,
+    blockedReason: turnSubmitOutcome.guestBlockedReason ?? null,
     handoffMessage: actHandoffOutcome.guestMessage ?? null,
     venueOps: ctx.venueOps,
     opsEffects: ctx.opsEffects,
@@ -372,12 +353,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }),
     actHandoffOutcome.quickReplies
   );
-  const guestMessage =
+  let guestMessage =
     actHandoffOutcome.overrideLegacy && actHandoffOutcome.guestMessage
       ? actHandoffOutcome.guestMessage
       : !resolvedNarration.usedDenisNarrator
         ? data.message
         : narration.message;
+
+  if (turnSubmitOutcome.guestBlockedReason && !turnSubmitOutcome.orderId) {
+    guestMessage = turnSubmitOutcome.guestBlockedReason;
+  }
   timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {
@@ -518,14 +503,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     actDryRun: actPhase.dryRun,
     actEnabled: actPhase.enabled,
     actSubmitLive,
-    actSubmitAttempted: actSubmitOutcome.attempted,
-    actOrderNumber: actSubmitOutcome.orderNumber,
+    actSubmitAttempted: turnSubmitOutcome.attempted,
+    actOrderNumber: turnSubmitOutcome.orderNumber,
     shadowParityScore,
     timings,
   });
-
-  const guestSubmitOrder =
-    actSubmitLive ? false : Boolean(data.submitOrder);
 
   const responseData = {
     message: guestMessage,
@@ -533,16 +515,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     cartActions: data.cartActions,
     quickReplies,
     intent: data.intent,
-    submitOrder: guestSubmitOrder,
+    submitOrder: false,
     creditsRemaining,
     sessionId: data.sessionId,
-    ...(actSubmitOutcome.attempted && actSubmitOutcome.orderId
+    ...(turnSubmitOutcome.attempted && turnSubmitOutcome.orderId
       ? {
           orderSubmit: {
-            orderId: actSubmitOutcome.orderId,
-            orderNumber: actSubmitOutcome.orderNumber,
-            awaitingApproval: actSubmitOutcome.awaitingApproval ?? false,
-            sessionOpened: actSubmitOutcome.sessionOpened,
+            orderId: turnSubmitOutcome.orderId,
+            orderNumber: turnSubmitOutcome.orderNumber,
+            awaitingApproval: turnSubmitOutcome.awaitingApproval ?? false,
+            sessionOpened: turnSubmitOutcome.sessionOpened,
           },
         }
       : {}),
@@ -565,8 +547,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     operatingMode: ctx.venueOps?.operatingMode,
     kdsStress: ctx.venueOps?.kdsStress,
     actSubmitLive,
-    actSubmitAttempted: actSubmitOutcome.attempted,
-    actOrderNumber: actSubmitOutcome.orderNumber,
+    actSubmitAttempted: turnSubmitOutcome.attempted,
+    actOrderNumber: turnSubmitOutcome.orderNumber,
   };
 
   const tableSessionId = await resolveActiveTableSessionId(admin, {
@@ -595,15 +577,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     });
 
     if (
-      actSubmitOutcome.attempted &&
-      actSubmitOutcome.orderId &&
-      actSubmitOutcome.orderNumber != null
+      turnSubmitOutcome.attempted &&
+      turnSubmitOutcome.orderId &&
+      turnSubmitOutcome.orderNumber != null
     ) {
       sceneOverrides.proactiveBanner = {
-        id: `order-placed-${actSubmitOutcome.orderId}`,
-        message: `#${actSubmitOutcome.orderNumber}`,
+        id: `order-placed-${turnSubmitOutcome.orderId}`,
+        message: `#${turnSubmitOutcome.orderNumber}`,
         action: "view_order",
-        orderId: actSubmitOutcome.orderId,
+        orderId: turnSubmitOutcome.orderId,
       };
     }
 

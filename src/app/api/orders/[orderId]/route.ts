@@ -15,9 +15,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { scheduleOrderReadyPush } from "@/lib/push/schedule-notify";
 import { processRefund } from "@/lib/stripe/refund";
+import { performStorno } from "@/lib/fiscal/storno";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
-import { scheduleOrderTseStorno } from "@/lib/fiscal/sign-transaction";
 import { scheduleDenisWorldSignal } from "@/lib/outbox/enqueue-denis-world-signal";
 import { runCommerceExperience } from "@/lib/commerce/runtime/run-commerce-experience";
 import type { PaymentMethod } from "@/lib/constants";
@@ -392,7 +392,17 @@ export const PATCH = withErrorHandler(
     if (status === "rejected") {
       updates.rejection_reason = rejectionReason ?? null;
 
-      if (
+      if (access.order.tse_signature) {
+        const stornoResult = await performStorno({
+          orderId,
+          reason: rejectionReason ?? "Order rejected by staff",
+          performedBy: access.staff.id,
+        });
+
+        if ("error" in stornoResult) {
+          return apiError(stornoResult.error, stornoResult.code);
+        }
+      } else if (
         access.order.payment_status === "paid" &&
         access.order.stripe_payment_intent_id
       ) {
@@ -422,7 +432,20 @@ export const PATCH = withErrorHandler(
       updates.rejection_reason =
         rejectionReason ?? "Order cancelled by staff";
 
-      if (
+      if (access.order.tse_signature) {
+        const stornoResult = await performStorno({
+          orderId,
+          reason: rejectionReason ?? "Order cancelled by staff",
+          performedBy: access.staff.id,
+        });
+
+        if ("error" in stornoResult) {
+          logger.warn("Storno on cancel failed", {
+            orderId,
+            error: stornoResult.error,
+          });
+        }
+      } else if (
         access.order.payment_status === "paid" &&
         access.order.stripe_payment_intent_id
       ) {
@@ -439,10 +462,6 @@ export const PATCH = withErrorHandler(
             reason: refundResult.error,
           });
         }
-      }
-
-      if (access.order.tse_signature) {
-        scheduleOrderTseStorno(orderId, Number(access.order.total));
       }
     }
 

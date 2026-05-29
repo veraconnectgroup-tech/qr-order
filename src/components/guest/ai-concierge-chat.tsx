@@ -1054,97 +1054,6 @@ export function AiConciergeChat({
     [orderingDisabled, addItem, currency, tUI]
   );
 
-  const trySubmitOrder = useCallback(
-    async (
-      sessionId: string
-    ): Promise<{ message: string; orderSubmit?: DenisOrderSubmitPayload } | null> => {
-      if (orderingDisabled || isDemo) return null;
-
-      const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
-      if (!aiContextToken) return null;
-
-      try {
-        const res = await fetch("/api/ai/order/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId,
-            locationId,
-            tableId,
-            tableToken: token,
-            sessionToken: sessionToken ?? undefined,
-            deviceFingerprint: getOrCreateDeviceFingerprint(),
-            deviceToken:
-              getStoredDeviceToken(locationId, tableId) ?? undefined,
-          }),
-        });
-
-        const json = (await res.json()) as {
-          error?: string;
-          data?: DenisOrderSubmitPayload;
-        };
-
-        if (!res.ok || !json.data) {
-          if (
-            json.error === "empty_cart" ||
-            json.error === "No items to order."
-          ) {
-            return { message: tChat("ai.order.emptyCart") };
-          }
-          return { message: json.error ?? tChat("ai.order.submitFailed") };
-        }
-
-        clearCart();
-        hapticSuccess();
-        recordGuestOrderPlaced();
-
-        const orderSubmit: DenisOrderSubmitPayload = {
-          orderId: json.data.orderId,
-          orderNumber: json.data.orderNumber,
-          awaitingApproval: json.data.awaitingApproval,
-          sessionOpened: json.data.sessionOpened,
-        };
-
-        if (orderSubmit.awaitingApproval) {
-          return {
-            message: tChat("ai.order.submitApproval", {
-              number: String(orderSubmit.orderNumber),
-            }),
-            orderSubmit,
-          };
-        }
-
-        if (orderSubmit.sessionOpened?.tablePin) {
-          return {
-            message: tChat("ai.order.submitSuccess", {
-              number: String(orderSubmit.orderNumber),
-            }),
-            orderSubmit,
-          };
-        }
-
-        return {
-          message: tChat("ai.order.submitSuccess", {
-            number: String(orderSubmit.orderNumber),
-          }),
-          orderSubmit,
-        };
-      } catch {
-        return { message: tChat("ai.order.submitFailed") };
-      }
-    },
-    [
-      orderingDisabled,
-      isDemo,
-      token,
-      sessionToken,
-      locationId,
-      tableId,
-      clearCart,
-      tChat,
-    ]
-  );
-
   const sendUserMessage = useCallback(
     async (
       text: string,
@@ -1180,61 +1089,19 @@ export function AiConciergeChat({
         const data = await callAiChat(trimmed, undefined, false, inputSurface);
         applyCartActions(data.cartActions);
 
-        if (data.denis?.actSubmitLive) {
-          if (data.denis.actOrderNumber != null) {
-            clearCart();
-            hapticSuccess();
-            recordGuestOrderPlaced();
-          }
-          if (data.orderSubmit) {
-            handleDenisOrderSubmit(data.orderSubmit);
-          }
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: nextId(),
-              role: "assistant",
-              content: data.message,
-              recommendations: data.recommendations?.length
-                ? data.recommendations
-                : undefined,
-            },
-          ]);
-          if (
-            inputSurface === "voice" &&
-            data.voice?.ttsRecommended &&
-            data.voice.speakText
-          ) {
-            voice.speak(data.voice.speakText);
-          }
-          return;
+        if (data.orderSubmit) {
+          clearCart();
+          hapticSuccess();
+          recordGuestOrderPlaced();
+          handleDenisOrderSubmit(data.orderSubmit);
         }
 
-        if (data.submitOrder && data.sessionId) {
-          const submitResult = await trySubmitOrder(data.sessionId);
-          if (submitResult?.orderSubmit) {
-            handleDenisOrderSubmit(submitResult.orderSubmit);
-          }
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: nextId(),
-              role: "assistant",
-              content:
-                submitResult?.message ??
-                tUI("ai.order.submitFailed"),
-            },
-          ]);
-          return;
-        }
-
-        const assistantText = data.message;
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: "assistant",
-            content: assistantText,
+            content: data.message,
             recommendations: data.recommendations?.length
               ? data.recommendations
               : undefined,
@@ -1272,12 +1139,12 @@ export function AiConciergeChat({
       menuCategories,
       callAiChat,
       applyCartActions,
-      trySubmitOrder,
       clearCart,
       tChat,
       voice,
       onSceneRefresh,
       handleDenisOrderSubmit,
+      recordGuestOrderPlaced,
     ]
   );
 
