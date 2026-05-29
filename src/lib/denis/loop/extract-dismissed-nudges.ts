@@ -32,3 +32,22 @@ export function extractDismissedNudges(events: DenisTimelineRow[]): string[] {
 
   return [...keys];
 }
+
+/** Already-emitted proactive kinds — one browse nudge per session, etc. */
+export function extractProactiveDedupeKeys(events: DenisTimelineRow[]): string[] {
+  const keys = new Set<string>();
+
+  for (const event of events) {
+    if (event.event_type !== "proactive.emitted") continue;
+    const payload = asRecord(event.payload);
+    const kind = payload.kind;
+    if (typeof kind !== "string" || !kind.trim()) continue;
+    keys.add(kind.trim());
+    const orderId = payload.orderId;
+    if (typeof orderId === "string" && orderId.trim()) {
+      keys.add(`${kind.trim()}:${orderId.trim()}`);
+    }
+  }
+
+  return [...keys];
+}

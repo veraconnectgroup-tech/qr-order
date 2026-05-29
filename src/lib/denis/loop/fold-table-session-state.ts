@@ -4,7 +4,7 @@ import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierg
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildFoldMeta } from "@/lib/denis/loop/compute-truth-hash";
 import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
-import { extractDismissedNudges } from "@/lib/denis/loop/extract-dismissed-nudges";
+import { extractDismissedNudges, extractProactiveDedupeKeys } from "@/lib/denis/loop/extract-dismissed-nudges";
 import { loadOrderFactsForSession } from "@/lib/denis/loop/load-order-facts";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
 import { lastTellFromTimeline } from "@/lib/denis/loop/fold-transcript";
@@ -159,7 +159,12 @@ export async function foldTableSessionState(
   const flowNodeId = foldFlowProjection(timeline, "welcome").currentNodeId;
   const foodUpsellAsked = draft.flow?.foodUpsellAsked ?? false;
   const lastAssistantMessage = lastTellFromTimeline(timeline);
-  const dismissedNudges = extractDismissedNudges(timeline);
+  const dismissedNudges = [
+    ...new Set([
+      ...extractDismissedNudges(timeline),
+      ...extractProactiveDedupeKeys(timeline),
+    ]),
+  ];
 
   let guestMemory = null;
   if (config.memory.returnGuestEnabled && input.deviceFingerprint) {

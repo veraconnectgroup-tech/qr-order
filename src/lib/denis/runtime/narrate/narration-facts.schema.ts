@@ -44,6 +44,7 @@ export type NarrationLintIssue = {
     | "FORBIDDEN_PHRASE"
     | "UNALLOWED_PRODUCT"
     | "UNAUTHORIZED_SUBMIT"
+    | "FAKE_ASYNC_CHECK"
     | "WORD_LIMIT"
     | "EMPTY_MESSAGE";
   detail: string;

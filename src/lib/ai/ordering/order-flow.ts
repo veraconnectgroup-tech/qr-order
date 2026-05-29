@@ -16,6 +16,41 @@ export function summarizeDraftOrder(draft: AiOrderDraft): string {
     .join(", ");
 }
 
+/** Guest-facing recap line — qty 1 omits "1×" (Pilsner 0.5L). */
+export function formatOrderRecapLine(
+  item: AiOrderDraft["items"][number]
+): string {
+  const size = item.serveSize ? ` ${item.serveSize}` : "";
+  if (item.quantity === 1) {
+    return `${item.productName}${size}`.trim();
+  }
+  return `${item.quantity}× ${item.productName}${size}`.trim();
+}
+
+export function formatOrderRecapLines(draft: AiOrderDraft): string[] {
+  return draft.items.map(formatOrderRecapLine);
+}
+
+function recapQuestion(lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return "Ist das alles?";
+    case "en":
+      return "Is that everything?";
+    case "hr":
+      return "Je li to sve?";
+    case "sr":
+      return "Da li je to sve?";
+    default:
+      return "Da li je to sve?";
+  }
+}
+
+function confirmOrderMessage(draft: AiOrderDraft, lang: MenuLanguage): string {
+  const lines = formatOrderRecapLines(draft);
+  return [recapQuestion(lang), ...lines].join("\n");
+}
+
 export function isGuestDecliningMore(message: string): boolean {
   const text = normalizeMessage(message);
   return (
@@ -52,9 +87,7 @@ export function shouldHandleOrderFlowWithoutLlm(
 
   if (isGuestDoneOrdering(message)) return true;
 
-  if (draft.flow?.awaitingFinalConfirm && isGuestFinalConfirm(message)) {
-    return true;
-  }
+  // At recap, confirm goes through LLM comprehend — not regex skip (ADR-030).
 
   if (draft.flow?.foodUpsellAsked && isGuestDecliningMore(message)) {
     return true;
@@ -86,21 +119,6 @@ function isDrinksOnly(draft: AiOrderDraft): boolean {
     draft.items.length > 0 &&
     draft.items.every((item) => item.menuSection === "drinks")
   );
-}
-
-function confirmOrderMessage(summary: string, lang: MenuLanguage): string {
-  switch (lang) {
-    case "de":
-      return `Bitte bestätigen Sie: ${summary}. Soll ich die Bestellung senden?`;
-    case "en":
-      return `Please confirm: ${summary}. Shall I send the order?`;
-    case "hr":
-      return `Molim potvrdite: ${summary}. Da pošaljem narudžbu?`;
-    case "sr":
-      return `Molim potvrdite porudžbinu: ${summary}. Da pošaljem?`;
-    default:
-      return `Molim potvrdite porudžbinu: ${summary}. Da pošaljem?`;
-  }
 }
 
 function sendOrderMessage(lang: MenuLanguage): string {
@@ -191,27 +209,15 @@ export function finalizeOrderFlow(input: {
   }
 
   if (
-    flow.awaitingFinalConfirm &&
-    isGuestFinalConfirm(input.userMessage) &&
-    !isGuestDecliningMore(input.userMessage)
-  ) {
-    return {
-      draft,
-      message: sendOrderMessage(lang),
-      submitOrder: true,
-      intent: "confirm",
-    };
-  }
-
-  if (
-    isGuestDecliningMore(input.userMessage) ||
-    isGuestDoneOrdering(input.userMessage)
+    !flow.awaitingFinalConfirm &&
+    (isGuestDecliningMore(input.userMessage) ||
+      isGuestDoneOrdering(input.userMessage))
   ) {
     flow.foodUpsellAsked = true;
     flow.awaitingFinalConfirm = true;
     return {
       draft,
-      message: confirmOrderMessage(summary, lang),
+      message: confirmOrderMessage(draft, lang),
       submitOrder: false,
       intent: "confirm",
     };
@@ -232,14 +238,23 @@ export function finalizeOrderFlow(input: {
     flow.awaitingFinalConfirm = true;
     return {
       draft,
-      message: confirmOrderMessage(summary, lang),
+      message: confirmOrderMessage(draft, lang),
       submitOrder: false,
       intent: "confirm",
     };
   }
 
   if (flow.awaitingFinalConfirm) {
-    if (input.llmSubmitOrder && !isGuestDecliningMore(input.userMessage)) {
+    const declining = isGuestDecliningMore(input.userMessage);
+    const comprehendSubmit =
+      input.llmSubmitOrder && !declining;
+    const fastPathSubmit =
+      !input.llmSubmitOrder &&
+      !declining &&
+      (isGuestFinalConfirm(input.userMessage) ||
+        isGuestDoneOrdering(input.userMessage));
+
+    if (comprehendSubmit || fastPathSubmit) {
       return {
         draft,
         message: sendOrderMessage(lang),
@@ -247,9 +262,10 @@ export function finalizeOrderFlow(input: {
         intent: "confirm",
       };
     }
+
     return {
       draft,
-      message: confirmOrderMessage(summary, lang),
+      message: confirmOrderMessage(draft, lang),
       submitOrder: false,
       intent: "confirm",
     };
@@ -259,7 +275,7 @@ export function finalizeOrderFlow(input: {
     flow.awaitingFinalConfirm = true;
     return {
       draft,
-      message: confirmOrderMessage(summary, lang),
+      message: confirmOrderMessage(draft, lang),
       submitOrder: false,
       intent: "confirm",
     };
@@ -278,7 +294,44 @@ export function finalizeOrderFlow(input: {
 }
 
 const FALSE_ORDER_CLAIM_PATTERN =
-  /\b(poru[čc]ujem|naru[čc]ujem|šaljem|saljem|send(ing)? (your )?order|bestell(e|ung)? (ist )?(unterwegs|gesendet)|ordering (for you|now)|order (is )?(placed|sent|on its way))\b/i;
+  /\b(poru[čc]ujem|naru[čc]ujem|poru[čc]io si|naru[čc]io si|šaljem|saljem|poslat[aoe]?|poslao|poslala|gesendet|unterwegs|send(ing)? (your )?order|bestell(e|ung)? (ist )?(unterwegs|gesendet)|ordering (for you|now)|order (is )?(placed|sent|on its way)|uživaj.*piv)\b/i;
+
+const FAKE_ASYNC_CHECK_PATTERN =
+  /\b(proveri[ćc]u|proveravam|javiti [ćc]e[mt]|javljam.*[ćc]im|check with (the )?(kitchen|staff)|I'll (check|look into)|schaue nach|melde mich)\b/i;
+
+function honestNoOrderStatusMessage(lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return "Es ist noch keine Bestellung für deinen Tisch raus. Sag mir, was du möchtest — ich sende sie, sobald du bestätigst.";
+    case "en":
+      return "I haven't sent an order for your table yet. Tell me what you'd like — I'll send it once you confirm.";
+    case "hr":
+      return "Još nemam poslanu narudžbu za tvoj stol. Reci što želiš — mogu odmah poslati kad potvrdiš.";
+    case "sr":
+      return "Još nisam poslao porudžbinu u kuhinju. Reci šta želiš — pošaljem čim potvrdiš.";
+    default:
+      return "Još nisam poslao porudžbinu u kuhinju. Reci šta želiš — pošaljem čim potvrdiš.";
+  }
+}
+
+function honestCartNotSubmittedMessage(
+  lang: MenuLanguage,
+  draft: AiOrderDraft
+): string {
+  const recap = formatOrderRecapLines(draft).join(", ");
+  switch (lang) {
+    case "de":
+      return `Im Warenkorb: ${recap}. Noch nicht an die Küche gesendet — sag Bescheid, wenn ich senden soll.`;
+    case "en":
+      return `In your cart: ${recap}. Not sent to the kitchen yet — let me know when to send it.`;
+    case "hr":
+      return `U košarici: ${recap}. Još nije poslano u kuhinju — reci kad da pošaljem.`;
+    case "sr":
+      return `U korpi: ${recap}. Još nisam poslao u kuhinju — reci da li je to sve ili šta da promenim.`;
+    default:
+      return `U korpi: ${recap}. Još nisam poslao u kuhinju — reci da li je to sve ili šta da promenim.`;
+  }
+}
 
 /** Block LLM narration that claims an order was sent when submit did not happen. */
 export function sanitizeFalseOrderClaimMessage(input: {
@@ -295,21 +348,36 @@ export function sanitizeFalseOrderClaimMessage(input: {
   const hasItems = input.draft.items.length > 0 && !input.draft.pending;
 
   if (!hasItems) {
-    switch (lang) {
-      case "de":
-        return "In der Bestellung sind noch keine Artikel. Sag mir, was du möchtest.";
-      case "en":
-        return "Your order has no items yet. Tell me what you'd like.";
-      case "hr":
-        return "Narudžba je još prazna. Reci što želiš.";
-      case "sr":
-        return "Porudžbina je još prazna. Reci šta želiš.";
-      default:
-        return "Porudžbina je još prazna. Reci šta želiš.";
-    }
+    return honestNoOrderStatusMessage(lang);
   }
 
-  return confirmOrderMessage(summarizeDraftOrder(input.draft), lang);
+  return honestCartNotSubmittedMessage(lang, input.draft);
+}
+
+/** Final guest reply guard — blocks false submit claims and fake async promises. */
+export function sanitizeGuestOrderHonesty(input: {
+  message: string;
+  language?: string;
+  orderSubmitted: boolean;
+  draft: AiOrderDraft;
+}): string {
+  if (input.orderSubmitted) return input.message;
+
+  let message = sanitizeFalseOrderClaimMessage({
+    message: input.message,
+    draft: input.draft,
+    submitOrder: false,
+    language: input.language,
+  });
+
+  if (
+    message === input.message &&
+    FAKE_ASYNC_CHECK_PATTERN.test(input.message)
+  ) {
+    message = honestNoOrderStatusMessage(resolveMenuLanguage(input.language));
+  }
+
+  return message;
 }
 
 export function formatFlowForPrompt(draft: AiOrderDraft): string | null {
@@ -322,7 +390,7 @@ export function formatFlowForPrompt(draft: AiOrderDraft): string | null {
   }
   if (flow.awaitingFinalConfirm) {
     parts.push(
-      "awaiting_final_confirm=true — only recap the order or set submitOrder on explicit yes"
+      "awaiting_final_confirm=true — guest responds to order recap. Comprehend intent in ANY language: natural affirmatives → submitOrder true; add/change items → proposedItems; questions → clarify. Do NOT require words like confirm/potvrdi."
     );
   }
   if (parts.length === 0) return null;

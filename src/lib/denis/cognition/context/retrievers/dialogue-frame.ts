@@ -42,15 +42,21 @@ export function buildDialogueFrameEvidence(input: {
     lines.push(`- last_denis_message: ${lastDenis.slice(0, 240)}`);
   }
 
+  if (mode === "banter" || awaiting === null) {
+    lines.push(
+      "- instruction: Welcome phase — greet politely (good day, welcome), ask how you may help and if they have decided. Never pushy; no menu dump."
+    );
+  }
+
   if (awaiting === "serve_size") {
     lines.push(
-      "- instruction: Guest is answering size/volume. Map typos (veliko povo → 0.5L). Return proposedItems with the pending productId + serveSize — do NOT ask again."
+      "- instruction: Guest is answering size/volume OR already said veliko/malo/0.5L in prior message — map to serve_size, fill proposedItems, do NOT re-ask."
     );
   }
 
   if (awaiting === "confirm" || pressure === "confirm") {
     lines.push(
-      "- instruction: Guest may confirm or adjust order recap. Contextual soft confirms (može, ajde) are valid."
+      "- instruction: Guest is answering the order recap. Comprehend ANY natural affirmative in their language (super, ajde, može, ok, u redu, tamam, perfekt, sounds good…) → submitOrder true. Add/change → proposedItems. Never require magic words like confirm/potvrdi."
     );
   }
 

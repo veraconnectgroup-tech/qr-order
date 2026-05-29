@@ -19,10 +19,10 @@ const SETTLING_GUEST_PATTERN =
   /\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat|pay|rechnung bitte|that's it|done ordering)\b/i;
 
 const ORDER_STATUS_QUERY_PATTERN =
-  /\b(kad sti[žz]e|kada sti[žz]e|gde je|gdje je|where.*order|wo ist|when.*(arriv|ready|coming)|order status|status.*order|moje pivo|my beer)\b/i;
+  /\b(kad sti[žz]e|kada sti[žz]e|gde je|gdje je|where.*order|wo ist|when.*(arriv|ready|coming)|order status|status.*order|moje pivo|my beer|jesi\s+(poslao|poslala|poslali)|da\s+li\s+(ste|si)\s+posl|poslao\s+porud[žz]bin|poslata|poslat[aoe]?|nisam\s+dobio|nisi\s+dobio|nije\s+stiglo|not\s+(sent|received|arrived)|keine\s+bestellung|da\s+li\s+ste\s+saznal)\b/i;
 
 const MISSING_ORDER_COMPLAINT_PATTERN =
-  /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|waiter says|konobar ka[žz]e)\b/i;
+  /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|waiter says|konobar ka[žz]e|nisam dobio|nisi dobio|nije stiglo|gde je pivo|gdje je pivo)\b/i;
 
 /** @deprecated Routing hint only — not an LLM gate (ADR-025). */
 const ORDERING_GUEST_PATTERN =
@@ -263,7 +263,7 @@ function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
 
-  // ADR-030 — at recap, LLM comprehends confirm (potvrdjujem, pošalji, ajde…), not regex-only T0.
+  // ADR-030 — at recap, LLM comprehends confirm in any language; T0 is optional fast-path only.
   if (shouldComprehendConfirmTurn(input)) {
     return buildPlan("transactional_perceive", {
       requiresLlm: true,
@@ -308,10 +308,18 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   }
 
   if (MISSING_ORDER_COMPLAINT_PATTERN.test(input.message.trim())) {
+    if (!hasOpenOrders) {
+      return buildPlan("template_tell", {
+        requiresLlm: false,
+        suppressUpsell,
+        reason: "commerce.order_not_sent.complaint",
+        templateKey: "status.no_order",
+      });
+    }
     return buildPlan("transactional_perceive", {
       requiresLlm: true,
       suppressUpsell,
-      reason: "commerce.order_not_sent.complaint",
+      reason: "commerce.order_not_sent.complaint_with_open_order",
     });
   }
 

@@ -366,6 +366,6 @@ describe("planUtterance + template-utterance", () => {
       topGoal: null,
     });
     const text = tryTemplateUtterance(utterance);
-    expect(text).toMatch(/Tu sam/i);
+    expect(text).toMatch(/Dobar dan|dobrodošli|mogu pomoći/i);
   });
 });

@@ -105,6 +105,17 @@ describe("order message backfill", () => {
     expect(isOrderPlacementMessage("da")).toBe(false);
   });
 
+  it("does not backfill generic jedno veliko pivo to a random beer", () => {
+    const catalog = mockCatalog();
+    const result = backfillDraftFromOrderMessage(
+      emptyOrderDraft(),
+      catalog,
+      "jedno veliko pivo"
+    );
+    expect(result.cartActions).toHaveLength(0);
+    expect(result.draft.items).toHaveLength(0);
+  });
+
   it("backfills draft from catalog search", () => {
     const catalog = mockCatalog();
     const result = backfillDraftFromOrderMessage(

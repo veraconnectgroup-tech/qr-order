@@ -81,7 +81,7 @@ import {
   emptyTurnTimings,
   logDenisTurnObservability,
 } from "@/lib/denis/runtime/turn-observability";
-import type { AiStructuredResponse } from "@/lib/ai/types";
+import type { AiStructuredResponse, AiRecommendation } from "@/lib/ai/types";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
 import type {
   DenisChatBody,
@@ -100,7 +100,48 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveActiveTableSessionId } from "@/lib/denis/venue/party";
 import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
 import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
-import type { AiRecommendation } from "@/lib/ai/types";
+import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { sanitizeGuestOrderHonesty } from "@/lib/ai/ordering/order-flow";
+import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
+import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
+import type { MenuSection } from "@/lib/menu-section";
+import type { OrderFact } from "@/lib/denis/loop/types";
+
+function cartDraftToAiOrderDraft(draft: DenisCartDraft): AiOrderDraft {
+  const base = initDraftFromStorage(null);
+  return {
+    ...base,
+    items: draft.items.map((line) => ({
+      productId: line.productId,
+      productName: line.productName,
+      quantity: line.quantity,
+      serveSize: line.serveSize ?? null,
+      modifierIds: [...line.modifierIds],
+      notes: line.notes,
+      lineTotal: line.lineTotal,
+      menuSection: (line.menuSection ?? "drinks") as MenuSection,
+      productTaxRate: line.productTaxRate ?? null,
+    })),
+  };
+}
+
+function buildCommerceStatusSummary(orders: OrderFact[]): string | null {
+  const open = orders.filter(
+    (order) => order.status !== "delivered" && order.status !== "cancelled"
+  );
+  if (!open.length) return null;
+
+  return open
+    .flatMap((order) =>
+      order.items.map(
+        (item) =>
+          `${item.quantity}× ${item.productName} (${order.status}${
+            order.orderNumber != null ? ` #${order.orderNumber}` : ""
+          })`
+      )
+    )
+    .join(", ");
+}
 
 function dedupeHandoffQuickReplies(
   primary: string[],
@@ -274,7 +315,9 @@ async function runTdePerceive(input: {
     perceiveOpts.skipLlm = true;
     perceiveOpts.templateMessage =
       templateMessage ??
-      (turnPlan.kind === "reflex_only" ? "" : "I'm here — what can I get you?");
+      (turnPlan.kind === "reflex_only"
+        ? ""
+        : "Good day — how may I help you today?");
     perceiveOpts.templateIntent = mapTemplateIntent(turnPlan);
   } else {
     perceiveOpts.model = resolvePerceiveModel(profile, perceiveMode);
@@ -585,7 +628,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       tableId: parsed.data.tableId,
       locationId: parsed.data.locationId,
       tableToken: parsed.data.sessionToken,
-      sessionToken: parsed.data.tableSessionToken,
+      sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
       deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
       deviceToken: parsed.data.deviceToken ?? undefined,
       cartDraft: cartDraftForAct,
@@ -604,7 +647,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       aiSessionId: data.sessionId,
       locationId: parsed.data.locationId,
       tableToken: parsed.data.sessionToken,
-      sessionToken: parsed.data.tableSessionToken,
+      sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
       deviceFingerprint: parsed.data.deviceFingerprint,
       deviceToken: parsed.data.deviceToken,
       cartDraft: cartDraftForAct,
@@ -646,6 +689,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     cartActions: data.cartActions,
     recommendations: data.recommendations,
     orderNumber: turnSubmitOutcome.orderNumber ?? null,
+    statusSummary: buildCommerceStatusSummary(
+      ctx.tableSessionState?.commerce.orders ?? []
+    ),
     blockedReason: turnSubmitOutcome.guestBlockedReason ?? null,
     handoffMessage: actHandoffOutcome.guestMessage ?? null,
     venueOps: ctx.venueOps,
@@ -689,6 +735,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   if (turnSubmitOutcome.guestBlockedReason && !turnSubmitOutcome.orderId) {
     guestMessage = turnSubmitOutcome.guestBlockedReason;
   }
+
+  const hasOpenOrders = (ctx.tableSessionState?.commerce.orders ?? []).some(
+    (order) => order.status !== "delivered" && order.status !== "cancelled"
+  );
+  guestMessage = sanitizeGuestOrderHonesty({
+    message: guestMessage,
+    language: parsed.data.language,
+    orderSubmitted: Boolean(turnSubmitOutcome.orderId) || hasOpenOrders,
+    draft: cartDraftToAiOrderDraft(cartDraftForAct),
+  });
   timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {

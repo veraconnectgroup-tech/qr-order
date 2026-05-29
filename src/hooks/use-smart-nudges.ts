@@ -132,8 +132,12 @@ export function useSmartNudges({
         const dismissKey =
           nudge.kind === "slow_kitchen" && nudge.orderId
             ? `slow_kitchen:${nudge.orderId}`
-            : nudge.kind;
+            : nudge.kind === "drink_pairing" && nudge.orderId
+              ? `drink_pairing:${nudge.orderId}`
+              : nudge.kind;
         if (isDismissed(dismissKey)) return;
+
+        dismissedRef.current.add(dismissKey);
 
         setActiveNudge((current) => {
           if (current) return current;

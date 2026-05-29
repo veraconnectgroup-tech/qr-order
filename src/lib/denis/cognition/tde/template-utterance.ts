@@ -7,9 +7,9 @@ const TEMPLATE_CATALOG: Record<
   Partial<Record<TemplateLocale, string>>
 > = {
   "banter.welcome": {
-    sr: "Tu sam! Reci šta želiš — piće, jelo, ili da ti nešto preporučim sa menija?",
-    de: "Ich bin da! Was darf ich bringen — Getränk, Essen, oder eine Empfehlung vom Menu?",
-    en: "I'm here! What can I get you — a drink, something to eat, or a menu pick?",
+    sr: "Dobar dan i dobrodošli! Tu sam — kako vam mogu pomoći? Da li ste već odlučili šta biste želeli — piće ili nešto za jelo?",
+    de: "Guten Tag und willkommen! Ich bin für Sie da — wie darf ich Ihnen helfen? Haben Sie schon entschieden, was Sie trinken oder essen möchten?",
+    en: "Good day and welcome! I'm here for you — how may I help? Have you already decided on a drink or something to eat?",
   },
   "slot.clarify.serve_size": {
     sr: "Koju veličinu želiš — mala, srednja ili velika?",
@@ -32,7 +32,7 @@ const TEMPLATE_CATALOG: Record<
     en: "Your order is in progress — I'll update you when it's ready.",
   },
   "status.no_order": {
-    sr: "Još nemam poslatu porudžbinu za tvoj sto. Reci šta želiš — mogu odmah da pošaljem kad potvrdiš.",
+    sr: "Još nisam poslao porudžbinu u kuhinju. Reci šta želiš — pošaljem čim potvrdiš.",
     de: "Es ist noch keine Bestellung für deinen Tisch raus. Sag mir, was du möchtest — ich sende sie, sobald du bestätigst.",
     en: "I haven't sent an order for your table yet. Tell me what you'd like — I'll send it once you confirm.",
   },

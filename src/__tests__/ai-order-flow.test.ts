@@ -86,7 +86,7 @@ describe("order-flow guards", () => {
     });
 
     expect(result.message).toContain("Cola Zero");
-    expect(result.message).toContain("potvrdite");
+    expect(result.message).toContain("Da li je to sve");
     expect(result.submitOrder).toBe(false);
     expect(result.draft.flow?.awaitingFinalConfirm).toBe(true);
   });
@@ -107,7 +107,7 @@ describe("order-flow guards", () => {
     });
 
     expect(result.message).toContain("Cola Zero");
-    expect(result.message).toContain("potvrdite");
+    expect(result.message).toContain("Da li je to sve");
     expect(result.submitOrder).toBe(false);
     expect(result.draft.flow?.awaitingFinalConfirm).toBe(true);
   });
@@ -131,21 +131,41 @@ describe("order-flow guards", () => {
     expect(isGuestFinalConfirm("da")).toBe(true);
   });
 
-  it("LLM submitOrder at awaitingFinalConfirm sends order (not regex)", () => {
+  it("LLM submitOrder at awaitingFinalConfirm sends order (comprehend-first)", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { awaitingFinalConfirm: true },
+    };
+
+    for (const message of ["potvrdjujem molim te", "super", "u redu", "tamam"]) {
+      const result = finalizeOrderFlow({
+        userMessage: message,
+        draft,
+        llmMessage: "Odlično — šaljem porudžbinu!",
+        llmSubmitOrder: true,
+        cartActionsThisTurn: 0,
+        language: "sr",
+      });
+
+      expect(result.submitOrder).toBe(true);
+    }
+  });
+
+  it("natural affirmative without LLM stays on recap until comprehend", () => {
     const result = finalizeOrderFlow({
-      userMessage: "potvrdjujem molim te",
+      userMessage: "super",
       draft: {
         ...draftWithCola(),
         flow: { awaitingFinalConfirm: true },
       },
-      llmMessage: "Odlično — šaljem porudžbinu!",
-      llmSubmitOrder: true,
+      llmMessage: "",
+      llmSubmitOrder: false,
       cartActionsThisTurn: 0,
       language: "sr",
     });
 
-    expect(result.submitOrder).toBe(true);
-    expect(result.message).toMatch(/šaljem/i);
+    expect(result.submitOrder).toBe(false);
+    expect(result.message).toContain("Da li je to sve");
   });
 
   it("blocks false order claim when cart is empty", () => {
@@ -168,8 +188,37 @@ describe("order-flow guards", () => {
       language: "sr",
     });
 
-    expect(message).toContain("potvrdite");
+    expect(message).toContain("Da li je to sve");
     expect(message).toContain("Cola Zero");
+  });
+
+  it("recap format: question then item lines", () => {
+    const result = finalizeOrderFlow({
+      userMessage: "to je sve",
+      draft: { ...draftWithCola(), flow: { foodUpsellAsked: true } },
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(result.message).toBe("Da li je to sve?\nCola Zero 0.3L");
+  });
+
+  it("to je sve at recap submits order", () => {
+    const result = finalizeOrderFlow({
+      userMessage: "to je sve",
+      draft: {
+        ...draftWithCola(),
+        flow: { foodUpsellAsked: true, awaitingFinalConfirm: true },
+      },
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(result.submitOrder).toBe(true);
   });
 
   it("maps draft.pending serve size to serve_size slot kind", () => {

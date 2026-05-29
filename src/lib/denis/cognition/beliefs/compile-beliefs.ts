@@ -356,6 +356,15 @@ function resolveConversationMode(
     );
   }
 
+  if (ORDERING_GUEST_PATTERN.test(guestMessage.trim())) {
+    return belief(
+      CORE_BELIEF_KEYS.conversationMode,
+      "ordering",
+      "inferred",
+      0.88
+    );
+  }
+
   return belief(CORE_BELIEF_KEYS.conversationMode, "banter", "inferred", 0.75);
 }
 

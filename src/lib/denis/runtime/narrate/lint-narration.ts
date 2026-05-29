@@ -6,9 +6,21 @@ import type {
 
 const SUBMIT_CLAIM_PATTERNS = [
   /\bnarudžb(?:ina|inu)\s+(?:je\s+)?(?:poslat[a]?|potvrđen[a]?|submit)/iu,
-  /\border\s+(?:is\s+)?(?:submitted|confirmed|placed)\b/i,
+  /\bporudžb(?:ina|inu)\s+(?:je\s+)?(?:poslat[a]?|potvrđen[a]?)/iu,
+  /\b(poru[čc]io si|naru[čc]io si)\b/iu,
+  /\bposlat[aoe]?\b/iu,
+  /\border\s+(?:is\s+)?(?:submitted|confirmed|placed|sent)\b/i,
   /\bpošaljem\s+narudžbinu\b/iu,
   /\bsending\s+your\s+order\b/i,
+  /\b(gesendet|unterwegs)\b/i,
+];
+
+const FAKE_ASYNC_CHECK_PATTERNS = [
+  /\bproveri[ćc]u\b/iu,
+  /\bproveravam\b/iu,
+  /\bjaviti [ćc]e[mt]\b/iu,
+  /\bcheck with (the )?(kitchen|staff)\b/i,
+  /\bI'll (check|look into)\b/i,
 ];
 
 const PRODUCT_LIKE_TOKEN =
@@ -50,6 +62,18 @@ function containsUnauthorizedSubmit(
       return {
         code: "UNAUTHORIZED_SUBMIT",
         detail: "Message claims submit without committed orderNumber",
+      };
+    }
+  }
+  return null;
+}
+
+function containsFakeAsyncCheck(message: string): NarrationLintIssue | null {
+  for (const pattern of FAKE_ASYNC_CHECK_PATTERNS) {
+    if (pattern.test(message)) {
+      return {
+        code: "FAKE_ASYNC_CHECK",
+        detail: "Message promises to check without committed order status",
       };
     }
   }
@@ -143,6 +167,11 @@ export function lintNarrationMessage(
 
   const submit = containsUnauthorizedSubmit(trimmed, facts);
   if (submit) issues.push(submit);
+
+  if (facts.committed.orderNumber == null && !facts.committed.statusSummary) {
+    const fakeCheck = containsFakeAsyncCheck(trimmed);
+    if (fakeCheck) issues.push(fakeCheck);
+  }
 
   const product = findUnallowedProductMentions(trimmed, facts);
   if (product) issues.push(product);

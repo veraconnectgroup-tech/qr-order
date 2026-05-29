@@ -112,6 +112,10 @@ export function handoffErrorNarrationKey(error: string): HandoffNarrationKey {
       return "session_closing";
     case "split_bill_active":
       return "split_bill_active";
+    case "missing_handoff_context":
+    case "table_not_found":
+    case "location_mismatch":
+      return "no_session";
     default:
       return "handoff_failed";
   }

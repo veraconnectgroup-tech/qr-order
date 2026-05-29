@@ -7,6 +7,7 @@ import {
   retrieveMenuEvidence,
 } from "@/lib/denis/cognition/context/retrievers/menu-rag";
 import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
+import { buildOrderComprehendHint } from "@/lib/ai/ordering/category-order-logic";
 import { retrieveTranscriptWindowEvidence } from "@/lib/denis/cognition/context/retrievers/transcript-window";
 import { retrieveVenueOpsEvidence } from "@/lib/denis/cognition/context/retrievers/venue-ops-evidence";
 import type { VenueManifestCapabilities } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
@@ -66,6 +67,9 @@ export type PlanEvidenceInput = {
 
 function wantsCatalogRag(turnPlan: TurnPlan, message: string): boolean {
   if (turnPlan.kind === "transactional_perceive") return true;
+  if (/\b(sta\s+je|šta\s+je|kakv[oa]\s+je|what\s+is|what\s+kind|objasni|explain)\b/i.test(message)) {
+    return true;
+  }
   if (turnPlan.kind === "relational_perceive") {
     return /\b(preporu[čc]|empfehl|recommend|suggest|meni|menu|bez|gluten)\b/i.test(
       message
@@ -97,6 +101,14 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
         opsEffects: input.opsEffects,
       })
     );
+
+    if (input.catalog && Object.keys(input.catalog).length > 0) {
+      const comprehendHint = buildOrderComprehendHint(
+        input.guestMessage,
+        input.catalog
+      );
+      if (comprehendHint) blocks.push(comprehendHint);
+    }
   } else {
     const commerce = retrieveCommerceEvidence(
       input.state,

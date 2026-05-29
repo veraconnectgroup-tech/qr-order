@@ -11,11 +11,12 @@ import type {
   AiProposedItem,
   ValidatedCartAction,
 } from "@/lib/ai/ordering/draft-types";
-import { formatServeSizeOption } from "@/lib/ai/ordering/serve-size-logic";
+import { formatServeSizeOption, inferServeSizeFromMessage } from "@/lib/ai/ordering/serve-size-logic";
+import { isGenericCategorySegment } from "@/lib/ai/ordering/category-order-logic";
 import { isGuestFinalConfirm } from "@/lib/ai/ordering/order-flow";
 
 const ORDER_PREFIX =
-  /^(daj\s+mi|daj|ho[ćc]u|hocu|želim|zelim|give\s+me|i\s+want|can\s+i\s+get|molim(\s+te)?|please|i\s+need)\s+/i;
+  /^(daj\s+mi|daj|ho[ćc]u|hocu|mo[žz]e|želim|zelim|give\s+me|i\s+want|can\s+i\s+get|molim(\s+te)?|please|i\s+need)\s+/i;
 
 const MULTI_ITEM_SPLIT = /\s+(?:i|und|and)\s+|,\s*/i;
 
@@ -55,7 +56,30 @@ export function splitOrderMessageSegments(message: string): string[] {
 }
 
 function scoreSegmentMatch(segment: string, product: AiCatalogProduct): number {
-  const tokens = segmentTokens(segment);
+  const normalizedSegment = normalizeSegment(segment).toLowerCase();
+  const productName = product.name.toLowerCase();
+  if (normalizedSegment.length >= 3 && productName === normalizedSegment) {
+    return 100;
+  }
+
+  if (isGenericCategorySegment(segment)) return 0;
+
+  const tokens = segmentTokens(segment).filter(
+    (t) =>
+      ![
+        "pivo",
+        "piva",
+        "beer",
+        "bier",
+        "veliko",
+        "velika",
+        "malo",
+        "mala",
+        "jedno",
+        "jedna",
+        "jedan",
+      ].includes(t)
+  );
   if (!tokens.length) return 0;
 
   const haystack = product.name.toLowerCase();
@@ -88,44 +112,11 @@ function pickProductForSegment(
   return best?.product ?? null;
 }
 
-function matchPresetByNumeric(
-  product: AiCatalogProduct,
-  numeric: string
-): string | null {
-  const target = numeric.replace(",", ".").replace(/l$/i, "").trim();
-  for (const preset of product.serveSizePresets) {
-    const formatted = formatServeSizeOption(preset);
-    const presetNumeric = formatted.replace(/l$/i, "").trim();
-    if (presetNumeric === target) return formatted;
-  }
-  return null;
-}
-
 function inferServeSizeFromSegment(
   segment: string,
   product: AiCatalogProduct
 ): string | null {
-  if (!product.serveSizePresets.length) return null;
-
-  const normalized = segment.toLowerCase();
-
-  const explicit = normalized.match(/\b(\d+[,.]?\d*)\s*l\b/);
-  if (explicit) {
-    const matched = matchPresetByNumeric(product, explicit[1]);
-    if (matched) return matched;
-  }
-
-  if (/\b(malu|mala|small|klein|mini|0[,.]3)\b/i.test(normalized)) {
-    const presets = product.serveSizePresets.map((p) => formatServeSizeOption(p));
-    return presets[0] ?? null;
-  }
-
-  if (/\b(velik[oa]?|large|groß|gross|0[,.]5)\b/i.test(normalized)) {
-    const presets = product.serveSizePresets.map((p) => formatServeSizeOption(p));
-    return presets[presets.length - 1] ?? null;
-  }
-
-  return null;
+  return inferServeSizeFromMessage(segment, product);
 }
 
 function inferModifierIdsFromSegment(

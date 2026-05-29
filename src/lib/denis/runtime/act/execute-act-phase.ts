@@ -5,6 +5,8 @@ import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { executePlannedSkill } from "@/lib/denis/runtime/act/execute-skill";
 import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
 import { handoffActEnabled } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
+import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
+import type { PlannedSkill } from "@/lib/denis/kernel/plan-turn";
 
 export type ActPhaseInput = {
   config: ConciergeConfig;
@@ -25,6 +27,19 @@ function plannedHandoffSkills(reflexTurn: ReflexTurnResult): boolean {
   return reflexTurn.plan.skills.some((skill) =>
     skill.id.startsWith("handoff.")
   );
+}
+
+/** LLM comprehend confirm may set submitOrder without flow CONFIRM → inject order.submit. */
+function resolveActSkills(
+  reflexTurn: ReflexTurnResult,
+  allowSubmit: boolean
+): PlannedSkill[] {
+  const skills = [...reflexTurn.plan.skills];
+  if (allowSubmit && !skills.some((skill) => skill.id === "order.submit")) {
+    const submitSkill = resolveSkill("order.submit");
+    if (submitSkill) skills.push(submitSkill);
+  }
+  return skills;
 }
 
 /** M23 + M28 — run planned skills; handoffs live by default. */
@@ -49,8 +64,9 @@ export async function executeActPhase(
     (Boolean(input.legacySubmitOrder) || confirmSubmit);
 
   const results = [];
+  const skillsToRun = resolveActSkills(input.reflexTurn, allowSubmit);
 
-  for (const planned of input.reflexTurn.plan.skills) {
+  for (const planned of skillsToRun) {
     const isHandoff = planned.id.startsWith("handoff.");
     const skillDryRun = isHandoff
       ? !liveHandoff

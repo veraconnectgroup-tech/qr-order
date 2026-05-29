@@ -308,19 +308,6 @@ export async function runDenisSense(
           source: "sense.proactive_brain",
         },
       });
-
-      await appendDenisTimelineEvent(admin, {
-        aiSessionId,
-        eventType: "tell.committed",
-        traceId,
-        payload: {
-          type: "tell.committed",
-          message: proactiveResult.nudge.message,
-          tier: "template",
-          source: "sense.proactive",
-          linted: true,
-        },
-      });
     }
   }
 

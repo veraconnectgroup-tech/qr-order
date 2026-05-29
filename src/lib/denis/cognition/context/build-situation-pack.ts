@@ -130,9 +130,15 @@ function buildPhaseBehaviorSection(input: SituationPackInput): string {
   switch (phase) {
     case "browsing":
     case "latent":
-      lines.push(
-        "- Guest may browse or start ordering. Warm relational OK; offer menu/drinks when relevant."
-      );
+      if (flowNode === "welcome") {
+        lines.push(
+          "- Welcome node: polite greeting (Dobar dan / Guten Tag), how may I help, soft 'have you decided?'. Warm — not pushy, no menu cards."
+        );
+      } else {
+        lines.push(
+          "- Guest may browse or start ordering. Polite and helpful; offer drink/food when relevant — never repetitive nudges."
+        );
+      }
       break;
     case "ordering":
       if (flowNode === "recap" || flowNode === "submit") {
@@ -141,7 +147,7 @@ function buildPhaseBehaviorSection(input: SituationPackInput): string {
         );
       } else {
         lines.push(
-          "- Active ordering: apply proposedItems to cart. Ask each missing slot ONCE; guest reply = fill slot via proposedItems, not another clarify loop."
+          "- Active ordering: know the menu — vague category (pivo/beer) → name real items + size in one question. Ask each missing slot ONCE; combine when possible."
         );
       }
       break;

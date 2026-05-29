@@ -1,10 +1,10 @@
 /** Golden assistant lines — must never classify as refusal (MR-7). */
 export const GOLDEN_ASSISTANT_LINES = [
-  "Tu sam! Reci šta želiš — piće, jelo, ili da ti nešto preporučim sa menija?",
+  "Dobar dan i dobrodošli! Tu sam — kako vam mogu pomoći?",
   "Super — dodajem Pils 0.5L u korpu.",
   "Narudžbina #42 je u pripremi, oko 8 minuta.",
-  "I'm here! What can I get you — a drink, something to eat, or a menu pick?",
-  "Ich bin da! Was darf ich bringen?",
+  "Good day and welcome! I'm here for you — how may I help?",
+  "Guten Tag und willkommen! Wie darf ich Ihnen helfen?",
   "Koju veličinu piva — 0.3L ili 0.5L?",
 ] as const;
 

@@ -26,10 +26,6 @@ export async function executeDenisPaymentHandoff(
     paymentMethod?: SelectablePaymentMethod | null;
   }
 ): Promise<ExecuteDenisPaymentHandoffResult> {
-  if (!input.paymentMethod) {
-    return { ok: true, needsMethod: true };
-  }
-
   const resolved = await resolveHandoffSession(admin, input);
   if (!resolved.ok) {
     return { ok: false, error: resolved.error };
@@ -42,6 +38,10 @@ export async function executeDenisPaymentHandoff(
 
   if (beliefs.unpaidCount === 0 || beliefs.amountDue <= 0) {
     return { ok: false, error: "nothing_to_pay" };
+  }
+
+  if (!input.paymentMethod) {
+    return { ok: true, needsMethod: true };
   }
 
   if (beliefs.paymentAlreadyRequested) {

@@ -59,7 +59,7 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("chat");
-    expect(out.message).toContain("Tu sam");
+    expect(out.message).toMatch(/Dobar dan|Tu sam|mogu pomoći|piće|jelo/i);
     expect(isDenisRefusalReply(out.message)).toBe(false);
   });
 
@@ -79,7 +79,7 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("chat");
-    expect(out.message).toMatch(/Tu sam|piće|jelo/i);
+    expect(out.message).toMatch(/Dobar dan|Tu sam|mogu pomoći|piće|jelo/i);
     expect(isDenisRefusalReply(out.message)).toBe(false);
   });
 
@@ -99,7 +99,7 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("chat");
-    expect(out.message).toMatch(/Tu sam|piće|jelo/i);
+    expect(out.message).toMatch(/Dobar dan|Tu sam|mogu pomoći|piće|jelo/i);
   });
 
   it("preserves clarify during ordering flow (ADR-030)", () => {
@@ -124,10 +124,10 @@ describe("conversation leadership", () => {
     );
     expect(out.intent).toBe("clarify");
     expect(out.message).toContain("0,5L");
-    expect(out.message).not.toMatch(/^Tu sam!/i);
+    expect(out.message).not.toMatch(/^Dobar dan/i);
   });
 
   it("provides German leadership fallback", () => {
-    expect(leadershipFallbackReply("de")).toMatch(/Ich bin da/i);
+    expect(leadershipFallbackReply("de")).toMatch(/Guten Tag|Ihnen helfen/i);
   });
 });

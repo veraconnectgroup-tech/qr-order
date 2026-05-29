@@ -90,6 +90,23 @@ describe("foldTranscriptFromTimeline Phase F", () => {
     expect(transcript).toHaveLength(4);
   });
 
+  it("excludes proactive banner tells from guest chat transcript", () => {
+    const transcript = foldTranscriptFromTimeline([
+      row(1, "tell.committed", {
+        type: "tell.committed",
+        message: "Can I help you choose?",
+        source: "sense.proactive",
+      }),
+      row(2, "tell.committed", {
+        type: "tell.committed",
+        message: "Porudžbina primljena.",
+      }),
+    ]);
+
+    expect(transcript).toHaveLength(1);
+    expect(transcript[0]?.text).toContain("Porudžbina");
+  });
+
   it("derives last tell and stored chat history from timeline", () => {
     const timeline = [
       row(1, "signal.message", { type: "signal.message", text: "A" }),

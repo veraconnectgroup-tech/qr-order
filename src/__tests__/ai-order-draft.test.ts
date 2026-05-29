@@ -7,6 +7,7 @@ import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 
 const COLA_ID = "11111111-1111-4111-8111-111111111111";
+const PILS_ID = "22222222-2222-4222-8222-222222222222";
 
 const catalog: AiCatalog = {
   menuText: "",
@@ -24,6 +25,19 @@ const catalog: AiCatalog = {
       allergens: [],
       requiresServeSize: false,
       serveSizePresets: [],
+      allowCustomServeSize: false,
+      modifierGroups: [],
+    },
+    [PILS_ID]: {
+      id: PILS_ID,
+      name: "Pilsner",
+      price: 4.5,
+      imageUrl: null,
+      menuSection: "drinks",
+      taxRate: 19,
+      allergens: [],
+      requiresServeSize: true,
+      serveSizePresets: ["0.3", "0.5"],
       allowCustomServeSize: false,
       modifierGroups: [],
     },
@@ -102,5 +116,27 @@ describe("processProposedItems", () => {
 
     expect(second.cartActions).toHaveLength(0);
     expect(second.draft.items).toHaveLength(1);
+  });
+
+  it("infers 0.5L from veliko in the same order message", () => {
+    const result = processProposedItems(
+      emptyOrderDraft(),
+      catalog,
+      [
+        {
+          productId: PILS_ID,
+          quantity: 1,
+          modifierIds: [],
+          serveSize: null,
+          notes: "",
+        },
+      ],
+      { userMessage: "moze jedno veliko pivo" }
+    );
+
+    expect(result.pending).toBeNull();
+    expect(result.cartActions).toHaveLength(1);
+    expect(result.cartActions[0]?.serveSize).toBe("0.5L");
+    expect(result.draft.items[0]?.serveSize).toBe("0.5L");
   });
 });

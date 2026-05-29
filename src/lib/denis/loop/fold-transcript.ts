@@ -41,6 +41,9 @@ function denisTextFromEvent(
   payload: Record<string, unknown>
 ): string | null {
   if (eventType === "tell.committed") {
+    if (payload.source === "sense.proactive") {
+      return null;
+    }
     const message =
       typeof payload.message === "string" ? payload.message.trim() : "";
     return message || null;

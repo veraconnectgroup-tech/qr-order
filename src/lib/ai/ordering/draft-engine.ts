@@ -15,6 +15,8 @@ import {
 } from "@/lib/ai/ordering/cart-validator";
 import { formatServeSize } from "@/lib/serve-size";
 import { formatFlowForPrompt } from "@/lib/ai/ordering/order-flow";
+import { inferServeSizeFromMessage } from "@/lib/ai/ordering/serve-size-logic";
+import { normalizePendingSlotReply } from "@/lib/denis/cognition/act/fuzzy-slot-reply";
 
 function normalizeText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -34,6 +36,23 @@ function matchServeSizeOption(message: string, options: string[]) {
       return formatServeSize(option);
     }
   }
+
+  const fuzzy = normalizePendingSlotReply("serve_size", message, options);
+  if (fuzzy !== message.trim()) {
+    for (const option of options) {
+      const opt = normalizeText(option);
+      const fuzzyNorm = normalizeText(fuzzy);
+      if (
+        fuzzyNorm === opt ||
+        fuzzyNorm === opt.replace(/l$/, "") ||
+        opt.includes(fuzzyNorm) ||
+        fuzzyNorm.includes(opt.replace(/l$/, ""))
+      ) {
+        return formatServeSize(option);
+      }
+    }
+  }
+
   return null;
 }
 
@@ -231,7 +250,18 @@ export function processProposedItems(
     return { draft, cartActions: [], pending: draft.pending };
   }
 
-  const { cartActions, pending } = validateProposedItems(catalog, proposedItems);
+  const userMessage = options?.userMessage?.trim();
+  const enriched = userMessage
+    ? proposedItems.map((item) => {
+        if (item.serveSize?.trim()) return item;
+        const product = catalog.catalog[item.productId];
+        if (!product) return item;
+        const inferred = inferServeSizeFromMessage(userMessage, product);
+        return inferred ? { ...item, serveSize: inferred } : item;
+      })
+    : proposedItems;
+
+  const { cartActions, pending } = validateProposedItems(catalog, enriched);
   const merged = applyCartActionsToDraft(draft, cartActions, options);
 
   const nextDraft: AiOrderDraft = {

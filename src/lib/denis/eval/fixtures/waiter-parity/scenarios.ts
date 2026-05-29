@@ -261,6 +261,34 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     ],
   },
   {
+    id: "wp_confirm_super_recap",
+    description: "super at recap → comprehend confirm (ADR-030)",
+    baseSetup: {
+      flowNodeId: "recap",
+      aiCartItems: [drinkLine("p-pils", "Pils", "0.5L")],
+    },
+    turns: [
+      {
+        message: "super",
+        expect: { ...confirmAtRecapExpect, usedT0: true },
+      },
+    ],
+  },
+  {
+    id: "wp_confirm_tamam_recap",
+    description: "tamam at recap → LLM comprehend (no T0 keyword)",
+    baseSetup: {
+      flowNodeId: "recap",
+      aiCartItems: [drinkLine("p-pils", "Pils", "0.5L")],
+    },
+    turns: [
+      {
+        message: "tamam",
+        expect: confirmAtRecapExpect,
+      },
+    ],
+  },
+  {
     id: "wp_confirm_moze_not_t0_browse",
     description: "Može without recap is not T0 confirm",
     baseSetup: { flowNodeId: "browse" },
@@ -325,6 +353,21 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
   },
 
   // --- Ordering comprehend (10) ---
+  {
+    id: "wp_order_veliko_pivo",
+    description: "jedno veliko pivo → LLM comprehend (size implied, pick beer only)",
+    baseSetup: { flowNodeId: "collect" },
+    turns: [
+      {
+        message: "jedno veliko pivo",
+        expect: {
+          planKind: "transactional_perceive",
+          requiresLlm: true,
+          conversationMode: "ordering",
+        },
+      },
+    ],
+  },
   {
     id: "wp_order_pivo",
     description: "Order pivo → transactional",

@@ -108,7 +108,7 @@ export async function loadGuestOrdersForAi(
 export function formatOrderContextBlock(
   orders: AiGuestOrder[],
   currency: string
-): string | null {
+): string {
   const lines: string[] = [];
 
   for (const order of orders) {
@@ -120,7 +120,13 @@ export function formatOrderContextBlock(
     }
   }
 
-  if (!lines.length) return null;
+  if (!lines.length) {
+    return [
+      "BISHERIGE BESTELLUNGEN DES GASTES:",
+      "(none — NO ORDERS SENT TO KITCHEN YET for this table session)",
+      "Never claim an order was sent, submitted, or is on its way unless listed above.",
+    ].join("\n");
+  }
 
   return [
     "BISHERIGE BESTELLUNGEN DES GASTES:",

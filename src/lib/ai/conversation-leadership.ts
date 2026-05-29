@@ -39,18 +39,21 @@ const LEADERSHIP_FALLBACK: Partial<
   en: (guestMessage: string) => string;
 } = {
   sr: () =>
-    "Tu sam! Reci šta želiš — piće, jelo, ili da ti nešto preporučim sa menija?",
+    "Dobar dan i dobrodošli! Tu sam — kako vam mogu pomoći? Da li ste već odlučili šta biste želeli — piće ili nešto za jelo?",
   hr: () =>
-    "Tu sam! Reci što želiš — piće, jelo, ili da ti nešto preporučim s jelovnika?",
+    "Dobar dan i dobrodošli! Tu sam — kako vam mogu pomoći? Jeste li već odlučili što biste željeli — piće ili nešto za jelo?",
   de: () =>
-    "Ich bin da! Was darf ich bringen — Getränk, Essen, oder eine Empfehlung vom Menu?",
+    "Guten Tag und willkommen! Ich bin für Sie da — wie darf ich Ihnen helfen? Haben Sie schon entschieden, was Sie trinken oder essen möchten?",
   en: () =>
-    "I'm here! What can I get you — a drink, something to eat, or a menu pick?",
-  tr: () => "Buradayım! İçecek, yemek veya menüden bir öneri ister misin?",
+    "Good day and welcome! I'm here for you — how may I help? Have you already decided on a drink or something to eat?",
+  tr: () =>
+    "İyi günler, hoş geldiniz! Size nasıl yardımcı olabilirim? İçecek veya yemek konusunda karar verdiniz mi?",
   fr: () =>
-    "Je suis là ! Une boisson, un plat, ou une suggestion du menu ?",
-  es: () => "¡Aquí estoy! ¿Bebida, comida o una recomendación del menú?",
-  it: () => "Sono qui! Da bere, da mangiare o un consiglio dal menu?",
+    "Bonjour et bienvenue ! Comment puis-je vous aider ? Avez-vous déjà choisi une boisson ou un plat ?",
+  es: () =>
+    "¡Buen día y bienvenido! ¿Cómo puedo ayudarle? ¿Ya ha decidido qué le gustaría tomar o comer?",
+  it: () =>
+    "Buongiorno e benvenuto! Come posso aiutarla? Ha già deciso cosa desidera bere o mangiare?",
 };
 
 export function leadershipFallbackReply(
@@ -128,12 +131,15 @@ export function applyConversationLeadership(
 
 /** Prompt block — Denis drives the table, never gives up. */
 export function conversationLeadershipBlock(): string {
-  return `LEAD THE CONVERSATION (critical — Denis drives, guest follows):
-- You are the head waiter in charge. Always move forward: drink → food → confirm → send.
-- FORBIDDEN in "message": "I don't understand", "Entschuldigung ich verstehe nicht", "ne razumem", "I can only speak German/English", asking the guest to repeat without offering choices.
+  return `LEAD THE CONVERSATION (critical — premium waiter, not a bot):
+- You are the head waiter: exceptionally polite, warm, never pushy or repetitive. Use formal/polite address (Vi/Sie/you politely).
+- First turn or welcome: greet properly ("Dobar dan", "Guten Tag", "Good day") + "How may I help?" + soft "Have you already decided?" — never dump the whole menu.
+- Keep the FULL thread in mind (transcript + cart + last question). Never reset to generic welcome mid-order.
+- Move efficiently toward a closed order in as FEW turns as possible — combine questions when sensible (which beer AND 0.3L/0.5L in one line).
+- FORBIDDEN in "message": "I don't understand", refusal to speak guest language, asking guest to repeat without offering concrete menu choices, pushy upsell loops, repeating the same nudge.
 - Supported languages include Serbian (sr) and Croatian (hr) — switch immediately when asked; never refuse them.
-- Casual chat / banter / jokes ("gde si", "legend", thanks, small talk) → intent "chat": reply warmly in the guest's language, then ONE soft nudge (drink, food, or recommendation).
-- Unclear message → do NOT give up: offer two concrete menu choices or ask "drink or food?" — never dead-end.
-- Use intent "clarify" ONLY when an order line is missing required size/modifier — NOT for social messages.
-- Never end a turn without a helpful next step for the guest.`;
+- Casual chat / banter / jokes → intent "chat": reply warmly, then ONE gentle offer (drink or food) — not three questions at once.
+- Unclear message → offer 2–3 real items FROM THE MENU by name, or ask drink vs food — never dead-end.
+- Use intent "clarify" when an order line is missing product, size, or modifier — NOT for pure social messages.
+- Never end a turn without a helpful, polite next step.`;
 }
