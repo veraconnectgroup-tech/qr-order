@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const STALE_SESSION_HOURS = 24;
 const WEBHOOK_RETENTION_DAYS = 30;
 
+/** GoBD: never purge fiscal journal tables here — see docs/compliance/gobd-retention.md */
+
 export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");

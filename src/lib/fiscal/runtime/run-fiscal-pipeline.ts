@@ -4,6 +4,7 @@ import { resolveFiscalBehavior } from "@/lib/fulfillment/resolve-fiscal-behavior
 import { buildFiscalSaleLines } from "@/lib/fiscal/runtime/build-fiscal-sale-lines";
 import { ensureFiscalRegister } from "@/lib/fiscal/runtime/ensure-fiscal-register";
 import { mapFiscalPaymentType } from "@/lib/fiscal/runtime/map-fiscal-payment-type";
+import { recordFiscalHandoff } from "@/lib/fiscal/record-fiscal-handoff";
 import { resolveFiscalMoment } from "@/lib/fiscal/resolve-fiscal-moment";
 import { logger } from "@/lib/logger";
 import type { PosIntegrationContext } from "@/lib/outbox/types";
@@ -48,30 +49,6 @@ async function loadPosIntegration(
   return { id: row.id, provider: row.provider, status: row.status };
 }
 
-async function recordFiscalHandoff(
-  admin: SupabaseClient,
-  order: OrderForFiscal,
-  orgId: string,
-  posIntegration: PosIntegrationContext
-): Promise<void> {
-  const { error } = await admin.from("fiscal_handoffs").upsert(
-    {
-      order_id: order.id,
-      location_id: order.location_id,
-      org_id: orgId,
-      pos_provider: posIntegration.provider,
-    },
-    { onConflict: "order_id" }
-  );
-
-  if (error) {
-    logger.warn("fiscal_handoffs upsert failed", {
-      orderId: order.id,
-      error: error.message,
-    });
-  }
-}
-
 export async function runFiscalPipeline(
   admin: SupabaseClient,
   trigger: FiscalTrigger
@@ -114,12 +91,12 @@ export async function runFiscalPipeline(
 
   if (moment === "pos_fiscal_export") {
     if (posIntegration) {
-      await recordFiscalHandoff(
-        admin,
-        order,
-        locationRow.org_id,
-        posIntegration
-      );
+      await recordFiscalHandoff(admin, {
+        orderId: order.id,
+        locationId: order.location_id,
+        orgId: locationRow.org_id,
+        posProvider: posIntegration.provider,
+      });
     }
     return { skipped: true, reason: "vorsystem_handoff" };
   }

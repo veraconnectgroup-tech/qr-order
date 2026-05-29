@@ -1,4 +1,4 @@
-import { buildBelegHtml, loadBelegData } from "@/lib/fiscal/beleg";
+import { buildBelegHtml, loadBelegOrHandoffData } from "@/lib/fiscal/beleg";
 import { buildOrderReceiptHtml } from "@/lib/email/order-receipt-html";
 import { sendEmail } from "@/lib/email/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -68,7 +68,7 @@ export async function sendOrderReceipt(
     return { sent: false, error: "No guest email on file." };
   }
 
-  const belegData = await loadBelegData(admin, orderId);
+  const belegData = await loadBelegOrHandoffData(admin, orderId);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   let html: string;

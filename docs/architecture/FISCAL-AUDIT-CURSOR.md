@@ -5,7 +5,7 @@
 | **Date** | 2026-05-29 |
 | **Scope** | KassenSichV · GoBD · AO §146a (incl. Kassenmeldepflicht) |
 | **Method** | Full read of ADR-011, ADR-012, 12 fiscal modules, outbox spine, 4 migrations |
-| **Status** | Audit + plan only — **no implementation in this document** |
+| **Status** | Phase 0–C implemented locally — apply migrations 00104–00109 before prod |
 | **References** | [ADR-011](./ADR-011-fiscal-compliance-spine.md) · [ADR-012](./ADR-012-fiscal-journal-spine.md) |
 
 ---

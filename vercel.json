@@ -9,6 +9,10 @@
       "schedule": "0 4 * * *"
     },
     {
+      "path": "/api/cron/fiscal-reconcile",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/jobs/refresh-org-ai-ops",
       "schedule": "30 5 * * *"
     }

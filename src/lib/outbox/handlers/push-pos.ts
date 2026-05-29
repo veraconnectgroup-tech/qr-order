@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordFiscalHandoff } from "@/lib/fiscal/record-fiscal-handoff";
 import { getPosAdapter } from "@/lib/pos/adapter-registry";
 import type {
   PosDeliveryResult,
@@ -310,6 +311,14 @@ export async function handleFulfillPushPos(
   }
 
   await updateIntegrationAfterPush(admin, posIntegrationId, true);
+
+  await recordFiscalHandoff(admin, {
+    orderId,
+    locationId: orderRow.location_id,
+    orgId: (location as { org_id: string }).org_id,
+    posProvider: provider,
+    posExternalId: result.externalId ?? null,
+  });
 
   logger.info("Outbox fulfill.push_pos delivered", {
     orderId,

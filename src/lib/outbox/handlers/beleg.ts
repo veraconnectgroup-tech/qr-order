@@ -1,9 +1,15 @@
 import { randomUUID } from "crypto";
-import { loadBelegData } from "@/lib/fiscal/beleg";
+import { loadBelegData, type BelegData } from "@/lib/fiscal/beleg";
+import { persistBelegArtifact } from "@/lib/fiscal/runtime/persist-fiscal-artifact";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
 import type { Json } from "@/types/database";
+
+function parseBelegSnapshot(raw: Json | null): BelegData | null {
+  if (!raw || typeof raw !== "object") return null;
+  return raw as unknown as BelegData;
+}
 
 export async function handleFiscalBeleg(
   payload: Record<string, unknown>
@@ -37,6 +43,15 @@ export async function handleFiscalBeleg(
   const needsToken = !existing.beleg_token;
   const needsSnapshot = !existing.beleg_snapshot;
 
+  const fiscalTransactionId =
+    typeof payload.fiscalTransactionId === "string" &&
+    payload.fiscalTransactionId
+      ? payload.fiscalTransactionId
+      : null;
+
+  let belegToken = existing.beleg_token;
+  let snapshotForArtifact = parseBelegSnapshot(existing.beleg_snapshot);
+
   if (needsToken || needsSnapshot) {
     const update: {
       beleg_token?: string;
@@ -45,12 +60,14 @@ export async function handleFiscalBeleg(
 
     if (needsToken) {
       update.beleg_token = randomUUID();
+      belegToken = update.beleg_token;
     }
 
     if (needsSnapshot) {
       const snapshot = await loadBelegData(admin, orderId);
       if (snapshot) {
         update.beleg_snapshot = snapshot as unknown as Json;
+        snapshotForArtifact = snapshot;
       }
     }
 
@@ -73,6 +90,15 @@ export async function handleFiscalBeleg(
         logger.info("Outbox fiscal.beleg saved beleg_snapshot", { orderId });
       }
     }
+  }
+
+  if (snapshotForArtifact) {
+    await persistBelegArtifact(admin, {
+      orderId,
+      fiscalTransactionId,
+      snapshot: snapshotForArtifact,
+      publicToken: belegToken,
+    });
   }
 
   const guestEmail =

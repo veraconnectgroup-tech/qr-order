@@ -50,8 +50,10 @@ export type BelegData = {
   paymentStatus: string;
   inPersonPaymentLocation?: "table" | "counter" | "bar";
   items: BelegItem[];
-  tseSignature: string;
-  tseData: BelegTseData;
+  fiscalSource?: "standalone" | "vorsystem";
+  vorsystemDisclaimer?: string;
+  tseSignature?: string;
+  tseData?: BelegTseData;
   orderUrl?: string;
 };
 
@@ -98,7 +100,9 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
     data.inPersonPaymentLocation ?? "table"
   );
   const paid = data.paymentStatus === "paid";
-  const qrUrl = await buildTseQrDataUrl(data.tseData.qr_code_data);
+  const qrUrl = data.tseData?.qr_code_data
+    ? await buildTseQrDataUrl(data.tseData.qr_code_data)
+    : null;
 
   const itemRows = data.items
     .map((item) => {
@@ -135,18 +139,30 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
     )
     .join("");
 
-  const tssSerial = data.tseData.tss_serial?.trim();
-  const signatureCounter = data.tseData.signature_counter;
-  const signaturePreview = data.tseSignature.slice(0, 24);
+  const tssSerial = data.tseData?.tss_serial?.trim();
+  const signatureCounter = data.tseData?.signature_counter;
+  const signaturePreview = data.tseSignature?.slice(0, 24) ?? "";
   const tseStart =
-    data.tseData.start_time != null
+    data.tseData?.start_time != null
       ? formatTseTimestamp(data.tseData.start_time)
       : null;
   const tseEnd =
-    data.tseData.end_time != null
+    data.tseData?.end_time != null
       ? formatTseTimestamp(data.tseData.end_time)
       : null;
-  const tseTxId = data.tseData.tx_id?.trim();
+  const tseTxId = data.tseData?.tx_id?.trim();
+
+  const vorsystemBlock =
+    data.fiscalSource === "vorsystem" && data.vorsystemDisclaimer
+      ? `<div style="margin-top:20px;padding-top:16px;border-top:1px solid #27272a">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#fbbf24;text-transform:uppercase;letter-spacing:0.06em">
+            Vorsystem / POS
+          </p>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.5">
+            ${escapeHtml(data.vorsystemDisclaimer)}
+          </p>
+        </div>`
+      : "";
 
   const trackLink = data.orderUrl
     ? `<p style="margin:20px 0 0"><a href="${escapeHtml(data.orderUrl)}" style="color:#f97316;text-decoration:none">Bestellstatus ansehen →</a></p>`
@@ -219,7 +235,9 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
       </p>
 
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid #27272a">
-        <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#4ade80;text-transform:uppercase;letter-spacing:0.06em">
+        ${
+          data.tseSignature && data.tseData
+            ? `<p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#4ade80;text-transform:uppercase;letter-spacing:0.06em">
           TSE-signiert (KassenSichV)
         </p>
         ${
@@ -248,7 +266,9 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
             : ""
         }
         <p style="margin:0;font-size:11px;color:#71717a;word-break:break-all">Prüfwert: ${escapeHtml(signaturePreview)}… (vollständig im QR-Code)</p>
-        ${qrBlock}
+        ${qrBlock}`
+            : vorsystemBlock
+        }
       </div>
     </div>
 
@@ -262,7 +282,11 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
     </div>
 
     <p style="margin:32px 0 0;font-size:12px;color:#52525b;text-align:center">
-      Dieser Beleg entspricht den Anforderungen der KassenSichV · Powered by QR Order
+      ${
+        data.fiscalSource === "vorsystem"
+          ? "Bestellübersicht — steuerlicher Kassenbeleg über angeschlossenes POS/Vorsystem"
+          : "Dieser Beleg entspricht den Anforderungen der KassenSichV · Powered by QR Order"
+      }
     </p>
   </div>
 </body>
@@ -271,9 +295,27 @@ export async function buildBelegHtml(data: BelegData): Promise<string> {
 
 export function appendBelegTseEscPos(
   builder: EscPosBuilder,
-  data: Pick<BelegData, "tseSignature" | "tseData">,
+  data: Pick<BelegData, "tseSignature" | "tseData" | "vorsystemDisclaimer" | "fiscalSource">,
   paperWidth: PaperWidth = 80
 ): EscPosBuilder {
+  if (data.fiscalSource === "vorsystem" && data.vorsystemDisclaimer) {
+    return builder
+      .text(separatorLine(paperWidth))
+      .newline()
+      .align("center")
+      .bold(true)
+      .text("Vorsystem / POS")
+      .newline()
+      .bold(false)
+      .align("left")
+      .text(data.vorsystemDisclaimer)
+      .newline();
+  }
+
+  if (!data.tseSignature || !data.tseData) {
+    return builder;
+  }
+
   const qrPayload = data.tseData.qr_code_data?.trim();
 
   builder
@@ -524,5 +566,154 @@ export async function loadBelegData(
     })),
     tseSignature,
     tseData,
+    fiscalSource: "standalone",
   };
+}
+
+const VORSYSTEM_DISCLAIMER_DE =
+  "Der steuerlich relevante Kassenbeleg wird durch das angeschlossene Kassensystem (Vorsystem) erstellt. Diese Übersicht dient nur zur Information über die Bestellung.";
+
+async function loadVorsystemHandoffBeleg(
+  admin: SupabaseClient,
+  orderId: string
+): Promise<BelegData | null> {
+  const { data: handoff } = await admin
+    .from("fiscal_handoffs")
+    .select("pos_provider, pos_external_id")
+    .eq("order_id", orderId)
+    .maybeSingle();
+
+  if (!handoff) {
+    return null;
+  }
+
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, payment_status, subtotal, tax_amount, total, created_at, payment_method, location_id, table_id, tax_percent"
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) return null;
+
+  const row = order as {
+    id: string;
+    order_number: number;
+    payment_status: string;
+    subtotal: number;
+    tax_amount: number;
+    total: number;
+    created_at: string;
+    payment_method: string;
+    location_id: string;
+    table_id: string | null;
+    tax_percent: number;
+  };
+
+  const { data: location } = await admin
+    .from("locations")
+    .select("name, org_id, address, city, postal_code, in_person_payment_location")
+    .eq("id", row.location_id)
+    .single();
+
+  if (!location) return null;
+
+  const locationRow = location as {
+    name: string;
+    org_id: string;
+    address: string | null;
+    city: string | null;
+    postal_code: string | null;
+    in_person_payment_location: "table" | "counter" | "bar";
+  };
+
+  const { data: orgData } = await admin
+    .from("organizations")
+    .select("name, currency, steuernummer, ust_id_nr")
+    .eq("id", locationRow.org_id)
+    .single();
+
+  if (!orgData) return null;
+
+  const org = orgData as {
+    name: string;
+    currency: string;
+    steuernummer: string | null;
+    ust_id_nr: string | null;
+  };
+
+  const { data: table } = row.table_id
+    ? await admin.from("tables").select("name").eq("id", row.table_id).is("deleted_at", null).single()
+    : { data: null };
+
+  const { data: items } = await admin
+    .from("order_items")
+    .select("id, product_name, quantity, total, notes, tax_rate")
+    .eq("order_id", orderId);
+
+  const itemRows = (items ?? []) as Array<{
+    id: string;
+    product_name: string;
+    quantity: number;
+    total: number;
+    notes: string | null;
+    tax_rate: number;
+  }>;
+
+  const handoffRow = handoff as {
+    pos_provider: string;
+    pos_external_id: string | null;
+  };
+
+  const providerNote = handoffRow.pos_external_id
+    ? ` POS-Referenz: ${handoffRow.pos_external_id}.`
+    : "";
+
+  const locationAddress = [
+    locationRow.address,
+    [locationRow.postal_code, locationRow.city].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    orgName: org.name,
+    locationName: locationRow.name,
+    locationAddress: locationAddress || null,
+    steuernummer: org.steuernummer,
+    ustIdNr: org.ust_id_nr,
+    tableName: (table as { name: string } | null)?.name ?? null,
+    orderNumber: row.order_number,
+    createdAt: row.created_at,
+    subtotal: Number(row.subtotal),
+    taxAmount: Number(row.tax_amount),
+    total: Number(row.total),
+    currency: org.currency ?? "EUR",
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    inPersonPaymentLocation: locationRow.in_person_payment_location,
+    items: itemRows.map((item) => ({
+      product_name: item.product_name,
+      quantity: item.quantity,
+      total: Number(item.total),
+      tax_rate: Number(item.tax_rate ?? row.tax_percent),
+      notes: item.notes,
+      modifiers: [],
+    })),
+    fiscalSource: "vorsystem",
+    vorsystemDisclaimer: `${VORSYSTEM_DISCLAIMER_DE} Anbieter: ${handoffRow.pos_provider}.${providerNote}`,
+  };
+}
+
+/** Standalone TSE beleg first; vorsystem handoff receipt when POS handles fiscal. */
+export async function loadBelegOrHandoffData(
+  admin: SupabaseClient,
+  orderId: string
+): Promise<BelegData | null> {
+  const standalone = await loadBelegData(admin, orderId);
+  if (standalone) {
+    return standalone;
+  }
+  return loadVorsystemHandoffBeleg(admin, orderId);
 }

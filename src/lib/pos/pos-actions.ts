@@ -4,6 +4,8 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/session";
+import { auditLog } from "@/lib/audit/log";
+import { notifyOwnersPosDisconnected } from "@/lib/fiscal/notify-pos-disconnect";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
@@ -151,9 +153,22 @@ export async function connectPosIntegration(
 
 export async function disconnectPosIntegration(integrationId: string) {
   const staff = await requireAdmin();
-  await assertIntegrationAccess(integrationId, staff.org_id);
+  const integration = await assertIntegrationAccess(integrationId, staff.org_id);
 
   const admin = createAdminClient();
+
+  const { data: integrationRow } = await admin
+    .from("pos_integrations")
+    .select("id, provider, status, location_id")
+    .eq("id", integrationId)
+    .single();
+
+  const { data: location } = await admin
+    .from("locations")
+    .select("name, org_id")
+    .eq("id", integration.location_id)
+    .single();
+
   const { error } = await admin
     .from("pos_integrations")
     .update({
@@ -165,6 +180,33 @@ export async function disconnectPosIntegration(integrationId: string) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  const locationRow = location as { name: string; org_id: string } | null;
+  const posRow = integrationRow as {
+    provider: string;
+    status: string;
+  } | null;
+
+  if (locationRow && posRow?.status === "connected") {
+    await auditLog({
+      orgId: locationRow.org_id,
+      userId: staff.user_id,
+      action: "fiscal",
+      entityType: "pos_integration",
+      entityId: integrationId,
+      oldValue: { status: posRow.status, provider: posRow.provider },
+      newValue: { status: "disconnected" },
+    });
+
+    void notifyOwnersPosDisconnected({
+      orgId: locationRow.org_id,
+      locationId: integration.location_id,
+      locationName: locationRow.name,
+      provider: posRow.provider,
+    }).catch((err) => {
+      console.error("[pos] disconnect owner notify failed", err);
+    });
   }
 
   revalidatePath("/admin/pos-integrations");

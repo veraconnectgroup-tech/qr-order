@@ -1,11 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type DailyClosingData,
+  loadZBonDisplayData,
   saveDailyClosing,
   signDailyClosingTse,
   type VatSummaryEntry,
 } from "@/lib/fiscal/daily-closing";
 import { ensureFiscalRegister } from "@/lib/fiscal/runtime/ensure-fiscal-register";
+import { persistZBonArtifact } from "@/lib/fiscal/runtime/persist-fiscal-artifact";
 import { signFiscalJournalZClosing } from "@/lib/fiscal/runtime/sign-journal-z-closing";
 import { logger } from "@/lib/logger";
 
@@ -105,6 +107,11 @@ export async function runFiscalZClosingPipeline(
     total_non_cash: data.totalNonCash,
     vat_summary: data.vatSummary,
   });
+
+  const zBonDisplay = await loadZBonDisplayData(admin, id, data.orgId);
+  if (zBonDisplay) {
+    await persistZBonArtifact(admin, rpcRow.fiscal_transaction_id, zBonDisplay);
+  }
 
   logger.info("Fiscal Z closing pipeline completed", {
     closingId: id,
