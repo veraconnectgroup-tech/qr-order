@@ -17,6 +17,7 @@ export const DENIS_LAYERS = [
   "acl",
   "learning",
   "eval",
+  "cognition",
   "architecture",
 ] as const;
 
@@ -56,11 +57,13 @@ export const DENIS_IMPORT_MATRIX: Record<DenisLayer, readonly DenisLayer[]> = {
     "actor",
     "surfaces",
     "acl",
+    "cognition",
   ],
   surfaces: ["config", "runtime"],
   acl: [],
   learning: ["config", "platform"],
-  eval: ["config", "platform", "kernel", "loop", "runtime"],
+  eval: ["config", "platform", "kernel", "loop", "runtime", "cognition"],
+  cognition: ["config", "platform", "kernel", "loop", "venue"],
 };
 
 /** Paths that may import Order Core (ACL only — G2 retired legacy submit). */

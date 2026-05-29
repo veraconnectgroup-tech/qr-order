@@ -5,6 +5,7 @@ import {
   resolveAiPromptLanguage,
   type AI_SUPPORTED_LANGUAGES,
 } from "@/lib/ai/config";
+import { conversationLeadershipBlock } from "@/lib/ai/conversation-leadership";
 import { multilingualPolicyBlock } from "@/lib/ai/multilingual-policy";
 import type { AiGuestPreferences, BuildSystemPromptInput } from "@/lib/ai/types";
 
@@ -28,7 +29,7 @@ Guest language is NOT supported — reply ONLY in ${venueLabel}. Ask politely if
 
   if (detection.confidence === "low") {
     return `\n\nGUEST LANGUAGE HINT: detected=${detection.detected}, confidence=low, venue=${venueLang}.
-Language unclear — reply in ${venueLabel} (venue default). You may ask which language they prefer.`;
+Language unclear — still reply warmly; lead with drink/food/menu choices. Do NOT say you don't understand. Prefer ${venueLabel} unless session language is obvious from chat history.`;
   }
 
   if (detection.detected !== venueLang) {
@@ -214,7 +215,9 @@ function conversationStyleBlock(): string {
 - Do NOT show recommendation cards (recommendations = []) unless the guest explicitly asks to browse or get a recommendation.
 - When guest orders something specific: intent "order" or "clarify", recommendations = [].
 - Apply common sense: burgers, fries, nachos are FOOD — never ask for 0.3L/0.5L on food.
-- One recommendation maximum when explicitly asked — never proactive menu cards.`;
+- One recommendation maximum when explicitly asked — never proactive menu cards.
+
+${conversationLeadershipBlock()}`;
 }
 
 function orderingConversationFlowBlock(
@@ -493,6 +496,8 @@ function identityBlock(
 
 export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const lang = resolveAiPromptLanguage(input.language);
+  const venueMenuLocale = input.venueMenuLocale ?? input.language;
+  const venueLang = resolveAiPromptLanguage(venueMenuLocale);
   const guestContext = formatGuestContext(input.guestPrefs, lang);
   const orderBlock = input.orderContext?.trim()
     ? `\n\n${input.orderContext.trim()}`
@@ -511,12 +516,18 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     : "";
   const guestLangHint = formatGuestLanguageHint(
     input.guestMessage,
-    input.language,
-    lang
+    venueMenuLocale,
+    venueLang
   );
 
+  const evidencePart = input.evidenceBlock?.trim()
+    ? `\n\nEVIDENCE:\n${input.evidenceBlock.trim()}`
+    : "";
+
+  const menuPart = input.omitFullMenu ? "" : `\n\nMENU:\n${input.menuText}`;
+
   return [
-    multilingualPolicyBlock(input.language),
+    multilingualPolicyBlock(venueMenuLocale),
     staffHandoffBlock(),
     seatedGuestContextBlock(lang),
     conversationStyleBlock(),
@@ -532,8 +543,8 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     orderBlock,
     draftBlock,
     scrollBrowseBlock,
-    "\n\nMENU:\n",
-    input.menuText,
+    evidencePart,
+    menuPart,
   ]
     .filter(Boolean)
     .join("\n\n");

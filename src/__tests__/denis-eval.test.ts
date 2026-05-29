@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
+import { runBeliefsCompileFixture } from "@/lib/denis/eval/run-beliefs-fixture";
 import { runFoldOrderVisibilityFixture } from "@/lib/denis/eval/run-fold-fixture";
 import { runWorldTellUnificationFixture } from "@/lib/denis/eval/run-world-tell-fixture";
 import { runPilotGate, runPilotSrEvalSuite } from "@/lib/denis/eval/run-pilot-gate";
@@ -34,6 +35,15 @@ describe("Denis eval fixtures M10", () => {
     const result = runFoldOrderVisibilityFixture();
     expect(result.passed).toBe(true);
     expect(result.orderCount).toBe(1);
+  });
+
+  it("compileBeliefs produces 6 core beliefs (MR-1)", () => {
+    const result = runBeliefsCompileFixture();
+    if (!result.passed) {
+      console.error(JSON.stringify(result.errors, null, 2));
+    }
+    expect(result.passed).toBe(true);
+    expect(result.beliefCount).toBe(7);
   });
 
   it("world tell unifies headline and push copy (Phase D)", () => {

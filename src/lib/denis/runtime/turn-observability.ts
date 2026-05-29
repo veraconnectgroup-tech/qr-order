@@ -25,6 +25,11 @@ export type DenisTurnObservabilityPayload = {
   actSubmitAttempted?: boolean;
   actOrderNumber?: number;
   shadowParityScore?: number;
+  /** ADR-023 MR-3 — TDE turn profile metadata. */
+  llmUsed?: boolean;
+  planKind?: string;
+  tier?: string;
+  evidencePointers?: string[];
   timings: TurnPhaseTimings;
 };
 
@@ -47,6 +52,10 @@ export function logDenisTurnObservability(
     actSubmitAttempted: payload.actSubmitAttempted,
     actOrderNumber: payload.actOrderNumber,
     shadowParityScore: payload.shadowParityScore,
+    llmUsed: payload.llmUsed,
+    planKind: payload.planKind,
+    tier: payload.tier,
+    evidencePointers: payload.evidencePointers,
     latencyMs: payload.timings,
   });
 }

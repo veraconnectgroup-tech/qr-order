@@ -40,6 +40,14 @@ function lookupTranslation(
 
 type AiLang = (typeof AI_SUPPORTED_LANGUAGES)[number];
 
+export type StickyGuestLanguageOptions = {
+  /** When false, always use venue menu locale (ConciergeConfig.language.followGuest). */
+  followGuest?: boolean;
+  /** Consented guest memory preferred language. */
+  preferredLanguage?: string | null;
+  fallbackWhenUnknown?: "venue" | "english";
+};
+
 /** Short confirms / thanks — keep session language (avoid "yes please" → en flip). */
 export function isLanguageNeutralGuestMessage(message: string): boolean {
   const text = message.trim().toLowerCase().replace(/\s+/g, " ");
@@ -64,15 +72,31 @@ export function isLanguageNeutralGuestMessage(message: string): boolean {
 export function resolveStickyGuestLanguage(
   guestMessage: string,
   menuLanguageInput: string,
-  sessionLanguage?: string | null
+  sessionLanguage?: string | null,
+  options: StickyGuestLanguageOptions = {}
 ): AiLang {
+  const {
+    followGuest = true,
+    preferredLanguage,
+    fallbackWhenUnknown = "venue",
+  } = options;
+
   const venue = resolveAiPromptLanguage(menuLanguageInput);
+
+  if (!followGuest) {
+    return venue;
+  }
+
   const session = sessionLanguage
     ? resolveAiPromptLanguage(sessionLanguage)
     : null;
+  const preferred = preferredLanguage
+    ? resolveAiPromptLanguage(preferredLanguage)
+    : null;
 
-  if (isLanguageNeutralGuestMessage(guestMessage) && session) {
-    return session;
+  if (isLanguageNeutralGuestMessage(guestMessage)) {
+    if (session) return session;
+    if (preferred) return preferred;
   }
 
   const detection = detectGuestMessageLanguage(guestMessage, menuLanguageInput);
@@ -80,7 +104,10 @@ export function resolveStickyGuestLanguage(
     return detection.detected;
   }
 
-  return session ?? venue;
+  if (session) return session;
+  if (preferred) return preferred;
+  if (fallbackWhenUnknown === "english") return "en";
+  return venue;
 }
 
 /** UI strings for order submit / status using conversation language, not menu splash. */

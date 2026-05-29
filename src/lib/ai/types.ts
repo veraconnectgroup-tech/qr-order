@@ -66,7 +66,10 @@ export type AiPromptLanguage =
 export type BuildSystemPromptInput = {
   orgName: string;
   menuText: string;
+  /** Resolved conversation language for this turn (identity, rules, output). */
   language: string;
+  /** Venue menu default locale — for multilingual policy and detection baseline. */
+  venueMenuLocale?: string;
   guestMessage?: string | null;
   guestPrefs?: AiGuestPreferences | null;
   orderContext?: string | null;
@@ -74,6 +77,10 @@ export type BuildSystemPromptInput = {
   orderDraftContext?: string | null;
   allowOrdering?: boolean;
   playbookContext?: string | null;
+  /** ADR-023 MR-5 — evidence pointers block (replaces full menu when set). */
+  evidenceBlock?: string | null;
+  /** When true, omit full MENU section (banter / RAG-only turns). */
+  omitFullMenu?: boolean;
 };
 
 export type OpenAiChatMessage = {

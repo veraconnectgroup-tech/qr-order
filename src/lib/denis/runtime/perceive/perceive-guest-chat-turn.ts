@@ -4,6 +4,7 @@ import {
   resolveAiPromptLanguage,
 } from "@/lib/ai/config";
 import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
+import { applyConversationLeadership } from "@/lib/ai/conversation-leadership";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
   guestAskedForSuggestions,
@@ -46,10 +47,9 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  aiChatRequestSchema,
-  type PerceiveGuestChatTurnOpts,
-} from "@/lib/ai/chat-request.schema";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { aiChatRequestSchema } from "@/lib/ai/chat-request.schema";
+import type { DenisPerceiveTurnOpts } from "@/lib/denis/runtime/perceive/perceive-turn-opts";
 
 type StoredMessage = {
   role: "user" | "assistant";
@@ -209,7 +209,7 @@ async function resolveStructuredResponse(
 /** ADR-019 G4 — LLM perceive + session metadata only; Denis loop owns ordering/act/tell. */
 export async function perceiveGuestChatTurn(
   body: unknown,
-  opts: PerceiveGuestChatTurnOpts = {}
+  opts: DenisPerceiveTurnOpts = {}
 ) {
   const persistMessages = opts.persistMessages !== false;
   const parsed = aiChatRequestSchema.safeParse(body);
@@ -224,9 +224,14 @@ export async function perceiveGuestChatTurn(
   }
 
   if (!isOpenAiConfigured()) {
-    return apiError("Denis is not configured.", 503, {
-      code: "not_configured",
-    });
+    const willSkipLlm =
+      opts.skipLlm === true ||
+      Boolean(opts.turnPlan && !opts.turnPlan.requiresLlm);
+    if (!willSkipLlm) {
+      return apiError("Denis is not configured.", 503, {
+        code: "not_configured",
+      });
+    }
   }
 
   const admin = createAdminClient();
@@ -242,6 +247,8 @@ export async function perceiveGuestChatTurn(
   }
 
   const { orgId, orgName, menuLocale: venueMenuLocale } = guestContext.data;
+
+  const conciergeConfig = await loadConciergeConfigForLocation(input.locationId);
 
   const menuLanguageHint = resolveAiPromptLanguage(input.language);
   const useEnglishHint = menuLanguageHint === "en";
@@ -370,7 +377,11 @@ export async function perceiveGuestChatTurn(
   const language = resolveStickyGuestLanguage(
     input.message,
     venueMenuLocale,
-    sessionRow?.language
+    sessionRow?.language,
+    {
+      followGuest: conciergeConfig.language.followGuest,
+      fallbackWhenUnknown: conciergeConfig.language.fallbackWhenUnknown,
+    }
   );
 
   let orderContext: string | null = null;
@@ -410,55 +421,106 @@ export async function perceiveGuestChatTurn(
     orgName,
     menuText: menuPayload.menuText,
     language,
+    venueMenuLocale,
     guestMessage: input.message,
     guestPrefs,
     orderContext,
     browsingContext: input.browsingContext ?? null,
     orderDraftContext: formatDraftForPrompt(orderDraft),
     allowOrdering,
-    playbookContext: await getPlaybookPromptBlock(orgId, input.locationId),
+    playbookContext:
+      opts.evidence?.playbookBlock ??
+      (await getPlaybookPromptBlock(orgId, input.locationId)),
+    evidenceBlock: opts.evidence?.evidenceBlock ?? null,
+    omitFullMenu: opts.evidence?.omitFullMenu ?? false,
   });
 
-  const openAiMessages: OpenAiChatMessage[] = [
-    { role: "system", content: systemPrompt },
-    ...toOpenAiHistory(priorMessages),
-    { role: "user", content: input.message },
-  ];
+  const skipLlm =
+    opts.skipLlm === true || (opts.turnPlan && !opts.turnPlan.requiresLlm);
 
-  let openAiResult;
-  try {
-    openAiResult = await callOpenAiChat(openAiMessages);
-  } catch (error) {
-    if (error instanceof AiCircuitOpenError) {
-      return apiError(AI_CONFIG.circuitBreakerMessage, 503);
-    }
-    if (error instanceof AiOpenAiError) {
-      logger.error("AI OpenAI call failed", {
-        status: error.status,
-        error: error.message,
+  let openAiResult: OpenAiCallResult;
+  let resolved: Awaited<ReturnType<typeof resolveStructuredResponse>>;
+  let structured: AiStructuredResponse;
+
+  if (skipLlm) {
+    const templateMessage =
+      opts.templateMessage?.trim() ||
+      "I'm here! What can I get you — a drink, something to eat, or a menu pick?";
+    const templateIntent = opts.templateIntent ?? "chat";
+    structured = applyConversationLeadership(
+      {
+        message: templateMessage,
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+        intent: templateIntent,
+      },
+      {
+        language,
+        guestMessage: input.message,
+      }
+    );
+    openAiResult = {
+      content: structured.message,
+      tokensUsed: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      model: "template",
+    };
+    resolved = {
+      structured,
+      recommendations: [],
+      openAiResult,
+    };
+  } else {
+    const openAiMessages: OpenAiChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...toOpenAiHistory(priorMessages),
+      { role: "user", content: input.message },
+    ];
+
+    try {
+      openAiResult = await callOpenAiChat(openAiMessages, {
+        model: opts.model,
       });
-      return apiError("AI request failed.", error.status === 429 ? 429 : 502);
+    } catch (error) {
+      if (error instanceof AiCircuitOpenError) {
+        return apiError(AI_CONFIG.circuitBreakerMessage, 503);
+      }
+      if (error instanceof AiOpenAiError) {
+        logger.error("AI OpenAI call failed", {
+          status: error.status,
+          error: error.message,
+        });
+        return apiError("AI request failed.", error.status === 429 ? 429 : 502);
+      }
+      logger.error("AI OpenAI unexpected error", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return apiError("AI request failed.", 502);
     }
-    logger.error("AI OpenAI unexpected error", {
-      error: error instanceof Error ? error.message : String(error),
+
+    resolved = await resolveStructuredResponse(
+      openAiResult,
+      menuPayload.productMap,
+      openAiMessages
+    );
+
+    openAiResult = resolved.openAiResult;
+    structured = applyConversationLeadership(resolved.structured, {
+      language,
+      guestMessage: input.message,
     });
-    return apiError("AI request failed.", 502);
   }
 
-  const resolved = await resolveStructuredResponse(
-    openAiResult,
-    menuPayload.productMap,
-    openAiMessages
-  );
-
-  openAiResult = resolved.openAiResult;
-  const structured = resolved.structured;
   const structuredPerception: AiStructuredResponse | undefined = allowOrdering
     ? structured
     : undefined;
 
   const guestWantsSuggestions = guestAskedForSuggestions(input.message);
   const shouldEnrichBrowse =
+    !skipLlm &&
     guestWantsSuggestions &&
     isLikelyBrowseQuery(input.message) &&
     browseMatches.length >= 2 &&

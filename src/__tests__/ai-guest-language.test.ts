@@ -41,6 +41,38 @@ describe("sticky guest language", () => {
     expect(resolveStickyGuestLanguage("da", "de", "sr")).toBe("sr");
   });
 
+  it("detects casual Serbian without order keywords", () => {
+    expect(
+      resolveStickyGuestLanguage("Denis legendo gde si sta si", "de", "en")
+    ).toBe("sr");
+    expect(detectGuestMessageLanguage("Denis legendo gde si sta si", "de")).toEqual({
+      detected: "sr",
+      confidence: "high",
+    });
+  });
+
+  it("honors explicit request to continue in Serbian", () => {
+    expect(
+      resolveStickyGuestLanguage("nein weiter nur auf serbisch", "de", "en")
+    ).toBe("sr");
+  });
+
+  it("respects followGuest=false — always venue locale", () => {
+    expect(
+      resolveStickyGuestLanguage("da može hvala", "de", "en", {
+        followGuest: false,
+      })
+    ).toBe("de");
+  });
+
+  it("uses preferred language on neutral confirms when no session", () => {
+    expect(
+      resolveStickyGuestLanguage("yes please", "de", null, {
+        preferredLanguage: "sr",
+      })
+    ).toBe("sr");
+  });
+
   it("renders submit approval in Serbian", () => {
     const text = tForAiGuestLanguage("ai.order.submitApproval", "sr", {
       number: "8",

@@ -163,6 +163,7 @@ Honest delta after M10 — do not assume these exist:
 | Guest language stickiness (SR chat → EN confirm) | ✅ `resolveStickyGuestLanguage` + `sr` `ai.order.*` i18n | follows conversation, not UI splash |
 | Service Intelligence (dessert timing, rush ops) | 📋 ADR-005 extension only | M21+ after M8 scheduler |
 | **Unified brain — signal/view, one loop, world events** | ✅ A–F built; **G2–G4 hybrid retire** in progress | [ADR-019-session-prompts](./ADR-019-session-prompts.md) §G1–G4 |
+| **Concierge tuning (ops)** | 📋 [ADR-021](./ADR-021-denis-concierge-tuning.md) | venue profiles, LLM tiers, pilot week runbook |
 
 ---
 
@@ -179,7 +180,7 @@ Honest delta after M10 — do not assume these exist:
 
 Legacy wrappers deleted at end of Phase D. Pilot gate: `denis_only` on one venue. Scale gate: Phase E. Phase F after E.
 
-**Operator:** [ADR-019-operator.md](./ADR-019-operator.md) · **Implement:** [ADR-019-session-prompts.md](./ADR-019-session-prompts.md) · **Review:** [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md)
+**Operator:** [ADR-019-operator.md](./ADR-019-operator.md) · **Implement:** [ADR-019-session-prompts.md](./ADR-019-session-prompts.md) · **Review:** [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md) · **Tune (ops):** [ADR-021-denis-concierge-tuning.md](./ADR-021-denis-concierge-tuning.md)
 
 ---
 
@@ -251,6 +252,8 @@ Legacy wrappers deleted at end of Phase D. Pilot gate: `denis_only` on one venue
 | **M27** | ✅ | Canary cohort % (`rollout.canaryPercent`) |
 
 **Unified brain ([ADR-019](./ADR-019-denis-unified-brain.md)):** Phase A→F — signal/view, one Denis loop.
+
+**Maximum Runtime ([ADR-023](./ADR-023-denis-maximum-runtime.md)):** Belief→Policy→Language, TDE, venue manifest, MR-0–9 — production ceiling above phases A–F.
 
 | Phase | Status | Deliverable |
 |-------|--------|-------------|

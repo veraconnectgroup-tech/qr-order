@@ -74,6 +74,12 @@ export type DenisTimelineEventPayload =
   | { type: "tell.committed"; message: string; tier?: "legacy" | "template" | "T3"; source?: string; linted?: boolean }
   | { type: "realtime.ingested"; source: string; payload: unknown; envelope?: TurnEnvelope }
   | { type: "belief.revision"; keys: string[]; conflicts?: unknown; strategy?: string | null; guestPrompt?: string | null; channel?: string }
+  | {
+      type: "mind.beliefs_compiled";
+      beliefsHash: string;
+      beliefCount: number;
+      summary: Record<string, unknown>;
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -92,7 +98,8 @@ export type DenisTimelineEventType =
   | "realtime.ingested"
   | "proactive.emitted"
   | "belief.revision"
-  | "mind.fold_completed";
+  | "mind.fold_completed"
+  | "mind.beliefs_compiled";
 
 export type DenisTimelineRow = {
   id: string;

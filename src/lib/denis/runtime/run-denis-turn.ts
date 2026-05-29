@@ -1,6 +1,23 @@
 import { apiError } from "@/lib/api-response";
-import { perceiveGuestChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
+import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
+import { perceiveGuestChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
+import type { DenisPerceiveTurnOpts } from "@/lib/denis/runtime/perceive/perceive-turn-opts";
+import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
+import { planEvidence } from "@/lib/denis/cognition/context/plan-evidence";
+import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
+import {
+  resolvePerceiveModel,
+  resolveRuntimeProfile,
+} from "@/lib/denis/cognition/resolve-runtime-profile";
+import type { DenisPerceiveMode } from "@/lib/denis/cognition/runtime-profile-types";
+import {
+  decideTurnPlan,
+  planUtterance,
+  tryTemplateUtterance,
+  type TurnPlan,
+  type TurnPlanKind,
+} from "@/lib/denis/cognition/tde";
 import {
   assertSufficientCredits,
   finalizeTurnMetering,
@@ -12,6 +29,10 @@ import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
+import {
+  appendMindBeliefsCompiled,
+  compileBeliefs,
+} from "@/lib/denis/cognition/beliefs";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import {
   kernelTimelineEnabled,
@@ -48,9 +69,13 @@ import {
   emptyTurnTimings,
   logDenisTurnObservability,
 } from "@/lib/denis/runtime/turn-observability";
-import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import type { AiStructuredResponse } from "@/lib/ai/types";
-import type { DenisTurnRunInput } from "@/lib/denis/runtime/turn-types";
+import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
+import type {
+  DenisChatBody,
+  DenisTurnContext,
+  DenisTurnRunInput,
+} from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
 import { formatVoiceTurnApiResponse } from "@/lib/denis/surfaces/voice/format-voice-response";
@@ -86,6 +111,114 @@ function isSupportedTurnChannel(
   channel: DenisTurnRunInput["channel"]
 ): channel is "chat" | "voice" {
   return channel === "chat" || channel === "voice";
+}
+
+type TdePerceiveResult = {
+  response: Response;
+  turnPlan: TurnPlan;
+  llmUsed: boolean;
+  planKind: TurnPlanKind;
+  tier: string;
+  evidencePointers: string[];
+};
+
+function resolvePerceiveMode(turnPlan: TurnPlan): DenisPerceiveMode {
+  if (
+    turnPlan.kind === "relational_perceive" ||
+    turnPlan.kind === "narrate_paraphrase"
+  ) {
+    return "social";
+  }
+  return "commerce";
+}
+
+function mapTemplateIntent(
+  turnPlan: TurnPlan
+): "chat" | "clarify" | "confirm" | "menu_info" {
+  if (turnPlan.kind === "slot_extract") return "clarify";
+  if (turnPlan.templateKey === "cart.conflict") return "confirm";
+  return "chat";
+}
+
+/** MR-3 — decideTurnPlan → perceive (LLM only when plan.requiresLlm). G4 single caller. */
+async function runTdePerceive(input: {
+  body: DenisChatBody;
+  ctx: DenisTurnContext;
+  reflexTurn: ReflexTurnResult;
+  beliefs: BeliefGraph;
+  timelineEnabled: boolean;
+}): Promise<TdePerceiveResult> {
+  const { profile, effective } = resolveRuntimeProfile(input.ctx.config);
+
+  const tdeBeliefs = input.beliefs as Parameters<
+    typeof decideTurnPlan
+  >[0]["beliefs"];
+
+  const turnPlan = decideTurnPlan({
+    beliefs: tdeBeliefs,
+    reflex: input.reflexTurn,
+    message: input.body.message,
+  });
+
+  const utterancePlan = planUtterance({
+    beliefs: tdeBeliefs,
+    turnPlan,
+    topGoal: input.reflexTurn.plan.topGoal,
+  });
+
+  const templateMessage = !turnPlan.requiresLlm
+    ? tryTemplateUtterance(utterancePlan)
+    : null;
+
+  let catalog: MenuRagCatalog | null = null;
+  try {
+    const menuPayload = await getCachedMenuForLocation(input.body.locationId);
+    catalog = menuPayload.catalog ?? null;
+  } catch {
+    catalog = null;
+  }
+
+  const evidence = planEvidence({
+    turnPlan,
+    beliefs: input.beliefs,
+    capabilities: effective.capabilities,
+    profile,
+    guestMessage: input.body.message,
+    state: input.ctx.tableSessionState,
+    guestMemory: input.ctx.guestMemory,
+    venueOps: input.ctx.venueOps,
+    opsEffects: input.ctx.opsEffects,
+    catalog,
+  });
+
+  const perceiveMode = resolvePerceiveMode(turnPlan);
+  const perceiveOpts: DenisPerceiveTurnOpts = {
+    persistMessages: !input.timelineEnabled,
+    turnPlan,
+    evidence,
+    perceiveMode,
+  };
+
+  if (!turnPlan.requiresLlm) {
+    perceiveOpts.skipLlm = true;
+    perceiveOpts.templateMessage =
+      templateMessage ??
+      (turnPlan.kind === "reflex_only" ? "" : "I'm here — what can I get you?");
+    perceiveOpts.templateIntent = mapTemplateIntent(turnPlan);
+  } else {
+    perceiveOpts.model = resolvePerceiveModel(profile, perceiveMode);
+  }
+
+  const response = await perceiveGuestChatTurn(input.body, perceiveOpts);
+
+  return {
+    response,
+    turnPlan,
+    llmUsed: turnPlan.requiresLlm,
+    planKind: turnPlan.kind,
+    tier: profile.tier,
+    evidencePointers: evidence.pointers,
+  };
 }
 
 type PerceiveChatPayload = {
@@ -143,6 +276,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const ctx = await buildDenisTurnContext(admin, parsed.data);
   timings.contextMs = elapsedMs(ctxStarted);
 
+  const beliefGraph = ctx.tableSessionState
+    ? compileBeliefs({
+        state: ctx.tableSessionState,
+        guestMessage: parsed.data.message,
+        sessionLanguage: parsed.data.language,
+      })
+    : null;
+
   if (
     ctx.draftAiSessionId &&
     ctx.foldMeta &&
@@ -153,6 +294,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       traceId,
       meta: ctx.foldMeta,
     });
+
+    if (beliefGraph) {
+      await appendMindBeliefsCompiled(admin, {
+        aiSessionId: ctx.draftAiSessionId,
+        traceId,
+        graph: beliefGraph,
+        truthHash: ctx.foldMeta.truthHash,
+      });
+    }
   }
 
   if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
@@ -189,9 +339,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const timelineEnabled = kernelTimelineEnabled(rollout.mode);
 
   const perceiveStarted = performance.now();
-  const perceiveResponse = await perceiveGuestChatTurn(parsed.data, {
-    persistMessages: !timelineEnabled,
+  const perceiveResult = await runTdePerceive({
+    body: parsed.data,
+    ctx,
+    reflexTurn,
+    beliefs: beliefGraph ?? { beliefs: [] },
+    timelineEnabled,
   });
+  const perceiveResponse = perceiveResult.response;
   timings.legacyMs = elapsedMs(perceiveStarted);
   if (perceiveResponse.status !== 200) {
     return perceiveResponse;
@@ -506,6 +661,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     actSubmitAttempted: turnSubmitOutcome.attempted,
     actOrderNumber: turnSubmitOutcome.orderNumber,
     shadowParityScore,
+    llmUsed: perceiveResult.llmUsed,
+    planKind: perceiveResult.planKind,
+    tier: perceiveResult.tier,
+    evidencePointers: perceiveResult.evidencePointers,
     timings,
   });
 

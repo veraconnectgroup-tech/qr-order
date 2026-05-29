@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|--------|
 | **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
-| **Updated** | 2026-05-28 |
+| **Updated** | 2026-05-29 |
 | **Start here** | This file → then the doc for your track |
 
 ---
@@ -14,6 +14,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │ PRODUCT VISION     ADR-020 Table OS · Ko·Gde·Kad·Kako     │
 │ ENGINEERING SPINE  ADR-019 · Truth·Mind·Face · Phases A–E   │
+│ MAXIMUM RUNTIME    ADR-023 · Belief→Policy→Language · MR-0–9│
 ├─────────────────────────────────────────────────────────────┤
 │ DENIS COGNITIVE    ADR-005 Maximum · ADR-004 Kernel         │
 │ DENIS PLATFORM     ADR-003 PPAN · timeline · Flow DSL       │
@@ -45,11 +46,17 @@
 |-----|------|--------|--------------|
 | [ADR-020](./ADR-020-denis-table-operating-system.md) | **Category** — Table OS, goals, Ko·Gde·Kad·Kako, §14–21 refinements | Accepted | Product, pitch, “why us” |
 | [ADR-019](./ADR-019-denis-unified-brain.md) | **Engineering** — loop, signal/view, phases A–E | Accepted | Every Denis PR |
+| [ADR-023](./ADR-023-denis-maximum-runtime.md) | **Production ceiling** — Belief→Policy→Language, manifest, TDE, MR-0–9 | Accepted | Elite/enterprise, “maximum Denis” |
+| [ADR-023-operator.md](./ADR-023-operator.md) | **Jovica one-liner** — MR track prompts | Active | Copy-paste agent |
+| [ADR-023-session-prompts.md](./ADR-023-session-prompts.md) | **Implement agent** — MR-0→MR-9 detail | Active | Autonomous implementation |
+| [ADR-023-verification-checklist.md](./ADR-023-verification-checklist.md) | **Review agent** — verify MR | Active | Post-implement review |
 | [denis-implementation-map.md](./denis-implementation-map.md) | **As-built** — code paths, M-tracks, verify | Active | Before any Denis code |
 | [ADR-005](./ADR-005-denis-maximum.md) | Cognitive + Venue OS + surfaces layers | Proposed (M0–M28 largely built) | Kernel/venue features |
 | [ADR-004](./ADR-004-denis-kernel.md) | Beliefs, goals, VKG, scheduler | Proposed | Planner/beliefs work |
 | [ADR-003](./ADR-003-denis-platform-v2.md) | PPAN, timeline, T0–T3 | Proposed | Platform/timeline |
 | [ADR-006](./ADR-006-denis-control-plane.md) | Rollout, shadow, risk R0–R5 | Accepted | Ops, canary, denis_only |
+| [ADR-021](./ADR-021-denis-concierge-tuning.md) | **ConciergeConfig tuning** — profiles, LLM tiers, pilot runbook | Accepted | Ops pilot, multilingual |
+| [ADR-022](./ADR-022-denis-elite-enterprise.md) | ~~Elite tier sketch~~ → superseded by ADR-023 | Superseded | Historical |
 | [ADR-009](./ADR-009-atomic-turn-commercial-spine.md) | Metering, credits, timeline debit | Accepted F1–F7 | Commercial/billing |
 | [ADR-010](./ADR-010-denis-ordering-cutover.md) | Act submit, GA gate, legacy retire | Accepted F8–F9 | Ordering path |
 | [ADR-018](./ADR-018-table-guest-commands.md) | Waiter/bill T0 + ACL | M28 ✅ | Handoff chips |
@@ -233,7 +240,7 @@ Use **one vocabulary** everywhere (ADR-020 §15):
 | [ADR-019-session-prompts.md](./ADR-019-session-prompts.md) | **Implement agent:** Phase A→F detail |
 | [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md) | **Review agent:** verify implementation |
 
-**Denis implement one-liner:** `ADR-019-operator.md` → default prompt.  
+**Denis Maximum Runtime implement one-liner:** [ADR-023-operator.md](./ADR-023-operator.md) → default prompt.  
 **Denis review one-liner:** verification checklist + Phase [X].
 
 ---

@@ -113,7 +113,31 @@ export type GuestLanguageDetection = {
 };
 
 const LATIN_BALKAN_PATTERN =
-  /\b(jedn[auo]|molim|hvala|naru[čc]|poru[čc]|potvrd|donesi|donij|imam|alergij|pivo|cola|kola|jo[sš]|sve|nema|mo[žz]e|želim|ho[ćc]u|imate|zdravo|dobar)\b/i;
+  /\b(jedn[auo]|molim|hvala|naru[čc]|poru[čc]|potvrd|donesi|donij|imam|alergij|pivo|cola|kola|jo[sš]|sve|nema|mo[žz]e|moze|želim|zelim|ho[ćc]u|hocu|imate|zdravo|dobar|gde|gdje|sta|šta|kako|si|ste|sam|smo|brate|bre|legendo|legend|ćao|cao|jel|jesi|nisi|reci|recite|ajde|idem|idemo|super|odlično|odlicno|samo|sad|sada|kasnije|hajde|izvini|izvinite|naravno|važi|vazi|može|moze)\b/i;
+
+/** Guest explicitly asks to switch language ("nur auf Serbisch", "na srpskom"). */
+const EXPLICIT_LANGUAGE_PREFERENCE: Array<{
+  pattern: RegExp;
+  lang: (typeof AI_SUPPORTED_LANGUAGES)[number];
+}> = [
+  {
+    pattern:
+      /\b(serbisch|serbian|srpski|na srpskom|samo srpski|samo na srpskom|auf serbisch|nur (auf )?serbisch|weiter (nur )?(auf )?serbisch|continue in serbian|in serbian)\b/i,
+    lang: "sr",
+  },
+  {
+    pattern: /\b(croatian|hrvatski|na hrvatskom|auf kroatisch)\b/i,
+    lang: "hr",
+  },
+  {
+    pattern: /\b(auf deutsch|in german|nur deutsch|continue in german)\b/i,
+    lang: "de",
+  },
+  {
+    pattern: /\b(in english|auf englisch|only english|nur englisch)\b/i,
+    lang: "en",
+  },
+];
 
 const LATIN_ENGLISH_PATTERN =
   /\b(please|thanks|thank you|could i|can i|i want|i'd like|allergies|order|hello|hi)\b/i;
@@ -138,6 +162,12 @@ export function detectGuestMessageLanguage(
 
   if (!text) {
     return { detected: venue, confidence: "high" };
+  }
+
+  for (const row of EXPLICIT_LANGUAGE_PREFERENCE) {
+    if (row.pattern.test(text)) {
+      return { detected: row.lang, confidence: "high" };
+    }
   }
 
   if (UNSUPPORTED_SCRIPT_PATTERN.test(text)) {
