@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Loader2,
   Minus,
@@ -14,6 +14,13 @@ import {
 import { toast } from "sonner";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { StaffOrderModifierDialog } from "@/components/dashboard/staff-order-modifier-dialog";
+import { StaffOrderConflictSheet } from "@/components/dashboard/staff-order-conflict-sheet";
+import {
+  PosTrustIndicator,
+  advanceTrustToKitchen,
+  scheduleKitchenTrustAssume,
+  type PosTrustOrder,
+} from "@/components/dashboard/pos-trust-indicator";
 import { TerminalPayment } from "@/components/dashboard/terminal-payment";
 import {
   Select,
@@ -36,7 +43,27 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { resilientFetch } from "@/lib/fetch/resilient-fetch";
-import { enqueueStaffOrder } from "@/lib/offline/order-queue";
+import { enqueueStaffOrder, removeQueuedStaffOrder, type StaffOrderQueueItem } from "@/lib/offline/order-queue";
+import {
+  isBrowserOffline,
+  shouldQueueStaffOrderOffline,
+} from "@/lib/offline/should-queue-staff-order-offline";
+import {
+  computeMenuVersion,
+  loadStaffMenuCache,
+  persistStaffMenuCache,
+} from "@/lib/offline/menu-cache";
+import {
+  onStaffOrderSyncConflict,
+  onStaffOrderSyncSuccess,
+  removeUnavailableFromQueuedStaffOrder,
+  retryQueuedStaffOrder,
+} from "@/lib/offline/sync-manager";
+import {
+  emitKitchenProvisionalIfEnabled,
+  submitStaffOrderLocalFirst,
+} from "@/lib/offline/staff-order-submit";
+import { isPosLocalFirstEnabled } from "@/lib/pos/feature-flags";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
 import { createClient } from "@/lib/supabase/client";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
@@ -111,7 +138,7 @@ type LoadedProductRow = {
 };
 
 const PRODUCT_SELECT =
-  "id, name, name_en, price, image_url, is_available, category_id, allergens, tax_rate, sort_order";
+  "id, name, name_en, price, image_url, is_available, category_id, allergens, tax_rate, sort_order, updated_at";
 
 function normalizeLoadedProduct(
   row: LoadedProductRow,
@@ -283,6 +310,10 @@ export function StaffOrderEntry({
   initialTableId?: string;
 } = {}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const ordersRedirect = pathname.startsWith("/waiter")
+    ? "/waiter/orders"
+    : "/dashboard/orders";
   const {
     locationId,
     orgId,
@@ -300,6 +331,13 @@ export function StaffOrderEntry({
   const [paymentSettings, setPaymentSettings] =
     useState<LocationPaymentSettings | null>(null);
   const [defaultTaxPercent, setDefaultTaxPercent] = useState(19);
+  const [menuVersion, setMenuVersion] = useState("");
+  const localFirstEnabled = isPosLocalFirstEnabled(locationId);
+  const [trustOrders, setTrustOrders] = useState<PosTrustOrder[]>([]);
+  const [conflictItem, setConflictItem] = useState<StaffOrderQueueItem | null>(
+    null
+  );
+  const [conflictBusy, setConflictBusy] = useState(false);
 
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -322,8 +360,74 @@ export function StaffOrderEntry({
     tableName: string;
   } | null>(null);
 
+  useEffect(() => {
+    const offSuccess = onStaffOrderSyncSuccess((result) => {
+      setTrustOrders((prev) =>
+        prev.map((order) =>
+          order.clientOrderId === result.clientOrderId
+            ? {
+                ...order,
+                phase: "confirmed" as const,
+                orderNumber: result.orderNumber,
+              }
+            : order
+        )
+      );
+      window.setTimeout(() => {
+        setTrustOrders((prev) =>
+          prev.filter((order) => order.clientOrderId !== result.clientOrderId)
+        );
+      }, 4000);
+    });
+    const offConflict = onStaffOrderSyncConflict((item) => {
+      setTrustOrders((prev) =>
+        prev.filter((order) => order.clientOrderId !== item.clientOrderId)
+      );
+      setConflictItem(item);
+    });
+    return () => {
+      offSuccess();
+      offConflict();
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKitchen = (event: Event) => {
+      const clientOrderId = (event as CustomEvent<{ clientOrderId: string }>)
+        .detail.clientOrderId;
+      setTrustOrders((prev) =>
+        prev.map((order) =>
+          order.clientOrderId === clientOrderId && order.phase === "saved"
+            ? { ...order, phase: "kitchen" as const }
+            : order
+        )
+      );
+    };
+    window.addEventListener("pos-trust:kitchen", onKitchen);
+    return () => window.removeEventListener("pos-trust:kitchen", onKitchen);
+  }, []);
+
+  const registerTrustOrder = useCallback(
+    (clientOrderId: string, tableName: string) => {
+      setTrustOrders((prev) => [
+        ...prev.filter((order) => order.clientOrderId !== clientOrderId),
+        { clientOrderId, tableName, phase: "saved" },
+      ]);
+      scheduleKitchenTrustAssume(clientOrderId);
+    },
+    []
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
+
+    const cachedMenu = await loadStaffMenuCache(locationId).catch(() => null);
+    if (cachedMenu) {
+      setCategories(cachedMenu.categories);
+      setMenuVersion(cachedMenu.menuVersion);
+      setLoading(false);
+    }
+
     const supabase = createClient();
 
     const [
@@ -395,6 +499,18 @@ export function StaffOrderEntry({
       .filter((category) => category.products.length > 0);
 
     setCategories(normalizedCategories);
+
+    const version = computeMenuVersion(
+      productList.map((product) => ({ updated_at: product.updated_at }))
+    );
+    setMenuVersion(version);
+
+    void persistStaffMenuCache({
+      locationId,
+      menuVersion: version,
+      categories: normalizedCategories,
+      cachedAt: new Date().toISOString(),
+    }).catch(() => {});
 
     const loc = locationData as LocationPaymentSettings | null;
     setPaymentSettings(loc);
@@ -576,15 +692,16 @@ export function StaffOrderEntry({
   }
 
   async function handleSubmit() {
-    if (!selectedTable || cart.length === 0 || submitting) return;
-
-    if (!(await verifyTableStillValid())) return;
+    if (!selectedTable || cart.length === 0) return;
+    if (!localFirstEnabled && submitting) return;
 
     const tableName =
       tables.find((table) => table.id === selectedTable)?.name ?? "Tisch";
+    const clientOrderId = crypto.randomUUID();
 
     const payload = {
       tableId: selectedTable,
+      clientOrderId,
       items: cart.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -605,9 +722,45 @@ export function StaffOrderEntry({
       setCartOpen(false);
     };
 
+    if (localFirstEnabled && paymentMethod !== "card_terminal") {
+      try {
+        await submitStaffOrderLocalFirst({
+          locationId,
+          tableId: selectedTable,
+          tableName,
+          menuVersion,
+          cartItems: cart.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            productTaxRate: item.productTaxRate,
+            menuSection: item.menuSection,
+            notes: item.notes || undefined,
+            modifiers: item.modifiers.map((mod) => ({
+              modifierId: mod.modifierId,
+              price: mod.price,
+            })),
+          })),
+          paymentMethod,
+          orderNotes,
+          isTakeaway,
+          defaultTaxPercent,
+          onClearForm: clearOrderForm,
+          onOrderSaved: (savedId) => registerTrustOrder(savedId, tableName),
+          onKitchenBroadcast: advanceTrustToKitchen,
+        });
+        toast.success("Bestellung gespeichert ✓ — Sync läuft");
+      } catch {
+        toast.error("Bestellung konnte nicht gespeichert werden.");
+      }
+      return;
+    }
+
+    if (!(await verifyTableStillValid())) return;
+
     const isOffline =
-      connectionStatus === "offline" ||
-      (typeof navigator !== "undefined" && !navigator.onLine);
+      connectionStatus === "offline" || isBrowserOffline();
 
     if (isOffline) {
       if (paymentMethod === "card_terminal") {
@@ -619,12 +772,34 @@ export function StaffOrderEntry({
 
       setSubmitting(true);
       try {
+        const clientOrderId = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
         await enqueueStaffOrder({
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
+          id: clientOrderId,
+          clientOrderId,
+          locationId,
+          createdAt,
           tableId: selectedTable,
           tableName,
-          payload,
+          menuVersion,
+          payload: {
+            ...payload,
+            clientOrderId,
+            menuVersion,
+          },
+        });
+        void emitKitchenProvisionalIfEnabled({
+          clientOrderId,
+          locationId,
+          tableId: selectedTable,
+          tableName,
+          items: cart.map((item) => ({
+            productName: item.productName,
+            quantity: item.quantity,
+            notes: item.notes || undefined,
+          })),
+          total: cart.reduce((sum, item) => sum + item.lineTotal, 0),
+          createdAt,
         });
         toast.success("Bestellung erstellt ✓ (offline gespeichert)");
         clearOrderForm();
@@ -637,10 +812,9 @@ export function StaffOrderEntry({
     }
 
     setSubmitting(true);
-    toast.success("Bestellung erstellt ✓");
 
     try {
-      const { data: json, error, retried } = await resilientFetch<{
+      const { data: json, error, retried, status } = await resilientFetch<{
         data: {
           orderId: string;
           orderNumber: number;
@@ -657,14 +831,26 @@ export function StaffOrderEntry({
       if (error || !json?.data) {
         if (
           paymentMethod !== "card_terminal" &&
-          (retried || connectionStatus === "degraded")
+          shouldQueueStaffOrderOffline({
+            connectionStatus,
+            httpStatus: status,
+            error,
+            retried,
+          })
         ) {
+          const clientOrderId = crypto.randomUUID();
           await enqueueStaffOrder({
-            id: crypto.randomUUID(),
+            id: clientOrderId,
+            clientOrderId,
             createdAt: new Date().toISOString(),
             tableId: selectedTable,
             tableName,
-            payload,
+            menuVersion,
+            payload: {
+              ...payload,
+              clientOrderId,
+              menuVersion,
+            },
           });
           toast.message(
             "Bestellung offline gespeichert — wird synchronisiert, sobald die Verbindung steht."
@@ -691,16 +877,31 @@ export function StaffOrderEntry({
         { duration: 5000 }
       );
       clearOrderForm();
-      router.push("/dashboard/orders");
-    } catch {
-      if (paymentMethod !== "card_terminal") {
+      router.push(ordersRedirect);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network error";
+      if (
+        paymentMethod !== "card_terminal" &&
+        shouldQueueStaffOrderOffline({
+          connectionStatus,
+          error: message,
+          retried: false,
+        })
+      ) {
         try {
+          const clientOrderId = crypto.randomUUID();
           await enqueueStaffOrder({
-            id: crypto.randomUUID(),
+            id: clientOrderId,
+            clientOrderId,
             createdAt: new Date().toISOString(),
             tableId: selectedTable,
             tableName,
-            payload,
+            menuVersion,
+            payload: {
+              ...payload,
+              clientOrderId,
+              menuVersion,
+            },
           });
           toast.message(
             "Bestellung offline gespeichert — wird synchronisiert, sobald die Verbindung steht."
@@ -720,8 +921,46 @@ export function StaffOrderEntry({
   const canSubmit =
     Boolean(selectedTable) &&
     cart.length > 0 &&
-    !submitting &&
+    (localFirstEnabled || !submitting) &&
     paymentSettings?.accepting_orders !== false;
+
+  async function handleConflictRemoveUnavailable(item: StaffOrderQueueItem) {
+    setConflictBusy(true);
+    try {
+      const names = item.unavailableProducts ?? [];
+      const ok = await removeUnavailableFromQueuedStaffOrder(item.id, names);
+      setConflictItem(null);
+      if (!ok && names.length > 0) {
+        toast.message("Bestellung aktualisiert — erneuter Sync läuft.");
+      }
+    } finally {
+      setConflictBusy(false);
+    }
+  }
+
+  async function handleConflictRetry(item: StaffOrderQueueItem) {
+    setConflictBusy(true);
+    try {
+      const ok = await retryQueuedStaffOrder(item.id);
+      if (ok) {
+        setConflictItem(null);
+      } else {
+        toast.error("Sync fehlgeschlagen — bitte erneut versuchen.");
+      }
+    } finally {
+      setConflictBusy(false);
+    }
+  }
+
+  async function handleConflictCancel(item: StaffOrderQueueItem) {
+    setConflictBusy(true);
+    try {
+      await removeQueuedStaffOrder(item.id);
+      setConflictItem(null);
+    } finally {
+      setConflictBusy(false);
+    }
+  }
 
   const cartPanel = (
     <StaffOrderCartPanel
@@ -741,7 +980,7 @@ export function StaffOrderEntry({
       onOrderNotesChange={setOrderNotes}
       orderTotal={orderTotals.total}
       canSubmit={canSubmit}
-      submitting={submitting}
+      submitting={localFirstEnabled ? false : submitting}
       acceptingOrders={paymentSettings?.accepting_orders !== false}
       onSubmit={handleSubmit}
       onUpdateQuantity={updateQuantity}
@@ -759,6 +998,20 @@ export function StaffOrderEntry({
 
   return (
     <>
+      <PosTrustIndicator orders={trustOrders} />
+
+      <StaffOrderConflictSheet
+        item={conflictItem}
+        open={conflictItem != null}
+        onOpenChange={(open) => {
+          if (!open) setConflictItem(null);
+        }}
+        busy={conflictBusy}
+        onRemoveUnavailable={handleConflictRemoveUnavailable}
+        onRetry={handleConflictRetry}
+        onCancel={handleConflictCancel}
+      />
+
       {!paymentSettings?.accepting_orders && (
         <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
           Location is not accepting orders.
@@ -897,12 +1150,12 @@ export function StaffOrderEntry({
           onClose={() => {
             setTerminalOpen(false);
             setTerminalOrder(null);
-            router.push("/dashboard/orders");
+            router.push(ordersRedirect);
           }}
           onSuccess={() => {
             setTerminalOpen(false);
             setTerminalOrder(null);
-            router.push("/dashboard/orders");
+            router.push(ordersRedirect);
           }}
         />
       )}

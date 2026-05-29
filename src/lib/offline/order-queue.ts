@@ -1,26 +1,42 @@
-const DB_NAME = "vera-staff-offline";
-const DB_VERSION = 1;
+import type { StaffOrderClientSnapshot } from "@/lib/tax/compute-staff-order-totals";
+import {
+  STAFF_OFFLINE_DB_NAME,
+  STAFF_OFFLINE_DB_VERSION,
+  MENU_CACHE_STORE,
+} from "@/lib/offline/menu-cache";
+
 const STORE_NAME = "staff_orders";
+
+export type StaffOrderQueuePayload = {
+  tableId: string;
+  clientOrderId: string;
+  menuVersion?: string;
+  clientSnapshot?: StaffOrderClientSnapshot;
+  items: Array<{
+    productId: string;
+    productName?: string;
+    quantity: number;
+    notes?: string;
+    modifiers: Array<{ modifierId: string }>;
+  }>;
+  paymentMethod: string;
+  notes?: string;
+  isTakeaway: boolean;
+};
 
 export type StaffOrderQueueItem = {
   id: string;
+  clientOrderId: string;
+  locationId?: string;
   createdAt: string;
   tableId: string;
   tableName: string;
-  payload: {
-    tableId: string;
-    items: Array<{
-      productId: string;
-      quantity: number;
-      notes?: string;
-      modifiers: Array<{ modifierId: string }>;
-    }>;
-    paymentMethod: string;
-    notes?: string;
-    isTakeaway: boolean;
-  };
-  status: "pending" | "syncing" | "failed";
+  menuVersion?: string;
+  clientSnapshot?: StaffOrderClientSnapshot;
+  payload: StaffOrderQueuePayload;
+  status: "pending" | "syncing" | "failed" | "conflict";
   lastError?: string;
+  unavailableProducts?: string[];
   attempts: number;
 };
 
@@ -31,12 +47,18 @@ function openDb(): Promise<IDBDatabase> {
       return;
     }
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(
+      STAFF_OFFLINE_DB_NAME,
+      STAFF_OFFLINE_DB_VERSION
+    );
 
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(MENU_CACHE_STORE)) {
+        db.createObjectStore(MENU_CACHE_STORE, { keyPath: "locationId" });
       }
     };
 
@@ -78,8 +100,15 @@ function withStore<T>(
 export async function enqueueStaffOrder(
   item: Omit<StaffOrderQueueItem, "status" | "attempts">
 ): Promise<StaffOrderQueueItem> {
+  const clientOrderId = item.clientOrderId || item.id;
   const entry: StaffOrderQueueItem = {
     ...item,
+    clientOrderId,
+    id: item.id || clientOrderId,
+    payload: {
+      ...item.payload,
+      clientOrderId,
+    },
     status: "pending",
     attempts: 0,
   };

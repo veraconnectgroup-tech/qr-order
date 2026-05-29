@@ -11,6 +11,10 @@ import {
 import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { patchOrderStatus } from "@/lib/orders/patch-order-status";
 import { useKitchenOrders } from "@/hooks/use-kitchen-orders";
+import {
+  isProvisionalKdsOrder,
+  type ProvisionalKdsOrder,
+} from "@/lib/pos/provisional-display";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { KitchenHeader } from "@/components/dashboard/kitchen-header";
@@ -52,7 +56,7 @@ export function KitchenCard({
   busy,
   appearance = "default",
 }: {
-  order: OrderWithDetails;
+  order: OrderWithDetails | ProvisionalKdsOrder;
   onStartPreparing: () => void;
   onMarkReady: () => void;
   onReject: () => void;
@@ -60,6 +64,7 @@ export function KitchenCard({
   appearance?: "default" | "light";
 }) {
   const light = appearance === "light";
+  const isProvisional = isProvisionalKdsOrder(order);
   const [, tick] = useState(0);
   const tableName = order.tables?.name ?? "—";
   const since = order.created_at;
@@ -68,7 +73,7 @@ export function KitchenCard({
   );
   const minutes = Math.floor(seconds / 60);
   const timerClass = kitchenTimerStyles(minutes, light);
-  const isAccepted = order.status === "accepted";
+  const isAccepted = !isProvisional && order.status === "accepted";
   const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
 
   useEffect(() => {
@@ -87,18 +92,45 @@ export function KitchenCard({
       className={cn(
         "rounded-xl border-2 p-4 transition-colors duration-300",
         light ? "bg-white" : "bg-zinc-900",
-        isAccepted ? "border-orange-500" : "border-blue-500"
+        isProvisional
+          ? order.provisionalConflictReason
+            ? "border-red-500"
+            : "border-orange-500"
+          : isAccepted
+            ? "border-orange-500"
+            : "border-blue-500"
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <p
-          className={cn(
-            "font-mono text-4xl font-black tracking-tight",
-            light ? "text-zinc-900" : "text-zinc-50"
-          )}
-        >
-          {formatOrderNumber(order.order_number)}
-        </p>
+        {isProvisional ? (
+          <div>
+            <span
+              className={cn(
+                "inline-block rounded-full px-3 py-1 text-xs font-bold uppercase",
+                light ? "bg-orange-100 text-orange-700" : "bg-orange-500/20 text-orange-300"
+              )}
+            >
+              SYNC…
+            </span>
+            <p
+              className={cn(
+                "mt-1 font-mono text-2xl font-black",
+                light ? "text-zinc-500" : "text-zinc-500"
+              )}
+            >
+              …
+            </p>
+          </div>
+        ) : (
+          <p
+            className={cn(
+              "font-mono text-4xl font-black tracking-tight",
+              light ? "text-zinc-900" : "text-zinc-50"
+            )}
+          >
+            {formatOrderNumber(order.order_number)}
+          </p>
+        )}
         <div className="flex flex-col items-end gap-1">
           <span
             className={cn(
@@ -141,45 +173,63 @@ export function KitchenCard({
 
       <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {isAccepted ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onStartPreparing}
-            className="min-h-11 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50 touch-manipulation"
-          >
-            Start Preparing
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onMarkReady}
-            className="min-h-11 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50 touch-manipulation"
-          >
-            Ready
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onReject}
-          className="min-h-11 px-3 text-sm text-red-400 transition hover:text-red-300 disabled:opacity-50 touch-manipulation"
+      {isProvisional ? (
+        <p
+          className={cn(
+            "text-sm font-medium",
+            light ? "text-orange-700" : "text-orange-300"
+          )}
         >
-          Reject
-        </button>
-      </div>
+          Warte auf Cloud-Bestätigung…
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {isAccepted ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onStartPreparing}
+              className="min-h-11 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-50 touch-manipulation"
+            >
+              Start Preparing
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onMarkReady}
+              className="min-h-11 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50 touch-manipulation"
+            >
+              Ready
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onReject}
+            className="min-h-11 px-3 text-sm text-red-400 transition hover:text-red-300 disabled:opacity-50 touch-manipulation"
+          >
+            Reject
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
 
 export function KitchenBoard() {
   const { locationId } = useDashboard();
-  const { orders, loading, error, refetch, realtimeMode } =
-    useKitchenOrders(locationId);
+  const {
+    orders,
+    loading,
+    error,
+    refetch,
+    realtimeMode,
+    provisionalSyncFailedCount,
+  } = useKitchenOrders(locationId);
   const { play } = useSoundAlert();
   const seenIdsRef = useRef<Set<string>>(new Set());
+  const seenProvisionalRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<OrderWithDetails | null>(
@@ -198,27 +248,39 @@ export function KitchenBoard() {
     }
 
     const newAccepted = orders.filter(
-      (o) => o.status === "accepted" && !seenIdsRef.current.has(o.id)
+      (o) =>
+        !isProvisionalKdsOrder(o) &&
+        o.status === "accepted" &&
+        !seenIdsRef.current.has(o.id)
+    );
+    const newProvisionals = orders.filter(
+      (o): o is ProvisionalKdsOrder =>
+        isProvisionalKdsOrder(o) &&
+        !seenProvisionalRef.current.has(o.clientOrderId)
     );
 
-    if (newAccepted.length > 0) {
+    if (newAccepted.length > 0 || newProvisionals.length > 0) {
       play("kitchen-order");
-      toast.info(
-        newAccepted.length === 1
-          ? "New order"
-          : `${newAccepted.length} new orders`
-      );
+      const count = newAccepted.length + newProvisionals.length;
+      toast.info(count === 1 ? "New order" : `${count} new orders`);
     }
 
     seenIdsRef.current = currentIds;
+    seenProvisionalRef.current = new Set(
+      orders
+        .filter(isProvisionalKdsOrder)
+        .map((o) => o.clientOrderId)
+    );
   }, [orders, loading, play]);
 
   const updateStatus = useCallback(
     async (
-      orderId: string,
+      order: OrderWithDetails | ProvisionalKdsOrder,
       status: "preparing" | "ready" | "rejected",
       rejectionReason?: string
     ) => {
+      if (isProvisionalKdsOrder(order)) return;
+      const orderId = order.id;
       setBusyId(orderId);
       try {
         await patchKitchenOrderStatus(orderId, status, rejectionReason);
@@ -235,6 +297,12 @@ export function KitchenBoard() {
   return (
     <div className="flex min-h-screen flex-col">
       <KitchenHeader orders={orders} realtimeMode={realtimeMode} />
+
+      {provisionalSyncFailedCount > 0 && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-300">
+          Sync failed — provisional ticket timed out ({provisionalSyncFailedCount})
+        </div>
+      )}
 
       {error && (
         <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-center text-sm text-red-400">
@@ -272,9 +340,11 @@ export function KitchenBoard() {
                   key={order.id}
                   order={order}
                   busy={busyId === order.id}
-                  onStartPreparing={() => updateStatus(order.id, "preparing")}
-                  onMarkReady={() => updateStatus(order.id, "ready")}
-                  onReject={() => setRejectTarget(order)}
+                  onStartPreparing={() => updateStatus(order, "preparing")}
+                  onMarkReady={() => updateStatus(order, "ready")}
+                  onReject={() => {
+                    if (!isProvisionalKdsOrder(order)) setRejectTarget(order);
+                  }}
                 />
               ))}
             </AnimatePresence>
@@ -288,7 +358,7 @@ export function KitchenBoard() {
         onClose={() => setRejectTarget(null)}
         onConfirm={async (reason) => {
           if (!rejectTarget) return;
-          await updateStatus(rejectTarget.id, "rejected", reason);
+          await updateStatus(rejectTarget, "rejected", reason);
           setRejectTarget(null);
         }}
       />

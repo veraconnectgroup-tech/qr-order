@@ -462,6 +462,13 @@ type Tables = {
     created_at: string;
     processed_at: string | null;
   };
+  staff_order_idempotency: {
+    client_order_id: string;
+    staff_id: string;
+    location_id: string;
+    order_id: string;
+    created_at: string;
+  };
   dead_letter_queue: {
     id: string;
     org_id: string;

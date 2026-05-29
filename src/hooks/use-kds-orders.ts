@@ -1,14 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   KDS_REALTIME_FALLBACK_POLL_MS,
   REALTIME_BACKUP_POLL_MS,
 } from "@/lib/constants";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
+import { useProvisionalPosOrders } from "@/hooks/use-provisional-pos-orders";
 import { KDS_DELIVERED_HIDE_MS } from "@/lib/kds/settings";
 import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
+import {
+  mergeKdsOrdersWithProvisionals,
+  type ProvisionalKdsOrder,
+} from "@/lib/pos/provisional-display";
 import type { OrderWithDetails } from "@/types";
 
 const ORDER_SELECT =
@@ -99,8 +104,19 @@ export function useKdsOrders(locationId: string) {
     ? Math.floor((Date.now() - lastUpdatedAt.getTime()) / 1000)
     : null;
 
+  const provisional = useProvisionalPosOrders(locationId);
+
+  const displayOrders = useMemo(
+    () =>
+      mergeKdsOrdersWithProvisionals(orders, provisional.entries) as Array<
+        OrderWithDetails | ProvisionalKdsOrder
+      >,
+    [orders, provisional.entries]
+  );
+
   return {
-    orders,
+    orders: displayOrders,
+    serverOrders: orders,
     loading,
     error,
     refetch: fetchOrders,
@@ -109,5 +125,7 @@ export function useKdsOrders(locationId: string) {
     fetchOk,
     secondsSinceUpdate,
     optimisticUpdateStatus,
+    provisionalEnabled: provisional.enabled,
+    provisionalSyncFailedCount: provisional.syncFailedCount,
   };
 }

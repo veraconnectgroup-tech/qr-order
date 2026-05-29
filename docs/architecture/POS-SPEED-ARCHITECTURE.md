@@ -538,4 +538,4 @@ Rollout: `location_id` allowlist → org → global. Disable `POS_LOCAL_FIRST` =
 
 ---
 
-*Link from [ARCHITECTURE-INDEX.md](./ARCHITECTURE-INDEX.md) when implementation starts.*
+*Implementation:* [POS-SPEED-operator.md](./POS-SPEED-operator.md) · [POS-SPEED-parallel-agents.md](./POS-SPEED-parallel-agents.md) · [POS-SPEED-session-prompts.md](./POS-SPEED-session-prompts.md) · [ARCHITECTURE-INDEX.md](./ARCHITECTURE-INDEX.md)*

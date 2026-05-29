@@ -20,7 +20,8 @@ import {
 } from "@/lib/tax/vat";
 import { criticalPath } from "@/lib/orders/critical-path-events";
 import { logger } from "@/lib/logger";
-import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
+import type { PersistOrderSideEffectsInput } from "@/lib/outbox/persist-order-side-effects";
+import { isPosLocalFirstEnabled } from "@/lib/pos/feature-flags";
 import type { Staff } from "@/types";
 
 const staffOrderItemSchema = z.object({
@@ -33,12 +34,34 @@ const staffOrderItemSchema = z.object({
     .default([]),
 });
 
+const clientSnapshotSchema = z.object({
+  subtotal: z.number(),
+  taxAmount: z.number(),
+  total: z.number(),
+  effectiveTaxPercent: z.number().optional(),
+  items: z
+    .array(
+      z.object({
+        productId: zUuid(),
+        quantity: z.number().int().min(1),
+        lineTotal: z.number(),
+        taxRate: z.number(),
+        unitPrice: z.number(),
+        modifierTotal: z.number(),
+      })
+    )
+    .optional(),
+});
+
 export const createStaffOrderSchema = z.object({
   tableId: zUuid(),
   items: z.array(staffOrderItemSchema).min(1).max(MAX_ITEMS_PER_ORDER),
   paymentMethod: z.enum(["at_bar", "card_at_table", "card_terminal", "online"]),
   notes: zOrderNotesOptional(500),
   isTakeaway: z.boolean().optional().default(false),
+  clientOrderId: zUuid().optional(),
+  menuVersion: z.string().optional(),
+  clientSnapshot: clientSnapshotSchema.optional(),
 });
 
 export type CreateStaffOrderInput = z.infer<typeof createStaffOrderSchema>;
@@ -113,6 +136,67 @@ type CreateStaffOrderRpcResult = {
   total: number;
 };
 
+type IdempotentStaffOrderRow = {
+  order_id: string;
+  orders: {
+    order_number: number;
+    total: number;
+    tables: { name: string } | null;
+  } | null;
+};
+
+async function lookupStaffOrderIdempotency(
+  admin: ReturnType<typeof createAdminClient>,
+  clientOrderId: string
+) {
+  const { data } = await admin
+    .from("staff_order_idempotency" as never)
+    .select("order_id, orders(order_number, total, tables(name))")
+    .eq("client_order_id", clientOrderId)
+    .maybeSingle();
+
+  const row = data as IdempotentStaffOrderRow | null;
+  if (!row?.orders) return null;
+
+  return {
+    orderId: row.order_id,
+    orderNumber: row.orders.order_number,
+    total: Number(row.orders.total),
+    tableName: row.orders.tables?.name ?? "Tisch",
+  };
+}
+
+async function recordStaffOrderIdempotency(
+  admin: ReturnType<typeof createAdminClient>,
+  params: {
+    clientOrderId: string;
+    staffId: string;
+    locationId: string;
+    orderId: string;
+  }
+) {
+  const { error } = await admin.from("staff_order_idempotency" as never).insert({
+    client_order_id: params.clientOrderId,
+    staff_id: params.staffId,
+    location_id: params.locationId,
+    order_id: params.orderId,
+  } as never);
+
+  if (error?.code === "23505") {
+    return lookupStaffOrderIdempotency(admin, params.clientOrderId);
+  }
+
+  if (error) {
+    logger.error("staff_order_idempotency insert failed", {
+      clientOrderId: params.clientOrderId,
+      orderId: params.orderId,
+      error: error.message,
+    });
+  }
+
+  return null;
+}
+
 export async function createStaffOrder(
   staff: Staff,
   input: CreateStaffOrderInput
@@ -124,7 +208,43 @@ export async function createStaffOrder(
 
   const admin = createAdminClient();
 
-  // 2. Validate table exists, active, belongs to staff's location
+  if (input.clientOrderId) {
+    const existing = await lookupStaffOrderIdempotency(
+      admin,
+      input.clientOrderId
+    );
+    if (existing) {
+      logger.info("Staff order idempotent replay", {
+        clientOrderId: input.clientOrderId,
+        orderId: existing.orderId,
+      });
+      return {
+        data: {
+          ...existing,
+          idempotent: true as const,
+        },
+      };
+    }
+  }
+
+  const itemsError = validateOrderItems(
+    input.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }))
+  );
+  if (itemsError) {
+    return { error: itemsError, status: 400 };
+  }
+
+  const productIds = [...new Set(input.items.map((item) => item.productId))];
+  const modifierIds = [
+    ...new Set(
+      input.items.flatMap((item) => item.modifiers.map((mod) => mod.modifierId))
+    ),
+  ];
+
+  // 2. Table, then location + products in parallel
   const { data: table } = await admin
     .from("tables")
     .select("id, name, location_id, is_active, deleted_at")
@@ -145,13 +265,21 @@ export async function createStaffOrder(
     return { error: "Table not found.", status: 404 };
   }
 
-  const { data: location } = await admin
-    .from("locations")
-    .select(
-      "id, org_id, accepting_orders, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
-    )
-    .eq("id", tableRow.location_id)
-    .maybeSingle();
+  const [{ data: location }, { data: products }] = await Promise.all([
+    admin
+      .from("locations")
+      .select(
+        "id, org_id, accepting_orders, payment_online_enabled, payment_at_bar_enabled, payment_card_at_table_enabled"
+      )
+      .eq("id", tableRow.location_id)
+      .maybeSingle(),
+    admin
+      .from("products")
+      .select("id, name, price, is_available, location_id, category_id, tax_rate")
+      .in("id", productIds)
+      .eq("location_id", tableRow.location_id)
+      .is("deleted_at", null),
+  ]);
 
   const locationRow = location as {
     id: string;
@@ -166,6 +294,13 @@ export async function createStaffOrder(
     return { error: "Location not found.", status: 404 };
   }
 
+  if (
+    isPosLocalFirstEnabled(locationRow.id) &&
+    !input.clientOrderId
+  ) {
+    return { error: "clientOrderId is required.", status: 400 };
+  }
+
   if (!staffCanAccessLocation(staff, locationRow.id, locationRow.org_id)) {
     return { error: "Unauthorized.", status: 403 };
   }
@@ -173,53 +308,6 @@ export async function createStaffOrder(
   if (!locationRow.accepting_orders) {
     return { error: "This location is not accepting orders.", status: 400 };
   }
-
-  // 3. Load org config (default_tax_percent, currency)
-  const { data: orgData } = await admin
-    .from("organizations")
-    .select("id, currency, default_tax_percent, stripe_onboarded")
-    .eq("id", locationRow.org_id)
-    .maybeSingle();
-
-  const orgRow = orgData as {
-    id: string;
-    currency: string;
-    default_tax_percent: number;
-    stripe_onboarded: boolean;
-  } | null;
-
-  if (!orgRow) {
-    return { error: "Organization not found.", status: 500 };
-  }
-
-  if (!isPaymentMethodAllowed(input.paymentMethod, locationRow, orgRow)) {
-    return { error: "This payment method is not available.", status: 400 };
-  }
-
-  const itemsError = validateOrderItems(
-    input.items.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-    }))
-  );
-  if (itemsError) {
-    return { error: itemsError, status: 400 };
-  }
-
-  const productIds = [...new Set(input.items.map((item) => item.productId))];
-  const modifierIds = [
-    ...new Set(
-      input.items.flatMap((item) => item.modifiers.map((mod) => mod.modifierId))
-    ),
-  ];
-
-  // 4. Validate products exist, available, same location, not deleted
-  const { data: products } = await admin
-    .from("products")
-    .select("id, name, price, is_available, location_id, category_id, tax_rate")
-    .in("id", productIds)
-    .eq("location_id", tableRow.location_id)
-    .is("deleted_at", null);
 
   const allProducts = (products ?? []) as Array<{
     id: string;
@@ -254,12 +342,34 @@ export async function createStaffOrder(
     ...new Set([...productMap.values()].map((product) => product.category_id)),
   ];
 
-  // 5. Load categories for menu_section per product
-  const { data: categories } = await admin
-    .from("categories")
-    .select("id, menu_section")
-    .in("id", categoryIds)
-    .is("deleted_at", null);
+  // 3. Org + categories in parallel (categories depend on product rows)
+  const [{ data: orgData }, { data: categories }] = await Promise.all([
+    admin
+      .from("organizations")
+      .select("id, currency, default_tax_percent, stripe_onboarded")
+      .eq("id", locationRow.org_id)
+      .maybeSingle(),
+    admin
+      .from("categories")
+      .select("id, menu_section")
+      .in("id", categoryIds)
+      .is("deleted_at", null),
+  ]);
+
+  const orgRow = orgData as {
+    id: string;
+    currency: string;
+    default_tax_percent: number;
+    stripe_onboarded: boolean;
+  } | null;
+
+  if (!orgRow) {
+    return { error: "Organization not found.", status: 500 };
+  }
+
+  if (!isPaymentMethodAllowed(input.paymentMethod, locationRow, orgRow)) {
+    return { error: "This payment method is not available.", status: 400 };
+  }
 
   const categorySectionMap = new Map(
     (categories ?? []).map((category) => [
@@ -428,7 +538,24 @@ export async function createStaffOrder(
 
   const orderRow = rpcData as CreateStaffOrderRpcResult;
 
-  await persistOrderSideEffects(admin, {
+  if (input.clientOrderId) {
+    const raced = await recordStaffOrderIdempotency(admin, {
+      clientOrderId: input.clientOrderId,
+      staffId: staff.id,
+      locationId: locationRow.id,
+      orderId: orderRow.order_id,
+    });
+    if (raced) {
+      return {
+        data: {
+          ...raced,
+          idempotent: true as const,
+        },
+      };
+    }
+  }
+
+  const sideEffects: PersistOrderSideEffectsInput = {
     orderId: orderRow.order_id,
     locationId: locationRow.id,
     orgId: staff.org_id,
@@ -440,7 +567,7 @@ export async function createStaffOrder(
     phase: "created",
     actorType: "staff",
     actorId: staff.id,
-  });
+  };
 
   criticalPath.orderCreated({
     orderId: orderRow.order_id,
@@ -465,5 +592,7 @@ export async function createStaffOrder(
       total: orderRow.total,
       tableName: tableRow.name,
     },
+    sideEffects,
+    sessionId: sessionResult.sessionId,
   };
 }

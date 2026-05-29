@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
+import { useProvisionalPosOrders } from "@/hooks/use-provisional-pos-orders";
+import {
+  mergeKdsOrdersWithProvisionals,
+  type ProvisionalKdsOrder,
+} from "@/lib/pos/provisional-display";
 import type { OrderWithDetails } from "@/types";
 import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 
@@ -62,5 +67,24 @@ export function useKitchenOrders(locationId: string) {
     enabled: Boolean(locationId),
   });
 
-  return { orders, loading, error, refetch: fetchOrders, realtimeMode };
+  const provisional = useProvisionalPosOrders(locationId);
+
+  const displayOrders = useMemo(
+    () =>
+      mergeKdsOrdersWithProvisionals(orders, provisional.entries) as Array<
+        OrderWithDetails | ProvisionalKdsOrder
+      >,
+    [orders, provisional.entries]
+  );
+
+  return {
+    orders: displayOrders,
+    serverOrders: orders,
+    loading,
+    error,
+    refetch: fetchOrders,
+    realtimeMode,
+    provisionalEnabled: provisional.enabled,
+    provisionalSyncFailedCount: provisional.syncFailedCount,
+  };
 }

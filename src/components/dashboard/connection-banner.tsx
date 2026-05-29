@@ -18,6 +18,7 @@ export function ConnectionBanner() {
     syncing: false,
     pendingCount: 0,
     failed: [],
+    conflicted: [],
     lastSyncAt: null,
   });
   const [showRestored, setShowRestored] = useState(false);
@@ -43,6 +44,7 @@ export function ConnectionBanner() {
     status !== "online" ||
     syncState.pendingCount > 0 ||
     syncState.failed.length > 0 ||
+    syncState.conflicted.length > 0 ||
     showRestored;
 
   if (!showBanner) return null;
@@ -102,6 +104,9 @@ export function ConnectionBanner() {
           <span className="text-muted-foreground">
             {syncState.pendingCount} Bestellung
             {syncState.pendingCount === 1 ? "" : "en"} warten auf Sync
+            {syncState.conflicted.length > 0 ?
+              ` (${syncState.conflicted.length} Konflikt${syncState.conflicted.length === 1 ? "" : "e"})`
+            : ""}
           </span>
         )}
 

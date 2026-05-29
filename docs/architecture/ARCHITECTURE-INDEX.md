@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|--------|
 | **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
-| **Updated** | 2026-05-29 (ADR-024 staff access) |
+| **Updated** | 2026-05-29 (POS Speed + ADR-024) |
 | **Start here** | This file → then the doc for your track |
 
 ---
@@ -85,6 +85,12 @@
 | [ADR-001 session prompts](./ADR-001-session-prompts.md) | A1–A8 copy-paste | Autonomous agents |
 | [supabase-migration-baseline.md](./supabase-migration-baseline.md) | Hybrid migration history | DB work |
 | [reliability-v2-fiscal-hybrid.md](./reliability-v2-fiscal-hybrid.md) | POS/fiscal hybrid notes | Reference |
+| [POS-SPEED-ARCHITECTURE.md](./POS-SPEED-ARCHITECTURE.md) | **Waiter POS latency** — Vera Maximum M1+M2 | Proposed |
+| [POS-SPEED-operator.md](./POS-SPEED-operator.md) | **Jovica one-liner** — P0→P3 | Active |
+| [**POS-SPEED-all-prompts.md**](./POS-SPEED-all-prompts.md) | **SVI copy-paste promptovi** — jedan fajl | Active |
+| [POS-SPEED-parallel-agents.md](./POS-SPEED-parallel-agents.md) | Copy-paste + ko dira šta | Active |
+| [POS-SPEED-session-prompts.md](./POS-SPEED-session-prompts.md) | Track detail P0–P3 | Active |
+| [POS-SPEED-verification-checklist.md](./POS-SPEED-verification-checklist.md) | Parent verify | Active |
 
 ### 2.4 Staff access & surfaces
 

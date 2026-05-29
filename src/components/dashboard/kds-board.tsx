@@ -40,6 +40,10 @@ import {
   patchOrderStatus,
 } from "@/lib/orders/patch-order-status";
 import { useKdsOrders } from "@/hooks/use-kds-orders";
+import {
+  isProvisionalKdsOrder,
+  type ProvisionalKdsOrder,
+} from "@/lib/pos/provisional-display";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { KdsConnectionBadge, kdsSecondsSinceUpdate } from "@/components/dashboard/kds-connection-badge";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
@@ -97,7 +101,7 @@ function KdsOrderCard({
   onAdvance,
   onPrintResult,
 }: {
-  order: OrderWithDetails;
+  order: OrderWithDetails | ProvisionalKdsOrder;
   timerWarningMin: number;
   busy: boolean;
   orgName: string;
@@ -106,14 +110,16 @@ function KdsOrderCard({
   onPrintResult: (result: KitchenPrintResult) => void;
 }) {
   const [, tick] = useState(0);
+  const isProvisional = isProvisionalKdsOrder(order);
   const tableName = order.tables?.name ?? "—";
   const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
-  const isDelivered = order.status === "delivered";
+  const isDelivered = !isProvisional && order.status === "delivered";
   const elapsed = formatKdsElapsed(order.created_at);
   const minutes = kdsElapsedMinutes(order.created_at);
   const timerColor = kdsTimerColor(minutes);
   const isLate = minutes >= timerWarningMin;
-  const actionLabel = isDelivered ? null : kdsActionLabel(order.status);
+  const actionLabel =
+    isProvisional || isDelivered ? null : kdsActionLabel(order.status);
 
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 1000);
@@ -130,24 +136,39 @@ function KdsOrderCard({
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={cn(
         "rounded-2xl border-2 bg-zinc-900 p-4 shadow-lg transition-colors duration-300",
-        isDelivered
-          ? "border-zinc-700 opacity-60"
-          : isLate
-            ? "border-red-500/80 animate-pulse"
-            : order.status === "pending"
-              ? "border-orange-500"
-              : order.status === "accepted"
-                ? "border-blue-500"
-                : order.status === "preparing"
-                  ? "border-amber-500"
-                  : "border-green-500"
+        isProvisional
+          ? order.provisionalConflictReason
+            ? "border-red-500"
+            : "border-orange-500"
+          : isDelivered
+            ? "border-zinc-700 opacity-60"
+            : isLate
+              ? "border-red-500/80 animate-pulse"
+              : order.status === "pending"
+                ? "border-orange-500"
+                : order.status === "accepted"
+                  ? "border-blue-500"
+                  : order.status === "preparing"
+                    ? "border-amber-500"
+                    : "border-green-500"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <p className="font-mono text-5xl font-black tracking-tight text-zinc-50">
-            {formatOrderNumber(order.order_number)}
-          </p>
+          {isProvisional ? (
+            <div>
+              <span className="inline-block rounded-lg bg-orange-500/20 px-3 py-1 text-sm font-bold uppercase tracking-wide text-orange-300">
+                SYNC…
+              </span>
+              <p className="mt-2 font-mono text-3xl font-black text-zinc-400">
+                …
+              </p>
+            </div>
+          ) : (
+            <p className="font-mono text-5xl font-black tracking-tight text-zinc-50">
+              {formatOrderNumber(order.order_number)}
+            </p>
+          )}
           {autoPrinted && (
             <span
               className="mt-1 rounded-md bg-zinc-800 px-2 py-1 text-sm"
@@ -201,8 +222,14 @@ function KdsOrderCard({
         </p>
       )}
 
+      {isProvisional && order.provisionalConflictReason && (
+        <p className="mt-3 text-sm font-semibold text-red-400">
+          Sync conflict — {order.provisionalConflictReason}
+        </p>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
-        {actionLabel && (
+        {!isProvisional && actionLabel && (
           <button
             type="button"
             disabled={busy}
@@ -212,17 +239,24 @@ function KdsOrderCard({
             {actionLabel}
           </button>
         )}
-        {isDelivered && (
+        {isProvisional && (
+          <p className="flex min-h-14 flex-1 items-center justify-center rounded-xl bg-orange-500/10 text-lg font-semibold text-orange-300">
+            Warte auf Cloud…
+          </p>
+        )}
+        {!isProvisional && isDelivered && (
           <p className="flex min-h-14 flex-1 items-center justify-center rounded-xl bg-zinc-800 text-lg font-semibold text-zinc-400">
             Dostavljeno
           </p>
         )}
-        <KitchenPrintButton
-          order={order}
-          orgName={orgName}
-          className="min-h-14 px-4 text-base"
-          onResult={onPrintResult}
-        />
+        {!isProvisional && (
+          <KitchenPrintButton
+            order={order}
+            orgName={orgName}
+            className="min-h-14 px-4 text-base"
+            onResult={onPrintResult}
+          />
+        )}
       </div>
     </motion.div>
   );
@@ -241,6 +275,7 @@ export function KdsBoard() {
     lastUpdatedAt,
     fetchOk,
     optimisticUpdateStatus,
+    provisionalSyncFailedCount,
   } = useKdsOrders(locationId);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -256,6 +291,7 @@ export function KdsBoard() {
   const { status: printerStatus } = useKdsPrinterStatus(lastPrint);
 
   const seenIdsRef = useRef<Set<string>>(new Set());
+  const seenProvisionalRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
 
   const handlePrintResult = useCallback((result: KitchenPrintResult) => {
@@ -342,8 +378,17 @@ export function KdsBoard() {
       return;
     }
 
-    const newOrders = orders.filter((order) => !seenIdsRef.current.has(order.id));
-    if (newOrders.length > 0) {
+    const newOrders = orders.filter(
+      (order) =>
+        !isProvisionalKdsOrder(order) && !seenIdsRef.current.has(order.id)
+    );
+    const newProvisionals = orders.filter(
+      (order): order is ProvisionalKdsOrder =>
+        isProvisionalKdsOrder(order) &&
+        !seenProvisionalRef.current.has(order.clientOrderId)
+    );
+
+    if (newOrders.length > 0 || newProvisionals.length > 0) {
       playNewOrderSound();
       if (isKdsAutoPrintEnabled()) {
         void (async () => {
@@ -355,6 +400,11 @@ export function KdsBoard() {
     }
 
     seenIdsRef.current = currentIds;
+    seenProvisionalRef.current = new Set(
+      orders
+        .filter(isProvisionalKdsOrder)
+        .map((order) => order.clientOrderId)
+    );
   }, [orders, loading, autoPrintOrder]);
 
   const ordersByColumn = useMemo(() => {
@@ -376,7 +426,8 @@ export function KdsBoard() {
   }, [orders]);
 
   const advanceOrder = useCallback(
-    async (order: OrderWithDetails) => {
+    async (order: OrderWithDetails | ProvisionalKdsOrder) => {
+      if (isProvisionalKdsOrder(order)) return;
       const next = nextKdsStatus(order.status);
       if (!next) return;
 
@@ -504,6 +555,12 @@ export function KdsBoard() {
               Auto-print kitchen ticket
             </label>
           </div>
+        </div>
+      )}
+
+      {provisionalSyncFailedCount > 0 && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
+          Sync failed — provisional ticket timed out ({provisionalSyncFailedCount})
         </div>
       )}
 

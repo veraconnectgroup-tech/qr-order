@@ -40,7 +40,7 @@ describe("evaluateGaGate", () => {
   it("passes denis_only when narrate on and parity ≥ 99", () => {
     const report = evaluateGaGate(
       baseForm({ rolloutMode: "denis_only", narrateWithLlm: true }),
-      { shadowParityPct: 99.2 }
+      { shadowParityPct: 99.2, recentEvalPass: true }
     );
     expect(report.ready).toBe(true);
   });
@@ -57,7 +57,7 @@ describe("evaluateGaGate", () => {
       { shadowParityPct: 100, recentEvalPass: false }
     );
     expect(report.ready).toBe(false);
-    expect(report.checks.find((c) => c.id === "eval-green")?.passed).toBe(
+    expect(report.checks.find((c) => c.id === "pilot-eval")?.passed).toBe(
       false
     );
   });

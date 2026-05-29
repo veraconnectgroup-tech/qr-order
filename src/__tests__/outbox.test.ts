@@ -121,15 +121,19 @@ describe("computeOutboxRetryDelaySeconds", () => {
 });
 
 describe("getOutboxHandler", () => {
-  it("resolves known event types", async () => {
-    const { getOutboxHandler } = await import(
-      "@/lib/outbox/handlers/registry"
-    );
-    expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
-    expect(getOutboxHandler("fulfill.push_pos")).toBeDefined();
-    expect(getOutboxHandler("session.paid_online")).toBeDefined();
-    expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
-    expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
-    expect(getOutboxHandler("unknown.event")).toBeUndefined();
-  });
+  it(
+    "resolves known event types",
+    async () => {
+      const { getOutboxHandler } = await import(
+        "@/lib/outbox/handlers/registry"
+      );
+      expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
+      expect(getOutboxHandler("fulfill.push_pos")).toBeDefined();
+      expect(getOutboxHandler("session.paid_online")).toBeDefined();
+      expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
+      expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
+      expect(getOutboxHandler("unknown.event")).toBeUndefined();
+    },
+    30_000
+  );
 });

@@ -1,0 +1,57 @@
+import { describe, expect, it } from "vitest";
+import { shouldQueueStaffOrderOffline } from "@/lib/offline/should-queue-staff-order-offline";
+
+describe("shouldQueueStaffOrderOffline", () => {
+  it("queues when fully offline", () => {
+    expect(
+      shouldQueueStaffOrderOffline({
+        connectionStatus: "offline",
+        error: "Unauthorized.",
+        httpStatus: 401,
+      })
+    ).toBe(true);
+  });
+
+  it("does not queue 4xx when degraded (validation/auth)", () => {
+    expect(
+      shouldQueueStaffOrderOffline({
+        connectionStatus: "degraded",
+        error: "clientOrderId is required.",
+        httpStatus: 400,
+        retried: false,
+      })
+    ).toBe(false);
+  });
+
+  it("queues 5xx when degraded", () => {
+    expect(
+      shouldQueueStaffOrderOffline({
+        connectionStatus: "degraded",
+        error: "Order could not be created.",
+        httpStatus: 500,
+        retried: false,
+      })
+    ).toBe(true);
+  });
+
+  it("queues on network timeout", () => {
+    expect(
+      shouldQueueStaffOrderOffline({
+        connectionStatus: "degraded",
+        error: "Request timeout",
+        retried: false,
+      })
+    ).toBe(true);
+  });
+
+  it("does not queue degraded + generic error without retry or network hint", () => {
+    expect(
+      shouldQueueStaffOrderOffline({
+        connectionStatus: "degraded",
+        error: "Invalid input.",
+        httpStatus: 400,
+        retried: false,
+      })
+    ).toBe(false);
+  });
+});
