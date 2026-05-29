@@ -1,4 +1,8 @@
 import type { Order, Table, TableSession, Zone } from "@/types";
+import {
+  isActiveTableOrder,
+  orderHasPaymentRequest,
+} from "@/lib/dashboard/table-active-orders";
 
 export type WaiterTableOrder = Pick<
   Order,
@@ -27,14 +31,6 @@ export type WaiterTableVisualStatus =
   | "ready"
   | "call"
   | "pending_approval";
-
-const ACTIVE_ORDER_STATUSES = new Set([
-  "pending",
-  "pending_approval",
-  "accepted",
-  "preparing",
-  "ready",
-]);
 
 export function startOfTodayIso() {
   const d = new Date();
@@ -117,12 +113,8 @@ export function buildWaiterTableRows(
   for (const row of orders) {
     if (!row.table_id) continue;
 
-    const session = sessionMap.get(row.table_id);
-    if (session) {
-      if (row.session_id !== session.id) continue;
-    } else if (!ACTIVE_ORDER_STATUSES.has(row.status)) {
-      continue;
-    }
+    const session = sessionMap.get(row.table_id) ?? null;
+    if (!isActiveTableOrder(row, session)) continue;
 
     const list = ordersByTable.get(row.table_id) ?? [];
     list.push(row);
@@ -136,11 +128,8 @@ export function buildWaiterTableRows(
       (sum, order) => sum + Number(order.total),
       0
     );
-    const hasPaymentRequest = activeOrders.some(
-      (order) =>
-        order.payment_status !== "paid" &&
-        Boolean(order.payment_requested_at) &&
-        order.payment_method !== "unset"
+    const hasPaymentRequest = activeOrders.some((order) =>
+      orderHasPaymentRequest(order)
     );
 
     return {

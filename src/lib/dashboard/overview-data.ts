@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import {
   computeOverviewDayStats,
   computeSparklinePoints,
@@ -129,6 +130,7 @@ export async function fetchDashboardOverviewInitialData(
       payment_method: string;
     };
     if (!row.session_id) continue;
+    if (isPaidPaymentStatus(row.payment_status)) continue;
 
     const bucket = ordersBySession.get(row.session_id) ?? {
       total: 0,
@@ -136,7 +138,6 @@ export async function fetchDashboardOverviewInitialData(
     };
     bucket.total += Number(row.total);
     if (
-      row.payment_status !== "paid" &&
       row.payment_requested_at &&
       row.payment_method !== "unset"
     ) {

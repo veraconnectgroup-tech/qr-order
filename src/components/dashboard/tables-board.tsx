@@ -26,6 +26,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FloorTile } from "@/components/design-system";
 import { tableTileStatus } from "@/lib/dashboard/table-tile-status";
 import {
+  isActiveTableOrder,
+  orderHasPaymentRequest,
+} from "@/lib/dashboard/table-active-orders";
+import {
   buildQrTableCardPrintHtml,
   generateTableQrDataUrl,
   openQrTableCardPrintWindow,
@@ -200,14 +204,8 @@ export function TablesBoard() {
       };
       if (!row.table_id) continue;
 
-      const session = sessionMap.get(row.table_id);
-      if (session) {
-        if (row.session_id !== session.id) continue;
-      } else if (
-        !["pending", "accepted", "preparing", "ready"].includes(row.status)
-      ) {
-        continue;
-      }
+      const session = sessionMap.get(row.table_id) ?? null;
+      if (!isActiveTableOrder(row, session)) continue;
 
       const list = ordersByTable.get(row.table_id) ?? [];
       list.push(row);
@@ -227,12 +225,7 @@ export function TablesBoard() {
       );
       const hasPaymentRequest =
         session != null &&
-        activeOrders.some(
-          (o) =>
-            o.payment_status !== "paid" &&
-            o.payment_requested_at != null &&
-            o.payment_method !== "unset"
-        );
+        activeOrders.some((o) => orderHasPaymentRequest(o));
       return {
         ...t,
         zone: t.zone,
@@ -700,11 +693,13 @@ export function TablesBoard() {
               <p className="mt-3 text-sm text-dash-text-muted">
                 Zone: {selected.zone?.name ?? "—"} · {selected.seats} seats ·
                 Status:{" "}
-                {tableTileStatus(selected) === "attention" ||
-                tableTileStatus(selected) === "payment" ||
-                tableTileStatus(selected) === "occupied"
-                  ? "Occupied"
-                  : "Available"}
+                {selected.hasPaymentRequest
+                  ? "Payment requested"
+                  : tableTileStatus(selected) === "attention"
+                    ? "Needs attention"
+                    : selected.session || selected.activeOrders.length > 0
+                      ? "Occupied"
+                      : "Available"}
               </p>
 
               {selected.hasPaymentRequest && (
