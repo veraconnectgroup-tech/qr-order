@@ -37,8 +37,12 @@ export function DashboardTopBar() {
   const { pendingOrders, pendingPaymentRequests, totalPendingAlerts } =
     useDashboardAlerts();
   const isOrdersPage = pathname.startsWith("/dashboard/orders");
-  const ordersAlertCount = pendingOrders + pendingPaymentRequests;
-  const headerAlertCount = isOrdersPage ? ordersAlertCount : totalPendingAlerts;
+  const isTablesPage = pathname.startsWith("/dashboard/tables");
+  const headerAlertCount = isOrdersPage
+    ? pendingOrders
+    : isTablesPage
+      ? pendingPaymentRequests
+      : totalPendingAlerts;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-dash-border-subtle bg-dash-bg/95 px-4 shadow-[0_1px_3px_rgba(0,0,0,0.3)] backdrop-blur-xl md:h-16 md:px-6">

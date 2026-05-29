@@ -86,7 +86,7 @@ function badgeCountForTab(
   pendingPaymentRequests: number
 ) {
   if (alertKey === "orders") {
-    return pendingOrders + pendingPaymentRequests;
+    return pendingOrders;
   }
   if (alertKey === "calls") {
     return pendingWaiterCalls;

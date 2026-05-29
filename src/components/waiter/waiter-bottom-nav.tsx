@@ -66,7 +66,7 @@ export function WaiterBottomNav() {
         const active = exact ? pathname === href : pathname.startsWith(href);
         const badgeCount =
           alertKey === "orders"
-            ? pendingOrders + pendingPaymentRequests
+            ? pendingOrders
             : alertKey === "calls"
               ? pendingWaiterCalls
               : alertKey === "payments"

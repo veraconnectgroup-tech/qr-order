@@ -8,6 +8,7 @@ import { formatOrderNumber } from "@/lib/format";
 import {
   getKitchenOrderItems,
 } from "@/lib/kitchen/menu-section";
+import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { patchOrderStatus } from "@/lib/orders/patch-order-status";
 import { useKitchenOrders } from "@/hooks/use-kitchen-orders";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
@@ -68,7 +69,7 @@ export function KitchenCard({
   const minutes = Math.floor(seconds / 60);
   const timerClass = kitchenTimerStyles(minutes, light);
   const isAccepted = order.status === "accepted";
-  const items = getKitchenOrderItems(order);
+  const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
 
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 1000);
@@ -123,9 +124,9 @@ export function KitchenCard({
       <ul className="space-y-2">
         {items.map((item) => (
           <OrderItemProductLine
-            key={item.id}
+            key={item.key}
             item={item}
-            modifiers={item.order_item_modifiers}
+            modifiers={item.modifiers}
             notes={item.notes}
             nameClassName={light ? "text-zinc-800" : "text-zinc-200"}
           />

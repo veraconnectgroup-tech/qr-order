@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Clock, CreditCard } from "lucide-react";
+import { Clock } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import type { InPersonPaymentLocation } from "@/lib/constants";
-import { paymentMethodLabel } from "@/lib/payment-methods";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
@@ -17,6 +16,7 @@ import {
   TseStatusBadge,
 } from "@/components/dashboard/delivery-status-badge";
 import { cn } from "@/lib/utils";
+import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { canStornoOrder } from "@/lib/orders/storno";
 import type { OrderWithDetails } from "@/types";
 
@@ -230,18 +230,11 @@ export function OrderCard({
   const zoneName = (order.tables as { zone?: { name: string } | null })?.zone
     ?.name;
   const paid = order.payment_status === "paid";
-  const paymentRequested =
-    !paid &&
-    order.payment_requested_at != null &&
-    order.payment_method !== "unset";
-  const paymentLabel = paymentMethodLabel(
-    (order as { payment_method?: string }).payment_method ?? "online",
-    inPersonPaymentLocation
-  );
   const showStorno =
     Boolean(onStorno) &&
     canStornoOrder(order, staffRole ?? "staff") &&
     interactive;
+  const groupedItems = groupOrderItemsForDisplay(order.order_items);
 
   if (order.status === "cancelled") {
     return (
@@ -368,11 +361,10 @@ export function OrderCard({
           : undefined
       }
       className={cn(
-        "relative overflow-hidden rounded-xl border p-4 transition-all duration-150",
+        "relative overflow-hidden rounded-xl border p-3 transition-all duration-150",
         light
           ? "border-zinc-200 bg-white shadow-sm hover:border-zinc-300 hover:shadow-md"
-          : "border-dash-border bg-dash-surface shadow-[var(--shadow-card)] hover:border-dash-surface-raised hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-px",
-        paymentRequested && "ring-2 ring-amber-500/60"
+          : "border-dash-border bg-dash-surface shadow-[var(--shadow-card)] hover:border-dash-surface-raised hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-px"
       )}
     >
       <div className={statusStripClass(columnId)} />
@@ -437,13 +429,6 @@ export function OrderCard({
         {zoneName && <span className="text-xs text-dash-text-muted">{zoneName}</span>}
       </div>
 
-      {paymentRequested && (
-        <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-300">
-          <CreditCard className="size-3.5 shrink-0" />
-          Payment requested · {paymentLabel}
-        </div>
-      )}
-
       {!paid && order.status !== "rejected" && (
         <div className="mt-2">
           <OrderPaymentMethodSelect
@@ -459,19 +444,25 @@ export function OrderCard({
         </div>
       )}
 
-      <ul className={cn("mt-3 space-y-1 text-sm", light ? "text-zinc-700" : "text-dash-text-secondary")}>
-        {order.order_items?.map((item) => (
+      <ul
+        className={cn(
+          "mt-2 max-h-32 space-y-0.5 overflow-y-auto text-xs leading-snug",
+          light ? "text-zinc-700" : "text-dash-text-secondary"
+        )}
+      >
+        {groupedItems.map((item) => (
           <OrderItemProductLine
-            key={item.id}
+            key={item.key}
             item={item}
-            modifiers={item.order_item_modifiers}
+            modifiers={item.modifiers}
+            notes={item.notes}
             allowMarkUnavailable
             nameClassName={light ? "text-zinc-700" : "text-dash-text-secondary"}
           />
         ))}
       </ul>
 
-      <div className={cn("my-3 border-t", light ? "border-zinc-200" : "border-dash-border")} />
+      <div className={cn("my-2 border-t", light ? "border-zinc-200" : "border-dash-border")} />
 
       {(order.order_items?.length ?? 0) > 0 && (
         <TaxBreakdownLines
@@ -524,12 +515,12 @@ export function OrderCard({
       )}
 
       {columnId === "new" && order.status === "pending_approval" && (
-        <div className="mt-3 flex gap-2">
+        <div className="mt-2 flex gap-2">
           <button
             type="button"
             disabled={busy || !interactive}
             onClick={onReject}
-            className="flex-1 rounded-lg border border-dash-border bg-transparent px-3 py-3 text-sm font-medium text-dash-text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg border border-dash-border bg-transparent px-3 py-2.5 text-sm font-medium text-dash-text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50 touch-manipulation"
           >
             Reject
           </button>
@@ -537,7 +528,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive || !onApproveAccess}
             onClick={onApproveAccess}
-            className="flex-1 rounded-lg bg-emerald-600 px-3 py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-emerald-500 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-emerald-500 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation"
           >
             Approve order ►
           </button>
@@ -545,12 +536,12 @@ export function OrderCard({
       )}
 
       {columnId === "new" && order.status === "pending" && (
-        <div className="mt-3 flex gap-2">
+        <div className="mt-2 flex gap-2">
           <button
             type="button"
             disabled={busy || !interactive}
             onClick={onReject}
-            className="flex-1 rounded-lg border border-dash-border bg-transparent px-3 py-3 text-sm font-medium text-dash-text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg border border-dash-border bg-transparent px-3 py-2.5 text-sm font-medium text-dash-text-muted transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50 touch-manipulation"
           >
             Reject
           </button>
@@ -558,7 +549,7 @@ export function OrderCard({
             type="button"
             disabled={busy || !interactive}
             onClick={onAccept}
-            className="flex-1 rounded-lg bg-emerald-600 px-3 py-3 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-emerald-500 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation sm:py-2"
+            className="flex-1 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-xs)] transition-all hover:bg-emerald-500 hover:shadow-[var(--shadow-sm)] disabled:opacity-50 touch-manipulation"
           >
             Accept ►
           </button>

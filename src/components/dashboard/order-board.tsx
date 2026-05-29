@@ -244,7 +244,7 @@ export function OrderBoard() {
           "ready",
           "delivered",
         ])
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: true }),
       supabase
         .from("table_transfers")
         .select("order_ids, from_table:from_table_id(name)")
@@ -470,7 +470,7 @@ export function OrderBoard() {
   const sortColumn = (list: OrderWithDetails[]) =>
     [...list].sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
   const sortDeliveredColumn = (list: OrderWithDetails[]) =>

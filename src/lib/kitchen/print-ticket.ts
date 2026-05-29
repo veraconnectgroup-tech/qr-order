@@ -1,5 +1,6 @@
 import { formatOrderNumber } from "@/lib/format";
 import { getKitchenOrderItems } from "@/lib/kitchen/menu-section";
+import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import type { OrderWithDetails } from "@/types";
 
 export function buildKitchenTicketHtml(
@@ -7,7 +8,7 @@ export function buildKitchenTicketHtml(
   orgName: string
 ) {
   const tableName = order.tables?.name ?? "—";
-  const items = getKitchenOrderItems(order);
+  const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
   const time = new Date(order.created_at).toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
@@ -16,7 +17,7 @@ export function buildKitchenTicketHtml(
   const itemRows = items
     .map((item) => {
       const mods =
-        item.order_item_modifiers
+        item.modifiers
           ?.map((m) => `<div class="mod">→ ${m.modifier_name}</div>`)
           .join("") ?? "";
       const notes = item.notes

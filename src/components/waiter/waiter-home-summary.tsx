@@ -11,7 +11,7 @@ export function WaiterHomeSummary() {
   const chips = [
     {
       label: t("summary.orders"),
-      count: pendingOrders + pendingPaymentRequests,
+      count: pendingOrders,
       tone: "text-dash-accent",
     },
     {

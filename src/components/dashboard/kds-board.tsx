@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatOrderNumber } from "@/lib/format";
+import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { getKitchenOrderItems } from "@/lib/kitchen/menu-section";
 import {
   isKdsAutoPrintEnabled,
@@ -106,7 +107,7 @@ function KdsOrderCard({
 }) {
   const [, tick] = useState(0);
   const tableName = order.tables?.name ?? "—";
-  const items = getKitchenOrderItems(order);
+  const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
   const isDelivered = order.status === "delivered";
   const elapsed = formatKdsElapsed(order.created_at);
   const minutes = kdsElapsedMinutes(order.created_at);
@@ -173,14 +174,14 @@ function KdsOrderCard({
 
       <ul className="mt-4 space-y-3">
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.key}>
             <p className="text-xl font-semibold text-zinc-100">
               <span className="mr-2 text-2xl font-black text-orange-400">
                 {item.quantity}×
               </span>
               {item.product_name}
             </p>
-            {item.order_item_modifiers?.map((m) => (
+            {item.modifiers?.map((m) => (
               <p key={m.id} className="pl-8 text-lg text-zinc-400">
                 → {m.modifier_name}
               </p>
