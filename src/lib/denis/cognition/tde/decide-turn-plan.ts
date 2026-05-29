@@ -248,12 +248,8 @@ function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
 
   if (!atConfirmPressure) return false;
 
-  if (
-    input.reflex.usedT0 &&
-    intent !== "CONFIRM" &&
-    intent !== "DECLINE" &&
-    intent !== "DONE"
-  ) {
+  // T0 cart edits at recap (add/remove) — reflex_only; confirm/DONE handled above.
+  if (input.reflex.usedT0 && intent !== "DONE") {
     return false;
   }
 
