@@ -29,6 +29,7 @@ export const CORE_BELIEF_KEYS = {
   venueRush: "venue.rush",
   venueSkipUpsell: "venue.skip_upsell",
   guestReturnVisit: "guest.return_visit",
+  commerceHasOpenOrders: "commerce.has_open_orders",
   policyRequireConfirm: "policy.require_confirm",
 } as const;
 

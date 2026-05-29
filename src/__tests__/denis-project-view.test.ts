@@ -71,6 +71,7 @@ function buildFixtureState(
       foodUpsellAsked: false,
       dismissedNudges: [],
       lastAssistantMessage: null,
+      pendingSlot: null,
     },
     timeline,
     config: CONCIERGE_PLATFORM_DEFAULTS,

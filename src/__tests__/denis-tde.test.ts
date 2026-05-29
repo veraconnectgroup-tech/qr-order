@@ -127,6 +127,45 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     });
     expect(plan.kind).toBe("transactional_perceive");
   });
+
+  it("status query without open orders uses status.no_order template", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.language", "sr"),
+        belief("commerce.has_open_orders", false),
+      ]),
+      reflex: reflexFor("Kad stiže moje pivo"),
+      message: "Kad stiže moje pivo",
+    });
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.templateKey).toBe("status.no_order");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("order-not-sent complaint routes to transactional_perceive", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.language", "sr"),
+      ]),
+      reflex: reflexFor("Konobar kaže da nisi poslao order"),
+      message: "Konobar kaže da nisi poslao order",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+  });
+
+  it("hvala with open cart pressure stays transactional, not settle template", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "ordering"),
+        belief("commerce.pressure", "open"),
+      ]),
+      reflex: reflexFor("hvala"),
+      message: "hvala",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+  });
 });
 
 describe("decideTurnPlan — slots and reflex", () => {

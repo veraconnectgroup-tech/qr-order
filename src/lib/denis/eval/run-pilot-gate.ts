@@ -4,6 +4,8 @@ import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import type { EvalSuiteReport, ScenarioRunResult } from "@/lib/denis/eval/types";
 import { runQualityContractEval } from "@/lib/denis/cognition/quality/contract-eval";
+import { runAnticipationEval } from "@/lib/denis/eval/run-anticipation-eval";
+import type { AnticipationReport } from "@/lib/denis/eval/anticipation-types";
 import {
   runWaiterParitySuite,
   type WaiterParityReport,
@@ -104,6 +106,7 @@ export type PilotGateReport = {
   pilotSr: EvalSuiteReport;
   waiterParity: WaiterParityReport;
   qualityContract: ReturnType<typeof runQualityContractEval>;
+  anticipation: AnticipationReport;
   narration: PilotNarrationGateResult;
   presetReady: boolean;
   presetChecks: ReturnType<typeof evaluateGaGate>["checks"];
@@ -115,6 +118,7 @@ export function runPilotGate(): PilotGateReport {
   const pilotSr = runPilotSrEvalSuite();
   const waiterParity = runWaiterParitySuite();
   const qualityContract = runQualityContractEval();
+  const anticipation = runAnticipationEval();
   const narration = runPilotNarrationGate();
 
   const form = denisRolloutFormFromPreset("table_os_pilot");
@@ -125,9 +129,14 @@ export function runPilotGate(): PilotGateReport {
           pilotSr.ok &&
           waiterParity.ok &&
           qualityContract.ok &&
+          anticipation.ok &&
           narration.passed,
         pilotEvalPass:
-          pilotSr.ok && waiterParity.ok && qualityContract.ok && narration.passed,
+          pilotSr.ok &&
+          waiterParity.ok &&
+          qualityContract.ok &&
+          anticipation.ok &&
+          narration.passed,
       })
     : { ready: false, checks: [] };
 
@@ -137,11 +146,13 @@ export function runPilotGate(): PilotGateReport {
       pilotSr.ok &&
       waiterParity.ok &&
       qualityContract.ok &&
+      anticipation.ok &&
       narration.passed,
     core,
     pilotSr,
     waiterParity,
     qualityContract,
+    anticipation,
     narration,
     presetReady: ga.ready,
     presetChecks: ga.checks,

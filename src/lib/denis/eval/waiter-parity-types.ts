@@ -12,6 +12,7 @@ export type WaiterParitySetup = {
   flowNodeId?: FlowNodeId;
   aiCartItems?: DenisCartLine[];
   lastAssistantMessage?: string | null;
+  pendingSlot?: "serve_size" | "modifier" | "product" | "payment_method" | null;
   orders?: OrderFact[];
   billSettled?: boolean;
   operatingMode?: "normal" | "rush";

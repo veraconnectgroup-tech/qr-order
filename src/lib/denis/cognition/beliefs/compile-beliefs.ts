@@ -309,6 +309,19 @@ function resolveConversationMode(
   }
 
   if (SETTLING_GUEST_PATTERN.test(guestMessage)) {
+    const hasUnsentCart =
+      state.commerce.cart.visibleLines.length > 0 ||
+      state.conversation.pendingSlot != null;
+
+    if (hasUnsentCart) {
+      return belief(
+        CORE_BELIEF_KEYS.conversationMode,
+        "ordering",
+        "inferred",
+        0.92
+      );
+    }
+
     return belief(
       CORE_BELIEF_KEYS.conversationMode,
       "settling",
@@ -354,6 +367,15 @@ function resolvePendingSlot(
     return belief(CORE_BELIEF_KEYS.commercePendingSlot, null, "default", 1);
   }
 
+  if (state.conversation.pendingSlot) {
+    return belief(
+      CORE_BELIEF_KEYS.commercePendingSlot,
+      state.conversation.pendingSlot,
+      "inferred",
+      0.95
+    );
+  }
+
   const missingServeSize = state.commerce.cart.ai.draft.items.some(
     (line) => !line.serveSize
   );
@@ -368,6 +390,20 @@ function resolvePendingSlot(
   }
 
   return belief(CORE_BELIEF_KEYS.commercePendingSlot, null, "inferred", 0.85);
+}
+
+function resolveHasOpenOrders(
+  state: TableSessionState
+): ReturnType<typeof belief<boolean>> {
+  const open = state.commerce.orders.some(
+    (order) => order.status !== "delivered" && order.status !== "cancelled"
+  );
+  return belief(
+    CORE_BELIEF_KEYS.commerceHasOpenOrders,
+    open,
+    "inferred",
+    open ? 0.95 : 0.9
+  );
 }
 
 function resolveVenueRush(
@@ -461,5 +497,6 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
     resolveSkipUpsell(input.state, config),
     resolveReturnVisit(memory, config),
     resolveRequireConfirm(config),
+    resolveHasOpenOrders(input.state),
   ]);
 }

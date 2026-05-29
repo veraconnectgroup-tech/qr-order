@@ -1,3 +1,4 @@
+import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import {
@@ -131,10 +132,27 @@ export async function tryResolvePendingSlotAct(
       return { resolved: false };
     }
 
-    const message = buildSlotFillConfirmation(
-      resolved.cartActions,
-      input.language
+    const flowResult = finalizeOrderFlow({
+      userMessage: input.userMessage,
+      draft: resolved.draft,
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: resolved.cartActions.length,
+      language: input.language,
+    });
+
+    const flowPersist = await persistKernelOrderingDraft(
+      input.admin,
+      input.sessionId,
+      flowResult.draft
     );
+    if (!flowPersist.ok) {
+      return { resolved: false };
+    }
+
+    const message =
+      flowResult.message ||
+      buildSlotFillConfirmation(resolved.cartActions, input.language);
     const structuredPerception: AiStructuredResponse = {
       message,
       recommendations: [],
@@ -145,7 +163,7 @@ export async function tryResolvePendingSlotAct(
     };
 
     const cartDraft =
-      aiOrderDraftToDenisCartState(resolved.draft).draft ?? {
+      aiOrderDraftToDenisCartState(flowResult.draft).draft ?? {
         items: [],
         cartRevision: 0,
       };

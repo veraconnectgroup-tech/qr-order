@@ -284,16 +284,16 @@ Timeline: `runtime.turn_profile` metadata (tier, plan, llm_used, beliefs_hash).
 
 | Track | Deliverable | Depends on | Status |
 |-------|-------------|------------|--------|
-| **MR-0** | Ship language + leadership + `followGuest` | — | 🟡 local |
-| **MR-1** | `compileBeliefs()` + 6 core beliefs + timeline event | FOLD | 🔲 |
-| **MR-2** | `decideTurnPlan()` + `UtterancePlan` + template-first | MR-1 | 🔲 |
-| **MR-3** | TDE wire in `run-denis-turn` (LLM only when plan says) | MR-2 | 🔲 |
-| **MR-4** | Venue Manifest schema + merge | ConciergeConfig | 🔲 |
-| **MR-5** | Evidence pointers (commerce, transcript, ops, guest) | MR-2 | 🔲 |
-| **MR-6** | Menu RAG pointer | products + Redis | 🔲 |
-| **MR-7** | Quality Contract metrics + admin strip | MR-3 | 🔲 |
-| **MR-8** | Sim gate before manifest promote | M20 venue sim | 🔲 |
-| **MR-9** | Org manifest pack + custom eval | platform admin | 🔲 |
+| **MR-0** | Ship language + leadership + `followGuest` | — | ✅ CODE |
+| **MR-1** | `compileBeliefs()` + core beliefs + timeline event | FOLD | ✅ CODE |
+| **MR-2** | `decideTurnPlan()` + `UtterancePlan` + template-first | MR-1 | ✅ CODE |
+| **MR-3** | TDE wire in `run-denis-turn` (LLM only when plan says) | MR-2 | ✅ CODE |
+| **MR-4** | Venue Manifest schema + merge | ConciergeConfig | ✅ CODE |
+| **MR-5** | Evidence pointers (commerce, transcript, ops, guest) | MR-2 | ✅ CODE |
+| **MR-6** | Menu RAG pointer (keyword v1) | products + Redis | 🟡 PARTIAL — embeddings OPEN |
+| **MR-7** | Quality Contract metrics + admin strip | MR-3 | ✅ CODE |
+| **MR-8** | Sim gate before manifest promote | M20 venue sim | ✅ CODE |
+| **MR-9** | Org manifest pack + custom eval | platform admin | 🔲 OPEN |
 
 **One PR = one MR track.** Same rule as ADR-019 phases.
 

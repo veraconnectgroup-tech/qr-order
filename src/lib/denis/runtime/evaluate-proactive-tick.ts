@@ -25,9 +25,9 @@ function isDismissed(keys: Set<string>, key: string): boolean {
   return keys.has(key);
 }
 
-/** Server-side proactive evaluation for `/api/denis/sense` (M11). */
-export function evaluateGuestProactiveTick(input: {
-  config: ConciergeConfig;
+/** Trigger detection only — venue feature flags enforced in TDE (`decideProactiveTurnPlan`). */
+export function detectProactiveCandidate(input: {
+  config: Pick<ConciergeConfig, "proactive">;
   orders: AiGuestOrder[];
   payload: ProactiveTickPayload;
   messages: {
@@ -38,8 +38,6 @@ export function evaluateGuestProactiveTick(input: {
   now?: number;
 }): GuestProactiveNudge | null {
   const { config, orders, payload, messages } = input;
-  if (!config.proactive.enabled) return null;
-
   const now = input.now ?? Date.now();
   const dismissed = new Set(payload.dismissedNudgeKeys ?? []);
   const hasOrdered =
@@ -54,7 +52,6 @@ export function evaluateGuestProactiveTick(input: {
   }
 
   if (
-    config.proactive.pairing &&
     !payload.hasDrinkInCart &&
     !isDismissed(dismissed, "drink_pairing")
   ) {
@@ -75,10 +72,7 @@ export function evaluateGuestProactiveTick(input: {
     }
   }
 
-  if (
-    config.proactive.dessert &&
-    !isDismissed(dismissed, "dessert_nudge")
-  ) {
+  if (!isDismissed(dismissed, "dessert_nudge")) {
     const dessert = detectDessertTrigger(
       orders,
       () => isDismissed(dismissed, "dessert_nudge"),
@@ -89,10 +83,7 @@ export function evaluateGuestProactiveTick(input: {
     }
   }
 
-  if (
-    config.proactive.slowKitchen &&
-    !isDismissed(dismissed, "slow_kitchen")
-  ) {
+  if (!isDismissed(dismissed, "slow_kitchen")) {
     const slow = detectSlowKitchenTrigger(
       orders,
       (orderId) =>
@@ -110,4 +101,35 @@ export function evaluateGuestProactiveTick(input: {
   }
 
   return null;
+}
+
+/** Legacy M11 helper — applies venue flags before returning candidate. */
+export function evaluateGuestProactiveTick(input: {
+  config: ConciergeConfig;
+  orders: AiGuestOrder[];
+  payload: ProactiveTickPayload;
+  messages: {
+    browse: string;
+    dessert: string;
+    slowKitchen: string;
+  };
+  now?: number;
+}): GuestProactiveNudge | null {
+  const { config } = input;
+  if (!config.proactive.enabled) return null;
+
+  const candidate = detectProactiveCandidate(input);
+  if (!candidate) return null;
+
+  if (candidate.kind === "drink_pairing" && !config.proactive.pairing) {
+    return null;
+  }
+  if (candidate.kind === "dessert_nudge" && !config.proactive.dessert) {
+    return null;
+  }
+  if (candidate.kind === "slow_kitchen" && !config.proactive.slowKitchen) {
+    return null;
+  }
+
+  return candidate;
 }

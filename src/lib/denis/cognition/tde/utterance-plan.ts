@@ -33,6 +33,15 @@ function intentForTurnPlan(
       if (turnPlan.templateKey === "status.headline") {
         return { intent: "status_headline", templateKey: "status.headline" };
       }
+      if (turnPlan.templateKey === "status.no_order") {
+        return { intent: "status_no_order", templateKey: "status.no_order" };
+      }
+      if (turnPlan.templateKey?.startsWith("proactive.")) {
+        return {
+          intent: "generic_nudge",
+          templateKey: turnPlan.templateKey,
+        };
+      }
       return {
         intent: "banter_welcome",
         templateKey: turnPlan.templateKey ?? "banter.welcome",

@@ -1,4 +1,6 @@
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-mind-beliefs-compiled";
+import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
@@ -15,7 +17,6 @@ import {
 } from "@/lib/denis/platform/timeline-types";
 import type { DenisSenseRequest } from "@/lib/denis/platform/sense-types";
 import {
-  evaluateGuestProactiveTick,
   type GuestProactiveNudge,
   type ProactiveTickPayload,
 } from "@/lib/denis/runtime/evaluate-proactive-tick";
@@ -260,12 +261,14 @@ export async function runDenisSense(
       dessertMessage?: string;
       slowKitchenMessage?: string;
     };
-    proactiveNudge = evaluateGuestProactiveTick({
+
+    const proactiveResult = planProactiveTurn({
+      state,
       config,
       orders: guestOrders,
+      sessionPhase: fold.meta.phase,
       payload: {
         ...payload,
-        hasSessionOrders: state.commerce.orders.length > 0,
         dismissedNudgeKeys:
           payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
       },
@@ -277,6 +280,48 @@ export async function runDenisSense(
           "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
       },
     });
+
+    if (draftAiSessionId) {
+      await appendMindBeliefsCompiled(admin, {
+        aiSessionId: draftAiSessionId,
+        traceId,
+        graph: proactiveResult.beliefs,
+        truthHash: fold.meta.truthHash,
+      });
+    }
+
+    if (proactiveResult.nudge && aiSessionId) {
+      proactiveNudge = proactiveResult.nudge;
+
+      await appendDenisTimelineEvent(admin, {
+        aiSessionId,
+        eventType: "proactive.emitted",
+        traceId,
+        payload: {
+          type: "proactive.emitted",
+          kind: proactiveResult.nudge.kind,
+          message: proactiveResult.nudge.message,
+          orderId: proactiveResult.nudge.orderId ?? null,
+          tier: "template",
+          turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
+          turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
+          source: "sense.proactive_brain",
+        },
+      });
+
+      await appendDenisTimelineEvent(admin, {
+        aiSessionId,
+        eventType: "tell.committed",
+        traceId,
+        payload: {
+          type: "tell.committed",
+          message: proactiveResult.nudge.message,
+          tier: "template",
+          source: "sense.proactive",
+          linted: true,
+        },
+      });
+    }
   }
 
   return apiSuccess({

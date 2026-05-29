@@ -47,6 +47,7 @@ function baseState(
       foodUpsellAsked: false,
       dismissedNudges: [],
       lastAssistantMessage: "Koju veličinu piva — 0.3L ili 0.5L?",
+      pendingSlot: null,
     },
     timeline: [],
     config: CONCIERGE_PLATFORM_DEFAULTS,

@@ -2,6 +2,7 @@ import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import {
   finalizeOrderFlow,
   emptyCartSubmitBlockedMessage,
+  sanitizeFalseOrderClaimMessage,
 } from "@/lib/ai/ordering/order-flow";
 import { maybeBackfillOrderDraft } from "@/lib/ai/ordering/order-message-backfill";
 import { processOrderingTurn } from "@/lib/ai/ordering/ordering-turn";
@@ -66,6 +67,13 @@ export function applyPostLlmOrdering(
 
   let assistantMessage = flowResult.message;
   let submitOrder = flowResult.submitOrder;
+
+  assistantMessage = sanitizeFalseOrderClaimMessage({
+    message: assistantMessage,
+    draft: workingDraft,
+    submitOrder,
+    language: input.language,
+  });
 
   if (
     workingDraft.items.length === 0 &&

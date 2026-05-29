@@ -19,6 +19,16 @@ describe("normalizePendingSlotReply", () => {
     ).toBe("0.5L");
   });
 
+  it("maps frustrated veliko reply to largest preset", () => {
+    expect(
+      normalizePendingSlotReply(
+        "serve_size",
+        "Već sam ti rek'o veliko",
+        BEER_OPTIONS
+      )
+    ).toBe("0.5L");
+  });
+
   it("maps malo to smallest preset", () => {
     expect(
       normalizePendingSlotReply("serve_size", "malo molim", BEER_OPTIONS)

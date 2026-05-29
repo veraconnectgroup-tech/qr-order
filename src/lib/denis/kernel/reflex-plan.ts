@@ -24,6 +24,7 @@ import {
   type T0ReflexResult,
 } from "@/lib/denis/kernel/reflex-rules";
 import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
+import type { GoalDerivationContext } from "@/lib/denis/kernel/goal-types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 import type { SelectablePaymentMethod } from "@/lib/payment-methods";
@@ -38,6 +39,7 @@ export type ReflexTurnInput = {
   foodUpsellAsked?: boolean;
   cartConflict?: boolean;
   hasOpenOrders?: boolean;
+  pendingSlot?: GoalDerivationContext["pendingSlot"];
   skipUpsell?: boolean;
   structuredIntent?: GuestIntent | null;
   handoffPaymentMethod?: SelectablePaymentMethod | null;
@@ -131,6 +133,7 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
     intent,
     cartItems: cartLinesForSignals(cartState.draft),
     foodUpsellAsked: input.foodUpsellAsked,
+    pendingSlot: input.pendingSlot ?? null,
     cartConflict,
     hasOpenOrders: input.hasOpenOrders,
     skipUpsell: input.skipUpsell ?? false,

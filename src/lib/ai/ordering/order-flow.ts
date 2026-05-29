@@ -139,7 +139,6 @@ function resolveMenuLanguage(language: string | undefined): MenuLanguage {
   return "de";
 }
 
-/** Guest tried to confirm/submit but session cart has no line items. */
 export function emptyCartSubmitBlockedMessage(lang: MenuLanguage): string {
   switch (lang) {
     case "de":
@@ -268,6 +267,41 @@ export function finalizeOrderFlow(input: {
     submitOrder: input.llmSubmitOrder,
     intent: input.llmSubmitOrder ? "confirm" : "chat",
   };
+}
+
+const FALSE_ORDER_CLAIM_PATTERN =
+  /\b(poru[čc]ujem|naru[čc]ujem|šaljem|saljem|send(ing)? (your )?order|bestell(e|ung)? (ist )?(unterwegs|gesendet)|ordering (for you|now)|order (is )?(placed|sent|on its way))\b/i;
+
+/** Block LLM narration that claims an order was sent when submit did not happen. */
+export function sanitizeFalseOrderClaimMessage(input: {
+  message: string;
+  draft: AiOrderDraft;
+  submitOrder: boolean;
+  language?: string;
+}): string {
+  if (input.submitOrder || !FALSE_ORDER_CLAIM_PATTERN.test(input.message)) {
+    return input.message;
+  }
+
+  const lang = resolveMenuLanguage(input.language);
+  const hasItems = input.draft.items.length > 0 && !input.draft.pending;
+
+  if (!hasItems) {
+    switch (lang) {
+      case "de":
+        return "In der Bestellung sind noch keine Artikel. Sag mir, was du möchtest.";
+      case "en":
+        return "Your order has no items yet. Tell me what you'd like.";
+      case "hr":
+        return "Narudžba je još prazna. Reci što želiš.";
+      case "sr":
+        return "Porudžbina je još prazna. Reci šta želiš.";
+      default:
+        return "Porudžbina je još prazna. Reci šta želiš.";
+    }
+  }
+
+  return confirmOrderMessage(summarizeDraftOrder(input.draft), lang);
 }
 
 export function formatFlowForPrompt(draft: AiOrderDraft): string | null {

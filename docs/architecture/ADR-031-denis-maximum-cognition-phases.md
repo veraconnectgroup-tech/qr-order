@@ -22,11 +22,11 @@
 | 55 | **C0** | ADR-030 comprehend-first (done) | unit tests |
 | **70** | **C1** | **Situation Pack (FSP)** on every LLM turn | `situation-pack.test.ts` ✅ |
 | 85 | **C2** | ACT guarantee — pending slot / confirm | ✅ local |
-| 95 | **C3** | Waiter-parity journey eval (40+) | CI block deploy |
-| 98 | **C4** | Quality contract metrics (MR-7) | admin strip |
-| 100 | **C5** | Sim-before-promote + venue playbook (MR-8/9) | manifest promote |
+| 95 | **C3** | Waiter-parity journey eval (48) | ✅ CODE |
+| 98 | **C4** | Quality contract metrics (MR-7) | ✅ CODE |
+| 100 | **C5** | Sim-before-promote (MR-8) | ✅ CODE |
 
-**One PR per phase.** C1 ✅ shipped locally — next: **C2 ACT guarantee**.
+**Next track:** Phase D — proactive in brain loop ([backlog Wave 3](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)).
 
 ---
 
@@ -92,17 +92,21 @@ PHASE BEHAVIOR: phase-specific instructions
 
 ---
 
-## 5. Phase C3 — Journey eval (next)
+## 5. Phase C3 — Journey eval ✅
 
-Folder: `src/lib/denis/eval/fixtures/waiter-parity/`
+Folder: `src/lib/denis/eval/fixtures/waiter-parity/` · runner: `run-waiter-parity.ts`
 
-Minimum scenarios: typo slot, confirm chain, phase-appropriate replies, no welcome reset.
-
-**Deploy gate:** `pnpm eval:denis` journey suite ≥ 95%.
+**Deploy gate:** `pnpm eval:denis` waiter parity ≥ 95% (in `runPilotGate`).
 
 ---
 
-## 6. Anti-patterns
+## 6. Phase C4/C5 ✅
+
+See `cognition/quality/` and `manifest/manifest-promote-gate.ts`.
+
+---
+
+## 7. Anti-patterns
 
 1. Bigger model without FSP  
 2. Template interpreting guest replies during ordering  

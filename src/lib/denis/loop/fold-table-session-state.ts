@@ -1,4 +1,5 @@
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { pendingSlotKindFromDraft } from "@/lib/ai/ordering/pending-slot-kind";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildFoldMeta } from "@/lib/denis/loop/compute-truth-hash";
@@ -223,6 +224,7 @@ export async function foldTableSessionState(
       foodUpsellAsked,
       dismissedNudges,
       lastAssistantMessage,
+      pendingSlot: pendingSlotKindFromDraft(draft),
     },
     timeline,
     config,

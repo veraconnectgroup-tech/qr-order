@@ -31,10 +31,35 @@ const TEMPLATE_CATALOG: Record<
     de: "Deine Bestellung ist in Arbeit — ich melde mich, sobald sie fertig ist.",
     en: "Your order is in progress — I'll update you when it's ready.",
   },
+  "status.no_order": {
+    sr: "Još nemam poslatu porudžbinu za tvoj sto. Reci šta želiš — mogu odmah da pošaljem kad potvrdiš.",
+    de: "Es ist noch keine Bestellung für deinen Tisch raus. Sag mir, was du möchtest — ich sende sie, sobald du bestätigst.",
+    en: "I haven't sent an order for your table yet. Tell me what you'd like — I'll send it once you confirm.",
+  },
   "settle.thanks": {
     sr: "Hvala! Uživaj u ostatku večeri — tu sam ako zatreba nešto.",
     de: "Danke! Genieß den Rest des Abends — ich bin da, falls du noch etwas brauchst.",
     en: "Thanks! Enjoy the rest of your evening — I'm here if you need anything.",
+  },
+  "proactive.browse": {
+    sr: "Treba vam pomoć pri biranju?",
+    de: "Brauchen Sie Hilfe bei der Auswahl?",
+    en: "Need help choosing from the menu?",
+  },
+  "proactive.dessert": {
+    sr: "Spremni za desert?",
+    de: "Bereit für ein Dessert?",
+    en: "Ready for dessert?",
+  },
+  "proactive.slow_kitchen": {
+    sr: "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
+    de: "Die Küche ist gerade voll — möchten Sie etwas trinken, während Sie warten?",
+    en: "The kitchen is busy — would you like a drink while you wait?",
+  },
+  "proactive.drink_pairing": {
+    sr: "Uz to bi dobro leglo piće — da dodam nešto?",
+    de: "Dazu passt ein Getränk — soll ich etwas vorschlagen?",
+    en: "That pairs well with a drink — want me to suggest something?",
   },
 };
 

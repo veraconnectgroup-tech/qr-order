@@ -396,6 +396,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     skipUpsell: ctx.opsEffects?.skipUpsell ?? false,
     structuredIntent: parsed.data.structuredIntent,
     handoffPaymentMethod: parsed.data.handoffPaymentMethod,
+    pendingSlot: ctx.tableSessionState?.conversation.pendingSlot
+      ? { kind: ctx.tableSessionState.conversation.pendingSlot }
+      : null,
+    hasOpenOrders:
+      ctx.tableSessionState?.commerce.orders.some(
+        (order) =>
+          order.status !== "delivered" && order.status !== "cancelled"
+      ) ?? false,
   });
 
   const slotExtract = shouldRunSlotExtract(ctx.config, reflexTurn)
@@ -416,17 +424,21 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     ctx.draftAiSessionId ?? parsed.data.sessionId ?? null;
   const { profile } = resolveRuntimeProfile(ctx.config);
 
+  const hasPendingDraft =
+    Boolean(aiSessionId) &&
+    (await sessionDraftHasPendingSlot(admin, aiSessionId!));
+
   const perceiveStarted = performance.now();
   let perceiveResult: TdePerceiveResult;
 
-  if (pendingSlot && aiSessionId) {
+  if ((pendingSlot || hasPendingDraft) && aiSessionId) {
     const slotAct = await tryResolvePendingSlotAct({
       admin,
       sessionId: aiSessionId,
       locationId: parsed.data.locationId,
       userMessage: parsed.data.message,
       language: parsed.data.language,
-      pendingSlot,
+      pendingSlot: pendingSlot ?? "serve_size",
     });
 
     if (slotAct.resolved) {
@@ -511,7 +523,6 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   if (
-    pendingSlot &&
     data.sessionId &&
     !pendingSlotActApplied &&
     (await sessionDraftHasPendingSlot(admin, data.sessionId)) &&
@@ -523,7 +534,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       locationId: parsed.data.locationId,
       userMessage: parsed.data.message,
       language: parsed.data.language,
-      pendingSlot,
+      pendingSlot: pendingSlot ?? "serve_size",
     });
 
     if (retryAct.resolved) {

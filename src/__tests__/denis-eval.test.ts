@@ -39,13 +39,13 @@ describe("Denis eval fixtures M10", () => {
     expect(result.orderCount).toBe(1);
   });
 
-  it("compileBeliefs produces 10 core beliefs (MR-1 + ADR-030)", () => {
+  it("compileBeliefs produces 11 core beliefs (MR-1 + ADR-030)", () => {
     const result = runBeliefsCompileFixture();
     if (!result.passed) {
       console.error(JSON.stringify(result.errors, null, 2));
     }
     expect(result.passed).toBe(true);
-    expect(result.beliefCount).toBe(10);
+    expect(result.beliefCount).toBe(11);
   });
 
   it("world tell unifies headline and push copy (Phase D)", () => {
@@ -80,6 +80,7 @@ describe("Denis eval fixtures M10", () => {
             coreFailed: gate.core.results.filter((r) => !r.passed),
             srFailed: gate.pilotSr.results.filter((r) => !r.passed),
             waiterParityFailed: gate.waiterParity.results.filter((r) => !r.passed),
+            anticipationFailed: gate.anticipation.results.filter((r) => !r.passed),
             qualityContract: gate.qualityContract.violations,
             narration: gate.narration,
             presetChecks: gate.presetChecks.filter((c) => !c.passed),

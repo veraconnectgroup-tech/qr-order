@@ -16,6 +16,9 @@ const LANGUAGE_REFUSAL_PATTERN =
 const ORDERING_GUEST_PATTERN =
   /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l)\b/i;
 
+const MISSING_ORDER_COMPLAINT_PATTERN =
+  /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|konobar ka[žz]e)\b/i;
+
 export function isDenisRefusalReply(message: string): boolean {
   const text = message.trim();
   if (!text) return false;
@@ -82,6 +85,10 @@ function shouldPreserveClarify(input: ApplyConversationLeadershipInput): boolean
   );
 }
 
+function isOrderComplaintMessage(message: string): boolean {
+  return MISSING_ORDER_COMPLAINT_PATTERN.test(message.trim());
+}
+
 /**
  * Denis leads — never passive "I don't understand".
  * Rewrites refusal replies; preserves LLM clarify during ordering (ADR-030).
@@ -92,8 +99,10 @@ export function applyConversationLeadership(
 ): AiStructuredResponse {
   const refusal = isDenisRefusalReply(structured.message);
   const preserveClarify = shouldPreserveClarify(input);
+  const preserveTransactional =
+    preserveClarify || isOrderComplaintMessage(input.guestMessage);
   const misclassifiedClarify =
-    !preserveClarify &&
+    !preserveTransactional &&
     structured.intent === "clarify" &&
     isCasualSocialGuestMessage(input.guestMessage) &&
     structured.proposedItems.length === 0 &&

@@ -57,6 +57,7 @@ function baseState(
       foodUpsellAsked: false,
       dismissedNudges: [],
       lastAssistantMessage: null,
+      pendingSlot: null,
     },
     timeline: [],
     config,
@@ -74,9 +75,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 10) {
+  if (banterGraph.beliefs.length !== 11) {
     errors.push(
-      `expected 10 beliefs (ADR-030 core), got ${banterGraph.beliefs.length}`
+      `expected 11 beliefs (ADR-030 core), got ${banterGraph.beliefs.length}`
     );
   }
 
@@ -288,6 +289,68 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
   if (typoMode !== "ordering") {
     errors.push(
       `typo with pending slot: expected mode=ordering, got ${typoMode ?? "null"}`
+    );
+  }
+
+  const draftPendingGraph = compileBeliefs({
+    state: baseState({
+      conversation: {
+        flowNodeId: "collect",
+        foodUpsellAsked: false,
+        dismissedNudges: [],
+        lastAssistantMessage: "0.3L ili 0.5L?",
+        pendingSlot: "serve_size",
+      },
+    }),
+    guestMessage: "veliko",
+    sessionLanguage: "sr",
+  });
+  const draftPendingSlot = getBeliefValue<string>(
+    draftPendingGraph,
+    CORE_BELIEF_KEYS.commercePendingSlot
+  );
+  if (draftPendingSlot !== "serve_size") {
+    errors.push(
+      `draft pending slot: expected serve_size, got ${draftPendingSlot ?? "null"}`
+    );
+  }
+
+  const thanksWithCartGraph = compileBeliefs({
+    state: baseState({
+      commerce: {
+        orders: [],
+        cart: buildMergedCart({
+          ai: {
+            draft: {
+              cartRevision: 1,
+              items: [
+                {
+                  productId: "prod-pils",
+                  productName: "Pilsner",
+                  quantity: 1,
+                  serveSize: "0.5L",
+                  modifierIds: [],
+                  notes: "",
+                  lineTotal: 4.5,
+                  menuSection: "drinks",
+                },
+              ],
+            },
+            undoStack: [],
+          },
+        }),
+      },
+    }),
+    guestMessage: "hvala",
+    sessionLanguage: "sr",
+  });
+  const thanksMode = getBeliefValue<string>(
+    thanksWithCartGraph,
+    CORE_BELIEF_KEYS.conversationMode
+  );
+  if (thanksMode !== "ordering") {
+    errors.push(
+      `hvala with cart: expected mode=ordering, got ${thanksMode ?? "null"}`
     );
   }
 

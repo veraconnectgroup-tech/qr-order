@@ -18,6 +18,12 @@ const VAGUE_RECOMMEND_PATTERN =
 const SETTLING_GUEST_PATTERN =
   /\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat|pay|rechnung bitte|that's it|done ordering)\b/i;
 
+const ORDER_STATUS_QUERY_PATTERN =
+  /\b(kad sti[žz]e|kada sti[žz]e|gde je|gdje je|where.*order|wo ist|when.*(arriv|ready|coming)|order status|status.*order|moje pivo|my beer)\b/i;
+
+const MISSING_ORDER_COMPLAINT_PATTERN =
+  /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|waiter says|konobar ka[žz]e)\b/i;
+
 /** @deprecated Routing hint only — not an LLM gate (ADR-025). */
 const ORDERING_GUEST_PATTERN =
   /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte)\b/i;
@@ -173,6 +179,22 @@ function resolvePerceivePlan(
   const commerceActive = hasCommercePressure(input);
 
   if (mode === "settling") {
+    const pressure = getBeliefValue<CommercePressure>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.commercePressure
+    );
+    const pendingSlot = getBeliefValue<string>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.commercePendingSlot
+    );
+    if (pressure === "open" || pressure === "confirm" || pendingSlot) {
+      return buildPlan("transactional_perceive", {
+        requiresLlm: true,
+        suppressUpsell,
+        reason: "commerce.unsent_cart.settling_blocked",
+      });
+    }
+
     return buildPlan("template_tell", {
       requiresLlm: false,
       suppressUpsell,
@@ -231,6 +253,30 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
 
   const goalPlan = planForTopGoal(input.reflex.plan.topGoal, suppressUpsell);
   if (goalPlan) return goalPlan;
+
+  const hasOpenOrders =
+    getBeliefValue<boolean>(input.beliefs, CORE_BELIEF_KEYS.commerceHasOpenOrders) ===
+    true;
+
+  if (
+    ORDER_STATUS_QUERY_PATTERN.test(input.message.trim()) &&
+    !hasOpenOrders
+  ) {
+    return buildPlan("template_tell", {
+      requiresLlm: false,
+      suppressUpsell,
+      reason: "commerce.status.no_open_order",
+      templateKey: "status.no_order",
+    });
+  }
+
+  if (MISSING_ORDER_COMPLAINT_PATTERN.test(input.message.trim())) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "commerce.order_not_sent.complaint",
+    });
+  }
 
   const narratePlan = planForCommittedFacts(
     input.committedFacts,

@@ -5,8 +5,10 @@ import {
   isGuestDecliningMore,
   isGuestDoneOrdering,
   isGuestFinalConfirm,
+  sanitizeFalseOrderClaimMessage,
   shouldHandleOrderFlowWithoutLlm,
 } from "@/lib/ai/ordering/order-flow";
+import { pendingSlotKindFromDraft } from "@/lib/ai/ordering/pending-slot-kind";
 
 function draftWithCola(): AiOrderDraft {
   return {
@@ -127,5 +129,45 @@ describe("order-flow guards", () => {
 
     expect(result.submitOrder).toBe(true);
     expect(isGuestFinalConfirm("da")).toBe(true);
+  });
+
+  it("blocks false order claim when cart is empty", () => {
+    const message = sanitizeFalseOrderClaimMessage({
+      message: "Poručujem ti veliko pivo Pilsner.",
+      draft: emptyOrderDraft(),
+      submitOrder: false,
+      language: "sr",
+    });
+
+    expect(message).toContain("prazna");
+    expect(message).not.toMatch(/poručujem/i);
+  });
+
+  it("rewrites false order claim to confirm recap when cart has items", () => {
+    const message = sanitizeFalseOrderClaimMessage({
+      message: "Poručujem ti veliko pivo.",
+      draft: draftWithCola(),
+      submitOrder: false,
+      language: "sr",
+    });
+
+    expect(message).toContain("potvrdite");
+    expect(message).toContain("Cola Zero");
+  });
+
+  it("maps draft.pending serve size to serve_size slot kind", () => {
+    const draft: AiOrderDraft = {
+      ...emptyOrderDraft(),
+      pending: {
+        productId: "pils",
+        productName: "Pilsner",
+        quantity: 1,
+        modifierIds: [],
+        notes: "",
+        missing: [{ kind: "serveSize", options: ["0.3L", "0.5L"] }],
+      },
+    };
+
+    expect(pendingSlotKindFromDraft(draft)).toBe("serve_size");
   });
 });

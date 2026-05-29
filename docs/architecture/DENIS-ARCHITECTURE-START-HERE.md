@@ -4,6 +4,8 @@
 |-------|--------|
 | **Purpose** | One page — what we build, why, in what order |
 | **Product** | **Denis** — global POS + Table OS; **Viktor** = partner operator layer |
+| **Implementation contract** | **[DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)** — status po stavci |
+| **Phased plan (remainder)** | **[DENIS-PHASED-IMPLEMENTATION-PLAN.md](./DENIS-PHASED-IMPLEMENTATION-PLAN.md)** — F0→F9 |
 
 ---
 
@@ -29,18 +31,7 @@
 
 **Master:** [ADR-029 Integration Spine](./ADR-029-denis-integration-spine.md)
 
-```
-External system
-    │
-    ├─ A Egress    Operator API + webhooks  (Denis → out, read-only)
-    ├─ B Ingress   validated signals in     (partner → Denis loop)
-    └─ C Connector outbox adapters          (POS push, catalog sync)
-    │
-    ▼
-TRUTH boundary — guest path never imports integration code
-```
-
-**Viktor:** first **operator** connector — [ADR-028](./ADR-028-viktor-denis-integration.md). Same API any future BI tool would use.
+**Viktor:** first **operator** connector — [ADR-028](./ADR-028-viktor-denis-integration.md).
 
 ---
 
@@ -51,28 +42,26 @@ TRUTH boundary — guest path never imports integration code
 3. **Webhooks** — async, versioned payloads, outbox-only dispatch  
 4. **ADR-025** routing — relational / transactional, not regex banter  
 5. **Write = proposal** — owner approves config/playbook changes  
-6. **Global core** — DE/US/UK = market modules, not forks  
-7. **Comprehend-first** — ADR-030; template never interprets guest input  
-8. **Situation Pack** — ADR-031 C1; LLM sees full table truth every turn  
-
-Full list: [DENIS-TABLE-OS-ARCHITECTURE.md §18](./DENIS-TABLE-OS-ARCHITECTURE.md) · [ADR-030](./ADR-030-denis-conversation-comprehension.md) · [ADR-031](./ADR-031-denis-maximum-cognition-phases.md)
+6. **Comprehend-first** — ADR-030; template never interprets guest input  
+7. **Situation Pack** — ADR-031 C1; LLM sees full table truth every turn  
 
 ---
 
-## Build order
+## Build order (current)
 
-| Step | What | Doc |
-|------|------|-----|
-| **C1** | **Situation Pack (FSP)** — Denis sees full table | **ADR-031** ← now |
-| **C2** | ACT guarantee — slot/confirm closes loop | ADR-031 ✅ |
-| **C3** | Waiter-parity journey eval (40+) | ADR-031 ← next |
-| I0 | ADR-025/030 cognition gates | ADR-025 |
-| I1 | Operator API read + audit | ADR-029 |
-| I2 | `denis.*` webhooks + session rollup | ADR-029 |
-| I3 | OpenAPI + contract tests | ADR-029-session-prompts |
-| Partner | Viktor Skill (read-only) | ADR-028 V4 |
+| Wave | What | Status |
+|------|------|--------|
+| **C0–C5** | Cognition spine (FSP, ACT, eval, contract, sim gate) | **CODE** on main |
+| **Deploy** | iota + `denis_only` on pilot venue | **OPEN** |
+| **D-PRO** | Proactive through same brain loop | **OPEN** ← next code |
+| **D-EVAL** | Anticipation journey eval | **OPEN** |
+| **I0→I3** | Operator API + webhooks | **PARTIAL** |
+| **MR-9 / E3** | Org playbook pack | **OPEN** |
 
-**Gate:** I1 does not start until I0 (`pnpm eval:denis` waiter parity ≥ 95%).
+Full row-level status: **[DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)**  
+**Fazni plan (F0→F9):** **[DENIS-PHASED-IMPLEMENTATION-PLAN.md](./DENIS-PHASED-IMPLEMENTATION-PLAN.md)**
+
+**Gate:** I1 does not ship until I0 (eval green + waiter parity ≥95% + pilot deploy verified).
 
 ---
 
@@ -80,10 +69,11 @@ Full list: [DENIS-TABLE-OS-ARCHITECTURE.md §18](./DENIS-TABLE-OS-ARCHITECTURE.m
 
 | Doc | Role |
 |-----|------|
-| [DENIS-TABLE-OS-ARCHITECTURE.md](./DENIS-TABLE-OS-ARCHITECTURE.md) | **Master spec** — product + planes |
-| [ADR-029-denis-integration-spine.md](./ADR-029-denis-integration-spine.md) | **Integration north star** |
-| [ADR-028-viktor-denis-integration.md](./ADR-028-viktor-denis-integration.md) | Viktor partner contract |
-| [VIKTOR-DENIS-CURSOR-PROMPTS.md](./VIKTOR-DENIS-CURSOR-PROMPTS.md) | Agent prompts P0–P4, V5 |
+| [DENIS-PHASED-IMPLEMENTATION-PLAN.md](./DENIS-PHASED-IMPLEMENTATION-PLAN.md) | **F0→F9 phased plan** |
+| [DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md) | Row status CODE/OPEN |
+| [denis-implementation-map.md](./denis-implementation-map.md) | Code ↔ ADR map |
+| [DENIS-TABLE-OS-ARCHITECTURE.md](./DENIS-TABLE-OS-ARCHITECTURE.md) | Master spec |
+| [ADR-031](./ADR-031-denis-maximum-cognition-phases.md) | Cognition phases C0–C5 |
 | [ARCHITECTURE-INDEX.md](./ARCHITECTURE-INDEX.md) | All ADRs |
 
 ---
@@ -91,6 +81,6 @@ Full list: [DENIS-TABLE-OS-ARCHITECTURE.md §18](./DENIS-TABLE-OS-ARCHITECTURE.m
 ## Agent one-liner
 
 ```
-Pročitaj DENIS-ARCHITECTURE-START-HERE.md + ADR-029 + VIKTOR-DENIS-CURSOR-PROMPTS.md.
-Implementiraj sledeći I-track. Guest path bez operator/ importa. Testovi PASS.
+Read DENIS-PHASED-IMPLEMENTATION-PLAN.md. Implement next open step (F0→F9).
+One PR per step. pnpm eval:denis. Update DENIS-FULL-IMPLEMENTATION-BACKLOG.md.
 ```

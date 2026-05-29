@@ -109,10 +109,12 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     if (transcript) blocks.push(transcript);
   }
 
-  if (
-    !input.turnPlan.requiresLlm &&
-    input.capabilities.guestMemory >= 2
-  ) {
+  const guestMemoryEligible =
+    input.guestMemory &&
+    input.capabilities.guestMemory >= 1 &&
+    !blocks.some((block) => block.includes("GUEST MEMORY"));
+
+  if (guestMemoryEligible) {
     pointers.push("guest.memory");
     const guestIntel = retrieveGuestIntelEvidence(input.guestMemory);
     if (guestIntel) blocks.push(guestIntel);

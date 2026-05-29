@@ -7,8 +7,10 @@ import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { DenisRolloutPanel } from "@/components/admin/denis-rollout-panel";
 import { DenisQualityContractStrip } from "@/components/admin/denis-quality-contract-strip";
 import { DenisManifestPromotePanel } from "@/components/admin/denis-manifest-promote-panel";
+import { DenisSystemStatusPanel } from "@/components/admin/denis-system-status-panel";
 import { loadDenisQualityContractStrip } from "@/lib/admin/denis-quality-contract";
 import { loadDenisManifestAdminState } from "@/lib/admin/denis-manifest-actions";
+import { loadDenisSystemStatus } from "@/lib/admin/denis-system-status";
 import { listDenisDebugSessions } from "@/lib/admin/denis-debug";
 import { loadDenisRolloutAdminState } from "@/lib/admin/denis-rollout-actions";
 import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
@@ -153,6 +155,11 @@ export default async function AdminSettingsPage() {
         )
       : [];
 
+  const systemStatus =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadDenisSystemStatus()
+      : null;
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-foreground">Settings</h1>
@@ -214,6 +221,12 @@ export default async function AdminSettingsPage() {
                 canEdit
               />
             </Suspense>
+
+            {locationRow.ai_concierge_enabled &&
+              systemStatus &&
+              !("error" in systemStatus) && (
+                <DenisSystemStatusPanel status={systemStatus} />
+              )}
 
             {locationRow.ai_concierge_enabled && denisRollout && (
               <DenisRolloutPanel initial={denisRollout} />

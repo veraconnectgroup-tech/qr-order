@@ -102,6 +102,7 @@ function buildState(
       foodUpsellAsked: false,
       dismissedNudges: [],
       lastAssistantMessage: setup.lastAssistantMessage ?? null,
+      pendingSlot: setup.pendingSlot ?? null,
     },
     timeline: [],
     config,

@@ -4,7 +4,7 @@
 |-------|--------|
 | **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
 | **Updated** | 2026-05-29 (Table OS master + ADR-025 + ADR-029 integration spine) |
-| **Start here** | This file → then the doc for your track |
+| **Start here** | [DENIS-ARCHITECTURE-START-HERE.md](./DENIS-ARCHITECTURE-START-HERE.md) → **[DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)** |
 
 ---
 

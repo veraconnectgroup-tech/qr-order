@@ -14,6 +14,7 @@ import type {
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
 
+import type { PendingSlotKind } from "@/lib/denis/cognition/beliefs/belief-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
 export type { SessionPhase };
@@ -66,6 +67,8 @@ export type TableSessionState = {
     foodUpsellAsked: boolean;
     dismissedNudges: string[];
     lastAssistantMessage: string | null;
+    /** From ai_sessions.order_draft.pending — size/modifier awaiting guest reply. */
+    pendingSlot: PendingSlotKind | null;
   };
   timeline: DenisTimelineRow[];
   config: ConciergeConfig;

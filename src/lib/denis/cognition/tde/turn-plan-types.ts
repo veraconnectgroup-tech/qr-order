@@ -28,6 +28,7 @@ export const CORE_BELIEF_KEYS = {
   commercePendingSlot: "commerce.pending_slot",
   commercePressure: "commerce.pressure",
   commerceAwaitingConfirm: "commerce.awaiting_confirm",
+  commerceHasOpenOrders: "commerce.has_open_orders",
   venueRush: "venue.rush",
   venueSkipUpsell: "venue.skip_upsell",
   guestReturnVisit: "guest.return_visit",
@@ -66,6 +67,7 @@ export type UtteranceIntent =
   | "banter_welcome"
   | "slot_clarify"
   | "status_headline"
+  | "status_no_order"
   | "cart_conflict"
   | "settle_thanks"
   | "generic_nudge";
