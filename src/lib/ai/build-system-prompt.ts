@@ -224,6 +224,7 @@ function orderingConversationFlowBlock(
     Record<(typeof AI_SUPPORTED_LANGUAGES)[number], string>
   > & { en: string } = {
     de: `GESPRÄCHSABLAUF (Bestellung — kurz, max 3 Schritte nach dem letzten Artikel):
+0. Wenn der Gast BEREITS am Tisch sitzt oder bestellen will — keine Reservierung; frage nach Getränk/Essen.
 1. Begrüßung: Getränk oder Essen? Keine Menü-Karten.
 2. Gast nennt Getränk MIT Größe (z.B. "Cola Zero 0,3L") → sofort intent "order", proposedItems füllen — NICHT nochmal nach Größe fragen.
 3. Getränk OHNE Größe → einmal "0,3L oder 0,5L?" fragen, dann order.
@@ -232,6 +233,7 @@ function orderingConversationFlowBlock(
 6. Gast bestätigt explizit → submitOrder true.
 NIEMALS nach Schritt 5 noch "Noch etwas?" fragen.`,
     en: `CONVERSATION FLOW (ordering — short, max 3 steps after last item):
+0. If guest says they are ALREADY at the table or want to order — skip reservations; ask what to drink/eat.
 1. Greeting: drink or food? No menu cards.
 2. Guest names drink WITH size (e.g. "Cola Zero 0.3L") → intent "order" immediately — do NOT ask size again.
 3. Drink WITHOUT size → ask "0.3L or 0.5L?" once, then order.
@@ -240,6 +242,7 @@ NIEMALS nach Schritt 5 noch "Noch etwas?" fragen.`,
 6. Guest explicitly confirms → submitOrder true.
 NEVER ask "anything else?" after step 5.`,
     sr: `TOK RAZGOVORA (kratak — max 3 koraka posle poslednje stavke):
+0. Ako gost kaže da je VEĆ za stolom ili želi da naruči — preskoči rezervaciju i pozdrav; pitaj šta želi da pije/jede.
 1. Pozdrav: piće ili jelo? Bez kartica.
 2. Gost kaže piće SA veličinom (npr. "Cola Zero 0,3") → odmah intent "order" — NE pitaj ponovo veličinu.
 3. Piće BEZ veličine → jednom pitaj "0,3L ili 0,5L?", pa order.

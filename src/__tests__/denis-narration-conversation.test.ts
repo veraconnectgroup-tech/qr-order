@@ -8,7 +8,7 @@ import type { NarrationFacts } from "@/lib/denis/runtime/narrate/narration-facts
 const baseFacts: NarrationFacts = {
   persona: { name: "Denis", tone: "warm_short", maxWords: 45 },
   language: "sr",
-  goal: "OPEN_TABLE",
+  goal: "GUEST_SEATED",
   committed: {},
   forbidden: [],
   allowedMentions: [],
@@ -48,6 +48,15 @@ describe("shouldKeepLegacyConversationReply", () => {
         },
         "Dodato u korpu."
       )
+    ).toBe(false);
+  });
+
+  it("returnGuestWelcome alone does not force T3 over legacy chat", () => {
+    expect(
+      hasCommittedNarrationFacts({
+        ...baseFacts,
+        committed: { returnGuestWelcome: "Dobrodošli nazad!" },
+      })
     ).toBe(false);
   });
 });

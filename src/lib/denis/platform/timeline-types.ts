@@ -69,9 +69,9 @@ export type DenisTimelineEventPayload =
   | { type: "policy.blocked"; ruleId: string; riskClass: DenisRiskClass }
   | { type: "draft.changed"; cartRevision: number; diff?: unknown; guestMessage?: string }
   | { type: "order.command.ack"; orderId: string }
-  | { type: "narration.sent"; message: string; tier: "template" | "T3"; linted?: boolean; source?: string }
+  | { type: "narration.sent"; message: string; tier: "legacy" | "template" | "T3"; linted?: boolean; source?: string }
   | { type: "signal.message"; text: string; channel?: PerceptionChannel; intent?: GuestIntent | null; envelope?: TurnEnvelope }
-  | { type: "tell.committed"; message: string; tier?: "template" | "T3"; source?: string; linted?: boolean }
+  | { type: "tell.committed"; message: string; tier?: "legacy" | "template" | "T3"; source?: string; linted?: boolean }
   | { type: "realtime.ingested"; source: string; payload: unknown; envelope?: TurnEnvelope }
   | { type: "belief.revision"; keys: string[]; conflicts?: unknown; strategy?: string | null; guestPrompt?: string | null; channel?: string }
   | Record<string, unknown>;

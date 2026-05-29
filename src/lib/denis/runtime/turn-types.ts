@@ -15,6 +15,7 @@ import type {
 } from "@/lib/denis/venue/ops/types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
+import type { NarrationTier } from "@/lib/denis/runtime/narrate/narration-facts.schema";
 
 export type DenisChannel = "chat" | "voice" | "proactive" | "status_poll";
 
@@ -86,7 +87,7 @@ export type DenisTurnMeta = {
   flowNodeId: FlowNodeId;
   topGoal: string | null;
   channel: DenisChannel;
-  narrationTier?: "template" | "T3";
+  narrationTier?: NarrationTier;
   lintPassed?: boolean;
   usedNarrationFallback?: boolean;
   rolloutMode?: string;

@@ -85,7 +85,7 @@ describe("M7 surfaces", () => {
         traceId: "trace-1",
         channel: "chat",
         flowNodeId: "welcome",
-        topGoal: "OPEN_TABLE",
+        topGoal: "GUEST_SEATED",
         conflictPrompt: null,
       }
     );

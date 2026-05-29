@@ -79,7 +79,7 @@ describe("guest memory M17", () => {
       facts: {
         persona: { name: "Denis", tone: "warm_short", maxWords: 45 },
         language: "en",
-        goal: "OPEN_TABLE",
+        goal: "GUEST_SEATED",
         committed: {
           returnGuestWelcome: "Welcome back! Last time: Burger — again?",
         },

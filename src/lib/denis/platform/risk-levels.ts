@@ -34,7 +34,7 @@ export function isRiskClassAllowedInRollout(
 
 /** Map cognitive tier to default risk for narration path. */
 export function defaultRiskForNarrationTier(
-  tier: "template" | "T3"
+  tier: "legacy" | "template" | "T3"
 ): DenisRiskClass {
   return tier === "template" ? "R0" : "R0";
 }

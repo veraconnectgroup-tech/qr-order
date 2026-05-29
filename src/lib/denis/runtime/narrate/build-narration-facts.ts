@@ -57,7 +57,7 @@ export type BuildNarrationFactsInput = {
 export function buildNarrationFacts(
   input: BuildNarrationFactsInput
 ): NarrationFacts {
-  const topGoal = input.reflexTurn.plan.topGoal?.type ?? "OPEN_TABLE";
+  const topGoal = input.reflexTurn.plan.topGoal?.type ?? "GUEST_SEATED";
   const addedItems = uniqueNames(
     (input.cartActions ?? []).map((action) => action.productName)
   );
@@ -125,7 +125,7 @@ export function buildNarrationFacts(
   if (
     input.guestMemory &&
     input.flowNodeId === "welcome" &&
-    topGoal === "OPEN_TABLE"
+    topGoal === "GUEST_SEATED"
   ) {
     const welcome = buildReturnGuestWelcomeMessage({
       language: input.language,

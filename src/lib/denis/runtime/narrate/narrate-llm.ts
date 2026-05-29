@@ -9,10 +9,17 @@ const NARRATE_RESPONSE_SCHEMA = {
   message: "string — guest-facing reply, facts only",
 } as const;
 
+function narrationGoalHint(goal: string): string {
+  if (goal === "GUEST_SEATED") {
+    return "GUEST_SEATED (guest already scanned table QR — help order; not a reservation desk)";
+  }
+  return goal;
+}
+
 function factsPayloadForPrompt(facts: NarrationFacts): Record<string, unknown> {
   return {
     language: facts.language,
-    goal: facts.goal,
+    goal: narrationGoalHint(facts.goal),
     committed: facts.committed,
     persona: {
       name: facts.persona.name,

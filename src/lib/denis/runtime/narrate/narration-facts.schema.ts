@@ -37,7 +37,7 @@ export const NarrationFactsSchema = z.object({
 export type NarrationFacts = z.infer<typeof NarrationFactsSchema>;
 export type NarrationCommitted = z.infer<typeof NarrationCommittedSchema>;
 
-export type NarrationTier = "template" | "T3";
+export type NarrationTier = "legacy" | "template" | "T3";
 
 export type NarrationLintIssue = {
   code:

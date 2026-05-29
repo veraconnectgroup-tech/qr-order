@@ -26,7 +26,7 @@ export function deriveGoalStack(ctx: GoalDerivationContext): GoalStack {
 
   switch (ctx.flowNodeId) {
     case "welcome":
-      goals.push({ type: "OPEN_TABLE", priority: 10 });
+      goals.push({ type: "GUEST_SEATED", priority: 10 });
       break;
     case "collect":
       goals.push({ type: "COMPLETE_ROUND", priority: 90 });
@@ -44,7 +44,7 @@ export function deriveGoalStack(ctx: GoalDerivationContext): GoalStack {
       goals.push({ type: "COMPLETE_ROUND", priority: 90 });
       break;
     case "post_submit":
-      goals.push({ type: "OPEN_TABLE", priority: 10 });
+      goals.push({ type: "GUEST_SEATED", priority: 10 });
       break;
     case "status":
       if (ctx.hasOpenOrders) {
@@ -52,7 +52,7 @@ export function deriveGoalStack(ctx: GoalDerivationContext): GoalStack {
       }
       break;
     case "browse":
-      goals.push({ type: "OPEN_TABLE", priority: 10 });
+      goals.push({ type: "GUEST_SEATED", priority: 10 });
       break;
     default:
       goals.push({ type: "COMPLETE_ROUND", priority: 90 });

@@ -6,7 +6,7 @@ export type PendingSlot = {
 };
 
 export type DenisGoal =
-  | { type: "OPEN_TABLE"; priority: 10 }
+  | { type: "GUEST_SEATED"; priority: 10 }
   | { type: "COMPLETE_ROUND"; priority: 90 }
   | { type: "CLARIFY_SLOT"; slot: PendingSlot; priority: 80 }
   | { type: "UPSELL_ONCE"; category: UpsellCategory; priority: 40 }

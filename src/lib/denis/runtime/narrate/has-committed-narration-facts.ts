@@ -12,7 +12,6 @@ export function hasCommittedNarrationFacts(facts: NarrationFacts): boolean {
     c.conflictQuestion ||
     c.staffHint ||
     c.opsEmpathyNote ||
-    c.returnGuestWelcome ||
     c.statusSummary ||
     c.pairingSuggestion
   );
