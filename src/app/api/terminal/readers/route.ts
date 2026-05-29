@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,11 +22,7 @@ const registerSchema = z.object({
 });
 
 async function requireTerminalAdmin() {
-  const staff = await getCurrentStaff();
-  if (!staff) return { error: apiError("Unauthorized.", 401) };
-  if (!["owner", "manager"].includes(staff.role)) {
-    return { error: apiError("Forbidden.", 403) };
-  }
+  const staff = await requireStaffPermission("settings.manage");
   return { staff };
 }
 
@@ -36,9 +32,7 @@ export const GET = withErrorHandler(
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
-    const auth = await requireTerminalAdmin();
-    if ("error" in auth && auth.error) return auth.error;
-    const { staff } = auth as { staff: NonNullable<Awaited<ReturnType<typeof getCurrentStaff>>> };
+    const { staff } = await requireTerminalAdmin();
 
     const locationId = new URL(req.url).searchParams.get("locationId");
     if (!locationId) {
@@ -111,9 +105,7 @@ export const POST = withErrorHandler(
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
-    const auth = await requireTerminalAdmin();
-    if ("error" in auth && auth.error) return auth.error;
-    const { staff } = auth as { staff: NonNullable<Awaited<ReturnType<typeof getCurrentStaff>>> };
+    const { staff } = await requireTerminalAdmin();
 
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
@@ -196,9 +188,7 @@ export const DELETE = withErrorHandler(
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
-    const auth = await requireTerminalAdmin();
-    if ("error" in auth && auth.error) return auth.error;
-    const { staff } = auth as { staff: NonNullable<Awaited<ReturnType<typeof getCurrentStaff>>> };
+    const { staff } = await requireTerminalAdmin();
 
     const body = await req.json();
     const parsed = z

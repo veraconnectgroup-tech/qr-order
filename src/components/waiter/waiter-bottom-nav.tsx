@@ -9,6 +9,8 @@ import {
   LayoutGrid,
   Plus,
   Home,
+  FileText,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
@@ -16,6 +18,9 @@ import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 import { hapticLight } from "@/lib/haptics";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import type { WaiterUiKey } from "@/lib/i18n/waiter-app-ui";
+import { useStaffAccess } from "@/lib/auth/staff-access-context";
+import { computeWaiterExtraNavModules } from "@/lib/auth/staff-modules";
+import type { PermissionKey } from "@/lib/auth/permission-catalog";
 
 type Tab = {
   href: string;
@@ -26,7 +31,7 @@ type Tab = {
   prominent?: boolean;
 };
 
-const tabs: Tab[] = [
+const primaryTabs: Tab[] = [
   { href: "/waiter", labelKey: "nav.home", icon: Home, exact: true },
   {
     href: "/waiter/orders",
@@ -59,6 +64,34 @@ export function WaiterBottomNav() {
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
   const { t } = useWaiterI18n();
+  const clientAccess = useStaffAccess();
+
+  const access = {
+    permissions: new Set(clientAccess.permissions as PermissionKey[]),
+    allowedSurfaces: clientAccess.allowedSurfaces,
+  };
+
+  const extraModules = computeWaiterExtraNavModules(access);
+  const fiscalModule = extraModules.find((m) => m.href === "/waiter/fiscal");
+  const moreModules = extraModules.filter((m) => m.href !== "/waiter/fiscal");
+
+  const trailingTabs: Tab[] = [];
+  if (fiscalModule) {
+    trailingTabs.push({
+      href: "/waiter/fiscal",
+      labelKey: "nav.fiscal",
+      icon: FileText,
+    });
+  }
+  if (moreModules.length > 0) {
+    trailingTabs.push({
+      href: "/waiter/more",
+      labelKey: "nav.more",
+      icon: MoreHorizontal,
+    });
+  }
+
+  const tabs = [...primaryTabs, ...trailingTabs];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom,0px))] border-t border-dash-border-subtle bg-dash-bg/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom,0px)]">

@@ -4,6 +4,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { TRACE_HEADER, getTraceId } from "@/lib/resilience/trace-id";
 import { isGuestQrPath } from "@/lib/pwa/guest-route";
+import {
+  loadMiddlewareStaffAccess,
+  redirectToPrimarySurface,
+} from "@/lib/auth/middleware-staff-access";
+import {
+  pathNeedsStaffAuth,
+  pathnameToSurface,
+} from "@/lib/auth/surface-routing";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -85,6 +93,18 @@ function withTraceHeaders(request: NextRequest) {
   return response;
 }
 
+function redirectTo(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+  pathname: string
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  const redirect = NextResponse.redirect(url);
+  copyCookies(supabaseResponse, redirect);
+  return withResponseHeaders(redirect, false);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApiRoute = pathname.startsWith("/api/");
@@ -107,15 +127,7 @@ export async function middleware(request: NextRequest) {
     return withResponseHeaders(response, true);
   }
 
-  const needsAuth =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/waiter") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/platform") ||
-    pathname === "/login" ||
-    pathname === "/signup";
-
-  if (!needsAuth) {
+  if (!pathNeedsStaffAuth(pathname)) {
     const response = withTraceHeaders(request);
     return withResponseHeaders(response, false, pathname);
   }
@@ -147,48 +159,57 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (
-    (pathname.startsWith("/dashboard") ||
-      pathname.startsWith("/waiter") ||
-      pathname.startsWith("/admin") ||
-      pathname.startsWith("/platform")) &&
-    !user &&
-    !pathname.startsWith("/waiter/login")
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname.startsWith("/waiter") ? "/waiter/login" : "/login";
-    const redirect = NextResponse.redirect(url);
-    copyCookies(supabaseResponse, redirect);
-    return withResponseHeaders(redirect, false);
+  const isProtectedStaffPath =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/waiter") ||
+    pathname.startsWith("/bar") ||
+    pathname.startsWith("/kitchen") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/platform") ||
+    pathname.startsWith("/fiscal");
+
+  if (isProtectedStaffPath && !user && !pathname.startsWith("/waiter/login")) {
+    const loginPath = pathname.startsWith("/waiter") ? "/waiter/login" : "/login";
+    return redirectTo(request, supabaseResponse, loginPath);
   }
 
   if (pathname === "/waiter/login" && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/waiter";
-    const redirect = NextResponse.redirect(url);
-    copyCookies(supabaseResponse, redirect);
-    return withResponseHeaders(redirect, false);
+    const access = await loadMiddlewareStaffAccess(supabase, user.id);
+    const target =
+      access?.primarySurface === "waiter"
+        ? "/waiter"
+        : access
+          ? redirectToPrimarySurface(access)
+          : "/waiter";
+    return redirectTo(request, supabaseResponse, target);
   }
 
   if ((pathname === "/login" || pathname === "/signup") && user) {
-    const { data: staff } = await supabase
-      .from("staff")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (staff) {
-      const url = request.nextUrl.clone();
-      url.pathname =
-        (staff as { role: string }).role === "waiter" ? "/waiter" : "/dashboard";
-      const redirect = NextResponse.redirect(url);
-      copyCookies(supabaseResponse, redirect);
-      return withResponseHeaders(redirect, false);
+    const access = await loadMiddlewareStaffAccess(supabase, user.id);
+    if (access) {
+      return redirectTo(
+        request,
+        supabaseResponse,
+        redirectToPrimarySurface(access)
+      );
     }
 
     if (pathname === "/login") {
       return withResponseHeaders(supabaseResponse, false);
+    }
+  }
+
+  if (user && !pathname.startsWith("/waiter/login")) {
+    const targetSurface = pathnameToSurface(pathname);
+    if (targetSurface) {
+      const access = await loadMiddlewareStaffAccess(supabase, user.id);
+      if (access && !access.allowedSurfaces.includes(targetSurface)) {
+        return redirectTo(
+          request,
+          supabaseResponse,
+          redirectToPrimarySurface(access)
+        );
+      }
     }
   }
 

@@ -2,20 +2,13 @@ export const maxDuration = 15;
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { auditLog } from "@/lib/audit/log";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import { provisionFiskalyRegisterForLocation } from "@/lib/fiscal/provision-fiskaly-register";
 import { provisionFiskalyTss } from "@/lib/fiscal/provision-tss";
 import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
-
-async function requireProvisionStaff() {
-  const staff = await getCurrentStaff();
-  if (!staff || !["owner", "manager"].includes(staff.role)) {
-    return null;
-  }
-  return staff;
-}
 
 export const POST = withErrorHandler(
   "fiscal-provision-post",
@@ -24,10 +17,7 @@ export const POST = withErrorHandler(
       const limited = await withRateLimit(req, "fiscal");
       if (limited) return limited;
 
-      const staff = await requireProvisionStaff();
-      if (!staff) {
-        return apiError("Unauthorized.", 401);
-      }
+      const staff = await requireStaffPermission("fiscal.register.manage");
 
       if (!isFiskalyConfigured()) {
         return apiError(
@@ -53,6 +43,23 @@ export const POST = withErrorHandler(
           return apiError("Fiskaly is not configured on this platform.", 503);
         }
 
+        await auditLog({
+          orgId: staff.org_id,
+          userId: staff.user_id,
+          action: "fiscal",
+          entityType: "fiscal_register_provision",
+          entityId: registerResult.registerId,
+          newValue: {
+            locationId: body.locationId,
+            registerId: registerResult.registerId,
+            tssId: registerResult.tssId,
+            clientId: registerResult.clientId,
+            kassenId: registerResult.kassenId,
+            skipped: registerResult.skipped,
+          },
+          request: req,
+        });
+
         return apiSuccess({
           registerId: registerResult.registerId,
           tssId: registerResult.tssId,
@@ -67,6 +74,19 @@ export const POST = withErrorHandler(
       if (!result) {
         return apiError("Fiskaly is not configured on this platform.", 503);
       }
+
+      await auditLog({
+        orgId: staff.org_id,
+        userId: staff.user_id,
+        action: "fiscal",
+        entityType: "fiscal_tss_provision",
+        newValue: {
+          tssId: result.tssId,
+          clientId: result.clientId,
+          skipped: result.skipped,
+        },
+        request: req,
+      });
 
       return apiSuccess({
         tssId: result.tssId,

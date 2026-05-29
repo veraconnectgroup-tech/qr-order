@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { getStripe } from "@/lib/stripe/client";
 import {
@@ -15,14 +15,7 @@ export const POST = withErrorHandler(
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
-    const staff = await getCurrentStaff();
-    if (!staff) {
-      return apiError("Unauthorized.", 401);
-    }
-
-    if (!["owner", "manager", "staff", "waiter"].includes(staff.role)) {
-      return apiError("Forbidden.", 403);
-    }
+    const staff = await requireStaffPermission("payments.collect");
 
     const orgContext = await loadTerminalOrgContext(staff);
     if ("error" in orgContext) {

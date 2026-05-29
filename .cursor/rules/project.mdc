@@ -39,9 +39,14 @@ Follow [ADR-007](../docs/design/ADR-007-visual-system.md) + [Denis Spatial plan]
 ## Route Groups
 
 - `(guest)/[slug]/[token]` — menu, cart, checkout, order tracking
-- `(dashboard)/dashboard/*` — staff: orders, kitchen, tables, waiter calls, history
-- `(admin)/admin/*` — owner/manager: menu CRUD, tables/QR, staff, analytics, Stripe
+- `(waiter)/waiter/*` — floor PWA (primary for `waiter` role)
+- `(bar)/bar/*` — bar station app (ADR-024 S4)
+- `(kitchen)/kitchen/*` — KDS full-screen (ADR-024 S5)
+- `(dashboard)/dashboard/*` — ops: orders, tables, history (manager/staff)
+- `(admin)/admin/*` — back office: menu, staff permissions, fiscal, Stripe
 - `(auth)` — login, signup, callback
+
+**Staff access:** [ADR-024](../docs/architecture/ADR-024-staff-duties-access.md) — everyone logs into their surface; permissions extend modules inside that app; fiscal duties (`fiscal.shift.close`, exports) use same permission catalog.
 
 ## Build Order
 
@@ -54,6 +59,8 @@ Approved architecture: `docs/architecture/ADR-001-universal-ordering-platform.md
 **Before any ADR-001 PR:** read `docs/architecture/ADR-001-implementation-warnings.md` — traps for `create-order.ts`, outbox races, PIN Redis, migration order, etc.
 
 **Fiscal compliance (KassenSichV / GoBD):** tactical fixes `docs/architecture/ADR-011-fiscal-compliance-spine.md` · **structural target** `docs/architecture/ADR-012-fiscal-journal-spine.md` (append-only journal + `runFiscalPipeline`, ADR-009 pattern).
+
+**Staff surfaces & permissions:** `docs/architecture/ADR-024-staff-duties-access.md` · operator `ADR-024-operator.md` · session prompts `ADR-024-session-prompts.md` (S0–S7).
 
 **Guest journey / competitive pack:** MVP [ADR-013](../docs/architecture/ADR-013-competitive-guest-journey.md) · enterprise [ADR-014](../docs/architecture/ADR-014-commerce-experience-platform.md) — **implement as Denis signals only** ([ADR-020 §17](../docs/architecture/ADR-020-denis-table-operating-system.md)).
 

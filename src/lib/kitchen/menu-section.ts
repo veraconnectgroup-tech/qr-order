@@ -12,6 +12,12 @@ export function isKitchenMenuSection(
   return section === "food" || section === "desserts";
 }
 
+export function isDrinksMenuSection(
+  section: string | null | undefined
+): section is "drinks" {
+  return section === "drinks";
+}
+
 export function getKitchenOrderItems(
   order: Pick<OrderWithDetails, "order_items">
 ): OrderWithDetails["order_items"] {
@@ -24,6 +30,20 @@ export function orderHasKitchenItems(
   order: Pick<OrderWithDetails, "order_items">
 ): boolean {
   return getKitchenOrderItems(order).length > 0;
+}
+
+export function getDrinksOrderItems(
+  order: Pick<OrderWithDetails, "order_items">
+): OrderWithDetails["order_items"] {
+  return (order.order_items ?? []).filter((item) =>
+    isDrinksMenuSection(item.menu_section)
+  );
+}
+
+export function orderHasDrinksItems(
+  order: Pick<OrderWithDetails, "order_items">
+): boolean {
+  return getDrinksOrderItems(order).length > 0;
 }
 
 export function isDrinksOnlyOrder(

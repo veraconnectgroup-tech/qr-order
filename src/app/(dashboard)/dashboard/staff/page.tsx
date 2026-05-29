@@ -1,10 +1,13 @@
 import { StaffBoard } from "@/components/dashboard/staff-board";
+import { getStaffAccess } from "@/lib/auth/get-staff-access";
+import { loadStaffPermissionOverridesBatch } from "@/lib/auth/load-staff-permission-overrides";
 import { requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function StaffPage() {
   const staff = await requireStaff();
-  const canManage = ["owner", "manager"].includes(staff.role);
+  const actorAccess = await getStaffAccess(staff);
+  const canManage = actorAccess.permissions.has("staff.manage");
   const admin = createAdminClient();
 
   const [{ data: team }, { data: invites }] = await Promise.all([
@@ -25,17 +28,29 @@ export default async function StaffPage() {
       : Promise.resolve({ data: [] }),
   ]);
 
+  const teamRows = (team ?? []) as Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    role: string;
+    is_active: boolean;
+  }>;
+
+  const overridesByStaffId = canManage
+    ? await loadStaffPermissionOverridesBatch(
+        admin,
+        teamRows.map((member) => member.id)
+      )
+    : {};
+
+  const actorGrantable =
+    staff.role === "owner" ? null : actorAccess.permissions;
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   return (
     <StaffBoard
-      staff={(team ?? []) as Array<{
-        id: string;
-        name: string;
-        email: string | null;
-        role: string;
-        is_active: boolean;
-      }>}
+      staff={teamRows}
       invites={(
         (invites ?? []) as Array<{
           id: string;
@@ -55,6 +70,8 @@ export default async function StaffPage() {
       }))}
       currentStaffId={staff.id}
       canManage={canManage}
+      overridesByStaffId={overridesByStaffId}
+      actorGrantable={actorGrantable}
     />
   );
 }

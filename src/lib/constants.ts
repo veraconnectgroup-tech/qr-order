@@ -27,6 +27,7 @@ export const STAFF_ROLES = [
   "staff",
   "kitchen",
   "waiter",
+  "bar",
 ] as const;
 
 export const ADMIN_ROLES = ["owner", "manager"] as const;

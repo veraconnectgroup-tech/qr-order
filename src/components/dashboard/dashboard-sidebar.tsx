@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
+import { useMemo } from "react";
 import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
 import {
   BarChart3,
@@ -22,6 +23,9 @@ import { LocationSwitcher } from "@/components/dashboard/location-switcher";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
+import { useStaffAccess } from "@/lib/auth/staff-access-context";
+import { computeDashboardNavHrefs } from "@/lib/auth/staff-modules";
+import type { PermissionKey } from "@/lib/auth/permission-catalog";
 import type { StaffRole } from "@/types";
 
 type NavItem = {
@@ -33,14 +37,6 @@ type NavItem = {
   roles?: StaffRole[];
   requiresDenis?: boolean;
 };
-
-const WAITER_NAV_HREFS = new Set([
-  "/dashboard",
-  "/dashboard/orders",
-  "/dashboard/new-order",
-  "/dashboard/tables",
-  "/dashboard/waiter-calls",
-]);
 
 const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
@@ -109,8 +105,21 @@ export function DashboardSidebar() {
   } = useDashboard();
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
+  const clientAccess = useStaffAccess();
+
+  const allowedDashboardHrefs = useMemo(() => {
+    return computeDashboardNavHrefs({
+      permissions: new Set(clientAccess.permissions as PermissionKey[]),
+      allowedSurfaces: clientAccess.allowedSurfaces,
+    });
+  }, [clientAccess.permissions, clientAccess.allowedSurfaces]);
+
   const canManageBilling = ["owner", "manager"].includes(staffRole);
-  const isWaiter = staffRole === "waiter";
+  const restrictByRegistry =
+    staffRole === "waiter" ||
+    clientAccess.primarySurface === "waiter" ||
+    clientAccess.primarySurface === "bar" ||
+    clientAccess.primarySurface === "kitchen";
 
   function isNavItemVisible(item: NavItem) {
     if (item.requiresDenis && !aiConciergeEnabled) {
@@ -119,8 +128,8 @@ export function DashboardSidebar() {
     if (item.roles) {
       return item.roles.includes(staffRole as StaffRole);
     }
-    if (isWaiter) {
-      return WAITER_NAV_HREFS.has(item.href);
+    if (restrictByRegistry) {
+      return allowedDashboardHrefs.has(item.href);
     }
     return true;
   }
@@ -176,7 +185,6 @@ export function DashboardSidebar() {
 
   return (
     <aside className="hidden w-[260px] shrink-0 flex-col border-r border-dash-border-subtle bg-sidebar md:flex">
-      {/* Brand header */}
       <div className="border-b border-dash-border-subtle px-5 pb-4 pt-5">
         <div className="flex items-center gap-3">
           {orgLogoUrl ? (
@@ -208,7 +216,6 @@ export function DashboardSidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-2">
         {navGroups.map((group, gi) => {
           const visibleItems = group.items.filter(isNavItemVisible);
@@ -217,25 +224,25 @@ export function DashboardSidebar() {
           }
 
           return (
-          <div key={group.label} className={gi > 0 ? "mt-5" : "mt-2"}>
-            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-dash-text-disabled">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {visibleItems.map((item) => renderNavLink(item))}
-              {group.label === "Management" && canManageBilling &&
-                renderNavLink({
-                  href: "/dashboard/billing",
-                  label: "Billing",
-                  icon: CreditCard,
-                })}
+            <div key={group.label} className={gi > 0 ? "mt-5" : "mt-2"}>
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-dash-text-disabled">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => renderNavLink(item))}
+                {group.label === "Management" &&
+                  canManageBilling &&
+                  renderNavLink({
+                    href: "/dashboard/billing",
+                    label: "Billing",
+                    icon: CreditCard,
+                  })}
+              </div>
             </div>
-          </div>
           );
         })}
       </nav>
 
-      {/* User footer */}
       <div className="border-t border-dash-border-subtle p-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-dash-surface">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-dash-surface-raised text-xs font-bold text-dash-text-secondary">

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { auditLog } from "@/lib/audit/log";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { loadComplianceContextForLocation } from "@/lib/auth/compliance-guards";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import { runManualDailyClosing } from "@/lib/fiscal/daily-closing";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limit";
@@ -13,29 +14,24 @@ const bodySchema = z.object({
   businessDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
-async function requireFiscalAdmin() {
-  const staff = await getCurrentStaff();
-  if (!staff || !["owner", "manager"].includes(staff.role)) {
-    return null;
-  }
-  return staff;
-}
-
 export const POST = withErrorHandler(
   "fiscal-daily-closing-post",
   async (req, _ctx) => {
     const limited = await withRateLimit(req, "fiscal");
     if (limited) return limited;
 
-    const staff = await requireFiscalAdmin();
-    if (!staff) {
-      return apiError("Unauthorized.", 401);
-    }
-
     const parsed = bodySchema.safeParse(await req.json());
     if (!parsed.success) {
       return apiError("Invalid input.", 400);
     }
+
+    const complianceCtx = await loadComplianceContextForLocation(
+      parsed.data.locationId
+    );
+    const staff = await requireStaffPermission(
+      "fiscal.shift.close",
+      complianceCtx
+    );
 
     const admin = createAdminClient();
     const { data: location, error: locationError } = await admin

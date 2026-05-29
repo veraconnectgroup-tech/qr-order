@@ -6,6 +6,8 @@ export type WaiterUiKey =
   | "nav.new"
   | "nav.calls"
   | "nav.tables"
+  | "nav.fiscal"
+  | "nav.more"
   | "status.free"
   | "status.active"
   | "status.ready"
@@ -63,6 +65,8 @@ const en: Table = {
   "nav.new": "New",
   "nav.calls": "Calls",
   "nav.tables": "Tables",
+  "nav.fiscal": "Fiscal",
+  "nav.more": "More",
   "status.free": "Free",
   "status.active": "Active",
   "status.ready": "Ready",
@@ -120,6 +124,8 @@ const de: Table = {
   "nav.new": "Neu",
   "nav.calls": "Rufe",
   "nav.tables": "Tische",
+  "nav.fiscal": "Kasse",
+  "nav.more": "Mehr",
   "status.free": "Frei",
   "status.active": "Aktiv",
   "status.ready": "Fertig",

@@ -1,4 +1,7 @@
-import { requireAdmin, getStaffLocationId } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { getStaffLocationId, requireStaff } from "@/lib/auth/session";
+import { getStaffAccess } from "@/lib/auth/get-staff-access";
+import { can } from "@/lib/auth/staff-access";
 import { DsfinvkExportPanel } from "@/components/admin/dsfinvk-export-panel";
 import { TagesabschlussPanel } from "@/components/admin/tagesabschluss-panel";
 import {
@@ -8,7 +11,17 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function AdminTagesabschlussPage() {
-  const staff = await requireAdmin();
+  const staff = await requireStaff();
+  const access = await getStaffAccess(staff);
+
+  const canClose = can(access, "fiscal.shift.close");
+  const canReadShift = can(access, "fiscal.shift.read");
+  const canExportAudit = can(access, "fiscal.export.audit");
+
+  if (!canClose && !canReadShift && !canExportAudit) {
+    redirect("/dashboard");
+  }
+
   const locationId = await getStaffLocationId(staff);
 
   if (!locationId) {
@@ -48,17 +61,21 @@ export default async function AdminTagesabschlussPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <TagesabschlussPanel
-        closings={closings}
-        locationId={locationId}
-        defaultBusinessDate={yesterdayBusinessDate(timezone)}
-        currency={currency}
-      />
+      {(canClose || canReadShift) && (
+        <TagesabschlussPanel
+          closings={closings}
+          locationId={locationId}
+          defaultBusinessDate={yesterdayBusinessDate(timezone)}
+          currency={currency}
+        />
+      )}
 
-      <DsfinvkExportPanel
-        locationId={locationId}
-        locationName={locationRow?.name ?? "Standort"}
-      />
+      {canExportAudit && (
+        <DsfinvkExportPanel
+          locationId={locationId}
+          locationName={locationRow?.name ?? "Standort"}
+        />
+      )}
     </div>
   );
 }

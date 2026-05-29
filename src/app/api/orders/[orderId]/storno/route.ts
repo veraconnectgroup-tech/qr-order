@@ -4,7 +4,9 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { safeJsonParse } from "@/lib/api/safe-json";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { auditLog } from "@/lib/audit/log";
+import { loadComplianceContextForLocation } from "@/lib/auth/compliance-guards";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import { performStorno } from "@/lib/fiscal/storno";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid, sanitizeOrderNotes } from "@/lib/security/sanitize";
@@ -20,38 +22,15 @@ const stornoSchema = z.object({
   amount: z.number().positive().optional(),
 });
 
-async function requireStornoStaff() {
-  const staff = await getCurrentStaff();
-  if (!staff || !["owner", "manager"].includes(staff.role)) {
-    return null;
-  }
-  return staff;
-}
-
 export const POST = withErrorHandler(
   "orders-orderId-storno-post",
   async (req, ctx) => {
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
-    const staff = await requireStornoStaff();
-    if (!staff) {
-      return apiError("Unauthorized.", 401);
-    }
-
     const { orderId } = await ctx.params;
     if (!isUuid(orderId)) {
       return apiError("Invalid order id.", 400);
-    }
-
-    const body = await safeJsonParse(req);
-    if (!body) {
-      return apiError("Invalid JSON.", 400);
-    }
-
-    const parsed = stornoSchema.safeParse(body);
-    if (!parsed.success) {
-      return apiError("Invalid input.", 400, parsed.error.flatten());
     }
 
     const admin = createAdminClient();
@@ -67,6 +46,14 @@ export const POST = withErrorHandler(
 
     const orderRow = order as { id: string; location_id: string };
 
+    const complianceCtx = await loadComplianceContextForLocation(
+      orderRow.location_id
+    );
+    const staff = await requireStaffPermission(
+      "fiscal.storno.execute",
+      complianceCtx
+    );
+
     if (staff.location_id && staff.location_id !== orderRow.location_id) {
       return apiError("Unauthorized.", 403);
     }
@@ -81,6 +68,16 @@ export const POST = withErrorHandler(
       return apiError("Unauthorized.", 403);
     }
 
+    const body = await safeJsonParse(req);
+    if (!body) {
+      return apiError("Invalid JSON.", 400);
+    }
+
+    const parsed = stornoSchema.safeParse(body);
+    if (!parsed.success) {
+      return apiError("Invalid input.", 400, parsed.error.flatten());
+    }
+
     const result = await performStorno({
       orderId,
       reason: parsed.data.reason,
@@ -91,6 +88,21 @@ export const POST = withErrorHandler(
     if ("error" in result) {
       return apiError(result.error, result.code);
     }
+
+    await auditLog({
+      orgId: staff.org_id,
+      userId: staff.user_id,
+      action: "fiscal",
+      entityType: "storno",
+      entityId: result.stornoId,
+      newValue: {
+        orderId,
+        reason: parsed.data.reason,
+        amount: parsed.data.amount,
+        tseSignature: result.tseSignature,
+      },
+      request: req,
+    });
 
     return apiSuccess({
       stornoId: result.stornoId,

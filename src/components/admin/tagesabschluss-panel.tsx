@@ -21,11 +21,14 @@ export function TagesabschlussPanel({
   locationId,
   defaultBusinessDate,
   currency,
+  allowManualClose = true,
 }: {
   closings: DailyClosingRow[];
   locationId: string;
   defaultBusinessDate: string;
   currency: string;
+  /** When false, hide shift-close form (report-only staff). */
+  allowManualClose?: boolean;
 }) {
   const [closings] = useState(initialClosings);
   const [businessDate, setBusinessDate] = useState(defaultBusinessDate);
@@ -77,6 +80,7 @@ export function TagesabschlussPanel({
         </p>
       </div>
 
+      {allowManualClose ? (
       <div className="max-w-lg rounded-lg border border-border bg-card p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Manueller Abschluss</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -112,6 +116,7 @@ export function TagesabschlussPanel({
           </p>
         )}
       </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b border-border px-6 py-4">

@@ -523,7 +523,7 @@ type Tables = {
     user_id: string;
     org_id: string;
     location_id: string | null;
-    role: "owner" | "manager" | "staff" | "kitchen" | "waiter";
+    role: "owner" | "manager" | "staff" | "kitchen" | "waiter" | "bar";
     name: string;
     email: string | null;
     is_active: boolean;
@@ -534,6 +534,13 @@ type Tables = {
   staff_locations: {
     staff_id: string;
     location_id: string;
+  };
+  staff_permission_overrides: {
+    staff_id: string;
+    permission: string;
+    granted: boolean;
+    granted_by: string | null;
+    created_at: string;
   };
   waiter_calls: {
     id: string;

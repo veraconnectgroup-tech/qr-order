@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { auditLog } from "@/lib/audit/log";
-import { getCurrentStaff, getStaffLocationId } from "@/lib/auth/session";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
+import { getStaffLocationId } from "@/lib/auth/session";
 import { formatAnalyticsIsoDate } from "@/lib/analytics/date-range";
 import {
   ordersCsvFilename,
@@ -16,22 +17,11 @@ import {
 import { withRateLimit } from "@/lib/rate-limit";
 import type { OrderWithDetails } from "@/types";
 
-async function requireExportStaff() {
-  const staff = await getCurrentStaff();
-  if (!staff || !["owner", "manager"].includes(staff.role)) {
-    return null;
-  }
-  return staff;
-}
-
 export const GET = withErrorHandler("export-csv-get", async (req, _ctx) => {
   const limited = await withRateLimit(req, "export");
   if (limited) return limited;
 
-  const staff = await requireExportStaff();
-  if (!staff) {
-    return apiError("Unauthorized.", 401);
-  }
+  const staff = await requireStaffPermission("analytics.read");
 
   const locationId = await getStaffLocationId(staff);
   if (!locationId) {

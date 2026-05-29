@@ -10,9 +10,11 @@ import {
   zSanitizedText,
 } from "@/lib/security/zod-fields";
 import { auditLog } from "@/lib/audit/log";
+import { parsePermissionOverridesJson } from "@/lib/auth/permission-overrides";
 import { requireStaff } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STAFF_ROLES } from "@/lib/constants";
+import { applyInvitePermissionOverrides } from "@/lib/dashboard/staff-permission-actions";
 
 const inviteSchema = z.object({
   email: zEmailNormalized(),
@@ -38,6 +40,9 @@ export async function createStaffInvite(formData: FormData) {
 
   const admin = createAdminClient();
   const { email, name, role } = parsed.data;
+  const permissionOverrides = parsePermissionOverridesJson(
+    formData.get("permission_overrides")
+  );
 
   const { data: existingStaff } = await admin
     .from("staff")
@@ -76,6 +81,7 @@ export async function createStaffInvite(formData: FormData) {
       role,
       invited_by: staff.id,
       expires_at: expiresAt,
+      permission_overrides: permissionOverrides,
     } as never)
     .select("token")
     .single();
@@ -110,7 +116,7 @@ export async function createStaffInvite(formData: FormData) {
     action: "create",
     entityType: "staff_invite",
     entityId: token,
-    newValue: { email, name, role },
+    newValue: { email, name, role, permission_overrides: permissionOverrides },
   });
 
   revalidatePath("/dashboard/staff");
@@ -231,6 +237,8 @@ export async function acceptStaffInvite(formData: FormData) {
     email: string;
     name: string;
     role: string;
+    invited_by: string | null;
+    permission_overrides: unknown;
   };
 
   const { data: existingStaff } = await admin
@@ -273,19 +281,29 @@ export async function acceptStaffInvite(formData: FormData) {
     return { error: "Staff profile could not be created." };
   }
 
-  if (row.location_id) {
-    const { data: staffRow } = await admin
-      .from("staff")
-      .select("id")
-      .eq("user_id", authUser.user.id)
-      .eq("org_id", row.org_id)
-      .single();
+  const { data: staffRow } = await admin
+    .from("staff")
+    .select("id")
+    .eq("user_id", authUser.user.id)
+    .eq("org_id", row.org_id)
+    .single();
 
-    if (staffRow) {
+  if (staffRow) {
+    const newStaffId = (staffRow as { id: string }).id;
+
+    if (row.location_id) {
       await admin.from("staff_locations").insert({
-        staff_id: (staffRow as { id: string }).id,
+        staff_id: newStaffId,
         location_id: row.location_id,
       } as never);
+    }
+
+    if (row.invited_by) {
+      await applyInvitePermissionOverrides(
+        newStaffId,
+        row.permission_overrides,
+        row.invited_by
+      );
     }
   }
 

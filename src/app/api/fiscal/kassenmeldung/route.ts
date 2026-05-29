@@ -2,7 +2,9 @@ export const maxDuration = 15;
 
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff, getStaffLocationId } from "@/lib/auth/session";
+import { auditLog } from "@/lib/audit/log";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
+import { getStaffLocationId } from "@/lib/auth/session";
 import {
   buildKassenmeldungExportCsv,
   createFiscalRegistration,
@@ -11,24 +13,13 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { withRateLimit } from "@/lib/rate-limit";
 
-async function requireFiscalAdmin() {
-  const staff = await getCurrentStaff();
-  if (!staff || !["owner", "manager"].includes(staff.role)) {
-    return null;
-  }
-  return staff;
-}
-
 export const GET = withErrorHandler(
   "fiscal-kassenmeldung-get",
   async (req, _ctx) => {
     const limited = await withRateLimit(req, "fiscal");
     if (limited) return limited;
 
-    const staff = await requireFiscalAdmin();
-    if (!staff) {
-      return apiError("Unauthorized.", 401);
-    }
+    const staff = await requireStaffPermission("fiscal.register.manage");
 
     const admin = createAdminClient();
     const locationId = await getStaffLocationId(staff);
@@ -62,10 +53,7 @@ export const POST = withErrorHandler(
     const limited = await withRateLimit(req, "fiscal");
     if (limited) return limited;
 
-    const staff = await requireFiscalAdmin();
-    if (!staff) {
-      return apiError("Unauthorized.", 401);
-    }
+    const staff = await requireStaffPermission("fiscal.register.manage");
 
     const body = (await req.json()) as {
       locationId?: string;
@@ -102,6 +90,21 @@ export const POST = withErrorHandler(
       inbetriebnahmeAt: body.inbetriebnahmeAt,
       tssSerial: body.tssSerial,
       elsterKennung: body.elsterKennung,
+    });
+
+    await auditLog({
+      orgId: staff.org_id,
+      userId: staff.user_id,
+      action: "fiscal",
+      entityType: "kassenmeldung",
+      entityId: result.id,
+      newValue: {
+        locationId: body.locationId,
+        registerId: body.registerId,
+        kassenId: body.kassenId,
+        inbetriebnahmeAt: body.inbetriebnahmeAt,
+      },
+      request: req,
     });
 
     return apiSuccess(result);

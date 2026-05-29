@@ -1,6 +1,6 @@
 import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { requireStaffAnyPermission } from "@/lib/auth/require-staff-permission";
 import {
   buildZBonHtml,
   loadZBonDisplayData,
@@ -11,10 +11,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const GET = withErrorHandler(
   "fiscal-daily-closing-zbon-get",
   async (_req, ctx) => {
-    const staff = await getCurrentStaff();
-    if (!staff || !["owner", "manager", "staff", "kitchen"].includes(staff.role)) {
-      return apiError("Unauthorized.", 401);
-    }
+    const staff = await requireStaffAnyPermission([
+      "fiscal.shift.read",
+      "fiscal.shift.close",
+    ]);
 
     const { closingId } = await ctx.params;
     if (!isUuid(closingId)) {

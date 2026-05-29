@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { buildPaymentIdempotencyKey } from "@/lib/resilience/idempotency";
@@ -32,14 +32,7 @@ export const POST = withErrorHandler(
     const limited = await withStaffRateLimit(req);
     if (limited) return limited;
 
-    const staff = await getCurrentStaff();
-    if (!staff) {
-      return apiError("Unauthorized.", 401);
-    }
-
-    if (!["owner", "manager", "staff", "waiter"].includes(staff.role)) {
-      return apiError("Forbidden.", 403);
-    }
+    const staff = await requireStaffPermission("payments.collect");
 
     const body = await req.json();
     const parsed = schema.safeParse(body);

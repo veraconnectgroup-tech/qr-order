@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { auditLog } from "@/lib/audit/log";
-import { getCurrentStaff } from "@/lib/auth/session";
+import { requireStaffPermission } from "@/lib/auth/require-staff-permission";
 import {
   datevExportFilename,
   generateDatevExport,
@@ -12,22 +12,11 @@ import {
 } from "@/lib/export/datev";
 import { withRateLimit } from "@/lib/rate-limit";
 
-async function requireExportStaff() {
-  const staff = await getCurrentStaff();
-  if (!staff || !["owner", "manager"].includes(staff.role)) {
-    return null;
-  }
-  return staff;
-}
-
 export const GET = withErrorHandler("export-datev-get", async (req, _ctx) => {
   const limited = await withRateLimit(req, "export");
   if (limited) return limited;
 
-  const staff = await requireExportStaff();
-  if (!staff) {
-    return apiError("Unauthorized.", 401);
-  }
+  const staff = await requireStaffPermission("fiscal.export.accounting");
 
   const fromParam = req.nextUrl.searchParams.get("from");
   const toParam = req.nextUrl.searchParams.get("to");

@@ -1,10 +1,8 @@
-import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { OnboardingGuard } from "@/components/dashboard/onboarding-guard";
-import {
-  getEffectiveStaff,
-  getStaffLocationContext,
-} from "@/lib/auth/session";
+import { getStaffLocationContext } from "@/lib/auth/session";
+import { requireSurface } from "@/lib/auth/require-surface";
+import { StaffAccessProvider } from "@/lib/auth/staff-access-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { sumOrderRevenue } from "@/lib/orders/revenue";
@@ -32,11 +30,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const staff = await getEffectiveStaff();
-
-  if (staff.role === "waiter") {
-    redirect("/waiter");
-  }
+  const { staff, access } = await requireSurface("dashboard");
 
   const { locationId, accessibleLocations } = await getStaffLocationContext(staff);
 
@@ -101,8 +95,9 @@ export default async function DashboardLayout({
   );
 
   return (
-    <OnboardingGuard onboardingCompleted={orgRow?.onboarding_completed ?? true}>
-      <DashboardShell
+    <StaffAccessProvider access={access}>
+      <OnboardingGuard onboardingCompleted={orgRow?.onboarding_completed ?? true}>
+        <DashboardShell
         context={{
           locationId,
           locationName: locationRow?.name ?? "Location",
@@ -134,5 +129,6 @@ export default async function DashboardLayout({
         {children}
       </DashboardShell>
     </OnboardingGuard>
+    </StaffAccessProvider>
   );
 }

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|--------|
 | **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
-| **Updated** | 2026-05-29 |
+| **Updated** | 2026-05-29 (ADR-024 staff access) |
 | **Start here** | This file → then the doc for your track |
 
 ---
@@ -25,6 +25,7 @@
 │ DESIGN             ADR-007 · ADR-008 · denis-spatial plan   │
 ├─────────────────────────────────────────────────────────────┤
 │ ORDER / RELIABILITY ADR-001 · outbox · idempotency (A1–A8) │
+│ STAFF ACCESS       ADR-024 · surfaces · permissions · fiscal │
 │ DENIS COMMERCIAL   ADR-009 F1–F7 · credits · metering       │
 │ DENIS ORDERING     ADR-010 F8–F9 · act submit cutover       │
 ├─────────────────────────────────────────────────────────────┤
@@ -85,14 +86,26 @@
 | [supabase-migration-baseline.md](./supabase-migration-baseline.md) | Hybrid migration history | DB work |
 | [reliability-v2-fiscal-hybrid.md](./reliability-v2-fiscal-hybrid.md) | POS/fiscal hybrid notes | Reference |
 
-### 2.4 Fiscal
+### 2.4 Staff access & surfaces
+
+| Doc | Role | Status |
+|-----|------|--------|
+| [ADR-024](./ADR-024-staff-duties-access.md) | **Staff apps** — surfaces, permission catalog, fiscal duties, compliance guards | Accepted |
+| [ADR-024 operator](./ADR-024-operator.md) | **Jovica one-liner** — S-track prompts | Active |
+| [ADR-024 session prompts](./ADR-024-session-prompts.md) | Implement agent S0–S7 detail | Active |
+| [ADR-024 parallel agents](./ADR-024-parallel-agents.md) | A1–A5 parallel (posle S2) | Active |
+| [ADR-024 verification](./ADR-024-verification-checklist.md) | Review agent | Active |
+
+**Surfaces:** `/waiter` · `/bar` · `/kitchen` · `/dashboard` · `/admin` · `/fiscal` (optional tablet)
+
+### 2.5 Fiscal
 
 | Doc | Role | Status |
 |-----|------|--------|
 | [ADR-011](./ADR-011-fiscal-compliance-spine.md) | Tactical KassenSichV fixes | Proposed |
 | [ADR-012](./ADR-012-fiscal-journal-spine.md) | Append-only fiscal journal (target) | Proposed |
 
-### 2.5 Guest journey & commerce experience
+### 2.6 Guest journey & commerce experience
 
 | Doc | Role | Status | ⚠ |
 |-----|------|--------|---|
