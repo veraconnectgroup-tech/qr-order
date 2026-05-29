@@ -30,7 +30,7 @@ function normalize(message: string): string {
 }
 
 const T0_CONFIRM_CORE =
-  /^(da|ja|yes|yep|ok+|potvrdi|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/;
+  /^(da|ja|yes|yep|ok+|potvrdi|potvrdjujem|potvrđujem|potvrdjeno|potvrđeno|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/;
 
 const T0_CONFIRM_CONTEXTUAL =
   /^(mo[žz]e|moze|va[žz]i|vazi|ajde|hajde|super|naravno|u redu|uredu|okej|okay|sla[žz]em se|klar|gerne|passt|geht klar|sure|go ahead|sounds good|let's do it|lets do it)([\s,.!]|$)/;
@@ -47,7 +47,7 @@ export function isT0Confirm(
   const text = normalize(message);
   if (T0_CONFIRM_CORE.test(text)) return true;
   if (
-    /^(da|ja),?\s*(pošalji|posalji|potvrdi|bestätigen|send|naruči|naruci)/.test(
+    /^(da|ja),?\s*(pošalji|posalji|potvrdi|potvrdjujem|potvrđujem|bestätigen|send|naruči|naruci)/.test(
       text
     )
   ) {

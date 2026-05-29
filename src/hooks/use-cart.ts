@@ -147,7 +147,12 @@ export const useCart = create<CartStore>()(
           saved.restaurantSlug === current.restaurantSlug &&
           saved.tableToken === current.tableToken;
         if (!sameTable) {
-          return { ...current, ...saved, items: saved.items ?? [] };
+          const boundToCurrent =
+            current.restaurantSlug != null && current.tableToken != null;
+          if (boundToCurrent) {
+            return { ...current, items: [] };
+          }
+          return { ...current, ...saved };
         }
         const items =
           current.items.length >= (saved.items?.length ?? 0)

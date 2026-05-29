@@ -40,10 +40,13 @@ export async function executeActPhase(
   }
 
   const dryRun = input.config.ordering.actDryRun;
+  const confirmSubmit =
+    input.reflexTurn.reflex?.intent === "CONFIRM" ||
+    input.reflexTurn.plan.skills.some((skill) => skill.id === "order.submit");
   const allowSubmit =
     input.config.ordering.actSubmitEnabled &&
     !dryRun &&
-    Boolean(input.legacySubmitOrder);
+    (Boolean(input.legacySubmitOrder) || confirmSubmit);
 
   const results = [];
 

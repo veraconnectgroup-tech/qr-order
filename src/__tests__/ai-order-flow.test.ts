@@ -131,6 +131,23 @@ describe("order-flow guards", () => {
     expect(isGuestFinalConfirm("da")).toBe(true);
   });
 
+  it("LLM submitOrder at awaitingFinalConfirm sends order (not regex)", () => {
+    const result = finalizeOrderFlow({
+      userMessage: "potvrdjujem molim te",
+      draft: {
+        ...draftWithCola(),
+        flow: { awaitingFinalConfirm: true },
+      },
+      llmMessage: "Odlično — šaljem porudžbinu!",
+      llmSubmitOrder: true,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(result.submitOrder).toBe(true);
+    expect(result.message).toMatch(/šaljem/i);
+  });
+
   it("blocks false order claim when cart is empty", () => {
     const message = sanitizeFalseOrderClaimMessage({
       message: "Poručujem ti veliko pivo Pilsner.",

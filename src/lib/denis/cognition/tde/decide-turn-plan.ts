@@ -228,12 +228,53 @@ function resolvePerceivePlan(
   });
 }
 
+/** ADR-030 — LLM confirm at recap; T0 cart edits (add/remove) stay reflex_only. */
+function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
+  if (!input.message.trim()) return false;
+
+  const pressure = getBeliefValue<CommercePressure>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePressure
+  );
+  const awaiting = getBeliefValue<ConversationAwaiting>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.conversationAwaiting
+  );
+  const atConfirmPressure = pressure === "confirm" || awaiting === "confirm";
+  const intent = input.reflex.reflex?.intent;
+
+  if (intent === "CONFIRM" || intent === "DECLINE") return true;
+  if (intent === "DONE" && atConfirmPressure) return true;
+
+  if (!atConfirmPressure) return false;
+
+  if (
+    input.reflex.usedT0 &&
+    intent !== "CONFIRM" &&
+    intent !== "DECLINE" &&
+    intent !== "DONE"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * ADR-023 §4 + ADR-025 — single code path between FOLD and perceive.
  * Director decides LLM vs template; does not call OpenAI.
  */
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
+
+  // ADR-030 — at recap, LLM comprehends confirm (potvrdjujem, pošalji, ajde…), not regex-only T0.
+  if (shouldComprehendConfirmTurn(input)) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "commerce.awaiting_confirm.comprehend",
+    });
+  }
 
   if (input.reflex.usedT0 || input.reflex.handoffCommand) {
     return buildPlan("reflex_only", {

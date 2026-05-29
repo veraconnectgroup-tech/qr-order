@@ -66,10 +66,10 @@ export function shouldHandleOrderFlowWithoutLlm(
 export function isGuestFinalConfirm(message: string): boolean {
   const text = normalizeMessage(message);
   return (
-    /^(da|ja|yes|yep|ok+|potvrdi|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/.test(
+    /^(da|ja|yes|yep|ok+|potvrdi|potvrdjujem|potvrđujem|potvrdjeno|potvrđeno|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/.test(
       text
     ) ||
-    /^(da|ja),?\s*(pošalji|posalji|potvrdi|bestätigen|send|naruči|naruci)/.test(
+    /^(da|ja),?\s*(pošalji|posalji|potvrdi|potvrdjujem|potvrđujem|bestätigen|send|naruči|naruci)/.test(
       text
     )
   );
@@ -239,6 +239,14 @@ export function finalizeOrderFlow(input: {
   }
 
   if (flow.awaitingFinalConfirm) {
+    if (input.llmSubmitOrder && !isGuestDecliningMore(input.userMessage)) {
+      return {
+        draft,
+        message: sendOrderMessage(lang),
+        submitOrder: true,
+        intent: "confirm",
+      };
+    }
     return {
       draft,
       message: confirmOrderMessage(summary, lang),

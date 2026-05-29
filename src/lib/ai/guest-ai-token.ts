@@ -3,6 +3,7 @@ import {
   readAiSessionId,
   writeAiSessionId,
 } from "@/lib/ai/guest-session-storage";
+import { useCart } from "@/hooks/use-cart";
 
 /**
  * QR table token is always valid for AI (browse + seated).
@@ -80,6 +81,7 @@ export function resetGuestStoresForTableSwitch(
   legacyTokens: Array<string | null | undefined> = []
 ) {
   clearAiSessionIdForGuest(locationId, qrToken, legacyTokens);
+  useCart.getState().clearCart();
   try {
     localStorage.setItem(`denis-bound-table-${locationId}`, tableId);
   } catch {

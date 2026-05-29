@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
@@ -244,6 +244,18 @@ export function MenuView({
   const sessionToken = useGuestSession((s) => s.sessionToken);
   const guestTableId = useGuestSession((s) => s.tableId);
   const clearGuestSession = useGuestSession((s) => s.clearSession);
+
+  useLayoutEffect(() => {
+    const cart = useCart.getState();
+    if (cart.restaurantSlug === slug && cart.tableToken === token) return;
+    cart.setSession(
+      slug,
+      token,
+      tableName,
+      cart.sessionToken ?? sessionToken ?? ""
+    );
+  }, [slug, token, tableName, sessionToken]);
+
   const aiLegacyTokens = useMemo(
     () => legacyTokensForAiSession(tableId, sessionToken, guestTableId),
     [tableId, sessionToken, guestTableId]

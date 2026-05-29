@@ -234,29 +234,42 @@ describe("decideTurnPlan — slots and reflex", () => {
     expect(plan.templateKey).toBeUndefined();
   });
 
-  it("T0 da → reflex_only without LLM", () => {
+  it("T0 da on recap → LLM comprehend confirm (ADR-030)", () => {
     const reflex = reflexFor("da", "recap");
     expect(reflex.usedT0).toBe(true);
     const plan = decideTurnPlan({
-      beliefs: beliefGraph([]),
+      beliefs: beliefGraph([
+        belief("commerce.pressure", "confirm"),
+      ]),
       reflex,
       message: "da",
     });
-    expect(plan.kind).toBe("reflex_only");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("Može on recap → T0 confirm (contextual reflex)", () => {
     expect(isT0Confirm("Može", { awaitingConfirm: true })).toBe(true);
     const reflex = reflexFor("Može", "recap");
     expect(reflex.usedT0).toBe(true);
-    expect(reflex.reflex?.intent).toBe("CONFIRM");
     const plan = decideTurnPlan({
-      beliefs: beliefGraph([]),
+      beliefs: beliefGraph([
+        belief("commerce.pressure", "confirm"),
+        belief("conversation.awaiting", "confirm"),
+      ]),
       reflex,
       message: "Može",
     });
-    expect(plan.kind).toBe("reflex_only");
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.reason).toBe("commerce.awaiting_confirm.comprehend");
+  });
+
+  it("potvrdjujem on recap → T0 confirm", () => {
+    expect(isT0Confirm("potvrdjujem", { awaitingConfirm: true })).toBe(true);
+    const reflex = reflexFor("potvrdjujem", "recap");
+    expect(reflex.usedT0).toBe(true);
+    expect(reflex.reflex?.intent).toBe("CONFIRM");
   });
 
   it("Može without confirm context is not T0", () => {

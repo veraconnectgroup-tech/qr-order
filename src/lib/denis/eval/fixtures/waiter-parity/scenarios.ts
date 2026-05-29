@@ -23,6 +23,13 @@ const slotReplyBase = {
   conversationAwaiting: "serve_size" as const,
 };
 
+/** ADR-030 — recap confirm uses LLM comprehend; T0 still flags CONFIRM/DONE for act. */
+const confirmAtRecapExpect = {
+  planKind: "transactional_perceive" as const,
+  requiresLlm: true,
+  conversationAwaiting: "confirm" as const,
+} as const;
+
 /** ADR-031 C3 — 40+ waiter-parity cognition journeys (no LLM, no DB). */
 export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
   // --- Slot / typo (12) ---
@@ -199,7 +206,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
   // --- Confirm / recap (8) ---
   {
     id: "wp_confirm_moze_recap",
-    description: "Može at recap → T0 confirm",
+    description: "Može at recap → comprehend confirm (ADR-030)",
     baseSetup: {
       flowNodeId: "recap",
       aiCartItems: [drinkLine("p-pils", "Pils", "0.5L")],
@@ -207,17 +214,13 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "Može",
-        expect: {
-          planKind: "reflex_only",
-          requiresLlm: false,
-          usedT0: true,
-        },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
   {
     id: "wp_confirm_da_recap",
-    description: "da at recap → T0",
+    description: "da at recap → comprehend confirm",
     baseSetup: {
       flowNodeId: "recap",
       aiCartItems: [drinkLine("p-pils", "Pils", "0.5L")],
@@ -225,13 +228,13 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "da",
-        expect: { planKind: "reflex_only", usedT0: true, requiresLlm: false },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
   {
     id: "wp_confirm_ajde_recap",
-    description: "ajde at recap → T0",
+    description: "ajde at recap → comprehend confirm",
     baseSetup: {
       flowNodeId: "recap",
       aiCartItems: [drinkLine("p-cola", "Cola", "0.5L")],
@@ -239,13 +242,13 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "ajde",
-        expect: { planKind: "reflex_only", usedT0: true },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
   {
     id: "wp_confirm_pošalji",
-    description: "pošalji at recap → T0",
+    description: "pošalji at recap → comprehend confirm",
     baseSetup: {
       flowNodeId: "recap",
       aiCartItems: [drinkLine("p-mojito", "Mojito", null)],
@@ -253,7 +256,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "da, pošalji",
-        expect: { planKind: "reflex_only", usedT0: true },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
@@ -301,7 +304,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "ja",
-        expect: { planKind: "reflex_only", usedT0: true },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
@@ -316,7 +319,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "yes",
-        expect: { planKind: "reflex_only", usedT0: true },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
@@ -597,7 +600,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
           flowNodeId: "recap",
           aiCartItems: [drinkLine("p-pils", "Pils", "0.5L")],
         },
-        expect: { planKind: "reflex_only", usedT0: true },
+        expect: { ...confirmAtRecapExpect, usedT0: true },
       },
     ],
   },
@@ -616,7 +619,11 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
           flowNodeId: "recap",
           aiCartItems: [drinkLine("p-pils", "Pils", "0.5L")],
         },
-        expect: { conversationMode: "ordering", planKind: "reflex_only", usedT0: true },
+        expect: {
+          conversationMode: "ordering",
+          ...confirmAtRecapExpect,
+          usedT0: true,
+        },
       },
     ],
   },
@@ -739,9 +746,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
       {
         message: "da",
         expect: {
-          planKind: "reflex_only",
+          ...confirmAtRecapExpect,
           usedT0: true,
-          conversationAwaiting: "confirm",
         },
       },
     ],

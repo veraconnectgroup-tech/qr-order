@@ -478,6 +478,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     return perceiveResponse;
   }
 
+  const t0ConfirmSubmit =
+    reflexTurn.reflex?.intent === "CONFIRM" &&
+    reflexTurn.plan.skills.some((skill) => skill.id === "order.submit");
+
+  if (t0ConfirmSubmit) {
+    data.submitOrder = true;
+  }
+
   if (timelineEnabled && aiSessionId && beliefGraph) {
     await appendMindTurnProfile(admin, {
       aiSessionId,
