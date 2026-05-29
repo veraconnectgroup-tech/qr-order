@@ -97,21 +97,37 @@ function withStore<T>(
   );
 }
 
-export async function enqueueStaffOrder(
-  item: Omit<StaffOrderQueueItem, "status" | "attempts">
-): Promise<StaffOrderQueueItem> {
+/** Repair legacy queue rows where payload lost clientOrderId but top-level id exists. */
+export function withQueuePayloadClientOrderId(
+  item: StaffOrderQueueItem
+): StaffOrderQueueItem {
   const clientOrderId = item.clientOrderId || item.id;
-  const entry: StaffOrderQueueItem = {
+  if (item.payload.clientOrderId === clientOrderId) {
+    return item.clientOrderId === clientOrderId ?
+        item
+      : { ...item, clientOrderId };
+  }
+  return {
     ...item,
     clientOrderId,
-    id: item.id || clientOrderId,
     payload: {
       ...item.payload,
       clientOrderId,
     },
+  };
+}
+
+export async function enqueueStaffOrder(
+  item: Omit<StaffOrderQueueItem, "status" | "attempts">
+): Promise<StaffOrderQueueItem> {
+  const clientOrderId = item.clientOrderId || item.id;
+  const entry: StaffOrderQueueItem = withQueuePayloadClientOrderId({
+    ...item,
+    clientOrderId,
+    id: item.id || clientOrderId,
     status: "pending",
     attempts: 0,
-  };
+  });
 
   await withStore("readwrite", (store) => store.put(entry));
   return entry;

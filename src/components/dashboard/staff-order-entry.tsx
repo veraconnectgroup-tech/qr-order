@@ -724,7 +724,7 @@ export function StaffOrderEntry({
 
     if (localFirstEnabled && paymentMethod !== "card_terminal") {
       try {
-        await submitStaffOrderLocalFirst({
+        const result = await submitStaffOrderLocalFirst({
           locationId,
           tableId: selectedTable,
           tableName,
@@ -750,9 +750,15 @@ export function StaffOrderEntry({
           onOrderSaved: (savedId) => registerTrustOrder(savedId, tableName),
           onKitchenBroadcast: advanceTrustToKitchen,
         });
-        toast.success("Bestellung gespeichert ✓ — Sync läuft");
-      } catch {
-        toast.error("Bestellung konnte nicht gespeichert werden.");
+        toast.success(
+          result.syncedImmediately ?
+            "Bestellung erstellt ✓"
+          : "Bestellung gespeichert ✓ — Sync läuft"
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Bestellung fehlgeschlagen";
+        toast.error(message);
       }
       return;
     }

@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { shouldQueueStaffOrderOffline } from "@/lib/offline/should-queue-staff-order-offline";
+import { withQueuePayloadClientOrderId } from "@/lib/offline/order-queue";
+
+describe("withQueuePayloadClientOrderId", () => {
+  it("injects clientOrderId into legacy payloads missing it", () => {
+    const clientOrderId = "33333333-3333-4333-8333-333333333333";
+    const repaired = withQueuePayloadClientOrderId({
+      id: clientOrderId,
+      clientOrderId,
+      createdAt: "2026-05-29T12:00:00.000Z",
+      tableId: "11111111-1111-4111-8111-111111111111",
+      tableName: "Tisch 1",
+      payload: {
+        tableId: "11111111-1111-4111-8111-111111111111",
+        clientOrderId: "",
+        items: [],
+        paymentMethod: "at_bar",
+        isTakeaway: false,
+      },
+      status: "failed",
+      attempts: 2,
+      lastError: "clientOrderId is required.",
+    });
+
+    expect(repaired.payload.clientOrderId).toBe(clientOrderId);
+  });
+});
 
 describe("shouldQueueStaffOrderOffline", () => {
   it("queues when fully offline", () => {

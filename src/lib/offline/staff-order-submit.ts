@@ -1,9 +1,17 @@
 "use client";
 
-import { broadcastProvisionalOrder } from "@/lib/pos/provisional-broadcast";
+import {
+  broadcastOrderConfirmed,
+  broadcastProvisionalOrder,
+} from "@/lib/pos/provisional-broadcast";
 import { isPosKitchenProvisionalEnabled } from "@/lib/pos/feature-flags";
 import type { ProvisionalOrderItem } from "@/lib/pos/provisional-types";
-import { enqueueStaffOrder } from "@/lib/offline/order-queue";
+import {
+  enqueueStaffOrder,
+  type StaffOrderQueuePayload,
+} from "@/lib/offline/order-queue";
+import { isBrowserOffline } from "@/lib/offline/should-queue-staff-order-offline";
+import { postStaffOrderApi } from "@/lib/offline/post-staff-order-api";
 import { syncQueuedStaffOrders } from "@/lib/offline/sync-manager";
 import {
   computeStaffOrderTotals,
@@ -56,9 +64,26 @@ async function resolveStaffIdForBroadcast(): Promise<string | null> {
 
 export type SubmitStaffOrderLocalFirstResult = {
   clientOrderId: string;
+  /** True when order reached the server immediately (online network-first). */
+  syncedImmediately: boolean;
 };
 
-/** P1 — local-first WAL write, cart clear, background sync. No Denis / fiscal. */
+const NETWORK_ERROR =
+  /timeout|network|failed to fetch|load failed|aborted/i;
+
+function shouldFallbackToOfflineQueue(input: {
+  status?: number;
+  error: string;
+  retried: boolean;
+}): boolean {
+  if (isBrowserOffline()) return true;
+  if (input.status !== undefined && input.status >= 500) return true;
+  if (input.retried) return true;
+  if (NETWORK_ERROR.test(input.error)) return true;
+  return false;
+}
+
+/** P1 — online: POST directly; offline / transport failure: IndexedDB WAL + sync. */
 export async function submitStaffOrderLocalFirst(
   input: SubmitStaffOrderLocalFirstInput
 ): Promise<SubmitStaffOrderLocalFirstResult> {
@@ -74,7 +99,7 @@ export async function submitStaffOrderLocalFirst(
     orgDefaultRate: input.defaultTaxPercent,
   });
 
-  const payload = {
+  const payload: StaffOrderQueuePayload = {
     tableId: input.tableId,
     clientOrderId,
     menuVersion: input.menuVersion,
@@ -92,6 +117,32 @@ export async function submitStaffOrderLocalFirst(
     notes: input.orderNotes.trim() || undefined,
     isTakeaway: input.isTakeaway,
   };
+
+  const canTryOnline =
+    typeof navigator !== "undefined" && navigator.onLine;
+
+  if (canTryOnline) {
+    const result = await postStaffOrderApi(payload);
+    if (result.ok) {
+      input.onOrderSaved?.(clientOrderId);
+      input.onClearForm();
+
+      if (isPosKitchenProvisionalEnabled(input.locationId)) {
+        void broadcastOrderConfirmed(
+          input.locationId,
+          clientOrderId,
+          result.data.orderId,
+          result.data.orderNumber
+        );
+      }
+
+      return { clientOrderId, syncedImmediately: true };
+    }
+
+    if (!shouldFallbackToOfflineQueue(result)) {
+      throw new Error(result.error);
+    }
+  }
 
   await enqueueStaffOrder({
     id: clientOrderId,
@@ -126,7 +177,7 @@ export async function submitStaffOrderLocalFirst(
 
   void syncQueuedStaffOrders();
 
-  return { clientOrderId };
+  return { clientOrderId, syncedImmediately: false };
 }
 
 /**

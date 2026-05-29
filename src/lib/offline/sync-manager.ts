@@ -1,12 +1,13 @@
 "use client";
 
-import { resilientFetch } from "@/lib/fetch/resilient-fetch";
 import {
   listQueuedStaffOrders,
   removeQueuedStaffOrder,
   updateQueuedStaffOrder,
+  withQueuePayloadClientOrderId,
   type StaffOrderQueueItem,
 } from "@/lib/offline/order-queue";
+import { postStaffOrderApi } from "@/lib/offline/post-staff-order-api";
 import {
   broadcastOrderConfirmed,
   broadcastOrderConflict,
@@ -92,44 +93,22 @@ function emitSyncConflict(item: StaffOrderQueueItem) {
 }
 
 async function syncOne(item: StaffOrderQueueItem): Promise<boolean> {
+  const repaired = withQueuePayloadClientOrderId(item);
+  if (repaired.payload !== item.payload || repaired.clientOrderId !== item.clientOrderId) {
+    await updateQueuedStaffOrder(repaired);
+  }
+
   const updating: StaffOrderQueueItem = {
-    ...item,
+    ...repaired,
     status: "syncing",
-    attempts: item.attempts + 1,
+    attempts: repaired.attempts + 1,
   };
   await updateQueuedStaffOrder(updating);
 
-  const { data: body, error, status } = await resilientFetch<{
-    data: {
-      orderId: string;
-      orderNumber: number;
-      tableName: string;
-      total: number;
-      idempotent?: boolean;
-    } | null;
-    error: string | null;
-    details?: { products?: string[] };
-    products?: string[];
-  }>("/api/staff-orders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(item.payload),
-  });
+  const result = await postStaffOrderApi(updating.payload);
 
-  const responseError =
-    error ??
-    (body && "error" in body ? (body as { error: string | null }).error : null);
-
-  if (
-    status === 400 &&
-    (responseError === "unavailable_products" ||
-      body?.error === "unavailable_products")
-  ) {
-    const products =
-      body?.details?.products ??
-      (body && "products" in body
-        ? (body as { products?: string[] }).products
-        : undefined);
+  if (!result.ok && result.unavailableProducts !== undefined) {
+    const products = result.unavailableProducts;
     const conflict: StaffOrderQueueItem = {
       ...updating,
       status: "conflict",
@@ -142,44 +121,44 @@ async function syncOne(item: StaffOrderQueueItem): Promise<boolean> {
     await updateQueuedStaffOrder(conflict);
     emitSyncConflict(conflict);
     if (
-      item.locationId &&
-      isPosKitchenProvisionalEnabled(item.locationId)
+      repaired.locationId &&
+      isPosKitchenProvisionalEnabled(repaired.locationId)
     ) {
       void broadcastOrderConflict(
-        item.locationId,
-        item.clientOrderId,
+        repaired.locationId,
+        repaired.clientOrderId,
         conflict.lastError ?? "Produkte nicht verfügbar"
       );
     }
     return false;
   }
 
-  if (responseError || !body?.data) {
+  if (!result.ok) {
     const failed: StaffOrderQueueItem = {
       ...updating,
       status: "failed",
-      lastError: responseError ?? `Sync failed (${status ?? "?"})`,
+      lastError: result.error,
     };
     await updateQueuedStaffOrder(failed);
     return false;
   }
 
-  if (item.locationId && isPosKitchenProvisionalEnabled(item.locationId)) {
+  if (repaired.locationId && isPosKitchenProvisionalEnabled(repaired.locationId)) {
     void broadcastOrderConfirmed(
-      item.locationId,
-      item.clientOrderId,
-      body.data.orderId,
-      body.data.orderNumber
+      repaired.locationId,
+      repaired.clientOrderId,
+      result.data.orderId,
+      result.data.orderNumber
     );
   }
 
-  await removeQueuedStaffOrder(item.id);
+  await removeQueuedStaffOrder(repaired.id);
   emitSyncSuccess({
-    clientOrderId: item.clientOrderId,
-    orderId: body.data.orderId,
-    orderNumber: body.data.orderNumber,
-    tableName: body.data.tableName,
-    total: body.data.total,
+    clientOrderId: repaired.clientOrderId,
+    orderId: result.data.orderId,
+    orderNumber: result.data.orderNumber,
+    tableName: result.data.tableName,
+    total: result.data.total,
   });
   return true;
 }
@@ -230,7 +209,7 @@ export async function retryQueuedStaffOrder(id: string): Promise<boolean> {
   if (!item) return false;
 
   const reset: StaffOrderQueueItem = {
-    ...item,
+    ...withQueuePayloadClientOrderId(item),
     status: "pending",
     lastError: undefined,
     unavailableProducts: undefined,
