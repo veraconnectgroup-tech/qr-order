@@ -29,16 +29,34 @@ function normalize(message: string): string {
   return message.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-export function isT0Confirm(message: string): boolean {
+const T0_CONFIRM_CORE =
+  /^(da|ja|yes|yep|ok+|potvrdi|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/;
+
+const T0_CONFIRM_CONTEXTUAL =
+  /^(mo[žz]e|moze|va[žz]i|vazi|ajde|hajde|super|naravno|u redu|uredu|okej|okay|sla[žz]em se|klar|gerne|passt|geht klar|sure|go ahead|sounds good|let's do it|lets do it)([\s,.!]|$)/;
+
+export type T0ConfirmContext = {
+  /** recap/submit/collect-with-cart — Balkan/EN soft confirms (ADR-025 T2). */
+  awaitingConfirm?: boolean;
+};
+
+export function isT0Confirm(
+  message: string,
+  context: T0ConfirmContext = {}
+): boolean {
   const text = normalize(message);
-  return (
-    /^(da|ja|yes|yep|ok+|potvrdi|bestätigen|bestätige|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/.test(
-      text
-    ) ||
+  if (T0_CONFIRM_CORE.test(text)) return true;
+  if (
     /^(da|ja),?\s*(pošalji|posalji|potvrdi|bestätigen|send|naruči|naruci)/.test(
       text
     )
-  );
+  ) {
+    return true;
+  }
+  if (context.awaitingConfirm && T0_CONFIRM_CONTEXTUAL.test(text)) {
+    return true;
+  }
+  return false;
 }
 
 export function isT0Decline(message: string): boolean {
@@ -126,8 +144,13 @@ function isBareStorniraj(message: string): boolean {
   return /^storniraj$/i.test(normalize(message));
 }
 
+export type T0ReflexContext = T0ConfirmContext;
+
 /** T0 reflex classifier — no LLM (ADR-004 §7, ADR-003 T0). */
-export function resolveT0Reflex(message: string): T0ReflexResult | null {
+export function resolveT0Reflex(
+  message: string,
+  context: T0ReflexContext = {}
+): T0ReflexResult | null {
   const trimmed = message.trim();
   if (!trimmed) return null;
 
@@ -187,7 +210,7 @@ export function resolveT0Reflex(message: string): T0ReflexResult | null {
     };
   }
 
-  if (isT0Confirm(trimmed)) {
+  if (isT0Confirm(trimmed, context)) {
     return {
       tier: "T0",
       ruleId: "confirm",

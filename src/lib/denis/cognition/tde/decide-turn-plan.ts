@@ -8,17 +8,17 @@ import {
   type TurnPlanKind,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
 
-const ORDERING_GUEST_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte)\b/i;
-
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
 
-function normalize(message: string): string {
-  return message.trim().toLowerCase().replace(/\s+/g, " ");
-}
+const SETTLING_GUEST_PATTERN =
+  /\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat|pay|rechnung bitte|that's it|done ordering)\b/i;
 
-/** Social / banter — not an order line (ADR-023 MR-2; no src/lib/ai import). */
+/** @deprecated Routing hint only — not an LLM gate (ADR-025). */
+const ORDERING_GUEST_PATTERN =
+  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte)\b/i;
+
+/** Social / banter — not an order line (eval helpers only; ADR-025). */
 export function isCasualSocialGuestMessage(message: string): boolean {
   const text = message.trim();
   if (!text || text.length > 280) return false;
@@ -30,15 +30,6 @@ export function looksLikeOrderLine(message: string): boolean {
   return ORDERING_GUEST_PATTERN.test(message.trim());
 }
 
-function inferConversationMode(message: string): ConversationMode | null {
-  if (looksLikeOrderLine(message)) return "ordering";
-  if (isCasualSocialGuestMessage(message)) return "banter";
-  if (/\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat)\b/i.test(message)) {
-    return "settling";
-  }
-  return null;
-}
-
 function resolveConversationMode(
   input: DecideTurnPlanInput
 ): ConversationMode {
@@ -47,7 +38,8 @@ function resolveConversationMode(
     CORE_BELIEF_KEYS.conversationMode
   );
   if (fromBelief) return fromBelief;
-  return inferConversationMode(input.message) ?? "ordering";
+  if (SETTLING_GUEST_PATTERN.test(input.message)) return "settling";
+  return "banter";
 }
 
 function resolveSuppressUpsell(beliefs: DecideTurnPlanInput["beliefs"]): boolean {
@@ -69,25 +61,6 @@ function planForPendingSlot(
     suppressUpsell,
     reason: "commerce.pending_slot",
     templateKey,
-  };
-}
-
-function planForBanter(suppressUpsell: boolean): TurnPlan {
-  return {
-    kind: "template_tell",
-    requiresLlm: false,
-    suppressUpsell,
-    reason: "conversation.mode.banter",
-    templateKey: "banter.welcome",
-  };
-}
-
-function planForOrdering(suppressUpsell: boolean): TurnPlan {
-  return {
-    kind: "transactional_perceive",
-    requiresLlm: true,
-    suppressUpsell,
-    reason: "conversation.mode.ordering",
   };
 }
 
@@ -149,13 +122,56 @@ function buildPlan(
   return { kind, ...partial };
 }
 
+function hasCommercePressure(mode: ConversationMode): boolean {
+  return mode === "ordering";
+}
+
+/** ADR-025 — state-driven perceive branch after deterministic exits. */
+function resolvePerceivePlan(
+  input: DecideTurnPlanInput,
+  suppressUpsell: boolean
+): TurnPlan {
+  const mode = resolveConversationMode(input);
+  const message = input.message.trim();
+
+  if (mode === "settling") {
+    return buildPlan("template_tell", {
+      requiresLlm: false,
+      suppressUpsell,
+      reason: "conversation.mode.settling",
+      templateKey: "settle.thanks",
+    });
+  }
+
+  if (VAGUE_RECOMMEND_PATTERN.test(message)) {
+    return buildPlan("relational_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "vague_recommend",
+    });
+  }
+
+  if (hasCommercePressure(mode)) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "conversation.mode.ordering",
+    });
+  }
+
+  return buildPlan("relational_perceive", {
+    requiresLlm: true,
+    suppressUpsell,
+    reason: "conversation.free_text",
+  });
+}
+
 /**
- * ADR-023 §4 — single code path between FOLD and perceive.
+ * ADR-023 §4 + ADR-025 — single code path between FOLD and perceive.
  * Director decides LLM vs template; does not call OpenAI.
  */
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
-  const message = input.message.trim();
 
   if (input.reflex.usedT0 || input.reflex.handoffCommand) {
     return buildPlan("reflex_only", {
@@ -182,46 +198,7 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   );
   if (narratePlan) return narratePlan;
 
-  const mode = resolveConversationMode(input);
-
-  if (mode === "banter" || isCasualSocialGuestMessage(message)) {
-    if (VAGUE_RECOMMEND_PATTERN.test(message)) {
-      return buildPlan("relational_perceive", {
-        requiresLlm: true,
-        suppressUpsell,
-        reason: "banter.vague_recommend",
-      });
-    }
-    return planForBanter(suppressUpsell);
-  }
-
-  if (mode === "settling") {
-    return buildPlan("template_tell", {
-      requiresLlm: false,
-      suppressUpsell,
-      reason: "conversation.mode.settling",
-      templateKey: "settle.thanks",
-    });
-  }
-
-  if (mode === "ordering" || looksLikeOrderLine(message)) {
-    return planForOrdering(suppressUpsell);
-  }
-
-  if (VAGUE_RECOMMEND_PATTERN.test(message)) {
-    return buildPlan("relational_perceive", {
-      requiresLlm: true,
-      suppressUpsell,
-      reason: "vague_recommend",
-    });
-  }
-
-  return buildPlan("template_tell", {
-    requiresLlm: false,
-    suppressUpsell,
-    reason: "default_nudge",
-    templateKey: "banter.welcome",
-  });
+  return resolvePerceivePlan(input, suppressUpsell);
 }
 
 /** Whether DECIDE may attach upsell goals for this turn (MR-2 acceptance). */

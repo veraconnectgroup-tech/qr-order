@@ -249,24 +249,6 @@ function resolveConversationMode(
     );
   }
 
-  if (ORDERING_GUEST_PATTERN.test(guestMessage)) {
-    return belief(
-      CORE_BELIEF_KEYS.conversationMode,
-      "ordering",
-      "inferred",
-      0.9
-    );
-  }
-
-  if (isCasualSocialMessage(guestMessage)) {
-    return belief(
-      CORE_BELIEF_KEYS.conversationMode,
-      "banter",
-      "inferred",
-      0.85
-    );
-  }
-
   const hasOpenCommerce =
     state.commerce.orders.some(
       (order) => order.status !== "delivered" && order.status !== "cancelled"
@@ -277,6 +259,24 @@ function resolveConversationMode(
       CORE_BELIEF_KEYS.conversationMode,
       "ordering",
       "inferred",
+      0.85
+    );
+  }
+
+  if (ORDERING_GUEST_PATTERN.test(guestMessage)) {
+    return belief(
+      CORE_BELIEF_KEYS.conversationMode,
+      "ordering",
+      "inferred",
+      0.75
+    );
+  }
+
+  if (isCasualSocialMessage(guestMessage)) {
+    return belief(
+      CORE_BELIEF_KEYS.conversationMode,
+      "banter",
+      "inferred",
       0.7
     );
   }
@@ -285,7 +285,7 @@ function resolveConversationMode(
     CORE_BELIEF_KEYS.conversationMode,
     "banter",
     "inferred",
-    0.6
+    0.55
   );
 }
 

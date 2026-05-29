@@ -74,6 +74,15 @@ function injectHandoffSkills(
   }
 }
 
+function resolveAwaitingConfirm(input: ReflexTurnInput): boolean {
+  if (input.flowNodeId === "recap" || input.flowNodeId === "submit") {
+    return true;
+  }
+  const cartState = input.cartState ?? emptyCartState();
+  const hasCartLines = cartState.draft.items.length > 0;
+  return input.flowNodeId === "collect" && hasCartLines;
+}
+
 /** M4 + M28 — T0 reflex, handoff commands, correction before flow plan. */
 export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
   const handoffPerception = perceiveTableGuestCommand({
@@ -85,7 +94,9 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
 
   const reflex = handoffPerception
     ? null
-    : resolveT0Reflex(input.message);
+    : resolveT0Reflex(input.message, {
+        awaitingConfirm: resolveAwaitingConfirm(input),
+      });
 
   let cartState = input.cartState ?? emptyCartState();
   let correction: CorrectionOutcome | null = null;

@@ -15,21 +15,26 @@ import {
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { deriveGoalStack, topGoal } from "@/lib/denis/kernel/goal-stack";
 import { planTurnWithReflex as reflexPlan } from "@/lib/denis/kernel/reflex-plan";
+import { isT0Confirm, resolveT0Reflex } from "@/lib/denis/kernel/reflex-rules";
 
 const config = CONCIERGE_PLATFORM_DEFAULTS;
 
-function reflexFor(message: string, flowNodeId: "collect" | "browse" | "recap" = "collect") {
+function reflexFor(
+  message: string,
+  flowNodeId: "collect" | "browse" | "recap" = "collect",
+  cartState = emptyCartState()
+) {
   return reflexPlan({
     config,
     message,
     flowNodeId,
-    cartState: emptyCartState(),
+    cartState,
     skipUpsell: false,
   });
 }
 
-describe("decideTurnPlan — banter vs order", () => {
-  it("routes banter belief to template or relational, never transactional JSON", () => {
+describe("decideTurnPlan — ADR-025 state-driven routing", () => {
+  it("routes banter belief to relational_perceive, not banter template", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "banter"),
       belief("conversation.language", "sr"),
@@ -39,18 +44,36 @@ describe("decideTurnPlan — banter vs order", () => {
       reflex: reflexFor("gde si legendo"),
       message: "gde si legendo",
     });
-    expect(plan.kind).not.toBe("transactional_perceive");
-    expect(["template_tell", "relational_perceive"]).toContain(plan.kind);
+    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.requiresLlm).toBe(true);
   });
 
-  it("treats casual social message as banter without explicit belief", () => {
-    expect(isCasualSocialGuestMessage("gde si legendo")).toBe(true);
+  it("routes Zdravo Denise legendo to relational_perceive (not template welcome)", () => {
+    const beliefs = beliefGraph([
+      belief("conversation.mode", "banter"),
+      belief("conversation.language", "sr"),
+    ]);
     const plan = decideTurnPlan({
-      beliefs: beliefGraph([]),
-      reflex: reflexFor("gde si legendo", "browse"),
-      message: "gde si legendo",
+      beliefs,
+      reflex: reflexFor("Zdravo Denise legendo", "browse"),
+      message: "Zdravo Denise legendo",
     });
-    expect(plan.kind).not.toBe("transactional_perceive");
+    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.templateKey).toBeUndefined();
+  });
+
+  it("routes Daj mi sok with ordering belief to transactional_perceive", () => {
+    const beliefs = beliefGraph([
+      belief("conversation.mode", "ordering"),
+      belief("conversation.language", "sr"),
+    ]);
+    const plan = decideTurnPlan({
+      beliefs,
+      reflex: reflexFor("Daj mi sok"),
+      message: "Daj mi sok",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("routes order line with ordering mode to transactional_perceive", () => {
@@ -68,6 +91,29 @@ describe("decideTurnPlan — banter vs order", () => {
     expect(plan.kind).toBe("transactional_perceive");
     expect(plan.requiresLlm).toBe(true);
   });
+
+  it("ordering belief + hello uses transactional_perceive, not banter", () => {
+    const beliefs = beliefGraph([
+      belief("conversation.mode", "ordering"),
+      belief("conversation.language", "sr"),
+    ]);
+    const plan = decideTurnPlan({
+      beliefs,
+      reflex: reflexFor("hello"),
+      message: "hello",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+  });
+
+  it("casual social without banter belief still gets relational_perceive", () => {
+    expect(isCasualSocialGuestMessage("gde si legendo")).toBe(true);
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([]),
+      reflex: reflexFor("gde si legendo", "browse"),
+      message: "gde si legendo",
+    });
+    expect(plan.kind).toBe("relational_perceive");
+  });
 });
 
 describe("decideTurnPlan — slots and reflex", () => {
@@ -84,7 +130,7 @@ describe("decideTurnPlan — slots and reflex", () => {
     expect(plan.templateKey).toBe("slot.clarify.serve_size");
   });
 
-  it("T0 confirm → reflex_only without LLM", () => {
+  it("T0 da → reflex_only without LLM", () => {
     const reflex = reflexFor("da", "recap");
     expect(reflex.usedT0).toBe(true);
     const plan = decideTurnPlan({
@@ -94,6 +140,24 @@ describe("decideTurnPlan — slots and reflex", () => {
     });
     expect(plan.kind).toBe("reflex_only");
     expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("Može on recap → T0 confirm (contextual reflex)", () => {
+    expect(isT0Confirm("Može", { awaitingConfirm: true })).toBe(true);
+    const reflex = reflexFor("Može", "recap");
+    expect(reflex.usedT0).toBe(true);
+    expect(reflex.reflex?.intent).toBe("CONFIRM");
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([]),
+      reflex,
+      message: "Može",
+    });
+    expect(plan.kind).toBe("reflex_only");
+  });
+
+  it("Može without confirm context is not T0", () => {
+    expect(isT0Confirm("Može")).toBe(false);
+    expect(resolveT0Reflex("Može")).toBeNull();
   });
 });
 
@@ -139,20 +203,21 @@ describe("decideTurnPlan — rush suppresses upsell", () => {
 });
 
 describe("planUtterance + template-utterance", () => {
-  it("banter template covers sr, de, en", () => {
+  it("banter template still works when explicitly planned", () => {
     for (const lang of ["sr", "de", "en"] as const) {
       const beliefs = beliefGraph([
         belief("conversation.mode", "banter"),
         belief("conversation.language", lang),
       ]);
-      const turnPlan = decideTurnPlan({
-        beliefs,
-        reflex: reflexFor("hey"),
-        message: "hey",
-      });
       const utterance = planUtterance({
         beliefs,
-        turnPlan,
+        turnPlan: {
+          kind: "template_tell",
+          requiresLlm: false,
+          suppressUpsell: false,
+          reason: "test",
+          templateKey: "banter.welcome",
+        },
         topGoal: null,
       });
       expect(utterance.useTemplate).toBe(true);
