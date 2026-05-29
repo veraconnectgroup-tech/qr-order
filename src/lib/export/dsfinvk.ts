@@ -6,6 +6,7 @@ import { countsTowardRevenue } from "@/lib/orders/revenue";
 import { parseDatevDateRange } from "@/lib/export/datev";
 import { lineVatBreakdown, roundMoney } from "@/lib/tax/vat";
 import packageJson from "../../../package.json";
+import { tryLoadJournalDsfinvkContext } from "@/lib/export/dsfinvk-journal-loader";
 
 const BERLIN_TZ = "Europe/Berlin";
 const APP_VERSION = packageJson.version;
@@ -13,6 +14,7 @@ const APP_VERSION = packageJson.version;
 export type DsfinvkClosingRow = {
   id: string;
   business_date: string;
+  z_nr: number | null;
   total_gross: number;
   total_cash: number;
   total_non_cash: number;
@@ -72,6 +74,7 @@ export type DsfinvkExportContext = {
 };
 
 export type ParsedTseData = {
+  tss_id: string;
   tss_serial: string;
   signature_counter: number | null;
   signature: string;
@@ -127,6 +130,7 @@ export function parseTseData(raw: unknown): ParsedTseData | null {
   if (!tssSerial) return null;
 
   return {
+    tss_id: typeof row.tss_id === "string" ? row.tss_id.trim() : "",
     tss_serial: tssSerial,
     signature_counter:
       typeof row.signature_counter === "number" ? row.signature_counter : null,
@@ -358,7 +362,7 @@ export function buildTransactionsTseCsv(ctx: DsfinvkExportContext): string {
       ctx.kasseId,
       zNr,
       order.id,
-      tse.tss_serial,
+      tse.tss_id || ctx.fiskalyTssId,
       tse.tss_serial,
       tse.signature_counter != null ? String(tse.signature_counter) : "",
       tse.start_time != null ? String(tse.start_time) : "",
@@ -726,7 +730,7 @@ export async function generateDsfinvkExport(
 ): Promise<Buffer> {
   const admin = createAdminClient();
 
-  const [{ data: location, error: locationError }, { data: org, error: orgError }] =
+  const [{ data: location, error: locationError }, { data: org, error: orgError }, { data: register }] =
     await Promise.all([
       admin
         .from("locations")
@@ -738,6 +742,12 @@ export async function generateDsfinvkExport(
         .from("organizations")
         .select("currency, fiskaly_tss_id, fiskaly_client_id")
         .eq("id", organizationId)
+        .maybeSingle(),
+      admin
+        .from("fiscal_registers")
+        .select("kassen_id, fiskaly_tss_id, fiskaly_client_id")
+        .eq("location_id", locationId)
+        .eq("status", "active")
         .maybeSingle(),
     ]);
 
@@ -761,14 +771,40 @@ export async function generateDsfinvkExport(
     fiskaly_tss_id: string | null;
     fiskaly_client_id: string | null;
   };
+  const registerRow = register as {
+    kassen_id: string;
+    fiskaly_tss_id: string;
+    fiskaly_client_id: string;
+  } | null;
+
+  const kasseId = registerRow?.kassen_id ?? locationRow.id;
+  const fiskalyTssId =
+    registerRow?.fiskaly_tss_id ?? orgRow.fiskaly_tss_id ?? "";
+  const fiskalyClientId =
+    registerRow?.fiskaly_client_id ?? orgRow.fiskaly_client_id ?? "";
 
   const fromIso = isoDateOnly(fromDate);
   const toIso = isoDateOnly(toDate);
 
+  const journalCtx = await tryLoadJournalDsfinvkContext(
+    admin,
+    organizationId,
+    locationId,
+    fromDate,
+    toDate,
+    locationRow,
+    orgRow,
+    registerRow
+  );
+
+  if (journalCtx) {
+    return zipDsfinvkCsvFiles(buildDsfinvkCsvFiles(journalCtx));
+  }
+
   const { data: closings, error: closingsError } = await admin
-    .from("daily_closings")
+    .from("daily_closings" as never)
     .select(
-      "id, business_date, total_gross, total_cash, total_non_cash, closed_at, order_count"
+      "id, business_date, z_nr, total_gross, total_cash, total_non_cash, closed_at, order_count"
     )
     .eq("location_id", locationId)
     .eq("org_id", organizationId)
@@ -783,21 +819,24 @@ export async function generateDsfinvkExport(
   const closingRows = (closings ?? []) as DsfinvkClosingRow[];
   const closingNumberByDate = new Map<string, number>();
   closingRows.forEach((closing, index) => {
-    closingNumberByDate.set(closing.business_date, index + 1);
+    closingNumberByDate.set(
+      closing.business_date,
+      closing.z_nr ?? index + 1
+    );
   });
 
   const closingDates = new Set(closingRows.map((row) => row.business_date));
   if (!closingDates.size) {
     const ctx: DsfinvkExportContext = {
-      kasseId: locationRow.id,
+      kasseId,
       locationName: locationRow.name,
       locationAddress: locationRow.address ?? "",
       locationCity: locationRow.city ?? "",
       locationPostalCode: locationRow.postal_code ?? "",
       locationTimezone: locationRow.timezone || BERLIN_TZ,
       currency: (orgRow.currency ?? "EUR").toUpperCase(),
-      fiskalyClientId: orgRow.fiskaly_client_id ?? "",
-      fiskalyTssId: orgRow.fiskaly_tss_id ?? "",
+      fiskalyClientId,
+      fiskalyTssId,
       closings: [],
       closingNumberByDate,
       orders: [],
@@ -937,15 +976,15 @@ export async function generateDsfinvkExport(
   }
 
   const ctx: DsfinvkExportContext = {
-    kasseId: locationRow.id,
+    kasseId,
     locationName: locationRow.name,
     locationAddress: locationRow.address ?? "",
     locationCity: locationRow.city ?? "",
     locationPostalCode: locationRow.postal_code ?? "",
     locationTimezone: timezone,
     currency: (orgRow.currency ?? "EUR").toUpperCase(),
-    fiskalyClientId: orgRow.fiskaly_client_id ?? "",
-    fiskalyTssId: orgRow.fiskaly_tss_id ?? "",
+    fiskalyClientId,
+    fiskalyTssId,
     closings: closingRows,
     closingNumberByDate,
     orders: revenueOrders,

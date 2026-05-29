@@ -43,6 +43,7 @@ export type DailyClosingRow = {
   org_id: string;
   location_id: string;
   business_date: string;
+  z_nr: number | null;
   total_gross: number;
   total_net: number;
   total_tax: number;
@@ -320,12 +321,44 @@ export async function computeDailyClosing(
 export async function saveDailyClosing(
   admin: SupabaseClient,
   data: DailyClosingData,
-  closedBy?: string | null
-): Promise<{ id: string }> {
+  closedBy?: string | null,
+  options?: {
+    fiscalTransactionId?: string | null;
+    zNr?: number | null;
+  }
+): Promise<{ id: string; zNr: number | null }> {
+  const { data: existing } = await admin
+    .from("daily_closings" as never)
+    .select("id, z_nr, fiscal_transaction_id")
+    .eq("location_id", data.locationId)
+    .eq("business_date", data.businessDate)
+    .maybeSingle();
+
+  let zNr =
+    options?.zNr ??
+    (existing as { z_nr: number | null } | null)?.z_nr ??
+    null;
+
+  if (zNr == null) {
+    const { data: maxRow } = await admin
+      .from("daily_closings" as never)
+      .select("z_nr")
+      .eq("location_id", data.locationId)
+      .not("z_nr", "is", null)
+      .order("z_nr", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const maxZ = (maxRow as { z_nr: number | null } | null)?.z_nr ?? 0;
+    zNr = maxZ + 1;
+  }
+
   const row = {
     org_id: data.orgId,
     location_id: data.locationId,
     business_date: data.businessDate,
+    z_nr: zNr,
+    fiscal_transaction_id: options?.fiscalTransactionId ?? null,
     total_gross: data.totalGross,
     total_net: data.totalNet,
     total_tax: data.totalTax,
@@ -352,7 +385,7 @@ export async function saveDailyClosing(
     );
   }
 
-  return { id: (saved as { id: string }).id };
+  return { id: (saved as { id: string }).id, zNr };
 }
 
 export async function signDailyClosingTse(
@@ -785,9 +818,11 @@ export async function runManualDailyClosing(
     input.businessDate,
     input.timezone
   );
-  const { id } = await saveDailyClosing(admin, data, input.closedBy);
-  await signDailyClosingTse(admin, id, input.orgId);
-  return { id, data };
+  const { runFiscalZClosingPipeline } = await import(
+    "@/lib/fiscal/runtime/run-fiscal-z-closing"
+  );
+  const result = await runFiscalZClosingPipeline(admin, data, input.closedBy);
+  return { id: result.id, data: result.data };
 }
 
 export { REVENUE_STATUS_LIST };

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { provisionFiskalyRegisterForLocation } from "@/lib/fiscal/provision-fiskaly-register";
+import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 
 export type FiscalRegisterRow = {
   id: string;
@@ -17,7 +19,7 @@ function sanitizeKassenId(locationId: string, locationName: string): string {
   return `loc-${locationId.slice(0, 8)}`;
 }
 
-/** Lazy register row per location — org-scoped Fiskaly IDs until FC-6 per-location provision. */
+/** Lazy register row per location — FC-6 per-location Fiskaly client when configured. */
 export async function ensureFiscalRegister(
   admin: SupabaseClient,
   locationId: string,
@@ -37,6 +39,23 @@ export async function ensureFiscalRegister(
 
   if (existing) {
     return existing as FiscalRegisterRow;
+  }
+
+  if (isFiskalyConfigured()) {
+    const provisioned = await provisionFiskalyRegisterForLocation(
+      orgId,
+      locationId
+    );
+    if (provisioned) {
+      return {
+        id: provisioned.registerId,
+        org_id: orgId,
+        location_id: locationId,
+        kassen_id: provisioned.kassenId,
+        fiskaly_tss_id: provisioned.tssId,
+        fiskaly_client_id: provisioned.clientId,
+      };
+    }
   }
 
   const [{ data: org, error: orgError }, { data: location, error: locError }] =

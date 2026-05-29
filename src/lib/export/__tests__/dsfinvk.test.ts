@@ -79,6 +79,7 @@ function sampleContext(): DsfinvkExportContext {
       {
         id: "closing-1",
         business_date: "2026-05-23",
+        z_nr: 1,
         total_gross: 125.5,
         total_cash: 40,
         total_non_cash: 85.5,

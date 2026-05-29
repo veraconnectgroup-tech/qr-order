@@ -383,8 +383,31 @@ export async function loadBelegData(
     tax_percent: number;
   };
 
-  const tseData = parseBelegTseData(row.tse_data);
-  if (!row.tse_signature || !tseData) return null;
+  const { data: fiscalSale } = await admin
+    .from("fiscal_transactions")
+    .select("tse_signature, tse_data, net_total, tax_total, gross_total")
+    .eq("order_id", orderId)
+    .eq("tx_type", "sale")
+    .eq("status", "signed")
+    .maybeSingle();
+
+  const journalSale = fiscalSale as {
+    tse_signature: string | null;
+    tse_data: unknown;
+    net_total: number;
+    tax_total: number;
+    gross_total: number;
+  } | null;
+
+  const tseSignature =
+    journalSale?.tse_signature ?? row.tse_signature ?? null;
+  const tseDataRaw = journalSale?.tse_data ?? row.tse_data;
+  const tseData = parseBelegTseData(tseDataRaw);
+  if (!tseSignature || !tseData) return null;
+
+  const subtotal = journalSale ? Number(journalSale.net_total) : Number(row.subtotal);
+  const taxAmount = journalSale ? Number(journalSale.tax_total) : Number(row.tax_amount);
+  const total = journalSale ? Number(journalSale.gross_total) : Number(row.total);
 
   const { data: location, error: locationError } = await admin
     .from("locations")
@@ -484,9 +507,9 @@ export async function loadBelegData(
     tableName: tableRow?.name ?? null,
     orderNumber: row.order_number,
     createdAt: row.created_at,
-    subtotal: Number(row.subtotal),
-    taxAmount: Number(row.tax_amount),
-    total: Number(row.total),
+    subtotal,
+    taxAmount,
+    total,
     currency: org.currency ?? "EUR",
     paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
@@ -499,7 +522,7 @@ export async function loadBelegData(
       notes: item.notes,
       modifiers: modifiersByItem.get(item.id) ?? [],
     })),
-    tseSignature: row.tse_signature,
+    tseSignature,
     tseData,
   };
 }

@@ -4,10 +4,9 @@ import {
   computeDailyClosing,
   dailyClosingExists,
   listStandaloneLocations,
-  saveDailyClosing,
-  signDailyClosingTse,
   yesterdayBusinessDate,
 } from "@/lib/fiscal/daily-closing";
+import { runFiscalZClosingPipeline } from "@/lib/fiscal/runtime/run-fiscal-z-closing";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -53,15 +52,16 @@ export const GET = withErrorHandler(
           location.timezone
         );
 
-        const { id } = await saveDailyClosing(admin, data);
-        await signDailyClosingTse(admin, id, location.org_id);
+        const result = await runFiscalZClosingPipeline(admin, data);
 
         processed += 1;
         logger.info("Daily closing completed", {
           locationId: location.id,
           orgId: location.org_id,
           businessDate,
-          closingId: id,
+          closingId: result.id,
+          fiscalTransactionId: result.fiscalTransactionId,
+          zNr: result.zNr,
           orderCount: data.orderCount,
         });
       } catch (err) {

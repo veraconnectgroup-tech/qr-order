@@ -6,27 +6,16 @@ function buildPaymentCompletionEvents(ctx: OrderOutboxContext) {
   const events: Array<{ event_type: string }> = [];
   const guestEmail = ctx.guestEmail ?? null;
 
-  if (resolveFiscalBehavior(ctx.posIntegration) === "standalone") {
-    events.push({ event_type: "fiscal.tse_sign" });
-  } else if (guestEmail) {
+  if (
+    resolveFiscalBehavior(ctx.posIntegration) !== "standalone" &&
+    guestEmail
+  ) {
     events.push({ event_type: "fiscal.send_receipt" });
   }
 
   for (const printer of ctx.cloudPrinters) {
     if (!printer.autoPrint) continue;
     events.push({ event_type: "fulfill.cloud_print" });
-  }
-
-  if (
-    resolveFiscalBehavior(ctx.posIntegration) !== "standalone" ||
-    !events.some((event) => event.event_type === "fiscal.tse_sign")
-  ) {
-    if (
-      guestEmail &&
-      !events.some((event) => event.event_type === "fiscal.send_receipt")
-    ) {
-      events.push({ event_type: "fiscal.send_receipt" });
-    }
   }
 
   return events;
@@ -47,9 +36,11 @@ describe("order saga deferrable steps", () => {
     activeWebhooks: [],
   };
 
-  it("queues tse_sign in standalone fiscal mode", () => {
+  it("does not queue tse_sign from buildPaymentCompletionEvents (fiscal pipeline owns TSE)", () => {
     const events = buildPaymentCompletionEvents(baseCtx);
-    expect(events.map((event) => event.event_type)).toContain("fiscal.tse_sign");
+    expect(events.map((event) => event.event_type)).not.toContain(
+      "fiscal.tse_sign"
+    );
   });
 
   it("queues cloud_print for auto printers", () => {

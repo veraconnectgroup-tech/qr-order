@@ -15,6 +15,7 @@ import {
   withCircuitBreaker,
   type FiskalyDeferredSigningResult,
 } from "@/lib/resilience/circuit-breaker";
+import { loadFiskalyConfigForSigning } from "@/lib/fiscal/runtime/load-fiskaly-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type TseSignatureResult = {
@@ -32,6 +33,7 @@ export type TseSignatureResult = {
 export type OrderForTseSigning = {
   id: string;
   organizationId: string;
+  locationId?: string;
   order_number: number;
   subtotal: number;
   tax_amount: number;
@@ -41,11 +43,6 @@ export type OrderForTseSigning = {
   order_items?: Array<{ total: number; tax_rate: number }>;
   /** Original Fiskaly tx_id from the paid order — required for DSFinV-K storno reference. */
   originalTseTxId?: string;
-};
-
-type OrgFiskalyConfig = {
-  fiskaly_tss_id: string;
-  fiskaly_client_id: string;
 };
 
 function formatFiskalyAmount(value: number): string {
@@ -147,35 +144,6 @@ function toSignatureResult(
   };
 }
 
-async function loadOrgFiskalyConfig(
-  admin: SupabaseClient,
-  organizationId: string
-): Promise<OrgFiskalyConfig | null> {
-  const { data, error } = await admin
-    .from("organizations")
-    .select("fiskaly_tss_id, fiskaly_client_id")
-    .eq("id", organizationId)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  const row = data as {
-    fiskaly_tss_id: string | null;
-    fiskaly_client_id: string | null;
-  };
-
-  if (!row.fiskaly_tss_id || !row.fiskaly_client_id) {
-    return null;
-  }
-
-  return {
-    fiskaly_tss_id: row.fiskaly_tss_id,
-    fiskaly_client_id: row.fiskaly_client_id,
-  };
-}
-
 async function createFiskalyTransaction(
   tssId: string,
   data: Parameters<ReturnType<typeof getFiskalyClient>["createTransaction"]>[1],
@@ -206,18 +174,22 @@ export async function signOrderTransaction(
     return null;
   }
 
-  const orgFiskaly = await loadOrgFiskalyConfig(admin, order.organizationId);
-  if (!orgFiskaly) {
+  const fiskalyConfig = await loadFiskalyConfigForSigning(
+    admin,
+    order.organizationId,
+    order.locationId
+  );
+  if (!fiskalyConfig) {
     return null;
   }
 
   const schema = buildReceiptSchema(order);
 
   const tx = await createFiskalyTransaction(
-    orgFiskaly.fiskaly_tss_id,
+    fiskalyConfig.fiskaly_tss_id,
     {
       tx_id: crypto.randomUUID(),
-      client_id: orgFiskaly.fiskaly_client_id,
+      client_id: fiskalyConfig.fiskaly_client_id,
       schema,
       metadata: {
         order_id: order.id,
@@ -237,8 +209,8 @@ export async function signOrderTransaction(
       tse_data: {
         ...result,
         tx_id: tx._id,
-        tss_id: orgFiskaly.fiskaly_tss_id,
-        client_id: orgFiskaly.fiskaly_client_id,
+        tss_id: fiskalyConfig.fiskaly_tss_id,
+        client_id: fiskalyConfig.fiskaly_client_id,
         payment_method: order.payment_method,
       },
     })
@@ -254,7 +226,12 @@ export async function signOrderTransaction(
     tssSerial: result.tss_serial,
   });
 
-  return result;
+  return {
+    ...result,
+    tx_id: tx._id,
+    tss_id: fiskalyConfig.fiskaly_tss_id,
+    client_id: fiskalyConfig.fiskaly_client_id,
+  };
 }
 
 export async function signOrderStornoTransaction(
@@ -266,8 +243,12 @@ export async function signOrderStornoTransaction(
     return null;
   }
 
-  const orgFiskaly = await loadOrgFiskalyConfig(admin, order.organizationId);
-  if (!orgFiskaly) {
+  const fiskalyConfig = await loadFiskalyConfigForSigning(
+    admin,
+    order.organizationId,
+    order.locationId
+  );
+  if (!fiskalyConfig) {
     return null;
   }
 
@@ -289,10 +270,10 @@ export async function signOrderStornoTransaction(
   }
 
   const tx = await createFiskalyTransaction(
-    orgFiskaly.fiskaly_tss_id,
+    fiskalyConfig.fiskaly_tss_id,
     {
       tx_id: crypto.randomUUID(),
-      client_id: orgFiskaly.fiskaly_client_id,
+      client_id: fiskalyConfig.fiskaly_client_id,
       schema,
       metadata,
     },
@@ -311,8 +292,8 @@ export async function signOrderStornoTransaction(
   return {
     ...result,
     tx_id: tx._id,
-    tss_id: orgFiskaly.fiskaly_tss_id,
-    client_id: orgFiskaly.fiskaly_client_id,
+    tss_id: fiskalyConfig.fiskaly_tss_id,
+    client_id: fiskalyConfig.fiskaly_client_id,
   };
 }
 
@@ -376,6 +357,7 @@ export async function signOrderTransactionById(
   return signOrderTransaction(admin, {
     id: row.id,
     organizationId: (location as { org_id: string }).org_id,
+    locationId: row.location_id,
     order_number: row.order_number,
     subtotal: Number(row.subtotal),
     tax_amount: Number(row.tax_amount),

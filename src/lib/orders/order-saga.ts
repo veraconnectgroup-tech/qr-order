@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { runCommerceExperience } from "@/lib/commerce/runtime/run-commerce-experience";
+import { runFiscalPipeline } from "@/lib/fiscal/runtime/run-fiscal-pipeline";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { resolveFiscalBehavior } from "@/lib/fulfillment/resolve-fiscal-behavior";
 import { criticalPath } from "@/lib/orders/critical-path-events";
@@ -61,14 +62,12 @@ function buildPaymentCompletionEvents(
   const events: OutboxInsert[] = [];
   const guestEmail = ctx.guestEmail ?? null;
 
-  if (resolveFiscalBehavior(ctx.posIntegration) === "standalone") {
-    events.push({
-      aggregate_id: ctx.orderId,
-      domain: "fiscal",
-      event_type: "fiscal.tse_sign",
-      payload: { orderId: ctx.orderId, guestEmail },
-    });
-  } else if (guestEmail) {
+  // fiscal.tse_sign is enqueued by runFiscalPipeline → finalize_fiscal_sale RPC
+
+  if (
+    resolveFiscalBehavior(ctx.posIntegration) !== "standalone" &&
+    guestEmail
+  ) {
     events.push({
       aggregate_id: ctx.orderId,
       domain: "fiscal",
@@ -94,23 +93,6 @@ function buildPaymentCompletionEvents(
         provider: printer.provider,
       },
     });
-  }
-
-  if (
-    resolveFiscalBehavior(ctx.posIntegration) !== "standalone" ||
-    !events.some((event) => event.event_type === "fiscal.tse_sign")
-  ) {
-    if (
-      guestEmail &&
-      !events.some((event) => event.event_type === "fiscal.send_receipt")
-    ) {
-      events.push({
-        aggregate_id: ctx.orderId,
-        domain: "fiscal",
-        event_type: "fiscal.send_receipt",
-        payload: { orderId: ctx.orderId, guestEmail },
-      });
-    }
   }
 
   return events;
@@ -384,6 +366,36 @@ export async function executeOrderSaga(
       paymentStatus: "paid",
       guestEmail: payment.guestEmail ?? null,
     });
+
+    try {
+      const fiscalResult = await runFiscalPipeline(admin, {
+        kind: "payment_settled",
+        orderId,
+        guestEmail: payment.guestEmail ?? null,
+      });
+
+      if (!fiscalResult.skipped && fiscalResult.enqueued) {
+        deferredSteps.push("tse_sign");
+        logStep(traceId, "tse_sign", "info", "Order saga: fiscal pipeline enqueued TSE", {
+          orderId,
+          fiscalTransactionId: fiscalResult.fiscalTransactionId,
+        });
+      } else if (fiscalResult.skipped) {
+        logStep(traceId, "tse_sign", "info", "Order saga: fiscal pipeline skipped", {
+          orderId,
+          reason: fiscalResult.reason,
+        });
+      }
+    } catch (fiscalError) {
+      const message =
+        fiscalError instanceof Error
+          ? fiscalError.message
+          : String(fiscalError);
+      logStep(traceId, "tse_sign", "error", "Order saga: fiscal pipeline failed", {
+        orderId,
+        error: message,
+      });
+    }
 
     const deferEvents = buildPaymentCompletionEvents(outboxCtx);
     const stepByEvent: Record<string, string> = {

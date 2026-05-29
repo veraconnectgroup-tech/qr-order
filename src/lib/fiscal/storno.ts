@@ -1,5 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatInTimeZone } from "date-fns-tz";
 import { signOrderStornoTransaction } from "@/lib/fiscal/sign-transaction";
+import { buildFiscalStornoLines } from "@/lib/fiscal/runtime/build-fiscal-storno-lines";
+import { findSignedSaleFiscalTx } from "@/lib/fiscal/runtime/find-signed-sale-fiscal-tx";
+import { signFiscalJournalStorno } from "@/lib/fiscal/runtime/sign-journal-transaction";
+import { mapFiscalPaymentType } from "@/lib/fiscal/runtime/map-fiscal-payment-type";
 import { logger } from "@/lib/logger";
 import { processRefund } from "@/lib/stripe/refund";
 import type { Json } from "@/types/database";
@@ -51,7 +56,12 @@ type StornoOrderRow = {
   has_storno: boolean;
   storno_total: number;
   created_at: string;
-  order_items: Array<{ total: number; tax_rate: number | null }>;
+  order_items: Array<{
+    product_name: string;
+    quantity: number;
+    total: number;
+    tax_rate: number | null;
+  }>;
 };
 
 type OrderTseData = {
@@ -85,7 +95,7 @@ export async function prepareStorno(
       tax_amount, payment_method, payment_status,
       tse_signature, tse_data, location_id,
       stripe_payment_intent_id, has_storno, storno_total, created_at,
-      order_items(total, tax_rate)
+      order_items(product_name, quantity, total, tax_rate)
     `
     )
     .eq("id", req.orderId)
@@ -169,34 +179,97 @@ export async function performStorno(
 
   const orgId = (loc as { org_id: string }).org_id;
 
-  const { data: org } = await admin
-    .from("organizations")
-    .select("currency")
-    .eq("id", orgId)
-    .single();
+  const [{ data: org }, { data: locationRow }] = await Promise.all([
+    admin.from("organizations").select("currency").eq("id", orgId).single(),
+    admin
+      .from("locations")
+      .select("timezone")
+      .eq("id", order.location_id)
+      .single(),
+  ]);
+
+  const timezone =
+    (locationRow as { timezone: string } | null)?.timezone ?? "Europe/Berlin";
+  const businessDate = formatInTimeZone(
+    new Date(order.created_at),
+    timezone,
+    "yyyy-MM-dd"
+  );
 
   const originalTseData = order.tse_data as OrderTseData | null;
   const originalTseTxId = originalTseData?.tx_id ?? null;
 
-  const tseResult = await signOrderStornoTransaction(
-    admin,
-    {
-      id: order.id,
-      organizationId: orgId,
-      order_number: order.order_number,
-      subtotal: Number(order.subtotal),
-      tax_amount: Number(order.tax_amount),
-      total: Number(order.total),
-      payment_method: order.payment_method,
-      currency: (org as { currency: string } | null)?.currency,
-      originalTseTxId: originalTseTxId ?? undefined,
-      order_items: (order.order_items ?? []).map((item) => ({
+  const saleFiscalTx = await findSignedSaleFiscalTx(admin, order.id);
+
+  let tseResult: Awaited<ReturnType<typeof signOrderStornoTransaction>> = null;
+  let fiscalTransactionId: string | null = null;
+
+  if (saleFiscalTx) {
+    const stornoLines = buildFiscalStornoLines(
+      (order.order_items ?? []).map((item) => ({
+        product_name: item.product_name ?? "Storno",
+        quantity: Number(item.quantity ?? 1),
         total: Number(item.total),
-        tax_rate: Number(item.tax_rate ?? 19),
+        tax_rate: item.tax_rate,
       })),
-    },
-    stornoAmount
-  );
+      stornoAmount,
+      orderTotal
+    );
+
+    const idempotencyKey = `storno:${order.id}:${Math.round(stornoAmount * 100)}:${Math.round(alreadyStornoed * 100)}`;
+
+    const { data: fiscalTxId, error: rpcError } = await admin.rpc(
+      "finalize_fiscal_storno" as never,
+      {
+        p_order_id: order.id,
+        p_storno_of_id: saleFiscalTx.id,
+        p_register_id: saleFiscalTx.register_id,
+        p_idempotency_key: idempotencyKey,
+        p_org_id: orgId,
+        p_location_id: order.location_id,
+        p_currency: (org as { currency: string } | null)?.currency ?? "EUR",
+        p_gross_total: stornoLines.gross_total,
+        p_net_total: stornoLines.net_total,
+        p_tax_total: stornoLines.tax_total,
+        p_payment_method: order.payment_method,
+        p_payment_type: mapFiscalPaymentType(order.payment_method),
+        p_business_date: businessDate,
+        p_lines: stornoLines.lines,
+      } as never
+    );
+
+    if (rpcError || !fiscalTxId) {
+      logger.error("finalize_fiscal_storno failed", {
+        orderId: order.id,
+        error: rpcError?.message,
+      });
+      return { error: "Fiscal storno journal failed", code: 500 };
+    }
+
+    fiscalTransactionId = fiscalTxId as string;
+    tseResult = await signFiscalJournalStorno(fiscalTransactionId);
+  } else {
+    tseResult = await signOrderStornoTransaction(
+      admin,
+      {
+        id: order.id,
+        organizationId: orgId,
+        locationId: order.location_id,
+        order_number: order.order_number,
+        subtotal: Number(order.subtotal),
+        tax_amount: Number(order.tax_amount),
+        total: Number(order.total),
+        payment_method: order.payment_method,
+        currency: (org as { currency: string } | null)?.currency,
+        originalTseTxId: originalTseTxId ?? undefined,
+        order_items: (order.order_items ?? []).map((item) => ({
+          total: Number(item.total),
+          tax_rate: Number(item.tax_rate ?? 19),
+        })),
+      },
+      stornoAmount
+    );
+  }
 
   const { data: stornoRecord, error: insertErr } = await admin
     .from("storno_records")
@@ -213,8 +286,9 @@ export async function performStorno(
       tse_storno_tx_id: tseResult?.tx_id ?? null,
       original_tse_tx_id: originalTseTxId,
       original_tse_signature: order.tse_signature,
+      fiscal_transaction_id: fiscalTransactionId,
       refund_status: "tse_signed",
-    })
+    } as never)
     .select("id")
     .single();
 

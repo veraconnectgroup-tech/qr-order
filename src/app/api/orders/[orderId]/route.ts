@@ -16,6 +16,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { scheduleOrderReadyPush } from "@/lib/push/schedule-notify";
 import { processRefund } from "@/lib/stripe/refund";
 import { performStorno } from "@/lib/fiscal/storno";
+import { abortPendingFiscalSale } from "@/lib/fiscal/runtime/fiscal-abort";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
 import { scheduleDenisWorldSignal } from "@/lib/outbox/enqueue-denis-world-signal";
@@ -391,6 +392,10 @@ export const PATCH = withErrorHandler(
 
     if (status === "rejected") {
       updates.rejection_reason = rejectionReason ?? null;
+
+      if (!access.order.tse_signature) {
+        await abortPendingFiscalSale(admin, orderId);
+      }
 
       if (access.order.tse_signature) {
         const stornoResult = await performStorno({

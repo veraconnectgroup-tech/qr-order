@@ -53,6 +53,22 @@ vi.mock("@/lib/supabase/admin", () => ({
           }),
         };
       }
+      if (table === "fiscal_transactions") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => ({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: null,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
       if (table === "order_events") {
         return { insert: mockOrderEventsInsert };
       }
@@ -93,7 +109,7 @@ const deliveredOrder = {
   has_storno: false,
   storno_total: 0,
   created_at: "2026-05-23T12:00:00.000Z",
-  order_items: [{ total: 24, tax_rate: 19 }],
+  order_items: [{ product_name: "Burger", quantity: 1, total: 24, tax_rate: 19 }],
 };
 
 describe("prepareStorno", () => {
