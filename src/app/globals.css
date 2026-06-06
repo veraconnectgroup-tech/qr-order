@@ -240,6 +240,32 @@ body:has(.admin-theme) [data-slot="sheet-overlay"] {
   background-color: rgb(0 0 0 / 0.65);
 }
 
+body:has(.dashboard-theme) [data-slot="select-content"],
+body:has(.admin-theme) [data-slot="select-content"] {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #131316;
+  --card-foreground: #fafafa;
+  --popover: #1c1c21;
+  --popover-foreground: #fafafa;
+  --primary: #e85d04;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c21;
+  --secondary-foreground: #d4d4d8;
+  --muted: #1c1c21;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --border: #232329;
+  --input: #2a2a32;
+  --ring: #e85d04;
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+  z-index: 200;
+}
+
 body:has(.dashboard-theme) [data-slot="dialog-content"],
 body:has(.dashboard-theme) [data-slot="sheet-content"],
 body:has(.admin-theme) [data-slot="dialog-content"],

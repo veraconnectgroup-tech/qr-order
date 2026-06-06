@@ -179,10 +179,10 @@ export function DenisRolloutPanel({ initial }: Props) {
               updateForm("rolloutMode", value as ConciergeRolloutMode)
             }
           >
-            <SelectTrigger id="rollout-mode" className="mt-1.5">
-              <SelectValue />
+            <SelectTrigger id="rollout-mode" className="mt-1.5 w-full max-w-md">
+              <SelectValue placeholder="Select rollout mode" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" className="z-[200] min-w-[var(--radix-select-trigger-width)]">
               {ROLLOUT_MODES.map((mode) => (
                 <SelectItem key={mode.value} value={mode.value}>
                   {mode.label}
