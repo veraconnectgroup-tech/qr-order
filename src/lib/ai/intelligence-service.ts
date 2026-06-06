@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScrollContext } from "@/lib/ai/scroll-context";
+import {
+  emitDenisCircuitAlertsForOrg,
+  emitDenisConversionDropAlert,
+  emitDenisMetricsDailyReady,
+} from "@/lib/webhooks/emit-denis-operator-alerts";
 
 export type AiInsightType =
   | "menu_gap"
@@ -433,6 +438,45 @@ export async function runDailyAiIntelligence(
   for (const orgId of orgIds) {
     const insights = await generateAiIntelligence(admin, { orgId, insightDate });
     insightsWritten += await persistAiInsights(admin, orgId, insightDate, insights);
+
+    const locationIds = [
+      ...new Set(
+        insights
+          .map((row) => row.location_id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+
+    for (const locationId of locationIds) {
+      const locInsights = insights.filter((row) => row.location_id === locationId);
+      await emitDenisMetricsDailyReady(admin, {
+        orgId,
+        locationId,
+        insightDate,
+        metrics: {
+          insightCount: locInsights.length,
+          types: locInsights.map((row) => row.type),
+        },
+      });
+
+      const conversionInsight = locInsights.find((row) => row.type === "conversion");
+      if (
+        conversionInsight &&
+        (conversionInsight.severity === "critical" ||
+          conversionInsight.severity === "warning")
+      ) {
+        const addRate =
+          (conversionInsight.metadata as { addRate?: number }).addRate ?? 0;
+        await emitDenisConversionDropAlert(admin, {
+          orgId,
+          locationId,
+          addRate,
+          insightDate,
+        });
+      }
+    }
+
+    await emitDenisCircuitAlertsForOrg(admin, orgId);
   }
 
   return { orgsProcessed: orgIds.length, insightsWritten };

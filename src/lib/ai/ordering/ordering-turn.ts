@@ -11,6 +11,7 @@ import type {
   AiOrderDraft,
   ValidatedCartAction,
 } from "@/lib/ai/ordering/draft-types";
+import { waiterAckMessage } from "@/lib/denis/runtime/act/guest-copy";
 import { logger } from "@/lib/logger";
 
 export type OrderingTurnResult = {
@@ -43,6 +44,7 @@ export function processOrderingTurn(input: {
   orderDraftRaw: unknown;
   catalog: AiCatalog;
   structured?: AiStructuredResponse;
+  language?: string;
 }): OrderingTurnResult {
   let draft = initDraftFromStorage(input.orderDraftRaw);
 
@@ -69,7 +71,9 @@ export function processOrderingTurn(input: {
       quickReplies: [],
       intent: "order",
       skippedLlm: true,
-      confirmationMessage: summary ? `Added to cart: ${summary}.` : undefined,
+      confirmationMessage: summary
+        ? waiterAckMessage(input.language ?? "sr", summary)
+        : undefined,
     };
   }
   if (quickResolved) {

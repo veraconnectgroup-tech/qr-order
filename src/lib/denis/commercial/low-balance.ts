@@ -3,6 +3,7 @@ import {
   BILLING_EVENT_TYPES,
 } from "@/lib/denis/commercial/billing-events";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
+import { emitDenisCreditLowAlert } from "@/lib/webhooks/emit-denis-operator-alerts";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -43,4 +44,12 @@ export async function maybeEnqueueLowBalanceAlert(
       error: error instanceof Error ? error.message : String(error),
     });
   }
+
+  await emitDenisCreditLowAlert(admin, {
+    orgId: input.orgId,
+    locationId: input.locationId,
+    balance: input.balanceAfter,
+    threshold,
+    traceId: input.traceId,
+  });
 }

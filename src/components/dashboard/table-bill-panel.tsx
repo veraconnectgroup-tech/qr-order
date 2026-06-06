@@ -21,7 +21,7 @@ import {
   type StaffSelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { createClient } from "@/lib/supabase/client";
-import { wt } from "@/lib/i18n/waiter-app-ui";
+import { waiterUiEnglish } from "@/lib/i18n/waiter-app-ui";
 import { cn } from "@/lib/utils";
 
 type BillOrder = {
@@ -89,7 +89,6 @@ export function TableBillPanel({
     currency,
     stripeOnboarded,
     inPersonPaymentLocation,
-    menuLocale,
   } = useDashboard();
 
   const [loading, setLoading] = useState(false);
@@ -237,7 +236,7 @@ export function TableBillPanel({
         <DialogContent className="dashboard-theme flex max-h-[90dvh] flex-col border-dash-border bg-dash-surface text-dash-text ring-dash-border-subtle sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-left text-xl font-bold text-dash-text">
-              {wt("action.bill", menuLocale)} — {tableName}
+              {waiterUiEnglish("action.bill")} — {tableName}
             </DialogTitle>
           </DialogHeader>
 

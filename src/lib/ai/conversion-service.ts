@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { emitDenisSessionCompleted } from "@/lib/webhooks/emit-denis-session-events";
 import { logger } from "@/lib/logger";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -133,6 +134,18 @@ export async function handleAiSessionComplete(body: unknown) {
   if (error) {
     logger.error("AI session complete failed", { error: error.message });
     return apiError("Could not complete session.", 500);
+  }
+
+  const { data: tableSession } = await admin
+    .from("table_sessions")
+    .select("id")
+    .eq("denis_shared_ai_session_id", input.sessionId)
+    .maybeSingle();
+
+  if (tableSession) {
+    await emitDenisSessionCompleted(admin, {
+      tableSessionId: (tableSession as { id: string }).id,
+    });
   }
 
   return apiSuccess({ ok: true });

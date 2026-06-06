@@ -15,8 +15,13 @@ import {
   isOperatorApiKeyFormat,
   OPERATOR_KEY_PREFIX,
 } from "@/lib/operator/keys";
-import { hasOperatorScope } from "@/lib/operator/scopes";
+import { hasOperatorScope, OPERATOR_SCOPES } from "@/lib/operator/scopes";
 import { parseOperatorPeriod, periodToIsoRange } from "@/lib/operator/parse-period";
+import type {
+  OperatorOrderListItem,
+  OperatorTranscript,
+} from "@/lib/operator/types";
+import { requireOperatorScope } from "@/lib/operator/auth";
 
 describe("operator API keys", () => {
   it("generates dns_op_live prefix keys", () => {
@@ -35,6 +40,20 @@ describe("operator scopes", () => {
   it("checks operator:read scope", () => {
     expect(hasOperatorScope(["operator:read"], "operator:read")).toBe(true);
     expect(hasOperatorScope(["orders:read"], "operator:read")).toBe(false);
+  });
+
+  it("returns 403 when operator:read scope is missing", () => {
+    const err = requireOperatorScope(
+      { keyId: "k1", orgId: "org-1", scopes: ["operator:propose"] },
+      "operator:read"
+    );
+    expect(err).not.toBeNull();
+    expect(err?.status).toBe(403);
+  });
+
+  it("exports operator scopes for Viktor keys", () => {
+    expect(OPERATOR_SCOPES).toContain("operator:read");
+    expect(OPERATOR_SCOPES).toContain("operator:propose");
   });
 });
 
@@ -103,6 +122,54 @@ describe("operator projection helpers", () => {
       },
     ]);
     expect(intents).toEqual(["ORDER", "HANDOFF_WAITER"]);
+  });
+});
+
+describe("OperatorOrderListItem shape contract", () => {
+  it("matches ADR-028 order list fields without PII", () => {
+    const sample: OperatorOrderListItem = {
+      orderId: "ord-1",
+      orderNumber: 42,
+      status: "preparing",
+      totalCents: 1250,
+      itemCount: 2,
+      createdAt: "2026-05-29T12:00:00.000Z",
+      sessionId: "sess-1",
+    };
+
+    expect(Object.keys(sample)).toEqual([
+      "orderId",
+      "orderNumber",
+      "status",
+      "totalCents",
+      "itemCount",
+      "createdAt",
+      "sessionId",
+    ]);
+    expect(sample).not.toHaveProperty("session_token");
+    expect(sample).not.toHaveProperty("guest_email");
+    expect(sample).not.toHaveProperty("payment_instrument");
+  });
+});
+
+describe("OperatorTranscript shape contract", () => {
+  it("redacts system roles and never exposes tokens", () => {
+    const transcript: OperatorTranscript = {
+      sessionId: "sess-1",
+      locationId: "loc-1",
+      turns: redactTranscript([
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Hi" },
+        { role: "system", content: "secret" },
+      ]),
+      redacted: true,
+    };
+
+    expect(transcript.turns).toHaveLength(2);
+    expect(transcript.redacted).toBe(true);
+    expect(transcript).not.toHaveProperty("session_token");
+    expect(transcript).not.toHaveProperty("qr_token");
+    expect(transcript).not.toHaveProperty("device_fingerprint");
   });
 });
 

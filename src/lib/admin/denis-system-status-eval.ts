@@ -1,6 +1,7 @@
 import { runPilotGate } from "@/lib/denis/eval/run-pilot-gate";
 import { runQualityContractEval } from "@/lib/denis/cognition/quality/contract-eval";
 import { WAITER_PARITY_SCENARIOS } from "@/lib/denis/eval/fixtures/waiter-parity/scenarios";
+import { DENIS_OPERATOR_WEBHOOK_EVENTS } from "@/lib/webhooks/events";
 
 export type DenisSystemStatusEval = {
   eval: {
@@ -35,7 +36,7 @@ export function computeDenisSystemStatusEval(): DenisSystemStatusEval {
     gaps: {
       codeCompleteCognition: gate.waiterParity.ok && quality.ok,
       proactiveInLoop: false,
-      operatorWebhooks: false,
+      operatorWebhooks: DENIS_OPERATOR_WEBHOOK_EVENTS.length >= 6,
     },
   };
 }

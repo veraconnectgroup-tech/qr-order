@@ -321,15 +321,15 @@ function honestCartNotSubmittedMessage(
   const recap = formatOrderRecapLines(draft).join(", ");
   switch (lang) {
     case "de":
-      return `Im Warenkorb: ${recap}. Noch nicht an die Küche gesendet — sag Bescheid, wenn ich senden soll.`;
+      return `Aktuell: ${recap}. Noch nicht in der Küche — sag Bescheid, wenn ich senden soll.`;
     case "en":
-      return `In your cart: ${recap}. Not sent to the kitchen yet — let me know when to send it.`;
+      return `So far: ${recap}. Not sent to the kitchen yet — tell me when to fire it.`;
     case "hr":
-      return `U košarici: ${recap}. Još nije poslano u kuhinju — reci kad da pošaljem.`;
+      return `Za sada: ${recap}. Još nije u kuhinji — reci kad da pošaljem.`;
     case "sr":
-      return `U korpi: ${recap}. Još nisam poslao u kuhinju — reci da li je to sve ili šta da promenim.`;
+      return `Za sada: ${recap}. Još nisam poslao u kuhinju — reci da li je to sve ili šta da promenim.`;
     default:
-      return `U korpi: ${recap}. Još nisam poslao u kuhinju — reci da li je to sve ili šta da promenim.`;
+      return `Za sada: ${recap}. Još nisam poslao u kuhinju — reci da li je to sve ili šta da promenim.`;
   }
 }
 

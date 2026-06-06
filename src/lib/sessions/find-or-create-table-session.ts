@@ -1,6 +1,7 @@
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import { closeTableSession } from "@/lib/sessions/session-devices";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
+import { emitDenisSessionCompleted } from "@/lib/webhooks/emit-denis-session-events";
 import { orgIdForLocation } from "@/lib/webhooks/org-context";
 import type { createAdminClient } from "@/lib/supabase/admin";
 
@@ -68,6 +69,7 @@ async function dedupeActiveSessions(
         table_id: tableId,
       });
     }
+    await emitDenisSessionCompleted(admin, { tableSessionId: dup.id });
   }
 
   return {

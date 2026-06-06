@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clearedDraftAfterSubmit } from "@/lib/ai/ordering/order-executor";
+import { emitDenisSessionConverted } from "@/lib/webhooks/emit-denis-session-events";
 import { logger } from "@/lib/logger";
 
 /** Clear AI draft + link order after ACL submit (act path + unified turn submit). */
@@ -27,11 +28,12 @@ export async function persistAiSessionAfterOrderSubmit(
     return;
   }
 
+  const previousLinked =
+    (sessionRow as { linked_order_ids: string[] }).linked_order_ids ?? [];
+  const isFirstOrder = previousLinked.length === 0;
+
   const linkedIds = [
-    ...new Set([
-      ...((sessionRow as { linked_order_ids: string[] }).linked_order_ids ?? []),
-      input.orderId,
-    ]),
+    ...new Set([...previousLinked, input.orderId]),
   ];
 
   const { error: updateError } = await admin
@@ -60,4 +62,11 @@ export async function persistAiSessionAfterOrderSubmit(
       source: input.source ?? "denis_acl",
     },
   });
+
+  if (isFirstOrder) {
+    await emitDenisSessionConverted(admin, {
+      aiSessionId: input.aiSessionId,
+      orderId: input.orderId,
+    });
+  }
 }

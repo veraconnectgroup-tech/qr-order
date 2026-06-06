@@ -20,6 +20,7 @@ import { TerminalReadersPanel } from "@/components/admin/terminal-readers-panel"
 import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
 import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel";
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
+import { OperatorApiKeysPanel } from "@/components/admin/operator-api-keys-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import type { AiCreditPackage } from "@/types";
 import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
@@ -29,7 +30,7 @@ export default async function AdminSettingsPage() {
   const admin = createAdminClient();
   const locationId = await getStaffLocationId(staff);
 
-  const [{ data: org }, { data: location }, { data: credits }, { data: aiOps }, { data: packages }, { data: apiKeys }, { data: webhooks }, { data: aiExamples }] =
+  const [{ data: org }, { data: location }, { data: credits }, { data: aiOps }, { data: packages }, { data: apiKeys }, { data: operatorApiKeys }, { data: webhooks }, { data: aiExamples }] =
     await Promise.all([
     admin
       .from("organizations")
@@ -66,6 +67,11 @@ export default async function AdminSettingsPage() {
       .order("sort_order"),
     admin
       .from("api_keys")
+      .select("id, name, key_prefix, scopes, last_used_at, created_at, revoked_at")
+      .eq("org_id", staff.org_id)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("operator_api_keys")
       .select("id, name, key_prefix, scopes, last_used_at, created_at, revoked_at")
       .eq("org_id", staff.org_id)
       .order("created_at", { ascending: false }),
@@ -278,6 +284,7 @@ export default async function AdminSettingsPage() {
         )}
 
         <ApiKeysPanel keys={(apiKeys ?? []) as never} canEdit />
+        <OperatorApiKeysPanel keys={(operatorApiKeys ?? []) as never} canEdit />
         <WebhooksPanel webhooks={(webhooks ?? []) as never} canEdit />
       </div>
     </div>

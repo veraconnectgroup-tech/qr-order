@@ -12,6 +12,7 @@ import type { PendingSlotKind } from "@/lib/denis/cognition/tde/turn-plan-types"
 import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import { persistKernelOrderingDraft } from "@/lib/denis/runtime/act/apply-kernel-ordering";
+import { cartAddedMessage } from "@/lib/denis/runtime/act/guest-copy";
 import { logger } from "@/lib/logger";
 
 export type PendingSlotActResult =
@@ -59,9 +60,7 @@ function buildSlotFillConfirmation(
     })
     .join(", ");
 
-  if (language === "de") return `Eingetragen: ${summary}.`;
-  if (language === "en") return `Added to cart: ${summary}.`;
-  return `Dodato u korpu: ${summary}.`;
+  return cartAddedMessage(language, summary);
 }
 
 function attemptResolve(

@@ -41,6 +41,7 @@ export function applyPostLlmOrdering(
     orderDraftRaw: input.orderDraft,
     catalog: input.catalog,
     structured: input.structured,
+    language: input.language,
   });
 
   let workingDraft = orderingResult.draft;

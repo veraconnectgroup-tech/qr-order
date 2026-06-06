@@ -21,6 +21,7 @@ export type RateLimitScope =
   | "push"
   | "pin-verify"
   | "pos-inbound"
+  | "operator"
   | "default";
 
 const ORG_TENANT_SCOPES = new Set<RateLimitScope>([
@@ -71,6 +72,7 @@ const upstashLimiters: Record<RateLimitScope, Ratelimit | null> = {
   push: createScopeLimiter("push", 10, "1 m"),
   "pin-verify": createScopeLimiter("pin-verify", 5, "15 m"),
   "pos-inbound": createScopeLimiter("pos-inbound", 300, "1 m"),
+  operator: createScopeLimiter("operator", 100, "1 m"),
   default: createScopeLimiter("default", 60, "1 m"),
 };
 
@@ -112,6 +114,7 @@ const MEMORY_SCOPE_CONFIG: Record<
   push: { limit: 10, windowMs: 60 * 1000 },
   "pin-verify": { limit: 5, windowMs: 15 * 60 * 1000 },
   "pos-inbound": { limit: 300, windowMs: 60 * 1000 },
+  operator: { limit: 100, windowMs: 60 * 1000 },
   default: { limit: 60, windowMs: 60 * 1000 },
 };
 

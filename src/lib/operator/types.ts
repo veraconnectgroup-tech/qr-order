@@ -76,3 +76,20 @@ export type OperatorLocationListItem = {
   name: string;
   denisEnabled: boolean;
 };
+
+export type OperatorOrderListItem = {
+  orderId: string;
+  orderNumber: number;
+  status: string;
+  totalCents: number;
+  itemCount: number;
+  createdAt: string;
+  sessionId: string | null;
+};
+
+export type OperatorTranscript = {
+  sessionId: string;
+  locationId: string;
+  turns: Array<{ role: "user" | "assistant"; content: string }>;
+  redacted: boolean;
+};

@@ -852,14 +852,17 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }),
     actHandoffOutcome.quickReplies
   );
+  const cartChangedThisTurn = (data.cartActions?.length ?? 0) > 0;
   let guestMessage =
     actOrderChangeOutcome.overrideLegacy && actOrderChangeOutcome.guestMessage
       ? actOrderChangeOutcome.guestMessage
       : actHandoffOutcome.overrideLegacy && actHandoffOutcome.guestMessage
         ? actHandoffOutcome.guestMessage
-        : !resolvedNarration.usedDenisNarrator
+        : (pendingSlotActApplied || cartChangedThisTurn) && data.message?.trim()
           ? data.message
-          : narration.message;
+          : !resolvedNarration.usedDenisNarrator
+            ? data.message
+            : narration.message;
 
   if (turnSubmitOutcome.orderId) {
     guestMessage = orderSubmitSuccessMessage({

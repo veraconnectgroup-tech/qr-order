@@ -29,16 +29,16 @@ export function orderSubmitSuccessMessage(input: {
   switch (lang) {
     case "de":
       return num
-        ? `Erledigt — ${num} ist in der Küche.`
-        : "Erledigt — die Bestellung ist in der Küche.";
+        ? `Perfekt — ${num} geht in die Küche.`
+        : "Perfekt — die Bestellung geht in die Küche.";
     case "en":
       return num
-        ? `Done — ${num} is on its way to the kitchen.`
-        : "Done — your order is on its way to the kitchen.";
+        ? `Perfect — ${num} is heading to the kitchen.`
+        : "Perfect — your order is heading to the kitchen.";
     default:
       return num
-        ? `Poslato — ${num} ide u kuhinju.`
-        : "Poslato — porudžbina ide u kuhinju.";
+        ? `Odlično — ${num} ide u kuhinju.`
+        : "Odlično — porudžbina ide u kuhinju.";
   }
 }
 

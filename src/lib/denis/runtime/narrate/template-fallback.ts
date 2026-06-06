@@ -2,6 +2,16 @@ import type {
   NarrationFacts,
   SanitizedNarration,
 } from "@/lib/denis/runtime/narrate/narration-facts.schema";
+import {
+  cartAddedMessage,
+  cartSummaryMessage,
+  clarifyPaymentMessage,
+  denisIntroMessage,
+  handoffWaitMessage,
+  orderSentTemplateMessage,
+  pairingSuggestionMessage,
+  reconcileCartMessage,
+} from "@/lib/denis/runtime/act/guest-copy";
 import { lintNarrationMessage } from "@/lib/denis/runtime/narrate/lint-narration";
 
 function truncateWords(message: string, maxWords: number): string {
@@ -12,7 +22,7 @@ function truncateWords(message: string, maxWords: number): string {
 
 /** Deterministic template when T3 fails lint or conflict goal is active. */
 export function templateNarrationFallback(facts: NarrationFacts): string {
-  const { committed, persona, goal } = facts;
+  const { committed, persona, goal, language } = facts;
 
   if (committed.conflictQuestion) {
     return committed.conflictQuestion;
@@ -31,17 +41,16 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
   }
 
   if (committed.orderNumber != null) {
-    return `Narudžbina #${committed.orderNumber} je poslata.`;
+    return orderSentTemplateMessage(language, committed.orderNumber);
   }
 
   if (committed.addedItems?.length) {
-    const items = committed.addedItems.join(", ");
-    return `Dodato u korpu: ${items}.`;
+    return cartAddedMessage(language, committed.addedItems.join(", "));
   }
 
   if (committed.pairingSuggestion) {
     const { name, price } = committed.pairingSuggestion;
-    return `Predlog: ${name} (${price}).`;
+    return pairingSuggestionMessage(language, name, price);
   }
 
   if (committed.statusSummary) {
@@ -49,22 +58,22 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
   }
 
   if (committed.cartSummary) {
-    return `U korpi: ${committed.cartSummary}.`;
+    return cartSummaryMessage(language, committed.cartSummary);
   }
 
   if (goal === "RECONCILE_CART") {
-    return "Korpa i chat se ne slažu — da spojim u jednu narudžbinu?";
+    return reconcileCartMessage(language);
   }
 
   if (goal === "HANDOFF") {
-    return "Na putu sam — samo trenutak.";
+    return handoffWaitMessage(language);
   }
 
   if (goal === "CLARIFY_SLOT") {
-    return "Kako plaćate — kes, kartica na stolu, ili online?";
+    return clarifyPaymentMessage(language);
   }
 
-  return `Ja sam ${persona.name}. Recite šta želite, pa ću dodati u narudžbinu.`;
+  return denisIntroMessage(language, persona.name);
 }
 
 export function sanitizeNarrationOutput(

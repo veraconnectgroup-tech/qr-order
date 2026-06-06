@@ -57,6 +57,7 @@ import {
 } from "@/lib/ai/guest-ai-token";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import {
+  completeAiSession,
   trackAiConversion,
 } from "@/lib/ai/guest-session-storage";
 import {
@@ -589,12 +590,18 @@ export function AiConciergeChat({
       }
 
       const appendPinMessage = (tablePin: string) => {
+        const tPin = (key: string, vars?: Record<string, string | number>) =>
+          tForAiGuestLanguage(
+            key as Parameters<typeof tForAiGuestLanguage>[0],
+            chatLanguage,
+            vars
+          );
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: "assistant",
-            content: formatDenisPinMessage(tUI, tablePin),
+            content: formatDenisPinMessage(tPin, tablePin),
           },
         ]);
       };
@@ -622,13 +629,17 @@ export function AiConciergeChat({
               id: nextId(),
               role: "assistant",
               content:
-                reason ?? tUI("session.approvalRejected"),
+                reason ??
+                  tForAiGuestLanguage(
+                    "session.approvalRejected",
+                    chatLanguage
+                  ),
             },
           ]);
         },
       });
     },
-    [slug, token, locationId, tableId, tableName, tUI]
+    [slug, token, locationId, tableId, tableName, chatLanguage]
   );
 
   useEffect(() => {
@@ -768,6 +779,12 @@ export function AiConciergeChat({
             } else if (
               isStaleAiSessionResponse(res.status, undefined, storedSessionId)
             ) {
+              void completeAiSession({
+                sessionId: storedSessionId,
+                locationId,
+                tableId,
+                sessionToken: aiContextToken,
+              });
               clearAiSessionIdForGuest(
                 locationId,
                 token,
@@ -988,6 +1005,14 @@ export function AiConciergeChat({
           !retryWithoutSession &&
           isStaleAiSessionResponse(res.status, json.error, sessionId)
         ) {
+          if (sessionId) {
+            void completeAiSession({
+              sessionId,
+              locationId,
+              tableId,
+              sessionToken: aiContextToken,
+            });
+          }
           clearAiSessionIdForGuest(locationId, token, [
             sessionToken,
             aiContextToken,

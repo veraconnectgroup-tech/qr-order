@@ -7,6 +7,7 @@ import type {
 } from "@/lib/denis/venue/ops/types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
+import { productUnavailableMessage } from "@/lib/denis/runtime/act/guest-copy";
 import { buildReturnGuestWelcomeMessage } from "@/lib/guest/denis-guest-memory-messages";
 import { unavailableProductNamesInDraft } from "@/lib/denis/venue/ops/planner-effects";
 
@@ -117,7 +118,10 @@ export function buildNarrationFacts(
       input.venueOps.unavailableProductIds
     );
     if (unavailableNames.length > 0) {
-      committed.blockedReason = `${unavailableNames.join(", ")} trenutno nije dostupno.`;
+      committed.blockedReason = productUnavailableMessage(
+        input.language,
+        unavailableNames
+      );
       allowedMentions.push(...unavailableNames);
     }
   }

@@ -14,6 +14,7 @@ import { closeTableSession } from "@/lib/sessions/session-devices";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
+import { emitDenisSessionCompleted } from "@/lib/webhooks/emit-denis-session-events";
 import { logger } from "@/lib/logger";
 import type { Staff } from "@/types";
 
@@ -401,6 +402,8 @@ export const POST = withErrorHandler(
       table_id: session.table_id,
       bill_status: "settled",
     });
+
+    await emitDenisSessionCompleted(admin, { tableSessionId: sessionId });
 
     return apiSuccess({ settled: true });
   }
