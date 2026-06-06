@@ -65,6 +65,7 @@ import { hapticClick } from "@/lib/haptics";
 import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
 import { useSmartNudges } from "@/hooks/use-smart-nudges";
 import { useDenisSense } from "@/hooks/use-denis-sense";
+import { shouldCommitProactiveToDock } from "@/lib/denis/loop/proactive-dock-tell";
 import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { DenisMemoryConsentBanner } from "@/components/guest/denis-memory-consent-banner";
@@ -750,7 +751,23 @@ export function MenuView({
         },
       });
 
-      return result?.proactiveNudge ?? null;
+      const nudge = result?.proactiveNudge ?? null;
+      if (!nudge) return null;
+
+      if (shouldCommitProactiveToDock(nudge.kind)) {
+        return null;
+      }
+
+      const transcriptTexts = new Set(
+        (denisView?.transcript ?? [])
+          .filter((entry) => entry.role === "denis")
+          .map((entry) => entry.text.trim())
+      );
+      if (transcriptTexts.has(nudge.message.trim())) {
+        return null;
+      }
+
+      return nudge;
     },
     [
       aiContextToken,
@@ -766,6 +783,7 @@ export function MenuView({
       hasDrinkInCart,
       smartNudgeMessages,
       deviceFingerprint,
+      denisView?.transcript,
     ]
   );
 
@@ -1497,6 +1515,7 @@ export function MenuView({
               deviceFingerprint={deviceFingerprint}
               voiceEnabled={voiceEnabled}
               voiceTtsEnabled={voiceTtsEnabled}
+              bootstrapTranscript={denisView?.transcript ?? null}
             />
           )}
 
@@ -1514,7 +1533,9 @@ export function MenuView({
             orderingEnabled && !detailProduct && itemCount > 0
           }
           headline={
-            denisView?.chrome.headline ?? scene?.chrome.situation?.headline
+            denisView
+              ? denisView.chrome.headline
+              : scene?.chrome.situation?.headline
           }
           subtitle={
             scene?.chrome.situation?.headline ??

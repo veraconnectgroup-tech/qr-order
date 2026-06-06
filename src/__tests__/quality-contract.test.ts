@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateLlmInvocationRate,
   buildTurnProfile,
+} from "@/lib/denis/cognition/quality";
+import {
   evaluateQualityContract,
   PLATFORM_QUALITY_CONTRACT,
   runQualityContractEval,
-} from "@/lib/denis/cognition/quality";
+} from "@/lib/denis/eval/quality-contract-eval";
 import { isDenisRefusalReply } from "@/lib/ai/conversation-leadership";
 import {
   GOLDEN_ASSISTANT_LINES,

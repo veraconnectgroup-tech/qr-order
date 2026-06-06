@@ -176,7 +176,7 @@ describe("order-flow guards", () => {
       language: "sr",
     });
 
-    expect(message).toContain("prazna");
+    expect(message).toMatch(/nisam poslao/i);
     expect(message).not.toMatch(/poručujem/i);
   });
 
@@ -188,7 +188,7 @@ describe("order-flow guards", () => {
       language: "sr",
     });
 
-    expect(message).toContain("Da li je to sve");
+    expect(message.toLowerCase()).toContain("da li je to sve");
     expect(message).toContain("Cola Zero");
   });
 

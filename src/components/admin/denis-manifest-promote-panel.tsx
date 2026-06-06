@@ -9,7 +9,7 @@ import {
   runManifestPromoteGateCheck,
 } from "@/lib/admin/denis-manifest-actions";
 import type { DenisDebugSessionRow } from "@/lib/admin/denis-debug";
-import type { ManifestPromoteGateResult } from "@/lib/denis/cognition/manifest/manifest-promote-gate";
+import type { ManifestPromoteGateResult } from "@/lib/denis/eval/run-manifest-promote-gate";
 import type { DenisManifestAdminState } from "@/lib/admin/denis-manifest-actions";
 import { Button } from "@/components/ui/button";
 import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";

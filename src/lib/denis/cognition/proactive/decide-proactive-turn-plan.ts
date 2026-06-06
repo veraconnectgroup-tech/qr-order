@@ -5,7 +5,7 @@ import {
   type TurnPlan,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
-import type { GuestProactiveNudge } from "@/lib/denis/runtime/evaluate-proactive-tick";
+import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
 export type DecideProactiveTurnPlanInput = {
@@ -21,10 +21,10 @@ export type ProactiveTurnPlanResult =
   | { ok: true; plan: TurnPlan; templateKey: string }
   | { ok: false; reason: string };
 
-const UPSELL_NUDGE_KINDS = new Set<GuestProactiveNudge["kind"]>([
+const UPSELL_NUDGE_KINDS: GuestProactiveNudge["kind"][] = [
   "drink_pairing",
   "dessert_nudge",
-]);
+];
 
 function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
   switch (kind) {
@@ -103,7 +103,7 @@ export function decideProactiveTurnPlan(
     return { ok: false, reason: "session.settling" };
   }
 
-  if (UPSELL_NUDGE_KINDS.has(candidate.kind) && upsellSuppressed(beliefs)) {
+  if (UPSELL_NUDGE_KINDS.includes(candidate.kind) && upsellSuppressed(beliefs)) {
     return { ok: false, reason: "venue.upsell_suppressed" };
   }
 

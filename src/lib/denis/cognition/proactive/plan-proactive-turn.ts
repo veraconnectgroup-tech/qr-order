@@ -5,11 +5,11 @@ import { tryTemplateUtterance } from "@/lib/denis/cognition/tde/template-utteran
 import type { BeliefGraph, TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { TableSessionState } from "@/lib/denis/loop/types";
-import {
-  detectProactiveCandidate,
-  type GuestProactiveNudge,
-  type ProactiveTickPayload,
-} from "@/lib/denis/runtime/evaluate-proactive-tick";
+import { detectProactiveCandidate } from "@/lib/denis/cognition/proactive/detect-proactive-candidate";
+import type {
+  GuestProactiveNudge,
+  ProactiveTickPayload,
+} from "@/lib/denis/cognition/proactive/proactive-types";
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 import type { SessionPhase } from "@/lib/scene/types";
 

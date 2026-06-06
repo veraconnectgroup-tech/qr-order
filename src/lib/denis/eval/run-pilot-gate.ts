@@ -3,7 +3,7 @@ import { DENIS_PILOT_SR_SCENARIOS } from "@/lib/denis/eval/fixtures/pilot-sr-sce
 import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import type { EvalSuiteReport, ScenarioRunResult } from "@/lib/denis/eval/types";
-import { runQualityContractEval } from "@/lib/denis/cognition/quality/contract-eval";
+import { runQualityContractEval } from "@/lib/denis/eval/quality-contract-eval";
 import { runAnticipationEval } from "@/lib/denis/eval/run-anticipation-eval";
 import type { AnticipationReport } from "@/lib/denis/eval/anticipation-types";
 import {

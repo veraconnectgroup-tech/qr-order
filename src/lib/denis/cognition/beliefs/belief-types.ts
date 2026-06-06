@@ -38,16 +38,14 @@ export type ConversationMode = "banter" | "ordering" | "settling";
 export type CommercePressure = "none" | "open" | "confirm";
 
 /** What Denis is waiting for the guest to answer (ADR-030 dialogue frame). */
+import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
+
+export type { PendingSlotKind };
+
 export type ConversationAwaiting =
   | PendingSlotKind
   | "confirm"
   | null;
-
-export type PendingSlotKind =
-  | "serve_size"
-  | "modifier"
-  | "product"
-  | "payment_method";
 
 export function belief<T>(
   key: string,

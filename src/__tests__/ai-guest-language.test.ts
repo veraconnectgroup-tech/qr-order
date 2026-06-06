@@ -108,7 +108,8 @@ describe("sticky guest language", () => {
       cartActionsThisTurn: 0,
       language: "sr",
     });
-    expect(result.message).toContain("potvrdite");
+    expect(result.message).toContain("Da li je to sve");
+    expect(result.message).toContain("Craft IPA");
     expect(result.message).not.toContain("Please confirm");
   });
 });

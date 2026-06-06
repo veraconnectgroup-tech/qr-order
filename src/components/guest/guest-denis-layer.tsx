@@ -319,7 +319,9 @@ export function GuestDenisLayer({
           currency={currency}
           placement={dockPlacement}
           cartBarVisible={cartBarVisible}
-          headline={view?.chrome.headline ?? scene.chrome.situation?.headline}
+          headline={
+            view ? view.chrome.headline : scene.chrome.situation?.headline
+          }
           subtitle={scene.chrome.situation?.headline ?? undefined}
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}

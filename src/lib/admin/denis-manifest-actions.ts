@@ -6,11 +6,13 @@ import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
 import {
   buildPromotedStoragePatch,
   buildRollbackStoragePatch,
-  evaluateManifestPromoteGate,
   extractManifestFromStorage,
   extractManifestHistory,
-  type ManifestPromoteGateResult,
 } from "@/lib/denis/cognition/manifest/manifest-promote-gate";
+import {
+  evaluateManifestPromoteGate,
+  type ManifestPromoteGateResult,
+} from "@/lib/denis/eval/run-manifest-promote-gate";
 import {
   parseVenueManifest,
   VenueManifestSchema,

@@ -3,6 +3,13 @@ import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
+import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
+import {
+  isProactiveDockDuplicate,
+  proactiveDockMarkState,
+  shouldCommitProactiveToDock,
+} from "@/lib/denis/loop/proactive-dock-tell";
 import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
 import { mapGuestOrdersToSchedulerSnapshot } from "@/lib/denis/runtime/adapters/map-scheduler-orders";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
@@ -308,6 +315,41 @@ export async function runDenisSense(
           source: "sense.proactive_brain",
         },
       });
+
+      const dockMessage = proactiveResult.message?.trim();
+      if (
+        dockMessage &&
+        shouldCommitProactiveToDock(proactiveResult.nudge.kind) &&
+        !isProactiveDockDuplicate(
+          state,
+          {
+            kind: proactiveResult.nudge.kind,
+            orderId: proactiveResult.nudge.orderId,
+          },
+          dockMessage
+        ) &&
+        tableSessionId
+      ) {
+        await persistProactiveDockTell(admin, {
+          aiSessionId,
+          traceId,
+          kind: proactiveResult.nudge.kind,
+          message: dockMessage,
+          orderId: proactiveResult.nudge.orderId,
+        });
+
+        await persistTableSessionView(admin, {
+          sessionId: tableSessionId,
+          tableId: input.tableId,
+          locationId: input.locationId,
+          tableToken: input.sessionToken,
+          venueName: guestContext.data.orgName,
+          tellResult: {
+            headline: dockMessage,
+            markState: proactiveDockMarkState(proactiveResult.nudge.kind),
+          },
+        });
+      }
     }
   }
 

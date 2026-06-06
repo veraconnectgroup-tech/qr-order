@@ -14,7 +14,7 @@ import type {
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
 
-import type { PendingSlotKind } from "@/lib/denis/cognition/beliefs/belief-types";
+import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
 export type { SessionPhase };

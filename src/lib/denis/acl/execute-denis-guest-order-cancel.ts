@@ -17,7 +17,7 @@ export type ExecuteDenisGuestOrderCancelResult =
   | { ok: true; kind: "staff_escalation"; orderNumber: number | null }
   | { ok: false; error: string };
 
-const GUEST_CANCEL_STATUSES = new Set(["pending"]);
+const GUEST_CANCEL_STATUSES = ["pending"] as const;
 
 async function loadLatestOpenOrder(
   admin: SupabaseClient,
@@ -57,7 +57,11 @@ export async function executeDenisGuestOrderCancel(
     return { ok: false, error: "no_open_order" };
   }
 
-  if (!GUEST_CANCEL_STATUSES.has(order.status)) {
+  if (
+    !GUEST_CANCEL_STATUSES.includes(
+      order.status as (typeof GUEST_CANCEL_STATUSES)[number]
+    )
+  ) {
     return {
       ok: true,
       kind: "staff_escalation",

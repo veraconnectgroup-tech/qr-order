@@ -42,7 +42,7 @@ import {
   tryResolvePendingSlotAct,
   sessionDraftHasPendingSlot,
   type PendingSlotActResult,
-} from "@/lib/denis/cognition/act/resolve-pending-slot-act";
+} from "@/lib/denis/runtime/act/resolve-pending-slot-act";
 import {
   appendMindTurnProfile,
   buildTurnProfile,

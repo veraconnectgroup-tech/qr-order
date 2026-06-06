@@ -1,10 +1,10 @@
 import { mergeManifestConfig } from "@/lib/denis/cognition/manifest/merge-manifest-config";
 import { parseVenueManifest } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
+import { aggregateLlmInvocationRate } from "@/lib/denis/cognition/quality";
 import {
-  aggregateLlmInvocationRate,
   runQualityContractEval,
   type QualityContractEvalResult,
-} from "@/lib/denis/cognition/quality";
+} from "@/lib/denis/eval/quality-contract-eval";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createAdminClient } from "@/lib/supabase/admin";

@@ -6,6 +6,7 @@ import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-sh
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
 import { persistWorldTell } from "@/lib/denis/loop/persist-world-tell";
 import { projectNotifyGuest } from "@/lib/denis/loop/project-notify";
+import { loadAiSessionLocale } from "@/lib/denis/loop/resolve-ai-session-locale";
 import { resolveWorldOrderTell } from "@/lib/denis/loop/tell-world-order";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { logger } from "@/lib/logger";
@@ -81,13 +82,19 @@ export async function runDenisWorldSignal(
     return;
   }
 
+  const sessionLocale = await loadAiSessionLocale(
+    admin,
+    aiSessionId,
+    ctx.menuLocale
+  );
+
   const tell = resolveWorldOrderTell({
     signal: payload.signal,
     status: payload.status,
     previousStatus: payload.previousStatus,
     orderNumber: payload.orderNumber,
-    menuLocale: ctx.menuLocale,
-    isEnglish: ctx.isEnglish,
+    menuLocale: sessionLocale.menuLocale,
+    isEnglish: sessionLocale.isEnglish,
   });
 
   if (!tell) return;

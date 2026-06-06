@@ -13,7 +13,6 @@ import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
-import { scheduleOrderReadyPush } from "@/lib/push/schedule-notify";
 import { processRefund } from "@/lib/stripe/refund";
 import { performStorno } from "@/lib/fiscal/storno";
 import { abortPendingFiscalSale } from "@/lib/fiscal/runtime/fiscal-abort";
@@ -489,13 +488,6 @@ export const PATCH = withErrorHandler(
       newValue: { status, rejectionReason: rejectionReason ?? null },
       request: req,
     });
-
-    if (status === "ready") {
-      scheduleOrderReadyPush(
-        access.order.location_id,
-        access.order.order_number
-      );
-    }
 
     if (markPaidOnDeliver) {
       const traceId = getCurrentTraceId() ?? crypto.randomUUID();

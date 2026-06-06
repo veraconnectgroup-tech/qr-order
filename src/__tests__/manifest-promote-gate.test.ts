@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import {
-  evaluateManifestPromoteGate,
-  evaluateSimRegression,
   manifestRequiresTimelineSim,
   buildPromotedStoragePatch,
   extractManifestHistory,
 } from "@/lib/denis/cognition/manifest/manifest-promote-gate";
+import {
+  evaluateManifestPromoteGate,
+  evaluateSimRegression,
+} from "@/lib/denis/eval/run-manifest-promote-gate";
 import type { VenueManifest } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
 import type { VenueSimReport } from "@/lib/denis/eval/venue-sim-types";
 
