@@ -24,6 +24,9 @@ const ORDER_STATUS_QUERY_PATTERN =
 const MISSING_ORDER_COMPLAINT_PATTERN =
   /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|waiter says|konobar ka[žz]e|nisam dobio|nisi dobio|nije stiglo|gde je pivo|gdje je pivo)\b/i;
 
+const ALREADY_ORDERED_PATTERN =
+  /\b(poručio|porucio|naručio|narucio|poslao|poslata|već\s+naruč|vec\s+naruc|already ordered|bereits bestellt)\b/i;
+
 /** @deprecated Routing hint only — not an LLM gate (ADR-025). */
 const ORDERING_GUEST_PATTERN =
   /\b(\d+\s*x|cola|kola|pivo|beer|bier|weizen|pilsner|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte|molim|bitte|please|ho[ćc]u|želim|zelim|jedno|jedna|malo|veliko)\b/i;
@@ -187,6 +190,26 @@ function resolvePerceivePlan(
       input.beliefs,
       CORE_BELIEF_KEYS.commercePendingSlot
     );
+    const hasOpenOrders =
+      getBeliefValue<boolean>(
+        input.beliefs,
+        CORE_BELIEF_KEYS.commerceHasOpenOrders
+      ) === true;
+
+    if (
+      hasOpenOrders &&
+      pressure !== "open" &&
+      pressure !== "confirm" &&
+      !pendingSlot
+    ) {
+      return buildPlan("template_tell", {
+        requiresLlm: false,
+        suppressUpsell,
+        reason: "commerce.post_order.settling",
+        templateKey: "settle.thanks",
+      });
+    }
+
     if (pressure === "open" || pressure === "confirm" || pendingSlot) {
       return buildPlan("transactional_perceive", {
         requiresLlm: true,

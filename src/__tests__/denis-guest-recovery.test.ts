@@ -108,4 +108,39 @@ describe("denis guest recovery ladder", () => {
     expect(local?.quickReplies).toEqual(["Kes", "Kartica", "Online"]);
     expect(local?.message.toLowerCase()).toContain("plać");
   });
+
+  it("confirms cash payment locally without generic retry", () => {
+    const local = tryLocalGuestAnswer({
+      guestMessage: "Kes",
+      language: "sr",
+      situation: preparingSituation,
+      cartItemCount: 0,
+    });
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.action?.tryPaymentHandoff).toBe("at_bar");
+    expect(local?.message.toLowerCase()).toMatch(/račun|dolazim/);
+  });
+
+  it("handles post-order settling from scene situation", () => {
+    const local = tryLocalGuestAnswer({
+      guestMessage: "To je sve",
+      language: "sr",
+      situation: preparingSituation,
+      cartItemCount: 0,
+    });
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message).toContain("5");
+    expect(local?.message.toLowerCase()).toContain("hvala");
+  });
+
+  it("reassures guest who already ordered", () => {
+    const local = tryLocalGuestAnswer({
+      guestMessage: "Porucio sam već",
+      language: "sr",
+      situation: preparingSituation,
+      cartItemCount: 0,
+    });
+    expect(local?.message).toContain("5");
+    expect(local?.message).toContain("Chicken Burger");
+  });
 });

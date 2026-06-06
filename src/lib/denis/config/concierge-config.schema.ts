@@ -73,6 +73,11 @@ const ConciergeUpsellSchema = z.object({
   respectDecline: z.boolean(),
 });
 
+const ProactiveTimeOfDaySchema = z
+  .string()
+  .trim()
+  .regex(/^\d{2}:\d{2}$/, "Expected HH:MM");
+
 const ConciergeProactiveSchema = z.object({
   enabled: z.boolean(),
   browseNudgeMinutes: z.number().int().min(1).max(60),
@@ -84,6 +89,31 @@ const ConciergeProactiveSchema = z.object({
   reviewPromptAfterDelivered: z.boolean(),
   minMinutesBetweenProactive: z.number().int().min(1).max(60),
   shareSessionWithChat: z.boolean(),
+  /** QR scan welcome after idle seconds (0 guest messages). */
+  guestWelcome: z.boolean(),
+  guestWelcomeSeconds: z.number().int().min(10).max(300),
+  /** Bill prompt after last delivery + idle minutes. */
+  billPrompt: z.boolean(),
+  billPromptMinutes: z.number().int().min(5).max(120),
+  /** Order delay status message (distinct from slow-kitchen drink upsell). */
+  orderDelay: z.boolean(),
+  orderDelayMinutes: z.number().int().min(5).max(120),
+  /** Popularity pairing nudge from order history. */
+  popularityPairing: z.boolean(),
+  popularityBrowseMinutes: z.number().int().min(1).max(120),
+  /** Staff alert: table idle without interaction. */
+  staffTableIdle: z.boolean(),
+  staffTableIdleMinutes: z.number().int().min(5).max(120),
+  /** Staff alert: allergy mention in guest chat. */
+  staffAllergy: z.boolean(),
+  /** Staff alert: waiter request / escalation. */
+  staffWaiterRequest: z.boolean(),
+  /** Daily prep briefing for staff (cron). */
+  dailyPrep: z.boolean(),
+  dailyPrepHour: ProactiveTimeOfDaySchema,
+  /** End-of-day manager report (cron). */
+  dailyReport: z.boolean(),
+  dailyReportHour: ProactiveTimeOfDaySchema,
 });
 
 const ConciergePolicySchema = z.object({

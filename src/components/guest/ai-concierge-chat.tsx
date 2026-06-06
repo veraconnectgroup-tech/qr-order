@@ -45,6 +45,7 @@ import {
   tryLocalGuestAnswer,
   type GuestRecoveryResult,
 } from "@/lib/guest/denis-guest-recovery";
+import { requestGuestPaymentHandoff } from "@/lib/guest/request-payment-handoff";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { DenisGuestApiMeta } from "@/lib/denis/surfaces/format-denis-api-meta";
 import type { MenuCategory } from "@/components/guest/menu-grid";
@@ -868,21 +869,43 @@ export function AiConciergeChat({
 
   const fireRecoveryAction = useCallback(
     async (action: GuestRecoveryResult["action"]) => {
-      if (!action?.tryWaiterCall) return;
+      if (!action) return;
       try {
-        await requestGuestWaiterCall({
-          tableToken: token,
-          sessionToken,
-          locationId,
-          tableId,
-          label: tUI("scene.situation.chipWaiter"),
-        });
+        if (action.tryPaymentHandoff) {
+          const result = await requestGuestPaymentHandoff({
+            tableToken: token,
+            sessionToken,
+            locationId,
+            tableId,
+            method: action.tryPaymentHandoff,
+            label: action.tryPaymentHandoff,
+          });
+          if (result.openPaymentSheet || action.openPaymentSheet) {
+            onOpenPaymentSheet?.();
+          }
+        } else if (action.tryWaiterCall) {
+          await requestGuestWaiterCall({
+            tableToken: token,
+            sessionToken,
+            locationId,
+            tableId,
+            label: tUI("scene.situation.chipWaiter"),
+          });
+        }
         onSceneRefresh?.();
       } catch {
-        /* guest still sees escalate copy */
+        /* guest still sees local narration */
       }
     },
-    [token, sessionToken, locationId, tableId, tUI, onSceneRefresh]
+    [
+      token,
+      sessionToken,
+      locationId,
+      tableId,
+      tUI,
+      onSceneRefresh,
+      onOpenPaymentSheet,
+    ]
   );
 
   useEffect(() => {

@@ -6,11 +6,19 @@ export type ProactiveNudgeKind =
   | "browse_nudge"
   | "drink_pairing"
   | "dessert_nudge"
-  | "slow_kitchen";
+  | "slow_kitchen"
+  | "guest_welcome"
+  | "bill_prompt"
+  | "order_delay"
+  | "popularity_pair";
 
 const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
+  "guest_welcome",
   "slow_kitchen",
+  "order_delay",
   "dessert_nudge",
+  "bill_prompt",
+  "popularity_pair",
 ];
 
 /** Proactive nudges that appear in dock headline + chat transcript (not dismiss banner only). */
@@ -19,7 +27,8 @@ export function shouldCommitProactiveToDock(kind: ProactiveNudgeKind): boolean {
 }
 
 export function proactiveDockMarkState(kind: ProactiveNudgeKind): SceneMarkState {
-  if (kind === "slow_kitchen") return "think";
+  if (kind === "slow_kitchen" || kind === "order_delay") return "think";
+  if (kind === "bill_prompt") return "listen";
   return "idle";
 }
 

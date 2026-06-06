@@ -30,8 +30,10 @@ export {
 } from "@/lib/denis/cognition/tde/utterance-plan";
 
 export {
+  defaultGuestChatFallback,
   listTemplateKeys,
   resolveTemplateLocale,
+  templateUtteranceForKey,
   tryTemplateUtterance,
   type TemplateLocale,
 } from "@/lib/denis/cognition/tde/template-utterance";

@@ -3,6 +3,16 @@ import type { AiGuestOrder } from "@/lib/ai/order-context";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { evaluateGuestProactiveTick } from "@/lib/denis/runtime/evaluate-proactive-tick";
 
+const proactiveMessages = {
+  browse: "Browse",
+  dessert: "Dessert",
+  slowKitchen: "Slow",
+  guestWelcome: "Welcome",
+  billPrompt: "Bill",
+  orderDelay: "Delay",
+  popularityPair: "Pair",
+};
+
 function order(partial: Partial<AiGuestOrder> & { id: string }): AiGuestOrder {
   return {
     id: partial.id,
@@ -30,9 +40,8 @@ describe("proactive tick M11", () => {
         hasSessionOrders: false,
       },
       messages: {
+        ...proactiveMessages,
         browse: "Need help choosing?",
-        dessert: "Dessert?",
-        slowKitchen: "Slow kitchen",
       },
     });
 
@@ -56,11 +65,7 @@ describe("proactive tick M11", () => {
         hasDrinkInCart: false,
         dismissedNudgeKeys: ["drink_pairing:o1"],
       },
-      messages: {
-        browse: "Browse",
-        dessert: "Dessert",
-        slowKitchen: "Slow",
-      },
+      messages: proactiveMessages,
       now,
     });
 

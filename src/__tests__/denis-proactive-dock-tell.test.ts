@@ -48,9 +48,12 @@ function minimalState(
 }
 
 describe("proactive dock tell (D-PRO)", () => {
-  it("commits slow_kitchen and dessert to dock, not browse or pairing", () => {
+  it("commits guest-facing dock tells, not browse or pairing banners", () => {
+    expect(shouldCommitProactiveToDock("guest_welcome")).toBe(true);
     expect(shouldCommitProactiveToDock("slow_kitchen")).toBe(true);
+    expect(shouldCommitProactiveToDock("order_delay")).toBe(true);
     expect(shouldCommitProactiveToDock("dessert_nudge")).toBe(true);
+    expect(shouldCommitProactiveToDock("bill_prompt")).toBe(true);
     expect(shouldCommitProactiveToDock("browse_nudge")).toBe(false);
     expect(shouldCommitProactiveToDock("drink_pairing")).toBe(false);
   });

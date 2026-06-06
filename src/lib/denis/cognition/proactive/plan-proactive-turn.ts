@@ -17,6 +17,10 @@ export type ProactiveTurnMessages = {
   browse: string;
   dessert: string;
   slowKitchen: string;
+  guestWelcome: string;
+  billPrompt: string;
+  orderDelay: string;
+  popularityPair: string;
 };
 
 export type ProactiveTurnResult = {
@@ -69,6 +73,17 @@ export function planProactiveTurn(input: {
     slowKitchen:
       input.messages?.slowKitchen ??
       "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
+    guestWelcome:
+      input.messages?.guestWelcome ?? "Dobro došli! Hoćete da pogledate meni?",
+    billPrompt:
+      input.messages?.billPrompt ??
+      "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
+    orderDelay:
+      input.messages?.orderDelay ??
+      "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
+    popularityPair:
+      input.messages?.popularityPair ??
+      "Gosti često uzmu i nešto uz to — hoćete da dodam?",
   };
 
   const beliefs = compileBeliefs({

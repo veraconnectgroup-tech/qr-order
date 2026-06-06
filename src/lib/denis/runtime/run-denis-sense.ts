@@ -285,6 +285,14 @@ export async function runDenisSense(
         slowKitchen:
           payload.slowKitchenMessage ??
           "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
+        guestWelcome:
+          "Dobro došli! Hoćete da pogledate meni?",
+        billPrompt:
+          "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
+        orderDelay:
+          "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
+        popularityPair:
+          "Gosti često uzmu i nešto uz to — hoćete da dodam?",
       },
     });
 

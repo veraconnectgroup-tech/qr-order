@@ -17,6 +17,7 @@ import type { DenisPerceiveMode } from "@/lib/denis/cognition/runtime-profile-ty
 import {
   decideTurnPlan,
   planUtterance,
+  defaultGuestChatFallback,
   tryTemplateUtterance,
   type TurnPlan,
   type TurnPlanKind,
@@ -361,17 +362,27 @@ async function runTdePerceive(input: {
     : null;
 
   if (
-    turnPlan.reason === "commerce.status.open_order" &&
+    (turnPlan.reason === "commerce.status.open_order" ||
+      turnPlan.reason === "commerce.post_order.settling") &&
     input.ctx.tableSessionState?.commerce.orders.length
   ) {
     const { openOrderStatusGuestMessage } = await import(
       "@/lib/guest/denis-guest-recovery"
     );
-    templateMessage =
-      openOrderStatusGuestMessage(
-        input.ctx.tableSessionState.commerce.orders,
-        input.body.language
-      ) ?? templateMessage;
+    const statusMessage = openOrderStatusGuestMessage(
+      input.ctx.tableSessionState.commerce.orders,
+      input.body.language
+    );
+    if (statusMessage) {
+      if (turnPlan.reason === "commerce.post_order.settling") {
+        const thanks =
+          templateMessage ??
+          defaultGuestChatFallback(input.body.language);
+        templateMessage = `${statusMessage}\n\n${thanks}`;
+      } else {
+        templateMessage = statusMessage;
+      }
+    }
   }
 
   let catalog: MenuRagCatalog | null = null;
@@ -446,7 +457,7 @@ async function runTdePerceive(input: {
       templateMessage ??
       (turnPlan.kind === "reflex_only"
         ? ""
-        : "Good day — how may I help you today?");
+        : defaultGuestChatFallback(input.body.language));
     perceiveOpts.templateIntent = mapTemplateIntent(turnPlan);
   } else {
     perceiveOpts.model = resolvePerceiveModel(profile, perceiveMode);

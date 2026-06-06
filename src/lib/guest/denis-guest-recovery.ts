@@ -1,10 +1,14 @@
+import { parseHandoffPaymentMethod } from "@/lib/denis/commands/perceive-table-guest-command";
+import { templateUtteranceForKey } from "@/lib/denis/cognition/tde/template-utterance";
 import {
   handoffNarrationMessage,
+  paymentMethodNarrationKey,
   paymentMethodQuickReplyLabels,
 } from "@/lib/denis/runtime/act/handoff-narration";
 import type { OrderFact } from "@/lib/denis/loop/types";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import type { SelectablePaymentMethod } from "@/lib/payment-methods";
 import type { SceneSituation, SceneSituationOrder } from "@/lib/scene/types";
 
 export type GuestRecoveryIntent =
@@ -19,6 +23,7 @@ export type GuestRecoveryTier = 0 | 1 | 2;
 export type GuestRecoveryAction = {
   openPaymentSheet?: boolean;
   tryWaiterCall?: boolean;
+  tryPaymentHandoff?: SelectablePaymentMethod;
 };
 
 export type GuestRecoveryResult = {
@@ -51,6 +56,12 @@ const ORDER_PATTERN =
 
 const WAITER_CONFIRM_PATTERN =
   /^(da,?\s*)?(pozovi|pozovite)\s+konobara/i;
+
+const SETTLING_PATTERN =
+  /\b(to je sve|to je to|samo to|that's all|that's it|fertig|das war'?s|done ordering)\b/i;
+
+const ALREADY_ORDERED_PATTERN =
+  /\b(poručio|porucio|naručio|narucio|poslao|poslata|već\s+naruč|vec\s+naruc|already ordered|bereits bestellt)\b/i;
 
 const OPEN_ORDER_STATUSES = new Set([
   "pending",
@@ -172,6 +183,34 @@ function knownStatusMessage(
   );
 }
 
+function resolvePaymentMethodAnswer(
+  guestMessage: string,
+  language: string
+): Pick<GuestRecoveryResult, "message" | "action"> | null {
+  const method = parseHandoffPaymentMethod(guestMessage);
+  if (!method) return null;
+
+  return {
+    message: handoffNarrationMessage(paymentMethodNarrationKey(method), language),
+    action: {
+      tryPaymentHandoff: method,
+      openPaymentSheet: method === "online",
+    },
+  };
+}
+
+function postOrderSettleMessage(
+  situation: SceneSituation | null | undefined,
+  language: string
+): string {
+  const thanks =
+    templateUtteranceForKey("settle.thanks", language) ??
+    handoffNarrationMessage("waiter_on_way", language);
+  const status = knownStatusMessage(situation, language);
+  if (!status) return thanks;
+  return `${status}\n\n${thanks}`;
+}
+
 function contextualTier0Message(input: {
   intent: GuestRecoveryIntent;
   language: string;
@@ -233,6 +272,14 @@ export function resolveGuestRecoveryResponse(input: {
   const cartItemCount = input.cartItemCount ?? 0;
 
   if (tier === 0) {
+    const paymentMethod = resolvePaymentMethodAnswer(
+      input.guestMessage,
+      input.language
+    );
+    if (paymentMethod) {
+      return { tier, ...paymentMethod };
+    }
+
     const contextual = contextualTier0Message({
       intent,
       language: input.language,
@@ -240,6 +287,14 @@ export function resolveGuestRecoveryResponse(input: {
       cartItemCount,
     });
     return { tier, ...contextual };
+  }
+
+  const paymentMethod = resolvePaymentMethodAnswer(
+    input.guestMessage,
+    input.language
+  );
+  if (paymentMethod) {
+    return { tier, ...paymentMethod };
   }
 
   const knownStatus = knownStatusMessage(input.situation, input.language);
@@ -288,11 +343,47 @@ export function tryLocalGuestAnswer(input: {
   situation?: SceneSituation | null;
   cartItemCount: number;
 }): GuestRecoveryResult | null {
+  const paymentMethod = resolvePaymentMethodAnswer(
+    input.guestMessage,
+    input.language
+  );
+  if (paymentMethod) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      ...paymentMethod,
+    };
+  }
+
+  const open = openSituationOrders(input.situation);
+
+  if (input.situation && open.length > 0) {
+    if (SETTLING_PATTERN.test(input.guestMessage.trim())) {
+      return {
+        tier: 0,
+        answeredLocally: true,
+        message: postOrderSettleMessage(input.situation, input.language),
+        quickReplies: statusFollowUpChips(input.language, input.situation),
+      };
+    }
+
+    if (ALREADY_ORDERED_PATTERN.test(input.guestMessage.trim())) {
+      const status = knownStatusMessage(input.situation, input.language);
+      if (status) {
+        return {
+          tier: 0,
+          answeredLocally: true,
+          message: status,
+          quickReplies: statusFollowUpChips(input.language, input.situation),
+        };
+      }
+    }
+  }
+
   const intent = classifyGuestRecoveryIntent(input.guestMessage);
   if (intent === "general" || intent === "order") return null;
 
   if (intent === "status") {
-    const open = openSituationOrders(input.situation);
     if (!input.situation) return null;
     if (!open.length) {
       return {

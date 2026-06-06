@@ -18,6 +18,10 @@ export function evaluateGuestProactiveTick(input: {
     browse: string;
     dessert: string;
     slowKitchen: string;
+    guestWelcome: string;
+    billPrompt: string;
+    orderDelay: string;
+    popularityPair: string;
   };
   now?: number;
 }): GuestProactiveNudge | null {

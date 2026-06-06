@@ -1,6 +1,7 @@
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 import {
   detectDessertTrigger,
+  detectOrderDelayTrigger,
   detectPairingTrigger,
   detectSlowKitchenTrigger,
 } from "@/lib/ai/proactive-triggers";
@@ -14,15 +15,45 @@ function isDismissed(keys: string[], key: string): boolean {
   return keys.includes(key);
 }
 
+function buildWelcomeMessage(
+  todaySpecial: string | null | undefined,
+  fallback: string
+): string {
+  const special = todaySpecial?.trim();
+  if (!special) return fallback;
+  return `Dobro došli! Naš specijal danas je ${special}. Hoćete da pogledate meni?`;
+}
+
+function buildDessertMessage(
+  dessertProductName: string | null | undefined,
+  fallback: string
+): string {
+  const dessert = dessertProductName?.trim();
+  if (!dessert) return fallback;
+  return `Kako vam je bilo? Imamo odličan ${dessert} — hoćete da dodam?`;
+}
+
+function buildPopularityMessage(
+  pair: { from: string; to: string } | null | undefined,
+  fallback: string
+): string {
+  if (!pair?.from?.trim() || !pair?.to?.trim()) return fallback;
+  return `Gosti koji naruče ${pair.from} često uzmu i ${pair.to}. Hoćete da dodam?`;
+}
+
 /** Trigger detection only — venue feature flags enforced in TDE (`decideProactiveTurnPlan`). */
 export function detectProactiveCandidate(input: {
-  config: Pick<ConciergeConfig, "proactive">;
+  config: Pick<ConciergeConfig, "proactive" | "upsell">;
   orders: AiGuestOrder[];
   payload: ProactiveTickPayload;
   messages: {
     browse: string;
     dessert: string;
     slowKitchen: string;
+    guestWelcome: string;
+    billPrompt: string;
+    orderDelay: string;
+    popularityPair: string;
   };
   now?: number;
 }): GuestProactiveNudge | null {
@@ -31,6 +62,103 @@ export function detectProactiveCandidate(input: {
   const dismissed = payload.dismissedNudgeKeys ?? [];
   const hasOrdered =
     (payload.cartItemCount ?? 0) > 0 || Boolean(payload.hasSessionOrders);
+
+  if (
+    config.proactive.guestWelcome &&
+    !isDismissed(dismissed, "guest_welcome") &&
+    (payload.guestMessageCount ?? 0) === 0 &&
+    (payload.sessionAgeSeconds ?? 0) >= config.proactive.guestWelcomeSeconds
+  ) {
+    return {
+      kind: "guest_welcome",
+      message: buildWelcomeMessage(payload.todaySpecial, messages.guestWelcome),
+    };
+  }
+
+  if (
+    config.proactive.orderDelay &&
+    !isDismissed(dismissed, "order_delay")
+  ) {
+    const delay = detectOrderDelayTrigger(
+      orders,
+      (orderId) =>
+        isDismissed(dismissed, `order_delay:${orderId}`) ||
+        isDismissed(dismissed, "order_delay"),
+      now,
+      config.proactive.orderDelayMinutes
+    );
+    if (delay?.orderId) {
+      return {
+        kind: "order_delay",
+        message: messages.orderDelay,
+        orderId: delay.orderId,
+      };
+    }
+  }
+
+  if (!isDismissed(dismissed, "dessert_nudge")) {
+    const dessert = detectDessertTrigger(
+      orders,
+      () => isDismissed(dismissed, "dessert_nudge"),
+      now,
+      {
+        minMinutes: input.config.upsell.dessertDelayMinutes,
+        maxMinutes: null,
+        preparingMinMinutes: input.config.upsell.dessertDelayMinutes,
+      }
+    );
+    if (dessert) {
+      return {
+        kind: "dessert_nudge",
+        message: buildDessertMessage(
+          payload.dessertProductName,
+          messages.dessert
+        ),
+        orderId: dessert.orderId,
+        prompt: dessert.prompt,
+      };
+    }
+  }
+
+  if (
+    config.proactive.billPrompt &&
+    !isDismissed(dismissed, "bill_prompt") &&
+    (payload.idleMinutes ?? 0) >= config.proactive.billPromptMinutes
+  ) {
+    const delivered = orders
+      .filter((order) => order.status === "delivered")
+      .sort(
+        (a, b) =>
+          new Date(b.delivered_at ?? b.created_at).getTime() -
+          new Date(a.delivered_at ?? a.created_at).getTime()
+      );
+    const latest = delivered[0];
+    if (latest) {
+      const reference = latest.delivered_at ?? latest.created_at;
+      const mins =
+        (now - new Date(reference).getTime()) / 60_000;
+      if (mins >= config.proactive.billPromptMinutes) {
+        return { kind: "bill_prompt", message: messages.billPrompt };
+      }
+    }
+  }
+
+  if (
+    config.proactive.popularityPairing &&
+    !isDismissed(dismissed, "popularity_pair") &&
+    payload.popularityPair &&
+    (payload.guestAskedRecommendation ||
+      (payload.browseMinutes ?? 0) >=
+        config.proactive.popularityBrowseMinutes)
+  ) {
+    return {
+      kind: "popularity_pair",
+      message: buildPopularityMessage(
+        payload.popularityPair,
+        messages.popularityPair
+      ),
+    };
+  }
 
   if (
     !isDismissed(dismissed, "browse_nudge") &&
@@ -58,18 +186,10 @@ export function detectProactiveCandidate(input: {
     }
   }
 
-  if (!isDismissed(dismissed, "dessert_nudge")) {
-    const dessert = detectDessertTrigger(
-      orders,
-      () => isDismissed(dismissed, "dessert_nudge"),
-      now
-    );
-    if (dessert) {
-      return { kind: "dessert_nudge", message: messages.dessert };
-    }
-  }
-
-  if (!isDismissed(dismissed, "slow_kitchen")) {
+  if (
+    config.proactive.slowKitchen &&
+    !isDismissed(dismissed, "slow_kitchen")
+  ) {
     const slow = detectSlowKitchenTrigger(
       orders,
       (orderId) =>

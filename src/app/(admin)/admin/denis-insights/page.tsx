@@ -1,7 +1,13 @@
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
+import { loadDenisProactiveAdminState } from "@/lib/admin/denis-proactive-actions";
 import { loadLearnedEdgeQueue } from "@/lib/admin/denis-learned-edges";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { DenisLearnedEdgesManager } from "@/components/admin/denis-learned-edges-manager";
+import {
+  DenisLiveOpsWidget,
+  loadDenisLiveOpsSnapshot,
+} from "@/components/admin/denis-live-ops-widget";
+import { DenisProactiveSettingsPanel } from "@/components/admin/denis-proactive-settings-panel";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function DenisInsightsAdminPage() {
@@ -15,9 +21,11 @@ export default async function DenisInsightsAdminPage() {
   }
 
   const admin = createAdminClient();
-  const [edges, config] = await Promise.all([
+  const [edges, config, liveOps, proactiveState] = await Promise.all([
     loadLearnedEdgeQueue(admin, locationId, "pending"),
     loadConciergeConfigForLocation(locationId),
+    loadDenisLiveOpsSnapshot(admin, locationId),
+    loadDenisProactiveAdminState(),
   ]);
 
   const productIds = [
@@ -39,7 +47,11 @@ export default async function DenisInsightsAdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl space-y-8">
+      <DenisLiveOpsWidget snapshot={liveOps} />
+      {"error" in proactiveState ? null : (
+        <DenisProactiveSettingsPanel initial={proactiveState} />
+      )}
       <DenisLearnedEdgesManager
         edges={edges}
         productNames={productNames}

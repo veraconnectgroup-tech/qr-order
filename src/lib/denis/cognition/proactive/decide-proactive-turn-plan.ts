@@ -24,6 +24,7 @@ export type ProactiveTurnPlanResult =
 const UPSELL_NUDGE_KINDS: GuestProactiveNudge["kind"][] = [
   "drink_pairing",
   "dessert_nudge",
+  "popularity_pair",
 ];
 
 function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
@@ -36,6 +37,14 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.dessert";
     case "slow_kitchen":
       return "proactive.slow_kitchen";
+    case "guest_welcome":
+      return "proactive.guest_welcome";
+    case "bill_prompt":
+      return "proactive.bill_prompt";
+    case "order_delay":
+      return "proactive.order_delay";
+    case "popularity_pair":
+      return "proactive.popularity_pair";
   }
 }
 
@@ -98,7 +107,8 @@ export function decideProactiveTurnPlan(
 
   if (
     (mode === "settling" || sessionPhase === "settling") &&
-    candidate.kind !== "dessert_nudge"
+    candidate.kind !== "dessert_nudge" &&
+    candidate.kind !== "bill_prompt"
   ) {
     return { ok: false, reason: "session.settling" };
   }
@@ -139,6 +149,34 @@ export function decideProactiveTurnPlan(
     !config.proactive.slowKitchen
   ) {
     return { ok: false, reason: "proactive.slow_kitchen_disabled" };
+  }
+
+  if (
+    candidate.kind === "guest_welcome" &&
+    !config.proactive.guestWelcome
+  ) {
+    return { ok: false, reason: "proactive.guest_welcome_disabled" };
+  }
+
+  if (
+    candidate.kind === "bill_prompt" &&
+    !config.proactive.billPrompt
+  ) {
+    return { ok: false, reason: "proactive.bill_prompt_disabled" };
+  }
+
+  if (
+    candidate.kind === "order_delay" &&
+    !config.proactive.orderDelay
+  ) {
+    return { ok: false, reason: "proactive.order_delay_disabled" };
+  }
+
+  if (
+    candidate.kind === "popularity_pair" &&
+    !config.proactive.popularityPairing
+  ) {
+    return { ok: false, reason: "proactive.popularity_disabled" };
   }
 
   const templateKey = templateKeyForKind(candidate.kind);

@@ -4,6 +4,7 @@ import {
   resolveAiPromptLanguage,
 } from "@/lib/ai/config";
 import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
+import { defaultGuestChatFallback } from "@/lib/denis/cognition/tde/template-utterance";
 import { applyConversationLeadership } from "@/lib/ai/conversation-leadership";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
@@ -444,8 +445,7 @@ export async function perceiveGuestChatTurn(
 
   if (skipLlm) {
     const templateMessage =
-      opts.templateMessage?.trim() ||
-      "I'm here! What can I get you — a drink, something to eat, or a menu pick?";
+      opts.templateMessage?.trim() || defaultGuestChatFallback(language);
     const templateIntent = opts.templateIntent ?? "chat";
     structured = applyConversationLeadership(
       {

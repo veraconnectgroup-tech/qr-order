@@ -41,6 +41,12 @@ function hasDessertInOrders(orders: AiGuestOrder[]) {
   );
 }
 
+function hasMainCourseInOrders(orders: AiGuestOrder[]) {
+  return orders.some((order) =>
+    order.order_items.some((item) => item.menu_section === "food")
+  );
+}
+
 export function detectPairingTrigger(
   orders: AiGuestOrder[],
   isShown: (orderId: string) => boolean,
@@ -71,9 +77,19 @@ export function detectPairingTrigger(
 export function detectDessertTrigger(
   orders: AiGuestOrder[],
   isShown: () => boolean,
-  now = Date.now()
+  now = Date.now(),
+  options?: {
+    minMinutes?: number;
+    maxMinutes?: number | null;
+    preparingMinMinutes?: number;
+  }
 ): ProactiveTriggerMatch | null {
   if (isShown() || hasDessertInOrders(orders)) return null;
+  if (!hasMainCourseInOrders(orders)) return null;
+
+  const minMinutes = options?.minMinutes ?? 15;
+  const maxMinutes = options?.maxMinutes ?? 45;
+  const preparingMinMinutes = options?.preparingMinMinutes ?? minMinutes;
 
   const delivered = orders
     .filter((order) => order.status === "delivered")
@@ -83,19 +99,62 @@ export function detectDessertTrigger(
         new Date(a.delivered_at ?? a.created_at).getTime()
     );
 
-  const latest = delivered[0];
-  if (!latest) return null;
+  const latestDelivered = delivered[0];
+  if (latestDelivered) {
+    const reference = latestDelivered.delivered_at ?? latestDelivered.created_at;
+    const mins = minutesAgo(reference, now);
+    if (mins >= minMinutes && (maxMinutes == null || mins <= maxMinutes)) {
+      return {
+        kind: "dessert",
+        prompt: `Gast hat gegessen: ${formatPastItems(delivered)}. Empfehle Dessert.`,
+      };
+    }
+  }
 
-  const reference = latest.delivered_at ?? latest.created_at;
-  const mins = minutesAgo(reference, now);
-  if (mins < 15 || mins > 30) return null;
+  const preparing = orders
+    .filter((order) => order.status === "preparing")
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
-  const eaten = delivered.flatMap((order) => order.order_items);
-  if (!eaten.length) return null;
+  const latestPreparing = preparing[0];
+  if (!latestPreparing) return null;
+
+  const preparingMins = minutesAgo(latestPreparing.created_at, now);
+  if (preparingMins < preparingMinMinutes) return null;
 
   return {
     kind: "dessert",
-    prompt: `Gast hat gegessen: ${formatPastItems(delivered)}. Empfehle Dessert.`,
+    orderId: latestPreparing.id,
+    prompt: `Gast wartet auf Hauptgang (${formatOrderItems(latestPreparing)}). Empfehle Dessert für später.`,
+  };
+}
+
+export function detectOrderDelayTrigger(
+  orders: AiGuestOrder[],
+  isShown: (orderId: string) => boolean,
+  now = Date.now(),
+  thresholdMinutes = 15
+): ProactiveTriggerMatch | null {
+  const waiting = orders
+    .filter((order) => {
+      if (isShown(order.id)) return false;
+      if (order.status !== "preparing") return false;
+      return minutesAgo(order.created_at, now) >= thresholdMinutes;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+  const order = waiting[0];
+  if (!order) return null;
+
+  return {
+    kind: "slow_kitchen",
+    orderId: order.id,
+    prompt: `Bestellung #${order.id.slice(0, 8)} wartet seit ${Math.floor(minutesAgo(order.created_at, now))} Minuten.`,
   };
 }
 

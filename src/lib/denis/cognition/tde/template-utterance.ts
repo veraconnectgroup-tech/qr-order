@@ -61,6 +61,26 @@ const TEMPLATE_CATALOG: Record<
     de: "Dazu passt ein Getränk — soll ich etwas vorschlagen?",
     en: "That pairs well with a drink — want me to suggest something?",
   },
+  "proactive.guest_welcome": {
+    sr: "Dobro došli! Hoćete da pogledate meni?",
+    de: "Willkommen! Möchten Sie die Karte ansehen?",
+    en: "Welcome! Would you like to see the menu?",
+  },
+  "proactive.bill_prompt": {
+    sr: "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
+    de: "Möchten Sie die Rechnung? Sie können hier zahlen oder den Kellner rufen.",
+    en: "Ready to close the bill? Pay here or call the waiter.",
+  },
+  "proactive.order_delay": {
+    sr: "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
+    de: "Ihre Bestellung wird zubereitet und kommt gleich. Danke für Ihre Geduld!",
+    en: "Your order is being prepared and will arrive soon. Thanks for your patience!",
+  },
+  "proactive.popularity_pair": {
+    sr: "Gosti koji naruče ovo često uzmu i nešto uz to — hoćete da dodam?",
+    de: "Gäste bestellen das oft mit einem passenden Extra — soll ich etwas vorschlagen?",
+    en: "Guests often add a popular pairing — want me to suggest one?",
+  },
 };
 
 export function resolveTemplateLocale(language: string): TemplateLocale {
@@ -75,12 +95,25 @@ export function resolveTemplateLocale(language: string): TemplateLocale {
  */
 export function tryTemplateUtterance(plan: UtterancePlan): string | null {
   if (!plan.useTemplate) return null;
+  return templateUtteranceForKey(plan.templateKey, plan.language);
+}
 
-  const locale = resolveTemplateLocale(plan.language);
-  const row = TEMPLATE_CATALOG[plan.templateKey];
+/** Localized template line — use instead of hardcoded EN fallbacks. */
+export function templateUtteranceForKey(
+  templateKey: string,
+  language: string
+): string | null {
+  const locale = resolveTemplateLocale(language);
+  const row = TEMPLATE_CATALOG[templateKey];
   if (!row) return null;
-
   return row[locale] ?? row.en ?? null;
+}
+
+export function defaultGuestChatFallback(language: string): string {
+  return (
+    templateUtteranceForKey("banter.welcome", language) ??
+    "Good day and welcome! How may I help?"
+  );
 }
 
 export function listTemplateKeys(): string[] {
