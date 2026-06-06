@@ -139,7 +139,7 @@ export async function handleAiSessionComplete(body: unknown) {
   const { data: tableSession } = await admin
     .from("table_sessions")
     .select("id")
-    .eq("denis_shared_ai_session_id" as never, input.sessionId)
+    .eq("denis_shared_ai_session_id", input.sessionId)
     .maybeSingle();
 
   if (tableSession) {

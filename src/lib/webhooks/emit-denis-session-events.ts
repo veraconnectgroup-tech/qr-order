@@ -110,7 +110,7 @@ export async function emitDenisSessionConverted(
   const { data: tableSession } = await admin
     .from("table_sessions")
     .select("id")
-    .eq("denis_shared_ai_session_id" as never, ai.id)
+    .eq("denis_shared_ai_session_id", ai.id)
     .maybeSingle();
 
   try {

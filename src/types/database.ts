@@ -379,6 +379,7 @@ type Tables = {
     opened_at: string;
     closed_at: string | null;
     guest_email: string | null;
+    denis_shared_ai_session_id: string | null;
   };
   session_devices: {
     id: string;

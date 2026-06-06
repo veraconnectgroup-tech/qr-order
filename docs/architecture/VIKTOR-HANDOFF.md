@@ -171,7 +171,7 @@ Owner approves in **Admin → Operator config proposals**. Direct PATCH is not s
 | Migration | Purpose |
 |-----------|---------|
 | `00113_operator_api.sql` | `operator_api_keys`, `operator_api_audit` |
-| `00114_config_proposals.sql` | `operator_config_proposals`, `config_change_log` |
+| `00115_config_proposals.sql` | `operator_config_proposals`, `config_change_log` |
 
 Apply per [ADR-001-safe-rollout.md](./ADR-001-safe-rollout.md) — never `db reset` on production remote.
 
