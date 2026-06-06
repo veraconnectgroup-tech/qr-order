@@ -15,10 +15,6 @@
     {
       "path": "/api/jobs/refresh-org-ai-ops",
       "schedule": "30 5 * * *"
-    },
-    {
-      "path": "/api/cron/denis-session-watcher",
-      "schedule": "* * * * *"
     }
   ]
 }
