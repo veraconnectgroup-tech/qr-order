@@ -14,7 +14,10 @@ const LANGUAGE_REFUSAL_PATTERN =
   /\b(kann(?:e)? nur|can only answer|only (?:speak|answer in)|samo (?:nemacki|nemački|engleski))\b/i;
 
 const ORDERING_GUEST_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l)\b/i;
+  /\b(\d+\s*x|cola|kola|pivo|beer|bier|weizen|pilsner|pils|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|molim|bitte|please|ho[ćc]u|želim|zelim|jedno|jedna|malo|veliko)\b/i;
+
+const AI_PARSE_FALLBACK_PATTERN =
+  /\b(didn't catch|try again|could you try again)\b/i;
 
 const MISSING_ORDER_COMPLAINT_PATTERN =
   /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|konobar ka[žz]e)\b/i;
@@ -65,6 +68,30 @@ export function leadershipFallbackReply(
   return fn(_guestMessage ?? "");
 }
 
+export function isAiParseFallbackReply(message: string): boolean {
+  return AI_PARSE_FALLBACK_PATTERN.test(message.trim());
+}
+
+/** Mid-order recovery — never reset to welcome when guest is choosing items. */
+export function orderingFlowRecoveryReply(
+  language: string,
+  guestMessage: string
+): string {
+  const lang = resolveAiPromptLanguage(language);
+  const item = guestMessage.trim();
+  if (!item) {
+    return leadershipFallbackReply(language, guestMessage);
+  }
+
+  if (lang === "sr" || lang === "hr") {
+    return `Razumem — ${item}. Samo trenutak, nastavljam porudžbinu.`;
+  }
+  if (lang === "de") {
+    return `Alles klar — ${item}. Einen Moment, ich mache weiter.`;
+  }
+  return `Got it — ${item}. One moment, continuing your order.`;
+}
+
 export type ApplyConversationLeadershipInput = {
   language: string;
   guestMessage: string;
@@ -113,6 +140,18 @@ export function applyConversationLeadership(
 
   if (!refusal && !misclassifiedClarify) {
     return structured;
+  }
+
+  if (refusal && preserveTransactional) {
+    return {
+      ...structured,
+      intent: "clarify",
+      message: orderingFlowRecoveryReply(input.language, input.guestMessage),
+      recommendations: [],
+      proposedItems: [],
+      quickReplies: [],
+      submitOrder: false,
+    };
   }
 
   const intent: AiConciergeIntent =

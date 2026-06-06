@@ -26,7 +26,7 @@ const MISSING_ORDER_COMPLAINT_PATTERN =
 
 /** @deprecated Routing hint only — not an LLM gate (ADR-025). */
 const ORDERING_GUEST_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte)\b/i;
+  /\b(\d+\s*x|cola|kola|pivo|beer|bier|weizen|pilsner|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte|molim|bitte|please|ho[ćc]u|želim|zelim|jedno|jedna|malo|veliko)\b/i;
 
 /** Social / banter — not an order line (eval helpers only; ADR-025). */
 export function isCasualSocialGuestMessage(message: string): boolean {

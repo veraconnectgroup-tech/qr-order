@@ -24,9 +24,40 @@ export type PostStaffOrderApiResult =
 type StaffOrderApiResponse = {
   data: StaffOrderApiSuccess | null;
   error: string | null;
-  details?: { products?: string[] };
+  details?: {
+    products?: string[];
+    reason?: string;
+    hint?: string;
+    code?: string;
+  };
   products?: string[];
 };
+
+function formatStaffOrderApiError(
+  responseError: string | null,
+  body: StaffOrderApiResponse | null
+): string {
+  const base = responseError ?? "Sync failed";
+  const reason = body?.details?.reason;
+  if (!reason) return base;
+  return `${base} (${reason})`;
+}
+
+/** Check idempotency table when POST failed but order may exist server-side. */
+export async function recoverStaffOrderSync(
+  clientOrderId: string
+): Promise<StaffOrderApiSuccess | null> {
+  const { data: body, error, status } = await resilientFetch<StaffOrderApiResponse>(
+    `/api/staff-orders/recover?clientOrderId=${encodeURIComponent(clientOrderId)}`,
+    { method: "GET" }
+  );
+
+  if (status === 404 || error || !body?.data) {
+    return null;
+  }
+
+  return body.data;
+}
 
 /** POST staff order payload — shared by sync manager and online local-first submit. */
 export async function postStaffOrderApi(
@@ -65,7 +96,10 @@ export async function postStaffOrderApi(
   if (responseError || !body?.data) {
     return {
       ok: false,
-      error: responseError ?? `Sync failed (${status ?? "?"})`,
+      error: formatStaffOrderApiError(
+        responseError ?? `Sync failed (${status ?? "?"})`,
+        body
+      ),
       status,
       retried,
     };

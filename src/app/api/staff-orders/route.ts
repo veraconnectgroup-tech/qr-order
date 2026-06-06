@@ -33,7 +33,13 @@ export const POST = withErrorHandler("staff-orders-post", async (req, _ctx) => {
     const details =
       "products" in result && Array.isArray(result.products)
         ? { products: result.products }
-        : undefined;
+        : "reason" in result && typeof result.reason === "string"
+          ? {
+              reason: result.reason,
+              ...(typeof result.hint === "string" ? { hint: result.hint } : {}),
+              ...(typeof result.code === "string" ? { code: result.code } : {}),
+            }
+          : undefined;
     return apiError(result.error, result.status ?? 500, details);
   }
 

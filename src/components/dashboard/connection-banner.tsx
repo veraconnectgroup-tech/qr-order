@@ -5,6 +5,7 @@ import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
 import {
+  discardQueuedStaffOrder,
   retryQueuedStaffOrder,
   subscribeSyncState,
   syncQueuedStaffOrders,
@@ -142,6 +143,18 @@ export function ConnectionBanner() {
               >
                 Erneut senden
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => void discardQueuedStaffOrder(item.id)}
+              >
+                Entfernen
+              </Button>
+              <span className="w-full text-[10px] text-muted-foreground">
+                Bereits im Dashboard? Entfernen löscht nur die lokale Warteschlange.
+              </span>
             </div>
           ))}
         </div>

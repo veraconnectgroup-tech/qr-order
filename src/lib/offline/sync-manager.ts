@@ -3,11 +3,15 @@
 import {
   listQueuedStaffOrders,
   removeQueuedStaffOrder,
+  resetStuckSyncingStaffOrders,
   updateQueuedStaffOrder,
   withQueuePayloadClientOrderId,
   type StaffOrderQueueItem,
 } from "@/lib/offline/order-queue";
-import { postStaffOrderApi } from "@/lib/offline/post-staff-order-api";
+import {
+  postStaffOrderApi,
+  recoverStaffOrderSync,
+} from "@/lib/offline/post-staff-order-api";
 import {
   broadcastOrderConfirmed,
   broadcastOrderConflict,
@@ -53,7 +57,7 @@ export async function getSyncState(): Promise<SyncState> {
   const items = await listQueuedStaffOrders();
   const failed = items.filter((item) => item.status === "failed");
   const conflicted = items.filter((item) => item.status === "conflict");
-  const pendingCount = items.filter((item) => item.status !== "syncing").length;
+  const pendingCount = items.length;
 
   return {
     syncing,
@@ -255,6 +259,11 @@ export async function removeUnavailableFromQueuedStaffOrder(
   return !after.some((entry) => entry.id === id && entry.status === "conflict");
 }
 
+export async function discardQueuedStaffOrder(id: string): Promise<void> {
+  await removeQueuedStaffOrder(id);
+  notify({});
+}
+
 export function initOfflineSyncManager(): () => void {
   if (typeof window === "undefined") return () => {};
 
@@ -264,9 +273,11 @@ export function initOfflineSyncManager(): () => void {
 
   window.addEventListener("online", onOnline);
 
-  if (navigator.onLine) {
-    void syncQueuedStaffOrders();
-  }
+  void resetStuckSyncingStaffOrders().then(() => {
+    if (navigator.onLine) {
+      void syncQueuedStaffOrders();
+    }
+  });
 
   return () => window.removeEventListener("online", onOnline);
 }

@@ -42,6 +42,11 @@ describe("conversation leadership", () => {
     expect(isCasualSocialGuestMessage("1x Cola please")).toBe(false);
   });
 
+  it("treats product choice replies as ordering, not social", () => {
+    expect(isCasualSocialGuestMessage("Weizen molim te")).toBe(false);
+    expect(isCasualSocialGuestMessage("Pilsner molim")).toBe(false);
+  });
+
   it("rewrites refusal to leadership reply in Serbian", () => {
     const out = applyConversationLeadership(
       {
@@ -129,5 +134,29 @@ describe("conversation leadership", () => {
 
   it("provides German leadership fallback", () => {
     expect(leadershipFallbackReply("de")).toMatch(/Guten Tag|Ihnen helfen/i);
+  });
+
+  it("does not reset to welcome on parse fallback mid-order (Weizen reply)", () => {
+    const out = applyConversationLeadership(
+      {
+        intent: "chat",
+        message: "Sorry, I didn't catch that — could you try again?",
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+      },
+      {
+        language: "sr",
+        guestMessage: "Weizen molim te",
+        context: {
+          inOrderingFlow: true,
+          transactionalTurn: true,
+        },
+      }
+    );
+    expect(out.intent).toBe("clarify");
+    expect(out.message).toMatch(/Weizen|porudžbinu|Razumem/i);
+    expect(out.message).not.toMatch(/^Dobar dan i dobrodošli/i);
   });
 });

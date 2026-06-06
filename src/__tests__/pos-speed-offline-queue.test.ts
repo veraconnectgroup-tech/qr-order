@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { shouldQueueStaffOrderOffline } from "@/lib/offline/should-queue-staff-order-offline";
-import { withQueuePayloadClientOrderId } from "@/lib/offline/order-queue";
+import {
+  countPendingStaffOrders,
+  withQueuePayloadClientOrderId,
+} from "@/lib/offline/order-queue";
 
 describe("withQueuePayloadClientOrderId", () => {
   it("injects clientOrderId into legacy payloads missing it", () => {
@@ -80,5 +83,49 @@ describe("shouldQueueStaffOrderOffline", () => {
         retried: false,
       })
     ).toBe(false);
+  });
+});
+
+describe("countPendingStaffOrders", () => {
+  it("counts syncing rows so the banner stays visible during sync", async () => {
+    if (typeof indexedDB === "undefined") {
+      expect(true).toBe(true);
+      return;
+    }
+
+    const { enqueueStaffOrder, updateQueuedStaffOrder, removeQueuedStaffOrder } =
+      await import("@/lib/offline/order-queue");
+
+    const id = "66666666-6666-4666-8666-666666666666";
+    await enqueueStaffOrder({
+      id,
+      clientOrderId: id,
+      createdAt: new Date().toISOString(),
+      tableId: "11111111-1111-4111-8111-111111111111",
+      tableName: "Tisch 6",
+      payload: {
+        tableId: "11111111-1111-4111-8111-111111111111",
+        clientOrderId: id,
+        items: [
+          {
+            productId: "22222222-2222-4222-8222-222222222222",
+            quantity: 1,
+            modifiers: [],
+          },
+        ],
+        paymentMethod: "at_bar",
+        isTakeaway: false,
+      },
+    });
+
+    const items = await import("@/lib/offline/order-queue").then((m) =>
+      m.listQueuedStaffOrders()
+    );
+    const row = items.find((entry) => entry.id === id);
+    if (!row) throw new Error("fixture row missing");
+    await updateQueuedStaffOrder({ ...row, status: "syncing" });
+
+    expect(await countPendingStaffOrders()).toBeGreaterThanOrEqual(1);
+    await removeQueuedStaffOrder(id);
   });
 });

@@ -157,5 +157,22 @@ export async function removeQueuedStaffOrder(id: string): Promise<void> {
 
 export async function countPendingStaffOrders(): Promise<number> {
   const items = await listQueuedStaffOrders();
-  return items.filter((item) => item.status !== "syncing").length;
+  return items.length;
+}
+
+/** Page reload mid-request leaves rows stuck in `syncing` — reset before retry. */
+export async function resetStuckSyncingStaffOrders(): Promise<number> {
+  const items = await listQueuedStaffOrders();
+  let reset = 0;
+
+  for (const item of items) {
+    if (item.status !== "syncing") continue;
+    await updateQueuedStaffOrder({
+      ...withQueuePayloadClientOrderId(item),
+      status: "pending",
+    });
+    reset += 1;
+  }
+
+  return reset;
 }

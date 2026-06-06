@@ -36,6 +36,7 @@ import {
   prepareQrTableCardItems,
   resolveQrTableCardLocale,
 } from "@/lib/print/qr-table-card-print";
+import { wt } from "@/lib/i18n/waiter-app-ui";
 import { cn } from "@/lib/utils";
 import type { Order, Table, TableSession, Zone } from "@/types";
 
@@ -823,7 +824,7 @@ export function TablesBoard() {
                   className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-dash-accent py-3 text-sm font-semibold text-white transition hover:bg-dash-accent-hover"
                 >
                   <Receipt className="size-4" />
-                  Račun
+                  {wt("action.bill", menuLocale)}
                 </button>
               )}
 

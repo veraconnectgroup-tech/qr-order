@@ -293,7 +293,7 @@ export function waiterUiT(
   menuLocale: MenuLocale,
   vars?: Record<string, string | number>
 ): string {
-  const table = BY_LOCALE[menuLocale] ?? de;
+  const table = BY_LOCALE[menuLocale] ?? en;
   let text = table[key] ?? en[key] ?? key;
   if (vars) {
     for (const [name, value] of Object.entries(vars)) {

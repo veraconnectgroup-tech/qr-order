@@ -145,7 +145,7 @@ type IdempotentStaffOrderRow = {
   } | null;
 };
 
-async function lookupStaffOrderIdempotency(
+export async function resolveStaffOrderByClientOrderId(
   admin: ReturnType<typeof createAdminClient>,
   clientOrderId: string
 ) {
@@ -183,7 +183,7 @@ async function recordStaffOrderIdempotency(
   } as never);
 
   if (error?.code === "23505") {
-    return lookupStaffOrderIdempotency(admin, params.clientOrderId);
+    return resolveStaffOrderByClientOrderId(admin, params.clientOrderId);
   }
 
   if (error) {
@@ -209,7 +209,7 @@ export async function createStaffOrder(
   const admin = createAdminClient();
 
   if (input.clientOrderId) {
-    const existing = await lookupStaffOrderIdempotency(
+    const existing = await resolveStaffOrderByClientOrderId(
       admin,
       input.clientOrderId
     );
@@ -533,7 +533,13 @@ export async function createStaffOrder(
       staffId: staff.id,
       error: rpcError?.message,
     });
-    return { error: "Order could not be created.", status: 500 };
+    return {
+      error: "Order could not be created.",
+      status: 500,
+      reason: rpcError?.message ?? "create_staff_order_tx returned no data",
+      hint: rpcError?.hint,
+      code: rpcError?.code,
+    };
   }
 
   const orderRow = rpcData as CreateStaffOrderRpcResult;
