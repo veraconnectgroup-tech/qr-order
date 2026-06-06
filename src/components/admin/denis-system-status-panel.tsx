@@ -63,7 +63,7 @@ export function DenisSystemStatusPanel({ status }: { status: DenisSystemStatus }
         <Row
           label="Operator denis.* webhooks (I2)"
           ok={status.gaps.operatorWebhooks}
-          detail="OPEN — see backlog Wave 5"
+          detail="denis.session.* · metrics · alerts via outbox"
         />
       </div>
 

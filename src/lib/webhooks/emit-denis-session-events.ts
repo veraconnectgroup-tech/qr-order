@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveSessionOutcome } from "@/lib/operator/projections/helpers";
 import { enqueueDenisOperatorWebhooks } from "@/lib/webhooks/enqueue-denis-operator-webhook";
-import { getTraceId } from "@/lib/resilience/trace";
+import { orgIdForLocation } from "@/lib/webhooks/org-context";
+import { getCurrentTraceId } from "@/lib/resilience/trace-context";
 import { logger } from "@/lib/logger";
 
 export async function emitDenisSessionCompleted(
@@ -13,9 +14,7 @@ export async function emitDenisSessionCompleted(
 ): Promise<void> {
   const { data: sessionRow } = await admin
     .from("table_sessions")
-    .select(
-      "id, location_id, status, denis_shared_ai_session_id, locations(org_id)"
-    )
+    .select("id, location_id, status, denis_shared_ai_session_id")
     .eq("id", input.tableSessionId)
     .maybeSingle();
 
@@ -26,10 +25,9 @@ export async function emitDenisSessionCompleted(
     location_id: string;
     status: string;
     denis_shared_ai_session_id: string | null;
-    locations: { org_id: string } | null;
   };
 
-  const orgId = session.locations?.org_id;
+  const orgId = await orgIdForLocation(session.location_id);
   if (!orgId) return;
 
   const { count: ordersCount } = await admin
@@ -70,7 +68,7 @@ export async function emitDenisSessionCompleted(
         locationId: session.location_id,
         sessionId: session.id,
         outcome,
-        traceId: input.traceId ?? getTraceId(),
+        traceId: input.traceId ?? getCurrentTraceId(),
       },
     });
   } catch (error) {
@@ -112,7 +110,7 @@ export async function emitDenisSessionConverted(
   const { data: tableSession } = await admin
     .from("table_sessions")
     .select("id")
-    .eq("denis_shared_ai_session_id", ai.id)
+    .eq("denis_shared_ai_session_id" as never, ai.id)
     .maybeSingle();
 
   try {
@@ -125,7 +123,7 @@ export async function emitDenisSessionConverted(
         locationId: ai.location_id,
         sessionId: (tableSession as { id: string } | null)?.id,
         metrics: { orderId: input.orderId },
-        traceId: input.traceId ?? getTraceId(),
+        traceId: input.traceId ?? getCurrentTraceId(),
       },
     });
   } catch (error) {

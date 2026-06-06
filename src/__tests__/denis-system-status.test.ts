@@ -7,5 +7,6 @@ describe("Denis system status", () => {
     expect(result.eval.coreTotal).toBeGreaterThan(0);
     expect(result.eval.waiterParityTotal).toBeGreaterThanOrEqual(40);
     expect(result.gaps.proactiveInLoop).toBe(false);
+    expect(result.gaps.operatorWebhooks).toBe(true);
   });
 });

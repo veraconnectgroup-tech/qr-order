@@ -21,7 +21,9 @@ import { TseSettingsPanel } from "@/components/admin/tse-settings-panel";
 import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel";
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
 import { OperatorApiKeysPanel } from "@/components/admin/operator-api-keys-panel";
+import { OperatorConfigProposalsPanel } from "@/components/admin/operator-config-proposals-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
+import { listPendingOperatorProposals } from "@/lib/operator/config-proposals";
 import type { AiCreditPackage } from "@/types";
 import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
 
@@ -92,6 +94,11 @@ export default async function AdminSettingsPage() {
           .order("created_at")
       : Promise.resolve({ data: null }),
   ]);
+
+  const pendingOperatorProposals = await listPendingOperatorProposals(
+    admin,
+    staff.org_id
+  );
 
   const orgRow = org as {
     stripe_account_id: string | null;
@@ -285,6 +292,10 @@ export default async function AdminSettingsPage() {
 
         <ApiKeysPanel keys={(apiKeys ?? []) as never} canEdit />
         <OperatorApiKeysPanel keys={(operatorApiKeys ?? []) as never} canEdit />
+        <OperatorConfigProposalsPanel
+          proposals={pendingOperatorProposals}
+          canEdit
+        />
         <WebhooksPanel webhooks={(webhooks ?? []) as never} canEdit />
       </div>
     </div>

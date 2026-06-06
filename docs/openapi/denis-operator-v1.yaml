@@ -1,0 +1,363 @@
+openapi: 3.1.0
+info:
+  title: Denis Operator API
+  version: "1"
+  description: |
+    Read-only operator feed for Viktor and external operator AI (ADR-028).
+    Denis owns TRUTH; this API projects org-scoped metrics without guest PII.
+servers:
+  - url: https://{tenant}.qr-order.app/api/operator/v1
+    description: Production
+    variables:
+      tenant:
+        default: app
+  - url: https://{preview}.vercel.app/api/operator/v1
+    description: Preview deployment
+security:
+  - operatorBearer: []
+    operatorOrg: []
+components:
+  securitySchemes:
+    operatorBearer:
+      type: http
+      scheme: bearer
+      description: dns_op_live_* key from Denis Admin → Operator API keys
+    operatorOrg:
+      type: apiKey
+      in: header
+      name: X-Denis-Org-Id
+      description: Optional org binding check (must match key org)
+  headers:
+    ApiVersion:
+      schema:
+        type: string
+        example: "1"
+      description: X-Denis-Operator-Api-Version response header
+  schemas:
+    Period:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+    LocationListItem:
+      type: object
+      required: [id, name, denisEnabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        denisEnabled:
+          type: boolean
+    LocationSummary:
+      type: object
+      required: [locationId, period, commerce, denis, ops]
+      properties:
+        locationId:
+          type: string
+          format: uuid
+        period:
+          $ref: "#/components/schemas/Period"
+        commerce:
+          type: object
+          properties:
+            ordersCount:
+              type: integer
+            revenueCents:
+              type: integer
+            avgCheckCents:
+              type: integer
+            tipRate:
+              type: number
+        denis:
+          type: object
+          properties:
+            sessionsCount:
+              type: integer
+            sessionsWithOrder:
+              type: integer
+            conversionRate:
+              type: number
+            escalationsCount:
+              type: integer
+            avgTurnsPerSession:
+              type: number
+            topLanguages:
+              type: array
+              items:
+                type: object
+                properties:
+                  lang:
+                    type: string
+                  count:
+                    type: integer
+            llmInvocationRate:
+              type: number
+        ops:
+          type: object
+          properties:
+            rushMinutes:
+              type: integer
+            openWaiterCalls:
+              type: integer
+            kdsBacklog:
+              type: integer
+    DenisLocationMetrics:
+      type: object
+    OrderListItem:
+      type: object
+      required:
+        - orderId
+        - orderNumber
+        - status
+        - totalCents
+        - itemCount
+        - createdAt
+        - sessionId
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        orderNumber:
+          type: integer
+        status:
+          type: string
+        totalCents:
+          type: integer
+        itemCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        sessionId:
+          type: string
+          format: uuid
+          nullable: true
+    SessionListItem:
+      type: object
+    SessionSummary:
+      type: object
+    Transcript:
+      type: object
+      required: [sessionId, locationId, turns, redacted]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        turns:
+          type: array
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+                enum: [user, assistant]
+              content:
+                type: string
+        redacted:
+          type: boolean
+    ConfigProposal:
+      type: object
+paths:
+  /locations:
+    get:
+      summary: List locations
+      operationId: listLocations
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Denis-Operator-Api-Version:
+              $ref: "#/components/headers/ApiVersion"
+  /locations/{locationId}/summary:
+    get:
+      summary: Location KPI rollup
+      operationId: getLocationSummary
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, yesterday, 7d]
+      responses:
+        "200":
+          description: OK
+  /locations/{locationId}/denis/metrics:
+    get:
+      summary: Denis KPI detail
+      operationId: getDenisMetrics
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, yesterday, 7d]
+      responses:
+        "200":
+          description: OK
+  /locations/{locationId}/orders:
+    get:
+      summary: Open and recent orders
+      operationId: listLocationOrders
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, yesterday, 7d]
+        - name: status
+          in: query
+          schema:
+            type: string
+            description: Filter by status or `open` for active kitchen orders
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 200
+      responses:
+        "200":
+          description: OK
+  /sessions:
+    get:
+      summary: List table sessions
+      operationId: listSessions
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: converted
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+  /sessions/{sessionId}/summary:
+    get:
+      summary: Redacted session summary
+      operationId: getSessionSummary
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include
+          in: query
+          schema:
+            type: string
+            enum: [transcript]
+      responses:
+        "200":
+          description: OK
+  /sessions/{sessionId}/transcript:
+    get:
+      summary: Full turn list
+      operationId: getSessionTranscript
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include
+          in: query
+          schema:
+            type: string
+            enum: [pii]
+          description: Opt-in full transcript; audited with include_pii=true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transcript"
+  /config/proposals:
+    post:
+      summary: Submit config change proposal
+      operationId: createConfigProposal
+      security:
+        - operatorBearer: []
+      description: Requires operator:propose scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locationId, patch, reason]
+              properties:
+                locationId:
+                  type: string
+                  format: uuid
+                patch:
+                  type: object
+                reason:
+                  type: string
+      responses:
+        "201":
+          description: Created
+  /config/proposals/{id}:
+    get:
+      summary: Proposal status
+      operationId: getConfigProposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+  /playbook/proposals:
+    post:
+      summary: Submit playbook examples proposal
+      operationId: createPlaybookProposal
+      description: Requires operator:propose scope
+      responses:
+        "201":
+          description: Created
