@@ -56,6 +56,38 @@ curl -sS "https://DOMAIN/api/operator/v1/locations/LOCATION_ID/orders?status=ope
   -H "Authorization: Bearer dns_op_live_KEY"
 ```
 
+### Order detail (line items + tax + payment)
+
+```bash
+curl -sS "https://DOMAIN/api/operator/v1/locations/LOCATION_ID/orders/ORDER_ID" \
+  -H "Authorization: Bearer dns_op_live_KEY"
+```
+
+Response includes `items[]`, `paymentMethod` (`cash` | `card` | `online`), and `taxBreakdown[]`.
+
+### Commerce insights (Z-Bon style operational report)
+
+Viktor pulls this **on demand or on Viktor's own schedule** — Denis does not send email.
+
+```bash
+curl -sS "https://DOMAIN/api/operator/v1/locations/LOCATION_ID/commerce/insights?period=yesterday&include=menu,payments,tax,daily" \
+  -H "Authorization: Bearer dns_op_live_KEY"
+```
+
+- `period`: `today` | `yesterday` | `7d`
+- `include`: comma-separated `menu`, `payments`, `tax`, `daily`, `conversion`
+- Use for artikel breakdown, Bar/Karte split, MWSt 7%/19%, daily series
+
+### Fiscal daily closing (official Z-Bon after TSE)
+
+```bash
+curl -sS "https://DOMAIN/api/operator/v1/locations/LOCATION_ID/fiscal/daily-closing?date=2026-06-06" \
+  -H "Authorization: Bearer dns_op_live_KEY"
+```
+
+Returns signed closing from `daily_closings` when admin/cron has closed the day.
+`zBonPath` points to HTML receipt (staff auth may be required for download).
+
 ### Sessions
 
 ```bash

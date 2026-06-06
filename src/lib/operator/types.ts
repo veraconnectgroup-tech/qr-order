@@ -93,3 +93,126 @@ export type OperatorTranscript = {
   turns: Array<{ role: "user" | "assistant"; content: string }>;
   redacted: boolean;
 };
+
+export type OperatorPaymentBucket = "cash" | "card" | "online" | "other";
+
+export type OperatorTaxBreakdownLine = {
+  rate: number;
+  netCents: number;
+  taxCents: number;
+  grossCents: number;
+};
+
+export type OperatorOrderDetailItem = {
+  id: string;
+  productName: string;
+  quantity: number;
+  unitPriceCents: number;
+  totalCents: number;
+  taxRate: number;
+  menuSection: string;
+  notes: string | null;
+  modifiers: Array<{ name: string; priceCents: number }>;
+};
+
+export type OperatorOrderDetail = {
+  orderId: string;
+  orderNumber: number;
+  locationId: string;
+  locationName: string;
+  status: string;
+  paymentMethod: OperatorPaymentBucket;
+  paymentMethodRaw: string;
+  paymentStatus: string;
+  subtotalCents: number;
+  taxCents: number;
+  totalCents: number;
+  tipCents: number;
+  sessionId: string | null;
+  createdAt: string;
+  acceptedAt: string | null;
+  preparingAt: string | null;
+  readyAt: string | null;
+  deliveredAt: string | null;
+  taxBreakdown: OperatorTaxBreakdownLine[];
+  items: OperatorOrderDetailItem[];
+};
+
+export type OperatorCommerceMenuLine = {
+  productName: string;
+  quantity: number;
+  revenueCents: number;
+};
+
+export type OperatorCommerceDailyLine = {
+  date: string;
+  ordersCount: number;
+  revenueCents: number;
+  avgCheckCents: number;
+};
+
+export type OperatorCommerceInsights = {
+  locationId: string;
+  locationName: string;
+  period: { from: string; to: string };
+  summary: {
+    ordersCount: number;
+    revenueCents: number;
+    avgCheckCents: number;
+    firstOrderAt: string | null;
+    lastOrderAt: string | null;
+  };
+  paymentSummary?: {
+    cashCents: number;
+    cardCents: number;
+    onlineCents: number;
+    otherCents: number;
+  };
+  taxSummary?: {
+    breakdown: OperatorTaxBreakdownLine[];
+    mwst19: OperatorTaxBreakdownLine | null;
+    mwst7: OperatorTaxBreakdownLine | null;
+  };
+  menu?: OperatorCommerceMenuLine[];
+  daily?: OperatorCommerceDailyLine[];
+  conversion?: {
+    sessionsCount: number;
+    sessionsWithOrder: number;
+    conversionRate: number;
+  };
+};
+
+export type OperatorFiscalDailyClosing = {
+  closingId: string;
+  locationId: string;
+  locationName: string;
+  businessDate: string;
+  zNr: number | null;
+  status: "closed" | "signed";
+  totals: {
+    grossCents: number;
+    netCents: number;
+    taxCents: number;
+    cashCents: number;
+    nonCashCents: number;
+    tipsCents: number;
+  };
+  taxBreakdown: OperatorTaxBreakdownLine[];
+  taxSummary: {
+    breakdown: OperatorTaxBreakdownLine[];
+    mwst19: OperatorTaxBreakdownLine | null;
+    mwst7: OperatorTaxBreakdownLine | null;
+  };
+  paymentSummary: {
+    cashCents: number;
+    cardCents: number;
+    onlineCents: number;
+    otherCents: number;
+  };
+  orderCount: number;
+  refundCount: number;
+  refundTotalCents: number;
+  tseSigned: boolean;
+  closedAt: string;
+  zBonPath: string;
+};

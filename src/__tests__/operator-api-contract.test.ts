@@ -1,11 +1,17 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { GET as getLocations } from "@/app/api/operator/v1/locations/route";
+import { GET as getCommerceInsights } from "@/app/api/operator/v1/locations/[locationId]/commerce/insights/route";
+import { GET as getFiscalDailyClosing } from "@/app/api/operator/v1/locations/[locationId]/fiscal/daily-closing/route";
 import { GET as getOrders } from "@/app/api/operator/v1/locations/[locationId]/orders/route";
+import { GET as getOrderDetail } from "@/app/api/operator/v1/locations/[locationId]/orders/[orderId]/route";
 import { GET as getTranscript } from "@/app/api/operator/v1/sessions/[sessionId]/transcript/route";
 import * as operatorAuth from "@/lib/operator/auth";
 import * as operatorAudit from "@/lib/operator/audit-log";
+import * as commerceInsights from "@/lib/operator/projections/commerce-insights";
+import * as fiscalDailyClosing from "@/lib/operator/projections/fiscal-daily-closing";
 import * as locationOrders from "@/lib/operator/projections/list-location-orders";
+import * as orderDetail from "@/lib/operator/projections/order-detail";
 import * as sessionTranscript from "@/lib/operator/projections/session-transcript";
 import * as rateLimit from "@/lib/rate-limit";
 import * as supabaseAdmin from "@/lib/supabase/admin";
@@ -122,6 +128,188 @@ describe("operator API contract smoke", () => {
     };
     expect(json.data?.redacted).toBe(true);
     expect(json.data?.turns).toHaveLength(1);
+  });
+
+  it("returns order detail with items and tax breakdown", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(orderDetail, "projectOperatorOrderDetail").mockResolvedValue({
+      orderId: "ord-1",
+      orderNumber: 7,
+      locationId: "loc-1",
+      locationName: "Skyline",
+      status: "delivered",
+      paymentMethod: "card",
+      paymentMethodRaw: "card_terminal",
+      paymentStatus: "paid",
+      subtotalCents: 1800,
+      taxCents: 287,
+      totalCents: 2087,
+      tipCents: 0,
+      sessionId: "sess-1",
+      createdAt: "2026-06-06T20:01:00.000Z",
+      acceptedAt: null,
+      preparingAt: null,
+      readyAt: null,
+      deliveredAt: "2026-06-06T20:16:00.000Z",
+      taxBreakdown: [
+        { rate: 19, netCents: 630, taxCents: 120, grossCents: 750 },
+      ],
+      items: [
+        {
+          id: "item-1",
+          productName: "Aperol Spritz",
+          quantity: 2,
+          unitPriceCents: 950,
+          totalCents: 1900,
+          taxRate: 19,
+          menuSection: "drinks",
+          notes: null,
+          modifiers: [],
+        },
+      ],
+    });
+
+    const res = await getOrderDetail(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/locations/loc-1/orders/ord-1",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({ locationId: "loc-1", orderId: "ord-1" }) }
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data?: { order?: { items?: Array<{ productName: string }> } };
+    };
+    expect(json.data?.order?.items?.[0]?.productName).toBe("Aperol Spritz");
+  });
+
+  it("returns commerce insights for Z-bon style reporting", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(commerceInsights, "projectCommerceInsights").mockResolvedValue({
+      locationId: "loc-1",
+      locationName: "Skyline",
+      period: {
+        from: "2026-06-06T00:00:00.000Z",
+        to: "2026-06-06T23:59:59.999Z",
+      },
+      summary: {
+        ordersCount: 6,
+        revenueCents: 7950,
+        avgCheckCents: 1325,
+        firstOrderAt: "2026-06-06T20:01:00.000Z",
+        lastOrderAt: "2026-06-06T22:16:00.000Z",
+      },
+      paymentSummary: {
+        cashCents: 3500,
+        cardCents: 4450,
+        onlineCents: 0,
+        otherCents: 0,
+      },
+      menu: [
+        {
+          productName: "Aperol Spritz",
+          quantity: 4,
+          revenueCents: 3800,
+        },
+      ],
+    });
+
+    const res = await getCommerceInsights(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/locations/loc-1/commerce/insights?period=yesterday&include=menu,payments,tax",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({ locationId: "loc-1" }) }
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data?: { summary?: { ordersCount?: number } };
+    };
+    expect(json.data?.summary?.ordersCount).toBe(6);
+  });
+
+  it("returns fiscal daily closing for official Z-bon", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(fiscalDailyClosing, "projectFiscalDailyClosing").mockResolvedValue({
+      closingId: "close-1",
+      locationId: "loc-1",
+      locationName: "Skyline",
+      businessDate: "2026-06-06",
+      zNr: 42,
+      status: "signed",
+      totals: {
+        grossCents: 7950,
+        netCents: 6820,
+        taxCents: 1130,
+        cashCents: 3500,
+        nonCashCents: 4450,
+        tipsCents: 0,
+      },
+      taxBreakdown: [],
+      taxSummary: {
+        breakdown: [],
+        mwst19: null,
+        mwst7: null,
+      },
+      paymentSummary: {
+        cashCents: 3500,
+        cardCents: 4450,
+        onlineCents: 0,
+        otherCents: 0,
+      },
+      orderCount: 6,
+      refundCount: 0,
+      refundTotalCents: 0,
+      tseSigned: true,
+      closedAt: "2026-06-07T04:05:00.000Z",
+      zBonPath: "/api/fiscal/daily-closing/close-1/z-bon",
+    });
+
+    const res = await getFiscalDailyClosing(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/locations/loc-1/fiscal/daily-closing?date=2026-06-06",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({ locationId: "loc-1" }) }
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data?: { closing?: { zNr?: number } };
+    };
+    expect(json.data?.closing?.zNr).toBe(42);
+  });
+
+  it("requires date query param for fiscal daily closing", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+
+    const res = await getFiscalDailyClosing(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/locations/loc-1/fiscal/daily-closing",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({ locationId: "loc-1" }) }
+    );
+
+    expect(res.status).toBe(400);
   });
 
   it("returns 403 when operator:read scope is missing", async () => {
