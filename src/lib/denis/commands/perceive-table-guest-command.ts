@@ -60,6 +60,8 @@ export function isHandoffWaiterMessage(message: string): boolean {
     /pozov[a-zšđčćž]*\s+konobara/.test(text) ||
     /pozov[a-zšđčćž]*\s+mi\s+konobara/.test(text) ||
     /treba\s+(mi\s+)?konobar/.test(text) ||
+    /mogu\s+(li\s+)?(da\s+)?pozov[a-zšđčćž]*\s+konobara/.test(text) ||
+    /ne\s+mogu\s+da\s+pozov[a-zšđčćž]*\s+konobara/.test(text) ||
     /(dodji|dođi|dođite)\s+konobar/.test(text) ||
     /(ruf(en)?\s+(den\s+)?kellner|kellner\s+(holen|rufen))/.test(text) ||
     /(call\s+(the\s+)?waiter|need\s+a\s+waiter|waiter\s+please)/.test(text) ||

@@ -356,9 +356,23 @@ async function runTdePerceive(input: {
     topGoal: input.reflexTurn.plan.topGoal,
   });
 
-  const templateMessage = !turnPlan.requiresLlm
+  let templateMessage = !turnPlan.requiresLlm
     ? tryTemplateUtterance(utterancePlan)
     : null;
+
+  if (
+    turnPlan.reason === "commerce.status.open_order" &&
+    input.ctx.tableSessionState?.commerce.orders.length
+  ) {
+    const { openOrderStatusGuestMessage } = await import(
+      "@/lib/guest/denis-guest-recovery"
+    );
+    templateMessage =
+      openOrderStatusGuestMessage(
+        input.ctx.tableSessionState.commerce.orders,
+        input.body.language
+      ) ?? templateMessage;
+  }
 
   let catalog: MenuRagCatalog | null = null;
   try {
@@ -634,7 +648,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const payload = (await perceiveResponse.json()) as PerceiveChatPayload;
   const data = payload.data;
 
-  if (!data?.message) {
+  if (!data?.message?.trim() && !reflexTurn.handoffCommand) {
+    return perceiveResponse;
+  }
+  if (!data) {
     return perceiveResponse;
   }
 
@@ -827,7 +844,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const narrateStarted = performance.now();
   const resolvedNarration = await resolveTurnNarrationMessage({
-    legacyMessage: data.message,
+    legacyMessage: data.message ?? "",
     facts: narrationFacts,
     config: ctx.config,
     rolloutMode: rollout.mode,
@@ -884,7 +901,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     (order) => order.status !== "delivered" && order.status !== "cancelled"
   );
   guestMessage = sanitizeGuestOrderHonesty({
-    message: guestMessage,
+    message: guestMessage ?? "",
     language: parsed.data.language,
     orderSubmitted: Boolean(turnSubmitOutcome.orderId) || hasOpenOrders,
     draft: cartDraftToAiOrderDraft(cartDraftForAct),

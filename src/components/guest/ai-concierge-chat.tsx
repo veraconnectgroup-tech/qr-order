@@ -36,6 +36,16 @@ import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
 } from "@/lib/ai/guest-language";
+import {
+  bumpGuestRecoveryFailureCount,
+  clearGuestRecoveryFailureCount,
+  GuestRecoveryError,
+  isInfrastructureChatError,
+  resolveGuestRecoveryResponse,
+  tryLocalGuestAnswer,
+  type GuestRecoveryResult,
+} from "@/lib/guest/denis-guest-recovery";
+import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { DenisGuestApiMeta } from "@/lib/denis/surfaces/format-denis-api-meta";
 import type { MenuCategory } from "@/components/guest/menu-grid";
 import { getDemoAiChatResponse } from "@/lib/demo-ai";
@@ -151,8 +161,15 @@ function mapAiChatError(
   if (status === 429) {
     return tUI("ai.overlay.rateLimited");
   }
-  if (status === 502 || status === 503) {
-    return tUI("ai.overlay.unavailable");
+  if (status === 502 || status === 503 || status === 504) {
+    return tUI("ai.recovery.connection");
+  }
+  if (
+    error === "signal_timeout" ||
+    error === "signal_processing_failed" ||
+    error === "signal_failed"
+  ) {
+    return tUI("ai.recovery.connection");
   }
   return error ?? tUI("ai.overlay.error");
 }
@@ -834,7 +851,39 @@ export function AiConciergeChat({
     bootstrapTranscript,
   ]);
 
-  const CHAT_FETCH_TIMEOUT_MS = 45_000;
+  const CHAT_FETCH_TIMEOUT_MS = 58_000;
+  const recoveryScopeKey = `${locationId}:${token}:${sessionToken ?? "anon"}`;
+
+  const buildRecovery = useCallback(
+    (guestMessage: string, failureCount: number, language: string) =>
+      resolveGuestRecoveryResponse({
+        guestMessage,
+        failureCount,
+        language,
+        situation: sceneChrome?.situation,
+        cartItemCount: cartItems.length,
+      }),
+    [sceneChrome?.situation, cartItems.length]
+  );
+
+  const fireRecoveryAction = useCallback(
+    async (action: GuestRecoveryResult["action"]) => {
+      if (!action?.tryWaiterCall) return;
+      try {
+        await requestGuestWaiterCall({
+          tableToken: token,
+          sessionToken,
+          locationId,
+          tableId,
+          label: tUI("scene.situation.chipWaiter"),
+        });
+        onSceneRefresh?.();
+      } catch {
+        /* guest still sees escalate copy */
+      }
+    },
+    [token, sessionToken, locationId, tableId, tUI, onSceneRefresh]
+  );
 
   useEffect(() => {
     scrollToBottom();
@@ -976,7 +1025,10 @@ export function AiConciergeChat({
         );
       } catch (fetchError) {
         if (fetchError instanceof Error && fetchError.name === "AbortError") {
-          throw new Error(tChat("ai.overlay.error"));
+          const failureCount = bumpGuestRecoveryFailureCount(recoveryScopeKey);
+          throw new GuestRecoveryError(
+            buildRecovery(message, failureCount, requestLanguage)
+          );
         }
         throw fetchError;
       } finally {
@@ -1022,16 +1074,27 @@ export function AiConciergeChat({
           return callAiChat(message, prefs, true, inputSurface);
         }
 
+        if (isInfrastructureChatError(json.error, res.status)) {
+          const failureCount = bumpGuestRecoveryFailureCount(recoveryScopeKey);
+          throw new GuestRecoveryError(
+            buildRecovery(message, failureCount, requestLanguage)
+          );
+        }
+
         throw new Error(
           mapAiChatError(json.error, res.status, json.details, tChat)
         );
       }
 
       if (!json.data) {
-        throw new Error(tChat("ai.overlay.error"));
+        const failureCount = bumpGuestRecoveryFailureCount(recoveryScopeKey);
+        throw new GuestRecoveryError(
+          buildRecovery(message, failureCount, requestLanguage)
+        );
       }
 
       const data = json.data;
+      clearGuestRecoveryFailureCount(recoveryScopeKey);
 
       if (data.sessionId) {
         writeAiSessionIdForGuest(locationId, token, data.sessionId);
@@ -1055,6 +1118,8 @@ export function AiConciergeChat({
       orderingDisabled,
       getManualCartSnapshot,
       resolvedDeviceFingerprint,
+      recoveryScopeKey,
+      buildRecovery,
     ]
   );
 
@@ -1119,6 +1184,26 @@ export function AiConciergeChat({
           return;
         }
 
+        const localAnswer = tryLocalGuestAnswer({
+          guestMessage: trimmed,
+          language: chatLanguage,
+          situation: sceneChrome?.situation,
+          cartItemCount: cartItems.length,
+        });
+        if (localAnswer?.answeredLocally) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: localAnswer.message,
+              quickReplies: localAnswer.quickReplies,
+            },
+          ]);
+          void fireRecoveryAction(localAnswer.action);
+          return;
+        }
+
         const data = await callAiChat(trimmed, undefined, false, inputSurface);
         applyCartActions(data.cartActions);
 
@@ -1139,6 +1224,9 @@ export function AiConciergeChat({
             id: nextId(),
             role: "assistant",
             content: data.message,
+            quickReplies: data.quickReplies?.length
+              ? data.quickReplies
+              : undefined,
             recommendations: data.recommendations?.length
               ? data.recommendations
               : undefined,
@@ -1153,17 +1241,25 @@ export function AiConciergeChat({
           voice.speak(data.voice.speakText);
         }
       } catch (err) {
+        const recovery =
+          err instanceof GuestRecoveryError
+            ? err.recovery
+            : buildRecovery(
+                trimmed,
+                bumpGuestRecoveryFailureCount(recoveryScopeKey),
+                chatLanguage
+              );
+
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: "assistant",
-            content:
-              err instanceof Error && err.message.trim().length > 0
-                ? err.message
-                : tChat("ai.overlay.error"),
+            content: recovery.message,
+            quickReplies: recovery.quickReplies,
           },
         ]);
+        void fireRecoveryAction(recovery.action);
       } finally {
         setIsTyping(false);
         onSceneRefresh?.();
@@ -1174,7 +1270,13 @@ export function AiConciergeChat({
       phase,
       isDemo,
       menuCategories,
+      sceneChrome?.situation,
+      cartItems.length,
+      fireRecoveryAction,
+      buildRecovery,
       callAiChat,
+      recoveryScopeKey,
+      chatLanguage,
       applyCartActions,
       clearCart,
       tChat,

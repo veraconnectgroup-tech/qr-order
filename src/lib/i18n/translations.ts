@@ -250,6 +250,23 @@ const de: TranslationMap = {
   "ai.overlay.sessionExpired": "Sitzung abgelaufen — bitte erneut starten.",
   "ai.overlay.rateLimited": "Zu viele Anfragen — bitte kurz warten.",
   "ai.overlay.listen": "Vorlesen",
+  "ai.recovery.retryGeneral":
+    "Einen Moment — ich versuche es noch einmal. Was darf ich für Sie tun?",
+  "ai.recovery.retryPayment":
+    "Natürlich können Sie zahlen. Sagen Sie mir kurz: bar, Karte am Tisch oder online?",
+  "ai.recovery.retryStatus":
+    "Ich schaue nach Ihrer Bestellung — einen Moment bitte.",
+  "ai.recovery.retryWaiter":
+    "Klar — ich kann den Kellner rufen. Soll ich das jetzt tun?",
+  "ai.recovery.retryOrder":
+    "Gerne — sagen Sie mir, was ich für Sie bestellen soll.",
+  "ai.recovery.connection":
+    "Es gibt gerade ein Verbindungsproblem. Versuchen Sie es noch einmal — oder tippen Sie „Kellner“, „Bezahlen“ oder wählen Sie aus dem Menü.",
+  "ai.recovery.escalateWaiter":
+    "Das tut mir leid — ich komme gerade nicht durch. Bitte winken Sie kurz einem Kellner zu, ich kümmere mich parallel um die Verbindung.",
+  "ai.recovery.noOpenOrders":
+    "Aktuell keine offene Bestellung. Sagen Sie, was Sie möchten — ich kann sofort hinzufügen.",
+  "ai.recovery.statusLive": "Bestellung #{number} — {items}.",
   "ai.chat.welcome": "Hallo! Ich bin Denis. Allergien?",
   "ai.chat.greeting":
     "Guten Tag! Möchten Sie etwas zu trinken oder etwas zu essen? Wie kann ich Ihnen helfen?",
@@ -631,6 +648,23 @@ const en: TranslationMap = {
   "ai.overlay.sessionExpired": "Session expired — please start again.",
   "ai.overlay.rateLimited": "Too many requests — please wait a moment.",
   "ai.overlay.listen": "Read aloud",
+  "ai.recovery.retryGeneral":
+    "One moment — let me try again. What can I help you with?",
+  "ai.recovery.retryPayment":
+    "Of course you can pay. Cash, card at the table, or online?",
+  "ai.recovery.retryStatus":
+    "Let me check on your order — one moment.",
+  "ai.recovery.retryWaiter":
+    "Sure — I can call the waiter. Should I do that now?",
+  "ai.recovery.retryOrder":
+    "Happy to help — tell me what you'd like to order.",
+  "ai.recovery.connection":
+    "I'm having a connection issue. Try once more — or type “waiter”, “pay”, or pick from the menu.",
+  "ai.recovery.escalateWaiter":
+    "Sorry — I can't get through right now. Please wave down a waiter; I'll keep working on this.",
+  "ai.recovery.noOpenOrders":
+    "No active order right now. Tell me what you'd like — I can add it straight away.",
+  "ai.recovery.statusLive": "Order #{number} — {items}.",
   "ai.chat.welcome": "Hi! I'm Denis. Any allergies?",
   "ai.chat.greeting":
     "Good day! Would you like something to drink or something to eat? How can I help?",
@@ -1041,6 +1075,24 @@ const sr: TranslationMap = {
   "ai.order.status.ready": "Porudžbina #{number} je spremna — stižemo.",
   "ai.order.status.delivered": "Porudžbina #{number} je servirana. Prijatno!",
 
+  "ai.recovery.retryGeneral":
+    "Samo trenutak — pokušavam ponovo. Šta vam mogu doneti?",
+  "ai.recovery.retryPayment":
+    "Naravno možete platiti. Keš, kartica na stolu ili online?",
+  "ai.recovery.retryStatus":
+    "Proveravam vašu porudžbinu — samo trenutak.",
+  "ai.recovery.retryWaiter":
+    "Mogu pozvati konobara — da pošaljem poziv sada?",
+  "ai.recovery.retryOrder":
+    "Recite šta želite — mogu odmah dodati.",
+  "ai.recovery.connection":
+    "Imam problem sa vezom. Pokušajte još jednom — ili napišite „konobar“, „platiti“, ili izaberite sa menija.",
+  "ai.recovery.escalateWaiter":
+    "Izvinite — trenutno ne mogu da se povežem. Molim vas, pozovite konobara lično dok ja rešavam problem.",
+  "ai.recovery.noOpenOrders":
+    "Trenutno nemate aktivnu porudžbinu. Recite šta želite — mogu odmah dodati.",
+  "ai.recovery.statusLive": "Porudžbina #{number} — {items}.",
+
   "error.generic": "Nešto nije u redu.",
   "error.orderFailed": "Porudžbina nije mogla biti poslata.",
   "error.paymentFailed": "Plaćanje nije uspelo.",
@@ -1391,6 +1443,23 @@ const hr: TranslationMap = {
   "ai.overlay.unavailable": "Denis trenutno nije dostupan.",
   "ai.overlay.sessionExpired": "Sesija je istekla — pokušajte ponovo.",
   "ai.overlay.rateLimited": "Previše zahteva — sačekajte trenutak.",
+  "ai.recovery.retryGeneral":
+    "Samo trenutak — pokušavam ponovo. Šta vam mogu doneti?",
+  "ai.recovery.retryPayment":
+    "Naravno možete platiti. Keš, kartica na stolu ili online?",
+  "ai.recovery.retryStatus":
+    "Proveravam vašu porudžbinu — samo trenutak.",
+  "ai.recovery.retryWaiter":
+    "Mogu pozvati konobara — da pošaljem poziv sada?",
+  "ai.recovery.retryOrder":
+    "Recite šta želite — mogu odmah dodati.",
+  "ai.recovery.connection":
+    "Imam problem sa vezom. Pokušajte još jednom — ili napišite „konobar“, „platiti“, ili izaberite sa menija.",
+  "ai.recovery.escalateWaiter":
+    "Izvinite — trenutno ne mogu da se povežem. Molim vas, pozovite konobara lično dok ja rešavam problem.",
+  "ai.recovery.noOpenOrders":
+    "Trenutno nemate aktivnu porudžbinu. Recite šta želite — mogu odmah dodati.",
+  "ai.recovery.statusLive": "Porudžbina #{number} — {items}.",
   "ai.chat.welcome": "Zdravo! Ja sam Denis. Imate alergije?",
   "ai.chat.greeting":
     "Dobar dan! Želite li nešto za piće ili nešto za jelo? Kako mogu da budem od pomoći?",

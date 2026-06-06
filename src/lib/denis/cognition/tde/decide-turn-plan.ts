@@ -295,15 +295,20 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
     getBeliefValue<boolean>(input.beliefs, CORE_BELIEF_KEYS.commerceHasOpenOrders) ===
     true;
 
-  if (
-    ORDER_STATUS_QUERY_PATTERN.test(input.message.trim()) &&
-    !hasOpenOrders
-  ) {
+  if (ORDER_STATUS_QUERY_PATTERN.test(input.message.trim())) {
+    if (!hasOpenOrders) {
+      return buildPlan("template_tell", {
+        requiresLlm: false,
+        suppressUpsell,
+        reason: "commerce.status.no_open_order",
+        templateKey: "status.no_order",
+      });
+    }
     return buildPlan("template_tell", {
       requiresLlm: false,
       suppressUpsell,
-      reason: "commerce.status.no_open_order",
-      templateKey: "status.no_order",
+      reason: "commerce.status.open_order",
+      templateKey: "status.headline",
     });
   }
 

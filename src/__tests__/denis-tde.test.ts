@@ -142,6 +142,20 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.requiresLlm).toBe(false);
   });
 
+  it("status query with open orders uses live status template (0 LLM)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.language", "sr"),
+        belief("commerce.has_open_orders", true),
+      ]),
+      reflex: reflexFor("Kad stiže moj burger"),
+      message: "Kad stiže moj burger",
+    });
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.reason).toBe("commerce.status.open_order");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
   it("order-not-sent complaint without open orders uses status.no_order template", () => {
     const plan = decideTurnPlan({
       beliefs: beliefGraph([
