@@ -14,6 +14,12 @@ import type {
   OfferConversionRecord,
   ProductNudgeStats,
 } from "@/lib/denis/cognition/offer/offer-conversion-types";
+import type {
+  NudgeOutcomeRecord,
+  PendingNudge,
+} from "@/lib/denis/cognition/offer/nudge-outcome-types";
+import type { AttributedNudgeRevenue } from "@/lib/denis/cognition/offer/fold-nudge-revenue";
+import type { OrderFact } from "@/lib/denis/loop/types";
 
 export const GUEST_OFFER_CONTEXT_VERSION = 1 as const;
 
@@ -88,6 +94,11 @@ export type OfferResolutionTrace = {
   readiness: OfferReadiness;
   conversions: OfferConversionRecord[];
   nudgeStats: Record<string, ProductNudgeStats>;
+  outcomes: NudgeOutcomeRecord[];
+  pendingNudges: PendingNudge[];
+  sessionAttachRate: number;
+  attributedRevenue: AttributedNudgeRevenue[];
+  attributedRevenueCents: number;
 };
 
 export type ScoredBrowseProduct = GuestBrowseProfile["viewedProducts"][0] & {
@@ -119,4 +130,5 @@ export type FoldGuestOfferContextInput = {
   cartLineCount: number;
   config: ConciergeConfig;
   now?: number;
+  orders?: OrderFact[];
 };

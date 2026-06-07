@@ -175,6 +175,24 @@ export type DenisTimelineEventPayload =
       lagSeconds: number;
       dedupeKey: string;
     }
+  | {
+      type: "anticipation.resolved";
+      nudgeId: string;
+      nudgeKind: string;
+      outcome: "accepted" | "declined" | "ignored" | "expired";
+      signal:
+        | "add_to_cart"
+        | "explicit_decline"
+        | "dismiss"
+        | "guest_message_unrelated"
+        | "timeout";
+      productId: string | null;
+      productName: string | null;
+      offerResolution: string | null;
+      emittedAt: string;
+      resolvedAt: string;
+      lagMs: number | null;
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -200,7 +218,8 @@ export type DenisTimelineEventType =
   | "mental_model.gate"
   | "mental_model.diff"
   | "offer.resolved"
-  | "offer.converted";
+  | "offer.converted"
+  | "anticipation.resolved";
 
 export type DenisTimelineRow = {
   id: string;

@@ -5,6 +5,7 @@ import {
 import { loadCommerceSessionContext } from "@/lib/commerce/projections/load-commerce-session-context";
 import { finalizeCommerceExperienceCommand } from "@/lib/commerce/runtime/finalize-command-rpc";
 import type { OfferConversionRecord } from "@/lib/denis/cognition/offer/offer-conversion-types";
+import type { NudgeOutcomeRecord } from "@/lib/denis/cognition/offer/nudge-outcome-types";
 import type { ProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 import { logger } from "@/lib/logger";
 import { scheduleOutboxProcess } from "@/lib/outbox/schedule-process";
@@ -134,5 +135,59 @@ export async function projectOfferConversionsToCommerce(
       conversion,
       dedupeKey: `${conversion.productId}:${conversion.emittedAt}`,
     });
+  }
+}
+
+/** Project Denis anticipation.resolved → commerce_experience_events (ADR-039 L2). */
+export async function projectNudgeOutcomesToCommerce(
+  admin: SupabaseClient,
+  input: {
+    aiSessionId: string;
+    tableSessionId?: string;
+    traceId?: string;
+    outcomes: NudgeOutcomeRecord[];
+  }
+): Promise<void> {
+  for (const outcome of input.outcomes) {
+    const ctx = await loadCommerceSessionContext(admin, {
+      aiSessionId: input.aiSessionId,
+      tableSessionId: input.tableSessionId,
+    });
+    if (!ctx) return;
+
+    const idempotencyKey = `denis:nudge_outcome:${outcome.nudgeId}`;
+
+    const result = await finalizeCommerceExperienceCommand(admin, {
+      orgId: ctx.orgId,
+      locationId: ctx.locationId,
+      sessionId: ctx.sessionId,
+      commandType: COMMERCE_COMMAND_TYPES.recordNudgeResolved,
+      eventType: COMMERCE_EVENT_TYPES.nudgeResolved,
+      payload: {
+        nudgeId: outcome.nudgeId,
+        nudgeKind: outcome.nudgeKind,
+        outcome: outcome.outcome,
+        signal: outcome.signal,
+        productId: outcome.productId,
+        productName: outcome.productName,
+        offerResolution: outcome.offerResolution,
+        emittedAt: outcome.emittedAt,
+        resolvedAt: outcome.resolvedAt,
+        lagMs: outcome.lagMs,
+      },
+      idempotencyKey,
+      traceId: input.traceId,
+    });
+
+    if (!result.ok) {
+      logger.warn("projectNudgeOutcomesToCommerce failed", {
+        aiSessionId: input.aiSessionId,
+        idempotencyKey,
+        traceId: input.traceId,
+      });
+      continue;
+    }
+
+    scheduleOutboxProcess();
   }
 }

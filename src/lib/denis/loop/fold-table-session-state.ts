@@ -270,6 +270,7 @@ export async function foldTableSessionState(
     phase,
     cartLineCount: mergedCart.visibleLines.length,
     config,
+    orders,
   });
 
   const foldState: TableSessionState = {

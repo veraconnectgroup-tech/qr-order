@@ -21,11 +21,27 @@ export { resolveOfferForPosture } from "@/lib/denis/cognition/offer/resolve-offe
 export { narrateOfferFromBeliefs } from "@/lib/denis/cognition/offer/narrate-offer-from-beliefs";
 export { narrateOffer, narrateCartRecoveryOffer } from "@/lib/denis/cognition/offer/narrate-offer";
 export { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
+export { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 export { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 export { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 export { foldOfferConversions } from "@/lib/denis/cognition/offer/fold-offer-conversions";
+export { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
+export {
+  foldNudgeRevenueAttribution,
+  sumAttributedNudgeRevenueCents,
+} from "@/lib/denis/cognition/offer/fold-nudge-revenue";
 export { foldProductNudgeStats } from "@/lib/denis/cognition/offer/fold-product-nudge-stats";
 export { resolveProactiveOfferProduct } from "@/lib/denis/cognition/offer/resolve-proactive-offer-product";
+export {
+  NUDGE_ACCEPT_WINDOW_SEC,
+  NUDGE_RESOLVE_WINDOW_SEC,
+  nudgeOutcomeDedupeKey,
+} from "@/lib/denis/cognition/offer/nudge-outcome-types";
+export type {
+  NudgeOutcomeKind,
+  NudgeOutcomeRecord,
+  PendingNudge,
+} from "@/lib/denis/cognition/offer/nudge-outcome-types";
 export {
   OFFER_CONVERSION_WINDOW_SEC,
   offerConversionDedupeKey,

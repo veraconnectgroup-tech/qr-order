@@ -9,6 +9,7 @@ export const COMMERCE_COMMAND_TYPES = {
   acknowledgeCapacity: "AcknowledgeCapacity",
   recordNudgeEmitted: "RecordNudgeEmitted",
   recordOfferConverted: "RecordOfferConverted",
+  recordNudgeResolved: "RecordNudgeResolved",
 } as const;
 
 export type CommerceCommandType =
@@ -26,6 +27,7 @@ export const COMMERCE_EVENT_TYPES = {
   preorderScheduled: "preorder.scheduled",
   nudgeEmitted: "anticipation.nudge_emitted",
   offerConverted: "anticipation.offer_converted",
+  nudgeResolved: "anticipation.nudge_resolved",
 } as const;
 
 export type CommerceEventType =

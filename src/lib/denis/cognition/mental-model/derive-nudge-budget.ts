@@ -1,9 +1,13 @@
 import type { DeclineState } from "@/lib/denis/cognition/mental-model/decline-state";
+import {
+  deriveSessionNudgeFatigue,
+} from "@/lib/denis/cognition/mental-model/derive-session-nudge-fatigue";
 import type {
   GuestNudgeBudget,
   GuestReceptiveness,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-signal-types";
+import type { NudgeOutcomeKind } from "@/lib/denis/cognition/offer/nudge-outcome-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 
 const UPSERT_NUDGE_KIND =
@@ -15,6 +19,7 @@ export function deriveNudgeBudget(input: {
   receptiveness: GuestReceptiveness;
   config: ConciergeConfig;
   now: number;
+  resolvedOutcomes?: NudgeOutcomeKind[];
 }): GuestNudgeBudget {
   const mentalConfig = input.config.mentalModel;
 
@@ -22,10 +27,19 @@ export function deriveNudgeBudget(input: {
     return { remaining: 0, max: 0, cooldownUntil: null };
   }
 
-  const max =
+  const fatigue = deriveSessionNudgeFatigue(input.resolvedOutcomes ?? []);
+  if (fatigue === "exhausted") {
+    return { remaining: 0, max: 0, cooldownUntil: null };
+  }
+
+  let max =
     input.receptiveness === "enthusiastic"
       ? mentalConfig.nudgeBudgetEnthusiastic
       : mentalConfig.nudgeBudgetDefault;
+
+  if (fatigue === "cooling") {
+    max = Math.max(1, max - 1);
+  }
 
   const emitted = input.spine.emittedProactiveKeys.filter((key) =>
     UPSERT_NUDGE_KIND.test(key.split(":")[0] ?? key)

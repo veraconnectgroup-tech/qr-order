@@ -34,5 +34,24 @@ describe("anticipationRollupDelta", () => {
     expect(delta.offerConversions).toBe(1);
     expect(delta.conversionLagSeconds).toBe(150);
     expect(delta.byOfferResolution).toEqual({ top_dwell: 1 });
+    expect(delta.byOutcome).toEqual({ accepted: 1 });
+  });
+
+  it("counts declined nudge outcomes without double-counting conversions", () => {
+    const delta = anticipationRollupDelta({
+      orgId: "org-1",
+      locationId: "loc-1",
+      eventType: COMMERCE_EVENT_TYPES.nudgeResolved,
+      createdAt: "2026-06-07T15:00:00.000Z",
+      payload: {
+        nudgeKind: "dessert_nudge",
+        outcome: "declined",
+      },
+    });
+
+    expect(delta.offerConversions).toBe(0);
+    expect(delta.nudgeDeclined).toBe(1);
+    expect(delta.byOutcome).toEqual({ declined: 1 });
+    expect(delta.byNudgeKind).toEqual({ dessert_nudge: 1 });
   });
 });

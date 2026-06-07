@@ -42,6 +42,11 @@ export function emptyGuestOfferContext(now = 0): GuestOfferContext {
       },
       conversions: [],
       nudgeStats: {},
+      outcomes: [],
+      pendingNudges: [],
+      sessionAttachRate: 0,
+      attributedRevenue: [],
+      attributedRevenueCents: 0,
     },
   };
 }

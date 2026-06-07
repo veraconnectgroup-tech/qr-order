@@ -12,6 +12,7 @@ import { derivePace } from "@/lib/denis/cognition/mental-model/derive-pace";
 import { derivePriceAffinity } from "@/lib/denis/cognition/mental-model/derive-price-affinity";
 import { deriveReceptiveness } from "@/lib/denis/cognition/mental-model/derive-receptiveness";
 import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
+import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
 import { synthesizePredictedNeed } from "@/lib/denis/cognition/mental-model/synthesize-predicted-need";
 import type {
   FoldGuestMentalModelInput,
@@ -92,12 +93,16 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     spine,
     conversation: input.conversation,
   });
+  const nudgeOutcomes = foldNudgeOutcomes(input.timeline, now).outcomes.map(
+    (row) => row.outcome
+  );
   const nudgeBudget = deriveNudgeBudget({
     spine,
     decline,
     receptiveness,
     config: input.config,
     now,
+    resolvedOutcomes: nudgeOutcomes,
   });
 
   const mealStage = deriveMealStage({

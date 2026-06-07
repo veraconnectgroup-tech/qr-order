@@ -8,8 +8,20 @@ type RawOrderRow = {
   payment_status: string;
   estimated_prep_minutes: number | null;
   created_at: string;
-  order_items: Array<{ product_name: string; quantity: number }> | null;
+  order_items: Array<{
+    id: string;
+    product_id: string | null;
+    product_name: string;
+    quantity: number;
+    total: number | string;
+  }> | null;
 };
+
+function lineTotalCents(total: number | string): number {
+  const value = typeof total === "string" ? Number.parseFloat(total) : total;
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value * 100));
+}
 
 /** Order Core rows for a table session — read-only TRUTH input. */
 export async function loadOrderFactsForSession(
@@ -26,7 +38,7 @@ export async function loadOrderFactsForSession(
       payment_status,
       estimated_prep_minutes,
       created_at,
-      order_items (product_name, quantity)
+      order_items (id, product_id, product_name, quantity, total)
     `
     )
     .eq("session_id", tableSessionId)
@@ -45,8 +57,11 @@ export async function loadOrderFactsForSession(
     estimatedPrepMinutes: order.estimated_prep_minutes,
     createdAt: order.created_at,
     items: (order.order_items ?? []).map((item) => ({
+      orderItemId: item.id,
+      productId: item.product_id,
       productName: item.product_name,
       quantity: item.quantity,
+      lineTotalCents: lineTotalCents(item.total),
     })),
   }));
 }
@@ -55,7 +70,12 @@ export async function loadOrderFactsForSession(
 export function orderFactsFromSubmit(input: {
   orderId: string;
   orderNumber: number;
-  items: Array<{ productName: string; quantity: number }>;
+  items: Array<{
+    productId?: string | null;
+    productName: string;
+    quantity: number;
+    lineTotalCents?: number;
+  }>;
 }): OrderFact[] {
   return [
     {
@@ -65,7 +85,13 @@ export function orderFactsFromSubmit(input: {
       paymentStatus: "unpaid",
       estimatedPrepMinutes: null,
       createdAt: new Date().toISOString(),
-      items: input.items,
+      items: input.items.map((item) => ({
+        orderItemId: undefined,
+        productId: item.productId ?? null,
+        productName: item.productName,
+        quantity: item.quantity,
+        lineTotalCents: item.lineTotalCents ?? 0,
+      })),
     },
   ];
 }

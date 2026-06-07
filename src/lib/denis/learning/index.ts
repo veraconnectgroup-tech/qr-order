@@ -11,6 +11,11 @@ export {
   meetsLearnedEdgeThreshold,
   suggestedWeightFromAcceptRate,
 } from "@/lib/denis/learning/compute-pair-stats";
+export {
+  aggregateNudgeEdgeStats,
+  type AggregatedNudgeEdgeStat,
+  type NudgeSessionTimelineInput,
+} from "@/lib/denis/learning/compute-nudge-edge-stats";
 export type {
   GuestMemoryConsent,
   GuestMemoryProjection,

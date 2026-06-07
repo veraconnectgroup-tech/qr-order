@@ -9,6 +9,7 @@ import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed"
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
+import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 import { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/denis/loop/proactive-dock-tell";
 import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
 import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
+import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
 import { mapGuestOrdersToSchedulerSnapshot } from "@/lib/denis/runtime/adapters/map-scheduler-orders";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import {
@@ -197,6 +199,20 @@ export async function runDenisSense(
       timeline: state.timeline,
       contextHash: fold.meta.truthHash,
     });
+    const nudgeOutcomes = await maybeAppendNudgeOutcomes(admin, {
+      aiSessionId: draftAiSessionId,
+      traceId,
+      timeline: state.timeline,
+      contextHash: fold.meta.truthHash,
+    });
+    if (nudgeOutcomes.length > 0) {
+      scheduleNudgeOutcomeCommerceProjection(admin, {
+        aiSessionId: draftAiSessionId,
+        tableSessionId: fold.meta.tableSessionId ?? undefined,
+        traceId,
+        outcomes: nudgeOutcomes,
+      });
+    }
     if (converted.length > 0) {
       scheduleDenisAnticipationCommerceProjection(admin, {
         kind: "offer_converted",
@@ -228,6 +244,20 @@ export async function runDenisSense(
         timeline: timelineAfterBrowse,
         contextHash: fold.meta.truthHash,
       });
+      const nudgeOutcomes = await maybeAppendNudgeOutcomes(admin, {
+        aiSessionId: timelineAiSessionId,
+        traceId,
+        timeline: timelineAfterBrowse,
+        contextHash: fold.meta.truthHash,
+      });
+      if (nudgeOutcomes.length > 0) {
+        scheduleNudgeOutcomeCommerceProjection(admin, {
+          aiSessionId: timelineAiSessionId,
+          tableSessionId: fold.meta.tableSessionId ?? undefined,
+          traceId,
+          outcomes: nudgeOutcomes,
+        });
+      }
       if (converted.length > 0) {
         scheduleDenisAnticipationCommerceProjection(admin, {
           kind: "offer_converted",

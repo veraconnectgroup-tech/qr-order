@@ -205,12 +205,19 @@ export type OperatorCommerceInsights = {
     offerConversions: number;
     conversionRate: number;
     avgLagSeconds: number;
+    nudgeDeclined: number;
+    nudgeIgnored: number;
+    nudgeExpired: number;
     byNudgeKind: Record<string, number>;
     byOfferResolution: Record<string, number>;
+    byOutcome: Record<string, number>;
     daily?: Array<{
       date: string;
       nudgeImpressions: number;
       offerConversions: number;
+      nudgeDeclined: number;
+      nudgeIgnored: number;
+      nudgeExpired: number;
     }>;
   };
 };

@@ -73,7 +73,8 @@ export async function refreshGuestSessionCommerceState(
 
   if (
     row.event_type === COMMERCE_EVENT_TYPES.nudgeEmitted ||
-    row.event_type === COMMERCE_EVENT_TYPES.offerConverted
+    row.event_type === COMMERCE_EVENT_TYPES.offerConverted ||
+    row.event_type === COMMERCE_EVENT_TYPES.nudgeResolved
   ) {
     await upsertAnticipationRollup(admin, {
       orgId: row.org_id,

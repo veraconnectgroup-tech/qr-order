@@ -232,7 +232,7 @@ export async function projectCommerceInsights(
     const { data: rollupRows } = await admin
       .from("experience_analytics_daily" as never)
       .select(
-        "metric_date, nudge_impressions, offer_conversions, conversion_lag_seconds, by_nudge_kind, by_offer_resolution"
+        "metric_date, nudge_impressions, offer_conversions, conversion_lag_seconds, nudge_declined, nudge_ignored, nudge_expired, by_nudge_kind, by_offer_resolution, by_outcome"
       )
       .eq("location_id", input.locationId)
       .gte("metric_date", range.from.slice(0, 10))
@@ -244,8 +244,12 @@ export async function projectCommerceInsights(
       nudge_impressions: number;
       offer_conversions: number;
       conversion_lag_seconds: number;
+      nudge_declined: number;
+      nudge_ignored: number;
+      nudge_expired: number;
       by_nudge_kind: Record<string, number>;
       by_offer_resolution: Record<string, number>;
+      by_outcome: Record<string, number>;
     }>;
 
     const nudgeImpressions = rows.reduce(
@@ -260,9 +264,22 @@ export async function projectCommerceInsights(
       (sum, row) => sum + (row.conversion_lag_seconds ?? 0),
       0
     );
+    const nudgeDeclined = rows.reduce(
+      (sum, row) => sum + (row.nudge_declined ?? 0),
+      0
+    );
+    const nudgeIgnored = rows.reduce(
+      (sum, row) => sum + (row.nudge_ignored ?? 0),
+      0
+    );
+    const nudgeExpired = rows.reduce(
+      (sum, row) => sum + (row.nudge_expired ?? 0),
+      0
+    );
 
     const byNudgeKind: Record<string, number> = {};
     const byOfferResolution: Record<string, number> = {};
+    const byOutcome: Record<string, number> = {};
 
     for (const row of rows) {
       for (const [key, value] of Object.entries(row.by_nudge_kind ?? {})) {
@@ -270,6 +287,9 @@ export async function projectCommerceInsights(
       }
       for (const [key, value] of Object.entries(row.by_offer_resolution ?? {})) {
         byOfferResolution[key] = (byOfferResolution[key] ?? 0) + value;
+      }
+      for (const [key, value] of Object.entries(row.by_outcome ?? {})) {
+        byOutcome[key] = (byOutcome[key] ?? 0) + value;
       }
     }
 
@@ -281,12 +301,19 @@ export async function projectCommerceInsights(
         offerConversions > 0
           ? Math.round(conversionLagSeconds / offerConversions)
           : 0,
+      nudgeDeclined,
+      nudgeIgnored,
+      nudgeExpired,
       byNudgeKind,
       byOfferResolution,
+      byOutcome,
       daily: rows.map((row) => ({
         date: row.metric_date,
         nudgeImpressions: row.nudge_impressions ?? 0,
         offerConversions: row.offer_conversions ?? 0,
+        nudgeDeclined: row.nudge_declined ?? 0,
+        nudgeIgnored: row.nudge_ignored ?? 0,
+        nudgeExpired: row.nudge_expired ?? 0,
       })),
     };
   }

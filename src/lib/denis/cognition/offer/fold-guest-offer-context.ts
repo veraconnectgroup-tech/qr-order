@@ -4,6 +4,11 @@ import { detectBrowseSequencePattern } from "@/lib/denis/cognition/offer/detect-
 import { deriveOfferReadiness } from "@/lib/denis/cognition/offer/derive-offer-readiness";
 import { foldBrowseSequence } from "@/lib/denis/cognition/offer/fold-browse-sequence";
 import { foldOfferConversions } from "@/lib/denis/cognition/offer/fold-offer-conversions";
+import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
+import {
+  foldNudgeRevenueAttribution,
+  sumAttributedNudgeRevenueCents,
+} from "@/lib/denis/cognition/offer/fold-nudge-revenue";
 import { foldProductNudgeStats } from "@/lib/denis/cognition/offer/fold-product-nudge-stats";
 import {
   GUEST_OFFER_CONTEXT_VERSION,
@@ -41,7 +46,24 @@ export function foldGuestOfferContext(
   const sequence = foldBrowseSequence(input.timeline);
   const sequencePattern = detectBrowseSequencePattern(sequence);
   const conversions = foldOfferConversions(input.timeline);
+  const nudgeLifecycle = foldNudgeOutcomes(input.timeline, now);
   const nudgeStats = foldProductNudgeStats(input.timeline, conversions);
+  const orderLines = (input.orders ?? []).flatMap((order) =>
+    order.items
+      .filter((item) => item.productId)
+      .map((item) => ({
+        orderId: order.id,
+        orderItemId: item.orderItemId,
+        productId: item.productId!,
+        lineTotalCents: item.lineTotalCents ?? 0,
+        createdAt: order.createdAt,
+      }))
+  );
+  const attributedRevenue = foldNudgeRevenueAttribution({
+    outcomes: nudgeLifecycle.outcomes,
+    orderLines,
+  });
+  const attributedRevenueCents = sumAttributedNudgeRevenueCents(attributedRevenue);
   const convertedProductIds = new Set(conversions.map((row) => row.productId));
   const nudgeStatsRecord = Object.fromEntries(nudgeStats.entries());
 
@@ -103,6 +125,11 @@ export function foldGuestOfferContext(
       readiness,
       conversions,
       nudgeStats: nudgeStatsRecord,
+      outcomes: nudgeLifecycle.outcomes,
+      pendingNudges: nudgeLifecycle.pending,
+      sessionAttachRate: nudgeLifecycle.sessionAttachRate,
+      attributedRevenue,
+      attributedRevenueCents,
     },
   };
 

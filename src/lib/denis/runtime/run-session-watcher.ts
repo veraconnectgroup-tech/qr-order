@@ -8,7 +8,9 @@ import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
+import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
+import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
 import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
@@ -164,6 +166,20 @@ export async function runSessionWatcherTick(
         timeline: fold.state.timeline,
         contextHash: fold.meta.truthHash,
       });
+      const nudgeOutcomes = await maybeAppendNudgeOutcomes(admin, {
+        aiSessionId,
+        traceId: watcherTraceId,
+        timeline: fold.state.timeline,
+        contextHash: fold.meta.truthHash,
+      });
+      if (nudgeOutcomes.length > 0) {
+        scheduleNudgeOutcomeCommerceProjection(admin, {
+          aiSessionId,
+          tableSessionId: row.id,
+          traceId: watcherTraceId,
+          outcomes: nudgeOutcomes,
+        });
+      }
       if (converted.length > 0) {
         scheduleDenisAnticipationCommerceProjection(admin, {
           kind: "offer_converted",

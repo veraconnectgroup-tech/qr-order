@@ -31,7 +31,13 @@ export type OrderFact = {
   paymentStatus: string;
   estimatedPrepMinutes: number | null;
   createdAt: string;
-  items: Array<{ productName: string; quantity: number }>;
+  items: Array<{
+    orderItemId?: string;
+    productId?: string | null;
+    productName: string;
+    quantity: number;
+    lineTotalCents?: number;
+  }>;
 };
 
 export type MergedCart = {
