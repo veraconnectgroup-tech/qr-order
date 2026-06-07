@@ -41,6 +41,14 @@ describe("Denis rollout cutover M25", () => {
     expect(form?.returnGuestEnabled).toBe(true);
   });
 
+  it("table OS pilot preset wires floor graph + proactive ops", () => {
+    const preset = DENIS_ROLLOUT_PRESETS.find((row) => row.id === "table_os_pilot");
+    expect(preset?.patch.ops?.floorGraphEnabled).toBe(true);
+    expect(preset?.patch.ops?.autoRushEnabled).toBe(true);
+    expect(preset?.patch.proactive?.guestWelcome).toBe(true);
+    expect(preset?.patch.learning?.learnedEdgesEnabled).toBe(true);
+  });
+
   it("merges location override without dropping version", () => {
     const patch = denisRolloutPatchFromForm({
       rolloutMode: "denis_only",
