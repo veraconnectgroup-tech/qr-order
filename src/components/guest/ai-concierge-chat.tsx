@@ -587,6 +587,7 @@ export function AiConciergeChat({
   const approvalPollCleanupRef = useRef<(() => void) | null>(null);
   const pendingTurnExtrasRef = useRef<TurnExtras | null>(null);
   const usedQuickReplyIdsRef = useRef<Set<string>>(new Set());
+  const chatWasOpenRef = useRef(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
@@ -709,9 +710,17 @@ export function AiConciergeChat({
   );
 
   useEffect(() => {
+    const justOpened = open && !chatWasOpenRef.current;
+    chatWasOpenRef.current = open;
+
     if (!open || isDemo) return;
 
-    setPhase("chat");
+    if (justOpened) {
+      setPhase("chat");
+      setIsTyping(false);
+      setInput("");
+      setAddedIds(new Set());
+    }
 
     const hasKnownAllergies = resolvedAllergySelection.length > 0;
     if (hasKnownAllergies) {
@@ -726,7 +735,7 @@ export function AiConciergeChat({
       allergySelectionRef.current = [];
     }
 
-    if (!bootstrapTranscript?.length) {
+    if (justOpened && !bootstrapTranscript?.length) {
       setMessages((prev) => {
         if (prev.length > 0) return prev;
         return [
@@ -739,10 +748,6 @@ export function AiConciergeChat({
       });
       setChatLanguage(resolveAiPromptLanguage(menuLocale));
     }
-
-    setIsTyping(false);
-    setInput("");
-    setAddedIds(new Set());
   }, [
     open,
     isDemo,

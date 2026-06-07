@@ -243,10 +243,10 @@ export function finalizeOrderFlow(input: {
     flow: { ...input.draft.flow },
   };
   const flow = draft.flow!;
-  const hasItems = draft.items.length > 0 && !draft.pending;
+  const hasCartLines = draft.items.length > 0;
   const summary = summarizeDraftOrder(draft);
 
-  if (!hasItems) {
+  if (!hasCartLines && !draft.pending) {
     return {
       draft,
       message: input.llmMessage,
@@ -255,25 +255,15 @@ export function finalizeOrderFlow(input: {
     };
   }
 
-  if (
-    !flow.awaitingFinalConfirm &&
-    (isGuestDecliningMore(input.userMessage) ||
-      isGuestDoneOrdering(input.userMessage))
-  ) {
-    flow.foodUpsellAsked = true;
-    flow.awaitingFinalConfirm = true;
-    return {
-      draft,
-      message: confirmOrderMessage(draft, lang),
-      submitOrder: false,
-      intent: "confirm",
-    };
-  }
-
-  if (input.cartActionsThisTurn > 0) {
+  if (input.cartActionsThisTurn > 0 && hasCartLines) {
     flow.foodUpsellAsked = true;
 
-    if (isDrinksOnly(draft) && !flow.awaitingFinalConfirm) {
+    if (
+      isDrinksOnly(draft) &&
+      !flow.awaitingFinalConfirm &&
+      !isGuestDoneOrdering(input.userMessage) &&
+      !isGuestFinalConfirm(input.userMessage)
+    ) {
       return {
         draft,
         message: addedDrinkAskFoodMessage(summary, lang),
@@ -282,6 +272,36 @@ export function finalizeOrderFlow(input: {
       };
     }
 
+    flow.awaitingFinalConfirm = true;
+
+    if (
+      !draft.pending &&
+      (isGuestDoneOrdering(input.userMessage) ||
+        isGuestFinalConfirm(input.userMessage))
+    ) {
+      return {
+        draft,
+        message: sendOrderMessage(lang),
+        submitOrder: true,
+        intent: "confirm",
+      };
+    }
+
+    return {
+      draft,
+      message: confirmOrderMessage(draft, lang),
+      submitOrder: false,
+      intent: "confirm",
+    };
+  }
+
+  if (
+    !flow.awaitingFinalConfirm &&
+    hasCartLines &&
+    (isGuestDecliningMore(input.userMessage) ||
+      isGuestDoneOrdering(input.userMessage))
+  ) {
+    flow.foodUpsellAsked = true;
     flow.awaitingFinalConfirm = true;
     return {
       draft,
@@ -306,10 +326,11 @@ export function finalizeOrderFlow(input: {
     const fastPathSubmit =
       !input.llmSubmitOrder &&
       !declining &&
+      !draft.pending &&
       (isGuestFinalConfirm(input.userMessage) ||
         isGuestDoneOrdering(input.userMessage));
 
-    if (comprehendSubmit || fastPathSubmit) {
+    if ((comprehendSubmit || fastPathSubmit) && !draft.pending) {
       return {
         draft,
         message: sendOrderMessage(lang),
@@ -359,7 +380,7 @@ export function finalizeOrderFlow(input: {
 }
 
 const FALSE_ORDER_CLAIM_PATTERN =
-  /\b(poru[čc]ujem|naru[čc]ujem|poru[čc]io si|naru[čc]io si|šaljem|saljem|poslat[aoe]?|poslao|poslala|gesendet|unterwegs|send(ing)? (your )?order|bestell(e|ung)? (ist )?(unterwegs|gesendet)|ordering (for you|now)|order (is )?(placed|sent|on its way)|uživaj.*piv)\b/i;
+  /(poru[čc]ujem|naru[čc]ujem|poru[čc]io si|naru[čc]io si|šaljem|saljem|poslat[aoe]?|poslao|poslala|gesendet|unterwegs|send(ing)? (your )?order|bestell(e|ung)? (ist )?(unterwegs|gesendet)|ordering (for you|now)|order (is )?(placed|sent|on its way)|uživaj.*piv)/i;
 
 const FAKE_ASYNC_CHECK_PATTERN =
   /\b(proveri[ćc]u|proveravam|javiti [ćc]e[mt]|javljam.*[ćc]im|check with (the )?(kitchen|staff)|I'll (check|look into)|schaue nach|melde mich)\b/i;
@@ -410,10 +431,14 @@ export function sanitizeFalseOrderClaimMessage(input: {
   }
 
   const lang = resolveMenuLanguage(input.language);
-  const hasItems = input.draft.items.length > 0 && !input.draft.pending;
+  const hasCartLines = input.draft.items.length > 0;
 
-  if (!hasItems) {
+  if (!hasCartLines) {
     return honestNoOrderStatusMessage(lang);
+  }
+
+  if (input.draft.pending) {
+    return confirmOrderMessage(input.draft, lang);
   }
 
   return honestCartNotSubmittedMessage(lang, input.draft);

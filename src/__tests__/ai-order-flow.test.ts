@@ -281,4 +281,86 @@ describe("order-flow guards", () => {
 
     expect(pendingSlotKindFromDraft(draft)).toBe("serve_size");
   });
+
+  it("does not submit at recap while serve_size pending", () => {
+    const draft: AiOrderDraft = {
+      ...draftWithCola(),
+      pending: {
+        productId: "cola",
+        productName: "Cola",
+        quantity: 1,
+        modifierIds: [],
+        notes: "",
+        missing: [{ kind: "serveSize", options: ["0.3L", "0.5L"] }],
+      },
+      flow: { foodUpsellAsked: true, awaitingFinalConfirm: true },
+    };
+
+    const result = finalizeOrderFlow({
+      userMessage: "to je sve hvala",
+      draft,
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(result.submitOrder).toBe(false);
+    expect(result.message).toContain("Da li je to sve");
+  });
+
+  it("submits same turn when size resolved and guest says to je sve", () => {
+    const draft: AiOrderDraft = {
+      ...emptyOrderDraft(),
+      items: [
+        {
+          productId: "cola",
+          productName: "Cola",
+          quantity: 1,
+          modifierIds: [],
+          serveSize: "0.5L",
+          notes: "",
+          lineTotal: 4.5,
+          menuSection: "drinks",
+          productTaxRate: 19,
+        },
+      ],
+    };
+
+    const result = finalizeOrderFlow({
+      userMessage: "to je sve hvala 0.5 molim te",
+      draft,
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 1,
+      language: "sr",
+    });
+
+    expect(result.submitOrder).toBe(true);
+    expect(result.message).toMatch(/šaljem porudžbinu/i);
+  });
+
+  it("sanitizes false send claim to recap when pending slot remains", () => {
+    const draft: AiOrderDraft = {
+      ...draftWithCola(),
+      pending: {
+        productId: "cola",
+        productName: "Cola",
+        quantity: 1,
+        modifierIds: [],
+        notes: "",
+        missing: [{ kind: "serveSize", options: ["0.3L", "0.5L"] }],
+      },
+    };
+
+    const message = sanitizeFalseOrderClaimMessage({
+      message: "Odlično — šaljem porudžbinu!",
+      draft,
+      submitOrder: false,
+      language: "sr",
+    });
+
+    expect(message).toContain("Da li je to sve");
+    expect(message).not.toMatch(/šaljem porudžbinu/i);
+  });
 });

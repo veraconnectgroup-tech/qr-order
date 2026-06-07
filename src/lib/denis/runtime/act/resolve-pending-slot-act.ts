@@ -113,10 +113,20 @@ export async function tryResolvePendingSlotAct(
   }
 
   const options = serveSizeOptionsFromDraft(draft);
+  const trimmed = input.userMessage.trim();
+  const volumeSnippet = trimmed.match(
+    /\b(0[,.]33|0[,.]3|0[,.]5|0[,.]50?)\s*(?:l|liter|litre|litr)?\b/i
+  )?.[0];
+
   const candidates = [
-    normalizePendingSlotReply(input.pendingSlot, input.userMessage, options),
-    input.userMessage.trim(),
-  ].filter((value, index, list) => value && list.indexOf(value) === index);
+    normalizePendingSlotReply(input.pendingSlot, trimmed, options),
+    volumeSnippet ? normalizePendingSlotReply(input.pendingSlot, volumeSnippet, options) : null,
+    trimmed,
+    volumeSnippet,
+  ].filter(
+    (value, index, list): value is string =>
+      Boolean(value) && list.indexOf(value) === index
+  );
 
   for (const replyText of candidates) {
     const resolved = attemptResolve(draft, catalog, replyText);
@@ -157,8 +167,8 @@ export async function tryResolvePendingSlotAct(
       recommendations: [],
       proposedItems: [],
       quickReplies: [],
-      submitOrder: false,
-      intent: "order",
+      submitOrder: flowResult.submitOrder,
+      intent: flowResult.submitOrder ? "confirm" : "order",
     };
 
     const cartDraft =

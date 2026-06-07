@@ -448,8 +448,8 @@ function buildPendingSlotActPerceiveResult(
       recommendations: [],
       cartActions: act.cartActions,
       quickReplies: act.quickReplies,
-      intent: act.intent,
-      submitOrder: false,
+      intent: act.structuredPerception.intent,
+      submitOrder: act.structuredPerception.submitOrder ?? false,
       sessionId: act.sessionId,
       structuredPerception: act.structuredPerception,
     }),
@@ -1053,8 +1053,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   if (
     timelineAiSessionId &&
     !pendingSlotActApplied &&
-    (await sessionDraftHasPendingSlot(admin, timelineAiSessionId)) &&
-    (data.cartActions?.length ?? 0) === 0
+    (await sessionDraftHasPendingSlot(admin, timelineAiSessionId))
   ) {
     const retryAct = await tryResolvePendingSlotAct({
       admin,
@@ -1068,11 +1067,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     if (retryAct.resolved) {
       cartDraftForAct = retryAct.cartDraft;
       data.message = retryAct.message;
-      data.cartActions = retryAct.cartActions;
+      data.cartActions = [
+        ...(data.cartActions ?? []),
+        ...retryAct.cartActions,
+      ];
       data.quickReplies = retryAct.quickReplies;
       data.intent = retryAct.intent;
       data.structuredPerception = retryAct.structuredPerception;
-      data.submitOrder = false;
+      data.submitOrder = retryAct.structuredPerception.submitOrder ?? false;
     }
   }
 
@@ -1286,13 +1288,19 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   guestMessage = sanitizeGuestOrderHonesty({
     message: guestMessage ?? "",
     language: parsed.data.language,
-    orderSubmitted: Boolean(turnSubmitOutcome.orderId) || hasOpenOrders,
+    orderSubmitted: Boolean(turnSubmitOutcome.orderId),
     draft: cartDraftToAiOrderDraft(cartDraftForAct),
   });
 
   if (!turnSubmitOutcome.orderId && waiterObligation.gaps.length > 0) {
+    const tellBase =
+      !waiterObligation.canConfirm &&
+      guestMessage &&
+      /\b(šaljem|saljem|send(ing)? (your )?order)\b/i.test(guestMessage)
+        ? ""
+        : (guestMessage ?? "");
     guestMessage = enforceWaiterTell({
-      message: guestMessage ?? "",
+      message: tellBase,
       obligation: waiterObligation,
       language: parsed.data.language,
       draft: cartDraftToAiOrderDraft(cartDraftForAct),
