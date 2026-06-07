@@ -270,7 +270,12 @@ export const PartialConciergeMemorySchema = ConciergeMemorySchema.partial();
 export const PartialConciergeSurfacesSchema = ConciergeSurfacesSchema.partial();
 export const PartialConciergeMentalModelSchema = ConciergeMentalModelSchema.partial();
 export const PartialConciergeInterventionSchema = ConciergeInterventionSchema.partial();
-export const PartialConciergeRhythmSchema = ConciergeRhythmSchema.partial();
+export const PartialConciergeRhythmOpsSchema = ConciergeRhythmOpsSchema.partial();
+export const PartialConciergeRhythmSchema = ConciergeRhythmSchema.omit({ ops: true })
+  .partial()
+  .extend({
+    ops: PartialConciergeRhythmOpsSchema.optional(),
+  });
 
 export const PartialConciergeConfigSchema = z.object({
   version: z.literal(1).optional(),
