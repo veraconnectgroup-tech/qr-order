@@ -57,16 +57,27 @@ export function DenisMessageBlock({
   );
 }
 
-/** Prefer header presence line; keep minimal fallback for legacy call sites. */
-export function DenisMessageThinking() {
+/** Contextual thinking label while Denis processes a guest turn. */
+export function DenisMessageThinking({ label }: { label?: string | null }) {
+  const text = label?.trim() || null;
+
   return (
     <div className="flex w-full min-w-0 items-start gap-2.5 px-1">
       <DenisMarkBadge size="lg" markState="think" className="mt-0.5" />
       <div className="flex min-h-[2.5rem] flex-1 items-center rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-elevated)] px-4 py-3">
-        <span
-          className="denis-presence-line denis-mark-think inline-block w-12"
-          aria-hidden
-        />
+        {text ? (
+          <p
+            key={text}
+            className="text-[15px] leading-[1.5] text-[var(--qr-muted)] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
+          >
+            {text}
+          </p>
+        ) : (
+          <span
+            className="denis-presence-line denis-mark-think inline-block w-12"
+            aria-hidden
+          />
+        )}
       </div>
     </div>
   );

@@ -87,6 +87,10 @@ import type { MenuSection } from "@/lib/menu-section";
 import type { AllergenId } from "@/lib/allergens";
 import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
 import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
+import {
+  resolveDenisThinkingStepKeys,
+  useRotatingThinkingLabel,
+} from "@/lib/guest/denis-thinking-steps";
 import { transcriptEntriesToChatMessages } from "@/lib/guest/view-transcript-bootstrap";
 import { useCart } from "@/hooks/use-cart";
 import { useDenisVoice } from "@/hooks/use-denis-voice";
@@ -548,6 +552,9 @@ export function AiConciergeChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
+  const [pendingThinkingMessage, setPendingThinkingMessage] = useState<
+    string | null
+  >(null);
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const [aiSessionId, setAiSessionId] = useState<string | null>(null);
@@ -993,6 +1000,15 @@ export function AiConciergeChat({
     [chatLanguage]
   );
 
+  const thinkingSteps = useMemo(() => {
+    if (!pendingThinkingMessage) return [];
+    return resolveDenisThinkingStepKeys(pendingThinkingMessage).map((key) =>
+      tChat(key)
+    );
+  }, [pendingThinkingMessage, tChat]);
+
+  const thinkingHeadline = useRotatingThinkingLabel(thinkingSteps, isTyping);
+
   const callAiChat = useCallback(
     async (
       message: string,
@@ -1188,6 +1204,7 @@ export function AiConciergeChat({
         ...prev,
         { id: nextId(), role: "user", content: trimmed },
       ]);
+      setPendingThinkingMessage(trimmed);
       setIsTyping(true);
 
       try {
@@ -1285,6 +1302,7 @@ export function AiConciergeChat({
         void fireRecoveryAction(recovery.action);
       } finally {
         setIsTyping(false);
+        setPendingThinkingMessage(null);
         onSceneRefresh?.();
       }
     },
@@ -1534,9 +1552,9 @@ export function AiConciergeChat({
               }
               className="max-w-full [&_.text-dash-text-muted]:text-[var(--qr-muted)] [&_.text-dash-text]:text-[var(--qr-ivory)]"
             />
-            {situationHeadline && !inputFocused ? (
+            {(thinkingHeadline || situationHeadline) && !inputFocused ? (
               <p className="mt-1 line-clamp-1 text-[12px] text-[var(--qr-muted)]">
-                {situationHeadline}
+                {thinkingHeadline ?? situationHeadline}
               </p>
             ) : null}
           </div>
@@ -1584,7 +1602,7 @@ export function AiConciergeChat({
           {isTyping &&
           (messages.length === 0 ||
             messages[messages.length - 1]?.role === "user") ? (
-            <DenisMessageThinking />
+            <DenisMessageThinking label={thinkingHeadline} />
           ) : null}
         </DenisPanelBody>
 
