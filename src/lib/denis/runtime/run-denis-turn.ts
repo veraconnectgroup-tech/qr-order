@@ -459,13 +459,6 @@ async function runTdePerceive(input: {
   timelineEnabled: boolean;
   orgId: string;
 }): Promise<TdePerceiveResult> {
-  const manifestBundle = await loadVenueManifestsForLocation(input.body.locationId);
-  const { profile, effective } = resolveRuntimeProfile(
-    input.ctx.config,
-    manifestBundle.locationRaw,
-    manifestBundle.orgRaw
-  );
-
   const tdeBeliefs = input.beliefs as Parameters<
     typeof decideTurnPlan
   >[0]["beliefs"];
@@ -541,6 +534,7 @@ async function runTdePerceive(input: {
   };
 
   if (!turnPlan.requiresLlm) {
+    const { profile } = resolveRuntimeProfile(input.ctx.config, null, null);
     const response = await perceiveGuestChatTurn(input.body, {
       turnPlan,
       interpretationTask,
@@ -565,6 +559,13 @@ async function runTdePerceive(input: {
       evidencePointers: [],
     };
   }
+
+  const manifestBundle = await loadVenueManifestsForLocation(input.body.locationId);
+  const { profile, effective } = resolveRuntimeProfile(
+    input.ctx.config,
+    manifestBundle.locationRaw,
+    manifestBundle.orgRaw
+  );
 
   let catalog: MenuRagCatalog | null = null;
   try {
@@ -886,7 +887,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const actSubmitLive = isActSubmitLive(ctx.config);
   const pendingSlotActApplied = perceiveResult.pendingSlotActResolved === true;
 
-  if (data.structuredPerception && timelineAiSessionId && !pendingSlotActApplied) {
+  if (
+    data.structuredPerception &&
+    timelineAiSessionId &&
+    !pendingSlotActApplied &&
+    perceiveResult.llmUsed
+  ) {
     const ordered = await applyStructuredPerceptionOrdering({
       admin,
       sessionId: timelineAiSessionId,
@@ -1092,12 +1098,18 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   });
 
   const narrateStarted = performance.now();
+  const templateObligationTell =
+    !perceiveResult.llmUsed &&
+    (perceiveResult.turnPlan.reason === "waiter.gap_clarify" ||
+      perceiveResult.turnPlan.reason === "waiter.gap_blocks_confirm");
+
   const resolvedNarration = await resolveTurnNarrationMessage({
     legacyMessage: data.message ?? "",
     facts: narrationFacts,
     config: ctx.config,
     rolloutMode: rollout.mode,
     guestUsesLegacy,
+    keepLegacyTell: templateObligationTell,
   });
   const narration = resolvedNarration.usedDenisNarrator
     ? sanitizeNarrationOutput(resolvedNarration.draftMessage, narrationFacts)

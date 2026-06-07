@@ -19,7 +19,17 @@ export async function resolveTurnNarrationMessage(input: {
   config: ConciergeConfig;
   rolloutMode: ConciergeRolloutMode;
   guestUsesLegacy?: boolean;
+  /** Template obligation TELL — never replace with T3 narrator (ADR-033). */
+  keepLegacyTell?: boolean;
 }): Promise<ResolvedTurnNarration> {
+  if (input.keepLegacyTell && input.legacyMessage.trim()) {
+    return {
+      draftMessage: input.legacyMessage,
+      usedDenisNarrator: false,
+      usedTemplateFallback: false,
+    };
+  }
+
   if (
     !shouldUseDenisNarration(input.config, input.rolloutMode, {
       guestUsesLegacy: input.guestUsesLegacy,
