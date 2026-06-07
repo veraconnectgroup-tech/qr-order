@@ -27,3 +27,15 @@ export function resolveDraftAiSessionId(
   if (partyMode === "per_device") return currentAiSessionId;
   return sharedAiSessionId ?? currentAiSessionId;
 }
+
+/** Shared-cart turns always read/write the table's denis_shared_ai_session_id. */
+export function resolveCanonicalChatAiSessionId(
+  partyMode: PartyMode,
+  draftAiSessionId: string | undefined,
+  clientSessionId: string | undefined
+): string | undefined {
+  if (partyMode === "shared_cart" && draftAiSessionId) {
+    return draftAiSessionId;
+  }
+  return clientSessionId ?? draftAiSessionId;
+}

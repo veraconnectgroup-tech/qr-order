@@ -5,6 +5,7 @@ export type {
   TablePartyModel,
 } from "@/lib/denis/venue/party/types";
 export {
+  resolveCanonicalChatAiSessionId,
   resolveDraftAiSessionId,
   resolveSharedAiSessionId,
 } from "@/lib/denis/venue/party/resolve-shared-session";

@@ -100,7 +100,10 @@ export function isHandoffBillRequestMessage(message: string): boolean {
 export function isOrderCancelMessage(message: string): boolean {
   const text = normalize(message);
   return (
-    /\b(otka[žz]i\w*|poni[šs]t\w*|stornir\w*|storno|cancel(?:led)?|abbrechen|don't want|do not want|ne treba mi|obriši porud[žz]bin\w*|ukloni porud[žz]bin\w*)\b/.test(
+    /\b(otka[žz]i\w*|poni[šs]t\w*|stornir\w*|storno|cancel(?:led)?|abbrechen|don't want|do not want|ne treba mi|obriši porud[žz]bin\w*|ukloni porud[žz]bin\w*|odustao|odustala|odustajem)\b/.test(
+      text
+    ) ||
+    /\b(ne\s+(želim|zelim)\s+da\s+poru[čc]|ne\s+(želim|zelim)\s+(ni[šs]ta|nista)\s+poru[čc])\b/.test(
       text
     ) ||
     /\b(porud[žz]bin\w*\s+(otka|poni|stornir|cancel))\b/.test(text)

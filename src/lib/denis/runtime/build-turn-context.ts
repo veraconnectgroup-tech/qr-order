@@ -1,4 +1,5 @@
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-shared-ai-session";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { mapFoldToTurnContext } from "@/lib/denis/runtime/map-fold-to-turn-context";
 import type {
@@ -25,6 +26,29 @@ export async function buildDenisTurnContext(
     locationId: input.locationId,
     sessionToken: input.sessionToken,
   });
+
+  if (tableSessionId && config.enabled) {
+    const { data: venueRow } = await admin
+      .from("locations")
+      .select("organization:organizations!inner(id)")
+      .eq("id", input.locationId)
+      .maybeSingle();
+
+    const orgId = (
+      venueRow as { organization?: { id?: string } } | null
+    )?.organization?.id;
+
+    if (orgId) {
+      await ensureSharedAiSessionForTableSession(admin, {
+        sessionId: tableSessionId,
+        locationId: input.locationId,
+        tableId: input.tableId,
+        tableToken: input.sessionToken,
+        orgId,
+        language: input.language ?? config.language.venueDefault ?? "de",
+      });
+    }
+  }
 
   let party = null;
   if (tableSessionId && input.deviceFingerprint) {

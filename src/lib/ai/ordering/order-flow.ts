@@ -1,4 +1,7 @@
-import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
+import {
+  emptyOrderDraft,
+  type AiOrderDraft,
+} from "@/lib/ai/ordering/draft-types";
 import type { AiConciergeIntent } from "@/lib/ai/types";
 
 type MenuLanguage = "de" | "en" | "sr" | "hr";
@@ -53,6 +56,7 @@ function confirmOrderMessage(draft: AiOrderDraft, lang: MenuLanguage): string {
 
 export function isGuestDecliningMore(message: string): boolean {
   const text = normalizeMessage(message);
+  if (isGuestAbandoningOrder(message)) return false;
   return (
     /^(ne+hvala|ne hvala|ne, hvala|ne treba|nije potrebno|ne mora|ne želim|ne zelim)$/.test(
       text
@@ -61,6 +65,19 @@ export function isGuestDecliningMore(message: string): boolean {
       text
     ) ||
     /^ne(,|$)/.test(text)
+  );
+}
+
+/** Guest backs out of the whole order — clear cart, do not repeat recap. */
+export function isGuestAbandoningOrder(message: string): boolean {
+  const text = normalizeMessage(message);
+  return (
+    /\b(odustao|odustala|odustajem|predomislio|predomislim|ipak\s+ne|ipak\s+ni[šs]ta|ne\s+[ćc]u\s+(ni[šs]ta|nista)(\s+da\s+poru[čc]|\s+poru[čc]iti)?|ne\s+(želim|zelim)\s+da\s+poru[čc]|ne\s+(želim|zelim)\s+(ni[šs]ta|nista)\s+poru[čc]|ni[šs]ta\s+ne\s+[ćc]u)\b/.test(
+      text
+    ) ||
+    /\b(cancel|abbrechen|changed my mind|give up|don't want to order|do not want to order)\b/.test(
+      text
+    )
   );
 }
 
@@ -119,6 +136,36 @@ function isDrinksOnly(draft: AiOrderDraft): boolean {
     draft.items.length > 0 &&
     draft.items.every((item) => item.menuSection === "drinks")
   );
+}
+
+function recapDeclinedMessage(lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return "Alles klar — was darf ich noch hinzufügen?";
+    case "en":
+      return "Sure — what else would you like to add?";
+    case "hr":
+      return "U redu — što još želite dodati?";
+    case "sr":
+      return "U redu — šta još želite da dodam?";
+    default:
+      return "U redu — šta još želite da dodam?";
+  }
+}
+
+function abandonOrderMessage(lang: MenuLanguage): string {
+  switch (lang) {
+    case "de":
+      return "Kein Problem — ich habe die Bestellung verworfen. Sagen Sie Bescheid, wenn Sie etwas möchten.";
+    case "en":
+      return "No problem — I've cleared your order. Just let me know if you'd like anything.";
+    case "hr":
+      return "Nema problema — poništio sam narudžbu. Javite se ako vam zatreba nešto.";
+    case "sr":
+      return "Nema problema — poništio sam porudžbinu. Javite se ako vam zatreba nešto.";
+    default:
+      return "Nema problema — poništio sam porudžbinu. Javite se ako vam zatreba nešto.";
+  }
 }
 
 function sendOrderMessage(lang: MenuLanguage): string {
@@ -245,9 +292,17 @@ export function finalizeOrderFlow(input: {
   }
 
   if (flow.awaitingFinalConfirm) {
+    if (isGuestAbandoningOrder(input.userMessage)) {
+      return {
+        draft: emptyOrderDraft(),
+        message: abandonOrderMessage(lang),
+        submitOrder: false,
+        intent: "chat",
+      };
+    }
+
     const declining = isGuestDecliningMore(input.userMessage);
-    const comprehendSubmit =
-      input.llmSubmitOrder && !declining;
+    const comprehendSubmit = input.llmSubmitOrder && !declining;
     const fastPathSubmit =
       !input.llmSubmitOrder &&
       !declining &&
@@ -260,6 +315,16 @@ export function finalizeOrderFlow(input: {
         message: sendOrderMessage(lang),
         submitOrder: true,
         intent: "confirm",
+      };
+    }
+
+    if (declining) {
+      flow.awaitingFinalConfirm = false;
+      return {
+        draft,
+        message: recapDeclinedMessage(lang),
+        submitOrder: false,
+        intent: "chat",
       };
     }
 

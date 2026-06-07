@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { emptyOrderDraft, type AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import {
   finalizeOrderFlow,
+  isGuestAbandoningOrder,
   isGuestDecliningMore,
   isGuestDoneOrdering,
   isGuestFinalConfirm,
@@ -110,6 +111,50 @@ describe("order-flow guards", () => {
     expect(result.message).toContain("Da li je to sve");
     expect(result.submitOrder).toBe(false);
     expect(result.draft.flow?.awaitingFinalConfirm).toBe(true);
+  });
+
+  it("ne at recap opens cart instead of repeating recap", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { foodUpsellAsked: true, awaitingFinalConfirm: true },
+    };
+
+    const result = finalizeOrderFlow({
+      userMessage: "ne",
+      draft,
+      llmMessage: "Da li je to sve?\nCola Zero 0.3L",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(result.message).toContain("šta još");
+    expect(result.message).not.toContain("Da li je to sve");
+    expect(result.draft.flow?.awaitingFinalConfirm).toBe(false);
+    expect(result.submitOrder).toBe(false);
+  });
+
+  it("abandon at recap clears cart", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { foodUpsellAsked: true, awaitingFinalConfirm: true },
+    };
+
+    const result = finalizeOrderFlow({
+      userMessage: "ne zelim da porucim nista odustao sam",
+      draft,
+      llmMessage: "Da li je to sve?",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+    });
+
+    expect(isGuestAbandoningOrder("ne zelim da porucim nista odustao sam")).toBe(
+      true
+    );
+    expect(result.draft.items).toHaveLength(0);
+    expect(result.message).toContain("poništio");
+    expect(result.submitOrder).toBe(false);
   });
 
   it("da after recap submits order", () => {

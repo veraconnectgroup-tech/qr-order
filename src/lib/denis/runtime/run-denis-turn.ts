@@ -49,6 +49,7 @@ import {
   buildTurnProfile,
 } from "@/lib/denis/cognition/quality/turn-profile";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
+import { resolveCanonicalChatAiSessionId } from "@/lib/denis/venue/party";
 import {
   kernelTimelineEnabled,
   resolveEffectiveRollout,
@@ -537,6 +538,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const ctx = await buildDenisTurnContext(admin, parsed.data);
   timings.contextMs = elapsedMs(ctxStarted);
 
+  const chatAiSessionId = resolveCanonicalChatAiSessionId(
+    ctx.config.party.mode,
+    ctx.draftAiSessionId,
+    parsed.data.sessionId
+  );
+  const perceiveBody =
+    chatAiSessionId != null
+      ? { ...parsed.data, sessionId: chatAiSessionId }
+      : parsed.data;
+
   const beliefGraph = ctx.tableSessionState
     ? compileBeliefs({
         state: ctx.tableSessionState,
@@ -610,8 +621,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const pendingSlot = beliefGraph
     ? getBeliefValue<string>(beliefGraph, CORE_BELIEF_KEYS.commercePendingSlot)
     : null;
-  const aiSessionId =
-    ctx.draftAiSessionId ?? parsed.data.sessionId ?? null;
+  const aiSessionId = chatAiSessionId ?? null;
   const { profile } = resolveRuntimeProfile(ctx.config);
 
   const hasPendingDraft =
@@ -639,7 +649,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       );
     } else {
       perceiveResult = await runTdePerceive({
-        body: parsed.data,
+        body: perceiveBody,
         ctx,
         reflexTurn,
         beliefs: beliefGraph ?? { beliefs: [] },
@@ -649,7 +659,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
   } else {
     perceiveResult = await runTdePerceive({
-      body: parsed.data,
+      body: perceiveBody,
       ctx,
       reflexTurn,
       beliefs: beliefGraph ?? { beliefs: [] },
@@ -672,6 +682,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   if (!data) {
     return perceiveResponse;
   }
+
+  const timelineAiSessionId = chatAiSessionId ?? data.sessionId ?? null;
 
   const t0ConfirmSubmit =
     reflexTurn.reflex?.intent === "CONFIRM" &&
@@ -702,10 +714,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const actSubmitLive = isActSubmitLive(ctx.config);
   const pendingSlotActApplied = perceiveResult.pendingSlotActResolved === true;
 
-  if (data.structuredPerception && data.sessionId && !pendingSlotActApplied) {
+  if (data.structuredPerception && timelineAiSessionId && !pendingSlotActApplied) {
     const ordered = await applyStructuredPerceptionOrdering({
       admin,
-      sessionId: data.sessionId,
+      sessionId: timelineAiSessionId,
       locationId: parsed.data.locationId,
       userMessage: parsed.data.message,
       language: parsed.data.language,
@@ -726,14 +738,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   if (
-    data.sessionId &&
+    timelineAiSessionId &&
     !pendingSlotActApplied &&
-    (await sessionDraftHasPendingSlot(admin, data.sessionId)) &&
+    (await sessionDraftHasPendingSlot(admin, timelineAiSessionId)) &&
     (data.cartActions?.length ?? 0) === 0
   ) {
     const retryAct = await tryResolvePendingSlotAct({
       admin,
-      sessionId: data.sessionId,
+      sessionId: timelineAiSessionId,
       locationId: parsed.data.locationId,
       userMessage: parsed.data.message,
       language: parsed.data.language,
@@ -776,7 +788,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     actPhase = await executeActPhase({
       config: ctx.config,
       reflexTurn,
-      aiSessionId: data.sessionId,
+      aiSessionId: timelineAiSessionId ?? undefined,
       tableId: parsed.data.tableId,
       locationId: parsed.data.locationId,
       tableToken: parsed.data.sessionToken,
@@ -793,10 +805,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const actSubmitOutcome = resolveActSubmitOutcome(actPhase);
 
   let turnSubmitOutcome = actSubmitOutcome;
-  if (Boolean(data.submitOrder) && !turnSubmitOutcome.attempted && data.sessionId) {
+  if (Boolean(data.submitOrder) && !turnSubmitOutcome.attempted && timelineAiSessionId) {
     const unifiedStarted = performance.now();
     turnSubmitOutcome = await executeTurnOrderSubmit(admin, {
-      aiSessionId: data.sessionId,
+      aiSessionId: timelineAiSessionId,
       locationId: parsed.data.locationId,
       tableToken: parsed.data.sessionToken,
       sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
@@ -810,11 +822,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   if (
     actSubmitOutcome.attempted &&
     actSubmitOutcome.orderId &&
-    data.sessionId &&
+    timelineAiSessionId &&
     turnSubmitOutcome.orderId === actSubmitOutcome.orderId
   ) {
     await persistAiSessionAfterOrderSubmit(admin, {
-      aiSessionId: data.sessionId,
+      aiSessionId: timelineAiSessionId,
       orderId: actSubmitOutcome.orderId,
       orderNumber: actSubmitOutcome.orderNumber,
       awaitingApproval: actSubmitOutcome.awaitingApproval,
@@ -955,7 +967,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     shadowParityScore = shadowDiff.parityScore;
   }
 
-  if (data.sessionId && kernelTimelineEnabled(rollout.mode)) {
+  if (timelineAiSessionId && kernelTimelineEnabled(rollout.mode)) {
     const timelineStarted = performance.now();
     const intent = resolveTurnIntent(
       reflexTurn.reflex?.intent,
@@ -963,7 +975,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     );
 
     await persistDenisTurnTimeline(admin, {
-      aiSessionId: data.sessionId,
+      aiSessionId: timelineAiSessionId,
       locationId: parsed.data.locationId,
       traceId,
       guestMessage: parsed.data.message,
@@ -979,7 +991,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const followUp = guestFollowUpFromMessage(parsed.data.message);
     if (followUp) {
       await persistGuestFollowUpRequest(admin, {
-        aiSessionId: data.sessionId,
+        aiSessionId: timelineAiSessionId,
         traceId,
         guestMessage: parsed.data.message,
         delaySeconds: followUp.delaySeconds,
@@ -988,7 +1000,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
     if (slotExtract && slotExtract.items.length > 0) {
       await appendDenisTimelineEvent(admin, {
-        aiSessionId: data.sessionId,
+        aiSessionId: timelineAiSessionId,
         eventType: "slot.extracted",
         traceId,
         payload: {
@@ -1003,7 +1015,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
     for (const skillResult of actPhase.results) {
       await appendDenisTimelineEvent(admin, {
-        aiSessionId: data.sessionId,
+        aiSessionId: timelineAiSessionId,
         eventType: "skill.executed",
         traceId,
         payload: {
@@ -1024,11 +1036,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     data.creditsRemaining ?? creditCheck.balanceAfter;
   const creditsCharged = data.creditsCharged ?? 0;
 
-  if (data.sessionId && creditsCharged > 0) {
+  if (timelineAiSessionId && creditsCharged > 0) {
     const meteringStarted = performance.now();
     const metering = await finalizeTurnMetering(admin, {
       orgId: orgResult.data.orgId,
-      aiSessionId: data.sessionId,
+      aiSessionId: timelineAiSessionId,
       traceId,
     });
 
@@ -1052,7 +1064,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     } else {
       logger.error("Denis turn metering finalize failed", {
         traceId,
-        aiSessionId: data.sessionId,
+        aiSessionId: timelineAiSessionId,
         orgId: orgResult.data.orgId,
         code: metering.code,
       });
@@ -1092,7 +1104,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     intent: data.intent,
     submitOrder: false,
     creditsRemaining,
-    sessionId: data.sessionId,
+    sessionId: timelineAiSessionId ?? data.sessionId,
     ...(actHandoffOutcome.openPaymentSheet
       ? { openPaymentSheet: true }
       : {}),

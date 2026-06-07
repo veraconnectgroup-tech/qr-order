@@ -97,6 +97,9 @@ export function isAiParseFallbackReply(message: string): boolean {
   return AI_PARSE_FALLBACK_PATTERN.test(message.trim());
 }
 
+const GUEST_DECIDED_PATTERN =
+  /\b((jesam|sam)\s+odluč|već\s+sam\s+odluč|already\s+decided|schon\s+entschieden|ich\s+habe\s+entschieden)\b/i;
+
 /** Mid-order recovery — never reset to welcome when guest is choosing items. */
 export function orderingFlowRecoveryReply(
   language: string,
@@ -106,6 +109,16 @@ export function orderingFlowRecoveryReply(
   const item = guestMessage.trim();
   if (!item) {
     return leadershipFallbackReply(language, guestMessage);
+  }
+
+  if (GUEST_DECIDED_PATTERN.test(item)) {
+    if (lang === "sr" || lang === "hr") {
+      return "Super — recite mi šta želite, pa ću dodati u porudžbinu.";
+    }
+    if (lang === "de") {
+      return "Sehr gut — sagen Sie mir, was Sie möchten, dann nehme ich es in die Bestellung auf.";
+    }
+    return "Great — tell me what you'd like and I'll add it to your order.";
   }
 
   if (lang === "sr" || lang === "hr") {
