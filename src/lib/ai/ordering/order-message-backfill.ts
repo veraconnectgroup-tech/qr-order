@@ -11,7 +11,11 @@ import type {
   AiProposedItem,
   ValidatedCartAction,
 } from "@/lib/ai/ordering/draft-types";
-import { formatServeSizeOption, inferServeSizeFromMessage } from "@/lib/ai/ordering/serve-size-logic";
+import {
+  formatServeSizeOption,
+  inferServeSizeFromMessage,
+  resolveImplicitServeSizeForProduct,
+} from "@/lib/ai/ordering/serve-size-logic";
 import { isGenericCategorySegment } from "@/lib/ai/ordering/category-order-logic";
 import { isGuestFinalConfirm } from "@/lib/ai/ordering/order-flow";
 import {
@@ -390,6 +394,14 @@ export function backfillTypedDrinkAddition(
   const parsed = segmentToProposedItem(text, catalog);
   if (!parsed.item) {
     return { draft, cartActions: [] };
+  }
+
+  const product = catalog.catalog[parsed.item.productId];
+  if (product && !parsed.item.serveSize) {
+    const implicitSize = resolveImplicitServeSizeForProduct(product);
+    if (implicitSize) {
+      parsed.item.serveSize = implicitSize;
+    }
   }
 
   const processed = processProposedItems(draft, catalog, [parsed.item], {

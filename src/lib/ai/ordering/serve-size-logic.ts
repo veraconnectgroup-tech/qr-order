@@ -123,3 +123,18 @@ export function inferServeSizeFromMessage(
 
   return null;
 }
+
+/** Gap-resolved typed drink without size — default to 0.5L or largest preset. */
+export function resolveImplicitServeSizeForProduct(
+  product: AiCatalogProduct
+): string | null {
+  if (!shouldAskForServeSize(product)) return null;
+  const presets = product.serveSizePresets.map((preset) =>
+    formatServeSizeOption(preset)
+  );
+  if (!presets.length) return null;
+  const halfLiter = presets.find((preset) =>
+    /^0[,.]5\s*l$/i.test(preset.trim())
+  );
+  return halfLiter ?? presets[presets.length - 1] ?? null;
+}
