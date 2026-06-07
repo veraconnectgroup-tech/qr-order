@@ -1325,6 +1325,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     shadowParityScore = shadowDiff.parityScore;
   }
 
+  const deferTimelineForReflexSubmit =
+    Boolean(turnSubmitOutcome.orderId) &&
+    !perceiveResult.llmUsed &&
+    perceiveResult.turnPlan.reason === "commerce.confirm.reflex_submit";
+
   if (timelineAiSessionId && kernelTimelineEnabled(rollout.mode)) {
     const timelineStarted = performance.now();
     const intent = resolveTurnIntent(
@@ -1332,60 +1337,74 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       data.intent ?? "UNKNOWN"
     );
 
-    await persistDenisTurnTimeline(admin, {
-      aiSessionId: timelineAiSessionId,
-      locationId: parsed.data.locationId,
-      traceId,
-      guestMessage: parsed.data.message,
-      assistantMessage: guestMessage,
-      intent,
-      intentTier: guestIntentTierFromReflex(reflexTurn.usedT0),
-      narrationTier: narration.tier,
-      reflexTurn,
-      channel: perceptionChannel,
-      timelineSurface,
-    });
-
-    const followUp = guestFollowUpFromMessage(parsed.data.message);
-    if (followUp) {
-      await persistGuestFollowUpRequest(admin, {
+    const writeTurnTimeline = async () => {
+      await persistDenisTurnTimeline(admin, {
         aiSessionId: timelineAiSessionId,
+        locationId: parsed.data.locationId,
         traceId,
         guestMessage: parsed.data.message,
-        delaySeconds: followUp.delaySeconds,
+        assistantMessage: guestMessage,
+        intent,
+        intentTier: guestIntentTierFromReflex(reflexTurn.usedT0),
+        narrationTier: narration.tier,
+        reflexTurn,
+        channel: perceptionChannel,
+        timelineSurface,
       });
-    }
 
-    if (slotExtract && slotExtract.items.length > 0) {
-      await appendDenisTimelineEvent(admin, {
-        aiSessionId: timelineAiSessionId,
-        eventType: "slot.extracted",
-        traceId,
-        payload: {
-          type: "slot.extracted",
-          tier: slotExtract.tier,
-          itemCount: slotExtract.items.length,
-          items: slotExtract.items,
-          unmappedSpans: slotExtract.unmappedSpans,
-        },
-      });
-    }
+      const followUp = guestFollowUpFromMessage(parsed.data.message);
+      if (followUp) {
+        await persistGuestFollowUpRequest(admin, {
+          aiSessionId: timelineAiSessionId,
+          traceId,
+          guestMessage: parsed.data.message,
+          delaySeconds: followUp.delaySeconds,
+        });
+      }
 
-    for (const skillResult of actPhase.results) {
-      await appendDenisTimelineEvent(admin, {
-        aiSessionId: timelineAiSessionId,
-        eventType: "skill.executed",
-        traceId,
-        payload: {
-          type: "skill.executed",
-          skillId: skillResult.skillId,
-          riskClass: skillResult.riskClass,
-          dryRun: skillResult.dryRun,
-          ok: skillResult.ok,
-          error: skillResult.error ?? null,
-          detail: skillResult.detail ?? null,
-        },
+      if (slotExtract && slotExtract.items.length > 0) {
+        await appendDenisTimelineEvent(admin, {
+          aiSessionId: timelineAiSessionId,
+          eventType: "slot.extracted",
+          traceId,
+          payload: {
+            type: "slot.extracted",
+            tier: slotExtract.tier,
+            itemCount: slotExtract.items.length,
+            items: slotExtract.items,
+            unmappedSpans: slotExtract.unmappedSpans,
+          },
+        });
+      }
+
+      for (const skillResult of actPhase.results) {
+        await appendDenisTimelineEvent(admin, {
+          aiSessionId: timelineAiSessionId,
+          eventType: "skill.executed",
+          traceId,
+          payload: {
+            type: "skill.executed",
+            skillId: skillResult.skillId,
+            riskClass: skillResult.riskClass,
+            dryRun: skillResult.dryRun,
+            ok: skillResult.ok,
+            error: skillResult.error ?? null,
+            detail: skillResult.detail ?? null,
+          },
+        });
+      }
+    };
+
+    if (deferTimelineForReflexSubmit) {
+      void writeTurnTimeline().catch((error) => {
+        logger.warn("Denis reflex submit timeline write failed", {
+          traceId,
+          aiSessionId: timelineAiSessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
+    } else {
+      await writeTurnTimeline();
     }
     timings.timelineMs = elapsedMs(timelineStarted);
   }

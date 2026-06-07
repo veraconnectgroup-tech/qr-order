@@ -14,6 +14,7 @@ import {
   resolveDraftAiSessionId,
   resolveGuestTableSessionLookupToken,
 } from "@/lib/denis/venue/party";
+import { trustSessionDevice } from "@/lib/sessions/session-devices";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Load Denis planning context via FOLD before legacy narrate (M7 + ADR-019 A). */
@@ -71,6 +72,15 @@ export async function buildDenisTurnContext(
       partyMode: config.party.mode,
       deviceFingerprint: input.deviceFingerprint,
     });
+
+    try {
+      await trustSessionDevice(admin, {
+        sessionId: tableSessionId,
+        deviceFingerprint: input.deviceFingerprint,
+      });
+    } catch {
+      // Non-fatal — ACL submit retries trust on confirm.
+    }
   }
 
   const sharedAiSessionId =
