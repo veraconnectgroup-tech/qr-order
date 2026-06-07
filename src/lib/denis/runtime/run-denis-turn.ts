@@ -124,8 +124,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveActiveTableSessionId } from "@/lib/denis/venue/party";
 import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
 import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
-import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import { sanitizeGuestOrderHonesty } from "@/lib/ai/ordering/order-flow";
+import {
+  initDraftFromStorage,
+  sanitizeGuestOrderHonesty,
+  type AiOrderDraft,
+} from "@/lib/denis/cognition/order";
 import {
   assessWaiterObligation,
   mergeTableSessionObligation,
@@ -133,7 +136,6 @@ import {
   lastOrderPlacementFromTranscript,
 } from "@/lib/denis/cognition/waiter";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
-import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { MenuSection } from "@/lib/menu-section";
 import type { OrderFact } from "@/lib/denis/loop/types";
@@ -509,7 +511,6 @@ async function runTdePerceive(input: {
   );
 
   const perceiveOpts: DenisPerceiveTurnOpts = {
-    persistMessages: false,
     turnPlan,
     interpretationTask,
     evidence,

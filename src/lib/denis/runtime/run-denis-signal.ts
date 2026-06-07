@@ -4,6 +4,7 @@ import {
   isTableSessionActorInfrastructureReady,
   signalResultToResponse,
 } from "@/lib/denis/actor/table-session-actor";
+import { logger } from "@/lib/logger";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { resolveTableSessionActorEnabled } from "@/lib/denis/config/rollout";
 import { executeDenisSignalCore } from "@/lib/denis/runtime/execute-denis-signal-core";
@@ -57,6 +58,14 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
     signalId,
     bodyWithId
   );
+
+  if (!result) {
+    logger.warn("Table session actor SLA timeout — inline executeDenisSignalCore", {
+      signalId,
+      tableSessionId,
+    });
+    return executeDenisSignalCore(rawBody);
+  }
 
   return signalResultToResponse(result);
 }

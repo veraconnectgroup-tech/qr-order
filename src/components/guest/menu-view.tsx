@@ -176,7 +176,6 @@ export function MenuView({
   );
   const [returnGlow, setReturnGlow] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -482,7 +481,6 @@ export function MenuView({
     tableToken: token,
     sessionToken,
     enabled: aiConciergeEnabled && !!sessionToken,
-    refreshKey: sceneRefreshKey,
   });
 
   const viewOrders = denisView?.orders ?? [];
@@ -929,7 +927,6 @@ export function MenuView({
         setAiActive(true);
         setShowRecommendedSection(true);
       }
-      setSceneRefreshKey((key) => key + 1);
     },
     []
   );
@@ -1005,7 +1002,6 @@ export function MenuView({
       setAiRecommendations(recommendations);
       setAiActive(true);
       setShowRecommendedSection(true);
-      setSceneRefreshKey((key) => key + 1);
     },
     [excluded, replaceExcluded]
   );
@@ -1059,7 +1055,7 @@ export function MenuView({
             <DenisSceneBanners
               banners={sceneBanners}
               onBannerAction={handleSceneBannerAction}
-              onDismiss={() => setSceneRefreshKey((key) => key + 1)}
+              onDismiss={() => {}}
             />
           )}
 

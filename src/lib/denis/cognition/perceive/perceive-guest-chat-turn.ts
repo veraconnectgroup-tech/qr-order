@@ -211,8 +211,6 @@ export async function perceiveGuestChatTurn(
   body: unknown,
   opts: DenisPerceiveTurnOpts = {}
 ) {
-  /** Phase F — transcript TRUTH is timeline-only; ai_sessions.messages is never written on guest path. */
-  const persistMessages = opts.persistMessages === true;
   const parsed = aiChatRequestSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("Invalid input.", 400);
@@ -572,7 +570,6 @@ export async function perceiveGuestChatTurn(
     const { error: updateError } = await admin
       .from("ai_sessions")
       .update({
-        ...(persistMessages ? { messages: [...priorMessages, userMessage, assistantMessage] } : {}),
         tokens_used: tokensUsed,
         credits_used: creditsUsed,
         products_recommended: recommendedIds,
@@ -596,9 +593,7 @@ export async function perceiveGuestChatTurn(
         session_token: input.sessionToken,
         language,
         guest_preferences: guestPrefs,
-        messages: persistMessages
-          ? [...priorMessages, userMessage, assistantMessage]
-          : [],
+        messages: [],
         tokens_used: tokensUsed,
         credits_used: creditsUsed,
         products_recommended: recommendedIds,

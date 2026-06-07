@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ApplyOrderComprehendResult } from "@/lib/denis/cognition/order";
-import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
+import type { AiOrderDraft } from "@/lib/denis/cognition/order";
 import { logger } from "@/lib/logger";
 
 /** Persist kernel ordering draft to ai_sessions (F8-2). */

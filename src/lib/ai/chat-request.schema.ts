@@ -48,7 +48,7 @@ export const aiChatRequestSchema = z.object({
 
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
 
+/** Phase F — transcript TRUTH is timeline-only; legacy persistMessages removed. */
 export type PerceiveGuestChatTurnOpts = {
-  /** When true, legacy dual-write to ai_sessions.messages (default false — Phase F timeline TRUTH). */
-  persistMessages?: boolean;
+  // Reserved for future perceive opts — no ai_sessions.messages dual-write.
 };

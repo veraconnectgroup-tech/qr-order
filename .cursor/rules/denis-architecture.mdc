@@ -39,7 +39,7 @@ alwaysApply: false
 | Eval | `src/lib/denis/eval/` |
 
 **Do not** add new Denis business logic to `src/lib/ai/chat-service.ts` (wrapper only).  
-Legacy perceive lives in `src/lib/denis/runtime/perceive/perceive-guest-chat-turn.ts` (G4).  
+Canonical perceive lives in `src/lib/denis/cognition/perceive/` (G4).  
 `src/lib/ai/execute-chat-turn.ts` is a deprecated re-export shim only.
 
 ## Invariants

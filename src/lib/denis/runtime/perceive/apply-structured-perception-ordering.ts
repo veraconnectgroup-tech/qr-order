@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
-import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import { initDraftFromStorage } from "@/lib/denis/cognition/order";
 import { applyOrderComprehend } from "@/lib/denis/cognition/order";
 import type { AiStructuredResponse } from "@/lib/ai/types";
 import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";

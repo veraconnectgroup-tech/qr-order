@@ -103,7 +103,6 @@ export function GuestDenisLayer({
   orderingDisabled = false,
   voiceEnabled = false,
   voiceTtsEnabled = true,
-  sceneRefreshBump = 0,
   dockPlacement = "bottom",
   cartBarVisible = false,
   stripeOnboarded = false,
@@ -134,8 +133,6 @@ export function GuestDenisLayer({
   orderingDisabled?: boolean;
   voiceEnabled?: boolean;
   voiceTtsEnabled?: boolean;
-  /** Increment to force scene reload (e.g. order status change). */
-  sceneRefreshBump?: number;
   dockPlacement?: "bottom" | "sticky-top";
   cartBarVisible?: boolean;
   stripeOnboarded?: boolean;
@@ -160,18 +157,14 @@ export function GuestDenisLayer({
   const language = isEnglish ? "en" : menuLocale;
   const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
   const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
   const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
   const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
   const [billSheetOpen, setBillSheetOpen] = useState(false);
-
-  const refreshKey = sceneRefreshKey + sceneRefreshBump;
 
   const internalView = useDenisView({
     tableToken: token,
     sessionToken,
     enabled: enabled && !!sessionToken && !controlledView,
-    refreshKey,
   });
 
   const view = controlledView?.view ?? internalView.view;
@@ -190,9 +183,6 @@ export function GuestDenisLayer({
     (open: boolean) => {
       setAiChatOpen(open);
       onChatOpenChange?.(open);
-      if (!open) {
-        setSceneRefreshKey((key) => key + 1);
-      }
     },
     [onChatOpenChange]
   );
@@ -220,7 +210,6 @@ export function GuestDenisLayer({
           allowOrdering: !orderingDisabled,
         });
         onSceneTurnResult?.(result);
-        setSceneRefreshKey((key) => key + 1);
         await refreshGuestSceneView();
       } catch {
         toast.error(tUI("ai.overlay.error"));
@@ -271,7 +260,6 @@ export function GuestDenisLayer({
             toast.success(tUI("waiter.notified"), {
               description: tUI("waiter.notifiedBody"),
             });
-            setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();
           } catch {
             toast.error(tUI("waiter.error"), {
@@ -307,7 +295,6 @@ export function GuestDenisLayer({
               setBillSheetOpen(true);
             }
             onSceneTurnResult?.(result);
-            setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();
           } catch {
             toast.error(tUI("ai.overlay.error"));
@@ -386,7 +373,6 @@ export function GuestDenisLayer({
       <AiConciergeChat
         open={aiChatOpen}
         onOpenChange={handleAiChatOpenChange}
-        onSceneRefresh={() => void refreshGuestSceneView()}
         onOpenPaymentSheet={() => setBillSheetOpen(true)}
         sceneChrome={scene?.chrome ?? null}
         slug={slug}

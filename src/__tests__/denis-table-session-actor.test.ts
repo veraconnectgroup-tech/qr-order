@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  GUEST_SIGNAL_TEMPLATE_WAIT_MS,
   signalResultToResponse,
 } from "@/lib/denis/actor/table-session-actor";
 import { actorDedupeKey, actorQueueKey } from "@/lib/denis/actor/redis-keys";
@@ -30,6 +31,10 @@ describe("Table Session Actor (Phase E)", () => {
   it("returns 504 on signal timeout", async () => {
     const response = signalResultToResponse(null);
     expect(response.status).toBe(504);
+  });
+
+  it("template gap SLA wait budget is 15s (AGENT-02)", () => {
+    expect(GUEST_SIGNAL_TEMPLATE_WAIT_MS).toBe(15_000);
   });
 
   it("pilot rollout enables table session actor when Redis is ready", () => {

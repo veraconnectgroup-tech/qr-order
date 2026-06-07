@@ -6,7 +6,7 @@ Svaki agent dopunjava **samo svoju sekciju** posle PR-a.
 
 ## AGENT-00
 
-*(prazno)*
+**Stanje (2026-06-07):** Indeks agenata — svaki AGENT-01…26 dopunjava svoju sekciju posle PR-a; ACTIVE tracker = ADR-020 §Kad.
 
 ---
 
@@ -154,7 +154,9 @@ Eval/timeline replay je green, ali **live pilot nije verifikovan** — `POST /ap
 
 ## AGENT-06
 
-*(prazno)*
+**PR:** ADR-033 CLEANUP · AGENT-06 · perceive shim + runtime import matrix.
+
+**Stanje (2026-06-07):** Obrisan `runtime/perceive/perceive-guest-chat-turn.ts` shim; `run-denis-turn` importuje samo `@/lib/denis/cognition/perceive`; compliance PASS; runtime `lib/ai/ordering` = 0 preko `cognition/order` facades.
 
 ---
 
@@ -216,7 +218,7 @@ Eval/timeline replay je green, ali **live pilot nije verifikovan** — `POST /ap
 
 ## AGENT-09
 
-*(prazno)*
+**Stanje (2026-06-07):** Phase D.2/D.3 OPEN — live iota kitchen-ready → push = transcript gate i atom outbox još nisu u pilot harness-u (eval fixture green).
 
 ---
 
@@ -608,102 +610,54 @@ Eval/timeline replay je green, ali **live pilot nije verifikovan** — `POST /ap
 
 ## AGENT-25
 
-*(prazno)*
+**PR:** ADR-033 AGENT-25 · ARCH-7 · Stub C12 (L3 InterpretationTask)
+
+1. **Šta sam radio:** Uveo L3 `InterpretationTask` (`topGoal + beliefs → schema + evidenceBudget`), goal-directed `decideTurnPlan` pre regex fallback-a, wire u `plan-evidence` / `run-denis-turn`, i ARCH-7 eval fixture (`runInterpretationTaskSuite`, 4 scenarija).
+
+2. **Šta je danas slabo:** L3 je **DECIDE + evidence stub**, ne pun structured perceive pipeline — LLM i dalje koristi generički `AiStructuredResponse`, `directiveBlock` je samo tekst u evidence pack-u, nema Zod schema po `InterpretationSchema` (transactional vs upsell vs slot). `buildInterpretationTask` mapira samo `topGoal`, ne secondary goals (`UPSELL_ONCE` ispod `COMPLETE_ROUND`). Regex fallback (`resolvePerceivePlan`) i dalje postoji kad `topGoal === null` i za menu-browse early exit (popravljen `\b` bug, ali i dalje message-regex). Nema live pilot gate-a „vague recommend + open cart → transactional perceive“; eval je fixture-only bez LLM shadow diff-a.
+
+3. **MAKSIMUM za L3 InterpretationTask (C12 / ARCH-7):**
+   - **Stubovi:** `cognition/tde/interpretation-task-types.ts` · `build-interpretation-task.ts` · `interpretation-schemas/*.schema.ts` (Zod po schema) · `cognition/perceive/run-interpretation-perceive.ts` (schema-driven structured output) · `plan-evidence.ts` (evidence budget iz task-a, ne message regex)
+   - **Fajlovi:** `decideTurnPlan` → `buildInterpretationTask` → `TurnPlan` + task · `run-denis-turn` → `planEvidence({ interpretationTask })` → perceive sa `schema` + `directiveBlock` · ACT validira samo polja dozvoljena schema-om · TELL iz validated perceive, ne iz regex hint-a
+   - **Pravila:** regex **hint** beliefs only — nikad plan kind veto kad postoji `topGoal` · `InterpretationSchema` jedini izvor `planKind` + RAG/playbook budget · `vague_recommend` / `ORDERING_GUEST_PATTERN` **obrisati** iz `resolvePerceivePlan` kad goal-directed aktivan · secondary goal stack (npr. upsell ispod complete round) u task builder-u, ne samo `topGoal[0]` · compliance: `grep vague_recommend\|planForBanter` u decide body = 0
+
+4. **Šta obrisati / spojiti:** Obrisati donji regex blok u `resolvePerceivePlan` (`VAGUE_RECOMMEND`, `PURE_SOCIAL`, `isShortBanterReply`) — zameniti potpunim `buildInterpretationTask` + beliefs (`conversation.mode`, `commerce.pressure`). Spojiti `wantsCatalogRag(turnPlan, message)` regex u `interpretationTask.evidenceBudget` only — ne dva puta. `resolvePerceiveMode` samo iz task budget-a, ne dupli if u `run-denis-turn`. Ne patchovati MENU_BROWSE regex — prebaciti u belief `commerce.menu_inquiry` iz compileBeliefs. Kad L3 stabilan: `resolvePerceivePlan` postaje thin fallback samo za `topGoal === null` (legacy chat bez flow). Ne držati `isCasualSocialGuestMessage` / `looksLikeOrderLine` u routing-u — eval-only ili analytics.
+
+5. **Kako testirati da je gotovo:**
+   - `pnpm eval:denis` — `L3 interpretation task goal-directed eval passes (ARCH-7 / C12)` + waiter parity 100% (nema `goal.guest_seated.social` na order line)
+   - `pnpm vitest run src/__tests__/interpretation-task.test.ts` — vague recommend + open cart → `goal.complete_round.transactional`, UPSELL_ONCE + food words → relational
+   - `grep -rn "vague_recommend\|conversation.pure_social" src/lib/denis/cognition/tde/decide-turn-plan.ts` → 0 u goal-directed putu (samo legacy fallback)
+   - Shadow diff: isti guest message, različit `topGoal` → različit `InterpretationSchema` u turn profile / timeline meta
+   - iota pilot: collect + cart + „preporuči mi nešto“ → perceive transactional (cart add intent), ne relational banter; browse „Zdravo“ → relational social schema
+   - Proširiti eval na 15+ scenarija (DE/EN/SR, upsell_food, pending slot) pre oznake C12 COMPLETE u ADR-035
+
+6. **Koliko nedelja realno:** C12 stub (task builder + goal-directed DECIDE + 4 eval scenarija) = **1 sesija** (DONE). Do MAKSIMUM-a (Zod schema perceive, secondary goals, obrisati regex perceive routing, shadow diff, 15+ eval, iota pilot gate) = **3–4 nedelje** po ADR-035 C12 (4–8 nedelja track). Sa C7 evidence tier budget + C11 playbook u istom perceive putu = **+1 nedelja** integracije — ukupno **~4–5 nedelja** do ARCH-7 COMPLETE merljivo na pilota, ne samo na `decideTurnPlan` fixture-u.
 
 ---
 
 ## AGENT-26
 
-*(prazno)*
+**PR:** ADR-033 AGENT-26 · ADR-023 MR-8 (Manifest promote gate + timeline sim u CI)
 
----
-opy-paste reason stringova · waiting status matrica dokumentovana u helpers (šta je `commerce.status.open_order` vs `commerce.pressure.comprehend`) · 0 duplog scenarija između `wp_gap_*` i `tl_iota_gap_*` — timeline replay koristi iste `cartLines` + `lastGuestOrderMessage` iz waiter helpers
+1. **Šta sam radio:** Uveo manifest promote gate CI fixture (`runManifestPromoteGateFixture` + iota timeline sim replay), povezao `manifestPromoteGate` u `runPilotGate`, i proširio quality contract sa `timelineObligationPassRate` — `pnpm eval:denis` blokira promote kad timeline sim ili eval regresira.
 
-4. **Šta obrisati / spojiti:** Spojiti duplikat gap setup-a (`moze jedno pivo beef burger` + burger-only cart) u `helpers.ts` — waiter-parity i iota timeline importuju isti builder. Ne dodavati scenarije patch-po-patch bez kategorije — koristiti matrix generator za slot/confirm/status varijante (DE/EN/SR). Obrisati ili spojiti preklapajuće `wp_gap_blocks_confirm_drink` / `wp_gap_blocks_moze` ako matrix pokriva isti belief output. Probe skripta (`npx tsx eval/probe-waiter-parity.ts`) u repo umesto ad-hoc `-e` u agent sesiji. Ne držati odvojene min brojeve (40 u docs, 80 u kodu) — jedan `WAITER_PARITY_MIN_SCENARIOS` u scenarios.ts + pilot gate.
+2. **Šta je danas slabo:** Promote gate u CI testira **deterministički reflex sim** (`runManifestCompareSim`), ne pun TDE/obligation replay — admin promote i dalje zahteva live `sessionId` + DB timeline, eval ne dokazuje da je isti sim kao u admin panelu. `evaluateManifestPromoteGate` na svaki poziv ponovo pokreće `runQualityContractEval` (ceo eval suite) — sporo i duplo sa pilot gate-om. Nema production JSON timeline exporta za manifest vN vs vN+1 counterfactual — samo TS helperi iz iota obligation scenarija. `shadowParityMin` u quality contract-u nije enforced u `evaluateQualityContract`. CI već pokreće `eval:denis`, ali nema posebnog job-a „manifest promote only“ za brži feedback na manifest PR-ovima.
 
-5. **Kako testirati da je gotovo:**
-   - `pnpm eval:denis` — waiter parity test: `scenarioCount >= 80`, `passRate >= 0.95`, `ok: true`
-   - `pnpm test:run src/__tests__/waiter-parity.test.ts` PASS
-   - `runPilotGate().waiterParity` green u `denis-eval.test.ts`
-   - Kategorije pokrivene: grep `// ---` sekcije u `scenarios.ts` — slot, gap, substitution, waiting, rush, multi-turn, DE/EN/SR (min 5 po jeziku)
-   - iota pilot (AGENT-02 harness): bar 3 waiter-parity journey-a mapirana 1:1 na live QR (gap block, substitution, waiting status) — eval PASS ≠ COMPLETE bez toga
-   - Regresija: novi PR ne sme smanjiti `passRate`; CI loguje failed `scenarioId` liste
+3. **MAKSIMUM za Manifest + sim (MR-8 / ADR-023 §9–§10):**
+   - **Stubovi:** `eval/fixtures/manifest/promote-gate-scenarios.ts` · `eval/run-manifest-promote-gate-fixture.ts` · `eval/run-manifest-promote-gate.ts` (`evaluateManifestPromoteGate`, `evaluateSimRegression`) · `cognition/manifest/manifest-promote-gate.ts` (`manifestRequiresTimelineSim`) · `eval/run-venue-sim.ts` (`runManifestCompareSim`) · `eval/quality-contract-eval.ts` (timeline + eval pass min)
+   - **Fajlovi:** admin `promoteVenueManifest` → gate check → `buildPromotedStoragePatch` · `components/admin/denis-manifest-promote-panel.tsx` (sim report preview) · CI `.github/workflows/ci.yml` → `pnpm eval:denis` · pilot gate uključuje `manifestPromoteGate.ok`
+   - **Pravila:** policy/capability delta → **obavezan** timeline replay pre promote · sim regression = conflict turns ↑ ili recap T0 loss · quality contract fail → promote blocked · first promote (null current manifest) → sim skip · identity-only delta → sim skip · evalPassMin uključuje min(core, pilot SR, waiter parity, **timeline obligation**)
 
-6. **Koliko nedelja realno:** 80+ scenarija + 100% pass u eval-u = **1 sesija** (DONE). Do MAKSIMUM-a (shared helpers sa timeline, matrix generator, probe u repo, 150+ scenarija, live pilot mapiranje 1:1) = **1–2 nedelje**. Pouzdan „zeleno u eval = zeleno na stolu“ za waiter journeys = **+2 nedelje** uz AGENT-02 pilot harness — ukupno **~3 nedelje** do C3 COMPLETE merljivog na iota, ne samo na `decideTurnPlan` fixture-u.
-
----
-
-## AGENT-18
-
-*(prazno)*
-
----
-
-## AGENT-19
-
-*(prazno)*
-
----
-
-## AGENT-20
-
-*(prazno)*
-
----
-
-## AGENT-21
-
-*(prazno)*
-
----
-
-## AGENT-22
-
-*(prazno)*
-
----
-
-## AGENT-23
-
-**PR:** ADR-033 AGENT-23 · PR-I2.1 · Stub I2 (`denis.session.updated` webhook)
-
-1. **Šta sam radio:** Uveo outbox-only `denis.session.updated` webhook sa versioned payload-om (`apiVersion: 2026-05-29`), Zod contract + golden fixture, OpenAPI snippet i emission hook posle Denis signal turn / handoff / sense / order submit.
-
-2. **Šta je danas slabo:** I2 je **stub**, ne kompletan operator egress — `denis.order.phase_changed` ne postoji; emission je scatter-ovan (`execute-denis-signal-core`, `persist-ai-session-after-order-submit`) bez jednog `emitDenisSessionUpdated` policy sloja; payload `metrics` je ad-hoc Record, nije deo jedinstvenog webhook envelope-a za sve `denis.*` evente; nema live Viktor receiver testa ni outbox replay fixture-a (samo unit contract); `emitDenisSessionUpdated` importuje `operator/projections/helpers` — egress i read API dele kod, ali nema dedupe/throttle (svaki turn = webhook); admin i dalje nema „Integrations → Activity“ health view iz ADR-029.
-
-3. **MAKSIMUM za I2 operator webhooks (session.updated + order.phase_changed):**
-   - **Stubovi:** `webhooks/events.ts` (union svih `denis.*`) · `webhooks/denis-operator-payload.ts` (envelope + builder) · `webhooks/emit-denis-session-events.ts` (`emitDenisSessionUpdated`, `emitDenisSessionCompleted`, `emitDenisSessionConverted`) · `webhooks/enqueue-denis-operator-webhook.ts` (jedini enqueue) · `outbox/handlers/integration-webhook.ts` (jedini deliver) · `integrations/webhooks/*.schema.ts` (Zod po eventu) · `integrations/fixtures/webhooks/*.v1.json` (golden po eventu)
-   - **Fajlovi:** emission **samo** posle FOLD/PROJECT milestone-a (turn complete, order submit, session close, world tell) — ne iz React/guest UI · `execute-denis-signal-core` poziva jedan `scheduleOperatorWebhook({ kind: "session.updated", reason })` · order lifecycle → `denis.order.phase_changed` iz istog outbox batch-a kao commerce events · OpenAPI `webhooks` sekcija za svaki `denis.*` event
-   - **Pravila:** outbox-only — nikad `dispatchOrgWebhook` fire-and-forget pored enqueue (commit checklist §1) · payload bez guest PII · `apiVersion` bump na breaking change · partner dedupe na delivery `id` · throttle: max 1 `session.updated` / session / 5s osim `order_submitted` i `session.completed` · guest/denis hot path ne importuje `operator/*` — samo `webhooks/emit-*`
-
-4. **Šta obrisati / spojiti:** Spojiti tri emission hook-a u **jedan** `webhooks/schedule-denis-operator-event.ts` (reason → payload builder map). Ne duplirati session projection — `emitDenisSessionUpdated` koristi shared `projectOperatorSessionSummary` snapshot helper u `integrations/build-webhook-payload.ts`, ne inline DB u emit fajlu. Kad `denis.order.phase_changed` stigne: isti schema/envelope pattern, ne drugi payload builder. Obrisati eventualni direct webhook poziv van outbox-a (grep `deliverOrgWebhook` van handler-a). Ne patchovati `metrics` shape po eventu — jedan `DenisOperatorWebhookPayload` + event-specific Zod extension. Contract testovi: jedan runner `integrations/validate-webhook-fixtures.ts` umesto test po PR-u.
+4. **Šta obrisati / spojiti:** Spojiti `runManifestPromoteGateFixture` sim input sa `run-timeline-obligation-fixture` / `run-venue-sim` — jedan timeline JSON loader, ne tri TS timeline builder-a. `evaluateManifestPromoteGate` ne sme ponovo pokretati ceo eval — prima `QualityContractEvalResult` iz pilot gate-a ili keširani snapshot. Obrisati dupli manifest promote assert van `eval:denis` (držati `manifest-promote-gate.test.ts` samo za unit regression helper). Kad pun TDE sim stabilan: `runManifestCompareSim` proširiti na `decideTurnPlan` replay, ne samo `planTurnWithReflex`. Ne patchovati admin panel sa novim violation stringovima — jedan `ManifestPromoteGateResult` contract.
 
 5. **Kako testirati da je gotovo:**
-   - `pnpm test:run src/__tests__/denis-session-updated-webhook.test.ts` + `denis-operator-webhooks.test.ts` PASS
-   - Golden fixture `denis.session.updated.v1.json` validira Zod; isti za `denis.order.phase_changed.v1.json`
-   - Outbox integration test: enqueue `integration.webhook` → handler → mock deliver → assert `apiVersion` + HMAC headers
-   - `grep -rn "dispatchOrgWebhook\|enqueueDenisOperatorWebhooks" src/` — emit samo iz `webhooks/emit-*`, deliver samo iz outbox handler-a
-   - iota/Viktor stub receiver: subscribe `denis.session.updated` → guest turn → webhook stigne <30s sa `metrics.turnCount` increment
-   - `pnpm eval:denis` PASS (regresija spine); pilot gate opciono: webhook delivery count u admin status panel
+   - `pnpm eval:denis` — `manifest promote gate + timeline sim passes (ADR-023 MR-8 / AGENT-26)` + `full pilot gate is green` PASS
+   - `pnpm test:run src/__tests__/manifest-promote-gate.test.ts` — policy delta blocks without session, sim regression flags conflict
+   - `runPilotGate().manifestPromoteGate.ok` && `qualityContract.violations` prazno
+   - Admin: policy change bez session → blocked; sa iota session replay → sim report green → promote succeeds
+   - CI: PR sa manifest policy diff ne merge-uje dok `eval:denis` ne PASS (timeline obligation + promote fixture)
+   - iota pilot (enterprise): manifest v2 draft → sim replay na poslednjoj shadow sesiji → promote → rollback instant
 
-6. **Koliko nedelja realno:** `denis.session.updated` stub (event + emit + contract + OpenAPI) = **1 sesija** (DONE). Do MAKSIMUM-a I2 (`denis.order.phase_changed`, unified scheduler, throttle, outbox replay test, live receiver gate) = **2–3 nedelje**. Ceo I-track (I2 webhooks + I3 OpenAPI/sandbox contract CI + Viktor read path) = **4–5 nedelja** po ADR-029 / DENIS phased F5.
-
----
-
-## AGENT-24
-
-*(prazno)*
-
----
-
-## AGENT-25
-
-*(prazno)*
-
----
-
-## AGENT-26
-
-*(prazno)*
+6. **Koliko nedelja realno:** MR-8 CI stub (fixture + pilot gate + quality contract timeline rate) = **1 sesija** (DONE). Do MAKSIMUM-a (production timeline JSON sim, pun TDE replay, pilot gate bez duplog eval run-a, shadowParity enforced, admin sim = CI sim) = **2–3 nedelje**. Sa MR-9 org manifest pack + custom eval po venue = **+1–2 nedelje** — ukupno **~3–4 nedelje** do „enterprise promote bez regresije“ merljivo na live sesiji, ne samo reflex counterfactual u fixture-u.
 
 ---

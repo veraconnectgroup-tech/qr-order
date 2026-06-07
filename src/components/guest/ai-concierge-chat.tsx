@@ -517,7 +517,6 @@ export type AiConciergeChatProps = {
   } | null;
   /** ADR-019 Phase F — desk reads view.transcript only (no ai_sessions merge). */
   bootstrapTranscript?: TranscriptEntry[] | null;
-  onSceneRefresh?: () => void;
   /** M28 — Denis payment handoff opens session bill sheet. */
   onOpenPaymentSheet?: () => void;
 };
@@ -554,7 +553,6 @@ export function AiConciergeChat({
   voiceTtsEnabled = true,
   sceneChrome = null,
   bootstrapTranscript = null,
-  onSceneRefresh,
   onOpenPaymentSheet,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
@@ -805,7 +803,6 @@ export function AiConciergeChat({
             label: tUI("scene.situation.chipWaiter"),
           });
         }
-        onSceneRefresh?.();
       } catch {
         /* guest still sees local narration */
       }
@@ -816,7 +813,6 @@ export function AiConciergeChat({
       locationId,
       tableId,
       tUI,
-      onSceneRefresh,
       onOpenPaymentSheet,
     ]
   );
@@ -1234,7 +1230,6 @@ export function AiConciergeChat({
         setIsTyping(false);
         setPendingThinkingMessage(null);
         setServerThinkingSteps([]);
-        onSceneRefresh?.();
       }
     },
     [
@@ -1253,7 +1248,6 @@ export function AiConciergeChat({
       clearCart,
       tChat,
       voice,
-      onSceneRefresh,
       onOpenPaymentSheet,
       handleDenisOrderSubmit,
       recordGuestOrderPlaced,

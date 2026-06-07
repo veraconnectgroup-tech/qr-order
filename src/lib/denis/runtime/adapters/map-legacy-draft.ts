@@ -1,5 +1,7 @@
-import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
-import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
+import {
+  initDraftFromStorage,
+  type AiOrderDraft,
+} from "@/lib/denis/cognition/order";
 import {
   emptyCartState,
   type DenisCartDraft,

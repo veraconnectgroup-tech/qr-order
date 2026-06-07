@@ -378,7 +378,6 @@ export function OrderStatusTracker({
         dockPlacement="sticky-top"
         voiceEnabled={voiceEnabled}
         voiceTtsEnabled={voiceTtsEnabled}
-        sceneRefreshBump={order.status === "ready" ? 2 : stepIdx}
         stripeOnboarded={stripeOnboarded}
         paymentOnlineEnabled={paymentOnlineEnabled}
         paymentAtBarEnabled={paymentAtBarEnabled}

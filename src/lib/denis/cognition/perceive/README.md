@@ -1,6 +1,6 @@
 # cognition/perceive — ADR-034-A
 
-Canonical guest chat perceive (LLM + session metadata). Runtime `perceive-guest-chat-turn.ts` is a thin re-export shim.
+Canonical guest chat perceive (LLM + session metadata). `run-denis-turn` imports only from here.
 
 | Step | Status |
 |------|--------|

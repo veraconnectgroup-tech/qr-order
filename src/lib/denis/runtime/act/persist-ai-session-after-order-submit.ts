@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { clearedDraftAfterSubmit } from "@/lib/ai/ordering/order-executor";
+import { clearedDraftAfterSubmit } from "@/lib/denis/cognition/order";
 import {
   emitDenisSessionConverted,
   emitDenisSessionUpdated,

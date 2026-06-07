@@ -1,11 +1,11 @@
-import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import {
+  finalizeOrderFlow,
   initDraftFromStorage,
   tryResolveQuickReply,
-} from "@/lib/ai/ordering/draft-engine";
-import type { ValidatedCartAction } from "@/lib/ai/ordering/draft-types";
+  type ValidatedCartAction,
+} from "@/lib/denis/cognition/order";
 import type { AiStructuredResponse } from "@/lib/ai/types";
 import { normalizePendingSlotReply } from "@/lib/denis/cognition/act/fuzzy-slot-reply";
 import type { PendingSlotKind } from "@/lib/denis/cognition/tde/turn-plan-types";

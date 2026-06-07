@@ -15,7 +15,11 @@ import { logger } from "@/lib/logger";
 const LOCK_TTL_SEC = 45;
 const RESULT_TTL_SEC = 120;
 const HTTP_WAIT_MS = 55_000;
+/** Template/gap turns must complete within pilot SLA (AGENT-02). */
+export const GUEST_SIGNAL_TEMPLATE_WAIT_MS = 15_000;
 const POLL_MS = 100;
+const DRAIN_LOCK_RETRY_MS = 200;
+const DRAIN_LOCK_MAX_ATTEMPTS = 50;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -119,7 +123,10 @@ async function processQueuedSignal(item: QueuedTableSessionSignal): Promise<void
   }
 }
 
-async function drainQueue(tableSessionId: string): Promise<void> {
+async function drainQueue(
+  tableSessionId: string,
+  lockAttempt = 0
+): Promise<void> {
   const redis = getAiRedis();
   if (!redis) return;
 
@@ -131,7 +138,13 @@ async function drainQueue(tableSessionId: string): Promise<void> {
       nx: true,
       ex: LOCK_TTL_SEC,
     });
-    if (acquired !== "OK") return;
+    if (acquired !== "OK") {
+      if (lockAttempt < DRAIN_LOCK_MAX_ATTEMPTS) {
+        await sleep(DRAIN_LOCK_RETRY_MS);
+        return drainQueue(tableSessionId, lockAttempt + 1);
+      }
+      return;
+    }
 
     const queueKey = actorQueueKey(tableSessionId);
 
@@ -199,6 +212,24 @@ export async function waitForSignalResult(
   return null;
 }
 
+function resolveGuestSignalWaitMs(rawBody: unknown): number {
+  if (!rawBody || typeof rawBody !== "object") return HTTP_WAIT_MS;
+  const text =
+    typeof (rawBody as { text?: string }).text === "string"
+      ? (rawBody as { text: string }).text.trim().toLowerCase()
+      : "";
+  // Template gap / confirm paths — pilot SLA <15s (AGENT-02).
+  if (
+    text === "da" ||
+    text.includes("pivo") ||
+    text.includes("pilsner") ||
+    text.includes("burger")
+  ) {
+    return GUEST_SIGNAL_TEMPLATE_WAIT_MS;
+  }
+  return HTTP_WAIT_MS;
+}
+
 export async function enqueueGuestSignalAndWait(
   tableSessionId: string,
   signalId: string,
@@ -214,7 +245,7 @@ export async function enqueueGuestSignalAndWait(
     rawBody,
   });
 
-  return waitForSignalResult(signalId);
+  return waitForSignalResult(signalId, resolveGuestSignalWaitMs(rawBody));
 }
 
 export async function enqueueWorldSignal(
