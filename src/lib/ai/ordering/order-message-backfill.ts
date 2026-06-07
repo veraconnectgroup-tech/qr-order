@@ -245,12 +245,14 @@ export function extractOrderMessageMeta(message: string): OrderBackfillMeta {
 }
 
 export function draftHasDrinkInCart(draft: AiOrderDraft): boolean {
-  return draft.items.some(
-    (line) =>
-      line.menuSection === "drinks" ||
-      TYPED_DRINK_PATTERN.test(line.productName) ||
-      /\b(pivo|beer|bier)\b/i.test(line.productName)
-  );
+  return draft.items.some((line) => {
+    const name = line.productName.trim();
+    if (TYPED_DRINK_PATTERN.test(name)) return true;
+    if (line.menuSection === "drinks" && !isGenericBeerSegment(name)) {
+      return true;
+    }
+    return false;
+  });
 }
 
 /** Append missing drink/substitution clarify to recap — Denis never stays silent on gaps. */

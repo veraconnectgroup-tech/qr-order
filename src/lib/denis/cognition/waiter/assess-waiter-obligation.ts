@@ -1,5 +1,6 @@
 import {
   drinkClarifySnippet,
+  isGenericBeerSegment,
   type GuestSubstitutionRequest,
 } from "@/lib/denis/cognition/conversation/guest-substitution";
 import type { DenisCartLine } from "@/lib/denis/kernel/cart-projection";
@@ -17,8 +18,9 @@ import {
   type WaiterObligation,
 } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
 
+/** Typed drink only — generic pivo/beer/bier does not close drink_unspecified (ADR-033). */
 const TYPED_DRINK_IN_CART =
-  /\b(pilsner|weizen|lager|radler|cola|sprite|pivo|beer|bier|espresso|latte|kafa|čaj|caj)\b/i;
+  /\b(pilsner|weizen|lager|radler|kisel\w*|cola|sprite|sok|juice|vino|wine|wein|espresso|latte|kafa|čaj|caj)\b/i;
 
 export function lastOrderPlacementFromTranscript(
   transcript: TranscriptEntry[]
@@ -32,11 +34,17 @@ export function lastOrderPlacementFromTranscript(
   return null;
 }
 
+function lineSatisfiesDrinkGap(line: DenisCartLine): boolean {
+  const name = line.productName.trim();
+  if (TYPED_DRINK_IN_CART.test(name)) return true;
+  if (line.menuSection === "drinks" && !isGenericBeerSegment(name)) {
+    return true;
+  }
+  return false;
+}
+
 function cartHasDrink(lines: DenisCartLine[]): boolean {
-  return lines.some(
-    (line) =>
-      line.menuSection === "drinks" || TYPED_DRINK_IN_CART.test(line.productName)
-  );
+  return lines.some(lineSatisfiesDrinkGap);
 }
 
 function formatCartLine(line: DenisCartLine): string {
@@ -130,7 +138,7 @@ export type AssessWaiterObligationInput = {
 
 /**
  * ADR-032 — deterministic waiter contract from cart + order context.
- * Gaps persist across turns until cart satisfies them (e.g. generic pivo → drink added).
+ * Gaps persist until cart has a typed drink — generic pivo/beer does not close drink_unspecified.
  */
 export function assessWaiterObligation(
   input: AssessWaiterObligationInput

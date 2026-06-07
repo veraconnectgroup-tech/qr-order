@@ -36,6 +36,7 @@ export const CORE_BELIEF_KEYS = {
   waiterGapCount: "waiter.gap_count",
   waiterCanConfirm: "waiter.can_confirm",
   waiterPrimaryGap: "waiter.primary_gap",
+  waiterNextAction: "waiter.next_action",
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";

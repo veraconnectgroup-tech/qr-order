@@ -49,6 +49,5 @@ export const aiChatRequestSchema = z.object({
 export type AiChatRequest = z.infer<typeof aiChatRequestSchema>;
 
 /** Phase F — transcript TRUTH is timeline-only; legacy persistMessages removed. */
-export type PerceiveGuestChatTurnOpts = {
-  // Reserved for future perceive opts — no ai_sessions.messages dual-write.
-};
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intersected by DenisPerceiveTurnOpts
+export type PerceiveGuestChatTurnOpts = {};

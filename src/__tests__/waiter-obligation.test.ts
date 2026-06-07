@@ -9,9 +9,13 @@ import {
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
+import { buildViewLayers } from "@/lib/denis/loop/project-view-layers";
+import { buildFoldMeta } from "@/lib/denis/loop/compute-truth-hash";
 import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
+import { extractOrderMessageMeta } from "@/lib/ai/ordering/order-message-backfill";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
+import { obligationForConversationState } from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
 
 function baseState(): TableSessionState {
   return {
@@ -135,6 +139,160 @@ describe("waiter obligation (ADR-032)", () => {
     expect(plan.kind).toBe("template_tell");
     expect(plan.reason).toBe("waiter.gap_blocks_confirm");
     expect(plan.templateKey).toBe("waiter.gap_clarify.drink");
+  });
+
+  it("generic pivo in cart keeps drink_unspecified gap (eval/live parity)", () => {
+    const meta = extractOrderMessageMeta("moze jedno pivo i beef burger");
+    expect(meta.needsDrinkClarify).toBe(true);
+
+    const cartLines = [
+      {
+        productId: "f1",
+        productName: "Beef Burger",
+        quantity: 1,
+        serveSize: null,
+        modifierIds: [],
+        notes: "",
+        lineTotal: 15,
+        menuSection: "food" as const,
+      },
+      {
+        productId: "d1",
+        productName: "Pivo",
+        quantity: 1,
+        serveSize: null,
+        modifierIds: [],
+        notes: "",
+        lineTotal: 4,
+        menuSection: "drinks" as const,
+      },
+    ];
+
+    const obligation = assessWaiterObligation({
+      orderContextMessage: "moze jedno pivo i beef burger",
+      cartLines,
+      pendingSlot: null,
+      language: "sr",
+      atRecap: true,
+    });
+
+    expect(obligation.gaps).toHaveLength(1);
+    expect(obligation.gaps[0]?.kind).toBe("drink_unspecified");
+    expect(obligation.canConfirm).toBe(false);
+
+    const state = baseState();
+    state.commerce.cart.ai.draft.items.push(...cartLines);
+    state.conversation.obligation = obligationForConversationState(obligation);
+
+    const layers = buildViewLayers(
+      state,
+      buildFoldMeta(state, "s1", null, "ordering"),
+      null
+    );
+    expect(
+      layers.some(
+        (layer) =>
+          layer.kind === "banner" &&
+          String(layer.id ?? "").includes("waiter-gap")
+      )
+    ).toBe(true);
+
+    const beliefs = compileBeliefs({
+      state,
+      guestMessage: "da",
+      sessionLanguage: "sr",
+    });
+    const reflex = planTurnWithReflex({
+      config: state.config,
+      message: "da",
+      flowNodeId: "recap",
+      cartState: state.commerce.cart.ai,
+      structuredIntent: "CONFIRM",
+      handoffPaymentMethod: null,
+    });
+    const plan = decideTurnPlan({
+      message: "da",
+      beliefs,
+      reflex,
+      committedFacts: [],
+    });
+
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.reason).toBe("waiter.gap_blocks_confirm");
+  });
+
+  it("template clarify plan when beliefs carry open drink gap on order line", () => {
+    const state = baseState();
+    state.conversation.flowNodeId = "collect";
+    state.commerce.cart.ai.draft.items.push({
+      productId: "f1",
+      productName: "Beef Burger",
+      quantity: 1,
+      serveSize: null,
+      modifierIds: [],
+      notes: "",
+      lineTotal: 15,
+      menuSection: "food",
+    });
+
+    const beliefs = compileBeliefs({
+      state,
+      guestMessage: "moze jedno pivo i beef burger",
+      sessionLanguage: "sr",
+    });
+    const reflex = planTurnWithReflex({
+      config: state.config,
+      message: "moze jedno pivo i beef burger",
+      flowNodeId: "collect",
+      cartState: state.commerce.cart.ai,
+      structuredIntent: undefined,
+      handoffPaymentMethod: null,
+    });
+
+    const plan = decideTurnPlan({
+      message: "moze jedno pivo i beef burger",
+      beliefs,
+      reflex,
+      committedFacts: [],
+    });
+
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.reason).toBe("waiter.gap_clarify");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("substitution gap surfaces in enforceWaiterTell", () => {
+    const obligation = assessWaiterObligation({
+      guestMessage: "beef burger sa salatom umesto pomfrita",
+      cartLines: [
+        {
+          productId: "f1",
+          productName: "Beef Burger",
+          quantity: 1,
+          serveSize: null,
+          modifierIds: [],
+          notes: "",
+          lineTotal: 15,
+          menuSection: "food",
+        },
+      ],
+      pendingSlot: null,
+      language: "sr",
+      atRecap: true,
+    });
+
+    expect(obligation.gaps.some((g) => g.kind === "substitution_note")).toBe(
+      true
+    );
+
+    const message = enforceWaiterTell({
+      message: "Beef Burger — da li je to sve?",
+      obligation,
+      language: "sr",
+      draft: emptyOrderDraft(),
+    });
+
+    expect(message).toMatch(/pomfrit|kuhinj|Napomena/i);
   });
 
   it("enforceWaiterTell appends drink question to recap", () => {

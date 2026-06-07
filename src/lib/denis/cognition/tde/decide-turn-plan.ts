@@ -20,10 +20,21 @@ import {
   buildInterpretationTask,
   turnPlanFromInterpretationTask,
 } from "@/lib/denis/cognition/tde/build-interpretation-task";
+import { isGenericBeerSegment } from "@/lib/denis/cognition/conversation/guest-substitution";
+import { isOrderPlacementMessage } from "@/lib/ai/ordering/order-message-backfill";
 import {
   waiterGapTemplateKey,
   type WaiterGapKind,
 } from "@/lib/denis/cognition/waiter";
+import type { WaiterNextAction } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
+
+const TYPED_DRINK_RESOLVES_GAP =
+  /\b(pilsner|weizen|lager|radler|kisel\w*|cola|sprite|sok|juice|vino|wine|wein|espresso|latte)\b/i;
+
+const MULTI_ITEM_ORDER_SPLIT = /\s+(?:i|und|and)\s+|,\s*/i;
+
+const FOOD_ORDER_HINT =
+  /\b(burger|pizza|steak|salat|sendvič|sendvic|pomfrit|fries|schnitzel|krompir)\b/i;
 
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
@@ -344,8 +355,14 @@ function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
   );
   const atConfirmPressure = pressure === "confirm" || awaiting === "confirm";
   const intent = input.reflex.reflex?.intent;
+  const trimmed = input.message.trim();
 
-  if (intent === "CONFIRM" || intent === "DECLINE") return true;
+  if (intent === "CONFIRM" || intent === "DECLINE") {
+    if (!atConfirmPressure && isOrderPlacementMessage(trimmed)) {
+      return false;
+    }
+    return true;
+  }
   if (intent === "DONE" && atConfirmPressure) return true;
 
   if (!atConfirmPressure) return false;
@@ -356,6 +373,110 @@ function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
   }
 
   return true;
+}
+
+function guestResolvesActiveGap(input: DecideTurnPlanInput): boolean {
+  const primaryGap =
+    getBeliefValue<WaiterGapKind | null>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.waiterPrimaryGap
+    ) ?? null;
+  const msg = input.message.trim();
+  if (!msg || !primaryGap) return false;
+
+  if (primaryGap === "drink_unspecified") {
+    if (TYPED_DRINK_RESOLVES_GAP.test(msg)) return true;
+    if (isGenericBeerSegment(msg)) return false;
+    return false;
+  }
+
+  if (primaryGap === "serve_size") {
+    return /\b0[,.][35]\s*l?\b/i.test(msg);
+  }
+
+  return false;
+}
+
+function shouldTemplateWaiterGapClarify(input: DecideTurnPlanInput): boolean {
+  const msg = input.message.trim();
+  if (!msg) return false;
+  if (ORDER_STATUS_QUERY_PATTERN.test(msg)) return false;
+  if (MISSING_ORDER_COMPLAINT_PATTERN.test(msg)) return false;
+
+  const primaryGap =
+    getBeliefValue<WaiterGapKind | null>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.waiterPrimaryGap
+    ) ?? null;
+
+  if (primaryGap === "substitution_note") {
+    return isOrderPlacementMessage(msg);
+  }
+
+  if (primaryGap === "drink_unspecified") {
+    if (
+      MULTI_ITEM_ORDER_SPLIT.test(msg) &&
+      FOOD_ORDER_HINT.test(msg) &&
+      isOrderPlacementMessage(msg)
+    ) {
+      return true;
+    }
+
+    const pressure = getBeliefValue<CommercePressure>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.commercePressure
+    );
+    const awaiting = getBeliefValue<ConversationAwaiting>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.conversationAwaiting
+    );
+    if (
+      (pressure === "open" ||
+        pressure === "confirm" ||
+        awaiting === "confirm") &&
+      isOrderPlacementMessage(msg) &&
+      !isGenericBeerSegment(msg)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/** ADR-033 — template clarify for combo/substitution gaps (no LLM on iota pilot path). */
+function waiterGapsClarifyTurn(input: DecideTurnPlanInput): TurnPlan | null {
+  const gapCount =
+    getBeliefValue<number>(input.beliefs, CORE_BELIEF_KEYS.waiterGapCount) ?? 0;
+  if (gapCount <= 0) return null;
+
+  const nextAction =
+    getBeliefValue<WaiterNextAction>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.waiterNextAction
+    ) ?? null;
+  if (nextAction !== "clarify_gap") return null;
+
+  const intent = input.reflex.reflex?.intent;
+  const trimmed = input.message.trim();
+  if (intent === "DECLINE" || intent === "DONE") return null;
+  if (intent === "CONFIRM" && !isOrderPlacementMessage(trimmed)) return null;
+
+  if (guestResolvesActiveGap(input)) return null;
+  if (!shouldTemplateWaiterGapClarify(input)) return null;
+
+  const primaryGap =
+    getBeliefValue<WaiterGapKind | null>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.waiterPrimaryGap
+    ) ?? null;
+
+  return buildPlan("template_tell", {
+    requiresLlm: false,
+    suppressUpsell: resolveSuppressUpsell(input.beliefs),
+    reason: "waiter.gap_clarify",
+    templateKey: waiterGapTemplateKey(primaryGap),
+  });
 }
 
 /**
@@ -382,8 +503,18 @@ function waiterGapsBlockConfirm(input: DecideTurnPlanInput): TurnPlan | null {
   );
   const atConfirm = pressure === "confirm" || awaiting === "confirm";
   const intent = input.reflex.reflex?.intent;
+  const trimmed = input.message.trim();
 
   if (!atConfirm && intent !== "CONFIRM" && intent !== "DONE") return null;
+
+  // T0 may tag leading "može" on an order line as CONFIRM — not recap confirm.
+  if (
+    !atConfirm &&
+    (intent === "CONFIRM" || intent === "DONE") &&
+    isOrderPlacementMessage(trimmed)
+  ) {
+    return null;
+  }
 
   const primaryGap =
     getBeliefValue<WaiterGapKind | null>(
@@ -404,6 +535,9 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
 
   const gapBlockPlan = waiterGapsBlockConfirm(input);
   if (gapBlockPlan) return gapBlockPlan;
+
+  const gapClarifyPlan = waiterGapsClarifyTurn(input);
+  if (gapClarifyPlan) return gapClarifyPlan;
 
   // ADR-030 — at recap, LLM comprehends confirm in any language; T0 is optional fast-path only.
   if (shouldComprehendConfirmTurn(input)) {

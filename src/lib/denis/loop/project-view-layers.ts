@@ -210,7 +210,7 @@ export function buildViewLayers(
   const layers: SceneLayer[] = [];
 
   const waiterGap = state.conversation.obligation?.gaps[0];
-  if (waiterGap && meta.phase === "ordering") {
+  if (waiterGap) {
     layers.push({
       kind: "banner",
       id: `waiter-gap-${waiterGap.kind}`,
