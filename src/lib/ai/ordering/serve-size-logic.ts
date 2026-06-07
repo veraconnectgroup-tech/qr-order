@@ -128,11 +128,15 @@ export function inferServeSizeFromMessage(
 export function resolveImplicitServeSizeForProduct(
   product: AiCatalogProduct
 ): string | null {
-  if (!shouldAskForServeSize(product)) return null;
   const presets = product.serveSizePresets.map((preset) =>
     formatServeSizeOption(preset)
   );
   if (!presets.length) return null;
+
+  const isDrinkLine =
+    product.menuSection === "drinks" || productExpectsVolumeServeSize(product);
+  if (!isDrinkLine && !shouldAskForServeSize(product)) return null;
+
   const halfLiter = presets.find((preset) =>
     /^0[,.]5\s*l$/i.test(preset.trim())
   );
