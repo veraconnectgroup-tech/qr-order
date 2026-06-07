@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
 import {
+  appendOrderGapClarify,
   backfillDraftFromOrderMessage,
+  extractOrderMessageMeta,
   isOrderPlacementMessage,
   maybeBackfillOrderDraft,
   splitOrderMessageSegments,
@@ -201,5 +203,65 @@ describe("order message backfill", () => {
       language: "sr",
     });
     expect(result.submitOrder).toBe(false);
+  });
+
+  it("extractOrderMessageMeta flags generic pivo in compact line", () => {
+    const meta = extractOrderMessageMeta("moze jedno pivo beef burger sa");
+    expect(meta.needsDrinkClarify).toBe(true);
+  });
+
+  it("maybeBackfill keeps drink clarify meta when cart already has items", () => {
+    const catalog = mockCatalog();
+    const draft = {
+      ...emptyOrderDraft(),
+      items: [
+        {
+          productId: "food-1",
+          productName: "Beef Burger",
+          quantity: 1,
+          modifierIds: [],
+          serveSize: null,
+          notes: "",
+          lineTotal: 15,
+          menuSection: "food" as const,
+          productTaxRate: 19,
+        },
+      ],
+    };
+    const result = maybeBackfillOrderDraft(
+      draft,
+      catalog,
+      "moze jedno pivo beef burger sa",
+      []
+    );
+    expect(result.meta.needsDrinkClarify).toBe(true);
+    expect(result.cartActions).toHaveLength(0);
+  });
+
+  it("appendOrderGapClarify adds drink question to recap", () => {
+    const draft = {
+      ...emptyOrderDraft(),
+      items: [
+        {
+          productId: "food-1",
+          productName: "Beef Burger",
+          quantity: 1,
+          modifierIds: [],
+          serveSize: null,
+          notes: "",
+          lineTotal: 15,
+          menuSection: "food" as const,
+          productTaxRate: 19,
+        },
+      ],
+    };
+    const message = appendOrderGapClarify(
+      "Da li je to sve?\nBeef Burger",
+      "sr",
+      draft,
+      { substitution: null, needsDrinkClarify: true }
+    );
+    expect(message).toContain("Da li je to sve");
+    expect(message).toMatch(/Pilsner|Weizen/i);
   });
 });

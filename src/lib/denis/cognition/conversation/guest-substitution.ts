@@ -60,6 +60,17 @@ export function substitutionReplacesFries(sub: GuestSubstitutionRequest): boolea
 }
 
 /** Guest-facing plan when auto-modifiers are uncertain. */
+export function drinkClarifySnippet(language: string): string {
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "de") {
+    return "Zum Getränk: Welches Bier möchten Sie — z. B. Pilsner oder Weizen, 0.3L oder 0.5L?";
+  }
+  if (lang === "en") {
+    return "For the drink — which type would you like, e.g. Pilsner or Weizen, 0.3L or 0.5L?";
+  }
+  return "Za piće — koji tip želite? Na primer Pilsner ili Weizen, 0.3L ili 0.5L.";
+}
+
 export function buildSubstitutionNegotiationMessage(
   language: string,
   input: {
@@ -90,7 +101,7 @@ export function buildSubstitutionNegotiationMessage(
     }
 
     if (input.needsDrinkClarify) {
-      parts.push("Za piće — koji tip želite? Na primer Pilsner ili Weizen, 0.3L ili 0.5L.");
+      parts.push(drinkClarifySnippet("sr"));
     }
 
     if (!parts.length) {
@@ -110,7 +121,7 @@ export function buildSubstitutionNegotiationMessage(
       parts.push("Soll ich den Service rufen, damit wir das kurz klären?");
     }
     if (input.needsDrinkClarify) {
-      parts.push("Zum Getränk: Welches Bier möchten Sie — z. B. Pilsner oder Weizen?");
+      parts.push(drinkClarifySnippet("de"));
     }
     return (
       parts.join(" ") ||
@@ -127,7 +138,7 @@ export function buildSubstitutionNegotiationMessage(
     parts.push("I can call a waiter now to double-check if you'd like.");
   }
   if (input.needsDrinkClarify) {
-    parts.push("For the drink — which type would you like, e.g. Pilsner or Weizen?");
+    parts.push(drinkClarifySnippet("en"));
   }
   return (
     parts.join(" ") ||

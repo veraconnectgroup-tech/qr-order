@@ -16,6 +16,7 @@ import { isGenericCategorySegment } from "@/lib/ai/ordering/category-order-logic
 import { isGuestFinalConfirm } from "@/lib/ai/ordering/order-flow";
 import {
   buildSubstitutionNegotiationMessage,
+  drinkClarifySnippet,
   isGenericBeerSegment,
   parseGuestSubstitution,
   substitutionReplacesFries,
@@ -28,6 +29,12 @@ const ORDER_PREFIX =
 const MULTI_ITEM_SPLIT = /\s+(?:i|und|and)\s+|,\s*/i;
 
 const FRIES_PATTERN = /pomfrit|pones|pommes|fries|kartoffel/i;
+
+const TYPED_DRINK_PATTERN =
+  /\b(pilsner|weizen|lager|radler|kisel\w*|cola|sprite|sok|juice|vino|wine|wein|espresso|latte)\b/i;
+
+const GENERIC_BEER_INLINE =
+  /\b(?:jedn[oa]\s+)?(?:pivo|piva|beer|bier)\b/i;
 
 function normalizeSegment(segment: string) {
   return segment.trim().replace(/\s+/g, " ");
@@ -195,6 +202,85 @@ function emptyBackfillMeta(): OrderBackfillMeta {
   return { substitution: null, needsDrinkClarify: false };
 }
 
+function mergeOrderBackfillMeta(
+  a: OrderBackfillMeta,
+  b: OrderBackfillMeta
+): OrderBackfillMeta {
+  return {
+    substitution: a.substitution ?? b.substitution,
+    needsDrinkClarify: a.needsDrinkClarify || b.needsDrinkClarify,
+  };
+}
+
+function messageNeedsDrinkClarify(message: string, segments: string[]): boolean {
+  if (segments.some((segment) => isGenericBeerSegment(segment))) {
+    return true;
+  }
+  const text = message.trim();
+  if (!text || TYPED_DRINK_PATTERN.test(text)) return false;
+  return GENERIC_BEER_INLINE.test(text);
+}
+
+/** Parse gaps from guest line even when cart already has items (LLM path). */
+export function extractOrderMessageMeta(message: string): OrderBackfillMeta {
+  const text = message.trim();
+  if (!text || !isOrderPlacementMessage(text)) {
+    return emptyBackfillMeta();
+  }
+
+  const segments = splitOrderMessageSegments(text);
+  let substitution: GuestSubstitutionRequest | null = null;
+
+  for (const segment of segments) {
+    const parsed = parseGuestSubstitution(segment);
+    if (parsed && !substitution) {
+      substitution = parsed;
+    }
+  }
+
+  return {
+    substitution,
+    needsDrinkClarify: messageNeedsDrinkClarify(text, segments),
+  };
+}
+
+export function draftHasDrinkInCart(draft: AiOrderDraft): boolean {
+  return draft.items.some(
+    (line) =>
+      line.menuSection === "drinks" ||
+      TYPED_DRINK_PATTERN.test(line.productName) ||
+      /\b(pivo|beer|bier)\b/i.test(line.productName)
+  );
+}
+
+/** Append missing drink/substitution clarify to recap — Denis never stays silent on gaps. */
+export function appendOrderGapClarify(
+  baseMessage: string,
+  language: string,
+  draft: AiOrderDraft,
+  meta: OrderBackfillMeta
+): string {
+  const extras: string[] = [];
+
+  if (meta.needsDrinkClarify && !draftHasDrinkInCart(draft)) {
+    extras.push(drinkClarifySnippet(language));
+  }
+
+  if (
+    meta.substitution &&
+    !draft.items.some((line) =>
+      line.notes?.toLowerCase().includes(meta.substitution!.insteadOf.toLowerCase())
+    )
+  ) {
+    extras.push(
+      `Napomena: ${meta.substitution.requested} umesto ${meta.substitution.insteadOf} — proveravam sa kuhinjom.`
+    );
+  }
+
+  if (!extras.length) return baseMessage;
+  return `${baseMessage.trim()}\n\n${extras.join("\n")}`;
+}
+
 export function findLastOrderPlacementUserMessage(
   messages: ChatHistoryMessage[]
 ): string | null {
@@ -235,12 +321,13 @@ export function backfillDraftFromOrderMessage(
   cartActions: ValidatedCartAction[];
   meta: OrderBackfillMeta;
 } {
+  const metaFromMessage = extractOrderMessageMeta(message);
   if (draft.items.length > 0 || draft.pending) {
-    return { draft, cartActions: [], meta: emptyBackfillMeta() };
+    return { draft, cartActions: [], meta: metaFromMessage };
   }
   const requirePlacementPattern = options?.requirePlacementPattern ?? true;
   if (requirePlacementPattern && !isOrderPlacementMessage(message)) {
-    return { draft, cartActions: [], meta: emptyBackfillMeta() };
+    return { draft, cartActions: [], meta: metaFromMessage };
   }
 
   const segments = splitOrderMessageSegments(message);
@@ -295,10 +382,6 @@ export function maybeBackfillOrderDraft(
   cartActions: ValidatedCartAction[];
   meta: OrderBackfillMeta;
 } {
-  if (draft.items.length > 0 || draft.pending) {
-    return { draft, cartActions: [], meta: emptyBackfillMeta() };
-  }
-
   const confirming = isGuestFinalConfirm(userMessage);
   const source = confirming
     ? (findLastOrderPlacementUserMessage(priorMessages) ??
@@ -308,12 +391,21 @@ export function maybeBackfillOrderDraft(
       : null;
 
   if (!source) {
-    return { draft, cartActions: [], meta: emptyBackfillMeta() };
+    return {
+      draft,
+      cartActions: [],
+      meta: extractOrderMessageMeta(userMessage),
+    };
   }
 
-  return backfillDraftFromOrderMessage(draft, catalog, source, {
+  const backfill = backfillDraftFromOrderMessage(draft, catalog, source, {
     requirePlacementPattern: !confirming,
   });
+
+  return {
+    ...backfill,
+    meta: mergeOrderBackfillMeta(backfill.meta, extractOrderMessageMeta(source)),
+  };
 }
 
 export function buildBackfillNegotiationMessage(

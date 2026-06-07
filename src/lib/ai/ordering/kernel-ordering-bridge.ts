@@ -5,7 +5,9 @@ import {
   sanitizeFalseOrderClaimMessage,
 } from "@/lib/ai/ordering/order-flow";
 import {
+  appendOrderGapClarify,
   buildBackfillNegotiationMessage,
+  extractOrderMessageMeta,
   maybeBackfillOrderDraft,
 } from "@/lib/ai/ordering/order-message-backfill";
 import { processOrderingTurn } from "@/lib/ai/ordering/ordering-turn";
@@ -59,10 +61,19 @@ export function applyPostLlmOrdering(
   const cartActionsThisTurn =
     orderingResult.cartActions.length + postOrderBackfill.cartActions.length;
 
+  const orderGaps = {
+    substitution:
+      postOrderBackfill.meta.substitution ??
+      extractOrderMessageMeta(input.userMessage).substitution,
+    needsDrinkClarify:
+      postOrderBackfill.meta.needsDrinkClarify ||
+      extractOrderMessageMeta(input.userMessage).needsDrinkClarify,
+  };
+
   const negotiationMessage = buildBackfillNegotiationMessage(
     input.language,
     workingDraft,
-    postOrderBackfill.meta
+    orderGaps
   );
 
   const flowResult = finalizeOrderFlow({
@@ -75,11 +86,26 @@ export function applyPostLlmOrdering(
   });
   workingDraft = flowResult.draft;
 
-  let assistantMessage =
-    negotiationMessage &&
-    (cartActionsThisTurn > 0 || postOrderBackfill.meta.needsDrinkClarify)
-      ? negotiationMessage
-      : flowResult.message;
+  let assistantMessage = flowResult.message;
+  if (orderGaps.needsDrinkClarify || orderGaps.substitution) {
+    if (flowResult.intent === "confirm") {
+      assistantMessage = appendOrderGapClarify(
+        flowResult.message,
+        input.language,
+        workingDraft,
+        orderGaps
+      );
+    } else if (negotiationMessage && cartActionsThisTurn > 0) {
+      assistantMessage = negotiationMessage;
+    } else {
+      assistantMessage = appendOrderGapClarify(
+        flowResult.message,
+        input.language,
+        workingDraft,
+        orderGaps
+      );
+    }
+  }
   let submitOrder = flowResult.submitOrder;
 
   assistantMessage = sanitizeFalseOrderClaimMessage({

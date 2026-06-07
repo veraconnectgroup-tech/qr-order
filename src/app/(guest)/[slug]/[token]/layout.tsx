@@ -7,6 +7,7 @@ import { GuestSwCacheReset } from "@/components/guest/guest-sw-cache-reset";
 import { createServerClient } from "@/lib/supabase/server";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+import { SKYLINE_PILOT_LOCATION_ID } from "@/lib/denis/config/pilot-wiring";
 import { guestPageMetadata } from "@/lib/seo/guest-metadata";
 import type { MenuLocale } from "@/lib/i18n/translations";
 
@@ -116,6 +117,10 @@ export default async function GuestTokenLayout({
     } catch {
       // Offline / partial schema — keep defaults
     }
+  }
+
+  if (locationId === SKYLINE_PILOT_LOCATION_ID) {
+    menuLocale = "sr";
   }
 
   return (

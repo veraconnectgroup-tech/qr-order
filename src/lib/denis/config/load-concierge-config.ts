@@ -3,7 +3,12 @@ import {
   getCachedConciergeConfig,
   setCachedConciergeConfig,
 } from "@/lib/denis/config/config-cache";
+import { mergePartialConciergeConfig } from "@/lib/denis/config/merge-concierge-config";
 import { resolveConciergeConfig } from "@/lib/denis/config/merge-concierge-config";
+import {
+  SKYLINE_PILOT_LOCATION_ID,
+  TABLE_OS_PILOT_CONFIG_PATCH,
+} from "@/lib/denis/config/pilot-wiring";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -50,9 +55,16 @@ export async function loadConciergeConfigForLocation(
   const orgPartial = parsePartialConciergeConfig(
     row.organization?.ai_concierge_config ?? null
   );
-  const locationPartial = parsePartialConciergeConfig(
+  let locationPartial = parsePartialConciergeConfig(
     row.ai_concierge_config ?? null
   );
+
+  if (locationId === SKYLINE_PILOT_LOCATION_ID) {
+    locationPartial = mergePartialConciergeConfig(
+      locationPartial,
+      TABLE_OS_PILOT_CONFIG_PATCH
+    );
+  }
 
   if (row.ai_concierge_config && !locationPartial) {
     logger.warn("Invalid location ai_concierge_config — ignoring override", {
