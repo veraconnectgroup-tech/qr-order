@@ -261,12 +261,12 @@ describe("ADR-040 UPDS eval scenarios", () => {
     ).toBe(false);
   });
 
-  it("scheduler_tick_no_direct_emit — process-scheduler-tick uses emitProactiveNudge only", () => {
+  it("scheduler_tick_no_direct_emit — process-scheduler-tick routes via enqueueOrRunProactiveSessionTick (ADR-041)", () => {
     const source = readFileSync(
       join(REPO_ROOT, "src/lib/denis/runtime/process-scheduler-tick.ts"),
       "utf8"
     );
-    expect(source).toContain("emitProactiveNudge");
+    expect(source).toContain("enqueueOrRunProactiveSessionTick");
     expect(source).not.toMatch(
       /appendDenisTimelineEvent\([\s\S]*?eventType:\s*["']proactive\.emitted["']/
     );

@@ -43,6 +43,19 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     staffWaiterRequest: true,
     staffAllergy: true,
   },
+  intervention: {
+    enabled: true,
+    mode: "shadow",
+    manifestVersion: "ijs-v1",
+  },
+  rhythm: {
+    enabled: true,
+    mode: "shadow",
+    ops: {
+      rushAlerts: true,
+      staffingHints: true,
+    },
+  },
 };
 
 /** Demo Skyline location id (seed 00033). */
