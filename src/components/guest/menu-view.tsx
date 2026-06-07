@@ -36,7 +36,7 @@ import {
   isCategoryAvailable,
 } from "@/lib/menu/schedule";
 import { productMatchesSearch } from "@/lib/i18n/menu-locale";
-import { isDemoGuestRoute } from "@/lib/demo-guest";
+import { getDemoGuestSession, isDemoGuestRoute } from "@/lib/demo-guest";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import {
   buildDrinkPairingPrompt,
@@ -51,7 +51,10 @@ import {
   resolveGuestAiContextToken,
 } from "@/lib/ai/guest-ai-token";
 import { trackAiConversion } from "@/lib/ai/guest-session-storage";
-import { ensureTableSession } from "@/lib/guest/ensure-table-session";
+import {
+  ensureTableSession,
+  syncTableSessionStores,
+} from "@/lib/guest/ensure-table-session";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
@@ -332,6 +335,12 @@ export function MenuView({
     }
     void ensureTableSession(slug, token, tableId);
   }, [token, slug, tableId, locationId, guestTableId, sessionToken, clearGuestSession]);
+
+  useEffect(() => {
+    if (!aiConciergeEnabled || !isDemoGuestRoute(slug, token)) return;
+    const demo = getDemoGuestSession();
+    syncTableSessionStores(slug, token, demo, demo.tableId);
+  }, [aiConciergeEnabled, slug, token]);
 
   useEffect(() => {
     if (restoredScroll.current) return;

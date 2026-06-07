@@ -401,7 +401,7 @@ export function GuestDenisLayer({
         onSaveAllergies={menuChat?.onSaveAllergies}
       />
 
-      {scene && !aiChatOpen ? (
+      {!aiChatOpen ? (
         <DenisGuestDock
           scene={scene}
           currency={currency}
@@ -409,9 +409,9 @@ export function GuestDenisLayer({
           cartBarVisible={cartBarVisible}
           tableName={tableName}
           venueName={venueName}
-          loading={Boolean(sessionToken) && sceneLoading && !scene}
+          loading={sceneLoading && !scene}
           headline={view?.chrome.headline}
-          subtitle={dockSubtitle ?? scene.chrome.situation?.headline ?? undefined}
+          subtitle={dockSubtitle ?? scene?.chrome.situation?.headline ?? undefined}
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}
           onInlineAdd={handleSceneInlineAdd}

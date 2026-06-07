@@ -1,5 +1,9 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import {
+  getDemoGuestDenisView,
+  isDemoGuestDenisSession,
+} from "@/lib/demo-guest";
 import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-shared-ai-session";
 import { loadTableSessionView } from "@/lib/denis/loop/load-table-session-view";
 import type { MenuLocale } from "@/lib/i18n/translations";
@@ -37,6 +41,10 @@ export const GET = withErrorHandler("denis-view-get", async (req, _ctx) => {
   const tableParsed = zTableToken().safeParse(tableToken);
   if (!tableParsed.success) {
     return apiError("Invalid table.", 400);
+  }
+
+  if (isDemoGuestDenisSession(tableParsed.data, sessionParsed.data)) {
+    return apiSuccess(getDemoGuestDenisView());
   }
 
   const admin = createAdminClient();

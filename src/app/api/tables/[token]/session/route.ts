@@ -35,7 +35,15 @@ export const POST = withErrorHandler(
     }
 
     if (isDemoGuestTableToken(tokenParsed.data)) {
-      return apiSuccess(getDemoGuestSession());
+      const demo = getDemoGuestSession();
+      return apiSuccess({
+        sessionStatus: "active" as const,
+        sessionId: demo.sessionId,
+        sessionToken: demo.sessionToken,
+        tableId: demo.tableId,
+        tableName: demo.tableName,
+        locationId: demo.locationId,
+      });
     }
 
     const admin = createAdminClient();
