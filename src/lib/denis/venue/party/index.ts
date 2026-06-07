@@ -7,6 +7,7 @@ export type {
 export {
   resolveCanonicalChatAiSessionId,
   resolveDraftAiSessionId,
+  resolveGuestTableSessionLookupToken,
   resolveSharedAiSessionId,
 } from "@/lib/denis/venue/party/resolve-shared-session";
 export {

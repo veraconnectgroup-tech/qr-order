@@ -1,5 +1,13 @@
 import type { PartyMode } from "@/lib/denis/venue/party/types";
 
+/** `table_sessions.session_token` lookup — not the QR aiContext token when both are sent. */
+export function resolveGuestTableSessionLookupToken(input: {
+  tableSessionToken?: string;
+  sessionToken: string;
+}): string {
+  return input.tableSessionToken?.trim() || input.sessionToken;
+}
+
 /** Resolve which ai_session holds the shared draft (M12). */
 export function resolveSharedAiSessionId(input: {
   partyMode: PartyMode;

@@ -34,6 +34,7 @@ import {
   registerPartyDevice,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
+  resolveGuestTableSessionLookupToken,
 } from "@/lib/denis/venue/party";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import type { AiGuestOrder } from "@/lib/ai/order-context";
@@ -103,7 +104,10 @@ export async function runDenisSense(
   const tableSessionId = await resolveActiveTableSessionId(admin, {
     tableId: input.tableId,
     locationId: input.locationId,
-    sessionToken: input.sessionToken,
+    sessionToken: resolveGuestTableSessionLookupToken({
+      tableSessionToken: input.tableSessionToken,
+      sessionToken: input.sessionToken,
+    }),
   });
 
   let party = null;

@@ -59,7 +59,7 @@ export async function ensureSharedAiSessionForTableSession(
       org_id: input.orgId,
       location_id: input.locationId,
       table_id: input.tableId,
-      session_token: session.session_token,
+      session_token: input.tableToken,
       language: input.language ?? "de",
       guest_preferences: { allergies: [], mood: "" },
       messages: [],

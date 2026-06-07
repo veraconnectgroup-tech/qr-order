@@ -12,6 +12,7 @@ import {
   registerPartyDevice,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
+  resolveGuestTableSessionLookupToken,
 } from "@/lib/denis/venue/party";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -22,10 +23,12 @@ export async function buildDenisTurnContext(
 ): Promise<DenisTurnContext> {
   const config = await loadConciergeConfigForLocation(input.locationId);
 
+  const guestTableSessionToken = resolveGuestTableSessionLookupToken(input);
+
   const tableSessionId = await resolveActiveTableSessionId(admin, {
     tableId: input.tableId,
     locationId: input.locationId,
-    sessionToken: input.sessionToken,
+    sessionToken: guestTableSessionToken,
   });
 
   if (tableSessionId && config.enabled) {

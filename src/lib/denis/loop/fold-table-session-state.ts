@@ -193,7 +193,8 @@ export async function foldTableSessionState(
     feedback_submitted?: boolean;
   } | null;
   const denisEnabled = Boolean(tableSession?.location.ai_concierge_enabled);
-  const denisActive = denisEnabled && aiSessions.length > 0;
+  const denisActive =
+    denisEnabled && (Boolean(draftAiSessionId) || aiSessions.length > 0);
 
   const hasCartActivity =
     aiCartState.draft.items.length > 0 ||

@@ -121,7 +121,17 @@ import type {
   TurnEnvelope,
 } from "@/lib/denis/platform/timeline-types";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveActiveTableSessionId } from "@/lib/denis/venue/party";
+import {
+  resolveActiveTableSessionId,
+  resolveGuestTableSessionLookupToken,
+} from "@/lib/denis/venue/party";
+import {
+  isOrderPlacementMessage,
+  maybeBackfillOrderDraft,
+} from "@/lib/ai/ordering/order-message-backfill";
+import { persistKernelOrderingDraft } from "@/lib/denis/runtime/act/apply-kernel-ordering";
+import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
 import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
 import {
@@ -139,9 +149,80 @@ import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { MenuSection } from "@/lib/menu-section";
 import type { OrderFact } from "@/lib/denis/loop/types";
+import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { ActHandoffOutcome } from "@/lib/denis/runtime/act/resolve-act-handoff-outcome";
 import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
+
+async function maybeBackfillPlacementCart(input: {
+  admin: SupabaseClient;
+  timelineAiSessionId: string;
+  locationId: string;
+  userMessage: string;
+  cartDraft: DenisCartDraft;
+  timeline: DenisTimelineRow[] | undefined;
+}): Promise<{
+  cartDraft: DenisCartDraft;
+  cartActions: Array<{ productName: string; quantity?: number }>;
+}> {
+  if (input.cartDraft.items.length > 0) {
+    return { cartDraft: input.cartDraft, cartActions: [] };
+  }
+  if (!isOrderPlacementMessage(input.userMessage)) {
+    return { cartDraft: input.cartDraft, cartActions: [] };
+  }
+
+  try {
+    const menuPayload = await getCachedMenuForLocation(input.locationId, {
+      useEnglish: false,
+    });
+    const catalog = {
+      menuText: menuPayload.menuText,
+      productMap: menuPayload.productMap,
+      catalog: menuPayload.catalog,
+      currency: menuPayload.currency,
+      cachedAt: menuPayload.cachedAt,
+    };
+    if (!menuPayload.catalog || Object.keys(menuPayload.catalog).length === 0) {
+      return { cartDraft: input.cartDraft, cartActions: [] };
+    }
+
+    const priorMessages = input.timeline
+      ? timelineToStoredMessages(input.timeline).map((entry) => ({
+          role: entry.role,
+          content: entry.content,
+        }))
+      : [];
+
+    const backfill = maybeBackfillOrderDraft(
+      cartDraftToAiOrderDraft(input.cartDraft),
+      catalog,
+      input.userMessage,
+      priorMessages
+    );
+
+    if (backfill.draft.items.length === 0) {
+      return { cartDraft: input.cartDraft, cartActions: [] };
+    }
+
+    const persisted = await persistKernelOrderingDraft(
+      input.admin,
+      input.timelineAiSessionId,
+      backfill.draft
+    );
+    if (!persisted.ok) {
+      return { cartDraft: input.cartDraft, cartActions: [] };
+    }
+
+    return {
+      cartDraft:
+        aiOrderDraftToDenisCartState(backfill.draft).draft ?? input.cartDraft,
+      cartActions: backfill.cartActions,
+    };
+  } catch {
+    return { cartDraft: input.cartDraft, cartActions: [] };
+  }
+}
 
 function cartDraftToAiOrderDraft(draft: DenisCartDraft): AiOrderDraft {
   const base = initDraftFromStorage(null);
@@ -830,6 +911,27 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
   }
 
+  if (timelineAiSessionId && !pendingSlotActApplied) {
+    const backfill = await maybeBackfillPlacementCart({
+      admin,
+      timelineAiSessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      cartDraft: cartDraftForAct,
+      timeline: ctx.tableSessionState?.timeline,
+    });
+
+    if (backfill.cartActions.length > 0) {
+      cartDraftForAct = backfill.cartDraft;
+      data.cartActions = [
+        ...(data.cartActions ?? []),
+        ...backfill.cartActions,
+      ];
+    } else if (backfill.cartDraft.items.length > cartDraftForAct.items.length) {
+      cartDraftForAct = backfill.cartDraft;
+    }
+  }
+
   const waiterObligation = ctx.tableSessionState
     ? mergeTableSessionObligation({
         state: ctx.tableSessionState,
@@ -1247,7 +1349,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const tableSessionId = await resolveActiveTableSessionId(admin, {
     tableId: parsed.data.tableId,
     locationId: parsed.data.locationId,
-    sessionToken: parsed.data.sessionToken,
+    sessionToken: resolveGuestTableSessionLookupToken(parsed.data),
   });
 
   if (tableSessionId) {

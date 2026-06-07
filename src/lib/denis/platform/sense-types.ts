@@ -34,6 +34,8 @@ export const denisSenseRequestSchema = z.object({
   locationId: zUuid(),
   tableId: zUuid(),
   sessionToken: zSessionToken(),
+  /** Guest table session token when `sessionToken` is the QR aiContext token. */
+  tableSessionToken: zSessionToken().optional(),
   aiSessionId: zUuid().optional(),
   channel: denisSenseChannelSchema,
   payload: z.record(z.string(), z.unknown()).optional().default({}),

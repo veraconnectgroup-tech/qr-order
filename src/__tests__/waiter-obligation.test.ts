@@ -19,6 +19,7 @@ import {
   mergeTableSessionObligation,
   obligationForConversationState,
 } from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
+import { resolveGuestTableSessionLookupToken } from "@/lib/denis/venue/party";
 
 function baseState(): TableSessionState {
   return {
@@ -372,5 +373,24 @@ describe("waiter obligation (ADR-032)", () => {
     });
 
     expect(message).toMatch(/Pilsner|Weizen/i);
+  });
+});
+
+describe("resolveGuestTableSessionLookupToken", () => {
+  it("prefers tableSessionToken over QR aiContext sessionToken", () => {
+    expect(
+      resolveGuestTableSessionLookupToken({
+        tableSessionToken: "guest-session-abc",
+        sessionToken: "demo-table-1",
+      })
+    ).toBe("guest-session-abc");
+  });
+
+  it("falls back to sessionToken when tableSessionToken is absent", () => {
+    expect(
+      resolveGuestTableSessionLookupToken({
+        sessionToken: "guest-only-token",
+      })
+    ).toBe("guest-only-token");
   });
 });

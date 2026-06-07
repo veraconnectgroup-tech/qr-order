@@ -6,6 +6,7 @@ import type { DenisSignalRequest } from "@/lib/denis/ingress/signal-types";
 import type { NormalizedDenisSignal } from "@/lib/denis/ingress/signal-types";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
+import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-shared-ai-session";
 import { loadTableSessionView } from "@/lib/denis/loop/load-table-session-view";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { executeActPhase } from "@/lib/denis/runtime/act/execute-act-phase";
@@ -80,6 +81,35 @@ function buildTurnBody(
     includeOrderContext:
       request.type === "message" ? request.includeOrderContext : undefined,
   };
+}
+
+async function resolveSignalSharedAiSessionId(
+  admin: SupabaseClient,
+  ctx: ResolvedSignalContext,
+  language: string
+): Promise<string | undefined> {
+  if (!ctx.tableSessionId) return undefined;
+
+  const { data: venueRow } = await admin
+    .from("locations")
+    .select("organization:organizations!inner(id)")
+    .eq("id", ctx.locationId)
+    .maybeSingle();
+
+  const orgId = (venueRow as { organization?: { id?: string } } | null)
+    ?.organization?.id;
+  if (!orgId) return undefined;
+
+  const sharedId = await ensureSharedAiSessionForTableSession(admin, {
+    sessionId: ctx.tableSessionId,
+    locationId: ctx.locationId,
+    tableId: ctx.tableId,
+    tableToken: ctx.tableToken,
+    orgId,
+    language,
+  });
+
+  return sharedId ?? undefined;
 }
 
 async function maybeLoadView(
@@ -231,6 +261,7 @@ export async function executeDenisSignalCore(rawBody: unknown): Promise<Response
       locationId: ctx.locationId,
       tableId: ctx.tableId,
       sessionToken: ctx.aiContextToken,
+      tableSessionToken: ctx.guestSessionToken ?? undefined,
       aiSessionId: request.aiSessionId,
       channel: signal.senseChannel!,
       payload: request.payload,
@@ -263,9 +294,19 @@ export async function executeDenisSignalCore(rawBody: unknown): Promise<Response
     });
   }
 
+  const sharedAiSessionId = await resolveSignalSharedAiSessionId(
+    admin,
+    ctx,
+    request.language ?? "de"
+  );
+  const turnRequest = {
+    ...request,
+    aiSessionId: request.aiSessionId ?? sharedAiSessionId,
+  };
+
   const response = await runDenisTurn({
     channel: signal.channel,
-    rawBody: buildTurnBody(request, ctx, signal),
+    rawBody: buildTurnBody(turnRequest, ctx, signal),
   });
 
   if (response.status === 200 && ctx.tableSessionId) {
