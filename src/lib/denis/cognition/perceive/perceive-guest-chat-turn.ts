@@ -249,24 +249,38 @@ export async function perceiveGuestChatTurn(
 
   const conciergeConfig = await loadConciergeConfigForLocation(input.locationId);
 
+  const skipLlmEarly =
+    opts.skipLlm === true ||
+    Boolean(opts.turnPlan && !opts.turnPlan.requiresLlm);
+
   const menuLanguageHint = resolveAiPromptLanguage(input.language);
   const useEnglishHint = menuLanguageHint === "en";
 
   let menuPayload;
-  try {
-    menuPayload = await getCachedMenuForLocation(input.locationId, {
-      useEnglish: useEnglishHint,
-    });
-  } catch (error) {
-    logger.error("AI menu load failed", {
-      locationId: input.locationId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return apiError("Menu could not be loaded.", 500);
-  }
+  if (skipLlmEarly) {
+    menuPayload = {
+      menuText: ".",
+      catalog: {},
+      productMap: {},
+      currency: "EUR",
+      cachedAt: new Date().toISOString(),
+    };
+  } else {
+    try {
+      menuPayload = await getCachedMenuForLocation(input.locationId, {
+        useEnglish: useEnglishHint,
+      });
+    } catch (error) {
+      logger.error("AI menu load failed", {
+        locationId: input.locationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return apiError("Menu could not be loaded.", 500);
+    }
 
-  if (!menuPayload.menuText) {
-    return apiError("Menu is empty.", 404);
+    if (!menuPayload.menuText) {
+      return apiError("Menu is empty.", 404);
+    }
   }
 
   let sessionRow: AiSessionRow | null = null;
@@ -399,31 +413,32 @@ export async function perceiveGuestChatTurn(
 
   const allowOrdering = input.allowOrdering !== false;
   const orderDraft = sessionRow?.order_draft ?? initDraftFromStorage(null);
-  const browseMatches = searchCatalogProducts(
-    menuPayload.catalog,
-    input.message
-  );
 
-  const systemPrompt = buildSystemPrompt({
-    orgName,
-    menuText: menuPayload.menuText,
-    language,
-    venueMenuLocale,
-    guestMessage: input.message,
-    guestPrefs,
-    orderContext,
-    browsingContext: input.browsingContext ?? null,
-    orderDraftContext: formatDraftForPrompt(orderDraft),
-    allowOrdering,
-    playbookContext:
-      opts.evidence?.playbookBlock ??
-      (await getPlaybookPromptBlock(orgId, input.locationId)),
-    evidenceBlock: opts.evidence?.evidenceBlock ?? null,
-    omitFullMenu: opts.evidence?.omitFullMenu ?? false,
-  });
+  const skipLlm = skipLlmEarly;
 
-  const skipLlm =
-    opts.skipLlm === true || (opts.turnPlan && !opts.turnPlan.requiresLlm);
+  const browseMatches = skipLlm
+    ? []
+    : searchCatalogProducts(menuPayload.catalog, input.message);
+
+  const systemPrompt = skipLlm
+    ? ""
+    : buildSystemPrompt({
+        orgName,
+        menuText: menuPayload.menuText,
+        language,
+        venueMenuLocale,
+        guestMessage: input.message,
+        guestPrefs,
+        orderContext,
+        browsingContext: input.browsingContext ?? null,
+        orderDraftContext: formatDraftForPrompt(orderDraft),
+        allowOrdering,
+        playbookContext:
+          opts.evidence?.playbookBlock ??
+          (await getPlaybookPromptBlock(orgId, input.locationId)),
+        evidenceBlock: opts.evidence?.evidenceBlock ?? null,
+        omitFullMenu: opts.evidence?.omitFullMenu ?? false,
+      });
 
   let openAiResult: OpenAiCallResult;
   let resolved: Awaited<ReturnType<typeof resolveStructuredResponse>>;

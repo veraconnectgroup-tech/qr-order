@@ -213,6 +213,11 @@ export async function waitForSignalResult(
   return null;
 }
 
+/** Heuristic class for obligation/template pilot turns (AGENT-02). */
+export function isGuestTemplateSignal(rawBody: unknown): boolean {
+  return resolveGuestSignalWaitMs(rawBody) === GUEST_SIGNAL_TEMPLATE_WAIT_MS;
+}
+
 export function resolveGuestSignalWaitMs(rawBody: unknown): number {
   if (!rawBody || typeof rawBody !== "object") return HTTP_WAIT_MS;
   const text =
@@ -224,7 +229,10 @@ export function resolveGuestSignalWaitMs(rawBody: unknown): number {
     text === "da" ||
     text.includes("pivo") ||
     text.includes("pilsner") ||
-    text.includes("burger")
+    text.includes("burger") ||
+    text.includes("salat") ||
+    text.includes("umesto") ||
+    text.includes("zamena")
   ) {
     return GUEST_SIGNAL_TEMPLATE_WAIT_MS;
   }

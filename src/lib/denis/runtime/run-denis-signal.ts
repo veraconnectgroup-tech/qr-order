@@ -1,9 +1,8 @@
 import { apiError } from "@/lib/api-response";
 import {
   enqueueGuestSignalAndWait,
-  GUEST_SIGNAL_TEMPLATE_WAIT_MS,
+  isGuestTemplateSignal,
   isTableSessionActorInfrastructureReady,
-  resolveGuestSignalWaitMs,
   signalResultToResponse,
 } from "@/lib/denis/actor/table-session-actor";
 import { logger } from "@/lib/logger";
@@ -55,6 +54,11 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
       ? { ...(rawBody as object), signalId }
       : rawBody;
 
+  // Template obligation turns — sync path (no Redis queue / 15s actor SLA).
+  if (isGuestTemplateSignal(bodyWithId)) {
+    return executeDenisSignalCore(bodyWithId);
+  }
+
   const result = await enqueueGuestSignalAndWait(
     tableSessionId,
     signalId,
@@ -62,16 +66,10 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
   );
 
   if (!result) {
-    const isTemplateSla =
-      resolveGuestSignalWaitMs(bodyWithId) === GUEST_SIGNAL_TEMPLATE_WAIT_MS;
     logger.warn("Table session actor SLA timeout", {
       signalId,
       tableSessionId,
-      templateSla: isTemplateSla,
     });
-    if (isTemplateSla) {
-      return executeDenisSignalCore(bodyWithId);
-    }
     return signalResultToResponse(null);
   }
 
