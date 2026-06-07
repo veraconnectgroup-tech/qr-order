@@ -752,7 +752,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   const ctxStarted = performance.now();
-  const ctx = await buildDenisTurnContext(admin, parsed.data);
+  let ctx = await buildDenisTurnContext(admin, parsed.data);
   timings.contextMs = elapsedMs(ctxStarted);
 
   const chatAiSessionId = resolveCanonicalChatAiSessionId(
@@ -760,6 +760,41 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     ctx.draftAiSessionId,
     parsed.data.sessionId
   );
+
+  const earlyTimelineAiSessionId = chatAiSessionId ?? ctx.draftAiSessionId ?? null;
+  if (earlyTimelineAiSessionId && ctx.tableSessionState) {
+    const earlyBackfill = await maybeBackfillPlacementCart({
+      admin,
+      timelineAiSessionId: earlyTimelineAiSessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      cartDraft: ctx.aiCartState.draft,
+      timeline: ctx.tableSessionState.timeline,
+    });
+    if (earlyBackfill.cartDraft !== ctx.aiCartState.draft) {
+      ctx = {
+        ...ctx,
+        aiCartState: {
+          ...ctx.aiCartState,
+          draft: earlyBackfill.cartDraft,
+        },
+        tableSessionState: {
+          ...ctx.tableSessionState,
+          commerce: {
+            ...ctx.tableSessionState.commerce,
+            cart: {
+              ...ctx.tableSessionState.commerce.cart,
+              ai: {
+                ...ctx.tableSessionState.commerce.cart.ai,
+                draft: earlyBackfill.cartDraft,
+              },
+            },
+          },
+        },
+      };
+    }
+  }
+
   const perceiveBody =
     chatAiSessionId != null
       ? { ...parsed.data, sessionId: chatAiSessionId }
@@ -962,6 +997,25 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
   }
 
+  if (timelineAiSessionId && !pendingSlotActApplied) {
+    const backfill = await maybeBackfillPlacementCart({
+      admin,
+      timelineAiSessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      cartDraft: cartDraftForAct,
+      timeline: ctx.tableSessionState?.timeline,
+    });
+
+    cartDraftForAct = backfill.cartDraft;
+    if (backfill.cartActions.length > 0) {
+      data.cartActions = [
+        ...(data.cartActions ?? []),
+        ...backfill.cartActions,
+      ];
+    }
+  }
+
   if (
     timelineAiSessionId &&
     !pendingSlotActApplied &&
@@ -985,27 +1039,6 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       data.intent = retryAct.intent;
       data.structuredPerception = retryAct.structuredPerception;
       data.submitOrder = false;
-    }
-  }
-
-  if (timelineAiSessionId && !pendingSlotActApplied) {
-    const backfill = await maybeBackfillPlacementCart({
-      admin,
-      timelineAiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
-      cartDraft: cartDraftForAct,
-      timeline: ctx.tableSessionState?.timeline,
-    });
-
-    if (backfill.cartActions.length > 0) {
-      cartDraftForAct = backfill.cartDraft;
-      data.cartActions = [
-        ...(data.cartActions ?? []),
-        ...backfill.cartActions,
-      ];
-    } else if (backfill.cartDraft.items.length > cartDraftForAct.items.length) {
-      cartDraftForAct = backfill.cartDraft;
     }
   }
 
