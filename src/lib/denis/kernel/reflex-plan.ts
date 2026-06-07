@@ -98,7 +98,12 @@ function resolveAwaitingConfirm(input: ReflexTurnInput): boolean {
   }
   const cartState = input.cartState ?? emptyCartState();
   const hasCartLines = cartState.draft.items.length > 0;
-  return input.flowNodeId === "collect" && hasCartLines;
+  if (!hasCartLines) return false;
+  return (
+    input.flowNodeId === "collect" ||
+    input.flowNodeId === "welcome" ||
+    input.flowNodeId === "browse"
+  );
 }
 
 /** M4 + M28 — T0 reflex, handoff commands, correction before flow plan. */

@@ -771,7 +771,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       cartDraft: ctx.aiCartState.draft,
       timeline: ctx.tableSessionState.timeline,
     });
-    if (earlyBackfill.cartDraft !== ctx.aiCartState.draft) {
+    const cartChanged = earlyBackfill.cartDraft !== ctx.aiCartState.draft;
+    if (cartChanged) {
       ctx = {
         ...ctx,
         aiCartState: {
@@ -792,6 +793,34 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
           },
         },
       };
+    }
+
+    if (ctx.tableSessionState && earlyBackfill.cartDraft.items.length > 0) {
+      const quickObligation = mergeTableSessionObligation({
+        state: ctx.tableSessionState,
+        source: "turn",
+        guestMessage: parsed.data.message,
+        cartLines: earlyBackfill.cartDraft.items,
+        language: parsed.data.language,
+      });
+      if (quickObligation.canConfirm) {
+        const tableSessionState = ctx.tableSessionState;
+        ctx = {
+          ...ctx,
+          flowNodeId: "recap",
+          tableSessionState: {
+            ...tableSessionState,
+            conversation: {
+              ...tableSessionState.conversation,
+              flowNodeId: "recap",
+              model: {
+                ...tableSessionState.conversation.model,
+                awaiting: "confirm",
+              },
+            },
+          },
+        };
+      }
     }
   }
 

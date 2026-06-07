@@ -169,7 +169,13 @@ export async function foldTableSessionState(
     ? aiOrderDraftToDenisCartState(draft)
     : emptyCartState();
 
-  const flowNodeId = foldFlowProjection(timeline, "welcome").currentNodeId;
+  let flowNodeId = foldFlowProjection(timeline, "welcome").currentNodeId;
+  if (
+    aiCartState.draft.items.length > 0 &&
+    (flowNodeId === "welcome" || flowNodeId === "browse")
+  ) {
+    flowNodeId = "collect";
+  }
   const foodUpsellAsked = draft.flow?.foodUpsellAsked ?? false;
   const lastAssistantMessage = lastTellFromTimeline(timeline);
   const dismissedNudges = [
@@ -268,10 +274,19 @@ export async function foldTableSessionState(
     atRecap: flowNodeId === "recap" || flowNodeId === "submit",
   });
 
+  if (aiCartState.draft.items.length > 0 && obligation.canConfirm) {
+    flowNodeId = "recap";
+  }
+
   const state: TableSessionState = {
     ...foldState,
     conversation: {
       ...foldState.conversation,
+      flowNodeId,
+      model: {
+        ...foldState.conversation.model,
+        awaiting: obligation.canConfirm ? "confirm" : foldState.conversation.model.awaiting,
+      },
       obligation: obligationForConversationState(obligation),
     },
   };
