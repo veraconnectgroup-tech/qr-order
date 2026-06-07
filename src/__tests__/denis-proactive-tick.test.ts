@@ -8,6 +8,7 @@ const proactiveMessages = {
   dessert: "Dessert",
   slowKitchen: "Slow",
   guestWelcome: "Welcome",
+  browseFollowUp: "Follow up?",
   billPrompt: "Bill",
   orderDelay: "Delay",
   popularityPair: "Pair",

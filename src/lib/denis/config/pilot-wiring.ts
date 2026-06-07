@@ -26,6 +26,8 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     enabled: true,
     guestWelcome: true,
     guestWelcomeSeconds: 30,
+    browseFollowUp: true,
+    browseFollowUpSeconds: 60,
     billPrompt: true,
     billPromptMinutes: 20,
     orderDelay: true,

@@ -1,6 +1,7 @@
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 import { guestAskedForRecommendation } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
+import { extractBrowsingDeferredState } from "@/lib/denis/cognition/conversation/browsing-defer";
 import {
   extractDismissedNudges,
   extractProactiveDedupeKeys,
@@ -46,6 +47,9 @@ export type SessionWatcherContext = {
   emittedKeys: string[];
   recentGuestMessages: string[];
   waiterEscalated: boolean;
+  browsingDeferredAt: string | null;
+  browsingDeferCount: number;
+  browseFollowUpEmitted: boolean;
 };
 
 export function buildSessionWatcherContext(input: {
@@ -101,6 +105,7 @@ export function buildSessionWatcherContext(input: {
 
   const idleMinutes = (now - lastActivityMs) / MS_MINUTE;
   const recentGuestMessages = guestMessages.slice(-8).map((row) => row.text);
+  const browsingDeferred = extractBrowsingDeferredState(input.timeline);
 
   return {
     sessionAgeSeconds,
@@ -113,5 +118,8 @@ export function buildSessionWatcherContext(input: {
     emittedKeys: extractProactiveDedupeKeys(input.timeline),
     recentGuestMessages,
     waiterEscalated,
+    browsingDeferredAt: browsingDeferred.lastDeferredAt,
+    browsingDeferCount: browsingDeferred.deferCount,
+    browseFollowUpEmitted: browsingDeferred.followUpEmitted,
   };
 }

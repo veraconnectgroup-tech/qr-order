@@ -65,6 +65,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     shareSessionWithChat: true,
     guestWelcome: true,
     guestWelcomeSeconds: 30,
+    browseFollowUp: true,
+    browseFollowUpSeconds: 60,
     billPrompt: true,
     billPromptMinutes: 20,
     orderDelay: true,

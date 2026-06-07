@@ -66,6 +66,57 @@ export async function postDenisSignal(
   return (json.data ?? {}) as DenisSignalResponse;
 }
 
+export type DenisThinkingPreviewResponse = {
+  steps: string[];
+  planKind: string;
+  planReason: string;
+  requiresLlm: boolean;
+};
+
+/** Fast TDE preview — what Denis is working on (no LLM). */
+export async function postDenisThinkingPreview(
+  input: PostDenisMessageTurnInput,
+  init?: RequestInit
+): Promise<DenisThinkingPreviewResponse | null> {
+  try {
+    const res = await fetch("/api/denis/thinking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      ...init,
+      body: JSON.stringify({
+        type: "message",
+        text: input.message,
+        tableToken: input.tableToken,
+        tableSessionToken: input.tableSessionToken,
+        locationId: input.locationId,
+        tableId: input.tableId,
+        language: input.language,
+        aiSessionId: input.aiSessionId,
+        preferences: input.preferences,
+        allowOrdering: input.allowOrdering,
+        browsingContext: input.browsingContext,
+        manualCartSnapshot: input.manualCartSnapshot,
+        deviceFingerprint: input.deviceFingerprint,
+        deviceToken: input.deviceToken,
+        structuredIntent: input.structuredIntent,
+        handoffPaymentMethod: input.handoffPaymentMethod,
+        surface: input.surface,
+        includeOrderContext: input.includeOrderContext,
+      }),
+    });
+
+    const json = (await res.json()) as {
+      data?: DenisThinkingPreviewResponse;
+      error?: string;
+    };
+
+    if (!res.ok || !json.data?.steps?.length) return null;
+    return json.data;
+  } catch {
+    return null;
+  }
+}
+
 /** Chat/voice turn via unified signal ingress (ADR-019 Phase C). */
 export async function postDenisMessageTurn(
   input: PostDenisMessageTurnInput,

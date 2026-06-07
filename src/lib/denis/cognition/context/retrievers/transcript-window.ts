@@ -6,7 +6,7 @@ type TranscriptMessage = {
 /** `transcript.window` — last N turns for perceive prompt. */
 export function retrieveTranscriptWindowEvidence(
   messages: TranscriptMessage[],
-  maxTurns = 5
+  maxTurns = 8
 ): string {
   if (!messages.length) return "";
 

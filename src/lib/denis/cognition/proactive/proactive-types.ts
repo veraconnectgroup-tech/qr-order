@@ -18,6 +18,16 @@ export type ProactiveTickPayload = {
   todaySpecial?: string | null;
   /** Suggested dessert product name (optional). */
   dessertProductName?: string | null;
+  /** Venue display name for welcome / follow-up copy. */
+  venueName?: string | null;
+  /** Guest conversation language (menu / session). */
+  language?: string | null;
+  /** ISO timestamp of last guest "still browsing" defer. */
+  browsingDeferredAt?: string | null;
+  /** Count of browsing defer events in session. */
+  browsingDeferCount?: number;
+  /** True after proactive browse_follow_up was emitted. */
+  browseFollowUpEmitted?: boolean;
 };
 
 export type GuestProactiveNudgeKind =
@@ -26,6 +36,7 @@ export type GuestProactiveNudgeKind =
   | "dessert_nudge"
   | "slow_kitchen"
   | "guest_welcome"
+  | "browse_follow_up"
   | "bill_prompt"
   | "order_delay"
   | "popularity_pair";

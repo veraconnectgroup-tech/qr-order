@@ -1,3 +1,7 @@
+import {
+  buildBrowseFollowUpMessage,
+  buildVenueWelcomeMessage,
+} from "@/lib/denis/cognition/conversation/browsing-defer";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
@@ -34,6 +38,10 @@ export async function emitProactiveNudge(
   }
 ): Promise<GuestProactiveNudge | null> {
   const traceId = input.traceId ?? createTurnTraceId();
+  const language =
+    (typeof input.payload.language === "string" && input.payload.language) ||
+    input.config.language.venueDefault ||
+    "sr";
 
   const proactiveResult = planProactiveTurn({
     state: input.state,
@@ -41,6 +49,10 @@ export async function emitProactiveNudge(
     orders: input.orders,
     sessionPhase: input.sessionPhase,
     payload: input.payload,
+    messages: {
+      guestWelcome: buildVenueWelcomeMessage(input.venueName, language),
+      browseFollowUp: buildBrowseFollowUpMessage(language),
+    },
   });
 
   if (!proactiveResult.nudge || !proactiveResult.message) {

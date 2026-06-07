@@ -18,6 +18,7 @@ export type ProactiveTurnMessages = {
   dessert: string;
   slowKitchen: string;
   guestWelcome: string;
+  browseFollowUp: string;
   billPrompt: string;
   orderDelay: string;
   popularityPair: string;
@@ -74,7 +75,10 @@ export function planProactiveTurn(input: {
       input.messages?.slowKitchen ??
       "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
     guestWelcome:
-      input.messages?.guestWelcome ?? "Dobro došli! Hoćete da pogledate meni?",
+      input.messages?.guestWelcome ?? "Dobrodošli! Da li ste već odlučili?",
+    browseFollowUp:
+      input.messages?.browseFollowUp ??
+      "Da li ste već odlučili? Mogu li da pomognem?",
     billPrompt:
       input.messages?.billPrompt ??
       "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",

@@ -19,6 +19,7 @@ export function evaluateGuestProactiveTick(input: {
     dessert: string;
     slowKitchen: string;
     guestWelcome: string;
+    browseFollowUp: string;
     billPrompt: string;
     orderDelay: string;
     popularityPair: string;

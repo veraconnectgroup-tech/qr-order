@@ -11,6 +11,7 @@ import type {
   CommercePressure,
   ConversationAwaiting,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
+import { isGuestBrowsingDeferMessage } from "@/lib/denis/cognition/conversation/browsing-defer";
 
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
@@ -145,6 +146,18 @@ function isPureSocialBanter(message: string): boolean {
   return PURE_SOCIAL_BANTER_PATTERN.test(text);
 }
 
+const ORDERING_HINT_PATTERN =
+  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend)\b/i;
+
+/** Short guest reply in banter — not an order line; LLM should continue the thread. */
+function isShortBanterReply(message: string): boolean {
+  const text = message.trim();
+  if (!text || text.length > 120) return false;
+  if (ORDERING_HINT_PATTERN.test(text)) return false;
+  if (/\?/.test(text) && text.length > 40) return false;
+  return true;
+}
+
 function hasCommercePressure(input: DecideTurnPlanInput): boolean {
   const pressure = getBeliefValue<CommercePressure>(
     input.beliefs,
@@ -239,6 +252,18 @@ function resolvePerceivePlan(
       requiresLlm: true,
       suppressUpsell,
       reason: "conversation.pure_social",
+    });
+  }
+
+  if (
+    !commerceActive &&
+    mode === "banter" &&
+    (isGuestBrowsingDeferMessage(message) || isShortBanterReply(message))
+  ) {
+    return buildPlan("relational_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "conversation.continue_thread",
     });
   }
 

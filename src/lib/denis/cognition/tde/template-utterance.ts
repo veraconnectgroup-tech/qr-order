@@ -62,9 +62,24 @@ const TEMPLATE_CATALOG: Record<
     en: "That pairs well with a drink — want me to suggest something?",
   },
   "proactive.guest_welcome": {
-    sr: "Dobro došli! Hoćete da pogledate meni?",
-    de: "Willkommen! Möchten Sie die Karte ansehen?",
-    en: "Welcome! Would you like to see the menu?",
+    sr: "Dobar dan i dobrodošli u {venueName}! Tu sam — da li ste već odlučili šta biste želeli?",
+    de: "Guten Tag und willkommen im {venueName}! Haben Sie schon entschieden, was Sie möchten?",
+    en: "Good day and welcome to {venueName}! Have you already decided what you'd like?",
+  },
+  "proactive.browse_follow_up": {
+    sr: "Da li ste već odlučili? Mogu li nekako da pomognem?",
+    de: "Haben Sie sich schon entschieden? Kann ich Ihnen helfen?",
+    en: "Have you decided yet? Can I help you somehow?",
+  },
+  "browse.defer_ack": {
+    sr: "U redu, javljam se za koji minut.",
+    de: "Alles klar, ich melde mich in einer Minute.",
+    en: "Sure, I'll check back in a minute.",
+  },
+  "browse.defer_ack_repeat": {
+    sr: "U redu, tu sam kad zatreba.",
+    de: "Alles klar, ich bin da, wenn Sie bereit sind.",
+    en: "Sure, I'm here whenever you need me.",
   },
   "proactive.bill_prompt": {
     sr: "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",

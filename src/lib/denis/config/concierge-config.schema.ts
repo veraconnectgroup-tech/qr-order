@@ -92,6 +92,9 @@ const ConciergeProactiveSchema = z.object({
   /** QR scan welcome after idle seconds (0 guest messages). */
   guestWelcome: z.boolean(),
   guestWelcomeSeconds: z.number().int().min(10).max(300),
+  /** Follow-up after guest said "still browsing" (conversation loop). */
+  browseFollowUp: z.boolean(),
+  browseFollowUpSeconds: z.number().int().min(30).max(300),
   /** Bill prompt after last delivery + idle minutes. */
   billPrompt: z.boolean(),
   billPromptMinutes: z.number().int().min(5).max(120),

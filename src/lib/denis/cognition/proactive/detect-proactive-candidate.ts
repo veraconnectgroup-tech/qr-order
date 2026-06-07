@@ -6,6 +6,10 @@ import {
   detectSlowKitchenTrigger,
 } from "@/lib/ai/proactive-triggers";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import {
+  buildBrowseFollowUpMessage,
+  buildVenueWelcomeMessage,
+} from "@/lib/denis/cognition/conversation/browsing-defer";
 import type {
   GuestProactiveNudge,
   ProactiveTickPayload,
@@ -16,12 +20,25 @@ function isDismissed(keys: string[], key: string): boolean {
 }
 
 function buildWelcomeMessage(
+  venueName: string | null | undefined,
+  language: string | null | undefined,
   todaySpecial: string | null | undefined,
   fallback: string
 ): string {
   const special = todaySpecial?.trim();
-  if (!special) return fallback;
-  return `Dobro došli! Naš specijal danas je ${special}. Hoćete da pogledate meni?`;
+  const venue = venueName?.trim();
+  const lang = language?.trim() || "sr";
+  if (venue) {
+    const base = buildVenueWelcomeMessage(venue, lang);
+    if (special) {
+      return `${base} Specijal danas: ${special}.`;
+    }
+    return base;
+  }
+  if (special) {
+    return `Dobro došli! Naš specijal danas je ${special}. Hoćete da pogledate meni?`;
+  }
+  return fallback;
 }
 
 function buildDessertMessage(
@@ -51,6 +68,7 @@ export function detectProactiveCandidate(input: {
     dessert: string;
     slowKitchen: string;
     guestWelcome: string;
+    browseFollowUp: string;
     billPrompt: string;
     orderDelay: string;
     popularityPair: string;
@@ -71,8 +89,31 @@ export function detectProactiveCandidate(input: {
   ) {
     return {
       kind: "guest_welcome",
-      message: buildWelcomeMessage(payload.todaySpecial, messages.guestWelcome),
+      message: buildWelcomeMessage(
+        payload.venueName,
+        payload.language,
+        payload.todaySpecial,
+        messages.guestWelcome
+      ),
     };
+  }
+
+  if (
+    config.proactive.browseFollowUp &&
+    payload.browsingDeferredAt &&
+    !payload.browseFollowUpEmitted &&
+    !isDismissed(dismissed, "browse_follow_up") &&
+    !hasOrdered &&
+    (payload.guestMessageCount ?? 0) > 0
+  ) {
+    const deferredAt = new Date(payload.browsingDeferredAt).getTime();
+    const secondsSinceDefer = (now - deferredAt) / 1000;
+    if (secondsSinceDefer >= config.proactive.browseFollowUpSeconds) {
+      return {
+        kind: "browse_follow_up",
+        message: messages.browseFollowUp,
+      };
+    }
   }
 
   if (

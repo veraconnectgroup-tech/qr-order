@@ -40,9 +40,10 @@ export function buildDialogueFrameEvidence(input: {
 
   if (lastDenis) {
     lines.push(`- last_denis_message: ${lastDenis.slice(0, 240)}`);
-  }
-
-  if (mode === "banter" || awaiting === null) {
+    lines.push(
+      "- instruction: Continue this thread — the guest is replying to your last message. Do NOT restart with a generic welcome. Acknowledge what they said, stay warm and brief, and offer one natural next step."
+    );
+  } else if (mode === "banter" || awaiting === null) {
     lines.push(
       "- instruction: Welcome phase — greet politely (good day, welcome), ask how you may help and if they have decided. Never pushy; no menu dump."
     );

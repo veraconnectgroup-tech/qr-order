@@ -86,7 +86,10 @@ import { hapticClick, hapticSuccess } from "@/lib/haptics";
 import type { MenuSection } from "@/lib/menu-section";
 import type { AllergenId } from "@/lib/allergens";
 import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
-import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
+import {
+  postDenisMessageTurn,
+  postDenisThinkingPreview,
+} from "@/lib/guest/denis-signal-client";
 import {
   resolveDenisThinkingStepKeys,
   useRotatingThinkingLabel,
@@ -555,6 +558,7 @@ export function AiConciergeChat({
   const [pendingThinkingMessage, setPendingThinkingMessage] = useState<
     string | null
   >(null);
+  const [serverThinkingSteps, setServerThinkingSteps] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [inputFocused, setInputFocused] = useState(false);
   const [aiSessionId, setAiSessionId] = useState<string | null>(null);
@@ -1001,11 +1005,12 @@ export function AiConciergeChat({
   );
 
   const thinkingSteps = useMemo(() => {
+    if (serverThinkingSteps.length > 0) return serverThinkingSteps;
     if (!pendingThinkingMessage) return [];
     return resolveDenisThinkingStepKeys(pendingThinkingMessage).map((key) =>
       tChat(key)
     );
-  }, [pendingThinkingMessage, tChat]);
+  }, [serverThinkingSteps, pendingThinkingMessage, tChat]);
 
   const thinkingHeadline = useRotatingThinkingLabel(thinkingSteps, isTyping);
 
@@ -1205,7 +1210,42 @@ export function AiConciergeChat({
         { id: nextId(), role: "user", content: trimmed },
       ]);
       setPendingThinkingMessage(trimmed);
+      setServerThinkingSteps([]);
       setIsTyping(true);
+
+      const requestLanguage = resolveStickyGuestLanguage(
+        trimmed,
+        menuLocale,
+        chatLanguage
+      );
+
+      const legacyTokens = aiLegacySessionTokens(tableId, sessionToken);
+      const previewSessionId =
+        aiSessionId ??
+        readAiSessionIdForGuest(locationId, token, legacyTokens) ??
+        undefined;
+
+      void postDenisThinkingPreview({
+        tableToken: token,
+        tableSessionToken: sessionToken ?? undefined,
+        locationId,
+        tableId,
+        message: trimmed,
+        language: requestLanguage,
+        aiSessionId: previewSessionId,
+        preferences: preferencesRef.current,
+        includeOrderContext: true,
+        allowOrdering: !orderingDisabled,
+        browsingContext: resolveScrollContext?.() ?? undefined,
+        manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
+        deviceFingerprint: resolvedDeviceFingerprint,
+        deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
+        surface: inputSurface,
+      }).then((preview) => {
+        if (preview?.steps?.length) {
+          setServerThinkingSteps(preview.steps);
+        }
+      });
 
       try {
         if (isDemo) {
@@ -1303,6 +1343,7 @@ export function AiConciergeChat({
       } finally {
         setIsTyping(false);
         setPendingThinkingMessage(null);
+        setServerThinkingSteps([]);
         onSceneRefresh?.();
       }
     },

@@ -8,12 +8,14 @@ export type ProactiveNudgeKind =
   | "dessert_nudge"
   | "slow_kitchen"
   | "guest_welcome"
+  | "browse_follow_up"
   | "bill_prompt"
   | "order_delay"
   | "popularity_pair";
 
 const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
   "guest_welcome",
+  "browse_follow_up",
   "slow_kitchen",
   "order_delay",
   "dessert_nudge",

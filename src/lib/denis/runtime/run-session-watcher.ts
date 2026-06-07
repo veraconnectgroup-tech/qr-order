@@ -166,6 +166,11 @@ export async function runSessionWatcherTick(
           todaySpecial: hints.todaySpecial,
           dessertProductName: hints.dessertProductName,
           browseMinutes: watcherContext.idleMinutes,
+          venueName,
+          language: config.language.venueDefault ?? "sr",
+          browsingDeferredAt: watcherContext.browsingDeferredAt,
+          browsingDeferCount: watcherContext.browsingDeferCount,
+          browseFollowUpEmitted: watcherContext.browseFollowUpEmitted,
         },
       });
 

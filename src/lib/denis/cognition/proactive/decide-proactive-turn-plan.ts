@@ -39,6 +39,8 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.slow_kitchen";
     case "guest_welcome":
       return "proactive.guest_welcome";
+    case "browse_follow_up":
+      return "proactive.browse_follow_up";
     case "bill_prompt":
       return "proactive.bill_prompt";
     case "order_delay":
@@ -156,6 +158,13 @@ export function decideProactiveTurnPlan(
     !config.proactive.guestWelcome
   ) {
     return { ok: false, reason: "proactive.guest_welcome_disabled" };
+  }
+
+  if (
+    candidate.kind === "browse_follow_up" &&
+    !config.proactive.browseFollowUp
+  ) {
+    return { ok: false, reason: "proactive.browse_follow_up_disabled" };
   }
 
   if (

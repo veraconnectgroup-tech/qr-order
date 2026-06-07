@@ -14,6 +14,7 @@ const messages = {
   dessert: "Spremni za desert?",
   slowKitchen: "Kuhinja radi intenzivno?",
   guestWelcome: "Dobro došli!",
+  browseFollowUp: "Da li ste odlučili?",
   billPrompt: "Hoćete račun?",
   orderDelay: "Stiže uskoro.",
   popularityPair: "Popularan par.",
