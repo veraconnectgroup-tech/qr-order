@@ -1,6 +1,9 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-shared-ai-session";
 import { loadTableSessionView } from "@/lib/denis/loop/load-table-session-view";
+import type { MenuLocale } from "@/lib/i18n/translations";
+import { MENU_LOCALES } from "@/lib/i18n/translations";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { withGuestRateLimits } from "@/lib/rate-limit";
 import { resolveOrgIdFromTableToken } from "@/lib/rate-limit/org-context";
@@ -51,13 +54,36 @@ export const GET = withErrorHandler("denis-view-get", async (req, _ctx) => {
 
   const { data: venueRow } = await admin
     .from("locations")
-    .select("organization:organizations!inner(name)")
+    .select(
+      "ai_concierge_enabled, menu_locale, default_locale, organization:organizations!inner(id, name)"
+    )
     .eq("id", table.location_id)
     .maybeSingle();
 
-  const venueName =
-    (venueRow as { organization?: { name?: string } } | null)?.organization
-      ?.name ?? "";
+  const venue = venueRow as {
+    ai_concierge_enabled: boolean;
+    menu_locale: string | null;
+    default_locale: string | null;
+    organization: { id: string; name: string };
+  } | null;
+
+  const venueName = venue?.organization.name ?? "";
+
+  if (venue?.ai_concierge_enabled) {
+    const rawLocale = venue.default_locale ?? venue.menu_locale ?? "de";
+    const language = (
+      MENU_LOCALES.includes(rawLocale as MenuLocale) ? rawLocale : "de"
+    ) as MenuLocale;
+
+    await ensureSharedAiSessionForTableSession(admin, {
+      sessionId: session.id,
+      locationId: table.location_id,
+      tableId: table.id,
+      tableToken: tableParsed.data,
+      orgId: venue.organization.id,
+      language,
+    });
+  }
 
   const loaded = await loadTableSessionView(admin, {
     sessionId: session.id,
