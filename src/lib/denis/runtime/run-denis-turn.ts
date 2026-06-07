@@ -7,7 +7,10 @@ import {
 } from "@/lib/denis/cognition/perceive";
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
-import { planEvidence } from "@/lib/denis/cognition/context/plan-evidence";
+import {
+  planEvidence,
+  type TurnEvidencePack,
+} from "@/lib/denis/cognition/context/plan-evidence";
 import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
 import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/load-venue-manifests";
 import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
@@ -432,6 +435,13 @@ function resolvePerceiveMode(
   return "commerce";
 }
 
+const TEMPLATE_TURN_EVIDENCE: TurnEvidencePack = {
+  pointers: [],
+  evidenceBlock: "",
+  omitFullMenu: true,
+  playbookBlock: null,
+};
+
 function mapTemplateIntent(
   turnPlan: TurnPlan
 ): "chat" | "clarify" | "confirm" | "menu_info" {
@@ -505,6 +515,57 @@ async function runTdePerceive(input: {
     }
   }
 
+  const transcriptForTurn = input.ctx.tableSessionState?.timeline
+    ? timelineToStoredMessages(input.ctx.tableSessionState.timeline).map(
+        (entry) => ({
+          role: entry.role,
+          content: entry.content,
+        })
+      )
+    : undefined;
+
+  const perceiveMode = resolvePerceiveMode(turnPlan, interpretationTask);
+  const pressure = getBeliefValue<string>(input.beliefs, "commerce.pressure");
+  const awaiting = getBeliefValue<string | null>(
+    input.beliefs,
+    "conversation.awaiting"
+  );
+  const leadershipContext = {
+    inOrderingFlow:
+      pressure === "open" ||
+      pressure === "confirm" ||
+      turnPlan.kind === "transactional_perceive",
+    awaitingAnswer: awaiting != null && awaiting !== "",
+    transactionalTurn: turnPlan.kind === "transactional_perceive",
+    hasPriorMessages: (transcriptForTurn?.length ?? 0) > 0,
+  };
+
+  if (!turnPlan.requiresLlm) {
+    const response = await perceiveGuestChatTurn(input.body, {
+      turnPlan,
+      interpretationTask,
+      evidence: TEMPLATE_TURN_EVIDENCE,
+      perceiveMode,
+      leadershipContext,
+      skipLlm: true,
+      templateMessage:
+        templateMessage ??
+        (turnPlan.kind === "reflex_only"
+          ? ""
+          : defaultGuestChatFallback(input.body.language)),
+      templateIntent: mapTemplateIntent(turnPlan),
+    });
+
+    return {
+      response,
+      turnPlan,
+      llmUsed: false,
+      planKind: turnPlan.kind,
+      tier: profile.tier,
+      evidencePointers: [],
+    };
+  }
+
   let catalog: MenuRagCatalog | null = null;
   try {
     const menuPayload = await getCachedMenuForLocation(input.body.locationId);
@@ -554,15 +615,6 @@ async function runTdePerceive(input: {
     }).catch(() => null),
   ]);
 
-  const transcriptForTurn = input.ctx.tableSessionState?.timeline
-    ? timelineToStoredMessages(input.ctx.tableSessionState.timeline).map(
-        (entry) => ({
-          role: entry.role,
-          content: entry.content,
-        })
-      )
-    : undefined;
-
   const evidence = planEvidence({
     turnPlan,
     interpretationTask,
@@ -584,47 +636,19 @@ async function runTdePerceive(input: {
     vkgPairingBlock,
   });
 
-  const perceiveMode = resolvePerceiveMode(turnPlan, interpretationTask);
-  const pressure = getBeliefValue<string>(input.beliefs, "commerce.pressure");
-  const awaiting = getBeliefValue<string | null>(
-    input.beliefs,
-    "conversation.awaiting"
-  );
-
-  const perceiveOpts: DenisPerceiveTurnOpts = {
+  const response = await perceiveGuestChatTurn(input.body, {
     turnPlan,
     interpretationTask,
     evidence,
     perceiveMode,
-    leadershipContext: {
-      inOrderingFlow:
-        pressure === "open" ||
-        pressure === "confirm" ||
-        turnPlan.kind === "transactional_perceive",
-      awaitingAnswer: awaiting != null && awaiting !== "",
-      transactionalTurn: turnPlan.kind === "transactional_perceive",
-      hasPriorMessages: (transcriptForTurn?.length ?? 0) > 0,
-    },
-  };
-
-  if (!turnPlan.requiresLlm) {
-    perceiveOpts.skipLlm = true;
-    perceiveOpts.templateMessage =
-      templateMessage ??
-      (turnPlan.kind === "reflex_only"
-        ? ""
-        : defaultGuestChatFallback(input.body.language));
-    perceiveOpts.templateIntent = mapTemplateIntent(turnPlan);
-  } else {
-    perceiveOpts.model = resolvePerceiveModel(profile, perceiveMode);
-  }
-
-  const response = await perceiveGuestChatTurn(input.body, perceiveOpts);
+    leadershipContext,
+    model: resolvePerceiveModel(profile, perceiveMode),
+  });
 
   return {
     response,
     turnPlan,
-    llmUsed: turnPlan.requiresLlm,
+    llmUsed: true,
     planKind: turnPlan.kind,
     tier: profile.tier,
     evidencePointers: evidence.pointers,

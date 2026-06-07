@@ -19,7 +19,8 @@ const HTTP_WAIT_MS = 55_000;
 export const GUEST_SIGNAL_TEMPLATE_WAIT_MS = 15_000;
 const POLL_MS = 100;
 const DRAIN_LOCK_RETRY_MS = 200;
-const DRAIN_LOCK_MAX_ATTEMPTS = 50;
+/** ~15s lock wait — matches template pilot SLA when another drain holds the lock. */
+const DRAIN_LOCK_MAX_ATTEMPTS = 75;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -190,7 +191,7 @@ async function enqueueSignal(
 
   try {
     await redis.rpush(actorQueueKey(tableSessionId), JSON.stringify(item));
-    void drainQueue(tableSessionId);
+    await drainQueue(tableSessionId);
   } catch (error) {
     logRedisDegradation(`actor:enqueue:${tableSessionId}`, error);
     throw error;
@@ -212,7 +213,7 @@ export async function waitForSignalResult(
   return null;
 }
 
-function resolveGuestSignalWaitMs(rawBody: unknown): number {
+export function resolveGuestSignalWaitMs(rawBody: unknown): number {
   if (!rawBody || typeof rawBody !== "object") return HTTP_WAIT_MS;
   const text =
     typeof (rawBody as { text?: string }).text === "string"
