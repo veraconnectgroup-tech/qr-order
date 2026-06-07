@@ -7,6 +7,9 @@ import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
+import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
+import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
+import { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
@@ -22,7 +25,7 @@ import {
   buildScheduleDrafts,
   upsertDenisSchedules,
 } from "@/lib/denis/kernel/scheduler";
-import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
+import { appendDenisTimelineEvent, loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import {
   buildTurnEnvelope,
   createTurnTraceId,
@@ -180,6 +183,19 @@ export async function runDenisSense(
       mental: state.mental,
       contextHash: fold.meta.truthHash,
     });
+    await maybeAppendOfferResolved(admin, {
+      aiSessionId: draftAiSessionId,
+      traceId,
+      timeline: state.timeline,
+      offer: state.offer,
+      contextHash: fold.meta.truthHash,
+    });
+    await maybeAppendOfferConverted(admin, {
+      aiSessionId: draftAiSessionId,
+      traceId,
+      timeline: state.timeline,
+      contextHash: fold.meta.truthHash,
+    });
   }
 
   if (input.channel === "telemetry.browse") {
@@ -195,6 +211,13 @@ export async function runDenisSense(
         traceId,
         envelope
       );
+      const timelineAfterBrowse = await loadDenisTimeline(admin, timelineAiSessionId);
+      await maybeAppendOfferConverted(admin, {
+        aiSessionId: timelineAiSessionId,
+        traceId,
+        timeline: timelineAfterBrowse,
+        contextHash: fold.meta.truthHash,
+      });
     }
   } else if (timelineAiSessionId) {
     await appendDenisTimelineEvent(admin, {
@@ -343,16 +366,14 @@ export async function runDenisSense(
         aiSessionId,
         eventType: "proactive.emitted",
         traceId,
-        payload: {
-          type: "proactive.emitted",
-          kind: proactiveResult.nudge.kind,
-          message: proactiveResult.nudge.message,
-          orderId: proactiveResult.nudge.orderId ?? null,
-          tier: "template",
+        payload: buildProactiveEmittedPayload({
+          state,
+          nudge: proactiveResult.nudge,
+          message: proactiveResult.message ?? proactiveResult.nudge.message,
           turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
           turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
           source: "sense.proactive_brain",
-        },
+        }),
       });
 
       const dockMessage = proactiveResult.message?.trim();

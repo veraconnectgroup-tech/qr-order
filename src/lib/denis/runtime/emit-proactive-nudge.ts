@@ -2,6 +2,7 @@ import {
   buildBrowseFollowUpMessage,
   buildVenueWelcomeMessage,
 } from "@/lib/denis/cognition/conversation/browsing-defer";
+import { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 import { appendMentalModelGate } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
@@ -138,17 +139,15 @@ export async function emitProactiveNudge(
     aiSessionId: input.aiSessionId,
     eventType: "proactive.emitted",
     traceId,
-    payload: {
-      type: "proactive.emitted",
-      kind: nudge.kind,
+    payload: buildProactiveEmittedPayload({
+      state: input.state,
+      nudge,
       message: proactiveResult.message,
-      orderId: nudge.orderId ?? null,
-      tier: "template",
       turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
       turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
       dedupeKey,
       source: input.source,
-    },
+    }),
   });
 
   const dockMessage = proactiveResult.message.trim();

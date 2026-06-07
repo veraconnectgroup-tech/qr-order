@@ -58,7 +58,15 @@ function resolveProactiveMessage(input: {
   }
 
   if (input.nudge.kind === "drink_pairing") {
-    return input.nudge.prompt?.trim() || input.nudge.message.trim() || null;
+    if (input.nudge.message.trim()) {
+      return input.nudge.message.trim();
+    }
+    const utterance = planUtterance({
+      beliefs: input.beliefs,
+      turnPlan: input.turnPlan,
+      topGoal: null,
+    });
+    return tryTemplateUtterance(utterance);
   }
 
   if (input.nudge.message.trim()) {
@@ -144,6 +152,8 @@ export function planProactiveTurn(input: {
     config: input.config,
     orders: input.orders,
     mental: input.state.mental,
+    offer: input.state.offer,
+    language,
     payload: {
       ...input.payload,
       sessionPhase: input.sessionPhase,

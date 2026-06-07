@@ -6,6 +6,7 @@ export type ProactiveNudgeKind =
   | "waiter_gap"
   | "attention_handoff"
   | "browse_nudge"
+  | "cart_recovery"
   | "drink_pairing"
   | "dessert_nudge"
   | "slow_kitchen"

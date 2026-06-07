@@ -496,6 +496,61 @@ function resolveRequireConfirm(
   );
 }
 
+function resolveOfferBeliefs(state: TableSessionState) {
+  const { offer, browse } = state;
+  const confidence =
+    offer.hash && offer.hash !== "empty" ? 0.9 : 0.5;
+  const browseFocus =
+    browse.viewedProducts[0]?.productId ??
+    offer.scoredProducts[0]?.productId ??
+    null;
+
+  return [
+    belief(
+      CORE_BELIEF_KEYS.offerPrimaryProductId,
+      offer.primary?.productId ?? null,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.offerPrimaryProductName,
+      offer.primary?.productName ?? null,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.offerAlternativeProductName,
+      offer.alternative?.productName ?? null,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.offerResolution,
+      offer.primary?.resolution ?? null,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.offerReadinessReady,
+      offer.readiness.ready,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.offerPrimaryKitchenBlocked,
+      offer.primary?.isKitchenBlocked ?? false,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.mentalBrowseFocusProduct,
+      browseFocus,
+      "inferred",
+      browseFocus ? 0.85 : 0.5
+    ),
+  ];
+}
+
 function resolveMentalBeliefs(state: TableSessionState) {
   const mental = state.mental;
   const confidence = mental.confidence > 0 ? mental.confidence : 0.75;
@@ -616,6 +671,7 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
     resolveRequireConfirm(config),
     resolveHasOpenOrders(input.state),
     ...resolveMentalBeliefs(input.state),
+    ...resolveOfferBeliefs(input.state),
     ...waiterBeliefs.beliefs,
   ]);
 }

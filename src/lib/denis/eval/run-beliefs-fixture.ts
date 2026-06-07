@@ -1,4 +1,5 @@
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
@@ -67,6 +68,7 @@ function baseState(
     timeline: [],
     browse: emptyBrowseProfile(),
     mental: emptyGuestMentalModel(),
+    offer: emptyGuestOfferContext(),
     config,
     ...overrides,
   };
@@ -82,9 +84,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 20) {
+  if (banterGraph.beliefs.length !== 27) {
     errors.push(
-      `expected 20 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental), got ${banterGraph.beliefs.length}`
+      `expected 27 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental + GMM-11 offer), got ${banterGraph.beliefs.length}`
     );
   }
 

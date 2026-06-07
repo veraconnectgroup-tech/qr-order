@@ -52,20 +52,18 @@ export function DenisSceneBanners({
           role="button"
           tabIndex={0}
           onClick={() => {
-            if (banner.action === "add_product") return;
             hapticClick();
             onBannerAction(banner);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              if (banner.action === "add_product") return;
               onBannerAction(banner);
             }
           }}
           className={cn(
             "flex items-center gap-3 rounded-xl border border-[var(--denis-chip-border)] bg-[var(--qr-surface)] px-4 py-3",
-            banner.action !== "add_product" && "cursor-pointer active:scale-[0.99]"
+            "cursor-pointer active:scale-[0.99]"
           )}
         >
           <DenisMarkBadge size="md" />

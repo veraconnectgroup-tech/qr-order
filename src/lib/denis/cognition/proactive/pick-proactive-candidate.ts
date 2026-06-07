@@ -1,10 +1,12 @@
 import { applyProactivePolicy, evaluateProactivePolicyForKind } from "@/lib/denis/cognition/proactive/apply-proactive-policy";
+import { enrichProactiveCandidates } from "@/lib/denis/cognition/proactive/enrich-proactive-candidate";
 import type { ProactivePolicyReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
 import {
   rankProactiveCandidates,
   type RankProactiveCandidatesInput,
 } from "@/lib/denis/cognition/proactive/rank-proactive-candidates";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
+import type { GuestOfferContext } from "@/lib/denis/cognition/offer/offer-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import {
   resolveMentalModelMode,
@@ -26,11 +28,19 @@ export type PickProactiveCandidateResult = {
   policyTrace: ProactivePolicyTrace | null;
 };
 
-/** Rank → policy manifest → first allowed (ADR-038 GMM-6). */
+/** Rank → enrich(offer) → policy manifest → first allowed (ADR-038 GMM-6/10). */
 export function pickProactiveCandidate(
-  input: RankProactiveCandidatesInput
+  input: RankProactiveCandidatesInput & {
+    offer?: GuestOfferContext | null;
+    language?: string | null;
+  }
 ): PickProactiveCandidateResult {
-  const ranked = rankProactiveCandidates(input);
+  const ranked = enrichProactiveCandidates({
+    ranked: rankProactiveCandidates(input),
+    offer: input.offer,
+    language: input.language,
+    config: input.config as ConciergeConfig,
+  });
   const config = input.config as ConciergeConfig;
   const mode = resolveMentalModelMode(config);
   const confidenceFallback = config.mentalModel.confidenceFallbackThreshold;
@@ -66,6 +76,7 @@ export function pickProactiveCandidate(
     mental: input.mental,
     ranked,
     config: input.config as ConciergeConfig,
+    offer: input.offer,
     payload: input.payload,
     now: input.now,
   });
@@ -111,6 +122,7 @@ export function pickProactiveCandidate(
     mental: input.mental,
     kind: top.nudge.kind,
     config: input.config as ConciergeConfig,
+    offer: input.offer,
     payload: input.payload,
     now: input.now,
   });

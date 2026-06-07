@@ -38,6 +38,7 @@ export type GuestBrowseProfile = {
   cartAbandoned: Array<{
     productId: string;
     productName: string;
+    removedAt: string;
   }>;
   browsedFood: boolean;
   browsedDrinks: boolean;

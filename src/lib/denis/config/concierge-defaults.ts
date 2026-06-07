@@ -73,6 +73,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     orderDelayMinutes: 15,
     popularityPairing: true,
     popularityBrowseMinutes: 1,
+    offerEnrich: false,
     staffTableIdle: true,
     staffTableIdleMinutes: 15,
     staffAllergy: true,

@@ -118,6 +118,33 @@ function resolveVagueRecommendReason(beliefs: DecideTurnPlanInput["beliefs"]): s
   return "vague_recommend";
 }
 
+/** GMM-11 — chat recommend anchored to folded offer (parity with proactive enrich). */
+function offerAnchoredRecommendTurn(
+  input: DecideTurnPlanInput,
+  suppressUpsell: boolean
+): TurnPlan | null {
+  if (!VAGUE_RECOMMEND_PATTERN.test(input.message.trim())) return null;
+  if (hasCommercePressure(input)) return null;
+
+  const ready =
+    getBeliefValue<boolean>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.offerReadinessReady
+    ) === true;
+  const productName = getBeliefValue<string>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.offerPrimaryProductName
+  )?.trim();
+  if (!ready || !productName) return null;
+
+  return buildPlan("template_tell", {
+    requiresLlm: false,
+    suppressUpsell,
+    reason: "offer.anchored_recommend",
+    templateKey: "offer.recommend",
+  });
+}
+
 /** ADR-031 C2 — guest replies always comprehend or deterministic ACT; never slot template loop. */
 function planForPendingSlot(
   _slot: string,
@@ -772,6 +799,9 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
       reason: "commerce.menu_inquiry",
     });
   }
+
+  const offerRecommendPlan = offerAnchoredRecommendTurn(input, suppressUpsell);
+  if (offerRecommendPlan) return offerRecommendPlan;
 
   const interpretationTask = buildInterpretationTask(
     input.reflex.plan.topGoal,

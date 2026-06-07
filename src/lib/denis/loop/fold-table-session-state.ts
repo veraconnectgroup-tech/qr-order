@@ -1,6 +1,8 @@
 import { foldBrowseProfile } from "@/lib/denis/cognition/browse/fold-browse-profile";
 import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
 import { foldGuestMentalModel } from "@/lib/denis/cognition/mental-model/fold-guest-mental-model";
+import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
+import { foldGuestOfferContext } from "@/lib/denis/cognition/offer/fold-guest-offer-context";
 import { extractPreviousMentalFoldContext } from "@/lib/denis/cognition/mental-model/mental-model-timeline";
 import {
   mergeTableSessionObligation,
@@ -250,6 +252,26 @@ export async function foldTableSessionState(
     previousFold: extractPreviousMentalFoldContext(timeline),
   });
 
+  const mergedCart = buildMergedCart({
+    ai: aiCartState,
+    manual: manualCartDraft,
+    peerManual: peerManualCartDraft,
+  });
+
+  const offer = foldGuestOfferContext({
+    timeline,
+    browse,
+    mental,
+    spine: foldGuestSignals({
+      timeline,
+      dismissedNudgeKeys: dismissedNudges,
+    }),
+    venueOps: venueBundle.venueOps,
+    phase,
+    cartLineCount: mergedCart.visibleLines.length,
+    config,
+  });
+
   const foldState: TableSessionState = {
     table: {
       id: input.tableId,
@@ -291,6 +313,7 @@ export async function foldTableSessionState(
     timeline,
     browse,
     mental,
+    offer,
     config,
   };
 

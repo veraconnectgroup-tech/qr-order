@@ -15,6 +15,7 @@ import type {
 } from "@/lib/denis/venue/ops/types";
 
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import type { GuestOfferContext } from "@/lib/denis/cognition/offer/offer-types";
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { WaiterObligation } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
@@ -83,6 +84,8 @@ export type TableSessionState = {
   browse: GuestBrowseProfile;
   /** ADR-038 — guest psychology profile rebuilt every FOLD. */
   mental: GuestMentalModel;
+  /** ADR-038 GMM-9 — resolved offer snapshot (pure fold). */
+  offer: GuestOfferContext;
   config: ConciergeConfig;
 };
 

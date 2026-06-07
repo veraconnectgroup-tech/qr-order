@@ -23,7 +23,7 @@ export function foldBrowseProfile(timeline: DenisTimelineRow[]): GuestBrowseProf
   const categoryMap = new Map<string, GuestBrowseProfile["viewedCategories"][0]>();
   const productMap = new Map<string, GuestBrowseProfile["viewedProducts"][0]>();
   const addedProducts = new Set<string>();
-  const removedProducts = new Set<string>();
+  const removedAtByProduct = new Map<string, string>();
 
   for (const row of timeline) {
     const event = isBrowsePerceptionRow(row);
@@ -57,7 +57,9 @@ export function foldBrowseProfile(timeline: DenisTimelineRow[]): GuestBrowseProf
       const key = event.productId;
 
       if (event.action === "add_to_cart") addedProducts.add(key);
-      if (event.action === "remove_from_cart") removedProducts.add(key);
+      if (event.action === "remove_from_cart") {
+        removedAtByProduct.set(key, event.timestamp || row.created_at);
+      }
 
       if (event.action === "view_product" || event.action === "add_to_cart") {
         const existing = productMap.get(key);
@@ -80,7 +82,7 @@ export function foldBrowseProfile(timeline: DenisTimelineRow[]): GuestBrowseProf
     }
   }
 
-  for (const pid of removedProducts) {
+  for (const [pid, removedAt] of removedAtByProduct) {
     const product = productMap.get(pid);
     if (!product) continue;
     product.removedFromCart = true;
@@ -88,6 +90,7 @@ export function foldBrowseProfile(timeline: DenisTimelineRow[]): GuestBrowseProf
       profile.cartAbandoned.push({
         productId: product.productId,
         productName: product.productName,
+        removedAt,
       });
     }
   }

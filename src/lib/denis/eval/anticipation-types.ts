@@ -23,6 +23,7 @@ export type AnticipationSetup = {
   pairingEnabled?: boolean;
   dessertEnabled?: boolean;
   slowKitchenEnabled?: boolean;
+  offerEnrich?: boolean;
 };
 
 export type AnticipationExpect = {
@@ -32,6 +33,7 @@ export type AnticipationExpect = {
   planKind?: TurnPlanKind;
   requiresLlm?: boolean;
   messageIncludes?: string;
+  messageForbidden?: string;
 };
 
 export type AnticipationScenario = {

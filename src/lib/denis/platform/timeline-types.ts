@@ -146,6 +146,35 @@ export type DenisTimelineEventPayload =
       } | null;
       triggers: string[];
     }
+  | {
+      type: "offer.resolved";
+      hash: string;
+      computedAt: number;
+      snapshot: {
+        hash: string;
+        readiness: {
+          ready: boolean;
+          reason: string;
+          secondsSinceLastBrowseAction: number;
+        };
+        primaryProductId: string | null;
+        alternativeProductId: string | null;
+        strategy: string;
+        sequencePattern: string;
+      };
+      triggers: string[];
+    }
+  | {
+      type: "offer.converted";
+      productId: string;
+      productName: string | null;
+      nudgeKind: string;
+      offerResolution: string | null;
+      emittedAt: string;
+      convertedAt: string;
+      lagSeconds: number;
+      dedupeKey: string;
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -169,7 +198,9 @@ export type DenisTimelineEventType =
   | "mind.turn_profile"
   | "mental_model.updated"
   | "mental_model.gate"
-  | "mental_model.diff";
+  | "mental_model.diff"
+  | "offer.resolved"
+  | "offer.converted";
 
 export type DenisTimelineRow = {
   id: string;

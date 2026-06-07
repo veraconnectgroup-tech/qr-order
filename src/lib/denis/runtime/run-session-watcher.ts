@@ -6,6 +6,8 @@ import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierg
 import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
+import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
+import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
 import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
@@ -146,6 +148,19 @@ export async function runSessionWatcherTick(
         traceId: watcherTraceId,
         timeline: fold.state.timeline,
         mental: fold.state.mental,
+        contextHash: fold.meta.truthHash,
+      });
+      await maybeAppendOfferResolved(admin, {
+        aiSessionId,
+        traceId: watcherTraceId,
+        timeline: fold.state.timeline,
+        offer: fold.state.offer,
+        contextHash: fold.meta.truthHash,
+      });
+      await maybeAppendOfferConverted(admin, {
+        aiSessionId,
+        traceId: watcherTraceId,
+        timeline: fold.state.timeline,
         contextHash: fold.meta.truthHash,
       });
 

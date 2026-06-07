@@ -59,10 +59,11 @@ import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
+import { useBrowseTelemetry } from "@/hooks/use-browse-telemetry";
 import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
 import { useSmartNudges } from "@/hooks/use-smart-nudges";
 import { useDenisSense } from "@/hooks/use-denis-sense";
-import { shouldCommitProactiveToDock } from "@/lib/denis/loop/proactive-dock-tell";
+import { proactiveDismissKeyFromBannerId } from "@/lib/denis/loop/build-proactive-banner-layers";
 import { GuestDenisLayer } from "@/components/guest/guest-denis-layer";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { DenisMemoryConsentBanner } from "@/components/guest/denis-memory-consent-banner";
@@ -582,6 +583,7 @@ export function MenuView({
 
   const fetchPairingForNudge = useCallback(
     async (prompt: string) => {
+      if (aiConciergeEnabled) return null;
       const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken || hasDrinkInCart || isDemoGuestRoute(slug, token)) {
         return null;
@@ -614,11 +616,11 @@ export function MenuView({
       }
     },
     [
+      aiConciergeEnabled,
       token,
       sessionToken,
       hasDrinkInCart,
       slug,
-      token,
       aiSessionId,
       locationId,
       tableId,
@@ -658,72 +660,27 @@ export function MenuView({
     cartBump,
   });
 
-  const fetchServerProactive = useCallback(
-    async ({ dismissedKeys }: { dismissedKeys: string[] }) => {
-      if (!aiContextToken || isDemoGuestRoute(slug, token)) return null;
-
-      const sessionId =
-        aiSessionId ??
-        readAiSessionIdForGuest(locationId, token, aiLegacyTokens) ??
-        undefined;
-
-      const result = await postDenisSense({
-        locationId,
-        tableId,
-        sessionToken: aiContextToken,
-        aiSessionId: sessionId,
-        deviceFingerprint,
-        channel: "system.proactive_tick",
-        payload: {
-          browseMinutes,
-          cartItemCount: itemCount,
-          hasSessionOrders,
-          hasDrinkInCart,
-          dismissedNudgeKeys: dismissedKeys,
-          browseMessage: smartNudgeMessages.browse,
-          dessertMessage: smartNudgeMessages.dessert,
-          slowKitchenMessage: smartNudgeMessages.slowKitchen,
-        },
-      });
-
-      const nudge = result?.proactiveNudge ?? null;
-      if (!nudge) return null;
-
-      if (shouldCommitProactiveToDock(nudge.kind)) {
-        return null;
-      }
-
-      const transcriptTexts = new Set(
-        (denisView?.transcript ?? [])
-          .filter((entry) => entry.role === "denis")
-          .map((entry) => entry.text.trim())
-      );
-      if (transcriptTexts.has(nudge.message.trim())) {
-        return null;
-      }
-
-      return nudge;
-    },
-    [
-      aiContextToken,
-      slug,
-      token,
-      aiSessionId,
-      locationId,
-      tableId,
-      sessionToken,
-      browseMinutes,
-      itemCount,
-      hasSessionOrders,
-      hasDrinkInCart,
-      smartNudgeMessages,
-      deviceFingerprint,
-      denisView?.transcript,
-    ]
-  );
+  useBrowseTelemetry({
+    enabled:
+      aiConciergeEnabled &&
+      !!aiContextToken &&
+      !isDemoGuestRoute(slug, token),
+    tableToken: token,
+    tableSessionToken: sessionToken ?? undefined,
+    locationId,
+    tableId,
+    aiSessionId,
+    deviceFingerprint,
+    categories: menuCategories,
+    containerRef: menuMainRef,
+    activeCategoryId: activeCategory,
+    detailProduct,
+    cartItems,
+    cartBump,
+  });
 
   const { activeNudge, dismiss: dismissNudge } = useSmartNudges({
-    enabled: aiConciergeEnabled && canPlaceOrders,
+    enabled: !aiConciergeEnabled && canPlaceOrders,
     browseMinutes,
     cartItemCount: itemCount,
     hasSessionOrders,
@@ -733,7 +690,6 @@ export function MenuView({
     messages: smartNudgeMessages,
     formatPairingMessage,
     fetchPairingRecommendation: fetchPairingForNudge,
-    fetchServerProactive,
   });
 
   const resetAiRecommendations = useCallback(() => {
@@ -976,6 +932,31 @@ export function MenuView({
     [productById, openProductDetail]
   );
 
+  const handleSceneBannerDismiss = useCallback(
+    (bannerId: string) => {
+      const dismissKey = proactiveDismissKeyFromBannerId(bannerId);
+      if (!dismissKey || !aiContextToken) return;
+
+      void postDenisSense({
+        locationId,
+        tableId,
+        sessionToken: aiContextToken,
+        aiSessionId: aiSessionId ?? undefined,
+        deviceFingerprint: deviceFingerprint ?? undefined,
+        channel: "telemetry.scroll",
+        payload: { dismissedNudgeKeys: [dismissKey] },
+      }).then(() => refreshGuestSceneView());
+    },
+    [
+      aiContextToken,
+      aiSessionId,
+      deviceFingerprint,
+      locationId,
+      refreshGuestSceneView,
+      tableId,
+    ]
+  );
+
   const handleNudgeAdd = useCallback(() => {
     if (!activeNudge?.recommendation) return;
     handleAddAiRecommendation(activeNudge.recommendation);
@@ -1064,11 +1045,11 @@ export function MenuView({
             <DenisSceneBanners
               banners={sceneBanners}
               onBannerAction={handleSceneBannerAction}
-              onDismiss={() => {}}
+              onDismiss={handleSceneBannerDismiss}
             />
           )}
 
-          {!aiConciergeEnabled && !useSceneBannerUi && (
+          {!aiConciergeEnabled && (
             <AiSmartNudgeBanner
               nudge={activeNudge}
               orderingDisabled={!canPlaceOrders}
@@ -1185,9 +1166,7 @@ export function MenuView({
 
           {orderingEnabled && (
             <>
-              {pairingRecommendation &&
-                !hasDrinkInCart &&
-                activeNudge?.kind !== "drink_pairing" && (
+              {pairingRecommendation && !hasDrinkInCart && (
                 <AiCartPairingBanner
                   recommendation={pairingRecommendation}
                   currency={currency}

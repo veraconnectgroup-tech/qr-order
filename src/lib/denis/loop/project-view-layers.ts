@@ -5,6 +5,9 @@ import {
 import { resolveExperienceMoment } from "@/lib/commerce/experience/resolve-experience-moment";
 import { resolveCartConflict } from "@/lib/denis/kernel/conflict";
 import { emptyCartDraft } from "@/lib/denis/kernel/cart-projection";
+import {
+  buildProactiveBannerLayers,
+} from "@/lib/denis/loop/build-proactive-banner-layers";
 import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
 import {
   deriveGuestSituation,
@@ -216,6 +219,18 @@ export function buildViewLayers(
       id: `waiter-gap-${waiterGap.kind}`,
       message: waiterGap.prompt,
       action: "open_sheet",
+    });
+  }
+
+  for (const banner of buildProactiveBannerLayers(state)) {
+    layers.push({
+      kind: "banner",
+      id: banner.id,
+      message: banner.message,
+      action: banner.action,
+      productId: banner.productId,
+      productName: banner.productName,
+      orderId: banner.orderId,
     });
   }
 

@@ -104,6 +104,8 @@ const ConciergeProactiveSchema = z.object({
   /** Popularity pairing nudge from order history. */
   popularityPairing: z.boolean(),
   popularityBrowseMinutes: z.number().int().min(1).max(120),
+  /** Personalized browse nudge from state.offer (GMM-10). */
+  offerEnrich: z.boolean(),
   /** Staff alert: table idle without interaction. */
   staffTableIdle: z.boolean(),
   staffTableIdleMinutes: z.number().int().min(5).max(120),

@@ -63,6 +63,7 @@ const LEGACY_KIND_PRIORITY: Record<GuestProactiveNudgeKind, number> = {
   bill_prompt: 680,
   popularity_pair: 600,
   browse_nudge: 500,
+  cart_recovery: 960,
   drink_pairing: 400,
   waiter_gap: 950,
 };
@@ -80,6 +81,7 @@ function posturePriority(
     dessert_nudge: need === "wants_dessert" ? 970 : 690,
     browse_follow_up: need === "needs_help_choosing" ? 960 : 880,
     browse_nudge: need === "needs_help_choosing" ? 950 : 490,
+    cart_recovery: need === "needs_help_choosing" ? 965 : 955,
     popularity_pair: need === "needs_help_choosing" ? 940 : 590,
     guest_welcome: mental.intent === "arrived" ? 930 : 990,
     drink_pairing: 750,

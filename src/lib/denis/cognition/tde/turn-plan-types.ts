@@ -42,6 +42,13 @@ export const CORE_BELIEF_KEYS = {
   mentalFrustration: "mental.frustration",
   mentalPredictedNeed: "mental.predicted_need",
   mentalPriceAffinity: "mental.price_affinity",
+  offerPrimaryProductId: "offer.primary_product_id",
+  offerPrimaryProductName: "offer.primary_product_name",
+  offerAlternativeProductName: "offer.alternative_product_name",
+  offerResolution: "offer.resolution",
+  offerReadinessReady: "offer.readiness_ready",
+  offerPrimaryKitchenBlocked: "offer.primary_kitchen_blocked",
+  mentalBrowseFocusProduct: "mental.browse_focus_product",
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";

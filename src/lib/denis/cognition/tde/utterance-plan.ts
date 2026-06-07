@@ -48,6 +48,12 @@ function intentForTurnPlan(
           templateKey: turnPlan.templateKey,
         };
       }
+      if (turnPlan.templateKey === "offer.recommend") {
+        return {
+          intent: "generic_nudge",
+          templateKey: "offer.recommend",
+        };
+      }
       return {
         intent: "banter_welcome",
         templateKey: turnPlan.templateKey ?? "banter.welcome",

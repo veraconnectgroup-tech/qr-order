@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
 import { projectTableSessionView } from "@/lib/denis/loop/project-view";
+import { buildProactiveBannerLayers } from "@/lib/denis/loop/build-proactive-banner-layers";
 import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
@@ -81,6 +83,7 @@ function buildFixtureState(
     timeline,
     browse: emptyBrowseProfile(),
     mental: emptyGuestMentalModel(),
+    offer: emptyGuestOfferContext(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 
@@ -135,5 +138,66 @@ describe("projectTableSessionView Phase B.1", () => {
     expect(view.actions.some((action) => action.orderId === "order-42")).toBe(
       true
     );
+  });
+
+  it("projects banner-only proactive emits into view.layers", () => {
+    const timeline = [
+      timelineRow(1, "proactive.emitted", {
+        type: "proactive.emitted",
+        kind: "browse_nudge",
+        message: "Vidim da ste gledali Beef Burger — hoćete da dodam?",
+        orderId: null,
+        tier: "template",
+        productId: "prod-burger",
+        productName: "Beef Burger",
+        offerResolution: "top_dwell",
+      }),
+    ];
+
+    const { state, meta } = buildFixtureState(timeline);
+    const view = projectTableSessionView(state, meta, null, {
+      sessionId: "session-1",
+      venueName: "Demo Bistro",
+    });
+
+    const proactiveBanner = view.layers.find(
+      (layer) => layer.kind === "banner" && layer.id === "proactive:browse_nudge"
+    );
+    expect(proactiveBanner).toMatchObject({
+      kind: "banner",
+      message: "Vidim da ste gledali Beef Burger — hoćete da dodam?",
+      action: "add_product",
+      productId: "prod-burger",
+    });
+  });
+
+  it("skips dock proactive kinds and dismissed banner keys", () => {
+    const timeline = [
+      timelineRow(1, "proactive.emitted", {
+        type: "proactive.emitted",
+        kind: "slow_kitchen",
+        message: "Kuhinja radi intenzivno.",
+        orderId: "order-42",
+      }),
+      timelineRow(2, "proactive.emitted", {
+        type: "proactive.emitted",
+        kind: "browse_nudge",
+        message: "Treba vam pomoć?",
+        orderId: null,
+      }),
+    ];
+
+    const { state, meta } = buildFixtureState(timeline);
+    state.conversation.dismissedNudges = ["browse_nudge"];
+
+    expect(buildProactiveBannerLayers(state)).toHaveLength(0);
+
+    const view = projectTableSessionView(state, meta, null, {
+      sessionId: "session-1",
+      venueName: "Demo Bistro",
+    });
+    expect(
+      view.layers.some((layer) => layer.kind === "banner" && layer.id.startsWith("proactive:"))
+    ).toBe(false);
   });
 });

@@ -31,6 +31,7 @@ export const DEFAULT_PROACTIVE_POLICY: ProactivePolicyManifest = {
   upsellKinds: [
     "guest_welcome",
     "browse_nudge",
+    "cart_recovery",
     "popularity_pair",
     "dessert_nudge",
     "bill_prompt",
@@ -48,6 +49,13 @@ export const DEFAULT_PROACTIVE_POLICY: ProactivePolicyManifest = {
       "browse_requires_exploring",
       "browse_requires_receptiveness_open",
       "browse_requires_needs_help",
+      "browse_requires_resolved_offer",
+      "browse_readiness_not_ready",
+    ]),
+    cart_recovery: upsell([
+      "pace_rushed",
+      "browse_requires_receptiveness_open",
+      "cart_recovery_requires_offer",
     ]),
     popularity_pair: upsell([
       "pace_rushed",

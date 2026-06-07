@@ -4,6 +4,7 @@ import {
 } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import { decideTurnPlan } from "@/lib/denis/cognition/tde/decide-turn-plan";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
@@ -83,6 +84,7 @@ function buildState(setup: WaiterParitySetup): TableSessionState {
     timeline: [],
     browse: emptyBrowseProfile(),
     mental: emptyGuestMentalModel(),
+    offer: emptyGuestOfferContext(),
   };
 }
 

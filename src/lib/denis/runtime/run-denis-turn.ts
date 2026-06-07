@@ -33,6 +33,7 @@ import {
   type TurnPlan,
   type TurnPlanKind,
 } from "@/lib/denis/cognition/tde";
+import { narrateOfferFromBeliefs } from "@/lib/denis/cognition/offer/narrate-offer-from-beliefs";
 import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import {
   assertSufficientCredits,
@@ -528,6 +529,11 @@ async function runTdePerceive(input: {
   let templateMessage = !turnPlan.requiresLlm
     ? tryTemplateUtterance(utterancePlan)
     : null;
+
+  if (turnPlan.reason === "offer.anchored_recommend") {
+    templateMessage =
+      narrateOfferFromBeliefs(tdeBeliefs, input.body.language) ?? templateMessage;
+  }
 
   if (
     (turnPlan.reason === "commerce.status.open_order" ||

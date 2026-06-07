@@ -11,10 +11,12 @@ import { runContinuousMindSuite } from "@/lib/denis/eval/run-continuous-mind-fix
 import { runBrowseFoldSuite } from "@/lib/denis/eval/run-browse-fold-fixture";
 import { runMentalModelSuite } from "@/lib/denis/eval/run-mental-model-fixture";
 import { runMentalModelTimelineSuite } from "@/lib/denis/eval/run-mental-model-timeline-fixture";
+import { runOfferFoldSuite } from "@/lib/denis/eval/run-offer-fold-fixture";
 import { runTimelineObligationSuite } from "@/lib/denis/eval/run-timeline-obligation-fixture";
 import { runInterpretationTaskSuite } from "@/lib/denis/eval/run-interpretation-task-fixture";
 import { CONTINUOUS_MIND_SCENARIOS } from "@/lib/denis/eval/fixtures/continuous-mind/scenarios";
 import { MENTAL_MODEL_SCENARIOS } from "@/lib/denis/eval/fixtures/mental-model/scenarios";
+import { OFFER_FOLD_SCENARIOS } from "@/lib/denis/eval/fixtures/offer/scenarios";
 import { runManifestPromoteGateFixture } from "@/lib/denis/eval/run-manifest-promote-gate-fixture";
 import { MANIFEST_PROMOTE_GATE_SCENARIOS } from "@/lib/denis/eval/fixtures/manifest/promote-gate-scenarios";
 import { runPlaybookPackFixture } from "@/lib/denis/eval/run-playbook-pack-fixture";
@@ -54,13 +56,13 @@ describe("Denis eval fixtures M10", () => {
     expect(result.orderCount).toBe(1);
   });
 
-  it("compileBeliefs produces 11 core beliefs (MR-1 + ADR-030)", () => {
+  it("compileBeliefs produces core beliefs (MR-1 + ADR-030 + GMM-11 offer)", () => {
     const result = runBeliefsCompileFixture();
     if (!result.passed) {
       console.error(JSON.stringify(result.errors, null, 2));
     }
     expect(result.passed).toBe(true);
-    expect(result.beliefCount).toBe(20);
+    expect(result.beliefCount).toBe(27);
   });
 
   it("world tell word-match: push body === tell.committed === headline (Phase D)", () => {
@@ -122,6 +124,16 @@ describe("Denis eval fixtures M10", () => {
     expect(report.ok).toBe(true);
     expect(report.scenarioCount).toBe(MENTAL_MODEL_SCENARIOS.length);
     expect(report.foldMsP500).toBeLessThan(6);
+  });
+
+  it("guest offer fold passes (ADR-038 GMM-9 shadow)", () => {
+    const report = runOfferFoldSuite();
+    if (!report.ok) {
+      console.error(JSON.stringify(report.results.filter((r) => !r.passed), null, 2));
+    }
+    expect(report.ok).toBe(true);
+    expect(report.scenarioCount).toBe(OFFER_FOLD_SCENARIOS.length);
+    expect(report.foldMsP500).toBeLessThan(20);
   });
 
   it("mental model timeline observability passes (ADR-038 Val B.5)", () => {

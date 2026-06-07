@@ -1,3 +1,4 @@
+import type { GuestOfferContext } from "@/lib/denis/cognition/offer/offer-types";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import {
   DEFAULT_PROACTIVE_POLICY,
@@ -55,6 +56,9 @@ const CHECK_REASON: Record<ProactivePolicyDenyCheck, ProactivePolicyReason> = {
   follow_up_requires_defer: "gmm.intent_incompatible",
   upsell_blocks_needs_attention: "gmm.needs_attention_blocks_upsell",
   popularity_blocks_budget_affinity: "gmm.price_affinity_mismatch",
+  browse_requires_resolved_offer: "gmm.offer_unresolved",
+  browse_readiness_not_ready: "gmm.offer_not_ready",
+  cart_recovery_requires_offer: "gmm.offer_unresolved",
 };
 
 function evaluateDenyCheck(input: {
@@ -63,6 +67,7 @@ function evaluateDenyCheck(input: {
   kind: GuestProactiveNudgeKind;
   config: ConciergeConfig;
   policy?: ProactivePolicyManifest;
+  offer?: GuestOfferContext | null;
   payload?: Pick<
     ProactiveTickPayload,
     "browsingDeferredAt" | "followUpRequestedAt" | "browseFollowUpEmitted"
@@ -236,6 +241,30 @@ function evaluateDenyCheck(input: {
       }
       return null;
 
+    case "browse_requires_resolved_offer":
+      if (!input.config.proactive.offerEnrich) return null;
+      if (kind !== "browse_nudge" && kind !== "cart_recovery") return null;
+      if (!input.offer?.primary) {
+        return CHECK_REASON.browse_requires_resolved_offer;
+      }
+      return null;
+
+    case "browse_readiness_not_ready":
+      if (!input.config.proactive.offerEnrich) return null;
+      if (kind !== "browse_nudge") return null;
+      if (!input.offer?.readiness.ready) {
+        return CHECK_REASON.browse_readiness_not_ready;
+      }
+      return null;
+
+    case "cart_recovery_requires_offer":
+      if (!input.config.proactive.offerEnrich) return null;
+      if (kind !== "cart_recovery") return null;
+      if (!input.offer?.cartRecovery) {
+        return CHECK_REASON.cart_recovery_requires_offer;
+      }
+      return null;
+
     default:
       return null;
   }
@@ -246,6 +275,7 @@ export function evaluateProactivePolicyForKind(input: {
   kind: GuestProactiveNudgeKind;
   config: ConciergeConfig;
   policy?: ProactivePolicyManifest;
+  offer?: GuestOfferContext | null;
   payload?: Pick<
     ProactiveTickPayload,
     "browsingDeferredAt" | "followUpRequestedAt" | "browseFollowUpEmitted"
@@ -263,6 +293,7 @@ export function evaluateProactivePolicyForKind(input: {
       kind: input.kind,
       config: input.config,
       policy: input.policy,
+      offer: input.offer,
       payload: input.payload,
       now,
     });
@@ -280,6 +311,7 @@ export function applyProactivePolicy(input: {
   ranked: RankedProactiveCandidate[];
   config: ConciergeConfig;
   policy?: ProactivePolicyManifest;
+  offer?: GuestOfferContext | null;
   payload?: Pick<
     ProactiveTickPayload,
     "browsingDeferredAt" | "followUpRequestedAt" | "browseFollowUpEmitted"
@@ -294,6 +326,7 @@ export function applyProactivePolicy(input: {
       kind: row.nudge.kind,
       config: input.config,
       policy: input.policy,
+      offer: input.offer,
       payload: input.payload,
       now: input.now,
     });
@@ -317,6 +350,7 @@ export function gateProactiveNudge(input: {
   mental: GuestMentalModel;
   candidate: GuestProactiveNudge;
   config: ConciergeConfig;
+  offer?: GuestOfferContext | null;
   payload?: Pick<
     ProactiveTickPayload,
     "browsingDeferredAt" | "followUpRequestedAt" | "browseFollowUpEmitted"
@@ -331,6 +365,7 @@ export function gateProactiveNudge(input: {
     mental: input.mental,
     kind: input.candidate.kind,
     config: input.config,
+    offer: input.offer,
     payload: input.payload,
     now: input.now,
   });

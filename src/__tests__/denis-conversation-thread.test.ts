@@ -4,6 +4,9 @@ import { buildDialogueFrameEvidence } from "@/lib/denis/cognition/context/retrie
 import { leadershipFallbackReply } from "@/lib/ai/conversation-leadership";
 import { compileBeliefs } from "@/lib/denis/cognition/beliefs";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
+import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
+import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 
@@ -49,6 +52,9 @@ function minimalState(
       obligation: null,
     },
     timeline: [],
+    browse: emptyBrowseProfile(),
+    mental: emptyGuestMentalModel(),
+    offer: emptyGuestOfferContext(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
     ...partial,
   } as TableSessionState;

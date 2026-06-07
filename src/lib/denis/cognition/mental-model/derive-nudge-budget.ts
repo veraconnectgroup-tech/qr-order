@@ -7,7 +7,7 @@ import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 
 const UPSERT_NUDGE_KIND =
-  /^(guest_welcome|browse_nudge|popularity_pair|dessert_nudge|bill_prompt|browse_follow_up)$/;
+  /^(guest_welcome|browse_nudge|cart_recovery|popularity_pair|dessert_nudge|bill_prompt|browse_follow_up)$/;
 
 export function deriveNudgeBudget(input: {
   spine: GuestSignalSpine;

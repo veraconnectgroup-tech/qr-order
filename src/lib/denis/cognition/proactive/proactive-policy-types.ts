@@ -15,6 +15,8 @@ export type ProactivePolicyReason =
   | "gmm.group_address_follower"
   | "gmm.needs_attention_blocks_upsell"
   | "gmm.price_affinity_mismatch"
+  | "gmm.offer_unresolved"
+  | "gmm.offer_not_ready"
   | "gmm.confidence_fallback";
 
 /** @deprecated alias — use ProactivePolicyReason */
@@ -41,7 +43,10 @@ export type ProactivePolicyDenyCheck =
   | "bill_requires_wants_bill"
   | "follow_up_requires_defer"
   | "upsell_blocks_needs_attention"
-  | "popularity_blocks_budget_affinity";
+  | "popularity_blocks_budget_affinity"
+  | "browse_requires_resolved_offer"
+  | "browse_readiness_not_ready"
+  | "cart_recovery_requires_offer";
 
 export type ProactiveKindPolicy = {
   upsell: boolean;

@@ -8,6 +8,10 @@ function isoMinutesAgo(minutes: number): string {
   return new Date(NOW - minutes * 60_000).toISOString();
 }
 
+function isoSecondsAgo(seconds: number): string {
+  return new Date(NOW - seconds * 1000).toISOString();
+}
+
 export const ANTICIPATION_EVAL_NOW = NOW;
 
 export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
@@ -82,7 +86,7 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       kind: "drink_pairing",
       planKind: "template_tell",
       requiresLlm: false,
-      messageIncludes: "Getraenk",
+      messageIncludes: "Getränk",
     },
   },
   {
@@ -548,6 +552,51 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       kind: "bill_prompt",
       planKind: "template_tell",
       requiresLlm: false,
+    },
+  },
+  {
+    id: "offer-enrich-beef-burger-personalized",
+    description: "Offer enrich replaces generic browse nudge with product name",
+    setup: {
+      sessionPhase: "browsing",
+      mentalModelMode: "enforce",
+      offerEnrich: true,
+      timeline: [
+        browseRow(1, {
+          action: "view_product",
+          productId: "11111111-1111-4111-8111-111111111111",
+          productName: "Beef Burger",
+          categoryId: "cat-burgers",
+          categoryPath: ["food", "burgers"],
+          menuSection: "food",
+          dwellMs: 35_000,
+          timestamp: isoSecondsAgo(10),
+        }),
+      ],
+    },
+    payload: {},
+    expect: {
+      emit: true,
+      kind: "browse_nudge",
+      planKind: "template_tell",
+      requiresLlm: false,
+      messageIncludes: "Beef Burger",
+      messageForbidden: "Treba vam pomoć",
+    },
+  },
+  {
+    id: "offer-enrich-blocks-without-telemetry",
+    description: "Offer enrich drops browse nudge when no resolved offer",
+    setup: {
+      sessionPhase: "browsing",
+      mentalModelMode: "enforce",
+      offerEnrich: true,
+      timeline: [],
+    },
+    payload: { browseMinutes: 10 },
+    expect: {
+      emit: false,
+      skipReason: "no_candidate",
     },
   },
 ];

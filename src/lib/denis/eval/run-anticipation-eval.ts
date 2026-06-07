@@ -2,6 +2,8 @@ import { foldBrowseProfile } from "@/lib/denis/cognition/browse/fold-browse-prof
 import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { foldGuestMentalModel } from "@/lib/denis/cognition/mental-model/fold-guest-mental-model";
+import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
+import { foldGuestOfferContext } from "@/lib/denis/cognition/offer/fold-guest-offer-context";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
@@ -32,6 +34,7 @@ function buildConfig(setup: AnticipationSetup): ConciergeConfig {
       pairing: setup.pairingEnabled ?? true,
       dessert: setup.dessertEnabled ?? true,
       slowKitchen: setup.slowKitchenEnabled ?? true,
+      offerEnrich: setup.offerEnrich ?? false,
     },
     mentalModel: {
       ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
@@ -84,6 +87,28 @@ function buildState(setup: AnticipationSetup): TableSessionState {
         })
       : emptyGuestMentalModel(ANTICIPATION_EVAL_NOW);
 
+  const phase = setup.sessionPhase ?? "browsing";
+  const offer = foldGuestOfferContext({
+    timeline,
+    browse,
+    mental,
+    spine: foldGuestSignals({
+      timeline,
+      dismissedNudgeKeys: dismissedNudges,
+    }),
+    venueOps: {
+      operatingMode: setup.operatingMode ?? "normal",
+      kdsStress: "normal",
+      acceptingOrders: true,
+      unavailableProductIds: [],
+      staffHint: null,
+    },
+    phase,
+    cartLineCount: items.length,
+    config,
+    now: ANTICIPATION_EVAL_NOW,
+  });
+
   return {
     table: { id: "table-4", name: "Table 4", token: "demo-table-4" },
     session: {
@@ -126,6 +151,7 @@ function buildState(setup: AnticipationSetup): TableSessionState {
     timeline,
     browse,
     mental,
+    offer,
     config,
   };
 }
@@ -223,6 +249,18 @@ function runAnticipationScenario(
     ) {
       errors.push(
         `message must include "${scenario.expect.messageIncludes}", got "${actual.message}"`
+      );
+    }
+  }
+
+  if (scenario.expect.messageForbidden && actual.message) {
+    if (
+      actual.message
+        .toLowerCase()
+        .includes(scenario.expect.messageForbidden.toLowerCase())
+    ) {
+      errors.push(
+        `message must not include "${scenario.expect.messageForbidden}", got "${actual.message}"`
       );
     }
   }

@@ -1,4 +1,5 @@
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import {
@@ -104,6 +105,7 @@ function buildStateFromScenario(
     timeline: scenario.timeline,
     browse: emptyBrowseProfile(),
     mental: emptyGuestMentalModel(),
+    offer: emptyGuestOfferContext(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 }

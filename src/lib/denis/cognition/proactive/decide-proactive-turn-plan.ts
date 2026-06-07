@@ -35,6 +35,8 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.attention_handoff";
     case "browse_nudge":
       return "proactive.browse";
+    case "cart_recovery":
+      return "proactive.cart_recovery";
     case "drink_pairing":
       return "proactive.drink_pairing";
     case "dessert_nudge":
@@ -155,7 +157,7 @@ export function decideProactiveTurnPlan(
   }
 
   if (
-    candidate.kind === "browse_nudge" &&
+    (candidate.kind === "browse_nudge" || candidate.kind === "cart_recovery") &&
     sessionPhase !== "browsing" &&
     sessionPhase !== "latent"
   ) {
