@@ -7,6 +7,8 @@ export const COMMERCE_COMMAND_TYPES = {
   initiateReorder: "InitiateReorder",
   recordTipSelection: "RecordTipSelection",
   acknowledgeCapacity: "AcknowledgeCapacity",
+  recordNudgeEmitted: "RecordNudgeEmitted",
+  recordOfferConverted: "RecordOfferConverted",
 } as const;
 
 export type CommerceCommandType =
@@ -22,6 +24,8 @@ export const COMMERCE_EVENT_TYPES = {
   tipSelected: "tip.selected",
   capacityLevelChanged: "capacity.level_changed",
   preorderScheduled: "preorder.scheduled",
+  nudgeEmitted: "anticipation.nudge_emitted",
+  offerConverted: "anticipation.offer_converted",
 } as const;
 
 export type CommerceEventType =
