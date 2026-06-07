@@ -1,12 +1,14 @@
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
 import { loadDenisProactiveAdminState } from "@/lib/admin/denis-proactive-actions";
 import { loadLearnedEdgeQueue } from "@/lib/admin/denis-learned-edges";
+import { loadNudgePerformanceSnapshot } from "@/lib/admin/load-nudge-performance";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { DenisLearnedEdgesManager } from "@/components/admin/denis-learned-edges-manager";
 import {
   DenisLiveOpsWidget,
   loadDenisLiveOpsSnapshot,
 } from "@/components/admin/denis-live-ops-widget";
+import { DenisNudgePerformancePanel } from "@/components/admin/denis-nudge-performance-panel";
 import { DenisProactiveSettingsPanel } from "@/components/admin/denis-proactive-settings-panel";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -21,12 +23,14 @@ export default async function DenisInsightsAdminPage() {
   }
 
   const admin = createAdminClient();
-  const [edges, config, liveOps, proactiveState] = await Promise.all([
-    loadLearnedEdgeQueue(admin, locationId, "pending"),
-    loadConciergeConfigForLocation(locationId),
-    loadDenisLiveOpsSnapshot(admin, locationId),
-    loadDenisProactiveAdminState(),
-  ]);
+  const [edges, config, liveOps, proactiveState, nudgePerformance] =
+    await Promise.all([
+      loadLearnedEdgeQueue(admin, locationId, "pending"),
+      loadConciergeConfigForLocation(locationId),
+      loadDenisLiveOpsSnapshot(admin, locationId),
+      loadDenisProactiveAdminState(),
+      loadNudgePerformanceSnapshot(admin, { locationId, periodDays: 7 }),
+    ]);
 
   const productIds = [
     ...new Set(
@@ -52,6 +56,7 @@ export default async function DenisInsightsAdminPage() {
       {"error" in proactiveState ? null : (
         <DenisProactiveSettingsPanel initial={proactiveState} />
       )}
+      <DenisNudgePerformancePanel snapshot={nudgePerformance} />
       <DenisLearnedEdgesManager
         edges={edges}
         productNames={productNames}

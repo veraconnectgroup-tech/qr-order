@@ -16,6 +16,10 @@ export {
   type AggregatedNudgeEdgeStat,
   type NudgeSessionTimelineInput,
 } from "@/lib/denis/learning/compute-nudge-edge-stats";
+export {
+  aggregateProductNudgeStatsFromTimelines,
+  type ProductNudgePerformance,
+} from "@/lib/denis/learning/aggregate-product-nudge-stats";
 export type {
   GuestMemoryConsent,
   GuestMemoryProjection,

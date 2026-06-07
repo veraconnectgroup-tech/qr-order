@@ -122,7 +122,7 @@ Priority: **accepted > declined > ignored > expired**.
 | **L1** | fold + `anticipation.resolved` + fatigue budget + tests | ✅ |
 | **L2** | commerce projection + rollup + M16 nudge edges cron | ✅ |
 | **L3** | Revenue attribution fold × order_items | ✅ |
-| **L4** | Admin insights extended + weekly digest | pending |
+| **L4** | Admin insights panel + weekly digest cron | ✅ |
 
 ---
 
