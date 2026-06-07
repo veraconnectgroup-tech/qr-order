@@ -6,6 +6,7 @@ import {
   buildDenisOrderCommand,
   reconcileCartDraftPricesFromCatalog,
 } from "@/lib/denis/runtime/act/build-order-command";
+import { ensureTrustedDeviceForDenisSubmit } from "@/lib/denis/runtime/act/ensure-trusted-device";
 import { persistAiSessionAfterOrderSubmit } from "@/lib/denis/runtime/act/persist-ai-session-after-order-submit";
 import {
   actSubmitGuestBlockedMessage,
@@ -110,12 +111,26 @@ export async function executeTurnOrderSubmit(
 
   const pricedCart = reconcileCartDraftPricesFromCatalog(cartDraft, catalog);
 
+  const trusted = await ensureTrustedDeviceForDenisSubmit(admin, {
+    tableToken: input.tableToken,
+    sessionToken: input.sessionToken,
+    deviceFingerprint: input.deviceFingerprint,
+    deviceToken: input.deviceToken,
+  });
+  if ("error" in trusted) {
+    return {
+      attempted: true,
+      submitError: trusted.error,
+      guestBlockedReason: actSubmitGuestBlockedMessage(trusted.error),
+    };
+  }
+
   const command = buildDenisOrderCommand({
     aiSessionId: input.aiSessionId,
     tableToken: input.tableToken,
     sessionToken: input.sessionToken,
     deviceFingerprint: input.deviceFingerprint,
-    deviceToken: input.deviceToken,
+    deviceToken: trusted.deviceToken,
     cartDraft: pricedCart,
   });
 

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureTrustedDeviceForDenisSubmit } from "@/lib/denis/runtime/act/ensure-trusted-device";
 import { executeDenisGuestOrderCancel } from "@/lib/denis/acl/execute-denis-guest-order-cancel";
 import { executeDenisOrderModifyRequest } from "@/lib/denis/acl/execute-denis-order-modify-request";
 import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
@@ -308,8 +309,27 @@ export async function executePlannedSkill(
       };
     }
 
+    const admin = createAdminClient();
+    const trusted = await ensureTrustedDeviceForDenisSubmit(admin, {
+      tableToken: ctx.tableToken!,
+      sessionToken: ctx.sessionToken,
+      deviceFingerprint: ctx.deviceFingerprint,
+      deviceToken: ctx.deviceToken,
+    });
+    if ("error" in trusted) {
+      return {
+        skillId: ctx.skillId,
+        riskClass,
+        dryRun: false,
+        ok: false,
+        error: trusted.error,
+      };
+    }
+
+    const trustedCommand = { ...command, deviceToken: trusted.deviceToken };
+
     const result = await executeDenisOrderCommand({
-      command,
+      command: trustedCommand,
       catalog: ctx.catalog,
     });
 
