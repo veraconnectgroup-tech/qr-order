@@ -81,7 +81,7 @@ describe("guest substitution", () => {
     );
     expect(result.draft.items).toHaveLength(1);
     expect(result.draft.items[0]?.productName).toBe("Beef Burger");
-    expect(result.draft.items[0]?.notes).toMatch(/Zamena/i);
+    expect(result.draft.items[0]?.notes).toBe("");
     expect(result.meta.needsDrinkClarify).toBe(true);
     expect(result.meta.substitution).not.toBeNull();
   });

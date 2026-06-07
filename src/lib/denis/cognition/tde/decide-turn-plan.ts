@@ -530,6 +530,75 @@ function waiterGapsBlockConfirm(input: DecideTurnPlanInput): TurnPlan | null {
   });
 }
 
+/** Guest named a typed drink — close gap via backfill, no LLM round-trip (ADR-033). */
+function waiterGapResolvedDrinkReply(
+  input: DecideTurnPlanInput
+): TurnPlan | null {
+  const primaryGap =
+    getBeliefValue<WaiterGapKind | null>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.waiterPrimaryGap
+    ) ?? null;
+  if (primaryGap !== "drink_unspecified") return null;
+  if (!guestResolvesActiveGap(input)) return null;
+
+  return buildPlan("reflex_only", {
+    requiresLlm: false,
+    suppressUpsell: resolveSuppressUpsell(input.beliefs),
+    reason: "waiter.gap_resolved.drink_reply",
+  });
+}
+
+/** T0 confirm + empty obligation → ACT submit without LLM comprehend (iota pilot S3). */
+function commerceReflexConfirmSubmit(
+  input: DecideTurnPlanInput
+): TurnPlan | null {
+  const gapCount =
+    getBeliefValue<number>(input.beliefs, CORE_BELIEF_KEYS.waiterGapCount) ?? 0;
+  if (gapCount > 0) return null;
+
+  const canConfirm =
+    getBeliefValue<boolean>(input.beliefs, CORE_BELIEF_KEYS.waiterCanConfirm) ===
+    true;
+  if (!canConfirm) return null;
+
+  const pendingSlot = getBeliefValue<string>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePendingSlot
+  );
+  if (pendingSlot) return null;
+
+  const intent = input.reflex.reflex?.intent;
+  const trimmed = input.message.trim();
+  const normalized = trimmed
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+  const confirmLike =
+    intent === "CONFIRM" ||
+    intent === "DONE" ||
+    normalized === "da" ||
+    normalized === "ja" ||
+    normalized === "yes" ||
+    (input.reflex.usedT0 &&
+      (normalized === "moze" ||
+        normalized === "ajde" ||
+        normalized === "super" ||
+        normalized === "posalji"));
+  if (!confirmLike) return null;
+
+  const hasSubmitSkill = input.reflex.plan.skills.some(
+    (skill) => skill.id === "order.submit"
+  );
+  if (!hasSubmitSkill && !input.reflex.usedT0) return null;
+
+  return buildPlan("reflex_only", {
+    requiresLlm: false,
+    suppressUpsell: resolveSuppressUpsell(input.beliefs),
+    reason: "commerce.confirm.reflex_submit",
+  });
+}
+
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
 
@@ -538,6 +607,12 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
 
   const gapClarifyPlan = waiterGapsClarifyTurn(input);
   if (gapClarifyPlan) return gapClarifyPlan;
+
+  const gapResolvedPlan = waiterGapResolvedDrinkReply(input);
+  if (gapResolvedPlan) return gapResolvedPlan;
+
+  const reflexConfirmPlan = commerceReflexConfirmSubmit(input);
+  if (reflexConfirmPlan) return reflexConfirmPlan;
 
   // ADR-030 — at recap, LLM comprehends confirm in any language; T0 is optional fast-path only.
   if (shouldComprehendConfirmTurn(input)) {

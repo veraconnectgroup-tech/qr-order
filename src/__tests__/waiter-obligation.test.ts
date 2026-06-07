@@ -265,6 +265,99 @@ describe("waiter obligation (ADR-032)", () => {
     expect(plan.requiresLlm).toBe(false);
   });
 
+  it("reflex drink reply when guest names typed drink with open gap", () => {
+    const state = baseState();
+    state.conversation.flowNodeId = "recap";
+    state.conversation.model.transcript = [
+      {
+        id: "g1",
+        role: "guest",
+        text: "moze jedno pivo i beef burger",
+        at: new Date().toISOString(),
+      },
+    ];
+    state.commerce.cart.ai.draft.items.push({
+      productId: "f1",
+      productName: "Beef Burger",
+      quantity: 1,
+      serveSize: null,
+      modifierIds: [],
+      notes: "",
+      lineTotal: 15,
+      menuSection: "food",
+    });
+
+    const beliefs = compileBeliefs({
+      state,
+      guestMessage: "pilsner",
+      sessionLanguage: "sr",
+    });
+    const reflex = planTurnWithReflex({
+      config: state.config,
+      message: "pilsner",
+      flowNodeId: "recap",
+      cartState: state.commerce.cart.ai,
+    });
+    const plan = decideTurnPlan({
+      message: "pilsner",
+      beliefs,
+      reflex,
+      committedFacts: [],
+    });
+
+    expect(plan.reason).toBe("waiter.gap_resolved.drink_reply");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("reflex confirm submit when obligation clear at recap", () => {
+    const state = baseState();
+    state.conversation.flowNodeId = "recap";
+    state.commerce.cart.ai.draft.items.push(
+      {
+        productId: "f1",
+        productName: "Beef Burger",
+        quantity: 1,
+        serveSize: null,
+        modifierIds: [],
+        notes: "",
+        lineTotal: 15,
+        menuSection: "food",
+      },
+      {
+        productId: "d1",
+        productName: "Pilsner",
+        quantity: 1,
+        serveSize: "0.5L",
+        modifierIds: [],
+        notes: "",
+        lineTotal: 5,
+        menuSection: "drinks",
+      }
+    );
+
+    const beliefs = compileBeliefs({
+      state,
+      guestMessage: "da",
+      sessionLanguage: "sr",
+    });
+    const reflex = planTurnWithReflex({
+      config: state.config,
+      message: "da",
+      flowNodeId: "recap",
+      cartState: state.commerce.cart.ai,
+      structuredIntent: "CONFIRM",
+    });
+    const plan = decideTurnPlan({
+      message: "da",
+      beliefs,
+      reflex,
+      committedFacts: [],
+    });
+
+    expect(plan.reason).toBe("commerce.confirm.reflex_submit");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
   it("fold merge keeps drink gap from transcript order line (view parity)", () => {
     const state = baseState();
     state.conversation.flowNodeId = "recap";

@@ -166,11 +166,6 @@ function inferModifierIdsFromSegment(
   return ids;
 }
 
-function substitutionNote(sub: GuestSubstitutionRequest | null): string {
-  if (!sub) return "";
-  return `Zamena: ${sub.requested} umesto ${sub.insteadOf}`;
-}
-
 function segmentToProposedItem(
   segment: string,
   catalog: AiCatalog
@@ -187,7 +182,8 @@ function segmentToProposedItem(
       quantity: 1,
       modifierIds: inferModifierIdsFromSegment(segment, product, substitution),
       serveSize: inferServeSizeFromSegment(segment, product),
-      notes: substitutionNote(substitution),
+      // Kitchen note is added after guest confirms substitution (ADR-033 obligation gap).
+      notes: "",
     },
     substitution,
   };
@@ -371,6 +367,38 @@ export function backfillDraftFromOrderMessage(
     draft: processed.draft,
     cartActions: processed.cartActions,
     meta: { substitution, needsDrinkClarify },
+  };
+}
+
+/** Add a typed drink line when cart already has food (gap-resolved drink reply). */
+export function backfillTypedDrinkAddition(
+  draft: AiOrderDraft,
+  catalog: AiCatalog,
+  userMessage: string
+): {
+  draft: AiOrderDraft;
+  cartActions: ValidatedCartAction[];
+} {
+  const text = userMessage.trim();
+  if (!text || !TYPED_DRINK_PATTERN.test(text)) {
+    return { draft, cartActions: [] };
+  }
+  if (draftHasDrinkInCart(draft)) {
+    return { draft, cartActions: [] };
+  }
+
+  const parsed = segmentToProposedItem(text, catalog);
+  if (!parsed.item) {
+    return { draft, cartActions: [] };
+  }
+
+  const processed = processProposedItems(draft, catalog, [parsed.item], {
+    userMessage: text,
+  });
+
+  return {
+    draft: processed.draft,
+    cartActions: processed.cartActions,
   };
 }
 

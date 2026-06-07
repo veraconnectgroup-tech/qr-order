@@ -141,7 +141,8 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
     expect: {
       gapCount: 0,
       canConfirm: true,
-      planKind: "transactional_perceive",
+      planKind: "reflex_only",
+      planReason: "commerce.confirm.reflex_submit",
     },
   },
   {
@@ -199,7 +200,8 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
     expect: {
       gapCount: 0,
       canConfirm: true,
-      planKind: "transactional_perceive",
+      planKind: "reflex_only",
+      planReason: "commerce.confirm.reflex_submit",
     },
   },
   {
@@ -245,7 +247,8 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
     expect: {
       gapCount: 0,
       canConfirm: true,
-      planKind: "transactional_perceive",
+      planKind: "reflex_only",
+      planReason: "commerce.confirm.reflex_submit",
     },
   },
   {
@@ -289,7 +292,8 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
     expect: {
       gapCount: 0,
       canConfirm: true,
-      planKind: "transactional_perceive",
+      planKind: "reflex_only",
+      planReason: "commerce.confirm.reflex_submit",
     },
   },
   {

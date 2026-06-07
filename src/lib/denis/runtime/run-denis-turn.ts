@@ -130,6 +130,7 @@ import {
 } from "@/lib/denis/venue/party";
 import {
   isOrderPlacementMessage,
+  backfillTypedDrinkAddition,
   maybeBackfillOrderDraft,
 } from "@/lib/ai/ordering/order-message-backfill";
 import { persistKernelOrderingDraft } from "@/lib/denis/runtime/act/apply-kernel-ordering";
@@ -168,10 +169,10 @@ async function maybeBackfillPlacementCart(input: {
   cartDraft: DenisCartDraft;
   cartActions: Array<{ productName: string; quantity?: number }>;
 }> {
-  if (input.cartDraft.items.length > 0) {
-    return { cartDraft: input.cartDraft, cartActions: [] };
-  }
-  if (!isOrderPlacementMessage(input.userMessage)) {
+  if (
+    input.cartDraft.items.length === 0 &&
+    !isOrderPlacementMessage(input.userMessage)
+  ) {
     return { cartDraft: input.cartDraft, cartActions: [] };
   }
 
@@ -187,6 +188,30 @@ async function maybeBackfillPlacementCart(input: {
       cachedAt: menuPayload.cachedAt,
     };
     if (!menuPayload.catalog || Object.keys(menuPayload.catalog).length === 0) {
+      return { cartDraft: input.cartDraft, cartActions: [] };
+    }
+
+    if (input.cartDraft.items.length > 0) {
+      const drinkBackfill = backfillTypedDrinkAddition(
+        cartDraftToAiOrderDraft(input.cartDraft),
+        catalog,
+        input.userMessage
+      );
+      if (drinkBackfill.cartActions.length > 0) {
+        const persisted = await persistKernelOrderingDraft(
+          input.admin,
+          input.timelineAiSessionId,
+          drinkBackfill.draft
+        );
+        if (persisted.ok) {
+          return {
+            cartDraft:
+              aiOrderDraftToDenisCartState(drinkBackfill.draft).draft ??
+              input.cartDraft,
+            cartActions: drinkBackfill.cartActions,
+          };
+        }
+      }
       return { cartDraft: input.cartDraft, cartActions: [] };
     }
 
@@ -862,7 +887,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     reflexTurn.reflex?.intent === "CONFIRM" &&
     reflexTurn.plan.skills.some((skill) => skill.id === "order.submit");
 
-  if (t0ConfirmSubmit) {
+  if (
+    t0ConfirmSubmit ||
+    perceiveResult.turnPlan.reason === "commerce.confirm.reflex_submit"
+  ) {
     data.submitOrder = true;
   }
 
@@ -1030,7 +1058,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const actSubmitOutcome = resolveActSubmitOutcome(actPhase);
 
   let turnSubmitOutcome = actSubmitOutcome;
-  if (Boolean(data.submitOrder) && !turnSubmitOutcome.attempted && timelineAiSessionId) {
+  const shouldRunUnifiedSubmit =
+    Boolean(data.submitOrder) &&
+    !turnSubmitOutcome.orderId &&
+    Boolean(timelineAiSessionId) &&
+    (!turnSubmitOutcome.attempted || Boolean(turnSubmitOutcome.submitError));
+
+  if (shouldRunUnifiedSubmit && timelineAiSessionId) {
     const unifiedStarted = performance.now();
     turnSubmitOutcome = await executeTurnOrderSubmit(admin, {
       aiSessionId: timelineAiSessionId,
@@ -1101,7 +1135,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const templateObligationTell =
     !perceiveResult.llmUsed &&
     (perceiveResult.turnPlan.reason === "waiter.gap_clarify" ||
-      perceiveResult.turnPlan.reason === "waiter.gap_blocks_confirm");
+      perceiveResult.turnPlan.reason === "waiter.gap_blocks_confirm" ||
+      perceiveResult.turnPlan.reason === "waiter.gap_resolved.drink_reply" ||
+      perceiveResult.turnPlan.reason === "commerce.confirm.reflex_submit");
 
   const resolvedNarration = await resolveTurnNarrationMessage({
     legacyMessage: data.message ?? "",
