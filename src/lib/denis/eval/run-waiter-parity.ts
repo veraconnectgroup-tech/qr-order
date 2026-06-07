@@ -1,3 +1,4 @@
+import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import {
   compileBeliefs,
@@ -103,6 +104,7 @@ function buildState(
       dismissedNudges: [],
       lastAssistantMessage: setup.lastAssistantMessage ?? null,
       pendingSlot: setup.pendingSlot ?? null,
+      model: emptyConversationModel(),
     },
     timeline: [],
     config,

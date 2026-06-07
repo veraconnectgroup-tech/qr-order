@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
@@ -72,6 +73,7 @@ function buildFixtureState(
       dismissedNudges: [],
       lastAssistantMessage: null,
       pendingSlot: null,
+      model: emptyConversationModel(),
     },
     timeline,
     config: CONCIERGE_PLATFORM_DEFAULTS,

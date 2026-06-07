@@ -1,3 +1,4 @@
+import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import {
   compileBeliefs,
@@ -58,6 +59,7 @@ function baseState(
       dismissedNudges: [],
       lastAssistantMessage: null,
       pendingSlot: null,
+      model: emptyConversationModel(),
     },
     timeline: [],
     config,
@@ -300,6 +302,7 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
         dismissedNudges: [],
         lastAssistantMessage: "0.3L ili 0.5L?",
         pendingSlot: "serve_size",
+        model: emptyConversationModel(),
       },
     }),
     guestMessage: "veliko",

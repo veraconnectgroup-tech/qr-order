@@ -6,6 +6,7 @@ import {
 } from "@/lib/denis/loop/proactive-dock-tell";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
+import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 
@@ -41,6 +42,7 @@ function minimalState(
       dismissedNudges,
       lastAssistantMessage: null,
       pendingSlot: null,
+      model: emptyConversationModel(),
     },
     timeline,
     config: CONCIERGE_PLATFORM_DEFAULTS,

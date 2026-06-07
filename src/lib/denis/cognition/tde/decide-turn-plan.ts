@@ -11,7 +11,7 @@ import type {
   CommercePressure,
   ConversationAwaiting,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
-import { isGuestBrowsingDeferMessage } from "@/lib/denis/cognition/conversation/browsing-defer";
+import { isGuestPauseMessage } from "@/lib/denis/cognition/conversation/guest-continuity";
 
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
@@ -255,10 +255,18 @@ function resolvePerceivePlan(
     });
   }
 
+  if (!commerceActive && mode === "banter" && isGuestPauseMessage(message)) {
+    return buildPlan("relational_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "conversation.guest_pause",
+    });
+  }
+
   if (
     !commerceActive &&
     mode === "banter" &&
-    (isGuestBrowsingDeferMessage(message) || isShortBanterReply(message))
+    isShortBanterReply(message)
   ) {
     return buildPlan("relational_perceive", {
       requiresLlm: true,

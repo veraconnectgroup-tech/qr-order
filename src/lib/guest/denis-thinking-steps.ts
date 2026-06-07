@@ -9,12 +9,16 @@ export const DENIS_THINKING_STEP_MS = 2400;
 const MENU_BROWSE_PATTERN =
   /(šta\s+imate|sta\s+imate|šta\s+imam|sta\s+imam|was\s+habt|what\s+do\s+you\s+have|preporuk|empfehl|recommend|suggest|pivo|pizza|jelo|piće|pice|drink|dessert|desert|vegan|vegetar|gluten|allerg)/i;
 
+const GUEST_PAUSE_PATTERN =
+  /\b(nisam\s+j[oš]s?|ne\s+j[oš]s?|jo[sš]\s+gledamo|not\s+yet|noch\s+nicht|dođi|dodji|vrati\s+se|come\s+back|za\s+\d+\s*minut|\d+\s*minut\s+ponovo|za\s+koj[ií]\s+minut)\b/i;
+
 export type DenisThinkingContext =
   | "menu"
   | "order"
   | "status"
   | "payment"
   | "waiter"
+  | "pause"
   | "general";
 
 const THINKING_STEPS: Record<DenisThinkingContext, TranslationKey[]> = {
@@ -23,11 +27,13 @@ const THINKING_STEPS: Record<DenisThinkingContext, TranslationKey[]> = {
   status: ["ai.chat.thinking.status"],
   payment: ["ai.chat.thinking.payment"],
   waiter: ["ai.chat.thinking.waiter"],
-  general: ["ai.chat.thinking.menu", "ai.chat.thinking.recommend"],
+  pause: ["ai.chat.thinking.pause", "ai.chat.thinking.social"],
+  general: ["ai.chat.thinking.social", "ai.chat.thinking.llm"],
 };
 
 export function resolveDenisThinkingContext(message: string): DenisThinkingContext {
   const text = message.trim();
+  if (GUEST_PAUSE_PATTERN.test(text)) return "pause";
   if (MENU_BROWSE_PATTERN.test(text)) return "menu";
 
   const intent = classifyGuestRecoveryIntent(message);

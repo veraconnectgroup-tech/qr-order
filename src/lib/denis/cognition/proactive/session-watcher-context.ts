@@ -1,7 +1,10 @@
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 import { guestAskedForRecommendation } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
-import { extractBrowsingDeferredState } from "@/lib/denis/cognition/conversation/browsing-defer";
+import {
+  detectGuestLanguageFromTimeline,
+  extractGuestContinuityState,
+} from "@/lib/denis/cognition/conversation/guest-continuity";
 import {
   extractDismissedNudges,
   extractProactiveDedupeKeys,
@@ -50,12 +53,16 @@ export type SessionWatcherContext = {
   browsingDeferredAt: string | null;
   browsingDeferCount: number;
   browseFollowUpEmitted: boolean;
+  followUpRequestedAt: string | null;
+  followUpDelaySeconds: number | null;
+  guestLanguage: string | null;
 };
 
 export function buildSessionWatcherContext(input: {
   timeline: DenisTimelineRow[];
   orders: AiGuestOrder[];
   sessionOpenedAt: string;
+  venueDefaultLanguage?: string;
   now?: number;
 }): SessionWatcherContext {
   const now = input.now ?? Date.now();
@@ -105,7 +112,7 @@ export function buildSessionWatcherContext(input: {
 
   const idleMinutes = (now - lastActivityMs) / MS_MINUTE;
   const recentGuestMessages = guestMessages.slice(-8).map((row) => row.text);
-  const browsingDeferred = extractBrowsingDeferredState(input.timeline);
+  const continuity = extractGuestContinuityState(input.timeline);
 
   return {
     sessionAgeSeconds,
@@ -118,8 +125,14 @@ export function buildSessionWatcherContext(input: {
     emittedKeys: extractProactiveDedupeKeys(input.timeline),
     recentGuestMessages,
     waiterEscalated,
-    browsingDeferredAt: browsingDeferred.lastDeferredAt,
-    browsingDeferCount: browsingDeferred.deferCount,
-    browseFollowUpEmitted: browsingDeferred.followUpEmitted,
+    browsingDeferredAt: continuity.lastDeferredAt,
+    browsingDeferCount: continuity.deferCount,
+    browseFollowUpEmitted: continuity.followUpEmitted,
+    followUpRequestedAt: continuity.followUpRequestedAt,
+    followUpDelaySeconds: continuity.followUpDelaySeconds,
+    guestLanguage: detectGuestLanguageFromTimeline(
+      input.timeline,
+      input.venueDefaultLanguage ?? "sr"
+    ),
   };
 }

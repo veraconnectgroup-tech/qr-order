@@ -77,6 +77,10 @@ export function resolveTurnThinkingStepKeys(
     return ["ai.chat.thinking.social", "ai.chat.thinking.llm"];
   }
 
+  if (reason === "conversation.guest_pause") {
+    return ["ai.chat.thinking.pause", "ai.chat.thinking.social"];
+  }
+
   if (reason === "committed_facts") {
     return ["ai.chat.thinking.facts", "ai.chat.thinking.llm"];
   }
@@ -98,12 +102,8 @@ export function resolveTurnThinkingStepKeys(
         : ["ai.chat.thinking.cart", "ai.chat.thinking.order"];
     case "relational_perceive":
       return turnPlan.requiresLlm
-        ? [
-            "ai.chat.thinking.menu",
-            "ai.chat.thinking.recommend",
-            "ai.chat.thinking.llm",
-          ]
-        : ["ai.chat.thinking.menu", "ai.chat.thinking.recommend"];
+        ? ["ai.chat.thinking.social", "ai.chat.thinking.llm"]
+        : ["ai.chat.thinking.social"];
     case "narrate_paraphrase":
       return ["ai.chat.thinking.facts", "ai.chat.thinking.llm"];
     default:

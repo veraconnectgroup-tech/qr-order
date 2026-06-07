@@ -1,3 +1,4 @@
+import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import { pendingSlotKindFromDraft } from "@/lib/ai/ordering/pending-slot-kind";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
@@ -195,6 +196,14 @@ export async function foldTableSessionState(
     billSettled: Boolean(commerce?.bill_settled),
   });
 
+  const pendingSlot = pendingSlotKindFromDraft(draft);
+  const conversationModel = foldConversationModel({
+    timeline,
+    flowNodeId,
+    pendingSlot,
+    commerceConfirm: flowNodeId === "recap" || flowNodeId === "submit",
+  });
+
   const state: TableSessionState = {
     table: {
       id: input.tableId,
@@ -229,7 +238,8 @@ export async function foldTableSessionState(
       foodUpsellAsked,
       dismissedNudges,
       lastAssistantMessage,
-      pendingSlot: pendingSlotKindFromDraft(draft),
+      pendingSlot,
+      model: conversationModel,
     },
     timeline,
     config,

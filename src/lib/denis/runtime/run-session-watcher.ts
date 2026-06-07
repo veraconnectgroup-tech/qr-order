@@ -129,6 +129,7 @@ export async function runSessionWatcherTick(
         timeline,
         orders,
         sessionOpenedAt: row.opened_at,
+        venueDefaultLanguage: config.language.venueDefault ?? "sr",
       });
 
       const emitted = new Set([
@@ -167,10 +168,17 @@ export async function runSessionWatcherTick(
           dessertProductName: hints.dessertProductName,
           browseMinutes: watcherContext.idleMinutes,
           venueName,
-          language: config.language.venueDefault ?? "sr",
+          language:
+            watcherContext.guestMessageCount > 0
+              ? watcherContext.guestLanguage ??
+                config.language.venueDefault ??
+                "sr"
+              : config.language.venueDefault ?? "sr",
           browsingDeferredAt: watcherContext.browsingDeferredAt,
           browsingDeferCount: watcherContext.browsingDeferCount,
           browseFollowUpEmitted: watcherContext.browseFollowUpEmitted,
+          followUpRequestedAt: watcherContext.followUpRequestedAt,
+          followUpDelaySeconds: watcherContext.followUpDelaySeconds,
         },
       });
 

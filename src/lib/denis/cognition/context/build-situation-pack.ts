@@ -2,6 +2,7 @@ import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import { CORE_BELIEF_KEYS } from "@/lib/denis/cognition/beliefs/belief-types";
 import { retrieveCommerceEvidence } from "@/lib/denis/cognition/context/retrievers/commerce-evidence";
+import { buildConversationEvidence } from "@/lib/denis/cognition/conversation/conversation-evidence";
 import { buildDialogueFrameEvidence } from "@/lib/denis/cognition/context/retrievers/dialogue-frame";
 import { retrieveGuestIntelEvidence } from "@/lib/denis/cognition/context/retrievers/guest-intel-evidence";
 import { retrieveTranscriptWindowEvidence } from "@/lib/denis/cognition/context/retrievers/transcript-window";
@@ -184,8 +185,14 @@ export function buildSituationPack(input: SituationPackInput): string {
     buildDialogueFrameEvidence({
       beliefs: input.beliefs,
       state: input.state,
+      transcript: input.transcript,
     }),
   ];
+
+  const conversationEvidence = buildConversationEvidence(
+    input.state?.conversation.model
+  );
+  if (conversationEvidence) blocks.push(conversationEvidence);
 
   const commerce = retrieveCommerceEvidence(
     input.state,
@@ -208,8 +215,10 @@ export function buildSituationPack(input: SituationPackInput): string {
   const ops = retrieveVenueOpsEvidence(input.venueOps, input.opsEffects);
   if (ops) blocks.push(ops);
 
-  const transcript = retrieveTranscriptWindowEvidence(input.transcript ?? []);
-  if (transcript) blocks.push(transcript);
+  if (!conversationEvidence) {
+    const transcript = retrieveTranscriptWindowEvidence(input.transcript ?? []);
+    if (transcript) blocks.push(transcript);
+  }
 
   if (input.vkgPairingBlock?.trim()) {
     blocks.push(input.vkgPairingBlock.trim());

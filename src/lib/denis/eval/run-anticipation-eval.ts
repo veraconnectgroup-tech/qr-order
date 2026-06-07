@@ -1,3 +1,4 @@
+import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
@@ -79,6 +80,7 @@ function buildState(setup: AnticipationSetup): TableSessionState {
       dismissedNudges: setup.dismissedNudges ?? [],
       lastAssistantMessage: null,
       pendingSlot: setup.pendingSlot ?? null,
+      model: emptyConversationModel(),
     },
     timeline: [],
     config,

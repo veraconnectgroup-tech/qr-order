@@ -7,10 +7,30 @@ import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import { CORE_BELIEF_KEYS } from "@/lib/denis/cognition/beliefs/belief-types";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 
+type TranscriptMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+function lastTranscriptLine(
+  transcript: TranscriptMessage[] | undefined,
+  role: TranscriptMessage["role"]
+): string | null {
+  if (!transcript?.length) return null;
+  for (let i = transcript.length - 1; i >= 0; i--) {
+    const entry = transcript[i];
+    if (entry?.role !== role) continue;
+    const text = entry.content.trim();
+    if (text) return text;
+  }
+  return null;
+}
+
 /** Evidence block for perceive prompt (ADR-030). */
 export function buildDialogueFrameEvidence(input: {
   beliefs: BeliefGraph;
   state?: TableSessionState | null;
+  transcript?: TranscriptMessage[];
 }): string {
   const mode = getBeliefValue<string>(
     input.beliefs,
@@ -28,7 +48,11 @@ export function buildDialogueFrameEvidence(input: {
     input.beliefs,
     CORE_BELIEF_KEYS.commercePendingSlot
   );
-  const lastDenis = input.state?.conversation.lastAssistantMessage?.trim();
+  const lastDenis =
+    lastTranscriptLine(input.transcript, "assistant") ??
+    input.state?.conversation.lastAssistantMessage?.trim() ??
+    null;
+  const lastGuest = lastTranscriptLine(input.transcript, "user");
 
   const lines = [
     "DIALOGUE FRAME (Denis must continue this thread — do not reset to generic welcome):",
@@ -37,6 +61,10 @@ export function buildDialogueFrameEvidence(input: {
     `- commerce.pressure: ${pressure ?? "none"}`,
     `- commerce.pending_slot: ${pendingSlot ?? "null"}`,
   ];
+
+  if (lastGuest) {
+    lines.push(`- last_guest_message: ${lastGuest.slice(0, 240)}`);
+  }
 
   if (lastDenis) {
     lines.push(`- last_denis_message: ${lastDenis.slice(0, 240)}`);
@@ -58,6 +86,12 @@ export function buildDialogueFrameEvidence(input: {
   if (awaiting === "confirm" || pressure === "confirm") {
     lines.push(
       "- instruction: Guest is answering the order recap. Comprehend ANY natural affirmative in their language (super, ajde, može, ok, u redu, tamam, perfekt, sounds good…) → submitOrder true. Add/change → proposedItems. Never require magic words like confirm/potvrdi."
+    );
+  }
+
+  if (awaiting === "browse_decision") {
+    lines.push(
+      "- instruction: Guest is answering whether they have decided — acknowledge patiently; if they need time, say you will check back. No menu dump."
     );
   }
 

@@ -9,7 +9,8 @@ import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema
 import {
   buildBrowseFollowUpMessage,
   buildVenueWelcomeMessage,
-} from "@/lib/denis/cognition/conversation/browsing-defer";
+  resolveFollowUpDueAt,
+} from "@/lib/denis/cognition/conversation/guest-continuity";
 import type {
   GuestProactiveNudge,
   ProactiveTickPayload,
@@ -106,9 +107,17 @@ export function detectProactiveCandidate(input: {
     !hasOrdered &&
     (payload.guestMessageCount ?? 0) > 0
   ) {
-    const deferredAt = new Date(payload.browsingDeferredAt).getTime();
-    const secondsSinceDefer = (now - deferredAt) / 1000;
-    if (secondsSinceDefer >= config.proactive.browseFollowUpSeconds) {
+    const dueAt = resolveFollowUpDueAt(
+      {
+        lastDeferredAt: payload.browsingDeferredAt,
+        deferCount: payload.browsingDeferCount ?? 1,
+        followUpEmitted: payload.browseFollowUpEmitted ?? false,
+        followUpRequestedAt: payload.followUpRequestedAt ?? null,
+        followUpDelaySeconds: payload.followUpDelaySeconds ?? null,
+      },
+      config.proactive.browseFollowUpSeconds
+    );
+    if (dueAt != null && now >= dueAt) {
       return {
         kind: "browse_follow_up",
         message: messages.browseFollowUp,

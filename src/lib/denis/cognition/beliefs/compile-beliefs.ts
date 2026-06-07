@@ -270,6 +270,20 @@ function resolveConversationAwaiting(
   config: ConciergeConfig,
   pressure: CommercePressure
 ): ReturnType<typeof belief<ConversationAwaiting>> {
+  const foldedAwaiting = state.conversation.model?.awaiting ?? null;
+  if (
+    foldedAwaiting &&
+    pressure !== "confirm" &&
+    !state.conversation.pendingSlot
+  ) {
+    return belief(
+      CORE_BELIEF_KEYS.conversationAwaiting,
+      foldedAwaiting,
+      "inferred",
+      0.88
+    );
+  }
+
   if (pressure === "confirm") {
     return belief(
       CORE_BELIEF_KEYS.conversationAwaiting,

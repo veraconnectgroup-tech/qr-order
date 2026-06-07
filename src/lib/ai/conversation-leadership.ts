@@ -59,13 +59,38 @@ const LEADERSHIP_FALLBACK: Partial<
     "Buongiorno e benvenuto! Come posso aiutarla? Ha già deciso cosa desidera bere o mangiare?",
 };
 
-export function leadershipFallbackReply(
+function threadContinuationFallbackReply(
   language: string,
-  _guestMessage?: string
+  guestMessage?: string
 ): string {
   const lang = resolveAiPromptLanguage(language);
+  const guest = guestMessage?.trim().slice(0, 100);
+  if (lang === "sr" || lang === "hr") {
+    return guest
+      ? `Razumem — ${guest}. Tu sam, kako vam mogu pomoći dalje?`
+      : "Naravno, tu sam. Kako vam mogu pomoći dalje?";
+  }
+  if (lang === "de") {
+    return guest
+      ? `Alles klar — ${guest}. Wie darf ich Ihnen weiterhelfen?`
+      : "Natürlich, ich bin da. Wie darf ich Ihnen weiterhelfen?";
+  }
+  return guest
+    ? `Got it — ${guest}. I'm here — how may I help you next?`
+    : "Sure, I'm here. How may I help you next?";
+}
+
+export function leadershipFallbackReply(
+  language: string,
+  guestMessage?: string,
+  options?: { hasPriorMessages?: boolean }
+): string {
+  if (options?.hasPriorMessages) {
+    return threadContinuationFallbackReply(language, guestMessage);
+  }
+  const lang = resolveAiPromptLanguage(language);
   const fn = LEADERSHIP_FALLBACK[lang] ?? LEADERSHIP_FALLBACK.en;
-  return fn(_guestMessage ?? "");
+  return fn(guestMessage ?? "");
 }
 
 export function isAiParseFallbackReply(message: string): boolean {
@@ -103,6 +128,8 @@ export type ConversationLeadershipContext = {
   inOrderingFlow?: boolean;
   awaitingAnswer?: boolean;
   transactionalTurn?: boolean;
+  /** Transcript already has guest/denis lines — never reset to welcome fallback. */
+  hasPriorMessages?: boolean;
 };
 
 function shouldPreserveClarify(input: ApplyConversationLeadershipInput): boolean {
@@ -160,7 +187,9 @@ export function applyConversationLeadership(
   return {
     ...structured,
     intent,
-    message: leadershipFallbackReply(input.language, input.guestMessage),
+    message: leadershipFallbackReply(input.language, input.guestMessage, {
+      hasPriorMessages: input.context?.hasPriorMessages,
+    }),
     recommendations: [],
     proposedItems: [],
     quickReplies: [],

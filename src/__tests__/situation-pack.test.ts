@@ -4,6 +4,7 @@ import { CORE_BELIEF_KEYS } from "@/lib/denis/cognition/beliefs/belief-types";
 import { buildSituationPack } from "@/lib/denis/cognition/context/build-situation-pack";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
+import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 
 function baseState(
@@ -48,6 +49,7 @@ function baseState(
       dismissedNudges: [],
       lastAssistantMessage: "Koju veličinu piva — 0.3L ili 0.5L?",
       pendingSlot: null,
+      model: emptyConversationModel(),
     },
     timeline: [],
     config: CONCIERGE_PLATFORM_DEFAULTS,

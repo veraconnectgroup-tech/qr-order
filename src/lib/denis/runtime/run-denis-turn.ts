@@ -61,6 +61,10 @@ import {
   resolveTurnIntent,
 } from "@/lib/denis/runtime/map-legacy-intent";
 import { logger } from "@/lib/logger";
+import {
+  guestFollowUpFromMessage,
+  persistGuestFollowUpRequest,
+} from "@/lib/denis/runtime/persist-guest-continuity";
 import { persistDenisTurnTimeline } from "@/lib/denis/runtime/persist-turn-timeline";
 import {
   buildNarrationFacts,
@@ -404,6 +408,15 @@ async function runTdePerceive(input: {
     getPlaybookPromptBlock(input.orgId, input.body.locationId).catch(() => null),
   ]);
 
+  const transcriptForTurn = input.ctx.tableSessionState?.timeline
+    ? timelineToStoredMessages(input.ctx.tableSessionState.timeline).map(
+        (entry) => ({
+          role: entry.role,
+          content: entry.content,
+        })
+      )
+    : undefined;
+
   const evidence = planEvidence({
     turnPlan,
     beliefs: input.beliefs,
@@ -413,14 +426,7 @@ async function runTdePerceive(input: {
     state: input.ctx.tableSessionState,
     sessionPhase: input.ctx.foldMeta?.phase ?? null,
     flowNodeId: input.ctx.flowNodeId,
-    transcript: input.ctx.tableSessionState?.timeline
-      ? timelineToStoredMessages(input.ctx.tableSessionState.timeline).map(
-          (entry) => ({
-            role: entry.role,
-            content: entry.content,
-          })
-        )
-      : undefined,
+    transcript: transcriptForTurn,
     guestMemory: input.ctx.guestMemory,
     venueOps: input.ctx.venueOps,
     opsEffects: input.ctx.opsEffects,
@@ -448,6 +454,7 @@ async function runTdePerceive(input: {
         turnPlan.kind === "transactional_perceive",
       awaitingAnswer: awaiting != null && awaiting !== "",
       transactionalTurn: turnPlan.kind === "transactional_perceive",
+      hasPriorMessages: (transcriptForTurn?.length ?? 0) > 0,
     },
   };
 
@@ -968,6 +975,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       channel: perceptionChannel,
       timelineSurface,
     });
+
+    const followUp = guestFollowUpFromMessage(parsed.data.message);
+    if (followUp) {
+      await persistGuestFollowUpRequest(admin, {
+        aiSessionId: data.sessionId,
+        traceId,
+        guestMessage: parsed.data.message,
+        delaySeconds: followUp.delaySeconds,
+      });
+    }
 
     if (slotExtract && slotExtract.items.length > 0) {
       await appendDenisTimelineEvent(admin, {

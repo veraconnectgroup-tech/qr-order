@@ -87,7 +87,29 @@ describe("foldTranscriptFromTimeline Phase F", () => {
       }),
     ]);
 
-    expect(transcript).toHaveLength(4);
+    expect(transcript).toHaveLength(2);
+    expect(transcript[0]?.text).toBe("Hi");
+    expect(transcript[1]?.text).toBe("Hey there");
+  });
+
+  it("includes proactive dock welcome in guest-visible transcript", () => {
+    const transcript = foldTranscriptFromTimeline([
+      row(1, "tell.committed", {
+        type: "tell.committed",
+        message: "Dobrodošli u Skyline Lounge!",
+        source: "sense.proactive_dock",
+      }),
+      row(2, "narration.sent", {
+        type: "narration.sent",
+        message: "Dobrodošli u Skyline Lounge!",
+        source: "sense.proactive_dock",
+      }),
+      row(3, "signal.message", { type: "signal.message", text: "još gledamo" }),
+    ]);
+
+    expect(transcript).toHaveLength(2);
+    expect(transcript[0]?.role).toBe("denis");
+    expect(transcript[1]?.role).toBe("guest");
   });
 
   it("excludes proactive banner tells from guest chat transcript", () => {

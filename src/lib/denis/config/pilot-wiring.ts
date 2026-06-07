@@ -22,6 +22,11 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     autoRushBacklogMinutes: 20,
   },
   learning: { learnedEdgesEnabled: true },
+  language: {
+    venueDefault: "sr",
+    followGuest: true,
+    fallbackWhenUnknown: "venue",
+  },
   proactive: {
     enabled: true,
     guestWelcome: true,

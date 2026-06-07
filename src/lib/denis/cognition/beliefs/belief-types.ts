@@ -45,6 +45,9 @@ export type { PendingSlotKind };
 export type ConversationAwaiting =
   | PendingSlotKind
   | "confirm"
+  | "browse_decision"
+  | "recommendation_pick"
+  | "clarify_intent"
   | null;
 
 export function belief<T>(

@@ -58,6 +58,17 @@ function denisTextFromEvent(
   return null;
 }
 
+function pushTranscriptEntry(
+  entries: TranscriptEntry[],
+  entry: TranscriptEntry
+): void {
+  const last = entries[entries.length - 1];
+  if (last && last.role === entry.role && last.text === entry.text) {
+    return;
+  }
+  entries.push(entry);
+}
+
 /** Fold guest/denis lines from append-only timeline (ADR-019 Phase F — single TRUTH stream). */
 export function foldTranscriptFromTimeline(
   events: DenisTimelineRow[]
@@ -69,7 +80,7 @@ export function foldTranscriptFromTimeline(
 
     const guestText = guestTextFromEvent(event.event_type, payload);
     if (guestText) {
-      entries.push({
+      pushTranscriptEntry(entries, {
         id: event.id,
         role: "guest",
         text: guestText,
@@ -80,7 +91,7 @@ export function foldTranscriptFromTimeline(
 
     const denisText = denisTextFromEvent(event.event_type, payload);
     if (denisText) {
-      entries.push({
+      pushTranscriptEntry(entries, {
         id: event.id,
         role: "denis",
         text: denisText,

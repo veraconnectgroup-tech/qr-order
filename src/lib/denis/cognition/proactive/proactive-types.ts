@@ -28,6 +28,10 @@ export type ProactiveTickPayload = {
   browsingDeferCount?: number;
   /** True after proactive browse_follow_up was emitted. */
   browseFollowUpEmitted?: boolean;
+  /** ISO timestamp when guest asked Denis to return (explicit). */
+  followUpRequestedAt?: string | null;
+  /** Guest-requested delay in seconds (e.g. "dođi za 1 minut"). */
+  followUpDelaySeconds?: number | null;
 };
 
 export type GuestProactiveNudgeKind =

@@ -14,6 +14,7 @@ import type {
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
 
+import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
@@ -69,6 +70,8 @@ export type TableSessionState = {
     lastAssistantMessage: string | null;
     /** From ai_sessions.order_draft.pending — size/modifier awaiting guest reply. */
     pendingSlot: PendingSlotKind | null;
+    /** C6 — folded dialogue state (transcript, awaiting, summary). */
+    model: ConversationModel;
   };
   timeline: DenisTimelineRow[];
   config: ConciergeConfig;
