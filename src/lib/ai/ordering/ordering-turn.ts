@@ -137,13 +137,13 @@ export function processOrderingTurn(input: {
   if (
     cartActions.length === 0 &&
     !draft.pending &&
-    draft.items.length === 0 &&
     isOrderPlacementMessage(input.userMessage)
   ) {
     const backfill = backfillDraftFromOrderMessage(
       draft,
       input.catalog,
-      input.userMessage
+      input.userMessage,
+      { additive: draft.items.length > 0 }
     );
     draft = backfill.draft;
     cartActions = backfill.cartActions;

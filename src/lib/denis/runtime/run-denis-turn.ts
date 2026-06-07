@@ -567,11 +567,16 @@ async function runTdePerceive(input: {
     input.beliefs,
     "conversation.awaiting"
   );
+  const cartLineCount =
+    input.ctx.aiCartState.draft?.items?.length ??
+    input.ctx.tableSessionState?.commerce.cart.visibleLines.length ??
+    0;
   const leadershipContext = {
     inOrderingFlow:
       pressure === "open" ||
       pressure === "confirm" ||
-      turnPlan.kind === "transactional_perceive",
+      turnPlan.kind === "transactional_perceive" ||
+      cartLineCount > 0,
     awaitingAnswer: awaiting != null && awaiting !== "",
     transactionalTurn: turnPlan.kind === "transactional_perceive",
     hasPriorMessages: (transcriptForTurn?.length ?? 0) > 0,

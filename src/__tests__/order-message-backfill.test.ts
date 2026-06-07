@@ -64,6 +64,43 @@ function mockCatalog(): AiCatalog {
     taxRate: 19,
     allergens: [],
   };
+  const chickenBurger = {
+    id: "food-2",
+    name: "Pileći burger",
+    price: 11,
+    imageUrl: null,
+    menuSection: "food" as const,
+    requiresServeSize: false,
+    serveSizePresets: [],
+    allowCustomServeSize: false,
+    modifierGroups: [
+      {
+        id: "g2",
+        name: "Prilog",
+        isRequired: false,
+        minSelect: 0,
+        maxSelect: 1,
+        modifiers: [
+          { id: "mod-fries", name: "Pomfrit", price: 2 },
+        ],
+      },
+    ],
+    taxRate: 19,
+    allergens: [],
+  };
+  const cevap = {
+    id: "food-3",
+    name: "Ćevap",
+    price: 8,
+    imageUrl: null,
+    menuSection: "food" as const,
+    requiresServeSize: false,
+    serveSizePresets: [],
+    allowCustomServeSize: false,
+    modifierGroups: [],
+    taxRate: 19,
+    allergens: [],
+  };
   const burger = {
     id: "food-1",
     name: "Beef burger",
@@ -95,6 +132,8 @@ function mockCatalog(): AiCatalog {
     [pilsner.id]: pilsner,
     [greenTea.id]: greenTea,
     [burger.id]: burger,
+    [chickenBurger.id]: chickenBurger,
+    [cevap.id]: cevap,
   };
 
   return {
@@ -122,6 +161,34 @@ describe("order message backfill", () => {
       true
     );
     expect(isOrderPlacementMessage("da")).toBe(false);
+  });
+
+  it("adds new lines to an existing draft (additive backfill)", () => {
+    const catalog = mockCatalog();
+    const existing = {
+      ...emptyOrderDraft(),
+      items: [
+        {
+          productId: "drink-3",
+          productName: "Pilsner 0,3L",
+          quantity: 1,
+          modifierIds: [],
+          serveSize: null,
+          notes: "",
+          lineTotal: 4.5,
+          menuSection: "drinks" as const,
+          productTaxRate: 19,
+        },
+      ],
+    };
+    const result = backfillDraftFromOrderMessage(
+      existing,
+      catalog,
+      "dodaj pileci burger i jedan cevap",
+      { additive: true }
+    );
+    expect(result.cartActions.length).toBeGreaterThanOrEqual(2);
+    expect(result.draft.items.length).toBeGreaterThanOrEqual(3);
   });
 
   it("backfills beer + tea combo without explicit i connector", () => {

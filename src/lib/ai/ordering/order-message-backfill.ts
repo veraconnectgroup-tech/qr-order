@@ -59,7 +59,7 @@ export function isOrderPlacementMessage(message: string): boolean {
   if (ORDER_PREFIX.test(text)) return true;
   if (ORDER_SUFFIX.test(text) && text.length >= 6) return true;
   if (MULTI_ITEM_SPLIT.test(text) && text.length >= 12) return true;
-  return /\b(pivo|pils|pilsner|lager|radler|burger|kisel|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee)\b/i.test(
+  return /\b(pivo|pils|pilsner|lager|radler|burger|kisel|kisela|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee|cevap|ćevap|pile[cć]i|dodaj|dodati)\b/i.test(
     text
   );
 }
@@ -348,14 +348,18 @@ export function backfillDraftFromOrderMessage(
   draft: AiOrderDraft,
   catalog: AiCatalog,
   message: string,
-  options?: { requirePlacementPattern?: boolean }
+  options?: { requirePlacementPattern?: boolean; additive?: boolean }
 ): {
   draft: AiOrderDraft;
   cartActions: ValidatedCartAction[];
   meta: OrderBackfillMeta;
 } {
   const metaFromMessage = extractOrderMessageMeta(message);
-  if (draft.items.length > 0 || draft.pending) {
+  const additive = options?.additive === true;
+  if (draft.pending) {
+    return { draft, cartActions: [], meta: metaFromMessage };
+  }
+  if (!additive && draft.items.length > 0) {
     return { draft, cartActions: [], meta: metaFromMessage };
   }
   const requirePlacementPattern = options?.requirePlacementPattern ?? true;
@@ -365,7 +369,7 @@ export function backfillDraftFromOrderMessage(
 
   const segments = splitOrderMessageSegments(message);
   const proposed: AiProposedItem[] = [];
-  const usedProductIds = new Set<string>();
+  const usedProductIds = new Set(draft.items.map((line) => line.productId));
   let substitution: GuestSubstitutionRequest | null = null;
   let needsDrinkClarify = false;
 

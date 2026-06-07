@@ -136,6 +136,53 @@ describe("conversation leadership", () => {
     expect(leadershipFallbackReply("de")).toMatch(/Guten Tag|Ihnen helfen/i);
   });
 
+  it("does not reset to welcome on parse fallback for add-more order line", () => {
+    const out = applyConversationLeadership(
+      {
+        intent: "chat",
+        message: "Sorry, I didn't catch that — could you try again?",
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+      },
+      {
+        language: "sr",
+        guestMessage:
+          "dobro dodaj mi i kiselu vodu, za moju suprugu pileci burger bez priloga i jedan cevap",
+        context: {
+          hasPriorMessages: true,
+        },
+      }
+    );
+    expect(out.intent).toBe("clarify");
+    expect(out.message).not.toMatch(/^Dobar dan i dobrodošli/i);
+    expect(out.message).toMatch(/Razumem|pomoći|dodam/i);
+  });
+
+  it("guides order continuation instead of welcome for hajde da nastavimo", () => {
+    const out = applyConversationLeadership(
+      {
+        intent: "chat",
+        message: "Sorry, I didn't catch that — could you try again?",
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+      },
+      {
+        language: "sr",
+        guestMessage: "okej hajde da nastavimo",
+        context: {
+          inOrderingFlow: true,
+          hasPriorMessages: true,
+        },
+      }
+    );
+    expect(out.message).toMatch(/dodam|potvrdite/i);
+    expect(out.message).not.toMatch(/^Dobar dan i dobrodošli/i);
+  });
+
   it("does not reset to welcome on parse fallback mid-order (Weizen reply)", () => {
     const out = applyConversationLeadership(
       {

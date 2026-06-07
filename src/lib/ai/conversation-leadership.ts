@@ -2,6 +2,7 @@ import {
   resolveAiPromptLanguage,
   type AI_SUPPORTED_LANGUAGES,
 } from "@/lib/ai/config";
+import { isOrderPlacementMessage } from "@/lib/ai/ordering/order-message-backfill";
 import type { AiConciergeIntent, AiStructuredResponse } from "@/lib/ai/types";
 
 type AiLang = (typeof AI_SUPPORTED_LANGUAGES)[number];
@@ -14,7 +15,10 @@ const LANGUAGE_REFUSAL_PATTERN =
   /\b(kann(?:e)? nur|can only answer|only (?:speak|answer in)|samo (?:nemacki|nemački|engleski))\b/i;
 
 const ORDERING_GUEST_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|weizen|pilsner|pils|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|molim|bitte|please|ho[ćc]u|želim|zelim|jedno|jedna|malo|veliko)\b/i;
+  /\b(\d+\s*x|cola|kola|pivo|beer|bier|weizen|pilsner|pils|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|molim|bitte|please|ho[ćc]u|želim|zelim|jedno|jedna|malo|veliko|dodaj|cevap|ćevap|pile[cć]i|kisela|čaj|caj|tea)\b/i;
+
+const ORDER_CONTINUATION_PATTERN =
+  /\b(nastavimo|nastavljamo|nastavi|gde\s+smo\s+stali|gdje\s+smo\s+stali|sta\s+sam\s+naruci[oó]|šta\s+sam\s+naruči[oó]|continue\s+(the\s+)?order|weiter\s+mit)\b/i;
 
 const AI_PARSE_FALLBACK_PATTERN =
   /\b(didn't catch|try again|could you try again)\b/i;
@@ -25,7 +29,21 @@ const MISSING_ORDER_COMPLAINT_PATTERN =
 export function isDenisRefusalReply(message: string): boolean {
   const text = message.trim();
   if (!text) return false;
-  return REFUSAL_REPLY_PATTERN.test(text) || LANGUAGE_REFUSAL_PATTERN.test(text);
+  return (
+    REFUSAL_REPLY_PATTERN.test(text) ||
+    LANGUAGE_REFUSAL_PATTERN.test(text) ||
+    isAiParseFallbackReply(text)
+  );
+}
+
+export function isGuestOrderingOrContinuationMessage(message: string): boolean {
+  const text = message.trim();
+  if (!text) return false;
+  return (
+    isOrderPlacementMessage(text) ||
+    ORDER_CONTINUATION_PATTERN.test(text) ||
+    ORDERING_GUEST_PATTERN.test(text)
+  );
 }
 
 /** Social / banter — not an order line missing a modifier. */
@@ -85,7 +103,10 @@ export function leadershipFallbackReply(
   guestMessage?: string,
   options?: { hasPriorMessages?: boolean }
 ): string {
-  if (options?.hasPriorMessages) {
+  if (
+    options?.hasPriorMessages ||
+    isGuestOrderingOrContinuationMessage(guestMessage ?? "")
+  ) {
     return threadContinuationFallbackReply(language, guestMessage);
   }
   const lang = resolveAiPromptLanguage(language);
@@ -109,6 +130,19 @@ export function orderingFlowRecoveryReply(
   const item = guestMessage.trim();
   if (!item) {
     return leadershipFallbackReply(language, guestMessage);
+  }
+
+  if (
+    ORDER_CONTINUATION_PATTERN.test(item) ||
+    /\b(sta\s+sam\s+naruci[oó]|šta\s+sam\s+naruči[oó])\b/i.test(item)
+  ) {
+    if (lang === "sr" || lang === "hr") {
+      return "Naravno — recite mi šta još želite da dodam, ili potvrdite porudžbinu.";
+    }
+    if (lang === "de") {
+      return "Natürlich — sagen Sie mir, was ich noch hinzufügen soll, oder bestätigen Sie die Bestellung.";
+    }
+    return "Sure — tell me what else to add, or confirm your order.";
   }
 
   if (GUEST_DECIDED_PATTERN.test(item)) {
@@ -166,7 +200,9 @@ export function applyConversationLeadership(
   const refusal = isDenisRefusalReply(structured.message);
   const preserveClarify = shouldPreserveClarify(input);
   const preserveTransactional =
-    preserveClarify || isOrderComplaintMessage(input.guestMessage);
+    preserveClarify ||
+    isOrderComplaintMessage(input.guestMessage) ||
+    isGuestOrderingOrContinuationMessage(input.guestMessage);
   const misclassifiedClarify =
     !preserveTransactional &&
     structured.intent === "clarify" &&

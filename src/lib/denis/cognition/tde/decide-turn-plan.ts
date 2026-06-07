@@ -170,7 +170,7 @@ function isPureSocialBanter(message: string): boolean {
 }
 
 const ORDERING_HINT_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|piva|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend|šta imate|sta imate)\b/i;
+  /\b(\d+\s*x|cola|kola|pivo|piva|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend|šta imate|sta imate|dodaj|cevap|ćevap|pile[cć]i|kisela|nastavimo|nastavljamo)\b/i;
 
 const MENU_BROWSE_PATTERN =
   /(šta imate|sta imate|what do you have|was habt ihr|šta nudite|imate li)/i;
