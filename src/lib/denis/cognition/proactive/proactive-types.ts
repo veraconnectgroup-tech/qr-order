@@ -1,4 +1,7 @@
+import type { SessionPhase } from "@/lib/scene/types";
+
 export type ProactiveTickPayload = {
+  sessionPhase?: SessionPhase;
   browseMinutes?: number;
   cartItemCount?: number;
   hasSessionOrders?: boolean;

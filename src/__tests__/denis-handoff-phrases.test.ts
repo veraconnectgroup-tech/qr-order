@@ -37,6 +37,18 @@ describe("order change phrases", () => {
     expect(isOrderModifyMessage("ne to, drugačije")).toBe(true);
   });
 
+  it("does not treat side substitution as order modify", () => {
+    expect(
+      isOrderModifyMessage(
+        "jedno pivo, veliki beef burger sa kartoffel salatom umesto pomfrita"
+      )
+    ).toBe(false);
+    expect(isOrderModifyMessage("burger sa salatom umesto pomfrita")).toBe(false);
+    expect(perceiveTableGuestCommand({
+      message: "jedno pivo, veliki beef burger sa kartoffel salatom umesto pomfrita",
+    })).toBeNull();
+  });
+
   it("maps cancel to ORDER_CANCEL command", () => {
     const result = perceiveTableGuestCommand({ message: "otkaži porudžbinu" });
     expect(result?.intent).toBe("ORDER_CANCEL");

@@ -14,6 +14,13 @@ import type {
 import { formatServeSizeOption, inferServeSizeFromMessage } from "@/lib/ai/ordering/serve-size-logic";
 import { isGenericCategorySegment } from "@/lib/ai/ordering/category-order-logic";
 import { isGuestFinalConfirm } from "@/lib/ai/ordering/order-flow";
+import {
+  buildSubstitutionNegotiationMessage,
+  isGenericBeerSegment,
+  parseGuestSubstitution,
+  substitutionReplacesFries,
+  type GuestSubstitutionRequest,
+} from "@/lib/denis/cognition/conversation/guest-substitution";
 
 const ORDER_PREFIX =
   /^(daj\s+mi|daj|ho[ćc]u|hocu|mo[žz]e|želim|zelim|give\s+me|i\s+want|can\s+i\s+get|molim(\s+te)?|please|i\s+need)\s+/i;
@@ -121,7 +128,8 @@ function inferServeSizeFromSegment(
 
 function inferModifierIdsFromSegment(
   segment: string,
-  product: AiCatalogProduct
+  product: AiCatalogProduct,
+  substitution: GuestSubstitutionRequest | null
 ): string[] {
   const normalized = segment.toLowerCase();
   const ids: string[] = [];
@@ -135,7 +143,10 @@ function inferModifierIdsFromSegment(
     }
   }
 
-  if (FRIES_PATTERN.test(normalized)) {
+  const skipFriesDefault =
+    substitution != null && substitutionReplacesFries(substitution);
+
+  if (FRIES_PATTERN.test(normalized) && !skipFriesDefault) {
     for (const group of product.modifierGroups) {
       for (const mod of group.modifiers) {
         if (FRIES_PATTERN.test(mod.name)) {
@@ -148,20 +159,40 @@ function inferModifierIdsFromSegment(
   return ids;
 }
 
+function substitutionNote(sub: GuestSubstitutionRequest | null): string {
+  if (!sub) return "";
+  return `Zamena: ${sub.requested} umesto ${sub.insteadOf}`;
+}
+
 function segmentToProposedItem(
   segment: string,
   catalog: AiCatalog
-): AiProposedItem | null {
+): { item: AiProposedItem | null; substitution: GuestSubstitutionRequest | null } {
+  const substitution = parseGuestSubstitution(segment);
   const product = pickProductForSegment(segment, catalog.catalog);
-  if (!product) return null;
+  if (!product) {
+    return { item: null, substitution };
+  }
 
   return {
-    productId: product.id,
-    quantity: 1,
-    modifierIds: inferModifierIdsFromSegment(segment, product),
-    serveSize: inferServeSizeFromSegment(segment, product),
-    notes: "",
+    item: {
+      productId: product.id,
+      quantity: 1,
+      modifierIds: inferModifierIdsFromSegment(segment, product, substitution),
+      serveSize: inferServeSizeFromSegment(segment, product),
+      notes: substitutionNote(substitution),
+    },
+    substitution,
   };
+}
+
+export type OrderBackfillMeta = {
+  substitution: GuestSubstitutionRequest | null;
+  needsDrinkClarify: boolean;
+};
+
+function emptyBackfillMeta(): OrderBackfillMeta {
+  return { substitution: null, needsDrinkClarify: false };
 }
 
 export function findLastOrderPlacementUserMessage(
@@ -199,28 +230,48 @@ export function backfillDraftFromOrderMessage(
   catalog: AiCatalog,
   message: string,
   options?: { requirePlacementPattern?: boolean }
-): { draft: AiOrderDraft; cartActions: ValidatedCartAction[] } {
+): {
+  draft: AiOrderDraft;
+  cartActions: ValidatedCartAction[];
+  meta: OrderBackfillMeta;
+} {
   if (draft.items.length > 0 || draft.pending) {
-    return { draft, cartActions: [] };
+    return { draft, cartActions: [], meta: emptyBackfillMeta() };
   }
   const requirePlacementPattern = options?.requirePlacementPattern ?? true;
   if (requirePlacementPattern && !isOrderPlacementMessage(message)) {
-    return { draft, cartActions: [] };
+    return { draft, cartActions: [], meta: emptyBackfillMeta() };
   }
 
   const segments = splitOrderMessageSegments(message);
   const proposed: AiProposedItem[] = [];
   const usedProductIds = new Set<string>();
+  let substitution: GuestSubstitutionRequest | null = null;
+  let needsDrinkClarify = false;
 
   for (const segment of segments) {
-    const item = segmentToProposedItem(segment, catalog);
+    if (isGenericBeerSegment(segment)) {
+      needsDrinkClarify = true;
+      continue;
+    }
+
+    const parsed = segmentToProposedItem(segment, catalog);
+    if (parsed.substitution && !substitution) {
+      substitution = parsed.substitution;
+    }
+
+    const item = parsed.item;
     if (!item || usedProductIds.has(item.productId)) continue;
     proposed.push(item);
     usedProductIds.add(item.productId);
   }
 
   if (!proposed.length) {
-    return { draft, cartActions: [] };
+    return {
+      draft,
+      cartActions: [],
+      meta: { substitution, needsDrinkClarify },
+    };
   }
 
   const processed = processProposedItems(draft, catalog, proposed, {
@@ -230,6 +281,7 @@ export function backfillDraftFromOrderMessage(
   return {
     draft: processed.draft,
     cartActions: processed.cartActions,
+    meta: { substitution, needsDrinkClarify },
   };
 }
 
@@ -238,9 +290,13 @@ export function maybeBackfillOrderDraft(
   catalog: AiCatalog,
   userMessage: string,
   priorMessages: ChatHistoryMessage[]
-): { draft: AiOrderDraft; cartActions: ValidatedCartAction[] } {
+): {
+  draft: AiOrderDraft;
+  cartActions: ValidatedCartAction[];
+  meta: OrderBackfillMeta;
+} {
   if (draft.items.length > 0 || draft.pending) {
-    return { draft, cartActions: [] };
+    return { draft, cartActions: [], meta: emptyBackfillMeta() };
   }
 
   const confirming = isGuestFinalConfirm(userMessage);
@@ -252,10 +308,35 @@ export function maybeBackfillOrderDraft(
       : null;
 
   if (!source) {
-    return { draft, cartActions: [] };
+    return { draft, cartActions: [], meta: emptyBackfillMeta() };
   }
 
   return backfillDraftFromOrderMessage(draft, catalog, source, {
     requirePlacementPattern: !confirming,
+  });
+}
+
+export function buildBackfillNegotiationMessage(
+  language: string,
+  draft: AiOrderDraft,
+  meta: OrderBackfillMeta
+): string | null {
+  if (!meta.substitution && !meta.needsDrinkClarify) return null;
+
+  const cartSummary = draft.items.length
+    ? draft.items
+        .map((line) => {
+          const note = line.notes?.trim();
+          return note
+            ? `${line.quantity}× ${line.productName} (${note})`
+            : `${line.quantity}× ${line.productName}`;
+        })
+        .join(", ")
+    : null;
+
+  return buildSubstitutionNegotiationMessage(language, {
+    cartSummary: cartSummary || null,
+    substitution: meta.substitution,
+    needsDrinkClarify: meta.needsDrinkClarify,
   });
 }

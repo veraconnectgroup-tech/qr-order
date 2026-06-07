@@ -110,13 +110,27 @@ export function isOrderCancelMessage(message: string): boolean {
   );
 }
 
+/** Side/modifier swap in a new line — "salata umesto pomfrita", not order change. */
+function isProductSubstitutionPhrase(text: string): boolean {
+  return (
+    /\b(umesto|instead of)\s+(pomfri\w*|fri[sz]\w*|prilog\w*|garnir\w*|beilage\w*)\b/.test(
+      text
+    ) ||
+    /\b(sa|s|with|mit)\s+.{2,80}\s+umesto\s+(pomfri\w*|fri[sz]\w*|prilog\w*)\b/.test(
+      text
+    )
+  );
+}
+
 export function isOrderModifyMessage(message: string): boolean {
   const text = normalize(message);
   if (isOrderCancelMessage(message)) return false;
+  if (isProductSubstitutionPhrase(text)) return false;
   return (
-    /\b(promen[iu]|izmen[iu]|change order|modify order|drugačije|umesto|instead|ändere|andere bestellung)\b/.test(
+    /\b(promen[iu]|izmen[iu]|change order|modify order|drugačije|ändere|andere bestellung)\b/.test(
       text
     ) ||
+    /\b(umesto toga|umesto tog[ao]|instead of that|statt dessen)\b/.test(text) ||
     /\b(ne\s+(tako|to)|not that|wrong order|falsche bestellung)\b/.test(text)
   );
 }

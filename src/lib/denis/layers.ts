@@ -43,7 +43,7 @@ export const DENIS_IMPORT_MATRIX: Record<DenisLayer, readonly DenisLayer[]> = {
   kernel: ["config", "platform"],
   venue: ["config", "platform", "kernel"],
   commercial: ["config"],
-  loop: ["config", "platform", "kernel", "venue", "actor"],
+  loop: ["config", "platform", "kernel", "venue", "actor", "cognition"],
   ingress: ["config", "platform", "kernel"],
   actor: [],
   runtime: [

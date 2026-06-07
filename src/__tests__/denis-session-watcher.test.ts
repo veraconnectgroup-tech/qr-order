@@ -51,7 +51,7 @@ describe("session watcher proactive detection", () => {
     expect(nudge).toBeNull();
   });
 
-  it("emits order_delay for preparing order past threshold", () => {
+  it("emits slow_kitchen for preparing order past threshold", () => {
     const now = Date.now();
     const orders: AiGuestOrder[] = [
       {
@@ -79,7 +79,7 @@ describe("session watcher proactive detection", () => {
       now,
     });
 
-    expect(nudge?.kind).toBe("order_delay");
+    expect(nudge?.kind).toBe("slow_kitchen");
     expect(nudge?.orderId).toBe("order-1");
   });
 

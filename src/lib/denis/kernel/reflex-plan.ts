@@ -103,12 +103,19 @@ function resolveAwaitingConfirm(input: ReflexTurnInput): boolean {
 
 /** M4 + M28 — T0 reflex, handoff commands, correction before flow plan. */
 export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
-  const handoffPerception = perceiveTableGuestCommand({
+  const perceived = perceiveTableGuestCommand({
     message: input.message,
     structuredIntent: input.structuredIntent,
     paymentMethod: input.handoffPaymentMethod,
     customPhrases: input.config.handoff.phrases,
   });
+  const handoffPerception =
+    perceived &&
+    ((perceived.command.type !== "ORDER.CANCEL" &&
+      perceived.command.type !== "ORDER.MODIFY") ||
+      input.hasOpenOrders)
+      ? perceived
+      : null;
 
   const reflex = handoffPerception
     ? null

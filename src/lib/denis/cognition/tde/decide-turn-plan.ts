@@ -12,6 +12,10 @@ import type {
   ConversationAwaiting,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
 import { isGuestPauseMessage } from "@/lib/denis/cognition/conversation/guest-continuity";
+import {
+  isOrderCancelMessage,
+  isOrderModifyMessage,
+} from "@/lib/denis/commands/perceive-table-guest-command";
 
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
@@ -147,7 +151,10 @@ function isPureSocialBanter(message: string): boolean {
 }
 
 const ORDERING_HINT_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend)\b/i;
+  /\b(\d+\s*x|cola|kola|pivo|piva|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend|šta imate|sta imate)\b/i;
+
+const MENU_BROWSE_PATTERN =
+  /\b(šta imate|sta imate|what do you have|was habt ihr|šta nudite|imate li)\b/i;
 
 /** Short guest reply in banter — not an order line; LLM should continue the thread. */
 function isShortBanterReply(message: string): boolean {
@@ -239,6 +246,14 @@ function resolvePerceivePlan(
     });
   }
 
+  if (MENU_BROWSE_PATTERN.test(message)) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "commerce.menu_inquiry",
+    });
+  }
+
   if (VAGUE_RECOMMEND_PATTERN.test(message)) {
     return buildPlan("relational_perceive", {
       requiresLlm: true,
@@ -282,6 +297,29 @@ function resolvePerceivePlan(
       ? "commerce.pressure.comprehend"
       : "comprehend_first.default",
   });
+}
+
+function hasOpenCommerceOrders(beliefs: DecideTurnPlanInput["beliefs"]): boolean {
+  return (
+    getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.commerceHasOpenOrders) ===
+    true
+  );
+}
+
+/**
+ * Reflex-only when T0 handled the turn, or waiter/bill handoff fired.
+ * ORDER cancel/modify only reflex when kitchen has an open order — otherwise comprehend.
+ */
+function shouldUseReflexOnly(input: DecideTurnPlanInput): boolean {
+  const cmd = input.reflex.handoffCommand;
+  if (input.reflex.reflex) return true;
+  if (!cmd) return false;
+
+  if (cmd.type === "ORDER.CANCEL" || cmd.type === "ORDER.MODIFY") {
+    return hasOpenCommerceOrders(input.beliefs);
+  }
+
+  return true;
 }
 
 /** ADR-030 — LLM confirm at recap; T0 cart edits (add/remove) stay reflex_only. */
@@ -347,12 +385,8 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const goalPlan = planForTopGoal(input.reflex.plan.topGoal, suppressUpsell);
   if (goalPlan) return goalPlan;
 
-  const hasOpenOrders =
-    getBeliefValue<boolean>(input.beliefs, CORE_BELIEF_KEYS.commerceHasOpenOrders) ===
-    true;
-
   if (ORDER_STATUS_QUERY_PATTERN.test(input.message.trim())) {
-    if (!hasOpenOrders) {
+    if (!hasOpenCommerceOrders(input.beliefs)) {
       return buildPlan("template_tell", {
         requiresLlm: false,
         suppressUpsell,
@@ -369,7 +403,7 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   }
 
   if (MISSING_ORDER_COMPLAINT_PATTERN.test(input.message.trim())) {
-    if (!hasOpenOrders) {
+    if (!hasOpenCommerceOrders(input.beliefs)) {
       return buildPlan("template_tell", {
         requiresLlm: false,
         suppressUpsell,
@@ -381,6 +415,20 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
       requiresLlm: true,
       suppressUpsell,
       reason: "commerce.order_not_sent.complaint_with_open_order",
+    });
+  }
+
+  const trimmedMessage = input.message.trim();
+  if (
+    (isOrderCancelMessage(trimmedMessage) ||
+      isOrderModifyMessage(trimmedMessage)) &&
+    !hasOpenCommerceOrders(input.beliefs)
+  ) {
+    return buildPlan("template_tell", {
+      requiresLlm: false,
+      suppressUpsell,
+      reason: "commerce.order_change_no_open_order",
+      templateKey: "status.no_order",
     });
   }
 

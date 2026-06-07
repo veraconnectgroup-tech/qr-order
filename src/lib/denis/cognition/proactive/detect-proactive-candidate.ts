@@ -125,6 +125,23 @@ export function detectProactiveCandidate(input: {
     }
   }
 
+  if (!isDismissed(dismissed, "slow_kitchen")) {
+    const slow = detectSlowKitchenTrigger(
+      orders,
+      (orderId) =>
+        isDismissed(dismissed, `slow_kitchen:${orderId}`) ||
+        isDismissed(dismissed, "slow_kitchen"),
+      now
+    );
+    if (slow?.orderId) {
+      return {
+        kind: "slow_kitchen",
+        message: messages.slowKitchen,
+        orderId: slow.orderId,
+      };
+    }
+  }
+
   if (
     config.proactive.orderDelay &&
     !isDismissed(dismissed, "order_delay")
@@ -133,7 +150,9 @@ export function detectProactiveCandidate(input: {
       orders,
       (orderId) =>
         isDismissed(dismissed, `order_delay:${orderId}`) ||
-        isDismissed(dismissed, "order_delay"),
+        isDismissed(dismissed, "order_delay") ||
+        isDismissed(dismissed, `slow_kitchen:${orderId}`) ||
+        isDismissed(dismissed, "slow_kitchen"),
       now,
       config.proactive.orderDelayMinutes
     );
@@ -146,7 +165,10 @@ export function detectProactiveCandidate(input: {
     }
   }
 
-  if (!isDismissed(dismissed, "dessert_nudge")) {
+  const skipDessertWhileBrowsing =
+    payload.sessionPhase === "browsing" && orders.length > 0;
+
+  if (!isDismissed(dismissed, "dessert_nudge") && !skipDessertWhileBrowsing) {
     const dessert = detectDessertTrigger(
       orders,
       () => isDismissed(dismissed, "dessert_nudge"),
@@ -157,7 +179,9 @@ export function detectProactiveCandidate(input: {
         preparingMinMinutes: input.config.upsell.dessertDelayMinutes,
       }
     );
-    if (dessert) {
+    const suppressPreparingDessertWhileWaiting =
+      payload.sessionPhase === "waiting" && Boolean(dessert?.orderId);
+    if (dessert && !suppressPreparingDessertWhileWaiting) {
       return {
         kind: "dessert_nudge",
         message: buildDessertMessage(
@@ -232,26 +256,6 @@ export function detectProactiveCandidate(input: {
         message: "",
         orderId: pairing.orderId,
         prompt: pairing.prompt,
-      };
-    }
-  }
-
-  if (
-    config.proactive.slowKitchen &&
-    !isDismissed(dismissed, "slow_kitchen")
-  ) {
-    const slow = detectSlowKitchenTrigger(
-      orders,
-      (orderId) =>
-        isDismissed(dismissed, `slow_kitchen:${orderId}`) ||
-        isDismissed(dismissed, "slow_kitchen"),
-      now
-    );
-    if (slow?.orderId) {
-      return {
-        kind: "slow_kitchen",
-        message: messages.slowKitchen,
-        orderId: slow.orderId,
       };
     }
   }

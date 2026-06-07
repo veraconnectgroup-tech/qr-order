@@ -4,7 +4,10 @@ import {
   emptyCartSubmitBlockedMessage,
   sanitizeFalseOrderClaimMessage,
 } from "@/lib/ai/ordering/order-flow";
-import { maybeBackfillOrderDraft } from "@/lib/ai/ordering/order-message-backfill";
+import {
+  buildBackfillNegotiationMessage,
+  maybeBackfillOrderDraft,
+} from "@/lib/ai/ordering/order-message-backfill";
 import { processOrderingTurn } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { AiStructuredResponse } from "@/lib/ai/types";
@@ -56,6 +59,12 @@ export function applyPostLlmOrdering(
   const cartActionsThisTurn =
     orderingResult.cartActions.length + postOrderBackfill.cartActions.length;
 
+  const negotiationMessage = buildBackfillNegotiationMessage(
+    input.language,
+    workingDraft,
+    postOrderBackfill.meta
+  );
+
   const flowResult = finalizeOrderFlow({
     userMessage: input.userMessage,
     draft: workingDraft,
@@ -66,7 +75,11 @@ export function applyPostLlmOrdering(
   });
   workingDraft = flowResult.draft;
 
-  let assistantMessage = flowResult.message;
+  let assistantMessage =
+    negotiationMessage &&
+    (cartActionsThisTurn > 0 || postOrderBackfill.meta.needsDrinkClarify)
+      ? negotiationMessage
+      : flowResult.message;
   let submitOrder = flowResult.submitOrder;
 
   assistantMessage = sanitizeFalseOrderClaimMessage({

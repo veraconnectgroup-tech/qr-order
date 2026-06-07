@@ -35,7 +35,7 @@ function reflexFor(
 }
 
 describe("decideTurnPlan — ADR-025 state-driven routing", () => {
-  it("routes banter belief to transactional when not pure social (comprehend-first)", () => {
+  it("routes banter thread to relational (cheaper social tier)", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "banter"),
       belief("conversation.language", "sr"),
@@ -45,11 +45,11 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("gde si legendo"),
       message: "gde si legendo",
     });
-    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.kind).toBe("relational_perceive");
     expect(plan.requiresLlm).toBe(true);
   });
 
-  it("routes Zdravo Denise legendo to transactional comprehend-first", () => {
+  it("routes Zdravo Denise legendo to relational social perceive", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "banter"),
       belief("conversation.language", "sr"),
@@ -59,7 +59,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("Zdravo Denise legendo", "browse"),
       message: "Zdravo Denise legendo",
     });
-    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.kind).toBe("relational_perceive");
     expect(plan.requiresLlm).toBe(true);
   });
 
@@ -118,14 +118,14 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.kind).toBe("relational_perceive");
   });
 
-  it("casual social without commerce pressure uses transactional comprehend-first", () => {
+  it("casual social without commerce pressure uses relational perceive", () => {
     expect(isCasualSocialGuestMessage("gde si legendo")).toBe(true);
     const plan = decideTurnPlan({
       beliefs: beliefGraph([]),
       reflex: reflexFor("gde si legendo", "browse"),
       message: "gde si legendo",
     });
-    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.kind).toBe("relational_perceive");
   });
 
   it("status query without open orders uses status.no_order template", () => {
@@ -291,6 +291,76 @@ describe("decideTurnPlan — slots and reflex", () => {
   it("Može without confirm context is not T0", () => {
     expect(isT0Confirm("Može")).toBe(false);
     expect(resolveT0Reflex("Može")).toBeNull();
+  });
+
+  it("complex order line with substitution → comprehend (not reflex handoff)", () => {
+    const message =
+      "jedno pivo, veliki beef burger sa kartoffel salatom umesto pomfrita";
+    const reflex = reflexPlan({
+      config,
+      message,
+      flowNodeId: "collect",
+      hasOpenOrders: false,
+    });
+    expect(reflex.handoffCommand).toBeNull();
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([belief("conversation.mode", "ordering")]),
+      reflex,
+      message,
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.requiresLlm).toBe(true);
+  });
+
+  it("ORDER_MODIFY without open order → template (no LLM credits)", () => {
+    const reflex = reflexPlan({
+      config,
+      message: "promeni porudžbinu",
+      flowNodeId: "collect",
+      hasOpenOrders: false,
+    });
+    expect(reflex.handoffCommand).toBeNull();
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([]),
+      reflex,
+      message: "promeni porudžbinu",
+    });
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.templateKey).toBe("status.no_order");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("ORDER_MODIFY with open order → reflex_only", () => {
+    const reflex = reflexPlan({
+      config,
+      message: "promeni porudžbinu",
+      flowNodeId: "collect",
+      hasOpenOrders: true,
+    });
+    expect(reflex.handoffCommand?.type).toBe("ORDER.MODIFY");
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([belief("commerce.has_open_orders", true)]),
+      reflex,
+      message: "promeni porudžbinu",
+    });
+    expect(plan.kind).toBe("reflex_only");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("waiter handoff stays reflex_only", () => {
+    const reflex = reflexPlan({
+      config,
+      message: "pozovi konobara",
+      flowNodeId: "collect",
+    });
+    expect(reflex.handoffCommand?.type).toBe("WAITER.REQUEST");
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([]),
+      reflex,
+      message: "pozovi konobara",
+    });
+    expect(plan.kind).toBe("reflex_only");
+    expect(plan.requiresLlm).toBe(false);
   });
 });
 

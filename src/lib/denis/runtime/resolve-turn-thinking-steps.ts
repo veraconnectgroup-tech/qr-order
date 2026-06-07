@@ -2,30 +2,45 @@ import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
-const STATUS_REASONS = new Set([
+const STATUS_REASONS = [
   "commerce.status.open_order",
   "commerce.status.no_open_order",
   "commerce.order_not_sent.complaint",
   "commerce.order_not_sent.complaint_with_open_order",
+  "commerce.order_change_no_open_order",
   "goal.inform_status",
-]);
+] as const;
 
-const CART_REASONS = new Set([
+const CART_REASONS = [
   "commerce.awaiting_confirm.comprehend",
   "commerce.pressure.comprehend",
   "commerce.unsent_cart.settling_blocked",
   "goal.reconcile_cart",
-]);
+] as const;
 
-const CLARIFY_REASONS = new Set([
+const CLARIFY_REASONS = [
   "commerce.pending_slot.reply",
   "goal.clarify_slot.reply",
-]);
+] as const;
 
-const SETTLING_REASONS = new Set([
+const SETTLING_REASONS = [
   "commerce.post_order.settling",
   "conversation.mode.settling",
-]);
+] as const;
+
+const T0_REASONS = [
+  "t0_reflex",
+  "t0_handoff",
+  "t0_order_change",
+  "t0_reflex_or_handoff",
+] as const;
+
+function reasonMatches(
+  reasons: readonly string[],
+  reason: string
+): boolean {
+  return reasons.includes(reason);
+}
 
 /** Map TDE turn plan → guest-visible thinking steps (server truth). */
 export function resolveTurnThinkingStepKeys(
@@ -43,19 +58,19 @@ export function resolveTurnThinkingStepKeys(
 
   const reason = turnPlan.reason;
 
-  if (STATUS_REASONS.has(reason)) {
+  if (reasonMatches(STATUS_REASONS, reason)) {
     return ["ai.chat.thinking.status"];
   }
 
-  if (SETTLING_REASONS.has(reason)) {
+  if (reasonMatches(SETTLING_REASONS, reason)) {
     return ["ai.chat.thinking.settling"];
   }
 
-  if (CLARIFY_REASONS.has(reason)) {
+  if (reasonMatches(CLARIFY_REASONS, reason)) {
     return ["ai.chat.thinking.clarify", "ai.chat.thinking.order"];
   }
 
-  if (CART_REASONS.has(reason)) {
+  if (reasonMatches(CART_REASONS, reason)) {
     return turnPlan.requiresLlm
       ? ["ai.chat.thinking.cart", "ai.chat.thinking.confirm", "ai.chat.thinking.llm"]
       : ["ai.chat.thinking.cart", "ai.chat.thinking.confirm"];
@@ -85,7 +100,7 @@ export function resolveTurnThinkingStepKeys(
     return ["ai.chat.thinking.facts", "ai.chat.thinking.llm"];
   }
 
-  if (reason === "t0_reflex_or_handoff") {
+  if (reasonMatches(T0_REASONS, reason)) {
     return ["ai.chat.thinking.quick"];
   }
 

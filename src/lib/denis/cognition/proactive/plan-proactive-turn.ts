@@ -100,6 +100,7 @@ export function planProactiveTurn(input: {
     orders: input.orders,
     payload: {
       ...input.payload,
+      sessionPhase: input.sessionPhase,
       hasSessionOrders: input.state.commerce.orders.length > 0,
       dismissedNudgeKeys:
         input.payload.dismissedNudgeKeys ??

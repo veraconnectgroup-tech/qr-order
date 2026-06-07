@@ -550,8 +550,10 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
       {
         message: "gde je moje pivo",
         expect: {
-          planKind: "transactional_perceive",
-          situationIncludes: ["session.phase: waiting", "OPEN TABLE ORDERS"],
+          planKind: "template_tell",
+          requiresLlm: false,
+          reason: "commerce.status.open_order",
+          conversationMode: "ordering",
         },
       },
     ],
