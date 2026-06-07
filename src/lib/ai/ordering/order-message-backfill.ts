@@ -374,6 +374,36 @@ export function backfillDraftFromOrderMessage(
   };
 }
 
+function implicitServeSizeForProduct(
+  product: AiCatalogProduct | undefined
+): string | null {
+  if (!product) return null;
+  return (
+    resolveImplicitServeSizeForProduct(product) ??
+    (product.menuSection === "drinks" ? "0.5L" : null)
+  );
+}
+
+/** Fill missing serveSize on drink lines (policy requires volume before recap confirm). */
+export function hydrateMissingDrinkServeSizes(
+  draft: AiOrderDraft,
+  catalog: AiCatalog
+): { draft: AiOrderDraft; changed: boolean } {
+  let changed = false;
+  const items = draft.items.map((line) => {
+    if (line.serveSize?.trim()) return line;
+    const isDrink =
+      line.menuSection === "drinks" ||
+      TYPED_DRINK_PATTERN.test(line.productName);
+    if (!isDrink) return line;
+    const size = implicitServeSizeForProduct(catalog.catalog[line.productId]);
+    if (!size) return line;
+    changed = true;
+    return { ...line, serveSize: size };
+  });
+  return changed ? { draft: { ...draft, items }, changed } : { draft, changed };
+}
+
 /** Add a typed drink line when cart already has food (gap-resolved drink reply). */
 export function backfillTypedDrinkAddition(
   draft: AiOrderDraft,
@@ -398,7 +428,7 @@ export function backfillTypedDrinkAddition(
 
   const product = catalog.catalog[parsed.item.productId];
   if (product && !parsed.item.serveSize) {
-    const implicitSize = resolveImplicitServeSizeForProduct(product);
+    const implicitSize = implicitServeSizeForProduct(product);
     if (implicitSize) {
       parsed.item.serveSize = implicitSize;
     }

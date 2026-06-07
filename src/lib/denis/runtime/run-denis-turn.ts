@@ -131,6 +131,7 @@ import {
 import {
   isOrderPlacementMessage,
   backfillTypedDrinkAddition,
+  hydrateMissingDrinkServeSizes,
   maybeBackfillOrderDraft,
 } from "@/lib/ai/ordering/order-message-backfill";
 import { persistKernelOrderingDraft } from "@/lib/denis/runtime/act/apply-kernel-ordering";
@@ -192,6 +193,24 @@ async function maybeBackfillPlacementCart(input: {
     }
 
     if (input.cartDraft.items.length > 0) {
+      const aiDraft = cartDraftToAiOrderDraft(input.cartDraft);
+      const hydrated = hydrateMissingDrinkServeSizes(aiDraft, catalog);
+      if (hydrated.changed) {
+        const persisted = await persistKernelOrderingDraft(
+          input.admin,
+          input.timelineAiSessionId,
+          hydrated.draft
+        );
+        if (persisted.ok) {
+          input = {
+            ...input,
+            cartDraft:
+              aiOrderDraftToDenisCartState(hydrated.draft).draft ??
+              input.cartDraft,
+          };
+        }
+      }
+
       const drinkBackfill = backfillTypedDrinkAddition(
         cartDraftToAiOrderDraft(input.cartDraft),
         catalog,
