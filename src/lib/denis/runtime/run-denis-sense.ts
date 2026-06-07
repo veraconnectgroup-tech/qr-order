@@ -6,6 +6,7 @@ import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierg
 import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-mind-beliefs-compiled";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
+import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
@@ -171,6 +172,13 @@ export async function runDenisSense(
       aiSessionId: draftAiSessionId,
       traceId,
       meta: fold.meta,
+    });
+    await maybeAppendMentalModelUpdated(admin, {
+      aiSessionId: draftAiSessionId,
+      traceId,
+      timeline: state.timeline,
+      mental: state.mental,
+      contextHash: fold.meta.truthHash,
     });
   }
 

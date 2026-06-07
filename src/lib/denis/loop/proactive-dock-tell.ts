@@ -4,6 +4,7 @@ import type { SceneMarkState } from "@/lib/scene/types";
 
 export type ProactiveNudgeKind =
   | "waiter_gap"
+  | "attention_handoff"
   | "browse_nudge"
   | "drink_pairing"
   | "dessert_nudge"
@@ -16,6 +17,7 @@ export type ProactiveNudgeKind =
 
 const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
   "waiter_gap",
+  "attention_handoff",
   "guest_welcome",
   "browse_follow_up",
   "slow_kitchen",
@@ -31,7 +33,12 @@ export function shouldCommitProactiveToDock(kind: ProactiveNudgeKind): boolean {
 }
 
 export function proactiveDockMarkState(kind: ProactiveNudgeKind): SceneMarkState {
-  if (kind === "waiter_gap" || kind === "slow_kitchen" || kind === "order_delay") {
+  if (
+    kind === "waiter_gap" ||
+    kind === "attention_handoff" ||
+    kind === "slow_kitchen" ||
+    kind === "order_delay"
+  ) {
     return "think";
   }
   if (kind === "bill_prompt") return "listen";

@@ -45,6 +45,7 @@ import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
+import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
 import {
   appendMindBeliefsCompiled,
@@ -852,6 +853,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       traceId,
       meta: ctx.foldMeta,
     });
+
+    if (ctx.tableSessionState) {
+      await maybeAppendMentalModelUpdated(admin, {
+        aiSessionId: ctx.draftAiSessionId,
+        traceId,
+        timeline: ctx.tableSessionState.timeline,
+        mental: ctx.tableSessionState.mental,
+        contextHash: ctx.foldMeta.truthHash,
+      });
+    }
 
     if (beliefGraph) {
       await appendMindBeliefsCompiled(admin, {

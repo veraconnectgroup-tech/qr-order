@@ -1,4 +1,7 @@
-import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { foldBrowseProfile } from "@/lib/denis/cognition/browse/fold-browse-profile";
+import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
+import { foldGuestMentalModel } from "@/lib/denis/cognition/mental-model/fold-guest-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
@@ -30,12 +33,56 @@ function buildConfig(setup: AnticipationSetup): ConciergeConfig {
       dessert: setup.dessertEnabled ?? true,
       slowKitchen: setup.slowKitchenEnabled ?? true,
     },
+    mentalModel: {
+      ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
+      mode: setup.mentalModelMode ?? "off",
+    },
   };
 }
 
 function buildState(setup: AnticipationSetup): TableSessionState {
   const items = setup.aiCartItems ?? [];
   const config = buildConfig(setup);
+  const timeline = setup.timeline ?? [];
+  const flowNodeId = setup.flowNodeId ?? "browse";
+  const dismissedNudges = setup.dismissedNudges ?? [];
+  const orders = setup.orders ?? [];
+  const cart = buildMergedCart({
+    ai: {
+      ...emptyCartState(),
+      draft: {
+        cartRevision: 1,
+        items,
+      },
+    },
+  });
+
+  const browse = foldBrowseProfile(timeline);
+  const conversationModel =
+    timeline.length > 0
+      ? foldConversationModel({
+          timeline,
+          flowNodeId,
+          pendingSlot: setup.pendingSlot ?? null,
+          commerceConfirm: false,
+        })
+      : emptyConversationModel();
+
+  const mental =
+    setup.mentalModelMode && setup.mentalModelMode !== "off"
+      ? foldGuestMentalModel({
+          timeline,
+          browse,
+          conversation: conversationModel,
+          commerce: { orders, cart },
+          party: null,
+          session: { billSettled: setup.sessionPhase === "settling" },
+          conversationMeta: { flowNodeId, dismissedNudges },
+          phase: setup.sessionPhase,
+          config,
+          now: ANTICIPATION_EVAL_NOW,
+        })
+      : emptyGuestMentalModel(ANTICIPATION_EVAL_NOW);
 
   return {
     table: { id: "table-4", name: "Table 4", token: "demo-table-4" },
@@ -49,16 +96,8 @@ function buildState(setup: AnticipationSetup): TableSessionState {
       denisActive: true,
     },
     commerce: {
-      orders: setup.orders ?? [],
-      cart: buildMergedCart({
-        ai: {
-          ...emptyCartState(),
-          draft: {
-            cartRevision: 1,
-            items,
-          },
-        },
-      }),
+      orders,
+      cart,
     },
     venue: {
       ops: {
@@ -76,16 +115,17 @@ function buildState(setup: AnticipationSetup): TableSessionState {
       },
     },
     conversation: {
-      flowNodeId: "guest.seated",
+      flowNodeId,
       foodUpsellAsked: false,
-      dismissedNudges: setup.dismissedNudges ?? [],
+      dismissedNudges,
       lastAssistantMessage: null,
       pendingSlot: setup.pendingSlot ?? null,
-      model: emptyConversationModel(),
+      model: conversationModel,
       obligation: null,
     },
-    timeline: [],
-    browse: emptyBrowseProfile(),
+    timeline,
+    browse,
+    mental,
     config,
   };
 }

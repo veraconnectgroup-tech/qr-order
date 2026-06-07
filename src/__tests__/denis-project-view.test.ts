@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
@@ -79,6 +80,7 @@ function buildFixtureState(
     },
     timeline,
     browse: emptyBrowseProfile(),
+    mental: emptyGuestMentalModel(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 

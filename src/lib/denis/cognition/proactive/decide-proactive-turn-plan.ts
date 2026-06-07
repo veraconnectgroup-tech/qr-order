@@ -31,6 +31,8 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
   switch (kind) {
     case "waiter_gap":
       return "waiter.gap_clarify.generic";
+    case "attention_handoff":
+      return "proactive.attention_handoff";
     case "browse_nudge":
       return "proactive.browse";
     case "drink_pairing":
@@ -93,12 +95,13 @@ export function decideProactiveTurnPlan(
 ): ProactiveTurnPlanResult {
   const { beliefs, candidate, sessionPhase, config } = input;
 
-  if (!config.proactive.enabled && candidate.kind !== "waiter_gap") {
+  if (!config.proactive.enabled && candidate.kind !== "waiter_gap" && candidate.kind !== "attention_handoff") {
     return { ok: false, reason: "proactive.disabled" };
   }
 
   if (
     candidate.kind !== "waiter_gap" &&
+    candidate.kind !== "attention_handoff" &&
     commerceBlocksProactive(beliefs, input.cartLineCount ?? 0)
   ) {
     return { ok: false, reason: "commerce.active" };
@@ -209,7 +212,9 @@ export function decideProactiveTurnPlan(
       reason:
         candidate.kind === "waiter_gap"
           ? "waiter.autonomous_gap_tell"
-          : `proactive.${candidate.kind}`,
+          : candidate.kind === "attention_handoff"
+            ? "mental.attention_handoff"
+            : `proactive.${candidate.kind}`,
       templateKey,
     },
   };

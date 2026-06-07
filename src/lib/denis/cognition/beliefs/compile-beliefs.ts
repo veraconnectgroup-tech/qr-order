@@ -496,6 +496,38 @@ function resolveRequireConfirm(
   );
 }
 
+function resolveMentalBeliefs(state: TableSessionState) {
+  const mental = state.mental;
+  const confidence = mental.confidence > 0 ? mental.confidence : 0.75;
+
+  return [
+    belief(
+      CORE_BELIEF_KEYS.mentalIntent,
+      mental.intent,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.mentalReceptiveness,
+      mental.receptiveness,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.mentalFrustration,
+      mental.affect.frustration.level,
+      "inferred",
+      confidence
+    ),
+    belief(
+      CORE_BELIEF_KEYS.mentalPredictedNeed,
+      mental.predictedNeed,
+      "inferred",
+      confidence
+    ),
+  ];
+}
+
 /**
  * ADR-023 §3.2 — compile scored BeliefGraph after FOLD (MR-1).
  * Pure function — no timeline writes; caller appends `mind.beliefs_compiled`.
@@ -577,6 +609,7 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
     resolveReturnVisit(memory, config),
     resolveRequireConfirm(config),
     resolveHasOpenOrders(input.state),
+    ...resolveMentalBeliefs(input.state),
     ...waiterBeliefs.beliefs,
   ]);
 }

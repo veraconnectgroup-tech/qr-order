@@ -1,3 +1,4 @@
+import type { GuestPredictedNeed } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { StaffProactiveAlert } from "@/lib/denis/cognition/proactive/proactive-types";
 
@@ -31,6 +32,7 @@ export function detectStaffProactiveAlerts(input: {
   emittedKeys: string[];
   recentGuestMessages: string[];
   waiterEscalated: boolean;
+  mentalPredictedNeed?: GuestPredictedNeed | null;
 }): StaffProactiveAlert[] {
   const alerts: StaffProactiveAlert[] = [];
   const emitted = new Set(input.emittedKeys);
@@ -58,6 +60,18 @@ export function detectStaffProactiveAlerts(input: {
         message: `Sto ${input.tableName} traži konobara`,
       });
     }
+  }
+
+  if (
+    input.config.proactive.staffWaiterRequest &&
+    !emitted.has("staff_attention_escalation") &&
+    input.mentalPredictedNeed === "needs_attention"
+  ) {
+    alerts.push({
+      kind: "staff_attention_escalation",
+      tableName: input.tableName,
+      message: `Sto ${input.tableName} — gost frustriran, potrebna pažnja konobara`,
+    });
   }
 
   if (input.config.proactive.staffAllergy && !emitted.has("staff_allergy")) {

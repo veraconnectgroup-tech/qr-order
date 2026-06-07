@@ -96,6 +96,16 @@ const TEMPLATE_CATALOG: Record<
     de: "Gäste bestellen das oft mit einem passenden Extra — soll ich etwas vorschlagen?",
     en: "Guests often add a popular pairing — want me to suggest one?",
   },
+  "proactive.attention_handoff": {
+    sr: "Izvinite zbog čekanja — obavestio sam konobara da dođe.",
+    de: "Es tut mir leid für die Wartezeit — ich habe den Kellner informiert.",
+    en: "Sorry for the wait — I've notified the waiter to come over.",
+  },
+  "mental.attention_handoff": {
+    sr: "Razumem — obavestio sam konobara. Doći će uskoro.",
+    de: "Verstanden — ich habe den Kellner informiert. Er kommt gleich.",
+    en: "Understood — I've notified the waiter. They'll be right over.",
+  },
   "waiter.gap_clarify.drink": {
     sr: "Pre nego što pošaljem — koji tip piva želite? Na primer Pilsner ili Weizen, 0.3L ili 0.5L.",
     de: "Bevor ich sende — welches Bier möchten Sie? Z. B. Pilsner oder Weizen, 0.3L oder 0.5L.",

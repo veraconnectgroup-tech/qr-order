@@ -4,6 +4,9 @@ import type { GuestProactiveNudge } from "@/lib/denis/runtime/evaluate-proactive
 import type { TurnPlanKind } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { DenisCartLine } from "@/lib/denis/kernel/cart-projection";
 import type { PendingSlotKind } from "@/lib/denis/cognition/beliefs/belief-types";
+import type { MentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
+import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
+import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 export type AnticipationSetup = {
   sessionPhase: SessionPhase;
@@ -11,6 +14,9 @@ export type AnticipationSetup = {
   aiCartItems?: DenisCartLine[];
   pendingSlot?: PendingSlotKind | null;
   dismissedNudges?: string[];
+  timeline?: DenisTimelineRow[];
+  flowNodeId?: FlowNodeId;
+  mentalModelMode?: MentalModelMode;
   operatingMode?: "normal" | "rush";
   skipUpsell?: boolean;
   proactiveEnabled?: boolean;

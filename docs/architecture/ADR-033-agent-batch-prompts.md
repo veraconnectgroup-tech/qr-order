@@ -557,123 +557,139 @@ Piši samo u svoju sekciju. Ne menjaj tuđe. Ne commit-uj.
 
 ---
 
-## AGENT-PILOT-P0 — iota pilot 0/5 → green (OBAVEZNO pre §Kad)
+## AGENT-PILOT-P0 — iota pilot 0/5 → 5/5 (v2)
 
-**Kontekst (2026-06-07):** `pnpm eval:denis` 16/16 PASS, ali `pnpm pilot:iota` **0/5 FAIL** na `https://qr-order-iota.vercel.app`.
+**North star:** `pnpm pilot:iota` → `=== 5/5 PASS ===` na `https://qr-order-iota.vercel.app`  
+**Pilot:** Skyline `b0000000-0000-4000-8000-000000000001` · QR `demo-table-1` · harness `scripts/iota-obligation-pilot.ts`
+
+**Jedna linija (Jovica):**
+```
+ADR-033 AGENT-PILOT-P0 v2. Kopiraj pun blok ispod iz ovog fajla. Ne commit-uj.
+```
 
 ```
-ADR-033 AGENT-PILOT-P0 — iota obligation pilot green.
+ADR-033 AGENT-PILOT-P0 v2 — iota obligation pilot 5/5.
 
-Pročitaj PRE kodiranja:
-- scripts/iota-obligation-pilot.ts (5 scenarija, PASS kriterijumi)
-- docs/architecture/ADR-032-waiter-obligation-spine.md
-- docs/architecture/ADR-034-denis-perfection-doctrine.md §P1
-- docs/architecture/ADR-035-pillar-strengthening-plan.md (C3 Waiter Obligation)
-- src/lib/denis/cognition/waiter/assess-waiter-obligation.ts
-- src/lib/denis/loop/project-view-layers.ts (buildViewLayers waiter-gap banner)
-- src/lib/denis/cognition/tde/decide-turn-plan.ts (waiterGapsBlockConfirm)
-- src/lib/ai/ordering/order-message-backfill.ts (needsDrinkClarify, TYPED_DRINK_PATTERN)
+## 0) DIAGNOZA PRVO (pre bilo kakvog koda)
 
-## Poznati FAIL (live iota, fresh session)
+Pokreni i upiši u session report:
 
-| # | FAIL signal |
-|---|-------------|
-| 1 | clarify OK ali 24s + viewGap=false |
-| 2 | CONFIRM → missing_submit_context, viewGap=false |
-| 3 | submit=false, viewGap=false |
-| 4 | substitution gap nedostaje |
-| 5 | cron=200, nudges=0, gapTell=false |
+  pnpm eval:denis
+  pnpm test:run src/__tests__/waiter-obligation.test.ts
+  pnpm pilot:iota    # samo ako imaš Supabase CLI link — inače preskoči
 
-## Root cause (potvrđeno — eval vs live divergencija)
+Proveri da li već postoji:
+  grep -n "lineSatisfiesDrinkGap\|generic pivo in cart" src/lib/denis/cognition/waiter/assess-waiter-obligation.ts src/__tests__/waiter-obligation.test.ts
 
-Eval/fixtures koriste cart sa SAMO burgerom → gap ostaje.
-Live iota posle "moze jedno pivo i beef burger" verovatno dodaje generičko piće u cart →
-`cartHasDrink()` u assess-waiter-obligation vidi pivo u cart-u → gap se briše u FOLD/VIEW,
-ali turn i dalje append-uje drink clarify u poruku. Rezultat: mozak pita, view nema waiter-gap layer,
-CONFIRM ne blokira, cron watcher ne nudge-uje.
+ODLUKA:
+  A) waiter-obligation test PASS + pilot FAIL  → kod OK lokalno, fokus: preostali runtime path + DEPLOY iota
+  B) waiter-obligation test FAIL               → obligation contract još nije zatvoren
+  C) pilot scenario 1 elapsedMs > 15000        → TDE/LLM SLA, ne view bug
 
-## Tvoj zadatak (jedan PR, fokus P0)
+Ne radi dupli fix ako test "generic pivo in cart keeps drink_unspecified gap" već PASS.
 
-### 1. Obligation contract — generičko pivo ≠ resolved gap
+## 1) Tačan FAIL sa iote (referenca)
 
-U `assess-waiter-obligation.ts`:
-- `cartHasDrink()` NE sme da tretira generičko `pivo|beer|bier` u productName kao tipizirano piće.
-- Uskladi sa `TYPED_DRINK_PATTERN` iz order-message-backfill (pilsner, weizen, lager, radler, cola…).
-- Gap `drink_unspecified` persistuje dok gost ne kaže tip ILI cart nema tipizirano piće.
-- Ako ACT/comprehend dodaje generičko piće u draft dok gap otvoren — spreči ili označi kao unresolved
-  (minimalan diff; ne rewrite create-order).
+| ID | Pilot assert (iz scripts/iota-obligation-pilot.ts) | Poslednji live output |
+|----|-----------------------------------------------------|------------------------|
+| 1_gap_drink_clarify | ok + <15s + !submit + msg(pivo\|pilsner\|weizen) + (viewGap\|transcript pivo) | 24s, viewGap=false, msg OK |
+| 2_gap_blocks_confirm | ok + <15s + !submit + viewGap=true | missing_submit_context, viewGap=false |
+| 3_gap_cleared_submit | pilsner ok + confirm submit + !viewGap + <15s | submit=false |
+| 4_substitution_gap | !submit + (msg zamena/salat/kuhinj\|viewGap) | samo recap |
+| 5_autonomous_waiter_gap | cron ok + (nudges≥1\|viewGap) + gapTell | nudges=0 |
 
-Proveri i `draftHasDrinkInCart` / backfill put — jedan izvor istine za "da li je piće razrešeno".
+## 2) Root cause (hipoteza — potvrdi grep-om, ne nagađaj)
 
-### 2. VIEW projection — waiter-gap banner posle signala
+Eval/fixtures: cart = samo burger → gap ostaje.
+Live turn: comprehend/backfill može dodati generičko "Pivo" u draft.
+Ako `cartHasDrink()` tretira to kao resolved → FOLD briše gap → viewGap=false → 2–5 padaju.
 
-`GET /api/denis/view` → loadTableSessionView → fold → projectViewLayers.
-Posle scenarija 1, `view.layers` MORA sadržati banner:
-  kind=banner, id sadrži `waiter-gap`, message sadrži pivo/pilsner prompt.
+Lanac koji MORA biti konzistentan na SVIM putevima (fold, turn, watcher):
 
-Ako `meta.phase !== "ordering"` blokira banner na recap-u — popravi (recap sa cart activity = ordering).
+  mergeTableSessionObligation → obligation.gaps[0]
+  → buildViewLayers (id: waiter-gap-*)  [samo ako meta.phase === "ordering"]
+  → compileBeliefs (waiterGapCount, canConfirm)
+  → decideTurnPlan waiterGapsBlockConfirm na CONFIRM
+  → run-session-watcher proactive waiter_gap
 
-Dodaj/ proširi test koji assert-uje buildViewLayers sa drink_unspecified gap.
+## 3) Fix redom (jedan PR, minimalan diff)
 
-### 3. CONFIRM + open gap → template block, ne submit
+### FIX-1 — Jedan izvor istine: "da li je piće razrešeno"
 
-Scenarij 2: `structuredIntent: "CONFIRM"` sa otvorenim gap-om.
-Očekivano: `decideTurnPlan` → `waiter.gap_blocks_confirm`, submit=false.
-NE: `missing_submit_context` iz resolve-act-submit-outcome.
+Fajl: src/lib/denis/cognition/waiter/assess-waiter-obligation.ts
+- `lineSatisfiesDrinkGap` / `cartHasDrink`: generičko pivo|beer|bier NE zatvara drink_unspecified
+- Eksportuj helper ako treba drugim modulima
 
-Proveri compileBeliefs → waiterGapCount/canConfirm na recap turn-u.
-Test: proširi waiter-obligation.test.ts ili timeline fixture da pokrije live cart divergence.
+Fajl: src/lib/ai/ordering/order-message-backfill.ts
+- `draftHasDrinkInCart` mora koristiti ISTU logiku (ne duplirati regex)
+- Generičko piće ne sme biti backfill-ovano u draft dok needsDrinkClarify (proveri backfillDraftFromOrderMessage)
 
-### 4. Substitution gap (scenarij 4)
+Test (obavezno ako ne postoji):
+  src/__tests__/waiter-obligation.test.ts
+  "generic pivo in cart keeps drink_unspecified gap (eval/live parity)"
+  → gaps=1, buildViewLayers ima waiter-gap banner, CONFIRM → waiter.gap_blocks_confirm
 
-"beef burger sa salatom umesto pomfrita" → gap `substitution_note` u obligation + viewGap ili msg sa zamena/salat/kuhinj.
+### FIX-2 — CONFIRM ne sme ići u act submit
 
-### 5. Autonomous waiter_gap (scenarij 5)
+Fajl: src/lib/denis/cognition/tde/decide-turn-plan.ts → waiterGapsBlockConfirm
+Fajl: src/lib/denis/runtime/run-denis-turn.ts → beliefs pre decideTurnPlan
+- structuredIntent CONFIRM + gapCount>0 → template_tell, NE order.submit
+- Greška "missing_submit_context" = submit se pokrenuo pre gap blocka → bug
 
-Posle order signala, cron `/api/cron/denis-session-watcher` → guestNudges >= 1 ILI viewGap ILI transcript gap tell.
-Proveri run-session-watcher.ts koristi mergeTableSessionObligation (isti contract kao fold).
+### FIX-3 — Template SLA <15s (scenariji 1–3)
 
-### 6. Signal SLA (scenarij 1–3 template turnovi <15s)
+Fajl: src/lib/denis/cognition/tde/decide-turn-plan.ts
+- Order line sa drink_unspecified → template_tell (requiresLlm: false), ne transactional_perceive
+- Proveri decideTurnPlan za "moze jedno pivo i beef burger" sa gap beliefs
 
-Ako turn ide na LLM umesto template za drink clarify — forsiraj template path (TDE beliefs + waiterGapCount).
-Ne relaksuj pilot SLA bez komentara u session reportu.
-Ako iota deploy kasni za main — napomeni u reportu (operator deploy).
+Test: waiter-obligation "template clarify plan when beliefs carry open drink gap"
 
-## Test gate (obavezno)
+### FIX-4 — Substitution (scenarij 4)
 
-pnpm eval:denis          # mora 16/16 PASS
-pnpm type-check
-pnpm lint
+Input: "beef burger sa salatom umesto pomfrita"
+Fajl: assess-waiter-obligation.ts + guest-substitution parse
+- gap kind substitution_note ILI msg sa zamena/salat/kuhinj/napomen
 
-Dodaj test(ove) koji reprodukuju live divergenciju:
-- cart sa generičkim pivo line + needsDrinkClarify → gapCount=1, canConfirm=false
-- buildViewLayers → waiter-gap banner prisutan
-- CONFIRM + gap → plan.reason waiter.gap_blocks_confirm
+### FIX-5 — Cron watcher (scenarij 5)
 
-Opciono lokalno (ako imaš env): pnpm pilot:iota — ne blokira PR ako iota nije deploy-ovan,
-ali dokumentuj očekivani output.
+Fajl: src/lib/denis/runtime/run-session-watcher.ts
+- mergeTableSessionObligation(source: "watcher") mora videti isti gap kao fold
+- emit-proactive-nudge → guestNudges++
 
-## Šta NE raditi
+## 4) Gate (svi moraju PASS)
 
-- Ne menjaj pilot harness PASS kriterijume da "prođe" bez fix-a
-- Ne dodaj module-level Map/Set cache
-- Ne dupliraj side effects (outbox vs fire-and-forget)
-- Ne commit-uj
-- Ne diraj ADR-020 §Kad stubove van ovog scope-a
+  pnpm eval:denis
+  pnpm test:run src/__tests__/waiter-obligation.test.ts
+  pnpm type-check
+  pnpm lint
 
-## Session report (obavezno na kraju)
+Ne menjaj PASS kriterijume u scripts/iota-obligation-pilot.ts.
 
-1. Root cause (1–2 rečenice)
-2. Fajlovi menjani
-3. eval:denis rezultat
-4. Koji pilot scenariji bi sada prošli (1–5) i zašto
-5. Da li treba iota redeploy (DA/NE)
-6. Predlog commit poruke (ne commit-uj)
+## 5) Van scope-a (NE DIRAJ)
 
-## Acceptance = PR gotov kada
+- ADR-020 §Kad / mental-model / guest-recovery refaktori
+- Pilot harness relaksacija SLA
+- module-level Map/Set
+- commit bez Jovicine reči
 
-eval PASS + testovi pokrivaju cart/generic-pivo divergenciju + session report objašnjava
-kako svih 5 pilot scenarija prolazi posle iota deploy-a.
+## 6) Session report (format)
+
+| Sekcija | Sadržaj |
+|---------|---------|
+| Diagnoza | A/B/C odluka iz koraka 0 |
+| Root cause | 1 rečenica, potvrđeno testom |
+| Fajlovi | lista |
+| eval | N/N |
+| Pilot prognoza | tabela 1–5: PASS/FAIL + zašto |
+| Deploy | DA — iota mora dobiti ovaj commit pre pilot retesta |
+| Commit msg | predlog, ne izvršavaj |
+
+## 7) Acceptance
+
+PR gotov kada:
+- waiter-obligation parity test PASS
+- eval:denis PASS
+- session report kaže "5/5 PASS posle iota deploy" sa jasnim razlogom po scenariju
 ```
 
 ---

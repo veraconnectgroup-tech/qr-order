@@ -1,4 +1,5 @@
 import type { AnticipationScenario } from "@/lib/denis/eval/anticipation-types";
+import { browseRow, guestMessageRow } from "@/lib/denis/eval/fixtures/mental-model/scenarios";
 import { drinkLine } from "@/lib/denis/eval/fixtures/waiter-parity/helpers";
 
 const NOW = Date.parse("2026-05-29T20:00:00.000Z");
@@ -392,6 +393,162 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
     },
     payload: {},
     expect: { emit: false, skipReason: "proactive.slow_kitchen_disabled", kind: "slow_kitchen" },
+  },
+  {
+    id: "gmm-closed-blocks-browse",
+    description: "Closed guest gets no browse candidate under mental-first (enforce)",
+    setup: {
+      sessionPhase: "browsing",
+      dismissedNudges: ["browse_nudge", "popularity_pair"],
+      mentalModelMode: "enforce",
+      timeline: [
+        guestMessageRow(1, "ne hvala", isoMinutesAgo(1)),
+        browseRow(2, {
+          action: "view_product",
+          productId: "p1",
+          productName: "Burger",
+          categoryPath: ["food"],
+          menuSection: "food",
+          dwellMs: 3000,
+          timestamp: isoMinutesAgo(2),
+        }),
+      ],
+    },
+    payload: { browseMinutes: 10, dismissedNudgeKeys: [] },
+    expect: {
+      emit: false,
+      skipReason: "no_candidate",
+    },
+  },
+  {
+    id: "gmm-mental-browse-ok",
+    description: "Mental-first browse nudge without browseMinutes (enforce)",
+    setup: {
+      sessionPhase: "browsing",
+      mentalModelMode: "enforce",
+      timeline: [
+        browseRow(1, {
+          action: "view_product",
+          productId: "p1",
+          productName: "Burger",
+          categoryPath: ["food", "burgers"],
+          menuSection: "food",
+          dwellMs: 4000,
+          timestamp: isoMinutesAgo(4),
+        }),
+        browseRow(2, {
+          action: "view_product",
+          productId: "p2",
+          productName: "Pasta",
+          categoryPath: ["food", "pasta"],
+          menuSection: "food",
+          dwellMs: 3500,
+          timestamp: isoMinutesAgo(3),
+        }),
+        browseRow(3, {
+          action: "view_product",
+          productId: "p3",
+          productName: "Salad",
+          categoryPath: ["food", "salads"],
+          menuSection: "food",
+          dwellMs: 2800,
+          timestamp: isoMinutesAgo(2),
+        }),
+      ],
+    },
+    payload: {},
+    expect: {
+      emit: true,
+      kind: "browse_nudge",
+      planKind: "template_tell",
+      requiresLlm: false,
+    },
+  },
+  {
+    id: "gmm-mental-ignore-minutes",
+    description: "Enforce mode ignores browseMinutes when posture not ready",
+    setup: {
+      sessionPhase: "latent",
+      mentalModelMode: "enforce",
+      timeline: [],
+    },
+    payload: { browseMinutes: 10 },
+    expect: { emit: false, skipReason: "no_candidate" },
+  },
+  {
+    id: "gmm-mental-bill-post-meal",
+    description: "Mental-first bill prompt from post_meal posture (enforce)",
+    setup: {
+      sessionPhase: "settling",
+      mentalModelMode: "enforce",
+      dessertEnabled: false,
+      orders: [
+        {
+          id: "ord-bill",
+          orderNumber: 20,
+          status: "delivered",
+          paymentStatus: "paid",
+          estimatedPrepMinutes: null,
+          createdAt: isoMinutesAgo(45),
+          items: [{ productName: "Burger", quantity: 1 }],
+        },
+      ],
+    },
+    payload: {},
+    expect: {
+      emit: true,
+      kind: "bill_prompt",
+      planKind: "template_tell",
+      requiresLlm: false,
+    },
+  },
+  {
+    id: "gmm-attention-handoff",
+    description: "Frustrated guest posture → attention handoff (enforce)",
+    setup: {
+      sessionPhase: "waiting",
+      mentalModelMode: "enforce",
+      timeline: [
+        guestMessageRow(1, "ČEKAM???", isoMinutesAgo(3)),
+        guestMessageRow(2, "gde je hrana", isoMinutesAgo(2)),
+        guestMessageRow(3, "gde je hrana", isoMinutesAgo(1)),
+      ],
+    },
+    payload: {},
+    expect: {
+      emit: true,
+      kind: "attention_handoff",
+      planKind: "template_tell",
+      requiresLlm: false,
+      messageIncludes: "konobar",
+    },
+  },
+  {
+    id: "gmm-rank-bill-over-dessert",
+    description: "post_meal wants_bill ranks bill above dessert (enforce)",
+    setup: {
+      sessionPhase: "settling",
+      mentalModelMode: "enforce",
+      dessertEnabled: true,
+      orders: [
+        {
+          id: "ord-rank-bill",
+          orderNumber: 21,
+          status: "delivered",
+          paymentStatus: "paid",
+          estimatedPrepMinutes: null,
+          createdAt: isoMinutesAgo(50),
+          items: [{ productName: "Steak", quantity: 1 }],
+        },
+      ],
+    },
+    payload: {},
+    expect: {
+      emit: true,
+      kind: "bill_prompt",
+      planKind: "template_tell",
+      requiresLlm: false,
+    },
   },
 ];
 

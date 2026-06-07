@@ -1,5 +1,21 @@
-import type { BrowseEvent } from "@/lib/denis/cognition/browse/browse-types";
 import type { DenisRiskClass } from "@/lib/denis/platform/risk-levels";
+
+/** Browse telemetry embedded in timeline perception events (platform-owned shape). */
+export type TimelineBrowseEvent = {
+  action:
+    | "view_category"
+    | "view_product"
+    | "add_to_cart"
+    | "remove_from_cart"
+    | "scroll_menu";
+  productId?: string;
+  productName?: string;
+  categoryId?: string;
+  categoryPath?: string[];
+  menuSection?: "food" | "drinks" | "desserts" | null;
+  dwellMs?: number;
+  timestamp: string;
+};
 
 /** Envelope attached to timeline events (ADR-006 §5). */
 export type TurnEnvelope = {
@@ -60,7 +76,7 @@ export type DenisTimelineEventPayload =
       type: "perception.ingested";
       frame: PerceptionFrame;
       envelope: TurnEnvelope;
-      browseEvent?: BrowseEvent;
+      browseEvent?: TimelineBrowseEvent;
     }
   | {
       type: "intent.resolved";
@@ -99,6 +115,37 @@ export type DenisTimelineEventPayload =
       evidencePointers?: string[];
       pendingSlotActResolved?: boolean;
     }
+  | {
+      type: "mental_model.updated";
+      hash: string;
+      computedAt?: number;
+      confidence: number;
+      model: Record<string, unknown>;
+      triggers: string[];
+    }
+  | {
+      type: "mental_model.gate";
+      mode: string;
+      candidateKind: string;
+      allow: boolean;
+      enforced: boolean;
+      reason: string | null;
+      wouldBlock: boolean;
+      mentalHash: string;
+    }
+  | {
+      type: "mental_model.diff";
+      hash: string;
+      significant: boolean;
+      changes: Array<{ field: string; from: string; to: string }>;
+      intentTransition: {
+        from: string;
+        to: string;
+        at: number;
+        durationMs: number;
+      } | null;
+      triggers: string[];
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -119,7 +166,10 @@ export type DenisTimelineEventType =
   | "belief.revision"
   | "mind.fold_completed"
   | "mind.beliefs_compiled"
-  | "mind.turn_profile";
+  | "mind.turn_profile"
+  | "mental_model.updated"
+  | "mental_model.gate"
+  | "mental_model.diff";
 
 export type DenisTimelineRow = {
   id: string;

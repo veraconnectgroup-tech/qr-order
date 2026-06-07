@@ -1,4 +1,5 @@
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import {
@@ -65,6 +66,7 @@ function baseState(
     },
     timeline: [],
     browse: emptyBrowseProfile(),
+    mental: emptyGuestMentalModel(),
     config,
     ...overrides,
   };
@@ -80,9 +82,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 15) {
+  if (banterGraph.beliefs.length !== 19) {
     errors.push(
-      `expected 15 beliefs (ADR-030 core + ADR-032 waiter), got ${banterGraph.beliefs.length}`
+      `expected 19 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental), got ${banterGraph.beliefs.length}`
     );
   }
 
@@ -373,6 +375,24 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     ) !== true
   ) {
     errors.push("policy: expected policy.require_confirm=true from defaults");
+  }
+
+  const mentalIntent = getBeliefValue<string>(
+    banterGraph,
+    CORE_BELIEF_KEYS.mentalIntent
+  );
+  if (mentalIntent !== "arrived") {
+    errors.push(`mental.intent: expected arrived, got ${mentalIntent ?? "null"}`);
+  }
+
+  const mentalPredictedNeed = getBeliefValue<string>(
+    banterGraph,
+    CORE_BELIEF_KEYS.mentalPredictedNeed
+  );
+  if (mentalPredictedNeed !== "none") {
+    errors.push(
+      `mental.predicted_need: expected none, got ${mentalPredictedNeed ?? "null"}`
+    );
   }
 
   return {

@@ -25,8 +25,12 @@ const preparingSituation: SceneSituation = {
 };
 
 describe("denis guest recovery ladder", () => {
-  it("classifies payment and status intents", () => {
+  it("classifies payment, bill amount, and status intents", () => {
     expect(classifyGuestRecoveryIntent("Mogu li da platim?")).toBe("payment");
+    expect(classifyGuestRecoveryIntent("Koliki mi je račun?")).toBe("bill_amount");
+    expect(classifyGuestRecoveryIntent("htao sam da mi kazes koliki mi je racun")).toBe(
+      "bill_amount"
+    );
     expect(classifyGuestRecoveryIntent("Kad stiže moj burger?")).toBe("status");
     expect(classifyGuestRecoveryIntent("Ne mogu da pozovem konobara")).toBe(
       "waiter"
@@ -142,5 +146,44 @@ describe("denis guest recovery ladder", () => {
     });
     expect(local?.message).toContain("5");
     expect(local?.message).toContain("Chicken Burger");
+  });
+
+  it("answers add-more chip locally without recovery retry", () => {
+    const local = tryLocalGuestAnswer({
+      guestMessage: "Još nešto",
+      language: "sr",
+      situation: preparingSituation,
+      cartItemCount: 0,
+    });
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message.toLowerCase()).toContain("šta još");
+    expect(local?.message.toLowerCase()).not.toContain("pokušavam");
+  });
+
+  it("returns bill total instead of payment method when guest asks amount", () => {
+    const local = tryLocalGuestAnswer({
+      guestMessage: "Koliki mi je račun?",
+      language: "sr",
+      situation: preparingSituation,
+      cartItemCount: 0,
+    });
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message).toContain("#5");
+    expect(local?.message.toLowerCase()).toContain("otvaram račun");
+    expect(local?.action?.openPaymentSheet).toBe(true);
+    expect(local?.message.toLowerCase()).not.toContain("kako plaćate");
+  });
+
+  it("shows cart total when items are still in cart", () => {
+    const local = tryLocalGuestAnswer({
+      guestMessage: "Koliko je ukupno?",
+      language: "sr",
+      situation: preparingSituation,
+      cartItemCount: 2,
+      cartTotal: 24.5,
+      currency: "EUR",
+    });
+    expect(local?.message).toContain("24,50");
+    expect(local?.message.toLowerCase()).not.toContain("kako plaćate");
   });
 });

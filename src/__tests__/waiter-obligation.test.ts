@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compileBeliefs } from "@/lib/denis/cognition/beliefs/compile-beliefs";
 import { decideTurnPlan } from "@/lib/denis/cognition/tde/decide-turn-plan";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import {
   assessWaiterObligation,
@@ -74,6 +75,7 @@ function baseState(): TableSessionState {
     },
     timeline: [],
     browse: emptyBrowseProfile(),
+    mental: emptyGuestMentalModel(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 }

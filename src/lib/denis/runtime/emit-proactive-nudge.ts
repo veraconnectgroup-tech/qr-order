@@ -2,6 +2,7 @@ import {
   buildBrowseFollowUpMessage,
   buildVenueWelcomeMessage,
 } from "@/lib/denis/cognition/conversation/browsing-defer";
+import { appendMentalModelGate } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import { waiterObligationDedupeKey } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
@@ -55,6 +56,20 @@ export async function emitProactiveNudge(
       browseFollowUp: buildBrowseFollowUpMessage(language),
     },
   });
+
+  if (proactiveResult.mentalGate) {
+    await appendMentalModelGate(admin, {
+      aiSessionId: input.aiSessionId,
+      traceId,
+      mental: input.state.mental,
+      mode: proactiveResult.mentalGate.mode,
+      candidateKind: proactiveResult.mentalGate.candidateKind,
+      allow: proactiveResult.mentalGate.allow,
+      enforced: proactiveResult.mentalGate.enforced,
+      reason: proactiveResult.mentalGate.reason,
+      wouldBlock: proactiveResult.mentalGate.wouldBlock,
+    });
+  }
 
   if (!proactiveResult.nudge || !proactiveResult.message) {
     return null;

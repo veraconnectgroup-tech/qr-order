@@ -1,6 +1,6 @@
 import type { BrowseEvent, BrowseMenuSection } from "@/lib/denis/cognition/browse/browse-types";
 
-const FOOD_SEGMENTS = new Set([
+const FOOD_SEGMENTS = [
   "food",
   "burgers",
   "burger",
@@ -12,9 +12,9 @@ const FOOD_SEGMENTS = new Set([
   "mains",
   "sides",
   "snacks",
-]);
+] as const;
 
-const DRINK_SEGMENTS = new Set([
+const DRINK_SEGMENTS = [
   "drinks",
   "drink",
   "beer",
@@ -24,15 +24,22 @@ const DRINK_SEGMENTS = new Set([
   "soft_drinks",
   "coffee",
   "tea",
-]);
+] as const;
 
-const DESSERT_SEGMENTS = new Set([
+const DESSERT_SEGMENTS = [
   "desserts",
   "dessert",
   "sweets",
   "cakes",
   "ice_cream",
-]);
+] as const;
+
+function segmentMatches(
+  segments: readonly string[],
+  key: string
+): boolean {
+  return segments.includes(key);
+}
 
 /** Classify browse domain from catalog section or category path segments. */
 export function classifyBrowseDomain(
@@ -43,9 +50,9 @@ export function classifyBrowseDomain(
   const path = event.categoryPath ?? [];
   for (const segment of path) {
     const key = segment.toLowerCase().replace(/\s+/g, "_");
-    if (FOOD_SEGMENTS.has(key)) return "food";
-    if (DRINK_SEGMENTS.has(key)) return "drinks";
-    if (DESSERT_SEGMENTS.has(key)) return "desserts";
+    if (segmentMatches(FOOD_SEGMENTS, key)) return "food";
+    if (segmentMatches(DRINK_SEGMENTS, key)) return "drinks";
+    if (segmentMatches(DESSERT_SEGMENTS, key)) return "desserts";
   }
 
   return null;

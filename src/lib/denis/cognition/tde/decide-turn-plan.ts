@@ -80,10 +80,24 @@ function resolveConversationMode(
 }
 
 function resolveSuppressUpsell(beliefs: DecideTurnPlanInput["beliefs"]): boolean {
-  return (
+  if (
     getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueSkipUpsell) === true ||
     getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueRush) === true
+  ) {
+    return true;
+  }
+
+  const predictedNeed = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalPredictedNeed
   );
+  if (predictedNeed === "needs_attention") return true;
+
+  const frustration = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalFrustration
+  );
+  return frustration === "high";
 }
 
 /** ADR-031 C2 — guest replies always comprehend or deterministic ACT; never slot template loop. */
@@ -599,11 +613,49 @@ function commerceReflexConfirmSubmit(
   });
 }
 
+/** ADR-038 GMM-7 — frustrated posture → empathy + waiter escalation (reactive). */
+function mentalAttentionEscalationTurn(
+  input: DecideTurnPlanInput
+): TurnPlan | null {
+  const predictedNeed = getBeliefValue<string>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.mentalPredictedNeed
+  );
+  if (predictedNeed !== "needs_attention") return null;
+
+  const msg = input.message.trim();
+  if (!msg) return null;
+
+  const statusQuery = ORDER_STATUS_QUERY_PATTERN.test(msg);
+  const missingComplaint = MISSING_ORDER_COMPLAINT_PATTERN.test(msg);
+  const frustration =
+    getBeliefValue<string>(input.beliefs, CORE_BELIEF_KEYS.mentalFrustration) ??
+    "none";
+
+  if (!statusQuery && !missingComplaint && frustration !== "high") {
+    return null;
+  }
+
+  if (statusQuery && !hasOpenCommerceOrders(input.beliefs)) {
+    return null;
+  }
+
+  return buildPlan("template_tell", {
+    requiresLlm: false,
+    suppressUpsell: true,
+    reason: "mental.attention_handoff",
+    templateKey: "mental.attention_handoff",
+  });
+}
+
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
 
   const gapBlockPlan = waiterGapsBlockConfirm(input);
   if (gapBlockPlan) return gapBlockPlan;
+
+  const mentalAttentionPlan = mentalAttentionEscalationTurn(input);
+  if (mentalAttentionPlan) return mentalAttentionPlan;
 
   const gapClarifyPlan = waiterGapsClarifyTurn(input);
   if (gapClarifyPlan) return gapClarifyPlan;

@@ -5,8 +5,10 @@ import { tryTemplateUtterance } from "@/lib/denis/cognition/tde/template-utteran
 import type { BeliefGraph, TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { TableSessionState } from "@/lib/denis/loop/types";
-import { detectProactiveCandidate } from "@/lib/denis/cognition/proactive/detect-proactive-candidate";
+import type { ProactivePolicyReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
+import { pickProactiveCandidate } from "@/lib/denis/cognition/proactive/pick-proactive-candidate";
 import { detectWaiterObligationTell } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
+import type { MentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import type {
   GuestProactiveNudge,
   ProactiveTickPayload,
@@ -25,6 +27,15 @@ export type ProactiveTurnMessages = {
   popularityPair: string;
 };
 
+export type ProactiveMentalGateTrace = {
+  mode: MentalModelMode;
+  candidateKind: GuestProactiveNudge["kind"];
+  allow: boolean;
+  reason: ProactivePolicyReason | null;
+  wouldBlock: boolean;
+  enforced: boolean;
+};
+
 export type ProactiveTurnResult = {
   beliefs: BeliefGraph;
   turnPlan: TurnPlan | null;
@@ -33,6 +44,7 @@ export type ProactiveTurnResult = {
   skipped: boolean;
   skipReason: string | null;
   candidateKind: GuestProactiveNudge["kind"] | null;
+  mentalGate?: ProactiveMentalGateTrace | null;
 };
 
 function resolveProactiveMessage(input: {
@@ -128,9 +140,10 @@ export function planProactiveTurn(input: {
     }
   }
 
-  const candidate = detectProactiveCandidate({
+  const pick = pickProactiveCandidate({
     config: input.config,
     orders: input.orders,
+    mental: input.state.mental,
     payload: {
       ...input.payload,
       sessionPhase: input.sessionPhase,
@@ -143,6 +156,9 @@ export function planProactiveTurn(input: {
     now: input.now,
   });
 
+  const candidate = pick.candidate;
+  const mentalGate: ProactiveMentalGateTrace | null = pick.policyTrace;
+
   if (!candidate) {
     return {
       beliefs,
@@ -150,8 +166,9 @@ export function planProactiveTurn(input: {
       nudge: null,
       message: null,
       skipped: true,
-      skipReason: "no_candidate",
-      candidateKind: null,
+      skipReason: mentalGate?.reason ?? "no_candidate",
+      candidateKind: mentalGate?.candidateKind ?? null,
+      mentalGate,
     };
   }
 
@@ -172,6 +189,7 @@ export function planProactiveTurn(input: {
       skipped: true,
       skipReason: decided.reason,
       candidateKind: candidate.kind,
+      mentalGate,
     };
   }
 
@@ -191,6 +209,7 @@ export function planProactiveTurn(input: {
       skipped: true,
       skipReason: "empty_message",
       candidateKind: candidate.kind,
+      mentalGate,
     };
   }
 
@@ -202,5 +221,6 @@ export function planProactiveTurn(input: {
     skipped: false,
     skipReason: null,
     candidateKind: candidate.kind,
+    mentalGate,
   };
 }

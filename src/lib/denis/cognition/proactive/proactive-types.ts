@@ -39,6 +39,7 @@ export type ProactiveTickPayload = {
 
 export type GuestProactiveNudgeKind =
   | "waiter_gap"
+  | "attention_handoff"
   | "browse_nudge"
   | "drink_pairing"
   | "dessert_nudge"
@@ -52,6 +53,7 @@ export type GuestProactiveNudgeKind =
 export type StaffProactiveAlertKind =
   | "staff_table_idle"
   | "staff_waiter_request"
+  | "staff_attention_escalation"
   | "staff_allergy";
 
 export type GuestProactiveNudge = {

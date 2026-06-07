@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import {
@@ -101,6 +102,7 @@ function stateWithBurgerGap(): TableSessionState {
     },
     timeline: [],
     browse: emptyBrowseProfile(),
+    mental: emptyGuestMentalModel(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 }

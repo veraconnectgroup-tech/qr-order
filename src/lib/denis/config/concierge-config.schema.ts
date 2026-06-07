@@ -188,6 +188,17 @@ const ConciergeSurfacesSchema = z.object({
   voiceTtsEnabled: z.boolean(),
 });
 
+const ConciergeMentalModelSchema = z.object({
+  /** Legacy — when true and mode=off, treated as enforce (see resolveMentalModelMode). */
+  enabled: z.boolean(),
+  mode: z.enum(["off", "shadow", "enforce"]).default("off"),
+  nudgeBudgetDefault: z.number().int().min(0).max(10),
+  nudgeBudgetEnthusiastic: z.number().int().min(1).max(10),
+  declineCooldownSeconds: z.number().int().min(0).max(600),
+  frustrationEscalateThreshold: z.enum(["mild", "high"]),
+  confidenceFallbackThreshold: z.number().min(0).max(1).default(0.4),
+});
+
 export const ConciergeConfigSchema = z.object({
   version: z.literal(1),
   enabled: z.boolean(),
@@ -208,6 +219,7 @@ export const ConciergeConfigSchema = z.object({
   learning: ConciergeLearningSchema,
   memory: ConciergeMemorySchema,
   surfaces: ConciergeSurfacesSchema,
+  mentalModel: ConciergeMentalModelSchema,
 });
 
 export type ConciergeConfig = z.infer<typeof ConciergeConfigSchema>;
@@ -229,6 +241,7 @@ export const PartialConciergeOpsSchema = ConciergeOpsSchema.partial();
 export const PartialConciergeLearningSchema = ConciergeLearningSchema.partial();
 export const PartialConciergeMemorySchema = ConciergeMemorySchema.partial();
 export const PartialConciergeSurfacesSchema = ConciergeSurfacesSchema.partial();
+export const PartialConciergeMentalModelSchema = ConciergeMentalModelSchema.partial();
 
 export const PartialConciergeConfigSchema = z.object({
   version: z.literal(1).optional(),
@@ -250,6 +263,7 @@ export const PartialConciergeConfigSchema = z.object({
   learning: PartialConciergeLearningSchema.optional(),
   memory: PartialConciergeMemorySchema.optional(),
   surfaces: PartialConciergeSurfacesSchema.optional(),
+  mentalModel: PartialConciergeMentalModelSchema.optional(),
 });
 
 export type PartialConciergeConfig = z.infer<typeof PartialConciergeConfigSchema>;

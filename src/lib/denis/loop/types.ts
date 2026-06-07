@@ -16,6 +16,7 @@ import type {
 
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
+import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { WaiterObligation } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { SessionPhase } from "@/lib/scene/types";
@@ -80,6 +81,8 @@ export type TableSessionState = {
   timeline: DenisTimelineRow[];
   /** F1 browse telemetry — folded from timeline browse events. */
   browse: GuestBrowseProfile;
+  /** ADR-038 — guest psychology profile rebuilt every FOLD. */
+  mental: GuestMentalModel;
   config: ConciergeConfig;
 };
 

@@ -37,6 +37,10 @@ export const CORE_BELIEF_KEYS = {
   waiterCanConfirm: "waiter.can_confirm",
   waiterPrimaryGap: "waiter.primary_gap",
   waiterNextAction: "waiter.next_action",
+  mentalIntent: "mental.intent",
+  mentalReceptiveness: "mental.receptiveness",
+  mentalFrustration: "mental.frustration",
+  mentalPredictedNeed: "mental.predicted_need",
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";

@@ -7,6 +7,7 @@ import {
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
@@ -48,6 +49,7 @@ function minimalState(
     },
     timeline,
     browse: emptyBrowseProfile(),
+    mental: emptyGuestMentalModel(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 }

@@ -579,6 +579,7 @@ export function AiConciergeChat({
       : (knownAllergySelection ?? []);
   const addItem = useCart((s) => s.addItem);
   const cartItems = useCart((s) => s.items);
+  const cartTotal = useCart((s) => s.total(false, taxPercent));
   const clearCart = useCart((s) => s.clearCart);
   const scrollRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -782,8 +783,10 @@ export function AiConciergeChat({
         language,
         situation: sceneChrome?.situation,
         cartItemCount: cartItems.length,
+        cartTotal,
+        currency,
       }),
-    [sceneChrome?.situation, cartItems.length]
+    [sceneChrome?.situation, cartItems.length, cartTotal, currency]
   );
 
   const fireRecoveryAction = useCallback(
@@ -1173,6 +1176,8 @@ export function AiConciergeChat({
           language: chatLanguage,
           situation: sceneChrome?.situation,
           cartItemCount: cartItems.length,
+          cartTotal,
+          currency,
         });
         if (localAnswer?.answeredLocally) {
           setMessages((prev) => [
@@ -1271,6 +1276,8 @@ export function AiConciergeChat({
       menuCategories,
       sceneChrome?.situation,
       cartItems.length,
+      cartTotal,
+      currency,
       fireRecoveryAction,
       buildRecovery,
       callAiChat,

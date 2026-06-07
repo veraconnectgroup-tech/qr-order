@@ -8,11 +8,13 @@ import {
 import type { OrderFact } from "@/lib/denis/loop/types";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import { formatPrice } from "@/lib/format";
 import type { SelectablePaymentMethod } from "@/lib/payment-methods";
 import type { SceneSituation, SceneSituationOrder } from "@/lib/scene/types";
 
 export type GuestRecoveryIntent =
   | "payment"
+  | "bill_amount"
   | "status"
   | "waiter"
   | "order"
@@ -46,7 +48,13 @@ export class GuestRecoveryError extends Error {
 }
 
 const PAYMENT_PATTERN =
-  /\b(platim|platiti|platimo|zaplat|račun|racun|rechnung|bill|pay|bezahlen|checkout|mogu\s+li\s+da\s+platim)\b/i;
+  /\b(platim|platiti|platimo|zaplat|ho[ćc]u\s+da\s+platim|mogu\s+li\s+da\s+platim|rechnung\s+bitte|pay\s+now|bezahlen|checkout)\b/i;
+
+const BILL_AMOUNT_PATTERN =
+  /\b(kolik\w*\s+.*?(račun|racun|ukupno|sve\s+skupa)|iznos(\s+računa)?|ukupno\s+je|how\s+much|what('s| is)\s+(the\s+)?(bill|total)|wie\s+(viel|hoch).*rechnung)\b/i;
+
+const ADD_MORE_CHIP_PATTERN =
+  /^(jo[sš]\s+nešto|jos\s+nesto|noch\s+etwas|add\s+more|something\s+else)$/i;
 const STATUS_PATTERN =
   /\b(kad\s+sti[žz]e|kada\s+sti[žz]e|gde\s+je|gdje\s+je|status|ready|fertig|spremn|koliko\s+čeka|order\s+status|moj\s+burger|moje\s+pivo)\b/i;
 const WAITER_PATTERN =
@@ -75,6 +83,7 @@ const OPEN_ORDER_STATUSES = new Set([
 export function classifyGuestRecoveryIntent(message: string): GuestRecoveryIntent {
   const text = message.trim();
   if (!text) return "general";
+  if (BILL_AMOUNT_PATTERN.test(text)) return "bill_amount";
   if (PAYMENT_PATTERN.test(text)) return "payment";
   if (STATUS_PATTERN.test(text)) return "status";
   if (WAITER_PATTERN.test(text)) return "waiter";
@@ -132,6 +141,62 @@ function waiterConfirmQuickReply(language: string): string {
   return "Da, pozovi konobara";
 }
 
+function addMoreReplyMessage(language: string): string {
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "de") return "Alles klar — was darf ich noch bringen?";
+  if (lang === "en") return "Sure — what else would you like to add?";
+  return "U redu — šta još želite da dodam?";
+}
+
+function billAmountReply(input: {
+  language: string;
+  situation?: SceneSituation | null;
+  cartTotal: number;
+  currency: string;
+}): Pick<GuestRecoveryResult, "message" | "quickReplies" | "action"> {
+  const lang = input.language.toLowerCase().slice(0, 2);
+  if (input.cartTotal > 0) {
+    const total = formatPrice(input.cartTotal, input.currency);
+    const message =
+      lang === "de"
+        ? `Aktuell in der Bestellung: ${total}.`
+        : lang === "en"
+          ? `Your cart total is ${total}.`
+          : `Trenutno u korpi: ${total}.`;
+    return {
+      message,
+      quickReplies: paymentMethodQuickReplyLabels(input.language),
+    };
+  }
+
+  const open = openSituationOrders(input.situation);
+  const unpaid = open.filter((order) => order.paymentStatus !== "paid");
+  if (unpaid.length) {
+    const summary = unpaid
+      .map((order) =>
+        order.orderNumber > 0
+          ? `#${order.orderNumber} ${order.itemsLabel}`
+          : order.itemsLabel
+      )
+      .join(", ");
+    const message =
+      lang === "de"
+        ? `Ihre Bestellung: ${summary}. Ich öffne die Rechnung mit dem genauen Betrag.`
+        : lang === "en"
+          ? `Your order: ${summary}. I'll open the bill with the exact total.`
+          : `Vaša porudžbina: ${summary}. Otvaram račun sa tačnim iznosom.`;
+    return {
+      message,
+      action: { openPaymentSheet: true },
+      quickReplies: paymentMethodQuickReplyLabels(input.language),
+    };
+  }
+
+  return {
+    message: handoffNarrationMessage("nothing_to_pay", input.language),
+  };
+}
+
 function statusFollowUpChips(
   language: string,
   situation: SceneSituation | null | undefined
@@ -159,6 +224,8 @@ function recoveryKey(
   if (tier === 1) return "ai.recovery.connection";
   switch (intent) {
     case "payment":
+      return "ai.recovery.retryPayment";
+    case "bill_amount":
       return "ai.recovery.retryPayment";
     case "status":
       return "ai.recovery.retryStatus";
@@ -243,6 +310,15 @@ function contextualTier0Message(input: {
     };
   }
 
+  if (input.intent === "bill_amount") {
+    return billAmountReply({
+      language: input.language,
+      situation: input.situation,
+      cartTotal: 0,
+      currency: "EUR",
+    });
+  }
+
   if (input.intent === "waiter") {
     return {
       message: tForAiGuestLanguage("ai.recovery.retryWaiter", input.language),
@@ -265,6 +341,8 @@ export function resolveGuestRecoveryResponse(input: {
   language: string;
   situation?: SceneSituation | null;
   cartItemCount?: number;
+  cartTotal?: number;
+  currency?: string;
 }): GuestRecoveryResult {
   const intent = classifyGuestRecoveryIntent(input.guestMessage);
   const tier: GuestRecoveryTier =
@@ -278,6 +356,18 @@ export function resolveGuestRecoveryResponse(input: {
     );
     if (paymentMethod) {
       return { tier, ...paymentMethod };
+    }
+
+    if (intent === "bill_amount") {
+      return {
+        tier,
+        ...billAmountReply({
+          language: input.language,
+          situation: input.situation,
+          cartTotal: input.cartTotal ?? 0,
+          currency: input.currency ?? "EUR",
+        }),
+      };
     }
 
     const contextual = contextualTier0Message({
@@ -342,7 +432,17 @@ export function tryLocalGuestAnswer(input: {
   language: string;
   situation?: SceneSituation | null;
   cartItemCount: number;
+  cartTotal?: number;
+  currency?: string;
 }): GuestRecoveryResult | null {
+  if (ADD_MORE_CHIP_PATTERN.test(input.guestMessage.trim())) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: addMoreReplyMessage(input.language),
+    };
+  }
+
   const paymentMethod = resolvePaymentMethodAnswer(
     input.guestMessage,
     input.language
@@ -382,6 +482,19 @@ export function tryLocalGuestAnswer(input: {
 
   const intent = classifyGuestRecoveryIntent(input.guestMessage);
   if (intent === "general" || intent === "order") return null;
+
+  if (intent === "bill_amount") {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      ...billAmountReply({
+        language: input.language,
+        situation: input.situation,
+        cartTotal: input.cartTotal ?? 0,
+        currency: input.currency ?? "EUR",
+      }),
+    };
+  }
 
   if (intent === "status") {
     if (!input.situation) return null;

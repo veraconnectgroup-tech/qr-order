@@ -5,9 +5,12 @@ import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/sess
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
+import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
+import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { notifyLocationPush } from "@/lib/push/notify-location";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -137,6 +140,24 @@ export async function runSessionWatcherTick(
         ...watcherContext.dismissedNudgeKeys,
       ]);
 
+      const watcherTraceId = createTurnTraceId();
+      await maybeAppendMentalModelUpdated(admin, {
+        aiSessionId,
+        traceId: watcherTraceId,
+        timeline: fold.state.timeline,
+        mental: fold.state.mental,
+        contextHash: fold.meta.truthHash,
+      });
+
+      const mentalMode = resolveMentalModelMode(config);
+      const legacyMinutePayload =
+        mentalMode === "off"
+          ? {
+              idleMinutes: watcherContext.idleMinutes,
+              browseMinutes: watcherContext.idleMinutes,
+            }
+          : {};
+
       const nudge = await emitProactiveNudge(admin, {
         aiSessionId,
         tableSessionId: row.id,
@@ -155,18 +176,18 @@ export async function runSessionWatcherTick(
           billSettled: fold.state.session.billSettled,
         }),
         source: "session.watcher",
+        traceId: watcherTraceId,
         payload: {
           dismissedNudgeKeys: watcherContext.dismissedNudgeKeys,
           hasSessionOrders: fold.state.commerce.orders.length > 0,
           cartItemCount: fold.state.commerce.cart.visibleLines.length,
           sessionAgeSeconds: watcherContext.sessionAgeSeconds,
           guestMessageCount: watcherContext.guestMessageCount,
-          idleMinutes: watcherContext.idleMinutes,
           guestAskedRecommendation: watcherContext.guestAskedRecommendation,
           popularityPair: hints.popularityPair,
           todaySpecial: hints.todaySpecial,
           dessertProductName: hints.dessertProductName,
-          browseMinutes: watcherContext.idleMinutes,
+          ...legacyMinutePayload,
           venueName,
           language:
             watcherContext.guestMessageCount > 0
@@ -201,6 +222,7 @@ export async function runSessionWatcherTick(
         emittedKeys: [...emitted],
         recentGuestMessages: watcherContext.recentGuestMessages,
         waiterEscalated: watcherContext.waiterEscalated,
+        mentalPredictedNeed: fold.state.mental?.predictedNeed ?? null,
       });
 
       for (const alert of staffAlertsForSession) {

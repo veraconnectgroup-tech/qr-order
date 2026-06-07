@@ -1,5 +1,7 @@
 import { foldBrowseProfile } from "@/lib/denis/cognition/browse/fold-browse-profile";
 import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
+import { foldGuestMentalModel } from "@/lib/denis/cognition/mental-model/fold-guest-mental-model";
+import { extractPreviousMentalFoldContext } from "@/lib/denis/cognition/mental-model/mental-model-timeline";
 import {
   mergeTableSessionObligation,
   obligationForConversationState,
@@ -225,6 +227,29 @@ export async function foldTableSessionState(
     commerceConfirm: flowNodeId === "recap" || flowNodeId === "submit",
   });
 
+  const mental = foldGuestMentalModel({
+    timeline,
+    browse,
+    conversation: conversationModel,
+    commerce: {
+      orders,
+      cart: buildMergedCart({
+        ai: aiCartState,
+        manual: manualCartDraft,
+        peerManual: peerManualCartDraft,
+      }),
+    },
+    party,
+    session: { billSettled: Boolean(commerce?.bill_settled) },
+    conversationMeta: {
+      flowNodeId,
+      dismissedNudges,
+    },
+    phase,
+    config,
+    previousFold: extractPreviousMentalFoldContext(timeline),
+  });
+
   const foldState: TableSessionState = {
     table: {
       id: input.tableId,
@@ -265,6 +290,7 @@ export async function foldTableSessionState(
     },
     timeline,
     browse,
+    mental,
     config,
   };
 

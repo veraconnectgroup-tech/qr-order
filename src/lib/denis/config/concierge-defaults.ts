@@ -143,6 +143,15 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     voiceEnabled: false,
     voiceTtsEnabled: true,
   },
+  mentalModel: {
+    enabled: false,
+    mode: "off",
+    nudgeBudgetDefault: 3,
+    nudgeBudgetEnthusiastic: 6,
+    declineCooldownSeconds: 180,
+    frustrationEscalateThreshold: "mild",
+    confidenceFallbackThreshold: 0.4,
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;
