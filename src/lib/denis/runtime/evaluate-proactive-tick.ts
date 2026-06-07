@@ -1,5 +1,5 @@
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
-import { detectProactiveCandidate } from "@/lib/denis/cognition/proactive/detect-proactive-candidate";
+import { rankProactiveCandidates } from "@/lib/denis/cognition/proactive/rank-proactive-candidates";
 import type {
   GuestProactiveNudge,
   ProactiveTickPayload,
@@ -7,9 +7,8 @@ import type {
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 
 export type { GuestProactiveNudge, ProactiveTickPayload };
-export { detectProactiveCandidate };
 
-/** Legacy M11 helper — applies venue flags before returning candidate. */
+/** Legacy M11 helper — rank top candidate with venue flags (mode=off path). */
 export function evaluateGuestProactiveTick(input: {
   config: ConciergeConfig;
   orders: AiGuestOrder[];
@@ -29,7 +28,7 @@ export function evaluateGuestProactiveTick(input: {
   const { config } = input;
   if (!config.proactive.enabled) return null;
 
-  const candidate = detectProactiveCandidate(input);
+  const candidate = rankProactiveCandidates(input)[0]?.nudge ?? null;
   if (!candidate) return null;
 
   if (candidate.kind === "drink_pairing" && !config.proactive.pairing) {

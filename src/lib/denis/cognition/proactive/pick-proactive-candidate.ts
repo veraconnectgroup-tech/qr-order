@@ -1,6 +1,9 @@
 import { applyProactivePolicy, evaluateProactivePolicyForKind } from "@/lib/denis/cognition/proactive/apply-proactive-policy";
 import { enrichProactiveCandidates } from "@/lib/denis/cognition/proactive/enrich-proactive-candidate";
-import type { ProactivePolicyReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
+import type {
+  ProactivePolicyEvaluation,
+  ProactivePolicyReason,
+} from "@/lib/denis/cognition/proactive/proactive-policy-types";
 import {
   rankProactiveCandidates,
   type RankProactiveCandidatesInput,
@@ -26,7 +29,21 @@ export type PickProactiveCandidateResult = {
   candidate: GuestProactiveNudge | null;
   rankedCount: number;
   policyTrace: ProactivePolicyTrace | null;
+  evaluationChain: ProactivePolicyEvaluation[];
+  topRankedKind: GuestProactiveNudge["kind"] | null;
+  selectedKind: GuestProactiveNudge["kind"] | null;
 };
+
+function emptyPickMeta(): Pick<
+  PickProactiveCandidateResult,
+  "evaluationChain" | "topRankedKind" | "selectedKind"
+> {
+  return {
+    evaluationChain: [],
+    topRankedKind: null,
+    selectedKind: null,
+  };
+}
 
 /** Rank → enrich(offer) → policy manifest → first allowed (ADR-038 GMM-6/10). */
 export function pickProactiveCandidate(
@@ -44,9 +61,10 @@ export function pickProactiveCandidate(
   const config = input.config as ConciergeConfig;
   const mode = resolveMentalModelMode(config);
   const confidenceFallback = config.mentalModel.confidenceFallbackThreshold;
+  const topRankedKind = ranked[0]?.nudge.kind ?? null;
 
   if (ranked.length === 0) {
-    return { candidate: null, rankedCount: 0, policyTrace: null };
+    return { candidate: null, rankedCount: 0, policyTrace: null, ...emptyPickMeta() };
   }
 
   const lowConfidence =
@@ -54,21 +72,50 @@ export function pickProactiveCandidate(
     mode !== "off" &&
     input.mental.confidence < confidenceFallback;
 
-  if (mode === "off" || !input.mental || lowConfidence) {
+  if (mode === "off" || !input.mental) {
     return {
       candidate: ranked[0]!.nudge,
       rankedCount: ranked.length,
-      policyTrace:
-        lowConfidence && mode === "shadow"
-          ? {
-              mode,
-              candidateKind: ranked[0]!.nudge.kind,
-              allow: true,
-              reason: "gmm.confidence_fallback",
-              wouldBlock: false,
-              enforced: false,
-            }
-          : null,
+      policyTrace: null,
+      evaluationChain: [],
+      topRankedKind,
+      selectedKind: ranked[0]!.nudge.kind,
+    };
+  }
+
+  if (lowConfidence && mode === "enforce") {
+    return {
+      candidate: null,
+      rankedCount: ranked.length,
+      policyTrace: {
+        mode,
+        candidateKind: ranked[0]!.nudge.kind,
+        allow: false,
+        reason: "gmm.confidence_insufficient",
+        wouldBlock: true,
+        enforced: true,
+      },
+      evaluationChain: [],
+      topRankedKind,
+      selectedKind: null,
+    };
+  }
+
+  if (lowConfidence && mode === "shadow") {
+    return {
+      candidate: ranked[0]!.nudge,
+      rankedCount: ranked.length,
+      policyTrace: {
+        mode,
+        candidateKind: ranked[0]!.nudge.kind,
+        allow: true,
+        reason: "gmm.confidence_fallback",
+        wouldBlock: false,
+        enforced: false,
+      },
+      evaluationChain: [],
+      topRankedKind,
+      selectedKind: ranked[0]!.nudge.kind,
     };
   }
 
@@ -99,6 +146,9 @@ export function pickProactiveCandidate(
           wouldBlock: true,
           enforced: true,
         },
+        evaluationChain: policy.evaluations,
+        topRankedKind,
+        selectedKind: null,
       };
     }
 
@@ -113,10 +163,12 @@ export function pickProactiveCandidate(
         wouldBlock: false,
         enforced: false,
       },
+      evaluationChain: policy.evaluations,
+      topRankedKind,
+      selectedKind: selected.nudge.kind,
     };
   }
 
-  // shadow — top ranked for emit, policy trace for observability
   const top = ranked[0]!;
   const verdict = evaluateProactivePolicyForKind({
     mental: input.mental,
@@ -138,12 +190,8 @@ export function pickProactiveCandidate(
       wouldBlock: !verdict.allow,
       enforced: false,
     },
+    evaluationChain: policy.evaluations,
+    topRankedKind,
+    selectedKind: top.nudge.kind,
   };
-}
-
-/** Legacy API — highest-ranked eligible candidate (no enforce). */
-export function detectProactiveCandidate(
-  input: RankProactiveCandidatesInput
-): GuestProactiveNudge | null {
-  return rankProactiveCandidates(input)[0]?.nudge ?? null;
 }

@@ -17,7 +17,8 @@ export type ProactivePolicyReason =
   | "gmm.price_affinity_mismatch"
   | "gmm.offer_unresolved"
   | "gmm.offer_not_ready"
-  | "gmm.confidence_fallback";
+  | "gmm.confidence_fallback"
+  | "gmm.confidence_insufficient";
 
 /** @deprecated alias — use ProactivePolicyReason */
 export type GmmGateReason = ProactivePolicyReason;

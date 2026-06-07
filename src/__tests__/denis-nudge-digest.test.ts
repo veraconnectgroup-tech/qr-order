@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { buildWeeklyNudgeDigest } from "@/lib/admin/build-weekly-nudge-digest";
 import type { NudgePerformanceSnapshot } from "@/lib/admin/load-nudge-performance";
 import { aggregateProductNudgeStatsFromTimelines } from "@/lib/denis/learning/aggregate-product-nudge-stats";
-import { browseRow } from "@/lib/denis/eval/fixtures/mental-model/scenarios";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 const BURGER = "11111111-1111-4111-8111-111111111111";
@@ -30,19 +29,36 @@ function proactiveRow(productId: string, productName: string): DenisTimelineRow 
   };
 }
 
+function resolvedRow(
+  productId: string,
+  productName: string,
+  nudgeKind: string,
+  at: string
+): DenisTimelineRow {
+  return {
+    id: "resolved-1",
+    ai_session_id: "ai-1",
+    seq: 2,
+    event_type: "anticipation.resolved",
+    payload: {
+      type: "anticipation.resolved",
+      outcome: "accepted",
+      productId,
+      productName,
+      nudgeKind,
+    },
+    trace_id: "trace-2",
+    context_hash: null,
+    created_at: at,
+  };
+}
+
 describe("aggregateProductNudgeStatsFromTimelines", () => {
   it("ranks products by accept rate", () => {
     const stats = aggregateProductNudgeStatsFromTimelines([
       [
         proactiveRow(BURGER, "Beef Burger"),
-        browseRow(2, {
-          action: "add_to_cart",
-          productId: BURGER,
-          productName: "Beef Burger",
-          categoryPath: ["food"],
-          menuSection: "food",
-          timestamp: CART_AT,
-        }),
+        resolvedRow(BURGER, "Beef Burger", "browse_nudge", CART_AT),
       ],
     ]);
 

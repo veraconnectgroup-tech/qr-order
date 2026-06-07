@@ -151,6 +151,104 @@ describe("rankProactiveCandidates", () => {
     expect(verdict.allow).toBe(false);
     expect(verdict.reason).toBe("gmm.price_affinity_mismatch");
   });
+
+  const deliveredFoodOrder = {
+    id: "ord-dessert",
+    status: "delivered" as const,
+    created_at: new Date(NOW - 20 * 60_000).toISOString(),
+    delivered_at: new Date(NOW - 25 * 60_000).toISOString(),
+    order_items: [
+      {
+        product_id: null,
+        product_name: "Steak",
+        unit_price: 0,
+        quantity: 1,
+        menu_section: "food" as const,
+      },
+    ],
+  };
+
+  const rankMessages = {
+    browse: "browse",
+    dessert: "dessert",
+    slowKitchen: "slow",
+    guestWelcome: "welcome",
+    browseFollowUp: "follow up",
+    billPrompt: "bill",
+    orderDelay: "delay",
+    popularityPair: "pair",
+  };
+
+  it("T4 enforce: dessert uses mealStage, not minute trigger alone", () => {
+    const config = {
+      ...CONCIERGE_PLATFORM_DEFAULTS,
+      mentalModel: {
+        ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
+        mode: "enforce" as const,
+      },
+    };
+
+    const withoutWindow = rankProactiveCandidates({
+      config,
+      orders: [deliveredFoodOrder],
+      mental: {
+        ...emptyGuestMentalModel(NOW),
+        mealStage: "main",
+        predictedNeed: "ready_to_order",
+        receptiveness: "open",
+      },
+      payload: {
+        sessionPhase: "settling",
+        dismissedNudgeKeys: [],
+        hasSessionOrders: true,
+      },
+      messages: rankMessages,
+      now: NOW,
+    });
+
+    expect(withoutWindow.some((row) => row.nudge.kind === "dessert_nudge")).toBe(
+      false
+    );
+
+    const withWindow = rankProactiveCandidates({
+      config,
+      orders: [deliveredFoodOrder],
+      mental: {
+        ...emptyGuestMentalModel(NOW),
+        mealStage: "dessert_window",
+        predictedNeed: "wants_dessert",
+        receptiveness: "open",
+      },
+      payload: {
+        sessionPhase: "settling",
+        dismissedNudgeKeys: [],
+        hasSessionOrders: true,
+      },
+      messages: rankMessages,
+      now: NOW,
+    });
+
+    expect(withWindow.some((row) => row.nudge.kind === "dessert_nudge")).toBe(
+      true
+    );
+  });
+
+  it("legacy mode: minute trigger still ranks dessert without dessert_window", () => {
+    const ranked = rankProactiveCandidates({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      orders: [deliveredFoodOrder],
+      mental: emptyGuestMentalModel(NOW),
+      payload: {
+        sessionPhase: "settling",
+        dismissedNudgeKeys: [],
+        hasSessionOrders: true,
+      },
+      messages: rankMessages,
+      now: NOW,
+    });
+
+    expect(ranked.some((row) => row.nudge.kind === "dessert_nudge")).toBe(true);
+  });
 });
 
 describe("decideTurnPlan — mental price affinity", () => {

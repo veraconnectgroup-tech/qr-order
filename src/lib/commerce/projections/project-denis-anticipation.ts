@@ -48,6 +48,7 @@ export async function projectNudgeEmittedToCommerce(
       productName: input.payload.productName ?? null,
       offerResolution: input.payload.offerResolution ?? null,
       offerHash: input.payload.offerHash ?? null,
+      timingKind: input.payload.timingKind ?? null,
       dedupeKey,
       source: input.payload.source ?? null,
     },

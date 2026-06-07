@@ -26,6 +26,8 @@ const service = (): ProactiveKindPolicy => ({
 });
 
 /** Canonical proactive posture policy — single manifest (ADR-038 GMM-6). */
+export const PROACTIVE_POLICY_VERSION = "gmm-v1" as const;
+
 export const DEFAULT_PROACTIVE_POLICY: ProactivePolicyManifest = {
   version: 1,
   upsellKinds: [

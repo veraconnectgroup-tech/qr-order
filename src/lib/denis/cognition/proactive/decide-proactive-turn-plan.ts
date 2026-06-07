@@ -5,6 +5,7 @@ import {
   type TurnPlan,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
@@ -81,14 +82,15 @@ function commerceBlocksProactive(
   );
 }
 
-function upsellSuppressed(beliefs: BeliefGraph): boolean {
-  if (
-    getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueSkipUpsell) ===
-      true ||
+function venueOpsSuppressUpsell(beliefs: BeliefGraph): boolean {
+  return (
+    getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueSkipUpsell) === true ||
     getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueRush) === true
-  ) {
-    return true;
-  }
+  );
+}
+
+function upsellSuppressedLegacy(beliefs: BeliefGraph): boolean {
+  if (venueOpsSuppressUpsell(beliefs)) return true;
 
   const receptiveness = getBeliefValue<string>(
     beliefs,
@@ -147,8 +149,15 @@ export function decideProactiveTurnPlan(
     return { ok: false, reason: "session.settling" };
   }
 
-  if (UPSELL_NUDGE_KINDS.includes(candidate.kind) && upsellSuppressed(beliefs)) {
-    return { ok: false, reason: "venue.upsell_suppressed" };
+  const enforceMode = resolveMentalModelMode(config) === "enforce";
+
+  if (UPSELL_NUDGE_KINDS.includes(candidate.kind)) {
+    const suppressed = enforceMode
+      ? venueOpsSuppressUpsell(beliefs)
+      : upsellSuppressedLegacy(beliefs);
+    if (suppressed) {
+      return { ok: false, reason: "venue.upsell_suppressed" };
+    }
   }
 
   // D-NUDGE — no dessert while kitchen still has open mains (waiting/rush).
@@ -224,7 +233,9 @@ export function decideProactiveTurnPlan(
     candidate.kind === "waiter_gap" && candidate.prompt
       ? "waiter.gap_clarify.generic"
       : templateKeyForKind(candidate.kind);
-  const suppressUpsell = upsellSuppressed(beliefs);
+  const suppressUpsell = enforceMode
+    ? venueOpsSuppressUpsell(beliefs)
+    : upsellSuppressedLegacy(beliefs);
 
   return {
     ok: true,

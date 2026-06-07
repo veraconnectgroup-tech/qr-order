@@ -11,7 +11,7 @@ import {
   summarizeMentalModelForTimeline,
 } from "@/lib/denis/cognition/mental-model/mental-model-timeline";
 import { diffMentalModel } from "@/lib/denis/cognition/mental-model/diff-mental-model";
-import { gateProactiveNudge } from "@/lib/denis/cognition/mental-model/gate-proactive-nudge";
+import { gateProactiveNudge } from "@/lib/denis/cognition/proactive/apply-proactive-policy";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import {
   buildMentalModelFoldInput,

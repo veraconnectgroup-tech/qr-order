@@ -40,6 +40,13 @@ export function emptyGuestOfferContext(now = 0): GuestOfferContext {
         reason: "not_ready_posture",
         secondsSinceLastBrowseAction: Number.POSITIVE_INFINITY,
       },
+      timing: {
+        kind: "none",
+        idleSinceBrowseSec: Number.POSITIVE_INFINITY,
+        speakWindow: "closed",
+        ready: false,
+        reason: "not_ready_posture",
+      },
       conversions: [],
       nudgeStats: {},
       outcomes: [],

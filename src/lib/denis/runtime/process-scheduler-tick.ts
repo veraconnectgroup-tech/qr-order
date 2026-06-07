@@ -1,19 +1,22 @@
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
-import { mapGuestOrdersToSchedulerSnapshot } from "@/lib/denis/runtime/adapters/map-scheduler-orders";
+import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
+import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/session-watcher-context";
+import { loadProactiveMenuHints } from "@/lib/denis/cognition/proactive/load-proactive-menu-hints";
+import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
 import {
   claimDueDenisSchedules,
   completeDenisSchedule,
-  evaluateScheduledIntent,
-  loadShownProactiveKeys,
   type ScheduleTickResult,
 } from "@/lib/denis/kernel/scheduler";
-import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
+import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
+import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Process due anticipation jobs — called from cron (M8). */
+/** Process due anticipation jobs — wake UPDS brain (ADR-040 P3). */
 export async function processDenisSchedulerTick(
   admin: SupabaseClient,
   options?: { limit?: number }
@@ -46,45 +49,110 @@ export async function processDenisSchedulerTick(
         continue;
       }
 
-      const orders = mapGuestOrdersToSchedulerSnapshot(
-        await loadGuestOrdersForAi(
-          admin,
-          session.table_id,
-          session.session_token
-        )
-      );
+      const { data: tableSessionRow } = await admin
+        .from("table_sessions")
+        .select("id, opened_at, location:locations(name), table:tables(name)")
+        .eq("denis_shared_ai_session_id", schedule.ai_session_id)
+        .eq("status", "active")
+        .maybeSingle();
 
-      const shownNudgeKeys = await loadShownProactiveKeys(
-        admin,
-        schedule.ai_session_id
-      );
+      const tableSession = tableSessionRow as {
+        id: string;
+        opened_at: string;
+        location: { name: string } | { name: string }[] | null;
+        table: { name: string } | { name: string }[] | null;
+      } | null;
 
-      const evaluation = evaluateScheduledIntent({
-        intentType: schedule.intent_type,
-        payload: schedule.payload ?? {},
+      if (!tableSession) {
+        await completeDenisSchedule(admin, schedule.id, "cancelled");
+        continue;
+      }
+
+      const venueName = (() => {
+        const loc = tableSession.location;
+        if (!loc) return "Venue";
+        if (Array.isArray(loc)) return loc[0]?.name ?? "Venue";
+        return loc.name ?? "Venue";
+      })();
+
+      const [orders, fold, timeline, hints] = await Promise.all([
+        loadGuestOrdersForAi(admin, session.table_id, session.session_token),
+        foldTableSessionState(admin, {
+          locationId: schedule.location_id,
+          tableId: session.table_id,
+          sessionToken: session.session_token,
+          tableSessionId: tableSession.id,
+          aiSessionId: schedule.ai_session_id,
+          config,
+        }),
+        loadDenisTimeline(admin, schedule.ai_session_id),
+        loadProactiveMenuHints(admin, schedule.location_id),
+      ]);
+
+      const watcherContext = buildSessionWatcherContext({
+        timeline,
         orders,
-        shownNudgeKeys,
-        slowKitchenThresholdMinutes:
-          config.proactive.slowKitchenThresholdMinutes,
+        sessionOpenedAt: tableSession.opened_at,
+        venueDefaultLanguage: config.language.venueDefault ?? "sr",
       });
 
-      if (evaluation) {
-        const traceId = createTurnTraceId();
-        await appendDenisTimelineEvent(admin, {
-          aiSessionId: schedule.ai_session_id,
-          eventType: "proactive.emitted",
-          traceId,
-          payload: {
-            type: "proactive.emitted",
-            kind: evaluation.kind,
-            message: evaluation.message,
-            orderId: evaluation.orderId ?? null,
-            tier: evaluation.templateTier,
-            dedupeKey: schedule.dedupe_key,
-            scheduleId: schedule.id,
-          },
+      const mentalMode = resolveMentalModelMode(config);
+      const legacyMinutePayload =
+        mentalMode === "off"
+          ? {
+              idleMinutes: watcherContext.idleMinutes,
+              browseMinutes: watcherContext.idleMinutes,
+            }
+          : {};
+
+      const traceId = createTurnTraceId();
+      const nudge = await emitProactiveNudge(admin, {
+        aiSessionId: schedule.ai_session_id,
+        tableSessionId: tableSession.id,
+        tableId: session.table_id,
+        locationId: schedule.location_id,
+        sessionToken: session.session_token,
+        venueName,
+        config,
+        state: fold.state,
+        orders,
+        sessionPhase: deriveFoldSessionPhase({
+          sessionStatus: fold.state.session.status,
+          accessState: fold.state.session.accessState,
+          orders: fold.state.commerce.orders,
+          hasCartActivity: fold.state.commerce.cart.visibleLines.length > 0,
+          billSettled: fold.state.session.billSettled,
+        }),
+        source: "scheduler.wakeup",
+        traceId,
+        payload: {
+          dismissedNudgeKeys: watcherContext.dismissedNudgeKeys,
+          hasSessionOrders: fold.state.commerce.orders.length > 0,
+          cartItemCount: fold.state.commerce.cart.visibleLines.length,
+          sessionAgeSeconds: watcherContext.sessionAgeSeconds,
+          guestMessageCount: watcherContext.guestMessageCount,
+          guestAskedRecommendation: watcherContext.guestAskedRecommendation,
+          popularityPair: hints.popularityPair,
+          todaySpecial: hints.todaySpecial,
+          dessertProductName: hints.dessertProductName,
+          ...legacyMinutePayload,
+          venueName,
+          language: config.language.venueDefault ?? "sr",
+          browsingDeferredAt: watcherContext.browsingDeferredAt,
+          browsingDeferCount: watcherContext.browsingDeferCount,
+          browseFollowUpEmitted: watcherContext.browseFollowUpEmitted,
+          followUpRequestedAt: watcherContext.followUpRequestedAt,
+          followUpDelaySeconds: watcherContext.followUpDelaySeconds,
+        },
+      });
+
+      if (nudge) {
+        nudges.push({
+          kind: nudge.kind,
+          message: nudge.message,
+          orderId: nudge.orderId,
+          templateTier: "template",
         });
-        nudges.push(evaluation);
         emitted += 1;
       }
 

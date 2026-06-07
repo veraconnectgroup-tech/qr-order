@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|--------|
 | **Status** | **APPROVED** — L1 implemented |
-| **Parent** | [ADR-038 GMM](./ADR-038-guest-mental-model.md) · [ADR-020 §19](./ADR-020-denis-table-operating-system.md) · [ADR-014](./ADR-014-commerce-experience-platform.md) |
+| **Parent** | [ADR-038 GMM](./ADR-038-guest-mental-model.md) · [ADR-040 UPDS](./ADR-040-unified-proactive-decision-spine.md) · [ADR-020 §19](./ADR-020-denis-table-operating-system.md) · [ADR-014](./ADR-014-commerce-experience-platform.md) |
 | **Rule** | Complete the fold. Feed existing M16. No parallel learning engine. |
 
 ---

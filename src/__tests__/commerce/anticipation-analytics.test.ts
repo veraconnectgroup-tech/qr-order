@@ -15,7 +15,20 @@ describe("anticipationRollupDelta", () => {
     expect(delta.nudgeImpressions).toBe(1);
     expect(delta.offerConversions).toBe(0);
     expect(delta.byNudgeKind).toEqual({ browse_nudge: 1 });
+    expect(delta.byTimingKind).toEqual({ none: 1 });
     expect(delta.metricDate).toBe("2026-06-07");
+  });
+
+  it("counts nudge impressions by timingKind when present", () => {
+    const delta = anticipationRollupDelta({
+      orgId: "org-1",
+      locationId: "loc-1",
+      eventType: COMMERCE_EVENT_TYPES.nudgeEmitted,
+      createdAt: "2026-06-07T14:22:00.000Z",
+      payload: { nudgeKind: "browse_nudge", timingKind: "browse_pause" },
+    });
+
+    expect(delta.byTimingKind).toEqual({ browse_pause: 1 });
   });
 
   it("counts offer conversions with lag and resolution", () => {

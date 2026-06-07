@@ -58,10 +58,12 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
   const now = input.now ?? Date.now();
   const cartLineCount = input.commerce.cart.visibleLines.length;
 
-  const spine = foldGuestSignals({
-    timeline: input.timeline,
-    dismissedNudgeKeys: input.conversationMeta.dismissedNudges,
-  });
+  const spine =
+    input.spine ??
+    foldGuestSignals({
+      timeline: input.timeline,
+      dismissedNudgeKeys: input.conversationMeta.dismissedNudges,
+    });
   const decline = deriveDeclineState({
     spine,
     dismissedNudgeKeys: input.conversationMeta.dismissedNudges,

@@ -226,6 +226,76 @@ function checkChatServiceLineBudget(report: ComplianceReport): void {
   }
 }
 
+const PROACTIVE_EMITTED_APPEND_RE =
+  /appendDenisTimelineEvent\([\s\S]*?eventType:\s*["']proactive\.emitted["']/m;
+const PROACTIVE_TRIGGERS_IN_COGNITION_RE =
+  /from\s+["']@\/lib\/ai\/proactive-triggers["']/;
+const DETECT_PROACTIVE_CANDIDATE_RE = /\bdetectProactiveCandidate\b/;
+
+const PROACTIVE_EMITTED_ALLOWED = new Set([
+  "src/lib/denis/runtime/emit-proactive-nudge.ts",
+]);
+
+function checkProactiveDecisionSpine(report: ComplianceReport): void {
+  const srcRoot = join(REPO_ROOT, "src");
+  for (const file of walkTsFiles(srcRoot)) {
+    const normalized = rel(file);
+    const content = readFileSync(file, "utf8");
+
+    if (
+      PROACTIVE_EMITTED_APPEND_RE.test(content) &&
+      !PROACTIVE_EMITTED_ALLOWED.has(normalized)
+    ) {
+      pushIssue(report, {
+        severity: "error",
+        code: "PDS-1",
+        message:
+          "Guest proactive.emitted may only be appended from emit-proactive-nudge.ts (ADR-040)",
+        file: normalized,
+      });
+    }
+
+    if (
+      normalized.startsWith("src/lib/denis/cognition/") &&
+      PROACTIVE_TRIGGERS_IN_COGNITION_RE.test(content)
+    ) {
+      pushIssue(report, {
+        severity: "error",
+        code: "PDS-2",
+        message:
+          "lib/ai/proactive-triggers import forbidden in cognition/ — move to cognition/proactive/triggers.ts (ADR-040)",
+        file: normalized,
+      });
+    }
+
+    if (
+      DETECT_PROACTIVE_CANDIDATE_RE.test(content) &&
+      normalized !== "src/lib/denis/architecture/compliance.ts"
+    ) {
+      pushIssue(report, {
+        severity: "error",
+        code: "PDS-3",
+        message:
+          "detectProactiveCandidate removed — use planProactiveTurn / pickProactiveCandidate (ADR-040)",
+        file: normalized,
+      });
+    }
+
+    if (
+      normalized === "src/lib/denis/loop/fold-table-session-state.ts" &&
+      (content.match(/\bfoldGuestSignals\s*\(/g)?.length ?? 0) > 1
+    ) {
+      pushIssue(report, {
+        severity: "error",
+        code: "PDS-4",
+        message:
+          "foldGuestSignals must run once per fold-table-session-state (ADR-040)",
+        file: normalized,
+      });
+    }
+  }
+}
+
 function checkOpenAiBoundary(report: ComplianceReport): void {
   const denisRoot = join(REPO_ROOT, "src/lib/denis");
   const openAiRe = /from\s+["']@\/lib\/ai\/openai-client["']/;
@@ -268,6 +338,7 @@ export function runDenisArchitectureCompliance(): ComplianceReport {
   checkPerceiveGuestChatTurnSingleCaller(report);
   checkChatServiceLineBudget(report);
   checkOpenAiBoundary(report);
+  checkProactiveDecisionSpine(report);
 
   report.ok = report.errors.length === 0;
   return report;

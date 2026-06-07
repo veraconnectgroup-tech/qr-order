@@ -5,6 +5,8 @@ export type {
   GuestOfferContext,
   OfferReadiness,
   OfferReadinessReason,
+  OfferTiming,
+  OfferTimingKind,
   OfferResolutionKind,
   OfferResolutionTrace,
   ResolvedOffer,
@@ -17,6 +19,16 @@ export { foldBrowseSequence } from "@/lib/denis/cognition/offer/fold-browse-sequ
 export { detectBrowseSequencePattern } from "@/lib/denis/cognition/offer/detect-browse-sequence-pattern";
 export { scoreBrowseProducts } from "@/lib/denis/cognition/offer/score-browse-products";
 export { deriveOfferReadiness } from "@/lib/denis/cognition/offer/derive-offer-readiness";
+export {
+  computeOfferTiming,
+  mapTimingToReadiness,
+  BROWSE_PAUSE_MIN_SEC,
+} from "@/lib/denis/cognition/offer/compute-offer-timing";
+export {
+  browsePauseOpenBeyondLegacyCap,
+  timingUsesBrowseClock,
+  violatesNeedsHelpTimingBlock,
+} from "@/lib/denis/cognition/offer/offer-timing-invariants";
 export { resolveOfferForPosture } from "@/lib/denis/cognition/offer/resolve-offer-for-posture";
 export { narrateOfferFromBeliefs } from "@/lib/denis/cognition/offer/narrate-offer-from-beliefs";
 export { narrateOffer, narrateCartRecoveryOffer } from "@/lib/denis/cognition/offer/narrate-offer";

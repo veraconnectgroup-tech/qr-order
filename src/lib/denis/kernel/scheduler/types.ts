@@ -40,10 +40,10 @@ export type ProactiveTriggerKind =
   | "slow_kitchen";
 
 export type ProactiveEvaluation = {
-  kind: ProactiveTriggerKind;
+  kind: ProactiveTriggerKind | (string & {});
   orderId?: string;
   message: string;
-  templateTier: "T1";
+  templateTier: "T1" | "template";
 };
 
 export type DenisScheduleRow = {

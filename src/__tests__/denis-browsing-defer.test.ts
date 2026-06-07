@@ -8,7 +8,7 @@ import {
   isGuestBrowsingDeferMessage,
   resolveBrowsingDeferReply,
 } from "@/lib/denis/cognition/conversation/browsing-defer";
-import { detectProactiveCandidate } from "@/lib/denis/cognition/proactive/detect-proactive-candidate";
+import { rankProactiveCandidates } from "@/lib/denis/cognition/proactive/rank-proactive-candidates";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 function timelineEvent(
@@ -105,7 +105,7 @@ const proactiveMessages = {
 describe("browse_follow_up proactive candidate", () => {
   it("fires after defer cooldown when guest has chatted", () => {
     const deferredAt = new Date(Date.now() - 90_000).toISOString();
-    const candidate = detectProactiveCandidate({
+    const ranked = rankProactiveCandidates({
       config: CONCIERGE_PLATFORM_DEFAULTS,
       orders: [],
       payload: {
@@ -118,13 +118,13 @@ describe("browse_follow_up proactive candidate", () => {
       now: Date.now(),
     });
 
-    expect(candidate?.kind).toBe("browse_follow_up");
-    expect(candidate?.message).toBe("Follow up?");
+    expect(ranked[0]?.nudge.kind).toBe("browse_follow_up");
+    expect(ranked[0]?.nudge.message).toBe("Follow up?");
   });
 
   it("skips follow-up before cooldown elapses", () => {
     const deferredAt = new Date(Date.now() - 20_000).toISOString();
-    const candidate = detectProactiveCandidate({
+    const ranked = rankProactiveCandidates({
       config: CONCIERGE_PLATFORM_DEFAULTS,
       orders: [],
       payload: {
@@ -137,12 +137,12 @@ describe("browse_follow_up proactive candidate", () => {
       now: Date.now(),
     });
 
-    expect(candidate).toBeNull();
+    expect(ranked[0]).toBeUndefined();
   });
 
   it("fires follow-up when guest asked for comeback even with cart items", () => {
     const deferredAt = new Date(Date.now() - 90_000).toISOString();
-    const candidate = detectProactiveCandidate({
+    const ranked = rankProactiveCandidates({
       config: CONCIERGE_PLATFORM_DEFAULTS,
       orders: [],
       payload: {
@@ -158,6 +158,6 @@ describe("browse_follow_up proactive candidate", () => {
       now: Date.now(),
     });
 
-    expect(candidate?.kind).toBe("browse_follow_up");
+    expect(ranked[0]?.nudge.kind).toBe("browse_follow_up");
   });
 });

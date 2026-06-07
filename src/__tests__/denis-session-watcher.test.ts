@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectProactiveCandidate } from "@/lib/denis/cognition/proactive/detect-proactive-candidate";
+import { rankProactiveCandidates } from "@/lib/denis/cognition/proactive/rank-proactive-candidates";
 import {
   detectAllergyMention,
   detectStaffProactiveAlerts,
@@ -22,7 +22,7 @@ const messages = {
 
 describe("session watcher proactive detection", () => {
   it("emits guest_welcome after 30s with zero guest messages", () => {
-    const nudge = detectProactiveCandidate({
+    const nudge = rankProactiveCandidates({
       config: CONCIERGE_PLATFORM_DEFAULTS,
       orders: [],
       payload: {
@@ -33,11 +33,11 @@ describe("session watcher proactive detection", () => {
       messages,
     });
 
-    expect(nudge?.kind).toBe("guest_welcome");
+    expect(nudge[0]?.nudge.kind).toBe("guest_welcome");
   });
 
   it("dedupes guest_welcome to once per session", () => {
-    const nudge = detectProactiveCandidate({
+    const nudge = rankProactiveCandidates({
       config: CONCIERGE_PLATFORM_DEFAULTS,
       orders: [],
       payload: {
@@ -48,7 +48,7 @@ describe("session watcher proactive detection", () => {
       messages,
     });
 
-    expect(nudge).toBeNull();
+    expect(nudge[0]).toBeUndefined();
   });
 
   it("emits slow_kitchen for preparing order past threshold", () => {
@@ -71,7 +71,7 @@ describe("session watcher proactive detection", () => {
       },
     ];
 
-    const nudge = detectProactiveCandidate({
+    const nudge = rankProactiveCandidates({
       config: CONCIERGE_PLATFORM_DEFAULTS,
       orders,
       payload: { dismissedNudgeKeys: [] },
@@ -79,8 +79,8 @@ describe("session watcher proactive detection", () => {
       now,
     });
 
-    expect(nudge?.kind).toBe("slow_kitchen");
-    expect(nudge?.orderId).toBe("order-1");
+    expect(nudge[0]?.nudge.kind).toBe("slow_kitchen");
+    expect(nudge[0]?.nudge.orderId).toBe("order-1");
   });
 
   it("builds idle minutes from timeline guest activity", () => {

@@ -1,4 +1,4 @@
-import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
+import { readAcceptedNudgeOutcomes } from "@/lib/denis/learning/timeline-nudge-outcomes";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 export type NudgeSessionTimelineInput = {
@@ -57,9 +57,7 @@ export function aggregateNudgeEdgeStats(
       stats.set(key, entry);
     }
 
-    const { outcomes } = foldNudgeOutcomes(session.timeline);
-    for (const outcome of outcomes) {
-      if (outcome.outcome !== "accepted") continue;
+    for (const outcome of readAcceptedNudgeOutcomes(session.timeline)) {
       if (!outcome.productId || outcome.productId === anchor) continue;
 
       const key = edgeKey(anchor, outcome.productId, outcome.nudgeKind);

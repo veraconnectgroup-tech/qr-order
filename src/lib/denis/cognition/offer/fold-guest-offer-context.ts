@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { detectBrowseSequencePattern } from "@/lib/denis/cognition/offer/detect-browse-sequence-pattern";
-import { deriveOfferReadiness } from "@/lib/denis/cognition/offer/derive-offer-readiness";
+import { computeOfferTiming, mapTimingToReadiness } from "@/lib/denis/cognition/offer/compute-offer-timing";
 import { foldBrowseSequence } from "@/lib/denis/cognition/offer/fold-browse-sequence";
 import { foldOfferConversions } from "@/lib/denis/cognition/offer/fold-offer-conversions";
 import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
@@ -77,13 +77,15 @@ export function foldGuestOfferContext(
     convertedProductIds,
   });
 
-  const readiness = deriveOfferReadiness({
-    spine: input.spine,
+  const timing = computeOfferTiming({
+    sequence,
     browse: input.browse,
     mental: input.mental,
     cartLineCount: input.cartLineCount,
     nowMs: now,
   });
+
+  const readiness = mapTimingToReadiness(timing);
 
   const resolved = resolveOfferForPosture({
     mental: input.mental,
@@ -123,6 +125,7 @@ export function foldGuestOfferContext(
         operatingMode: input.venueOps.operatingMode,
       },
       readiness,
+      timing,
       conversions,
       nudgeStats: nudgeStatsRecord,
       outcomes: nudgeLifecycle.outcomes,

@@ -1,4 +1,4 @@
-import { gateProactiveNudge } from "@/lib/denis/cognition/mental-model/gate-proactive-nudge";
+import { gateProactiveNudge } from "@/lib/denis/cognition/proactive/apply-proactive-policy";
 import { foldGuestMentalModel } from "@/lib/denis/cognition/mental-model/fold-guest-mental-model";
 import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
 import { assertMentalModelInvariants } from "@/lib/denis/cognition/mental-model/mental-model-invariants";

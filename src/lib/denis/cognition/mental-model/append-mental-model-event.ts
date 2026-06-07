@@ -9,7 +9,9 @@ import {
   type MentalModelGatePayload,
   type MentalModelUpdatedPayload,
 } from "@/lib/denis/cognition/mental-model/mental-model-timeline";
-import type { GmmGateReason } from "@/lib/denis/cognition/mental-model/gate-proactive-nudge";
+import type { OfferTimingKind } from "@/lib/denis/cognition/offer/offer-types";
+import type { GmmGateReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
+import type { ProactivePolicyEvaluation } from "@/lib/denis/cognition/proactive/proactive-policy-types";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { MentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import type { GuestProactiveNudgeKind } from "@/lib/denis/cognition/proactive/proactive-types";
@@ -79,6 +81,12 @@ export async function appendMentalModelGate(
     enforced: boolean;
     reason: GmmGateReason | null;
     wouldBlock: boolean;
+    evaluationChain?: ProactivePolicyEvaluation[];
+    timingKind?: OfferTimingKind | null;
+    topRankedKind?: GuestProactiveNudgeKind | null;
+    selectedKind?: GuestProactiveNudgeKind | null;
+    source?: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
+    policyVersion?: string;
   }
 ): Promise<void> {
   const payload: MentalModelGatePayload = buildMentalModelGatePayload(input);

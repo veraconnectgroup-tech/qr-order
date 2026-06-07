@@ -5,7 +5,9 @@ import {
 import { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { appendMentalModelGate } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
+import { PROACTIVE_POLICY_VERSION } from "@/lib/denis/cognition/proactive/proactive-policy-defaults";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
+import type { ProactiveTurnMessages } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { waiterObligationDedupeKey } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
@@ -78,8 +80,9 @@ export async function emitProactiveNudge(
     orders: AiGuestOrder[];
     sessionPhase: SessionPhase;
     payload: Parameters<typeof planProactiveTurn>[0]["payload"];
-    source: "session.watcher" | "sense.proactive_brain";
+    source: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
     traceId?: string;
+    messages?: Partial<ProactiveTurnMessages>;
   }
 ): Promise<GuestProactiveNudge | null> {
   const traceId = input.traceId ?? createTurnTraceId();
@@ -97,6 +100,7 @@ export async function emitProactiveNudge(
     messages: {
       guestWelcome: buildVenueWelcomeMessage(input.venueName, language),
       browseFollowUp: buildBrowseFollowUpMessage(language),
+      ...input.messages,
     },
   });
 
@@ -111,6 +115,12 @@ export async function emitProactiveNudge(
       enforced: proactiveResult.mentalGate.enforced,
       reason: proactiveResult.mentalGate.reason,
       wouldBlock: proactiveResult.mentalGate.wouldBlock,
+      evaluationChain: proactiveResult.mentalGate.evaluationChain,
+      timingKind: proactiveResult.mentalGate.timingKind,
+      topRankedKind: proactiveResult.mentalGate.topRankedKind,
+      selectedKind: proactiveResult.mentalGate.selectedKind,
+      source: input.source,
+      policyVersion: PROACTIVE_POLICY_VERSION,
     });
   }
 
@@ -144,6 +154,9 @@ export async function emitProactiveNudge(
     turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
     dedupeKey,
     source: input.source,
+    policyReason: proactiveResult.mentalGate?.allow
+      ? null
+      : proactiveResult.mentalGate?.reason ?? null,
   });
 
   await appendDenisTimelineEvent(admin, {

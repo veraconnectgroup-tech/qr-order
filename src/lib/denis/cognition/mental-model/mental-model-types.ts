@@ -1,5 +1,6 @@
 import type { DeclineState } from "@/lib/denis/cognition/mental-model/decline-state";
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-signal-types";
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { OrderFact, SessionPhase, TableSessionState } from "@/lib/denis/loop/types";
@@ -141,4 +142,6 @@ export type FoldGuestMentalModelInput = {
   config: ConciergeConfig;
   previousFold?: PreviousMentalFoldContext | null;
   now?: number;
+  /** When provided, skips internal foldGuestSignals (ADR-040 PDS-4). */
+  spine?: GuestSignalSpine;
 };

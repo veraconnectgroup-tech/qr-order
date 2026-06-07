@@ -1,4 +1,6 @@
-import type { GmmGateReason } from "@/lib/denis/cognition/mental-model/gate-proactive-nudge";
+import type { GmmGateReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
+import type { ProactivePolicyEvaluation } from "@/lib/denis/cognition/proactive/proactive-policy-types";
+import type { OfferTimingKind } from "@/lib/denis/cognition/offer/offer-types";
 import type {
   GuestIntentTransition,
   GuestMentalModel,
@@ -43,6 +45,12 @@ export type MentalModelDiffPayload = {
   triggers: string[];
 };
 
+export type MentalModelGateEvaluation = {
+  kind: string;
+  allow: boolean;
+  reason: GmmGateReason | null;
+};
+
 export type MentalModelGatePayload = {
   type: "mental_model.gate";
   mode: MentalModelMode;
@@ -52,6 +60,12 @@ export type MentalModelGatePayload = {
   reason: GmmGateReason | null;
   wouldBlock: boolean;
   mentalHash: string;
+  evaluationChain?: MentalModelGateEvaluation[];
+  timingKind?: OfferTimingKind | null;
+  topRankedKind?: GuestProactiveNudgeKind | null;
+  selectedKind?: GuestProactiveNudgeKind | null;
+  source?: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
+  policyVersion?: string;
 };
 
 export function summarizeMentalModelForTimeline(
@@ -235,6 +249,12 @@ export function buildMentalModelGatePayload(input: {
   enforced: boolean;
   reason: GmmGateReason | null;
   wouldBlock: boolean;
+  evaluationChain?: ProactivePolicyEvaluation[];
+  timingKind?: OfferTimingKind | null;
+  topRankedKind?: GuestProactiveNudgeKind | null;
+  selectedKind?: GuestProactiveNudgeKind | null;
+  source?: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
+  policyVersion?: string;
 }): MentalModelGatePayload {
   return {
     type: "mental_model.gate",
@@ -245,5 +265,15 @@ export function buildMentalModelGatePayload(input: {
     reason: input.reason,
     wouldBlock: input.wouldBlock,
     mentalHash: input.mental.hash,
+    evaluationChain: input.evaluationChain?.map((row) => ({
+      kind: row.kind,
+      allow: row.allow,
+      reason: row.reason,
+    })),
+    timingKind: input.timingKind ?? null,
+    topRankedKind: input.topRankedKind ?? null,
+    selectedKind: input.selectedKind ?? null,
+    source: input.source,
+    policyVersion: input.policyVersion,
   };
 }

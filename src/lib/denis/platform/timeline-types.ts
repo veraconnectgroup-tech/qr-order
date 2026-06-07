@@ -210,6 +210,7 @@ export type DenisTimelineEventType =
   | "tell.committed"
   | "realtime.ingested"
   | "proactive.emitted"
+  | "staff.proactive.alert"
   | "belief.revision"
   | "mind.fold_completed"
   | "mind.beliefs_compiled"

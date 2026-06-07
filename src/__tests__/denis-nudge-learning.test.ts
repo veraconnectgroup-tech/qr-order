@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { foldNudgeRevenueAttribution } from "@/lib/denis/cognition/offer/fold-nudge-revenue";
 import { aggregateNudgeEdgeStats } from "@/lib/denis/learning/compute-nudge-edge-stats";
-import { browseRow } from "@/lib/denis/eval/fixtures/mental-model/scenarios";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 const ANCHOR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -71,14 +70,22 @@ describe("aggregateNudgeEdgeStats", () => {
   it("aggregates anchor→nudged product impressions and accepts", () => {
     const timeline = [
       proactiveEmittedRow(EMIT_AT, DESSERT, "Cheesecake"),
-      browseRow(2, {
-        action: "add_to_cart",
-        productId: DESSERT,
-        productName: "Cheesecake",
-        categoryPath: ["desserts"],
-        menuSection: "desserts",
-        timestamp: ORDER_AT,
-      }),
+      {
+        id: "resolved-1",
+        ai_session_id: "ai-1",
+        seq: 2,
+        event_type: "anticipation.resolved",
+        payload: {
+          type: "anticipation.resolved",
+          outcome: "accepted",
+          productId: DESSERT,
+          productName: "Cheesecake",
+          nudgeKind: "dessert_nudge",
+        },
+        trace_id: "trace-2",
+        context_hash: null,
+        created_at: ORDER_AT,
+      },
     ];
 
     const stats = aggregateNudgeEdgeStats([

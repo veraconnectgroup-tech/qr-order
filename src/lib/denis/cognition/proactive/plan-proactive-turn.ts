@@ -5,8 +5,15 @@ import { tryTemplateUtterance } from "@/lib/denis/cognition/tde/template-utteran
 import type { BeliefGraph, TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { TableSessionState } from "@/lib/denis/loop/types";
-import type { ProactivePolicyReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
-import { pickProactiveCandidate } from "@/lib/denis/cognition/proactive/pick-proactive-candidate";
+import type { OfferTimingKind } from "@/lib/denis/cognition/offer/offer-types";
+import type {
+  ProactivePolicyEvaluation,
+  ProactivePolicyReason,
+} from "@/lib/denis/cognition/proactive/proactive-policy-types";
+import {
+  pickProactiveCandidate,
+  type PickProactiveCandidateResult,
+} from "@/lib/denis/cognition/proactive/pick-proactive-candidate";
 import { detectWaiterObligationTell } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
 import type { MentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import type {
@@ -34,7 +41,25 @@ export type ProactiveMentalGateTrace = {
   reason: ProactivePolicyReason | null;
   wouldBlock: boolean;
   enforced: boolean;
+  evaluationChain: ProactivePolicyEvaluation[];
+  timingKind: OfferTimingKind | null;
+  topRankedKind: GuestProactiveNudge["kind"] | null;
+  selectedKind: GuestProactiveNudge["kind"] | null;
 };
+
+function buildMentalGateTrace(
+  pick: PickProactiveCandidateResult,
+  timingKind: OfferTimingKind | null
+): ProactiveMentalGateTrace | null {
+  if (!pick.policyTrace) return null;
+  return {
+    ...pick.policyTrace,
+    evaluationChain: pick.evaluationChain,
+    timingKind,
+    topRankedKind: pick.topRankedKind,
+    selectedKind: pick.selectedKind,
+  };
+}
 
 export type ProactiveTurnResult = {
   beliefs: BeliefGraph;
@@ -167,7 +192,10 @@ export function planProactiveTurn(input: {
   });
 
   const candidate = pick.candidate;
-  const mentalGate: ProactiveMentalGateTrace | null = pick.policyTrace;
+  const mentalGate = buildMentalGateTrace(
+    pick,
+    input.state.offer?.trace.timing?.kind ?? null
+  );
 
   if (!candidate) {
     return {

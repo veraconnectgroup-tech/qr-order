@@ -78,6 +78,9 @@
 | [ADR-004](./ADR-004-denis-kernel.md) | Beliefs, goals, VKG, scheduler | Proposed | Planner/beliefs work |
 | [ADR-003](./ADR-003-denis-platform-v2.md) | PPAN, timeline, T0–T3 | Proposed | Platform/timeline |
 | [ADR-006](./ADR-006-denis-control-plane.md) | Rollout, shadow, risk R0–R5 | Accepted | Ops, canary, denis_only |
+| [ADR-038](./ADR-038-guest-mental-model.md) | **Guest Mental Model (GMM)** — posture fold, rank, policy manifest | Approved | Proactive pilot, enforce rollout |
+| [ADR-039](./ADR-039-nudge-outcome-learning.md) | **Nudge outcome loop** — fold → `anticipation.resolved` → M16 | Approved L1–L4 | Learning, admin digest |
+| [ADR-040](./ADR-040-unified-proactive-decision-spine.md) | **UPDS** — one loop/decider/emitter; Kad in offer fold; audit gate | Approved | **Before any proactive refactor PR** |
 | [ADR-021](./ADR-021-denis-concierge-tuning.md) | **ConciergeConfig tuning** — profiles, LLM tiers, pilot runbook | Accepted | Ops pilot, multilingual |
 | [ADR-022](./ADR-022-denis-elite-enterprise.md) | ~~Elite tier sketch~~ → superseded by ADR-023 | Superseded | Historical |
 | [ADR-009](./ADR-009-atomic-turn-commercial-spine.md) | Metering, credits, timeline debit | Accepted F1–F7 | Commercial/billing |

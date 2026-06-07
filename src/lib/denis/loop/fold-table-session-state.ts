@@ -229,6 +229,11 @@ export async function foldTableSessionState(
     commerceConfirm: flowNodeId === "recap" || flowNodeId === "submit",
   });
 
+  const guestSpine = foldGuestSignals({
+    timeline,
+    dismissedNudgeKeys: dismissedNudges,
+  });
+
   const mental = foldGuestMentalModel({
     timeline,
     browse,
@@ -250,6 +255,7 @@ export async function foldTableSessionState(
     phase,
     config,
     previousFold: extractPreviousMentalFoldContext(timeline),
+    spine: guestSpine,
   });
 
   const mergedCart = buildMergedCart({
@@ -262,10 +268,7 @@ export async function foldTableSessionState(
     timeline,
     browse,
     mental,
-    spine: foldGuestSignals({
-      timeline,
-      dismissedNudgeKeys: dismissedNudges,
-    }),
+    spine: guestSpine,
     venueOps: venueBundle.venueOps,
     phase,
     cartLineCount: mergedCart.visibleLines.length,

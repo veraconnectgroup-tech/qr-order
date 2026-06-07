@@ -3,22 +3,17 @@ import {
   parseBrowseEventFromPayload,
 } from "@/lib/denis/cognition/browse";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { compileBeliefs } from "@/lib/denis/cognition/beliefs/compile-beliefs";
 import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-mind-beliefs-compiled";
-import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
+import type { ProactiveTurnMessages } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
 import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
-import { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
-import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
-import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
-import {
-  isProactiveDockDuplicate,
-  proactiveDockMarkState,
-  shouldCommitProactiveToDock,
-} from "@/lib/denis/loop/proactive-dock-tell";
+import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
+import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
 import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
@@ -372,103 +367,56 @@ export async function runDenisSense(
       slowKitchenMessage?: string;
     };
 
-    const proactiveResult = planProactiveTurn({
-      state,
-      config,
-      orders: guestOrders,
-      sessionPhase: fold.meta.phase,
-      payload: {
-        ...payload,
-        dismissedNudgeKeys:
-          payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
-      },
-      messages: {
-        browse: payload.browseMessage ?? "Treba vam pomoć pri biranju?",
-        dessert: payload.dessertMessage ?? "Spremni za desert?",
-        slowKitchen:
-          payload.slowKitchenMessage ??
-          "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
-        guestWelcome:
-          "Dobro došli! Hoćete da pogledate meni?",
-        billPrompt:
-          "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
-        orderDelay:
-          "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
-        popularityPair:
-          "Gosti često uzmu i nešto uz to — hoćete da dodam?",
-      },
-    });
-
     if (draftAiSessionId) {
       await appendMindBeliefsCompiled(admin, {
         aiSessionId: draftAiSessionId,
         traceId,
-        graph: proactiveResult.beliefs,
+        graph: compileBeliefs({ state, guestMessage: "" }),
         truthHash: fold.meta.truthHash,
       });
     }
 
-    if (proactiveResult.nudge && aiSessionId) {
-      proactiveNudge = proactiveResult.nudge;
-
-      const emittedPayload = buildProactiveEmittedPayload({
+    if (aiSessionId && tableSessionId) {
+      proactiveNudge = await emitProactiveNudge(admin, {
+        aiSessionId,
+        tableSessionId,
+        tableId: input.tableId,
+        locationId: input.locationId,
+        sessionToken: input.sessionToken,
+        venueName: guestContext.data.orgName,
+        config,
         state,
-        nudge: proactiveResult.nudge,
-        message: proactiveResult.message ?? proactiveResult.nudge.message,
-        turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
-        turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
+        orders: guestOrders,
+        sessionPhase: deriveFoldSessionPhase({
+          sessionStatus: state.session.status,
+          accessState: state.session.accessState,
+          orders: state.commerce.orders,
+          hasCartActivity: state.commerce.cart.visibleLines.length > 0,
+          billSettled: state.session.billSettled,
+        }),
         source: "sense.proactive_brain",
-      });
-
-      await appendDenisTimelineEvent(admin, {
-        aiSessionId,
-        eventType: "proactive.emitted",
         traceId,
-        payload: emittedPayload,
+        payload: {
+          ...payload,
+          dismissedNudgeKeys:
+            payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
+        },
+        messages: {
+          browse: payload.browseMessage ?? "Treba vam pomoć pri biranju?",
+          dessert: payload.dessertMessage ?? "Spremni za desert?",
+          slowKitchen:
+            payload.slowKitchenMessage ??
+            "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
+          guestWelcome:
+            "Dobro došli! Hoćete da pogledate meni?",
+          billPrompt:
+            "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
+          orderDelay:
+            "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
+          popularityPair:
+            "Gosti često uzmu i nešto uz to — hoćete da dodam?",
+        },
       });
-
-      scheduleDenisAnticipationCommerceProjection(admin, {
-        kind: "nudge",
-        aiSessionId,
-        tableSessionId: tableSessionId ?? undefined,
-        traceId,
-        payload: emittedPayload,
-      });
-
-      const dockMessage = proactiveResult.message?.trim();
-      if (
-        dockMessage &&
-        shouldCommitProactiveToDock(proactiveResult.nudge.kind) &&
-        !isProactiveDockDuplicate(
-          state,
-          {
-            kind: proactiveResult.nudge.kind,
-            orderId: proactiveResult.nudge.orderId,
-          },
-          dockMessage
-        ) &&
-        tableSessionId
-      ) {
-        await persistProactiveDockTell(admin, {
-          aiSessionId,
-          traceId,
-          kind: proactiveResult.nudge.kind,
-          message: dockMessage,
-          orderId: proactiveResult.nudge.orderId,
-        });
-
-        await persistTableSessionView(admin, {
-          sessionId: tableSessionId,
-          tableId: input.tableId,
-          locationId: input.locationId,
-          tableToken: input.sessionToken,
-          venueName: guestContext.data.orgName,
-          tellResult: {
-            headline: dockMessage,
-            markState: proactiveDockMarkState(proactiveResult.nudge.kind),
-          },
-        });
-      }
     }
   }
 

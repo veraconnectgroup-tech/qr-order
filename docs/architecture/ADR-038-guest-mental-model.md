@@ -4,6 +4,7 @@
 |-------|--------|
 | **Status** | APPROVED |
 | **Parent** | [ADR-020 §Kad](./ADR-020-denis-table-operating-system.md) · [ADR-019](./ADR-019-denis-unified-brain.md) Phase A fold |
+| **Child** | [ADR-040 UPDS](./ADR-040-unified-proactive-decision-spine.md) — timing + single emit path (supersedes dual-brain notes below when implemented) |
 | **Replaces** | Vremenski proactive triggeri (`browseNudgeMinutes`, `popularityBrowseMinutes`, …) kao primarni signal |
 | **Rule** | GMM-1 → GMM-8 shipped. `pnpm eval:denis` + `pnpm verify:denis` PASS. Rollout via `mentalModel.mode`. |
 

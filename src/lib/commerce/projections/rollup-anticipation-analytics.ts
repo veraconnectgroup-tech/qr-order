@@ -33,6 +33,7 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
   byNudgeKind: JsonMap;
   byOfferResolution: JsonMap;
   byOutcome: JsonMap;
+  byTimingKind: JsonMap;
 } {
   const metricDate = metricDateFromIso(input.createdAt);
 
@@ -41,6 +42,11 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
       typeof input.payload.nudgeKind === "string"
         ? input.payload.nudgeKind
         : "unknown";
+    const timingKind =
+      typeof input.payload.timingKind === "string" &&
+      input.payload.timingKind.trim()
+        ? input.payload.timingKind.trim()
+        : "none";
     return {
       metricDate,
       nudgeImpressions: 1,
@@ -52,6 +58,7 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
       byNudgeKind: bumpMap({}, kind, 1),
       byOfferResolution: {},
       byOutcome: {},
+      byTimingKind: bumpMap({}, timingKind, 1),
     };
   }
 
@@ -82,6 +89,7 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
       byNudgeKind: bumpMap({}, kind, 1),
       byOfferResolution: bumpMap({}, resolution, 1),
       byOutcome: bumpMap({}, "accepted", 1),
+      byTimingKind: {},
     };
   }
 
@@ -106,6 +114,7 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
       byNudgeKind: bumpMap({}, kind, 1),
       byOfferResolution: {},
       byOutcome: bumpMap({}, outcome, 1),
+      byTimingKind: {},
     };
   }
 
@@ -120,6 +129,7 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
     byNudgeKind: {},
     byOfferResolution: {},
     byOutcome: {},
+    byTimingKind: {},
   };
 }
 
@@ -154,7 +164,7 @@ export async function upsertAnticipationRollup(
   const { data: existing } = await admin
     .from("experience_analytics_daily" as never)
     .select(
-      "nudge_impressions, offer_conversions, conversion_lag_seconds, nudge_declined, nudge_ignored, nudge_expired, by_nudge_kind, by_offer_resolution, by_outcome"
+      "nudge_impressions, offer_conversions, conversion_lag_seconds, nudge_declined, nudge_ignored, nudge_expired, by_nudge_kind, by_offer_resolution, by_outcome, by_timing_kind"
     )
     .eq("location_id", input.locationId)
     .eq("metric_date", delta.metricDate)
@@ -170,6 +180,7 @@ export async function upsertAnticipationRollup(
     by_nudge_kind?: JsonMap;
     by_offer_resolution?: JsonMap;
     by_outcome?: JsonMap;
+    by_timing_kind?: JsonMap;
   } | null;
 
   const byNudgeKind = mergeJsonMaps(row?.by_nudge_kind ?? {}, delta.byNudgeKind);
@@ -178,6 +189,10 @@ export async function upsertAnticipationRollup(
     delta.byOfferResolution
   );
   const byOutcome = mergeJsonMaps(row?.by_outcome ?? {}, delta.byOutcome);
+  const byTimingKind = mergeJsonMaps(
+    row?.by_timing_kind ?? {},
+    delta.byTimingKind
+  );
 
   const { error } = await admin.from("experience_analytics_daily" as never).upsert(
     {
@@ -194,6 +209,7 @@ export async function upsertAnticipationRollup(
       by_nudge_kind: byNudgeKind,
       by_offer_resolution: byOfferResolution,
       by_outcome: byOutcome,
+      by_timing_kind: byTimingKind,
       updated_at: new Date().toISOString(),
     } as never,
     { onConflict: "location_id,metric_date" }

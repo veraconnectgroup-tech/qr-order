@@ -4,7 +4,8 @@ import {
   detectOrderDelayTrigger,
   detectPairingTrigger,
   detectSlowKitchenTrigger,
-} from "@/lib/ai/proactive-triggers";
+  resolveEnforceDessertPosture,
+} from "@/lib/denis/cognition/proactive/triggers";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import { resolveFollowUpDueAt } from "@/lib/denis/cognition/conversation/guest-continuity";
 import { buildAttentionHandoffMessage } from "@/lib/denis/cognition/proactive/build-attention-handoff-message";
@@ -51,6 +52,10 @@ function isDismissed(keys: string[], key: string): boolean {
 
 function isMentalFirst(config: RankProactiveCandidatesInput["config"]): boolean {
   return resolveMentalModelMode(config as ConciergeConfig) !== "off";
+}
+
+function isEnforceMode(config: RankProactiveCandidatesInput["config"]): boolean {
+  return resolveMentalModelMode(config as ConciergeConfig) === "enforce";
 }
 
 const LEGACY_KIND_PRIORITY: Record<GuestProactiveNudgeKind, number> = {
@@ -116,10 +121,12 @@ function pushCandidate(
 }
 
 function shouldOfferGuestWelcome(input: {
+  enforceMode: boolean;
   mentalFirst: boolean;
   mental?: GuestMentalModel | null;
   guestMessageCount: number;
 }): boolean {
+  if (input.enforceMode) return input.guestMessageCount === 0;
   if (input.mentalFirst && input.mental) {
     return (
       input.mental.intent === "arrived" && !input.mental.engagement.guestInitiated
@@ -129,11 +136,13 @@ function shouldOfferGuestWelcome(input: {
 }
 
 function shouldOfferBrowseNudge(input: {
+  enforceMode: boolean;
   mentalFirst: boolean;
   mental?: GuestMentalModel | null;
   browseMinutes: number;
   thresholdMinutes: number;
 }): boolean {
+  if (input.enforceMode) return true;
   if (input.mentalFirst && input.mental) {
     return (
       (input.mental.intent === "exploring" || input.mental.intent === "comparing") &&
@@ -144,12 +153,14 @@ function shouldOfferBrowseNudge(input: {
 }
 
 function shouldOfferPopularityPair(input: {
+  enforceMode: boolean;
   mentalFirst: boolean;
   mental?: GuestMentalModel | null;
   guestAskedRecommendation: boolean;
   browseMinutes: number;
   thresholdMinutes: number;
 }): boolean {
+  if (input.enforceMode) return true;
   if (input.mentalFirst && input.mental) {
     return (
       input.guestAskedRecommendation ||
@@ -164,6 +175,7 @@ function shouldOfferPopularityPair(input: {
 }
 
 function shouldOfferBillPrompt(input: {
+  enforceMode: boolean;
   mentalFirst: boolean;
   mental?: GuestMentalModel | null;
   idleMinutes: number;
@@ -171,6 +183,7 @@ function shouldOfferBillPrompt(input: {
   orders: AiGuestOrder[];
   now: number;
 }): boolean {
+  if (input.enforceMode) return true;
   if (input.mentalFirst && input.mental) {
     return (
       (input.mental.mealStage === "post_meal" || input.mental.mealStage === "paying") &&
@@ -196,9 +209,11 @@ function shouldOfferBillPrompt(input: {
 }
 
 function shouldOfferDessert(input: {
+  enforceMode: boolean;
   mentalFirst: boolean;
   mental?: GuestMentalModel | null;
 }): boolean {
+  if (input.enforceMode) return true;
   if (!input.mentalFirst || !input.mental) return true;
   return (
     input.mental.mealStage === "dessert_window" &&
@@ -217,6 +232,7 @@ export function rankProactiveCandidates(
     (payload.cartItemCount ?? 0) > 0 || Boolean(payload.hasSessionOrders);
   const guestRequestedFollowUp = Boolean(payload.followUpRequestedAt);
   const mentalFirst = isMentalFirst(config);
+  const enforceMode = isEnforceMode(config);
   const browseMinutes = payload.browseMinutes ?? 0;
   const idleMinutes = payload.idleMinutes ?? 0;
   const guestMessageCount = payload.guestMessageCount ?? 0;
@@ -243,7 +259,7 @@ export function rankProactiveCandidates(
   if (
     config.proactive.guestWelcome &&
     !isDismissed(dismissed, "guest_welcome") &&
-    shouldOfferGuestWelcome({ mentalFirst, mental, guestMessageCount }) &&
+    shouldOfferGuestWelcome({ enforceMode, mentalFirst, mental, guestMessageCount }) &&
     (payload.sessionAgeSeconds ?? 0) >= config.proactive.guestWelcomeSeconds
   ) {
     pushCandidate(
@@ -347,18 +363,21 @@ export function rankProactiveCandidates(
   if (
     !isDismissed(dismissed, "dessert_nudge") &&
     !skipDessertWhileBrowsing &&
-    shouldOfferDessert({ mentalFirst, mental })
+    shouldOfferDessert({ enforceMode, mentalFirst, mental })
   ) {
-    const dessert = detectDessertTrigger(
-      orders,
-      () => isDismissed(dismissed, "dessert_nudge"),
-      now,
-      {
-        minMinutes: config.upsell.dessertDelayMinutes,
-        maxMinutes: null,
-        preparingMinMinutes: config.upsell.dessertDelayMinutes,
-      }
-    );
+    const dessert =
+      enforceMode && mental
+        ? resolveEnforceDessertPosture({ orders, mental })
+        : detectDessertTrigger(
+            orders,
+            () => isDismissed(dismissed, "dessert_nudge"),
+            now,
+            {
+              minMinutes: config.upsell.dessertDelayMinutes,
+              maxMinutes: null,
+              preparingMinMinutes: config.upsell.dessertDelayMinutes,
+            }
+          );
     const suppressPreparingDessertWhileWaiting =
       payload.sessionPhase === "waiting" && Boolean(dessert?.orderId);
     if (dessert && !suppressPreparingDessertWhileWaiting) {
@@ -384,6 +403,7 @@ export function rankProactiveCandidates(
     config.proactive.billPrompt &&
     !isDismissed(dismissed, "bill_prompt") &&
     shouldOfferBillPrompt({
+      enforceMode,
       mentalFirst,
       mental,
       idleMinutes,
@@ -406,6 +426,7 @@ export function rankProactiveCandidates(
     !isDismissed(dismissed, "popularity_pair") &&
     payload.popularityPair &&
     shouldOfferPopularityPair({
+      enforceMode,
       mentalFirst,
       mental,
       guestAskedRecommendation: Boolean(payload.guestAskedRecommendation),
@@ -432,6 +453,7 @@ export function rankProactiveCandidates(
     !isDismissed(dismissed, "browse_nudge") &&
     !hasOrdered &&
     shouldOfferBrowseNudge({
+      enforceMode,
       mentalFirst,
       mental,
       browseMinutes,

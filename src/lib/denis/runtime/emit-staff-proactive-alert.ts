@@ -20,10 +20,10 @@ export async function emitStaffProactiveAlert(
 
   await appendDenisTimelineEvent(admin, {
     aiSessionId: input.aiSessionId,
-    eventType: "proactive.emitted",
+    eventType: "staff.proactive.alert",
     traceId,
     payload: {
-      type: "proactive.emitted",
+      type: "staff.proactive.alert",
       audience: "staff",
       kind: input.alert.kind,
       message: input.alert.message,

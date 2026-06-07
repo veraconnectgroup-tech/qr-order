@@ -421,7 +421,8 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
     payload: { browseMinutes: 10, dismissedNudgeKeys: [] },
     expect: {
       emit: false,
-      skipReason: "no_candidate",
+      skipReason: "gmm.receptiveness_closed",
+      kind: "bill_prompt",
     },
   },
   {
@@ -477,7 +478,7 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       timeline: [],
     },
     payload: { browseMinutes: 10 },
-    expect: { emit: false, skipReason: "no_candidate" },
+    expect: { emit: false, skipReason: "gmm.confidence_insufficient", kind: "bill_prompt" },
   },
   {
     id: "gmm-mental-bill-post-meal",
@@ -596,7 +597,8 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
     payload: { browseMinutes: 10 },
     expect: {
       emit: false,
-      skipReason: "no_candidate",
+      skipReason: "gmm.confidence_insufficient",
+      kind: "bill_prompt",
     },
   },
 ];

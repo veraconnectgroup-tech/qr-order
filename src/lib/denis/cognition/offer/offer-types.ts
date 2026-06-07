@@ -56,6 +56,21 @@ export type OfferReadiness = {
   secondsSinceLastBrowseAction: number;
 };
 
+/** ADR-040 UPDS — Kad timing from browse sequence (not chat idle). */
+export type OfferTimingKind =
+  | "browse_pause"
+  | "return_view"
+  | "cart_hesitation"
+  | "none";
+
+export type OfferTiming = {
+  kind: OfferTimingKind;
+  idleSinceBrowseSec: number;
+  speakWindow: "open" | "closed";
+  ready: boolean;
+  reason: OfferReadinessReason;
+};
+
 export type OfferResolutionKind =
   | "top_dwell"
   | "return_view"
@@ -92,6 +107,7 @@ export type OfferResolutionTrace = {
     operatingMode: VenueOpsBeliefs["operatingMode"];
   };
   readiness: OfferReadiness;
+  timing: OfferTiming;
   conversions: OfferConversionRecord[];
   nudgeStats: Record<string, ProductNudgeStats>;
   outcomes: NudgeOutcomeRecord[];

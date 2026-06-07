@@ -1,4 +1,4 @@
-import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
+import { readAcceptedNudgeOutcomes } from "@/lib/denis/learning/timeline-nudge-outcomes";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 export type ProductNudgePerformance = {
@@ -48,9 +48,7 @@ export function aggregateProductNudgeStatsFromTimelines(
       stats.set(productId, entry);
     }
 
-    const { outcomes } = foldNudgeOutcomes(timeline);
-    for (const outcome of outcomes) {
-      if (outcome.outcome !== "accepted" || !outcome.productId) continue;
+    for (const outcome of readAcceptedNudgeOutcomes(timeline)) {
       const entry = stats.get(outcome.productId) ?? {
         productName: outcome.productName,
         impressions: 0,
