@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { initDraftFromStorage } from "@/lib/denis/cognition/order";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { executeDenisOrderCommand } from "@/lib/denis/acl/execute-denis-order-command";
-import { buildDenisOrderCommand } from "@/lib/denis/runtime/act/build-order-command";
+import {
+  buildDenisOrderCommand,
+  reconcileCartDraftPricesFromCatalog,
+} from "@/lib/denis/runtime/act/build-order-command";
 import { persistAiSessionAfterOrderSubmit } from "@/lib/denis/runtime/act/persist-ai-session-after-order-submit";
 import {
   actSubmitGuestBlockedMessage,
@@ -105,13 +108,15 @@ export async function executeTurnOrderSubmit(
     };
   }
 
+  const pricedCart = reconcileCartDraftPricesFromCatalog(cartDraft, catalog);
+
   const command = buildDenisOrderCommand({
     aiSessionId: input.aiSessionId,
     tableToken: input.tableToken,
     sessionToken: input.sessionToken,
     deviceFingerprint: input.deviceFingerprint,
     deviceToken: input.deviceToken,
-    cartDraft,
+    cartDraft: pricedCart,
   });
 
   if (!command) {

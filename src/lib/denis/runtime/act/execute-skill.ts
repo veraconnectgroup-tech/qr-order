@@ -4,7 +4,10 @@ import { executeDenisOrderModifyRequest } from "@/lib/denis/acl/execute-denis-or
 import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { executeDenisOrderCommand } from "@/lib/denis/acl/execute-denis-order-command";
-import { buildDenisOrderCommand } from "@/lib/denis/runtime/act/build-order-command";
+import {
+  buildDenisOrderCommand,
+  reconcileCartDraftPricesFromCatalog,
+} from "@/lib/denis/runtime/act/build-order-command";
 import type { ActSkillResult } from "@/lib/denis/runtime/act/act-types";
 import type { DenisSkillId } from "@/lib/denis/kernel/skill-registry";
 import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
@@ -266,13 +269,19 @@ export async function executePlannedSkill(
       };
     }
 
+    const rawCart = ctx.cartDraft ?? { items: [], cartRevision: 0 };
+    const pricedCart =
+      ctx.catalog != null
+        ? reconcileCartDraftPricesFromCatalog(rawCart, ctx.catalog)
+        : rawCart;
+
     const command = buildDenisOrderCommand({
       aiSessionId: ctx.aiSessionId,
       tableToken: ctx.tableToken,
       sessionToken: ctx.sessionToken,
       deviceFingerprint: ctx.deviceFingerprint,
       deviceToken: ctx.deviceToken,
-      cartDraft: ctx.cartDraft ?? { items: [], cartRevision: 0 },
+      cartDraft: pricedCart,
     });
 
     if (!command) {
