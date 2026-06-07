@@ -3,7 +3,7 @@ import type { PartialConciergeConfig } from "@/lib/denis/config/concierge-config
 /** Skyline / iota pilot — full Table OS wiring (M25 + floor + proactive). */
 export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
   version: 1,
-  rollout: { mode: "denis_only" },
+  rollout: { mode: "denis_only", tableSessionActorEnabled: true },
   llm: { narrateWithLlm: true, slotExtractWithLlm: false },
   ordering: {
     slotExtractEnabled: true,

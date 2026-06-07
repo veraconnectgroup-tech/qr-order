@@ -166,6 +166,74 @@ components:
           type: boolean
     ConfigProposal:
       type: object
+    DenisWebhookApiVersion:
+      type: string
+      const: "2026-05-29"
+      description: Webhook payload apiVersion field (ADR-029 §6.2)
+    DenisSessionUpdatedMetrics:
+      type: object
+      required:
+        - updateReason
+        - status
+        - outcome
+        - ordersCount
+        - turnCount
+      properties:
+        updateReason:
+          type: string
+          enum: [turn_complete, handoff, sense, order_submitted]
+        status:
+          type: string
+          description: table_sessions.status
+        outcome:
+          type: string
+          enum: [ordered, abandoned, handoff, active]
+        ordersCount:
+          type: integer
+          minimum: 0
+        turnCount:
+          type: integer
+          minimum: 0
+        intents:
+          type: array
+          items:
+            type: string
+        viewVersion:
+          type: integer
+          minimum: 0
+          description: Denis view version after the update
+    DenisSessionUpdatedWebhookData:
+      type: object
+      required:
+        - orgId
+        - locationId
+        - sessionId
+        - outcome
+        - metrics
+        - created_at
+        - apiVersion
+      properties:
+        orgId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum: [ordered, abandoned, handoff, active]
+        metrics:
+          $ref: "#/components/schemas/DenisSessionUpdatedMetrics"
+        traceId:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        apiVersion:
+          $ref: "#/components/schemas/DenisWebhookApiVersion"
 paths:
   /locations:
     get:
@@ -425,3 +493,32 @@ paths:
       responses:
         "201":
           description: Created
+webhooks:
+  denisSessionUpdated:
+    post:
+      summary: denis.session.updated
+      description: |
+        Live session projection push (ADR-029 I2). Fires on Denis turn complete,
+        handoff, sense telemetry, or order submit. Outbox-only delivery with HMAC.
+      parameters:
+        - name: X-Webhook-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            const: denis.session.updated
+        - name: X-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+            description: sha256 HMAC of raw JSON body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DenisSessionUpdatedWebhookData"
+      responses:
+        "200":
+          description: Acknowledged

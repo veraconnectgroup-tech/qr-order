@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
+import { applyOrderComprehend } from "@/lib/denis/cognition/order";
 import type { AiStructuredResponse } from "@/lib/ai/types";
 import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import {
@@ -27,7 +27,7 @@ export type ApplyStructuredPerceptionOrderingInput = {
 
 export type ApplyStructuredPerceptionOrderingResult = {
   message: string;
-  cartActions: ReturnType<typeof applyPostLlmOrdering>["cartActions"];
+  cartActions: ReturnType<typeof applyOrderComprehend>["cartActions"];
   quickReplies: string[];
   intent: string;
   submitOrder: boolean;
@@ -66,22 +66,11 @@ export async function applyStructuredPerceptionOrdering(
     };
 
     const priorMessages: Array<{ role: "user" | "assistant"; content: string }> =
-      input.timelineEnabled
-        ? timelineToStoredMessages(
-            await loadDenisTimeline(input.admin, input.sessionId)
-          )
-        : ((
-            await input.admin
-              .from("ai_sessions")
-              .select("messages")
-              .eq("id", input.sessionId)
-              .maybeSingle()
-          ).data?.messages as Array<{
-            role: "user" | "assistant";
-            content: string;
-          }> | null) ?? [];
+      timelineToStoredMessages(
+        await loadDenisTimeline(input.admin, input.sessionId)
+      );
 
-    const kernel = applyPostLlmOrdering({
+    const kernel = applyOrderComprehend({
       userMessage: input.userMessage,
       allowOrdering: true,
       orderDraft: initDraftFromStorage(sessionRow.order_draft),

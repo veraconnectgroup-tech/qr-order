@@ -21,6 +21,33 @@ import {
 } from "@/lib/denis/runtime/resolve-signal-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { DenisSessionUpdateReason } from "@/lib/integrations/webhooks/denis-session-updated.schema";
+import { emitDenisSessionUpdated } from "@/lib/webhooks/emit-denis-session-events";
+import { logger } from "@/lib/logger";
+
+function scheduleDenisSessionUpdatedWebhook(
+  admin: SupabaseClient,
+  input: {
+    tableSessionId?: string | null;
+    updateReason: DenisSessionUpdateReason;
+    traceId: string;
+    viewVersion?: number;
+  }
+): void {
+  if (!input.tableSessionId) return;
+
+  void emitDenisSessionUpdated(admin, {
+    tableSessionId: input.tableSessionId,
+    updateReason: input.updateReason,
+    traceId: input.traceId,
+    viewVersion: input.viewVersion,
+  }).catch((error) => {
+    logger.warn("denis.session.updated schedule failed", {
+      tableSessionId: input.tableSessionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
 
 function signalMessage(request: DenisSignalRequest): string {
   if (request.type === "message") return request.text;
@@ -147,6 +174,13 @@ async function runHandoffSignal(
 
   const loaded = await maybeLoadView(admin, ctx);
 
+  scheduleDenisSessionUpdatedWebhook(admin, {
+    tableSessionId: ctx.tableSessionId,
+    updateReason: "handoff",
+    traceId: signalId,
+    viewVersion: loaded?.view.version,
+  });
+
   return apiSuccess({
     signalId,
     ingested: true,
@@ -213,6 +247,13 @@ export async function executeDenisSignalCore(rawBody: unknown): Promise<Response
     };
     const loaded = await maybeLoadView(admin, ctx);
 
+    scheduleDenisSessionUpdatedWebhook(admin, {
+      tableSessionId: ctx.tableSessionId,
+      updateReason: "sense",
+      traceId: signalId,
+      viewVersion: loaded?.view.version,
+    });
+
     return apiSuccess({
       signalId,
       ingested: true,
@@ -222,8 +263,18 @@ export async function executeDenisSignalCore(rawBody: unknown): Promise<Response
     });
   }
 
-  return runDenisTurn({
+  const response = await runDenisTurn({
     channel: signal.channel,
     rawBody: buildTurnBody(request, ctx, signal),
   });
+
+  if (response.status === 200 && ctx.tableSessionId) {
+    scheduleDenisSessionUpdatedWebhook(admin, {
+      tableSessionId: ctx.tableSessionId,
+      updateReason: "turn_complete",
+      traceId: signalId,
+    });
+  }
+
+  return response;
 }

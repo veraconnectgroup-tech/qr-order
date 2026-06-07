@@ -5,6 +5,12 @@
 | **Purpose** | One page — what we build, why, in what order |
 | **Product** | **Denis** — global POS + Table OS; **Viktor** = partner operator layer |
 | **Implementation contract** | **[DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)** — status po stavci |
+| **Perfection** | [ADR-034](./ADR-034-denis-perfection-doctrine.md) — **menjamo arhitekturu** ako treba |
+| **Stubovi** | [ADR-035](./ADR-035-pillar-strengthening-plan.md) — **stub po stub**, ne samo most |
+| **Agenti** | [ADR-033 batch](./ADR-033-agent-batch-prompts.md) — **AGENT-00→26** copy-paste |
+| **Kako radimo** | **1 ADR = nedeljama** — [ADR-033](./ADR-033-enterprise-ai-roadmap.md) §2 |
+| **ACTIVE ADR sada** | **[ADR-033-active-tracker.md](./ADR-033-active-tracker.md)** ← agent čita prvo |
+| **Agent prompts** | **[ADR-033-session-prompts.md](./ADR-033-session-prompts.md)** |
 | **Phased plan (remainder)** | **[DENIS-PHASED-IMPLEMENTATION-PLAN.md](./DENIS-PHASED-IMPLEMENTATION-PLAN.md)** — F0→F9 |
 
 ---

@@ -9,6 +9,7 @@ export const COMMERCE_WEBHOOK_EVENTS = [
 ] as const;
 
 export const DENIS_OPERATOR_WEBHOOK_EVENTS = [
+  "denis.session.updated",
   "denis.session.completed",
   "denis.session.converted",
   "denis.metrics.daily_ready",
@@ -36,6 +37,7 @@ export const WEBHOOK_EVENT_LABELS: Record<WebhookEvent, string> = {
   "order.refunded": "Order refunded",
   "session.opened": "Session opened",
   "session.closed": "Session closed",
+  "denis.session.updated": "Denis session updated",
   "denis.session.completed": "Denis session completed",
   "denis.session.converted": "Denis session converted",
   "denis.metrics.daily_ready": "Denis daily metrics ready",

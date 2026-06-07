@@ -16,6 +16,14 @@ import {
   isOrderCancelMessage,
   isOrderModifyMessage,
 } from "@/lib/denis/commands/perceive-table-guest-command";
+import {
+  buildInterpretationTask,
+  turnPlanFromInterpretationTask,
+} from "@/lib/denis/cognition/tde/build-interpretation-task";
+import {
+  waiterGapTemplateKey,
+  type WaiterGapKind,
+} from "@/lib/denis/cognition/waiter";
 
 const VAGUE_RECOMMEND_PATTERN =
   /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
@@ -154,7 +162,7 @@ const ORDERING_HINT_PATTERN =
   /\b(\d+\s*x|cola|kola|pivo|piva|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend|šta imate|sta imate)\b/i;
 
 const MENU_BROWSE_PATTERN =
-  /\b(šta imate|sta imate|what do you have|was habt ihr|šta nudite|imate li)\b/i;
+  /(šta imate|sta imate|what do you have|was habt ihr|šta nudite|imate li)/i;
 
 /** Short guest reply in banter — not an order line; LLM should continue the thread. */
 function isShortBanterReply(message: string): boolean {
@@ -354,8 +362,48 @@ function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
  * ADR-023 §4 + ADR-025 — single code path between FOLD and perceive.
  * Director decides LLM vs template; does not call OpenAI.
  */
+function waiterGapsBlockConfirm(input: DecideTurnPlanInput): TurnPlan | null {
+  const gapCount =
+    getBeliefValue<number>(input.beliefs, CORE_BELIEF_KEYS.waiterGapCount) ?? 0;
+  if (gapCount <= 0) return null;
+
+  const canConfirm =
+    getBeliefValue<boolean>(input.beliefs, CORE_BELIEF_KEYS.waiterCanConfirm) ===
+    true;
+  if (canConfirm) return null;
+
+  const pressure = getBeliefValue<CommercePressure>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePressure
+  );
+  const awaiting = getBeliefValue<ConversationAwaiting>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.conversationAwaiting
+  );
+  const atConfirm = pressure === "confirm" || awaiting === "confirm";
+  const intent = input.reflex.reflex?.intent;
+
+  if (!atConfirm && intent !== "CONFIRM" && intent !== "DONE") return null;
+
+  const primaryGap =
+    getBeliefValue<WaiterGapKind | null>(
+      input.beliefs,
+      CORE_BELIEF_KEYS.waiterPrimaryGap
+    ) ?? null;
+
+  return buildPlan("template_tell", {
+    requiresLlm: false,
+    suppressUpsell: resolveSuppressUpsell(input.beliefs),
+    reason: "waiter.gap_blocks_confirm",
+    templateKey: waiterGapTemplateKey(primaryGap),
+  });
+}
+
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
+
+  const gapBlockPlan = waiterGapsBlockConfirm(input);
+  if (gapBlockPlan) return gapBlockPlan;
 
   // ADR-030 — at recap, LLM comprehends confirm in any language; T0 is optional fast-path only.
   if (shouldComprehendConfirmTurn(input)) {
@@ -437,6 +485,25 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
     suppressUpsell
   );
   if (narratePlan) return narratePlan;
+
+  if (MENU_BROWSE_PATTERN.test(input.message.trim())) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "commerce.menu_inquiry",
+    });
+  }
+
+  const interpretationTask = buildInterpretationTask(
+    input.reflex.plan.topGoal,
+    input.beliefs
+  );
+  if (interpretationTask) {
+    return buildPlan(
+      interpretationTask.planKind,
+      turnPlanFromInterpretationTask(interpretationTask, suppressUpsell)
+    );
+  }
 
   return resolvePerceivePlan(input, suppressUpsell);
 }

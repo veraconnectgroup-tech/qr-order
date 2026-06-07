@@ -29,6 +29,8 @@ const UPSELL_NUDGE_KINDS: GuestProactiveNudge["kind"][] = [
 
 function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
   switch (kind) {
+    case "waiter_gap":
+      return "waiter.gap_clarify.generic";
     case "browse_nudge":
       return "proactive.browse";
     case "drink_pairing":
@@ -91,11 +93,14 @@ export function decideProactiveTurnPlan(
 ): ProactiveTurnPlanResult {
   const { beliefs, candidate, sessionPhase, config } = input;
 
-  if (!config.proactive.enabled) {
+  if (!config.proactive.enabled && candidate.kind !== "waiter_gap") {
     return { ok: false, reason: "proactive.disabled" };
   }
 
-  if (commerceBlocksProactive(beliefs, input.cartLineCount ?? 0)) {
+  if (
+    candidate.kind !== "waiter_gap" &&
+    commerceBlocksProactive(beliefs, input.cartLineCount ?? 0)
+  ) {
     return { ok: false, reason: "commerce.active" };
   }
 
@@ -188,7 +193,10 @@ export function decideProactiveTurnPlan(
     return { ok: false, reason: "proactive.popularity_disabled" };
   }
 
-  const templateKey = templateKeyForKind(candidate.kind);
+  const templateKey =
+    candidate.kind === "waiter_gap" && candidate.prompt
+      ? "waiter.gap_clarify.generic"
+      : templateKeyForKind(candidate.kind);
   const suppressUpsell = upsellSuppressed(beliefs);
 
   return {
@@ -198,7 +206,10 @@ export function decideProactiveTurnPlan(
       kind: "template_tell",
       requiresLlm: false,
       suppressUpsell,
-      reason: `proactive.${candidate.kind}`,
+      reason:
+        candidate.kind === "waiter_gap"
+          ? "waiter.autonomous_gap_tell"
+          : `proactive.${candidate.kind}`,
       templateKey,
     },
   };

@@ -209,6 +209,16 @@ export function buildViewLayers(
 
   const layers: SceneLayer[] = [];
 
+  const waiterGap = state.conversation.obligation?.gaps[0];
+  if (waiterGap && meta.phase === "ordering") {
+    layers.push({
+      kind: "banner",
+      id: `waiter-gap-${waiterGap.kind}`,
+      message: waiterGap.prompt,
+      action: "open_sheet",
+    });
+  }
+
   for (const banner of buildViewBanners(state, situation)) {
     layers.push({
       kind: "banner",

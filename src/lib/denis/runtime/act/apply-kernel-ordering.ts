@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ApplyPostLlmOrderingResult } from "@/lib/ai/ordering/kernel-ordering-bridge";
+import type { ApplyOrderComprehendResult } from "@/lib/denis/cognition/order";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { logger } from "@/lib/logger";
 
@@ -29,7 +29,7 @@ export async function persistKernelOrderingDraft(
 
 export type KernelOrderingMerge = {
   message: string;
-  cartActions: ApplyPostLlmOrderingResult["cartActions"];
+  cartActions: ApplyOrderComprehendResult["cartActions"];
   quickReplies: string[];
   intent: string;
   submitOrder: boolean;
@@ -37,7 +37,7 @@ export type KernelOrderingMerge = {
 
 export function mergeKernelOrderingIntoTurn(
   legacyMessage: string,
-  kernel: ApplyPostLlmOrderingResult
+  kernel: ApplyOrderComprehendResult
 ): KernelOrderingMerge {
   return {
     message: kernel.assistantMessage || legacyMessage,

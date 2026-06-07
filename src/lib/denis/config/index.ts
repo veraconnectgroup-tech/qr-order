@@ -48,6 +48,7 @@ export {
   parseRolloutModeFromEnv,
   resolveEffectiveRollout,
   resolveGuestLegacyPath,
+  resolveTableSessionActorEnabled,
   shouldRunShadowDiff,
 } from "@/lib/denis/config/rollout";
 export type { GuestLegacyPathOptions } from "@/lib/denis/config/rollout";

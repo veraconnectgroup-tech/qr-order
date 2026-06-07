@@ -15,7 +15,7 @@
 | **O3** | Integration SDK + adapters | 🔲 |
 | **O4** | Operator API (Viktor partner) | 🔲 |
 | **O5** | Market US module | 🔲 |
-| **O6** | Phase F signal/view GA | 🔲 |
+| **O6** | Phase F signal/view GA | ✅ |
 
 ---
 

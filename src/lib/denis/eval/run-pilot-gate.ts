@@ -10,6 +10,22 @@ import {
   runWaiterParitySuite,
   type WaiterParityReport,
 } from "@/lib/denis/eval/run-waiter-parity";
+import {
+  runContinuousMindSuite,
+  type ContinuousMindReport,
+} from "@/lib/denis/eval/run-continuous-mind-fixture";
+import {
+  runTimelineObligationSuite,
+  type TimelineObligationReport,
+} from "@/lib/denis/eval/run-timeline-obligation-fixture";
+import {
+  runWorldTellUnificationFixture,
+  type WorldTellUnificationResult,
+} from "@/lib/denis/eval/run-world-tell-fixture";
+import {
+  runManifestPromoteGateFixture,
+  type ManifestPromoteGateFixtureReport,
+} from "@/lib/denis/eval/run-manifest-promote-gate-fixture";
 import { resolveSkill } from "@/lib/denis/kernel/skill-registry";
 import {
   hasCommittedNarrationFacts,
@@ -104,7 +120,11 @@ export type PilotGateReport = {
   ok: boolean;
   core: EvalSuiteReport;
   pilotSr: EvalSuiteReport;
+  timelineObligation: TimelineObligationReport;
+  continuousMind: ContinuousMindReport;
   waiterParity: WaiterParityReport;
+  worldTell: WorldTellUnificationResult;
+  manifestPromoteGate: ManifestPromoteGateFixtureReport;
   qualityContract: ReturnType<typeof runQualityContractEval>;
   anticipation: AnticipationReport;
   narration: PilotNarrationGateResult;
@@ -116,7 +136,11 @@ export type PilotGateReport = {
 export function runPilotGate(): PilotGateReport {
   const core = runDenisEvalSuite();
   const pilotSr = runPilotSrEvalSuite();
+  const timelineObligation = runTimelineObligationSuite();
+  const continuousMind = runContinuousMindSuite();
   const waiterParity = runWaiterParitySuite();
+  const worldTell = runWorldTellUnificationFixture();
+  const manifestPromoteGate = runManifestPromoteGateFixture();
   const qualityContract = runQualityContractEval();
   const anticipation = runAnticipationEval();
   const narration = runPilotNarrationGate();
@@ -127,13 +151,20 @@ export function runPilotGate(): PilotGateReport {
         recentEvalPass:
           core.ok &&
           pilotSr.ok &&
+          timelineObligation.ok &&
+          continuousMind.ok &&
           waiterParity.ok &&
+          worldTell.passed &&
+          manifestPromoteGate.ok &&
           qualityContract.ok &&
           anticipation.ok &&
           narration.passed,
         pilotEvalPass:
           pilotSr.ok &&
+          continuousMind.ok &&
           waiterParity.ok &&
+          worldTell.passed &&
+          manifestPromoteGate.ok &&
           qualityContract.ok &&
           anticipation.ok &&
           narration.passed,
@@ -144,13 +175,21 @@ export function runPilotGate(): PilotGateReport {
     ok:
       core.ok &&
       pilotSr.ok &&
+      timelineObligation.ok &&
+      continuousMind.ok &&
       waiterParity.ok &&
+      worldTell.passed &&
+      manifestPromoteGate.ok &&
       qualityContract.ok &&
       anticipation.ok &&
       narration.passed,
     core,
     pilotSr,
+    timelineObligation,
+    continuousMind,
     waiterParity,
+    worldTell,
+    manifestPromoteGate,
     qualityContract,
     anticipation,
     narration,

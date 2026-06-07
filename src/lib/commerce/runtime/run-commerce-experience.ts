@@ -11,8 +11,10 @@ import type {
 } from "@/lib/commerce/runtime/types";
 import {
   enqueueCommerceExperienceSignal,
-  isTableSessionActorEnabled,
+  isTableSessionActorInfrastructureReady,
 } from "@/lib/denis/actor/table-session-actor";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { resolveTableSessionActorEnabled } from "@/lib/denis/config/rollout";
 import { logger } from "@/lib/logger";
 import { scheduleOutboxProcess } from "@/lib/outbox/schedule-process";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -114,23 +116,29 @@ export async function runCommerceExperience(
 
   if (
     !opts.skipActorEnqueue &&
-    isTableSessionActorEnabled() &&
     (trigger.kind === "payment_settled" || trigger.kind === "order_delivered")
   ) {
     const loaded = await loadOrderForCommerce(admin, trigger.orderId);
     if (loaded?.order.session_id) {
-      const idempotencyKey = commerceIdempotencyKey(trigger, opts);
-      await enqueueCommerceExperienceSignal(
-        loaded.order.session_id,
-        idempotencyKey,
-        {
-          triggerKind: trigger.kind,
-          orderId: trigger.orderId,
-          traceId: opts.traceId,
-          idempotencyKey,
-        }
+      const config = await loadConciergeConfigForLocation(loaded.order.location_id);
+      const actorEnabled = resolveTableSessionActorEnabled(
+        config,
+        isTableSessionActorInfrastructureReady()
       );
-      return { eventId: null, skipped: false };
+      if (actorEnabled) {
+        const idempotencyKey = commerceIdempotencyKey(trigger, opts);
+        await enqueueCommerceExperienceSignal(
+          loaded.order.session_id,
+          idempotencyKey,
+          {
+            triggerKind: trigger.kind,
+            orderId: trigger.orderId,
+            traceId: opts.traceId,
+            idempotencyKey,
+          }
+        );
+        return { eventId: null, skipped: false };
+      }
     }
   }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
+import {
+  buildMenuRagEmbeddingIndex,
+  embedMenuQueryVector,
+} from "@/lib/denis/cognition/context/menu-rag-embeddings";
 import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
 import {
   isMenuRagEnabled,
@@ -102,5 +106,22 @@ describe("retrieveMenuEvidence", () => {
     });
 
     expect(evidence.productIds).toHaveLength(2);
+  });
+
+  it("uses embeddings for semantic query nešto lagano", async () => {
+    const catalog: MenuRagCatalog = {
+      "food-light": product("food-light", "Lagana salata"),
+      "food-heavy": product("food-heavy", "Teški burger"),
+    };
+    const bundle = await buildMenuRagEmbeddingIndex(catalog);
+    const queryVector = await embedMenuQueryVector("nešto lagano", bundle.space);
+    const evidence = retrieveMenuEvidence("nešto lagano", catalog, {
+      embeddings: bundle.index,
+      queryVector,
+      maxResults: 2,
+    });
+
+    expect(evidence.productIds[0]).toBe("food-light");
+    expect(evidence.snippet).toContain("[food-light] Lagana salata");
   });
 });

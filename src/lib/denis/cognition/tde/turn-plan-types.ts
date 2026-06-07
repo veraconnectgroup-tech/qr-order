@@ -33,6 +33,9 @@ export const CORE_BELIEF_KEYS = {
   venueSkipUpsell: "venue.skip_upsell",
   guestReturnVisit: "guest.return_visit",
   policyRequireConfirm: "policy.require_confirm",
+  waiterGapCount: "waiter.gap_count",
+  waiterCanConfirm: "waiter.can_confirm",
+  waiterPrimaryGap: "waiter.primary_gap",
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";

@@ -74,6 +74,7 @@ function buildFixtureState(
       lastAssistantMessage: null,
       pendingSlot: null,
       model: emptyConversationModel(),
+      obligation: null,
     },
     timeline,
     config: CONCIERGE_PLATFORM_DEFAULTS,

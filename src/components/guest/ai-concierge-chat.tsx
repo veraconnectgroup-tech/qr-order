@@ -95,6 +95,7 @@ import {
   useRotatingThinkingLabel,
 } from "@/lib/guest/denis-thinking-steps";
 import { transcriptEntriesToChatMessages } from "@/lib/guest/view-transcript-bootstrap";
+import type { TranscriptEntry } from "@/lib/denis/loop/view-types";
 import { useCart } from "@/hooks/use-cart";
 import { useDenisVoice } from "@/hooks/use-denis-voice";
 import { DenisVoiceMicButton } from "@/components/guest/denis-voice-mic-button";
@@ -117,7 +118,67 @@ type ChatMessage = {
   quickReplies?: string[];
   quickRepliesUsed?: boolean;
   recommendations?: ProductRecommendation[];
+  /** Client-only lines (recovery, PIN, onboarding) — not merged into view.transcript. */
+  ephemeral?: boolean;
 };
+
+type TurnExtras = {
+  quickReplies?: string[];
+  recommendations?: ProductRecommendation[];
+};
+
+function chatMessagesFromViewTranscript(
+  transcript: TranscriptEntry[],
+  options?: {
+    turnExtras?: TurnExtras | null;
+    usedQuickReplyIds?: ReadonlySet<string>;
+    ephemeral?: ChatMessage[];
+  }
+): ChatMessage[] {
+  const synced: ChatMessage[] = transcriptEntriesToChatMessages(transcript).map(
+    (entry) => ({
+      id: entry.id,
+      role: entry.role,
+      content: entry.content,
+    })
+  );
+
+  if (options?.turnExtras) {
+    for (let i = synced.length - 1; i >= 0; i--) {
+      if (synced[i].role !== "assistant") continue;
+      synced[i] = {
+        ...synced[i],
+        quickReplies: options.turnExtras.quickReplies?.length
+          ? options.turnExtras.quickReplies
+          : undefined,
+        recommendations: options.turnExtras.recommendations?.length
+          ? options.turnExtras.recommendations
+          : undefined,
+        quickRepliesUsed: options.usedQuickReplyIds?.has(synced[i].id),
+      };
+      break;
+    }
+  } else if (options?.usedQuickReplyIds?.size) {
+    for (let i = synced.length - 1; i >= 0; i--) {
+      if (
+        synced[i].role === "assistant" &&
+        options.usedQuickReplyIds.has(synced[i].id)
+      ) {
+        synced[i] = { ...synced[i], quickRepliesUsed: true };
+        break;
+      }
+    }
+  }
+
+  const transcriptKeys = new Set(
+    synced.map((message) => `${message.role}:${message.content}`)
+  );
+  const keptEphemeral = (options?.ephemeral ?? []).filter(
+    (message) => !transcriptKeys.has(`${message.role}:${message.content}`)
+  );
+
+  return [...synced, ...keptEphemeral];
+}
 
 type ValidatedCartAction = {
   productId: string;
@@ -208,27 +269,6 @@ function isStaleAiSessionResponse(
 
 function nextId() {
   return crypto.randomUUID();
-}
-
-function parseStoredAssistantContent(content: string): {
-  text: string;
-  recommendations?: ProductRecommendation[];
-} {
-  try {
-    const parsed = JSON.parse(content) as {
-      message?: string;
-      recommendations?: ProductRecommendation[];
-    };
-    if (typeof parsed.message === "string") {
-      return {
-        text: parsed.message,
-        recommendations: parsed.recommendations,
-      };
-    }
-  } catch {
-    // Plain text fallback
-  }
-  return { text: content };
 }
 
 function formatDenisPinMessage(
@@ -465,11 +505,6 @@ export type AiConciergeChatProps = {
     allergies: string[],
     sheetIds: AiSheetAllergyId[]
   ) => void;
-  /** Manual guest cart snapshot for Denis conflict detection (M11). */
-  getManualCartSnapshot?: () =>
-    | import("@/lib/guest/manual-cart-snapshot").GuestManualCartSnapshot
-    | null
-    | undefined;
   deviceFingerprint?: string;
   /** Premium — location `surfaces.voiceEnabled` (M18). */
   voiceEnabled?: boolean;
@@ -480,8 +515,8 @@ export type AiConciergeChatProps = {
     markState: "idle" | "listen" | "think";
     situation?: SceneSituation | null;
   } | null;
-  /** ADR-019 Phase B.1 — hydrate desk from view.transcript (order page). */
-  bootstrapTranscript?: import("@/lib/denis/loop/view-types").TranscriptEntry[] | null;
+  /** ADR-019 Phase F — desk reads view.transcript only (no ai_sessions merge). */
+  bootstrapTranscript?: TranscriptEntry[] | null;
   onSceneRefresh?: () => void;
   /** M28 — Denis payment handoff opens session bill sheet. */
   onOpenPaymentSheet?: () => void;
@@ -514,7 +549,6 @@ export function AiConciergeChat({
   welcomeBackMessage: _welcomeBackMessage,
   knownAllergySelection,
   onSaveAllergies,
-  getManualCartSnapshot,
   deviceFingerprint,
   voiceEnabled = false,
   voiceTtsEnabled = true,
@@ -549,9 +583,9 @@ export function AiConciergeChat({
   const overlayRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const chatInitKeyRef = useRef<string | null>(null);
-  const historyLoadedForRef = useRef<string | null>(null);
   const approvalPollCleanupRef = useRef<(() => void) | null>(null);
+  const pendingTurnExtrasRef = useRef<TurnExtras | null>(null);
+  const usedQuickReplyIdsRef = useRef<Set<string>>(new Set());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
@@ -631,6 +665,7 @@ export function AiConciergeChat({
             id: nextId(),
             role: "assistant",
             content: formatDenisPinMessage(tPin, tablePin),
+            ephemeral: true,
           },
         ]);
       };
@@ -663,6 +698,7 @@ export function AiConciergeChat({
                     "session.approvalRejected",
                     chatLanguage
                   ),
+              ephemeral: true,
             },
           ]);
         },
@@ -674,194 +710,60 @@ export function AiConciergeChat({
   useEffect(() => {
     if (!open || isDemo) return;
 
-    const initKey = `${locationId}:${token}`;
     setPhase("chat");
 
-    if (chatInitKeyRef.current === initKey && messages.length > 0) {
-      return;
+    const hasKnownAllergies = resolvedAllergySelection.length > 0;
+    if (hasKnownAllergies) {
+      const sheetIds = resolvedAllergySelection;
+      preferencesRef.current = apiPreferencesFromSheet({
+        allergies: sheetIds,
+        mood: null,
+      });
+      allergySelectionRef.current = sheetIds;
+    } else {
+      preferencesRef.current = { allergies: [], mood: "" };
+      allergySelectionRef.current = [];
     }
 
-    const viewBootstrap =
-      bootstrapTranscript && bootstrapTranscript.length > 0
-        ? transcriptEntriesToChatMessages(bootstrapTranscript)
-        : null;
-
-    if (messages.length === 0 && !viewBootstrap) {
-      setMessages([
-        {
-          id: nextId(),
-          role: "assistant",
-          content: venueGreeting,
-        },
-      ]);
+    if (!bootstrapTranscript?.length) {
+      setMessages((prev) => {
+        if (prev.length > 0) return prev;
+        return [
+          {
+            id: nextId(),
+            role: "assistant",
+            content: venueGreeting,
+          },
+        ];
+      });
       setChatLanguage(resolveAiPromptLanguage(menuLocale));
-    }
-
-    let cancelled = false;
-
-    async function bootstrapChat() {
-      if (viewBootstrap?.length) {
-        setMessages(
-          viewBootstrap.map((entry) => ({
-            id: entry.id,
-            role: entry.role,
-            content: entry.content,
-          }))
-        );
-        setPhase("chat");
-        chatInitKeyRef.current = initKey;
-        return;
-      }
-
-      const storedSessionId =
-        aiSessionId ??
-        readAiSessionIdForGuest(
-          locationId,
-          token,
-          aiLegacySessionTokens(tableId, sessionToken)
-        );
-
-      if (
-        storedSessionId &&
-        historyLoadedForRef.current === storedSessionId &&
-        messages.length > 0
-      ) {
-        chatInitKeyRef.current = initKey;
-        setPhase("chat");
-        return;
-      }
-
-      const hasKnownAllergies = resolvedAllergySelection.length > 0;
-      if (hasKnownAllergies) {
-        const sheetIds = resolvedAllergySelection;
-        preferencesRef.current = apiPreferencesFromSheet({
-          allergies: sheetIds,
-          mood: null,
-        });
-        allergySelectionRef.current = sheetIds;
-      } else {
-        preferencesRef.current = { allergies: [], mood: "" };
-        allergySelectionRef.current = [];
-      }
-
-      if (storedSessionId) {
-        const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
-        if (aiContextToken) {
-          try {
-            const params = new URLSearchParams({
-              sessionId: storedSessionId,
-              locationId,
-              tableId,
-              sessionToken: aiContextToken,
-            });
-            const controller = new AbortController();
-            const historyTimeoutId = window.setTimeout(
-              () => controller.abort(),
-              5_000
-            );
-            let res: Response;
-            try {
-              res = await fetch(`/api/ai/session?${params}`, {
-                signal: controller.signal,
-              });
-            } finally {
-              window.clearTimeout(historyTimeoutId);
-            }
-            if (res.ok) {
-              const json = (await res.json()) as {
-                data?: {
-                  messages: Array<{
-                    role: "user" | "assistant";
-                    content: string;
-                  }>;
-                  language?: string;
-                };
-              };
-              const history = json.data?.messages ?? [];
-              if (!cancelled && history.length > 0) {
-                const hydrated: ChatMessage[] = history.map((entry) => {
-                  if (entry.role === "assistant") {
-                    const parsed = parseStoredAssistantContent(entry.content);
-                    return {
-                      id: nextId(),
-                      role: "assistant" as const,
-                      content: parsed.text,
-                      recommendations: parsed.recommendations,
-                    };
-                  }
-                  return {
-                    id: nextId(),
-                    role: "user" as const,
-                    content: entry.content,
-                  };
-                });
-                setMessages(hydrated);
-                setPhase("chat");
-                setChatLanguage(
-                  resolveAiPromptLanguage(json.data?.language ?? menuLocale)
-                );
-                setAiSessionId(storedSessionId);
-                historyLoadedForRef.current = storedSessionId;
-                chatInitKeyRef.current = initKey;
-                return;
-              }
-            } else if (
-              isStaleAiSessionResponse(res.status, undefined, storedSessionId)
-            ) {
-              void completeAiSession({
-                sessionId: storedSessionId,
-                locationId,
-                tableId,
-                sessionToken: aiContextToken,
-              });
-              clearAiSessionIdForGuest(
-                locationId,
-                token,
-                aiLegacySessionTokens(tableId, sessionToken)
-              );
-              if (!cancelled) {
-                setAiSessionId(null);
-                historyLoadedForRef.current = null;
-              }
-            }
-          } catch {
-            // Fall through to greeting for new session UX
-          }
-        }
-      }
-
-      if (cancelled) {
-        return;
-      }
-
-      setPhase("chat");
-      setAiSessionId(null);
-      chatInitKeyRef.current = initKey;
     }
 
     setIsTyping(false);
     setInput("");
     setAddedIds(new Set());
-    void bootstrapChat();
-    return () => {
-      cancelled = true;
-    };
   }, [
     open,
     isDemo,
-    locationId,
-    token,
-    sessionToken,
-    tableId,
-    tUI,
     venueGreeting,
     menuLocale,
     resolvedAllergySelection,
-    defaultLanguage,
-    aiSessionId,
-    messages.length,
     bootstrapTranscript,
   ]);
+
+  useEffect(() => {
+    if (!open || isDemo || phase !== "chat") return;
+    if (!bootstrapTranscript?.length) return;
+
+    setMessages((prev) =>
+      chatMessagesFromViewTranscript(bootstrapTranscript, {
+        turnExtras: pendingTurnExtrasRef.current,
+        usedQuickReplyIds: usedQuickReplyIdsRef.current,
+        ephemeral: prev.filter((message) => message.ephemeral),
+      })
+    );
+    pendingTurnExtrasRef.current = null;
+  }, [bootstrapTranscript, open, isDemo, phase]);
 
   const CHAT_FETCH_TIMEOUT_MS = 58_000;
   const recoveryScopeKey = `${locationId}:${token}:${sessionToken ?? "anon"}`;
@@ -1060,7 +962,6 @@ export function AiConciergeChat({
             includeOrderContext: true,
             allowOrdering: !orderingDisabled,
             browsingContext: resolveScrollContext?.() ?? undefined,
-            manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
             deviceFingerprint: resolvedDeviceFingerprint,
             deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
             surface: inputSurface,
@@ -1160,7 +1061,6 @@ export function AiConciergeChat({
       tChat,
       resolveScrollContext,
       orderingDisabled,
-      getManualCartSnapshot,
       resolvedDeviceFingerprint,
       recoveryScopeKey,
       buildRecovery,
@@ -1205,10 +1105,6 @@ export function AiConciergeChat({
       if (!trimmed || isTyping || phase !== "chat") return;
       const inputSurface = options?.inputSurface ?? "chat";
 
-      setMessages((prev) => [
-        ...prev,
-        { id: nextId(), role: "user", content: trimmed },
-      ]);
       setPendingThinkingMessage(trimmed);
       setServerThinkingSteps([]);
       setIsTyping(true);
@@ -1237,7 +1133,6 @@ export function AiConciergeChat({
         includeOrderContext: true,
         allowOrdering: !orderingDisabled,
         browsingContext: resolveScrollContext?.() ?? undefined,
-        manualCartSnapshot: getManualCartSnapshot?.() ?? undefined,
         deviceFingerprint: resolvedDeviceFingerprint,
         deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
         surface: inputSurface,
@@ -1259,6 +1154,7 @@ export function AiConciergeChat({
               recommendations: demo.recommendations.length
                 ? demo.recommendations
                 : undefined,
+              ephemeral: true,
             },
           ]);
           return;
@@ -1278,6 +1174,7 @@ export function AiConciergeChat({
               role: "assistant",
               content: localAnswer.message,
               quickReplies: localAnswer.quickReplies,
+              ephemeral: true,
             },
           ]);
           void fireRecoveryAction(localAnswer.action);
@@ -1298,20 +1195,12 @@ export function AiConciergeChat({
           onOpenPaymentSheet?.();
         }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            content: data.message,
-            quickReplies: data.quickReplies?.length
-              ? data.quickReplies
-              : undefined,
-            recommendations: data.recommendations?.length
-              ? data.recommendations
-              : undefined,
-          },
-        ]);
+        pendingTurnExtrasRef.current = {
+          quickReplies: data.quickReplies?.length ? data.quickReplies : undefined,
+          recommendations: data.recommendations?.length
+            ? data.recommendations
+            : undefined,
+        };
 
         if (
           inputSurface === "voice" &&
@@ -1337,6 +1226,7 @@ export function AiConciergeChat({
             role: "assistant",
             content: recovery.message,
             quickReplies: recovery.quickReplies,
+            ephemeral: true,
           },
         ]);
         void fireRecoveryAction(recovery.action);
@@ -1379,6 +1269,7 @@ export function AiConciergeChat({
 
   const handleQuickReply = useCallback(
     (messageId: string, label: string) => {
+      usedQuickReplyIdsRef.current.add(messageId);
       setMessages((prev) =>
         prev.map((message) =>
           message.id === messageId
@@ -1484,6 +1375,7 @@ export function AiConciergeChat({
                 id: nextId(),
                 role: "user",
                 content: labels,
+                ephemeral: true,
               },
               {
                 id: nextId(),
@@ -1494,6 +1386,7 @@ export function AiConciergeChat({
                   mode: "single",
                   confirmed: false,
                 },
+                ephemeral: true,
               }
             )
         );
@@ -1528,11 +1421,13 @@ export function AiConciergeChat({
                 id: nextId(),
                 role: "user",
                 content: label,
+                ephemeral: true,
               },
               {
                 id: nextId(),
                 role: "assistant",
                 content: tUI("ai.chat.welcome"),
+                ephemeral: true,
               }
             )
         );

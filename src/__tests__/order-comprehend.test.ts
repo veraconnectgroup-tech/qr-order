@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
-import { applyPostLlmOrdering } from "@/lib/ai/ordering/kernel-ordering-bridge";
+import { applyOrderComprehend } from "@/lib/denis/cognition/order";
 import type { AiStructuredResponse } from "@/lib/ai/types";
 
 const catalog: AiCatalog = {
@@ -28,8 +28,8 @@ const catalog: AiCatalog = {
   cachedAt: new Date().toISOString(),
 };
 
-describe("kernel-ordering-bridge F8-2", () => {
-  it("applies proposed items from structured response", () => {
+describe("applyOrderComprehend (ADR-034-A.1)", () => {
+  it("applies proposed items without gap patching (waiter owns gaps)", () => {
     const structured: AiStructuredResponse = {
       intent: "order",
       recommendations: [],
@@ -47,7 +47,7 @@ describe("kernel-ordering-bridge F8-2", () => {
       message: "Added espresso.",
     };
 
-    const result = applyPostLlmOrdering({
+    const result = applyOrderComprehend({
       userMessage: "one espresso please",
       allowOrdering: true,
       orderDraft: initDraftFromStorage(null),
@@ -60,5 +60,6 @@ describe("kernel-ordering-bridge F8-2", () => {
     expect(result.cartActions.length).toBeGreaterThan(0);
     expect(result.draft.items.length).toBe(1);
     expect(result.intent).toBe("order");
+    expect(result.assistantMessage).not.toMatch(/Pilsner|Weizen/i);
   });
 });

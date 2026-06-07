@@ -50,6 +50,9 @@ function mergeSetup(
     orders: patch.orders ?? base.orders,
     billSettled: patch.billSettled ?? base.billSettled,
     operatingMode: patch.operatingMode ?? base.operatingMode,
+    pendingSlot: patch.pendingSlot ?? base.pendingSlot,
+    lastGuestOrderMessage:
+      patch.lastGuestOrderMessage ?? base.lastGuestOrderMessage,
   };
 }
 
@@ -104,7 +107,27 @@ function buildState(
       dismissedNudges: [],
       lastAssistantMessage: setup.lastAssistantMessage ?? null,
       pendingSlot: setup.pendingSlot ?? null,
-      model: emptyConversationModel(),
+      model: setup.lastGuestOrderMessage
+        ? {
+            ...emptyConversationModel(),
+            transcript: [
+              {
+                id: "guest-order-1",
+                role: "guest" as const,
+                text: setup.lastGuestOrderMessage,
+                at: "2026-05-29T12:00:00.000Z",
+              },
+            ],
+            thread: {
+              guestTurns: 1,
+              denisTurns: 0,
+              lastGuestText: setup.lastGuestOrderMessage,
+              lastDenisText: null,
+              denisAskedQuestion: false,
+            },
+          }
+        : emptyConversationModel(),
+      obligation: null,
     },
     timeline: [],
     config,

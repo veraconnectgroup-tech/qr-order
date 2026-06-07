@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clearedDraftAfterSubmit } from "@/lib/ai/ordering/order-executor";
-import { emitDenisSessionConverted } from "@/lib/webhooks/emit-denis-session-events";
+import {
+  emitDenisSessionConverted,
+  emitDenisSessionUpdated,
+} from "@/lib/webhooks/emit-denis-session-events";
 import { logger } from "@/lib/logger";
 
 /** Clear AI draft + link order after ACL submit (act path + unified turn submit). */
@@ -67,6 +70,20 @@ export async function persistAiSessionAfterOrderSubmit(
     await emitDenisSessionConverted(admin, {
       aiSessionId: input.aiSessionId,
       orderId: input.orderId,
+    });
+  }
+
+  const { data: tableSession } = await admin
+    .from("table_sessions")
+    .select("id")
+    .eq("denis_shared_ai_session_id", input.aiSessionId)
+    .maybeSingle();
+
+  const tableSessionId = (tableSession as { id: string } | null)?.id;
+  if (tableSessionId) {
+    await emitDenisSessionUpdated(admin, {
+      tableSessionId,
+      updateReason: "order_submitted",
     });
   }
 }

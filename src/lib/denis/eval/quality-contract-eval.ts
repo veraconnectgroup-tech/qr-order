@@ -4,6 +4,7 @@ import { DENIS_PILOT_SR_SCENARIOS } from "@/lib/denis/eval/fixtures/pilot-sr-sce
 import { runDenisEvalSuite } from "@/lib/denis/eval/run-fixtures";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import { runWaiterParitySuite } from "@/lib/denis/eval/run-waiter-parity";
+import { runTimelineObligationSuite } from "@/lib/denis/eval/run-timeline-obligation-fixture";
 import {
   GOLDEN_ASSISTANT_LINES,
   REFUSAL_ASSISTANT_LINES,
@@ -20,6 +21,8 @@ export type QualityContractMetrics = {
   evalPassRate: number;
   pilotSrPassRate: number;
   waiterParityPassRate: number;
+  /** iota timeline obligation replay — blocks manifest promote when regressed (MR-8). */
+  timelineObligationPassRate: number;
   /** Waiter-parity sim — informational; sim exercises LLM paths by design. */
   simLlmInvocationRate: number;
   /** Live timeline aggregate when available — enforced against llmInvocationMax. */
@@ -93,12 +96,19 @@ export function runQualityContractEval(
   const core = runDenisEvalSuite();
   const pilotSrPassRate = measurePilotSrPassRate();
   const waiterParity = runWaiterParitySuite();
+  const timelineObligation = runTimelineObligationSuite();
   const refusal = measureRefusalDetection();
+
+  const timelineObligationPassRate = timelineObligation.scenarioCount
+    ? timelineObligation.results.filter((row) => row.passed).length /
+      timelineObligation.scenarioCount
+    : 1;
 
   const metrics: QualityContractMetrics = {
     evalPassRate: core.scenarioCount ? core.passed / core.scenarioCount : 0,
     pilotSrPassRate,
     waiterParityPassRate: waiterParity.passRate,
+    timelineObligationPassRate,
     simLlmInvocationRate: measureLlmInvocationFromWaiterParity(waiterParity),
     liveLlmInvocationRate: options?.liveLlmInvocationRate,
     refusalDetectionRate: refusal.refusalDetectionRate,
@@ -127,7 +137,8 @@ export function evaluateQualityContract(
   const evalPassRate = Math.min(
     metrics.evalPassRate,
     metrics.pilotSrPassRate,
-    metrics.waiterParityPassRate
+    metrics.waiterParityPassRate,
+    metrics.timelineObligationPassRate
   );
   if (evalPassRate < effective.evalPassMin) {
     violations.push(

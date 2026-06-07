@@ -19,3 +19,20 @@ export function drinkLine(
 }
 
 export const BEER_SERVE_OPTIONS = ["0.3L", "0.5L"];
+
+export function foodLine(
+  productId: string,
+  productName: string,
+  quantity = 1
+): DenisCartLine {
+  return {
+    productId,
+    productName,
+    quantity,
+    serveSize: null,
+    modifierIds: [],
+    notes: "",
+    lineTotal: 15,
+    menuSection: "food",
+  };
+}

@@ -4,7 +4,9 @@ import {
   computeConversionRate,
   computeLlmInvocationRate,
   computeTipRate,
+  computeWaiterGapRate,
   countEscalationsFromTimeline,
+  countSessionsWithWaiterGap,
   decimalToCents,
   topLanguagesFromSessions,
 } from "@/lib/operator/projections/helpers";
@@ -119,6 +121,7 @@ export async function projectLocationSummary(
   );
 
   let escalationsCount = 0;
+  let sessionsWithGap = 0;
   if (aiSessionIds.length) {
     const { data: timelineRows } = await admin
       .from("denis_timeline")
@@ -126,9 +129,13 @@ export async function projectLocationSummary(
       .in("ai_session_id", aiSessionIds)
       .gte("created_at", range.from)
       .lte("created_at", range.to);
-    escalationsCount = countEscalationsFromTimeline(
-      (timelineRows ?? []) as Array<{ event_type: string; payload: unknown }>
-    );
+    const timelineEvents = (timelineRows ?? []) as Array<{
+      event_type: string;
+      payload: unknown;
+      ai_session_id: string;
+    }>;
+    escalationsCount = countEscalationsFromTimeline(timelineEvents);
+    sessionsWithGap = countSessionsWithWaiterGap(timelineEvents);
   }
 
   const { count: openWaiterCalls } = await admin
@@ -170,6 +177,10 @@ export async function projectLocationSummary(
       llmInvocationRate: computeLlmInvocationRate({
         sessionsWithActivity: sessionsWithActivity.length,
         sessionsWithLlm: sessionsWithLlm.length,
+      }),
+      waiterGapRate: computeWaiterGapRate({
+        sessionsWithActivity: sessionsWithActivity.length,
+        sessionsWithGap,
       }),
     },
     ops: {

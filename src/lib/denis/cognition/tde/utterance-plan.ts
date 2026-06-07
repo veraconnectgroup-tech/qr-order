@@ -36,6 +36,12 @@ function intentForTurnPlan(
       if (turnPlan.templateKey === "status.no_order") {
         return { intent: "status_no_order", templateKey: "status.no_order" };
       }
+      if (turnPlan.templateKey?.startsWith("waiter.gap_clarify")) {
+        return {
+          intent: "slot_clarify",
+          templateKey: turnPlan.templateKey,
+        };
+      }
       if (turnPlan.templateKey?.startsWith("proactive.")) {
         return {
           intent: "generic_nudge",

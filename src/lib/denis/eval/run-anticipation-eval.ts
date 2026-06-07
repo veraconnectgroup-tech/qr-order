@@ -81,6 +81,7 @@ function buildState(setup: AnticipationSetup): TableSessionState {
       lastAssistantMessage: null,
       pendingSlot: setup.pendingSlot ?? null,
       model: emptyConversationModel(),
+      obligation: null,
     },
     timeline: [],
     config,

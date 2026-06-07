@@ -9,7 +9,11 @@ Serialized **Table Session Actor** — one FIFO queue + lock per `table_session_
 | `view-version.ts` | Redis bump for SSE `/api/denis/view/stream` |
 | `redis-keys.ts` | Key naming |
 
-**Requires:** `UPSTASH_REDIS_REST_URL` + token. Without Redis, guest signals run inline (legacy path).
+**Eval:** in-memory FIFO simulation lives in `eval/simulate-actor-fifo-queue.ts` (M2 two-phone race).
+
+**Rollout:** `rollout.tableSessionActorEnabled` — on for `table_os_pilot` patch only; requires Redis.
+
+**Requires:** `UPSTASH_REDIS_REST_URL` + token. Without Redis or rollout flag, guest signals run inline (legacy path).
 
 **Flow:**
 

@@ -54,6 +54,9 @@ export const KDS_REALTIME_FALLBACK_POLL_MS = 10_000;
 /** Backup poll while Realtime is connected (catches missed events). */
 export const REALTIME_BACKUP_POLL_MS = 10_000;
 
+/** Guest Denis view poll — fallback only when SSE disconnected (ADR-019-E / F6). */
+export const GUEST_VIEW_FALLBACK_POLL_MS = 30_000;
+
 /** @deprecated Use REALTIME_FALLBACK_POLL_MS */
 export const DASHBOARD_POLL_INTERVAL_MS = REALTIME_FALLBACK_POLL_MS;
 

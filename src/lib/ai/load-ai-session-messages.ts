@@ -38,7 +38,7 @@ export async function loadAiSessionHistory(input: {
 
   const { data: row, error } = await admin
     .from("ai_sessions")
-    .select("id, location_id, table_id, messages, language, guest_preferences, status")
+    .select("id, location_id, table_id, language, guest_preferences, status")
     .eq("id", input.sessionId)
     .maybeSingle();
 
@@ -71,22 +71,8 @@ export async function loadAiSessionHistory(input: {
     return { error: "Session is no longer active.", status: 410 };
   }
 
-  const rawMessages = Array.isArray(session.messages)
-    ? (session.messages as AiSessionHistoryMessage[])
-    : [];
-
   const timeline = await loadDenisTimeline(admin, session.id);
-  const timelineMessages = timelineToStoredMessages(timeline);
-
-  const messages =
-    timelineMessages.length > 0
-      ? timelineMessages
-      : rawMessages.filter(
-          (entry) =>
-            (entry.role === "user" || entry.role === "assistant") &&
-            typeof entry.content === "string" &&
-            entry.content.trim().length > 0
-        );
+  const messages = timelineToStoredMessages(timeline);
 
   const prefs =
     session.guest_preferences &&

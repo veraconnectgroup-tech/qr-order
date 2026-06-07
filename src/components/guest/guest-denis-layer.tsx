@@ -5,18 +5,25 @@ import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { useDenisView } from "@/hooks/use-denis-view";
+import type { ProductRecommendation } from "@/components/guest/product-recommendation-card";
+import type { MenuCategory } from "@/components/guest/menu-grid";
 import {
   parseSceneChipSelections,
   parseSceneHandoffChip,
   runGuestDenisSceneTurn,
+  type GuestDenisTurnResult,
 } from "@/lib/guest/denis-scene-turn";
 import { hapticClick } from "@/lib/haptics";
-import { buildManualCartSnapshot, manualCartRevision } from "@/lib/guest/manual-cart-snapshot";
 import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
-import { useCart } from "@/hooks/use-cart";
 import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
 import type { InPersonPaymentLocation } from "@/lib/constants";
+import type { TableSessionView } from "@/lib/denis/loop/view-types";
+import type { Scene } from "@/lib/scene/types";
+import type { AllergenId } from "@/lib/allergens";
+import type { AiSheetAllergyId, AiSheetSelections } from "@/lib/ai/guest-sheet-preferences";
+import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
+import type { MenuSection } from "@/lib/menu-section";
 
 const DenisGuestDock = dynamic(
   () =>
@@ -50,9 +57,39 @@ const GuestSessionBillSheet = dynamic(
   { ssr: false }
 );
 
+export type GuestDenisControlledView = {
+  view: TableSessionView | null;
+  scene: Scene | null;
+  loading: boolean;
+  refresh: () => void;
+};
+
+export type GuestDenisMenuChatProps = {
+  isDemo?: boolean;
+  menuCategories?: MenuCategory[];
+  menuSectionByProductId?: Map<string, MenuSection>;
+  productTaxRateById?: Map<string, number | null>;
+  scrollContext?: () => string | null;
+  guestProfile?: GuestMemoryProfile;
+  isReturning?: boolean;
+  onAddToCart?: (rec: ProductRecommendation) => void;
+  customizableProductIds?: Set<string>;
+  onOpenProductDetail?: (productId: string) => void;
+  onRecommendations?: (payload: {
+    recommendations: ProductRecommendation[];
+    sessionId: string | null;
+    preferences: { allergies: string[]; mood: string };
+    allergenIds: AllergenId[];
+  }) => void;
+  onSaveAllergies?: (
+    allergies: string[],
+    sheetIds: AiSheetAllergyId[]
+  ) => void;
+};
+
 /**
  * Session-scoped Denis — dock + desk sheet on any guest surface (order, cart, …).
- * Scene-first: chips and situation, chat only via "Pitaj Denisa".
+ * F4 view-only: render from GET /api/denis/view; cart sync via sense signal only.
  */
 export function GuestDenisLayer({
   enabled,
@@ -64,7 +101,6 @@ export function GuestDenisLayer({
   currency,
   taxPercent = 0,
   orderingDisabled = false,
-  fastPoll = true,
   voiceEnabled = false,
   voiceTtsEnabled = true,
   sceneRefreshBump = 0,
@@ -75,6 +111,17 @@ export function GuestDenisLayer({
   paymentAtBarEnabled = false,
   paymentCardAtTableEnabled = false,
   inPersonPaymentLocation = "bar" as InPersonPaymentLocation,
+  controlledView,
+  tableName,
+  venueName,
+  dockSubtitle,
+  orderMoreChipAction = "navigate",
+  getBrowsingContext,
+  onChatOpenChange,
+  onSceneTurnResult,
+  onSceneChipSelections,
+  onInlineAddProduct,
+  menuChat,
 }: {
   enabled: boolean;
   slug: string;
@@ -85,7 +132,6 @@ export function GuestDenisLayer({
   currency: string;
   taxPercent?: number;
   orderingDisabled?: boolean;
-  fastPoll?: boolean;
   voiceEnabled?: boolean;
   voiceTtsEnabled?: boolean;
   /** Increment to force scene reload (e.g. order status change). */
@@ -97,11 +143,21 @@ export function GuestDenisLayer({
   paymentAtBarEnabled?: boolean;
   paymentCardAtTableEnabled?: boolean;
   inPersonPaymentLocation?: InPersonPaymentLocation;
+  /** Parent-owned view (menu surface) — avoids duplicate fetch. */
+  controlledView?: GuestDenisControlledView;
+  tableName?: string;
+  venueName?: string;
+  dockSubtitle?: string;
+  orderMoreChipAction?: "navigate" | "scroll";
+  getBrowsingContext?: () => string | null;
+  onChatOpenChange?: (open: boolean) => void;
+  onSceneTurnResult?: (result: GuestDenisTurnResult) => void;
+  onSceneChipSelections?: (selections: AiSheetSelections) => void;
+  onInlineAddProduct?: (productId: string) => void;
+  menuChat?: GuestDenisMenuChatProps;
 }) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const language = isEnglish ? "en" : menuLocale;
-  const cartItems = useCart((s) => s.items);
-  const cartBump = useCart((s) => s.cartBump);
   const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
@@ -111,25 +167,35 @@ export function GuestDenisLayer({
 
   const refreshKey = sceneRefreshKey + sceneRefreshBump;
 
-  const { scene, view, refresh: refreshGuestSceneView } = useDenisView({
+  const internalView = useDenisView({
     tableToken: token,
     sessionToken,
-    enabled: enabled && !!sessionToken,
+    enabled: enabled && !!sessionToken && !controlledView,
     refreshKey,
-    fastPoll,
   });
+
+  const view = controlledView?.view ?? internalView.view;
+  const scene = controlledView?.scene ?? internalView.scene;
+  const sceneLoading = controlledView?.loading ?? internalView.loading;
+  const refreshGuestSceneView =
+    controlledView?.refresh ?? internalView.refresh;
 
   const handleOpenDenisDesk = useCallback(() => {
     hapticClick();
     setAiChatOpen(true);
-  }, []);
+    onChatOpenChange?.(true);
+  }, [onChatOpenChange]);
 
-  const handleAiChatOpenChange = useCallback((open: boolean) => {
-    setAiChatOpen(open);
-    if (!open) {
-      setSceneRefreshKey((key) => key + 1);
-    }
-  }, []);
+  const handleAiChatOpenChange = useCallback(
+    (open: boolean) => {
+      setAiChatOpen(open);
+      onChatOpenChange?.(open);
+      if (!open) {
+        setSceneRefreshKey((key) => key + 1);
+      }
+    },
+    [onChatOpenChange]
+  );
 
   const runSceneChipTurn = useCallback(
     async (input: {
@@ -142,16 +208,18 @@ export function GuestDenisLayer({
 
       setSceneTurnBusy(true);
       try {
-        await runGuestDenisSceneTurn({
+        const result = await runGuestDenisSceneTurn({
           locationId,
           tableId,
           tableToken: token,
           sessionToken,
           message: input.message ?? input.label,
           language,
+          browsingContext: getBrowsingContext?.() ?? undefined,
           selections: input.selections ?? undefined,
           allowOrdering: !orderingDisabled,
         });
+        onSceneTurnResult?.(result);
         setSceneRefreshKey((key) => key + 1);
         await refreshGuestSceneView();
       } catch {
@@ -167,7 +235,9 @@ export function GuestDenisLayer({
       tableId,
       token,
       language,
+      getBrowsingContext,
       orderingDisabled,
+      onSceneTurnResult,
       refreshGuestSceneView,
       tUI,
     ]
@@ -178,7 +248,11 @@ export function GuestDenisLayer({
       hapticClick();
 
       if (chipId === TABLE_ACTION_CHIP_IDS.orderMore) {
-        window.location.href = `/${slug}/${token}`;
+        if (orderMoreChipAction === "scroll") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          window.location.href = `/${slug}/${token}`;
+        }
         return;
       }
 
@@ -218,7 +292,7 @@ export function GuestDenisLayer({
         }
         void (async () => {
           try {
-            await runGuestDenisSceneTurn({
+            const result = await runGuestDenisSceneTurn({
               locationId,
               tableId,
               tableToken: token,
@@ -228,11 +302,11 @@ export function GuestDenisLayer({
               structuredIntent: handoffChip.structuredIntent,
               handoffPaymentMethod: handoffChip.handoffPaymentMethod,
               allowOrdering: !orderingDisabled,
-            }).then((result) => {
-              if (result.openPaymentSheet) {
-                setBillSheetOpen(true);
-              }
             });
+            if (result.openPaymentSheet) {
+              setBillSheetOpen(true);
+            }
+            onSceneTurnResult?.(result);
             setSceneRefreshKey((key) => key + 1);
             await refreshGuestSceneView();
           } catch {
@@ -253,19 +327,42 @@ export function GuestDenisLayer({
 
       const selections = parseSceneChipSelections(chipId);
       if (selections) {
+        onSceneChipSelections?.(selections);
         void runSceneChipTurn({ chipId, label, selections });
         return;
       }
 
       void runSceneChipTurn({ chipId, label });
     },
-    [sessionToken, slug, token, tUI, refreshGuestSceneView, runSceneChipTurn, locationId, tableId, language, orderingDisabled]
+    [
+      orderMoreChipAction,
+      sessionToken,
+      slug,
+      token,
+      tUI,
+      refreshGuestSceneView,
+      runSceneChipTurn,
+      onSceneChipSelections,
+      onSceneTurnResult,
+      locationId,
+      tableId,
+      language,
+      orderingDisabled,
+    ]
   );
 
-  const handleSceneInlineAdd = useCallback(() => {
-    hapticClick();
-    setAiChatOpen(true);
-  }, []);
+  const handleSceneInlineAdd = useCallback(
+    (productId: string) => {
+      hapticClick();
+      if (onInlineAddProduct) {
+        onInlineAddProduct(productId);
+        return;
+      }
+      setAiChatOpen(true);
+      onChatOpenChange?.(true);
+    },
+    [onInlineAddProduct, onChatOpenChange]
+  );
 
   const handleOrderPress = useCallback(
     (orderId: string) => {
@@ -287,30 +384,35 @@ export function GuestDenisLayer({
   return (
     <>
       <AiConciergeChat
-          open={aiChatOpen}
-          onOpenChange={handleAiChatOpenChange}
-          onSceneRefresh={() => void refreshGuestSceneView()}
-          onOpenPaymentSheet={() => setBillSheetOpen(true)}
-          sceneChrome={scene?.chrome ?? null}
-          slug={slug}
-          token={token}
-          locationId={locationId}
-          tableId={tableId}
-          sessionToken={sessionToken}
-          currency={currency}
-          taxPercent={taxPercent}
-          orderingDisabled={orderingDisabled}
-          voiceEnabled={voiceEnabled}
-          voiceTtsEnabled={voiceTtsEnabled}
-          deviceFingerprint={deviceFingerprint}
-          bootstrapTranscript={view?.transcript}
-          getManualCartSnapshot={() => {
-          if (cartItems.length === 0) return undefined;
-          return buildManualCartSnapshot(
-            cartItems,
-            manualCartRevision(cartItems, cartBump)
-          );
-        }}
+        open={aiChatOpen}
+        onOpenChange={handleAiChatOpenChange}
+        onSceneRefresh={() => void refreshGuestSceneView()}
+        onOpenPaymentSheet={() => setBillSheetOpen(true)}
+        sceneChrome={scene?.chrome ?? null}
+        slug={slug}
+        token={token}
+        locationId={locationId}
+        tableId={tableId}
+        sessionToken={sessionToken}
+        currency={currency}
+        taxPercent={taxPercent}
+        orderingDisabled={orderingDisabled}
+        voiceEnabled={voiceEnabled}
+        voiceTtsEnabled={voiceTtsEnabled}
+        deviceFingerprint={deviceFingerprint}
+        bootstrapTranscript={view?.transcript}
+        isDemo={menuChat?.isDemo}
+        menuCategories={menuChat?.menuCategories}
+        menuSectionByProductId={menuChat?.menuSectionByProductId}
+        productTaxRateById={menuChat?.productTaxRateById}
+        scrollContext={menuChat?.scrollContext ?? getBrowsingContext}
+        guestProfile={menuChat?.guestProfile}
+        isReturning={menuChat?.isReturning}
+        onAddToCart={menuChat?.onAddToCart}
+        customizableProductIds={menuChat?.customizableProductIds}
+        onOpenProductDetail={menuChat?.onOpenProductDetail}
+        onRecommendations={menuChat?.onRecommendations}
+        onSaveAllergies={menuChat?.onSaveAllergies}
       />
 
       {scene && !aiChatOpen ? (
@@ -319,10 +421,11 @@ export function GuestDenisLayer({
           currency={currency}
           placement={dockPlacement}
           cartBarVisible={cartBarVisible}
-          headline={
-            view ? view.chrome.headline : scene.chrome.situation?.headline
-          }
-          subtitle={scene.chrome.situation?.headline ?? undefined}
+          tableName={tableName}
+          venueName={venueName}
+          loading={Boolean(sessionToken) && sceneLoading && !scene}
+          headline={view?.chrome.headline}
+          subtitle={dockSubtitle ?? scene.chrome.situation?.headline ?? undefined}
           onOpenDesk={handleOpenDenisDesk}
           onChipPress={handleSceneChipPress}
           onInlineAdd={handleSceneInlineAdd}

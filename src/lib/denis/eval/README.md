@@ -4,6 +4,7 @@
 **ADR:** [ADR-005 §7.3](../../../docs/architecture/ADR-005-denis-maximum.md), [ADR-006 §5–6](../../../docs/architecture/ADR-006-denis-control-plane.md)
 
 - `fixtures/scenarios.ts` — golden kernel scenarios
+- `fixtures/timeline/iota-obligation-scenarios.ts` — iota timeline obligation replay (ADR-032 P1-T7)
 - `run-scenario.ts` / `run-fixtures.ts` — CI harness
 - `run-venue-sim.ts` — counterfactual timeline replay (M20)
 - `persist-eval-run.ts` — append suite to `denis_eval_runs` (M24)

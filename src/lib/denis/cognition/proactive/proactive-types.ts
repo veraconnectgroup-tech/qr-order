@@ -38,6 +38,7 @@ export type ProactiveTickPayload = {
 };
 
 export type GuestProactiveNudgeKind =
+  | "waiter_gap"
   | "browse_nudge"
   | "drink_pairing"
   | "dessert_nudge"

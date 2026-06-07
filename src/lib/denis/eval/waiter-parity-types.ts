@@ -16,6 +16,8 @@ export type WaiterParitySetup = {
   orders?: OrderFact[];
   billSettled?: boolean;
   operatingMode?: "normal" | "rush";
+  /** Prior guest order line — persists obligation across recap confirm. */
+  lastGuestOrderMessage?: string;
 };
 
 export type WaiterParityTurnExpect = {

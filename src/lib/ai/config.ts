@@ -29,9 +29,15 @@ export const AI_CONFIG = {
     "Entschuldigung, bitte versuchen Sie es erneut.",
   circuitBreakerMessage:
     "KI-Assistent ist gerade nicht verfügbar. Sie können normal bestellen.",
+  /** Embedding model for menu RAG (Vercel AI Gateway / OpenAI compatible). */
+  embeddingModel:
+    process.env.OPENAI_EMBEDDING_MODEL?.trim() || "text-embedding-3-small",
   /** Menu cache TTL in Redis */
   menuCacheTtlSeconds: 300,
   menuCacheKeyPrefix: "ai:menu:",
+  /** Menu RAG product embedding index TTL in Redis */
+  menuRagEmbeddingCacheTtlSeconds: 3600,
+  menuRagEmbeddingCacheKeyPrefix: "ai:menu-rag-emb:",
   playbookCacheTtlSeconds: 300,
   playbookCacheKeyPrefix: "ai:playbook:",
   maxPlaybookExamples: 20,

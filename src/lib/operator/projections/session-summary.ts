@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  aggregateSessionMetricsFromTimeline,
   countUserMessages,
   extractIntentsFromTimeline,
+  extractLatestBeliefsSummary,
   redactTranscript,
   resolveSessionOutcome,
 } from "@/lib/operator/projections/helpers";
@@ -51,7 +53,11 @@ export async function projectOperatorSessionSummary(
 
   let messages: Array<{ role: string; content: string }> = [];
   let language: string | null = null;
-  let timelineEvents: Array<{ event_type: string; payload: unknown }> = [];
+  let timelineEvents: Array<{
+    event_type: string;
+    payload: unknown;
+    created_at?: string;
+  }> = [];
 
   if (session.denis_shared_ai_session_id) {
     const { data: aiRow } = await admin
@@ -72,7 +78,7 @@ export async function projectOperatorSessionSummary(
 
     const { data: timelineRows } = await admin
       .from("denis_timeline")
-      .select("event_type, payload")
+      .select("event_type, payload, created_at")
       .eq("ai_session_id", session.denis_shared_ai_session_id)
       .order("seq", { ascending: true });
     timelineEvents = (timelineRows ?? []) as typeof timelineEvents;
@@ -102,6 +108,12 @@ export async function projectOperatorSessionSummary(
     language,
     intents: extractIntentsFromTimeline(timelineEvents),
     ordersCount: ordersCount ?? 0,
+    metrics: timelineEvents.length
+      ? aggregateSessionMetricsFromTimeline(timelineEvents)
+      : null,
+    beliefs: timelineEvents.length
+      ? extractLatestBeliefsSummary(timelineEvents)
+      : null,
   };
 
   if (input.includeTranscript) {

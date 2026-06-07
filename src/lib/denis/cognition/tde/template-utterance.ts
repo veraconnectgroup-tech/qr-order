@@ -96,6 +96,26 @@ const TEMPLATE_CATALOG: Record<
     de: "Gäste bestellen das oft mit einem passenden Extra — soll ich etwas vorschlagen?",
     en: "Guests often add a popular pairing — want me to suggest one?",
   },
+  "waiter.gap_clarify.drink": {
+    sr: "Pre nego što pošaljem — koji tip piva želite? Na primer Pilsner ili Weizen, 0.3L ili 0.5L.",
+    de: "Bevor ich sende — welches Bier möchten Sie? Z. B. Pilsner oder Weizen, 0.3L oder 0.5L.",
+    en: "Before I send — which beer would you like? e.g. Pilsner or Weizen, 0.3L or 0.5L.",
+  },
+  "waiter.gap_clarify.serve_size": {
+    sr: "Koju veličinu želite — 0.3L ili 0.5L?",
+    de: "Welche Größe — 0.3L oder 0.5L?",
+    en: "What size — 0.3L or 0.5L?",
+  },
+  "waiter.gap_clarify.substitution": {
+    sr: "Imam napomenu za kuhinju — potvrdite zamenu pre slanja.",
+    de: "Ich habe eine Notiz für die Küche — bitte bestätigen Sie die Änderung vor dem Senden.",
+    en: "I have a note for the kitchen — please confirm the swap before sending.",
+  },
+  "waiter.gap_clarify.generic": {
+    sr: "Pre slanja treba mi još jedan detalj — možete da precizirate?",
+    de: "Bevor ich sende brauche ich noch ein Detail — können Sie das präzisieren?",
+    en: "Before I send I need one more detail — can you clarify?",
+  },
 };
 
 export function resolveTemplateLocale(language: string): TemplateLocale {

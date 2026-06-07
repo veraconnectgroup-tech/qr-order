@@ -6,6 +6,7 @@ import type { BeliefGraph, TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import { detectProactiveCandidate } from "@/lib/denis/cognition/proactive/detect-proactive-candidate";
+import { detectWaiterObligationTell } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
 import type {
   GuestProactiveNudge,
   ProactiveTickPayload,
@@ -40,6 +41,10 @@ function resolveProactiveMessage(input: {
   beliefs: BeliefGraph;
   messages: ProactiveTurnMessages;
 }): string | null {
+  if (input.nudge.kind === "waiter_gap") {
+    return input.nudge.message.trim() || null;
+  }
+
   if (input.nudge.kind === "drink_pairing") {
     return input.nudge.prompt?.trim() || input.nudge.message.trim() || null;
   }
@@ -94,6 +99,34 @@ export function planProactiveTurn(input: {
     state: input.state,
     guestMessage: "",
   });
+
+  const language =
+    input.payload.language ??
+    input.config.language.venueDefault ??
+    "sr";
+
+  const obligationTell = detectWaiterObligationTell(input.state, language);
+  if (obligationTell) {
+    const decided = decideProactiveTurnPlan({
+      beliefs,
+      candidate: obligationTell,
+      sessionPhase: input.sessionPhase,
+      config: input.config,
+      cartLineCount: input.state.commerce.cart.visibleLines.length,
+    });
+
+    if (decided.ok && obligationTell.message.trim()) {
+      return {
+        beliefs,
+        turnPlan: decided.plan,
+        nudge: obligationTell,
+        message: obligationTell.message.trim(),
+        skipped: false,
+        skipReason: null,
+        candidateKind: "waiter_gap",
+      };
+    }
+  }
 
   const candidate = detectProactiveCandidate({
     config: input.config,

@@ -5,6 +5,8 @@
 | **Purpose** | Fazni plan za **sve što nije CODE+DEPLOY** |
 | **Source of truth** | [DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md) |
 | **Rule** | **1 PR = 1 korak** · `pnpm eval:denis` · ažuriraj backlog red |
+| **Horizon** | **2+ godine** — **1 ADR = nedeljama** — [ADR-033](./ADR-033-enterprise-ai-roadmap.md) · [active tracker](./ADR-033-active-tracker.md) |
+| **Agent prompts** | [ADR-033-session-prompts.md](./ADR-033-session-prompts.md) |
 | **Updated** | 2026-05-29 |
 
 ---

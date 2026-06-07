@@ -1,3 +1,4 @@
+import type { TableSessionView } from "@/lib/denis/loop/view-types";
 import type { Scene, SceneLayer } from "@/lib/scene/types";
 
 export type SceneBannerLayer = Extract<SceneLayer, { kind: "banner" }>;
@@ -6,6 +7,12 @@ export type SceneBlockingLayer = Extract<SceneLayer, { kind: "blocking" }>;
 
 export function sceneBannerLayers(scene: Scene): SceneBannerLayer[] {
   return scene.layers.filter((layer): layer is SceneBannerLayer => layer.kind === "banner");
+}
+
+/** F4 — banner layers from view read model (no parallel scene fetch). */
+export function viewBannerLayers(view: TableSessionView | null): SceneBannerLayer[] {
+  if (!view) return [];
+  return view.layers.filter((layer): layer is SceneBannerLayer => layer.kind === "banner");
 }
 
 export function sceneSheetLayer(scene: Scene): SceneSheetLayer | null {

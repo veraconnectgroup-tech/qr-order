@@ -15,6 +15,7 @@ import type {
 } from "@/lib/denis/venue/ops/types";
 
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
+import type { WaiterObligation } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
@@ -72,6 +73,8 @@ export type TableSessionState = {
     pendingSlot: PendingSlotKind | null;
     /** C6 — folded dialogue state (transcript, awaiting, summary). */
     model: ConversationModel;
+    /** ADR-032 — what Denis must clarify before confirm (persists across turns). */
+    obligation: WaiterObligation | null;
   };
   timeline: DenisTimelineRow[];
   config: ConciergeConfig;

@@ -172,6 +172,8 @@ function checkPerceiveGuestChatTurnSingleCaller(report: ComplianceReport): void 
   for (const file of walkTsFiles(srcRoot)) {
     const normalized = rel(file);
     if (
+      normalized === "src/lib/denis/cognition/perceive/perceive-guest-chat-turn.ts" ||
+      normalized === "src/lib/denis/cognition/perceive/index.ts" ||
       normalized === "src/lib/denis/runtime/perceive/perceive-guest-chat-turn.ts" ||
       normalized === "src/lib/ai/execute-chat-turn.ts"
     ) {
@@ -233,7 +235,8 @@ function checkOpenAiBoundary(report: ComplianceReport): void {
     const normalized = rel(file);
     if (
       normalized.includes("/runtime/narrate/") ||
-      normalized.includes("/runtime/perceive/")
+      normalized.includes("/runtime/perceive/") ||
+      normalized.includes("/cognition/perceive/")
     ) {
       continue;
     }

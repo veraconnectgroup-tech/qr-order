@@ -1,4 +1,8 @@
 import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
+import {
+  mergeTableSessionObligation,
+  obligationForConversationState,
+} from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import { pendingSlotKindFromDraft } from "@/lib/ai/ordering/pending-slot-kind";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
@@ -204,7 +208,7 @@ export async function foldTableSessionState(
     commerceConfirm: flowNodeId === "recap" || flowNodeId === "submit",
   });
 
-  const state: TableSessionState = {
+  const foldState: TableSessionState = {
     table: {
       id: input.tableId,
       name: tableSession?.table.name ?? "",
@@ -240,9 +244,27 @@ export async function foldTableSessionState(
       lastAssistantMessage,
       pendingSlot,
       model: conversationModel,
+      obligation: null,
     },
     timeline,
     config,
+  };
+
+  const obligation = mergeTableSessionObligation({
+    state: foldState,
+    source: "fold",
+    cartLines: aiCartState.draft.items,
+    pendingSlot,
+    language: config.language?.venueDefault ?? "sr",
+    atRecap: flowNodeId === "recap" || flowNodeId === "submit",
+  });
+
+  const state: TableSessionState = {
+    ...foldState,
+    conversation: {
+      ...foldState.conversation,
+      obligation: obligationForConversationState(obligation),
+    },
   };
 
   return {

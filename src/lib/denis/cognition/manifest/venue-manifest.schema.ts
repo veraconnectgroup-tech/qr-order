@@ -58,6 +58,8 @@ export const VenueManifestSchema = z.object({
   policy: VenueManifestPolicySchema.optional(),
   models: VenueManifestModelsSchema.optional(),
   qualityContract: VenueQualityContractSchema.optional(),
+  /** MR-9 — org/chain playbook example pack (ADR-023 §10). */
+  playbookPackId: z.string().trim().min(1).max(80).optional(),
 });
 
 export type VenueManifest = z.infer<typeof VenueManifestSchema>;
@@ -84,6 +86,7 @@ const MANIFEST_KEY_ALIASES: Record<string, string> = {
   eval_pass_min: "evalPassMin",
   shadow_parity_min: "shadowParityMin",
   llm_invocation_max: "llmInvocationMax",
+  playbook_pack_id: "playbookPackId",
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

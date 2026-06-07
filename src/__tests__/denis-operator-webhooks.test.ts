@@ -15,6 +15,7 @@ describe("denis operator webhook events", () => {
       expect(WEBHOOK_EVENTS).toContain(event);
       expect(WEBHOOK_EVENT_LABELS[event]).toBeTruthy();
     }
+    expect(DENIS_OPERATOR_WEBHOOK_EVENTS).toContain("denis.session.updated");
     expect(DENIS_OPERATOR_WEBHOOK_EVENTS).toContain("denis.session.completed");
     expect(DENIS_OPERATOR_WEBHOOK_EVENTS).toContain("denis.session.converted");
     expect(DENIS_OPERATOR_WEBHOOK_EVENTS).toContain("denis.metrics.daily_ready");

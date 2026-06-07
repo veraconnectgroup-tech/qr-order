@@ -1,26 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { GUEST_VIEW_FALLBACK_POLL_MS } from "@/lib/constants";
 import { fetchDenisView } from "@/lib/guest/denis-view-client";
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
+import { tableSessionViewToScene } from "@/lib/denis/loop/view-to-scene";
 import type { Scene } from "@/lib/scene/types";
 
-const POLL_MS = 30_000;
-const POLL_WAITING_MS = 10_000;
-const SSE_FALLBACK_POLL_MS = 15_000;
+const SSE_RECONNECT_MS = 1_000;
 
 export function useDenisView({
   tableToken,
   sessionToken,
   enabled,
   refreshKey = 0,
-  fastPoll = false,
 }: {
   tableToken: string;
   sessionToken: string | null;
   enabled: boolean;
   refreshKey?: number;
-  fastPoll?: boolean;
 }) {
   const [view, setView] = useState<TableSessionView | null>(null);
   const [scene, setScene] = useState<Scene | null>(null);
@@ -39,8 +37,9 @@ export function useDenisView({
     setLoading(true);
     try {
       const next = await fetchDenisView(tableToken, sessionToken);
-      setView(next?.view ?? null);
-      setScene(next?.scene ?? null);
+      const nextView = next?.view ?? null;
+      setView(nextView);
+      setScene(nextView ? tableSessionViewToScene(nextView) : null);
       if (next?.view?.version != null) {
         lastVersionRef.current = next.view.version;
       }
@@ -62,17 +61,11 @@ export function useDenisView({
       return;
     }
 
-    const params = new URLSearchParams({
-      tableToken,
-      sessionToken,
-    });
+    let source: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
 
-    const source = new EventSource(
-      `/api/denis/view/stream?${params.toString()}`
-    );
-
-    source.onopen = () => setSseConnected(true);
-    source.onmessage = (event) => {
+    const handleVersionMessage = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as { version?: number };
         if (
@@ -86,29 +79,50 @@ export function useDenisView({
         void refresh();
       }
     };
-    source.onerror = () => {
-      setSseConnected(false);
-      source.close();
+
+    const connect = () => {
+      if (disposed) return;
+
+      const params = new URLSearchParams({
+        tableToken,
+        sessionToken,
+      });
+
+      source = new EventSource(
+        `/api/denis/view/stream?${params.toString()}`
+      );
+
+      source.onopen = () => setSseConnected(true);
+      source.onmessage = handleVersionMessage;
+      source.onerror = () => {
+        setSseConnected(false);
+        source?.close();
+        source = null;
+        if (!disposed) {
+          reconnectTimer = setTimeout(connect, SSE_RECONNECT_MS);
+        }
+      };
     };
 
+    connect();
+
     return () => {
+      disposed = true;
+      if (reconnectTimer != null) {
+        clearTimeout(reconnectTimer);
+      }
+      source?.close();
       setSseConnected(false);
-      source.close();
     };
   }, [enabled, sessionToken, tableToken, refresh]);
 
   useEffect(() => {
-    if (!enabled || !sessionToken) return;
-    if (sseConnected) return;
+    if (!enabled || !sessionToken || sseConnected) return;
 
-    const intervalMs = fastPoll ? POLL_WAITING_MS : POLL_MS;
-    const id = window.setInterval(() => void refresh(), intervalMs);
-    return () => window.clearInterval(id);
-  }, [enabled, sessionToken, refresh, fastPoll, sseConnected]);
-
-  useEffect(() => {
-    if (!enabled || !sessionToken || !sseConnected) return;
-    const id = window.setInterval(() => void refresh(), SSE_FALLBACK_POLL_MS);
+    const id = window.setInterval(
+      () => void refresh(),
+      GUEST_VIEW_FALLBACK_POLL_MS
+    );
     return () => window.clearInterval(id);
   }, [enabled, sessionToken, refresh, sseConnected]);
 

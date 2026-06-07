@@ -12,6 +12,9 @@ import {
   type PendingSlotKind,
 } from "@/lib/denis/cognition/beliefs/belief-types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
+import { obligationToBeliefs } from "@/lib/denis/cognition/waiter/assess-waiter-obligation";
+import { mergeTableSessionObligation } from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
+import type { WaiterGapKind, WaiterNextAction } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
 
 export type CompileBeliefsInput = {
   state: TableSessionState;
@@ -399,11 +402,16 @@ function resolvePendingSlot(
     );
   }
 
-  const missingServeSize = state.commerce.cart.ai.draft.items.some(
-    (line) => !line.serveSize
+  const missingDrinkServeSize = state.commerce.cart.ai.draft.items.some(
+    (line) =>
+      (line.menuSection === "drinks" ||
+        /\b(pivo|beer|bier|cola|kola|weizen|pilsner|sprite)\b/i.test(
+          line.productName
+        )) &&
+      !line.serveSize?.trim()
   );
 
-  if (missingServeSize) {
+  if (missingDrinkServeSize) {
     return belief(
       CORE_BELIEF_KEYS.commercePendingSlot,
       "serve_size",
@@ -492,6 +500,53 @@ function resolveRequireConfirm(
  * ADR-023 §3.2 — compile scored BeliefGraph after FOLD (MR-1).
  * Pure function — no timeline writes; caller appends `mind.beliefs_compiled`.
  */
+function resolveWaiterObligationBeliefs(input: CompileBeliefsInput) {
+  const config = input.config ?? input.state.config;
+  const atRecap =
+    input.state.conversation.flowNodeId === "recap" ||
+    input.state.conversation.flowNodeId === "submit";
+
+  const obligation = mergeTableSessionObligation({
+    state: input.state,
+    source: "turn",
+    guestMessage: input.guestMessage,
+    language: input.sessionLanguage ?? config.language?.venueDefault ?? "sr",
+    atRecap,
+  });
+
+  const facts = obligationToBeliefs(obligation);
+
+  return {
+    obligation,
+    beliefs: [
+      belief(CORE_BELIEF_KEYS.waiterGapCount, facts.gapCount, "inferred", 0.95),
+      belief(
+        CORE_BELIEF_KEYS.waiterCanConfirm,
+        facts.canConfirm,
+        "inferred",
+        facts.canConfirm ? 0.95 : 0.98
+      ),
+      belief(
+        CORE_BELIEF_KEYS.waiterPrimaryGap,
+        facts.primaryGap,
+        "inferred",
+        facts.primaryGap ? 0.92 : 0.85
+      ),
+      belief(
+        CORE_BELIEF_KEYS.waiterNextAction,
+        facts.nextAction,
+        "inferred",
+        0.9
+      ),
+    ] as Array<
+      ReturnType<typeof belief<number>> |
+        ReturnType<typeof belief<boolean>> |
+        ReturnType<typeof belief<WaiterGapKind | null>> |
+        ReturnType<typeof belief<WaiterNextAction>>
+    >,
+  };
+}
+
 export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
   const config = input.config ?? input.state.config;
   const memory = input.guestMemory ?? input.state.guest;
@@ -503,6 +558,7 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
     config,
     pressureBelief.value
   );
+  const waiterBeliefs = resolveWaiterObligationBeliefs(input);
 
   return beliefGraph([
     resolveConversationLanguage(input, config, memory),
@@ -521,5 +577,6 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
     resolveReturnVisit(memory, config),
     resolveRequireConfirm(config),
     resolveHasOpenOrders(input.state),
+    ...waiterBeliefs.beliefs,
   ]);
 }

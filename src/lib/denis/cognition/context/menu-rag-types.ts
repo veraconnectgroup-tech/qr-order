@@ -11,6 +11,20 @@ export type MenuRagEvidence = {
 
 export type MenuRagRetrieveOptions = {
   maxResults?: number;
+  /** Precomputed product vectors (Redis / OpenAI batch). */
+  embeddings?: MenuRagEmbeddingIndex;
+  /** Query vector in the same space as `embeddings`. */
+  queryVector?: number[];
+};
+
+/** Product id → embedding vector for semantic menu RAG (E2). */
+export type MenuRagEmbeddingIndex = Record<string, number[]>;
+
+export type MenuRagEmbeddingSpace = "openai" | "local";
+
+export type MenuRagEmbeddingBundle = {
+  index: MenuRagEmbeddingIndex;
+  space: MenuRagEmbeddingSpace;
 };
 
 /** Gate inputs — manifest capability and/or elite profile override. */

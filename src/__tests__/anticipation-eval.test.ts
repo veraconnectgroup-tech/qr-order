@@ -54,6 +54,7 @@ function minimalState(
       lastAssistantMessage: null,
       pendingSlot: null,
       model: emptyConversationModel(),
+      obligation: null,
       ...patch,
     },
     timeline: [],

@@ -6,6 +6,7 @@ import {
   normalizeAllergenId,
   type AllergenId,
 } from "@/lib/allergens";
+import { rankMenuRagProductsByEmbedding } from "@/lib/denis/cognition/context/menu-rag-embeddings";
 import type {
   MenuRagCatalog,
   MenuRagEvidence,
@@ -17,6 +18,7 @@ import { MENU_RAG_MIN_CATALOG_CAPABILITY } from "@/lib/denis/cognition/context/m
 export {
   MENU_RAG_MIN_CATALOG_CAPABILITY,
   type MenuRagCatalog,
+  type MenuRagEmbeddingIndex,
   type MenuRagEvidence,
   type MenuRagGateInput,
   type MenuRagRetrieveOptions,
@@ -91,25 +93,42 @@ function rankMenuRagProducts(
   catalog: MenuRagCatalog,
   query: string,
   excluded: ReadonlySet<AllergenId>,
-  maxResults: number
+  maxResults: number,
+  options: MenuRagRetrieveOptions = {}
 ): AiCatalogProduct[] {
   const keywordMatches = searchCatalogProducts(catalog, query)
     .filter((product) => passesAllergenFilter(product, excluded))
     .slice(0, maxResults);
 
+  const embeddingMatches =
+    options.embeddings &&
+    options.queryVector?.length &&
+    Object.keys(options.embeddings).length > 0
+      ? rankMenuRagProductsByEmbedding(
+          catalog,
+          query,
+          options.embeddings,
+          maxResults,
+          options.queryVector
+        ).filter((product) => passesAllergenFilter(product, excluded))
+      : [];
+
+  const primary =
+    keywordMatches.length > 0 ? keywordMatches : embeddingMatches;
+
   if (excluded.size === 0) {
-    return keywordMatches;
+    return primary.slice(0, maxResults);
   }
 
   const allergenSafe = Object.values(catalog)
     .filter((product) => passesAllergenFilter(product, excluded))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  if (keywordMatches.length > 0) {
+  if (primary.length > 0) {
     const seen = new Set<string>();
     const merged: AiCatalogProduct[] = [];
 
-    for (const product of keywordMatches) {
+    for (const product of primary) {
       if (seen.has(product.id)) continue;
       seen.add(product.id);
       merged.push(product);
@@ -166,7 +185,8 @@ export function retrieveMenuEvidence(
     catalog,
     trimmed,
     excluded,
-    maxResults
+    maxResults,
+    options
   );
 
   return {

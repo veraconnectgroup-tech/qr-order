@@ -1,9 +1,11 @@
 import { apiError } from "@/lib/api-response";
 import {
   enqueueGuestSignalAndWait,
-  isTableSessionActorEnabled,
+  isTableSessionActorInfrastructureReady,
   signalResultToResponse,
 } from "@/lib/denis/actor/table-session-actor";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { resolveTableSessionActorEnabled } from "@/lib/denis/config/rollout";
 import { executeDenisSignalCore } from "@/lib/denis/runtime/execute-denis-signal-core";
 import { resolveSignalContext } from "@/lib/denis/runtime/resolve-signal-context";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -22,10 +24,6 @@ function resolveSignalId(rawBody: unknown): string {
 
 /** ADR-019 Phase C/E — unified guest write ingress. */
 export async function runDenisSignal(rawBody: unknown): Promise<Response> {
-  if (!isTableSessionActorEnabled()) {
-    return executeDenisSignalCore(rawBody);
-  }
-
   const normalized = normalizeDenisSignal(rawBody);
   if (!normalized.ok) {
     return apiError("Invalid signal.", 400);
@@ -37,8 +35,14 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
     return apiError(resolved.error, resolved.status);
   }
 
-  const { tableSessionId } = resolved.ctx;
-  if (!tableSessionId) {
+  const { tableSessionId, locationId } = resolved.ctx;
+  const config = await loadConciergeConfigForLocation(locationId);
+  const actorEnabled = resolveTableSessionActorEnabled(
+    config,
+    isTableSessionActorInfrastructureReady()
+  );
+
+  if (!actorEnabled || !tableSessionId) {
     return executeDenisSignalCore(rawBody);
   }
 

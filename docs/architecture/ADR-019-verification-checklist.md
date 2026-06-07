@@ -98,35 +98,35 @@ grep -rn "/api/waiter-calls" src/components/guest/ → 0 direct calls
 
 ---
 
-## Phase D — WORLD
+## Phase D — WORLD ✅ (2026-06-07)
 
-- [ ] Order status outbox → Denis signal (ne direktan guest UI update)
-- [ ] TELL → PROJECT → notify
-- [ ] **Isti tekst:** push = headline = transcript (review string source — jedan TELL output)
+- [x] Order status outbox → Denis signal (ne direktan guest UI update)
+- [x] TELL → PROJECT → notify
+- [x] **Isti tekst:** push = headline = transcript (review string source — jedan TELL output)
 
 ### Acceptance ADR-019 §12
 
-| # | Test |
-|---|------|
-| 1 | ready → push → transcript već ima liniju |
-| 2 | Kellner → nema waiter REST |
-| 4 | rush → nema dessert chip |
+| # | Test | Status |
+|---|------|--------|
+| 1 | ready → push → transcript već ima liniju | ✅ `runWorldTellUnificationFixture` + `denis-world-tell.test` |
+| 2 | Kellner → nema waiter REST | ✅ signal ingress (`denis-normalize-signal`) |
+| 4 | rush → nema dessert chip | ✅ `anticipation-eval` phase guards |
 
 ---
 
-## Phase E — ACTOR
+## Phase E — ACTOR ✅ (2026-06-07)
 
-- [ ] Queue/lock per `table_session_id`
-- [ ] `signalId` dedupe
-- [ ] View SSE/Realtime na version bump
-- [ ] ADR-013 = signal types only
+- [x] Queue/lock per `table_session_id`
+- [x] `signalId` dedupe
+- [x] View SSE/Realtime na version bump
+- [x] ADR-013 = signal types only (commerce → actor queue)
 
 ---
 
-## Phase F — TRUTH
+## Phase F — TRUTH ✅ (2026-06-07)
 
-- [ ] Transcript iz timeline, ne dual-write u ai_sessions
-- [ ] Replay = timeline + orders
+- [x] Transcript iz timeline, ne dual-write u ai_sessions
+- [x] Replay = timeline + orders
 
 ---
 

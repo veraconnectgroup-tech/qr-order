@@ -50,6 +50,7 @@ function baseState(
       lastAssistantMessage: "Koju veličinu piva — 0.3L ili 0.5L?",
       pendingSlot: null,
       model: emptyConversationModel(),
+      obligation: null,
     },
     timeline: [],
     config: CONCIERGE_PLATFORM_DEFAULTS,

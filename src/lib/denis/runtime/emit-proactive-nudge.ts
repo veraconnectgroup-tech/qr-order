@@ -4,6 +4,7 @@ import {
 } from "@/lib/denis/cognition/conversation/browsing-defer";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
+import { waiterObligationDedupeKey } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
 import {
@@ -60,9 +61,12 @@ export async function emitProactiveNudge(
   }
 
   const nudge = proactiveResult.nudge;
-  const dedupeKey = nudge.orderId
-    ? `${nudge.kind}:${nudge.orderId}`
-    : nudge.kind;
+  const dedupeKey =
+    nudge.kind === "waiter_gap"
+      ? waiterObligationDedupeKey(input.state)
+      : nudge.orderId
+        ? `${nudge.kind}:${nudge.orderId}`
+        : nudge.kind;
 
   await appendDenisTimelineEvent(admin, {
     aiSessionId: input.aiSessionId,

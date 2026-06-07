@@ -3,8 +3,8 @@
 | Field | Value |
 |-------|--------|
 | **Purpose** | Single map of **all** architecture MDs — what applies where, what is built, what to ship next |
-| **Updated** | 2026-05-29 (Table OS master + ADR-025 + ADR-029 integration spine) |
-| **Start here** | [DENIS-ARCHITECTURE-START-HERE.md](./DENIS-ARCHITECTURE-START-HERE.md) → **[DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)** |
+| **Updated** | 2026-05-29 (ADR-033 multi-year enterprise AI roadmap) |
+| **Start here** | [DENIS-ARCHITECTURE-START-HERE.md](./DENIS-ARCHITECTURE-START-HERE.md) → **[ADR-033](./ADR-033-enterprise-ai-roadmap.md)** → **[DENIS-FULL-IMPLEMENTATION-BACKLOG.md](./DENIS-FULL-IMPLEMENTATION-BACKLOG.md)** |
 
 ---
 
@@ -47,6 +47,15 @@
 |-----|------|--------|--------------|
 | [ADR-020](./ADR-020-denis-table-operating-system.md) | **Category** — Table OS, goals, Ko·Gde·Kad·Kako, §14–21 refinements | Accepted | Product, pitch, “why us” |
 | [**DENIS-ARCHITECTURE-START-HERE.md**](./DENIS-ARCHITECTURE-START-HERE.md) | **1-page entry** — bet, locked rules, build order | Active | **Everyone — read first** |
+| [**ADR-033**](./ADR-033-enterprise-ai-roadmap.md) | **Enterprise roadmap** — **1 ADR = nedeljama**, 2+ godine | Accepted | Execution doctrine |
+| [**ADR-033 active tracker**](./ADR-033-active-tracker.md) | **Koji ADR radimo SADA** — redosled, COMPLETE gate | Active | **Agent čita prvo** |
+| [ADR-033 session prompts](./ADR-033-session-prompts.md) | **Autonomous agent** — jedan PR po sesiji unutar ACTIVE ADR | Active | Other AI sessions |
+| [ADR-033 operator](./ADR-033-operator.md) | **Jovica one-liner** — merge + QR test only | Active | Copy-paste |
+| [ADR-032](./ADR-032-waiter-obligation-spine.md) | **Waiter Obligation** — gap contract + autonomous writer | Accepted | Pilot quality |
+| [**ADR-034**](./ADR-034-denis-perfection-doctrine.md) | **Perfection doctrine** — eval > arch preservation; ARCH-1→7 | Accepted | **Bar za savršenstvo** |
+| [**ADR-035**](./ADR-035-pillar-strengthening-plan.md) | **Pillar plan** — stub po stub, 7 slojeva, P1–P7 | Accepted | **Ojačavanje temelja** |
+| [**ADR-033 batch**](./ADR-033-agent-batch-prompts.md) | **Agent prompts** — svi PR-ovi copy-paste | Accepted | **Daj agentima** |
+| [**ADR-036**](./ADR-036-agent-architecture-proposals.md) | **Agent proposals** — maks arhitektura po stubu | Living | **Posle svakog PR-a** |
 | [**DENIS-TABLE-OS-ARCHITECTURE.md**](./DENIS-TABLE-OS-ARCHITECTURE.md) | **Master spec** — 5 planes, waiter parity, Viktor flywheel §19 | Accepted | Full stack |
 | [DENIS-TABLE-OS-session-prompts.md](./DENIS-TABLE-OS-session-prompts.md) | **Implement agent** — O0–O6 tracks | Active | Autonomous build |
 | [ADR-019](./ADR-019-denis-unified-brain.md) | **Engineering** — loop, signal/view, phases A–E | Accepted | Every Denis PR |
@@ -229,11 +238,13 @@ Use **one vocabulary** everywhere (ADR-020 §15):
 2. Supabase Realtime on `view.version`
 3. ADR-013 triggers as signal types only
 
-### After E — Phase F (single TRUTH)
+### Phase F (single TRUTH) — ✅ COMPLETE (2026-06-07)
 
 1. Transcript = timeline only (`tell.committed`, `signal.message`)
-2. Retire dual-write to `ai_sessions.messages`
+2. Retire dual-write to `ai_sessions.messages` on guest path
 3. Dispute replay = timeline + Order Core rows
+
+**Next:** [ADR-020 §Kad](./ADR-020-denis-table-operating-system.md) — continuous mind (tracker ACTIVE)
 
 ### Parallel (non-blocking) tracks
 

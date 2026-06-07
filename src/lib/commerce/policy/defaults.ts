@@ -2,7 +2,7 @@ import type { CommercePolicy } from "@/lib/commerce/policy/commerce-policy.schem
 
 const disabledCapability = {
   enabled: false,
-  rollout: { mode: "shadow" as const, canaryPercent: 10 },
+  rollout: { mode: "shadow" as const, canaryPercent: 10, tableSessionActorEnabled: false },
   params: {},
 };
 

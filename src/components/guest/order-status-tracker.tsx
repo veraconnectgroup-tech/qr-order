@@ -376,7 +376,6 @@ export function OrderStatusTracker({
         taxPercent={taxPercent}
         orderingDisabled={isClosed}
         dockPlacement="sticky-top"
-        fastPoll
         voiceEnabled={voiceEnabled}
         voiceTtsEnabled={voiceTtsEnabled}
         sceneRefreshBump={order.status === "ready" ? 2 : stepIdx}

@@ -19,6 +19,7 @@ export type LocationSummary = {
     avgTurnsPerSession: number;
     topLanguages: Array<{ lang: string; count: number }>;
     llmInvocationRate: number;
+    waiterGapRate: number;
   };
   ops: {
     rushMinutes: number;
@@ -35,12 +36,29 @@ export type DenisLocationMetrics = {
   sessionsWithOrder: number;
   conversionRate: number;
   llmInvocationRate: number;
+  /** Sessions with waiter obligation gaps / sessions with Denis activity (ADR-032). */
+  waiterGapRate: number;
   avgTurnsPerSession: number;
   avgCreditsPerSession: number;
   escalationsCount: number;
   topLanguages: Array<{ lang: string; count: number }>;
   creditBalance: number | null;
   lowBalance: boolean;
+};
+
+export type OperatorSessionMetrics = {
+  turnCount: number;
+  llmTurnCount: number;
+  llmInvocationRate: number;
+  gapTurnCount: number;
+  gapRate: number;
+};
+
+export type OperatorBeliefsSummary = {
+  beliefsHash: string;
+  beliefCount: number;
+  summary: Record<string, unknown>;
+  compiledAt: string | null;
 };
 
 export type OperatorSessionListItem = {
@@ -68,6 +86,8 @@ export type OperatorSessionSummary = {
   language: string | null;
   intents: string[];
   ordersCount: number;
+  metrics: OperatorSessionMetrics | null;
+  beliefs: OperatorBeliefsSummary | null;
   transcript?: Array<{ role: "user" | "assistant"; content: string }>;
 };
 

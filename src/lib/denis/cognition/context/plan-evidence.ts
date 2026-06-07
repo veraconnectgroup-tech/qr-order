@@ -6,12 +6,13 @@ import {
   isMenuRagEnabled,
   retrieveMenuEvidence,
 } from "@/lib/denis/cognition/context/retrievers/menu-rag";
-import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
+import type { MenuRagCatalog, MenuRagEmbeddingIndex } from "@/lib/denis/cognition/context/menu-rag-types";
 import { buildOrderComprehendHint } from "@/lib/ai/ordering/category-order-logic";
 import { retrieveTranscriptWindowEvidence } from "@/lib/denis/cognition/context/retrievers/transcript-window";
 import { retrieveVenueOpsEvidence } from "@/lib/denis/cognition/context/retrievers/venue-ops-evidence";
 import type { VenueManifestCapabilities } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
 import type { DenisRuntimeResolvedProfile } from "@/lib/denis/cognition/runtime-profile-types";
+import type { InterpretationTask } from "@/lib/denis/cognition/tde/interpretation-task-types";
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
@@ -48,6 +49,8 @@ type TranscriptMessage = {
 
 export type PlanEvidenceInput = {
   turnPlan: TurnPlan;
+  /** L3 goal-directed evidence budget (ARCH-7 / C12). */
+  interpretationTask?: InterpretationTask | null;
   beliefs: BeliefGraph;
   capabilities: VenueManifestCapabilities;
   profile: DenisRuntimeResolvedProfile;
@@ -62,11 +65,20 @@ export type PlanEvidenceInput = {
   orderContext?: string | null;
   orderDraftContext?: string | null;
   catalog?: MenuRagCatalog | null;
+  menuRagEmbeddings?: MenuRagEmbeddingIndex | null;
+  menuRagQueryVector?: number[] | null;
   playbookBlock?: string | null;
   vkgPairingBlock?: string | null;
 };
 
-function wantsCatalogRag(turnPlan: TurnPlan, message: string): boolean {
+function wantsCatalogRag(
+  turnPlan: TurnPlan,
+  message: string,
+  interpretationTask?: InterpretationTask | null
+): boolean {
+  if (interpretationTask) {
+    return interpretationTask.evidenceBudget.includeCatalogRag;
+  }
   if (turnPlan.kind === "transactional_perceive") return true;
   if (/\b(sta\s+je|šta\s+je|kakv[oa]\s+je|what\s+is|what\s+kind|objasni|explain)\b/i.test(message)) {
     return true;
@@ -88,6 +100,15 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
 
   if (input.turnPlan.requiresLlm) {
     pointers.push("situation.pack");
+    if (input.interpretationTask?.directiveBlock) {
+      blocks.push(input.interpretationTask.directiveBlock);
+    }
+    const includePlaybookInFsp =
+      input.interpretationTask?.evidenceBudget.includePlaybook ??
+      (input.turnPlan.kind === "transactional_perceive" ||
+        input.turnPlan.kind === "relational_perceive" ||
+        input.turnPlan.kind === "narrate_paraphrase");
+
     blocks.push(
       buildSituationPack({
         state: input.state,
@@ -101,6 +122,10 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
         venueOps: input.venueOps,
         opsEffects: input.opsEffects,
         vkgPairingBlock: input.vkgPairingBlock,
+        playbookBlock:
+          includePlaybookInFsp && input.playbookBlock?.trim()
+            ? input.playbookBlock
+            : null,
       })
     );
 
@@ -146,7 +171,11 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
 
   let omitFullMenu = false;
   const ragEligible =
-    wantsCatalogRag(input.turnPlan, input.guestMessage) &&
+    wantsCatalogRag(
+      input.turnPlan,
+      input.guestMessage,
+      input.interpretationTask
+    ) &&
     isMenuRagEnabled({
       catalogRagLevel: input.capabilities.catalogRag,
       menuRagEnabled: input.profile.menuRagEnabled,
@@ -154,18 +183,24 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
 
   if (ragEligible && input.catalog && Object.keys(input.catalog).length > 0) {
     pointers.push("catalog.rag");
-    const rag = retrieveMenuEvidence(input.guestMessage, input.catalog);
+    const rag = retrieveMenuEvidence(input.guestMessage, input.catalog, {
+      embeddings: input.menuRagEmbeddings ?? undefined,
+      queryVector: input.menuRagQueryVector ?? undefined,
+    });
     if (rag.snippet) {
       blocks.push(`CATALOG RAG (product IDs are truth):\n${rag.snippet}`);
       omitFullMenu = true;
     }
   }
 
+  const defaultPlaybookKinds =
+    input.turnPlan.kind === "transactional_perceive" ||
+    input.turnPlan.kind === "relational_perceive" ||
+    input.turnPlan.kind === "narrate_paraphrase";
   const includePlaybook =
     input.turnPlan.requiresLlm &&
-    (input.turnPlan.kind === "transactional_perceive" ||
-      input.turnPlan.kind === "relational_perceive" ||
-      input.turnPlan.kind === "narrate_paraphrase");
+    (input.interpretationTask?.evidenceBudget.includePlaybook ??
+      defaultPlaybookKinds);
 
   let playbookBlock: string | null = null;
   if (includePlaybook && input.playbookBlock?.trim()) {
@@ -182,8 +217,14 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
   }
 
   if (
-    input.turnPlan.kind === "relational_perceive" &&
+    input.interpretationTask?.evidenceBudget.omitFullMenuWhenNoRag &&
     !ragEligible
+  ) {
+    omitFullMenu = true;
+  } else if (
+    input.turnPlan.kind === "relational_perceive" &&
+    !ragEligible &&
+    !input.interpretationTask
   ) {
     omitFullMenu = true;
   }

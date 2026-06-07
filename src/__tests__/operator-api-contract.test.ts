@@ -5,13 +5,17 @@ import { GET as getCommerceInsights } from "@/app/api/operator/v1/locations/[loc
 import { GET as getFiscalDailyClosing } from "@/app/api/operator/v1/locations/[locationId]/fiscal/daily-closing/route";
 import { GET as getOrders } from "@/app/api/operator/v1/locations/[locationId]/orders/route";
 import { GET as getOrderDetail } from "@/app/api/operator/v1/locations/[locationId]/orders/[orderId]/route";
+import { GET as getDenisMetrics } from "@/app/api/operator/v1/locations/[locationId]/denis/metrics/route";
 import { GET as getTranscript } from "@/app/api/operator/v1/sessions/[sessionId]/transcript/route";
+import { GET as getSessionSummary } from "@/app/api/operator/v1/sessions/[sessionId]/summary/route";
 import * as operatorAuth from "@/lib/operator/auth";
 import * as operatorAudit from "@/lib/operator/audit-log";
 import * as commerceInsights from "@/lib/operator/projections/commerce-insights";
+import * as denisMetrics from "@/lib/operator/projections/denis-metrics";
 import * as fiscalDailyClosing from "@/lib/operator/projections/fiscal-daily-closing";
 import * as locationOrders from "@/lib/operator/projections/list-location-orders";
 import * as orderDetail from "@/lib/operator/projections/order-detail";
+import * as sessionSummary from "@/lib/operator/projections/session-summary";
 import * as sessionTranscript from "@/lib/operator/projections/session-transcript";
 import * as rateLimit from "@/lib/rate-limit";
 import * as supabaseAdmin from "@/lib/supabase/admin";
@@ -310,6 +314,105 @@ describe("operator API contract smoke", () => {
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it("returns session summary with metrics and beliefs", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(sessionSummary, "projectOperatorSessionSummary").mockResolvedValue({
+      sessionId: "sess-1",
+      locationId: "loc-1",
+      status: "closed",
+      outcome: "ordered",
+      openedAt: "2026-06-06T20:00:00.000Z",
+      closedAt: "2026-06-06T21:00:00.000Z",
+      turnCount: 3,
+      messageCount: 6,
+      language: "de",
+      intents: ["ORDER"],
+      ordersCount: 1,
+      metrics: {
+        turnCount: 3,
+        llmTurnCount: 1,
+        llmInvocationRate: 0.333,
+        gapTurnCount: 1,
+        gapRate: 0.333,
+      },
+      beliefs: {
+        beliefsHash: "hash-1",
+        beliefCount: 4,
+        summary: {
+          "waiter.gap_count": 0,
+          "waiter.can_confirm": true,
+        },
+        compiledAt: "2026-06-06T20:50:00.000Z",
+      },
+    });
+
+    const res = await getSessionSummary(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/sessions/sess-1/summary",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({ sessionId: "sess-1" }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Denis-Operator-Api-Version")).toBe("1");
+    const json = (await res.json()) as {
+      data?: {
+        metrics?: { gapRate?: number };
+        beliefs?: { summary?: Record<string, unknown> };
+      };
+    };
+    expect(json.data?.metrics?.gapRate).toBe(0.333);
+    expect(json.data?.beliefs?.summary?.["waiter.can_confirm"]).toBe(true);
+    expect(operatorAudit.logOperatorApiRequest).toHaveBeenCalled();
+  });
+
+  it("returns denis metrics with waiterGapRate", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(denisMetrics, "projectDenisLocationMetrics").mockResolvedValue({
+      locationId: "loc-1",
+      period: {
+        from: "2026-06-06T00:00:00.000Z",
+        to: "2026-06-06T23:59:59.999Z",
+      },
+      sessionsCount: 12,
+      sessionsWithDenisActivity: 10,
+      sessionsWithOrder: 5,
+      conversionRate: 0.417,
+      llmInvocationRate: 0.3,
+      waiterGapRate: 0.2,
+      avgTurnsPerSession: 2.8,
+      avgCreditsPerSession: 0.9,
+      escalationsCount: 1,
+      topLanguages: [{ lang: "de", count: 8 }],
+      creditBalance: 200,
+      lowBalance: false,
+    });
+
+    const res = await getDenisMetrics(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/locations/loc-1/denis/metrics?period=today",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({ locationId: "loc-1" }) }
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data?: { waiterGapRate?: number; llmInvocationRate?: number };
+    };
+    expect(json.data?.waiterGapRate).toBe(0.2);
+    expect(json.data?.llmInvocationRate).toBe(0.3);
   });
 
   it("returns 403 when operator:read scope is missing", async () => {

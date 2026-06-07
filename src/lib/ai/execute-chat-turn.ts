@@ -6,10 +6,8 @@ export {
 
 export {
   perceiveGuestChatTurn,
-} from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
-
-/** @deprecated G4 — use perceiveGuestChatTurn via runDenisTurn. */
-export { perceiveGuestChatTurn as executeChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
+  perceiveGuestChatTurn as executeChatTurn,
+} from "@/lib/denis/cognition/perceive";
 
 /** @deprecated G4 — alias for PerceiveGuestChatTurnOpts. */
 export type { PerceiveGuestChatTurnOpts as ExecuteChatTurnOpts } from "@/lib/ai/chat-request.schema";

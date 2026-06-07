@@ -43,11 +43,7 @@ import {
   allergenIdsFromSheetSelections,
   apiPreferencesFromSheet,
 } from "@/lib/ai/guest-sheet-preferences";
-import {
-  parseSceneChipSelections,
-  parseSceneHandoffChip,
-  runGuestDenisSceneTurn,
-} from "@/lib/guest/denis-scene-turn";
+import { parseSceneChipSelections } from "@/lib/guest/denis-scene-turn";
 import {
   legacyTokensForAiSession,
   readAiSessionIdForGuest,
@@ -56,30 +52,23 @@ import {
 } from "@/lib/ai/guest-ai-token";
 import { trackAiConversion } from "@/lib/ai/guest-session-storage";
 import { ensureTableSession } from "@/lib/guest/ensure-table-session";
-import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { AllergenId } from "@/lib/allergens";
 import { toastAddedToCart } from "@/lib/cart-toast";
-import { toast } from "sonner";
 import { formatPrice } from "@/lib/format";
 import { hapticClick } from "@/lib/haptics";
 import { useScrollIntelligence } from "@/hooks/use-scroll-intelligence";
 import { useSmartNudges } from "@/hooks/use-smart-nudges";
 import { useDenisSense } from "@/hooks/use-denis-sense";
 import { shouldCommitProactiveToDock } from "@/lib/denis/loop/proactive-dock-tell";
-import { useGuestTableOrders } from "@/hooks/use-guest-table-orders";
+import { GuestDenisLayer } from "@/components/guest/guest-denis-layer";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { DenisMemoryConsentBanner } from "@/components/guest/denis-memory-consent-banner";
 import { AiSmartNudgeBanner } from "@/components/guest/ai-smart-nudge-banner";
 import type { ProductWithModifiers } from "@/types";
 import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
-import {
-  buildManualCartSnapshot,
-  manualCartRevision,
-} from "@/lib/guest/manual-cart-snapshot";
 import { postDenisMessageTurn } from "@/lib/guest/denis-signal-client";
 import { postDenisSense } from "@/lib/guest/denis-sense-client";
-import { sceneBannerLayers } from "@/lib/scene/layer-utils";
-import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
+import { viewBannerLayers } from "@/lib/scene/layer-utils";
 import { useDenisView } from "@/hooks/use-denis-view";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 
@@ -90,38 +79,10 @@ const AiCartPairingBanner = dynamic(
     })),
   { ssr: false }
 );
-const DenisGuestDock = dynamic(
-  () =>
-    import("@/components/guest/denis-guest-dock").then((m) => ({
-      default: m.DenisGuestDock,
-    })),
-  { ssr: false }
-);
 const DenisSceneBanners = dynamic(
   () =>
     import("@/components/guest/denis-scene-banners").then((m) => ({
       default: m.DenisSceneBanners,
-    })),
-  { ssr: false }
-);
-const AiConciergeChat = dynamic(
-  () =>
-    import("@/components/guest/ai-concierge-chat").then((m) => ({
-      default: m.AiConciergeChat,
-    })),
-  { ssr: false }
-);
-const GuestOrderFocusSheet = dynamic(
-  () =>
-    import("@/components/guest/guest-order-focus-sheet").then((m) => ({
-      default: m.GuestOrderFocusSheet,
-    })),
-  { ssr: false }
-);
-const GuestSessionBillSheet = dynamic(
-  () =>
-    import("@/components/guest/guest-session-bill-sheet").then((m) => ({
-      default: m.GuestSessionBillSheet,
     })),
   { ssr: false }
 );
@@ -216,9 +177,6 @@ export function MenuView({
   const [returnGlow, setReturnGlow] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneRefreshKey, setSceneRefreshKey] = useState(0);
-  const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
-  const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
-  const [billSheetOpen, setBillSheetOpen] = useState(false);
   const [aiActive, setAiActive] = useState(false);
   const [showRecommendedSection, setShowRecommendedSection] = useState(true);
   const [aiRecommendations, setAiRecommendations] = useState<
@@ -515,24 +473,6 @@ export function MenuView({
     });
   }, [isReturning, lastVisitItems, tUI]);
 
-  const { orders: sessionOrders } = useGuestTableOrders(
-    token,
-    sessionToken,
-    aiConciergeEnabled && !!sessionToken
-  );
-
-  const hasLiveKitchenOrders = useMemo(
-    () =>
-      sessionOrders.some(
-        (order) =>
-          order.status === "pending" ||
-          order.status === "confirmed" ||
-          order.status === "preparing" ||
-          order.status === "ready"
-      ),
-    [sessionOrders]
-  );
-
   const {
     scene,
     view: denisView,
@@ -543,16 +483,17 @@ export function MenuView({
     sessionToken,
     enabled: aiConciergeEnabled && !!sessionToken,
     refreshKey: sceneRefreshKey,
-    fastPoll: hasLiveKitchenOrders || itemCount > 0 || sessionOrders.length > 0,
   });
 
+  const viewOrders = denisView?.orders ?? [];
+
   const sceneBanners = useMemo(
-    () => (scene ? sceneBannerLayers(scene) : []),
-    [scene]
+    () => viewBannerLayers(denisView),
+    [denisView]
   );
   const useSceneBannerUi = sceneBanners.length > 0;
 
-  const hasSessionOrders = sessionOrders.length > 0;
+  const hasSessionOrders = viewOrders.length > 0;
 
   useEffect(() => {
     if (!aiConciergeEnabled || !sessionToken) return;
@@ -577,15 +518,10 @@ export function MenuView({
       }),
   });
 
-  const feedbackOrder = useMemo(() => {
-    return sessionOrders
-      .filter((order) => order.status === "delivered")
-      .sort(
-        (a, b) =>
-          new Date(b.delivered_at ?? b.created_at).getTime() -
-          new Date(a.delivered_at ?? a.created_at).getTime()
-      )[0];
-  }, [sessionOrders]);
+  const feedbackOrder = useMemo(
+    () => viewOrders.find((order) => order.status === "delivered") ?? null,
+    [viewOrders]
+  );
 
   const showFeedback = !!feedbackOrder && !!sessionToken;
 
@@ -704,14 +640,6 @@ export function MenuView({
     [tUI, currency]
   );
 
-  const getManualCartSnapshot = useCallback(() => {
-    if (cartItems.length === 0) return undefined;
-    return buildManualCartSnapshot(
-      cartItems,
-      manualCartRevision(cartItems, cartBump)
-    );
-  }, [cartItems, cartBump]);
-
   useDenisSense({
     enabled: aiConciergeEnabled && canPlaceOrders && !!aiContextToken,
     locationId,
@@ -794,7 +722,7 @@ export function MenuView({
     hasSessionOrders,
     hasDrinkInCart,
     aiChatOpen,
-    orders: sessionOrders,
+    orders: [],
     messages: smartNudgeMessages,
     formatPairingMessage,
     fetchPairingRecommendation: fetchPairingForNudge,
@@ -965,11 +893,6 @@ export function MenuView({
     tableId,
   ]);
 
-  const handleOpenDenisDesk = useCallback(() => {
-    hapticClick();
-    setAiChatOpen(true);
-  }, []);
-
   const applySceneChipSelections = useCallback(
     (selections: ReturnType<typeof parseSceneChipSelections>) => {
       if (!selections) return;
@@ -993,169 +916,22 @@ export function MenuView({
     [excluded, replaceExcluded, saveGuestAllergies]
   );
 
-  const runSceneChipTurn = useCallback(
-    async (input: {
-      chipId: string;
-      label: string;
-      message?: string;
-      selections?: ReturnType<typeof parseSceneChipSelections>;
+  const handleSceneTurnResult = useCallback(
+    (result: {
+      sessionId: string | null;
+      recommendations: ProductRecommendation[];
     }) => {
-      if (!sessionToken || sceneTurnBusy) return;
-
-      setSceneTurnBusy(true);
-      try {
-        const result = await runGuestDenisSceneTurn({
-          locationId,
-          tableId,
-          tableToken: token,
-          sessionToken,
-          message: input.message ?? input.label,
-          language,
-          browsingContext: getAiContext(),
-          selections: input.selections ?? undefined,
-          allowOrdering: canPlaceOrders,
-          preferences:
-            input.selections != null
-              ? apiPreferencesFromSheet(input.selections)
-              : {
-                  allergies: guestAllergies,
-                  mood: guestMood,
-                },
-        });
-
-        if (result.sessionId) {
-          setAiSessionId(result.sessionId);
-        }
-
-        if (result.recommendations.length) {
-          setAiRecommendations(result.recommendations);
-          setAiActive(true);
-          setShowRecommendedSection(true);
-        }
-
-        setSceneRefreshKey((key) => key + 1);
-        await refreshGuestSceneView();
-      } catch {
-        toast.error(tUI("ai.overlay.error"));
-      } finally {
-        setSceneTurnBusy(false);
+      if (result.sessionId) {
+        setAiSessionId(result.sessionId);
       }
+      if (result.recommendations.length) {
+        setAiRecommendations(result.recommendations);
+        setAiActive(true);
+        setShowRecommendedSection(true);
+      }
+      setSceneRefreshKey((key) => key + 1);
     },
-    [
-      sessionToken,
-      sceneTurnBusy,
-      locationId,
-      tableId,
-      token,
-      language,
-      getAiContext,
-      guestAllergies,
-      guestMood,
-      refreshGuestSceneView,
-      tUI,
-      canPlaceOrders,
-    ]
-  );
-
-  useEffect(() => {
-    if (!sessionOrders.length) return;
-    void refreshGuestSceneView();
-  }, [sessionOrders, refreshGuestSceneView]);
-
-  const handleSceneChipPress = useCallback(
-    (chipId: string, label: string) => {
-      hapticClick();
-
-      if (chipId === TABLE_ACTION_CHIP_IDS.orderMore) {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-
-      if (chipId === TABLE_ACTION_CHIP_IDS.viewBill) {
-        setBillSheetOpen(true);
-        return;
-      }
-
-      if (chipId === "situation-waiter") {
-        void (async () => {
-          try {
-            await requestGuestWaiterCall({
-              tableToken: token,
-              sessionToken,
-            });
-            toast.success(tUI("waiter.notified"), {
-              description: tUI("waiter.notifiedBody"),
-            });
-            setSceneRefreshKey((key) => key + 1);
-            await refreshGuestSceneView();
-          } catch {
-            toast.error(tUI("waiter.error"), {
-              description: tUI("waiter.errorHint"),
-            });
-          }
-        })();
-        return;
-      }
-
-      const handoffChip = parseSceneHandoffChip(chipId, label);
-      if (handoffChip?.structuredIntent) {
-        if (!sessionToken) {
-          toast.error(tUI("waiter.sessionError"), {
-            description: tUI("waiter.sessionErrorHint"),
-          });
-          return;
-        }
-        void (async () => {
-          try {
-            const result = await runGuestDenisSceneTurn({
-              locationId,
-              tableId,
-              tableToken: token,
-              sessionToken,
-              message: label,
-              language,
-              structuredIntent: handoffChip.structuredIntent,
-              handoffPaymentMethod: handoffChip.handoffPaymentMethod,
-              allowOrdering: canPlaceOrders,
-            });
-            if (result.openPaymentSheet) {
-              setBillSheetOpen(true);
-            }
-            setSceneRefreshKey((key) => key + 1);
-            await refreshGuestSceneView();
-          } catch {
-            toast.error(tUI("ai.overlay.error"));
-          }
-        })();
-        return;
-      }
-
-      if (chipId === "situation-wrong") {
-        void runSceneChipTurn({
-          chipId,
-          label,
-          message: tUI("scene.situation.chipWrong"),
-        });
-        return;
-      }
-
-      const selections = parseSceneChipSelections(chipId);
-      if (selections) {
-        applySceneChipSelections(selections);
-        void runSceneChipTurn({ chipId, label, selections });
-        return;
-      }
-
-      void runSceneChipTurn({ chipId, label });
-    },
-    [
-      sessionToken,
-      token,
-      tUI,
-      refreshGuestSceneView,
-      runSceneChipTurn,
-      applySceneChipSelections,
-    ]
+    []
   );
 
   const handleSceneInlineAdd = useCallback(
@@ -1179,43 +955,9 @@ export function MenuView({
     dismissNudge();
   }, [dismissNudge]);
 
-  const handleAiChatOpenChange = useCallback((open: boolean) => {
-    setAiChatOpen(open);
-    if (!open) {
-      setSceneRefreshKey((key) => key + 1);
-    }
-  }, []);
-
-  const handleGuestSceneRefresh = useCallback(() => {
-    void refreshGuestSceneView();
-  }, [refreshGuestSceneView]);
-
-  const handleOrderPress = useCallback(
-    (orderId: string) => {
-      hapticClick();
-      const order = scene?.chrome.situation?.orders.find(
-        (row) => row.orderId === orderId
-      );
-      if (order?.primaryAction.kind === "open_bill") {
-        setBillSheetOpen(true);
-        return;
-      }
-      setFocusOrderId(orderId);
-    },
-    [scene]
-  );
-
   const handleSceneBannerAction = useCallback(
     (banner: (typeof sceneBanners)[number]) => {
       hapticClick();
-      if (banner.action === "view_order" && banner.orderId) {
-        setFocusOrderId(banner.orderId);
-        return;
-      }
-      if (banner.action === "view_bill") {
-        setBillSheetOpen(true);
-        return;
-      }
       if (banner.action === "add_product" && banner.productId) {
         const product = productById.get(banner.productId);
         if (product) {
@@ -1425,7 +1167,7 @@ export function MenuView({
                   <AiFeedbackPrompt
                     orderId={feedbackOrder.id}
                     sessionToken={sessionToken!}
-                    deliveredAt={feedbackOrder.delivered_at}
+                    deliveredAt={null}
                     googleReviewUrl={googleReviewUrl}
                   />
                 </div>
@@ -1474,114 +1216,68 @@ export function MenuView({
             onOpenChange={(o) => !o && setDetailProduct(null)}
           />
 
-          {aiConciergeEnabled && (
-            <AiConciergeChat
-              open={aiChatOpen}
-              onOpenChange={handleAiChatOpenChange}
-              onSceneRefresh={handleGuestSceneRefresh}
-              onOpenPaymentSheet={() => setBillSheetOpen(true)}
-              sceneChrome={scene?.chrome ?? null}
-              slug={slug}
-              token={token}
-              locationId={locationId}
-              tableId={tableId}
-              sessionToken={sessionToken}
-              currency={currency}
-              taxPercent={taxPercent}
-              orderingDisabled={!canPlaceOrders}
-              isDemo={isDemoGuestRoute(slug, token)}
-              menuCategories={menuCategories}
-              menuSectionByProductId={menuSectionByProductIdAll}
-              productTaxRateById={
-                new Map(
-                  [...productById.values()].map((p) => [
-                    p.id,
-                    p.tax_rate != null ? Number(p.tax_rate) : null,
-                  ])
-                )
-              }
-              scrollContext={getAiContext}
-              guestProfile={profile}
-              isReturning={isReturning}
-              onAddToCart={handleAddAiRecommendation}
-              customizableProductIds={customizableProductIds}
-              onOpenProductDetail={(productId) => {
-                const product = productById.get(productId);
-                if (product) openProductDetail(product);
-              }}
-              onRecommendations={handleAiChatSetupComplete}
-              onSaveAllergies={saveGuestAllergies}
-              getManualCartSnapshot={getManualCartSnapshot}
-              deviceFingerprint={deviceFingerprint}
-              voiceEnabled={voiceEnabled}
-              voiceTtsEnabled={voiceTtsEnabled}
-              bootstrapTranscript={denisView?.transcript ?? null}
-            />
-          )}
-
         </div>
       </PullToRefresh>
 
-      {aiConciergeEnabled && !aiChatOpen && (
-        <DenisGuestDock
-          scene={scene}
+      {aiConciergeEnabled ? (
+        <GuestDenisLayer
+          enabled
+          slug={slug}
+          token={token}
+          locationId={locationId}
+          tableId={tableId}
+          sessionToken={sessionToken}
           currency={currency}
+          taxPercent={taxPercent}
+          orderingDisabled={!canPlaceOrders}
+          voiceEnabled={voiceEnabled}
+          voiceTtsEnabled={voiceTtsEnabled}
           tableName={tableName}
           venueName={locationName}
-          loading={Boolean(sessionToken) && sceneLoading && !scene}
+          dockSubtitle={welcomeBackMessage ?? undefined}
           cartBarVisible={
             orderingEnabled && !detailProduct && itemCount > 0
           }
-          headline={
-            denisView
-              ? denisView.chrome.headline
-              : scene?.chrome.situation?.headline
-          }
-          subtitle={
-            scene?.chrome.situation?.headline ??
-            welcomeBackMessage ??
-            undefined
-          }
-          onOpenDesk={handleOpenDenisDesk}
-          onChipPress={handleSceneChipPress}
-          onInlineAdd={handleSceneInlineAdd}
-          onOrderPress={handleOrderPress}
-          busy={sceneTurnBusy}
+          orderMoreChipAction="scroll"
+          controlledView={{
+            view: denisView,
+            scene,
+            loading: sceneLoading,
+            refresh: refreshGuestSceneView,
+          }}
+          getBrowsingContext={getAiContext}
+          onChatOpenChange={setAiChatOpen}
+          onSceneTurnResult={handleSceneTurnResult}
+          onSceneChipSelections={applySceneChipSelections}
+          onInlineAddProduct={handleSceneInlineAdd}
+          stripeOnboarded={stripeOnboarded}
+          paymentOnlineEnabled={paymentOnlineEnabled}
+          paymentAtBarEnabled={paymentAtBarEnabled}
+          paymentCardAtTableEnabled={paymentCardAtTableEnabled}
+          inPersonPaymentLocation={inPersonPaymentLocation}
+          menuChat={{
+            isDemo: isDemoGuestRoute(slug, token),
+            menuCategories,
+            menuSectionByProductId: menuSectionByProductIdAll,
+            productTaxRateById: new Map(
+              [...productById.values()].map((p) => [
+                p.id,
+                p.tax_rate != null ? Number(p.tax_rate) : null,
+              ])
+            ),
+            scrollContext: getAiContext,
+            guestProfile: profile,
+            isReturning,
+            onAddToCart: handleAddAiRecommendation,
+            customizableProductIds,
+            onOpenProductDetail: (productId) => {
+              const product = productById.get(productId);
+              if (product) openProductDetail(product);
+            },
+            onRecommendations: handleAiChatSetupComplete,
+            onSaveAllergies: saveGuestAllergies,
+          }}
         />
-      )}
-
-      {sessionToken ? (
-        <>
-          <GuestOrderFocusSheet
-            open={focusOrderId != null}
-            onOpenChange={(open) => {
-              if (!open) setFocusOrderId(null);
-            }}
-            orderId={focusOrderId}
-            slug={slug}
-            token={token}
-            sessionToken={sessionToken}
-            currency={currency}
-            stripeOnboarded={stripeOnboarded}
-            paymentOnlineEnabled={paymentOnlineEnabled}
-            paymentAtBarEnabled={paymentAtBarEnabled}
-            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
-            inPersonPaymentLocation={inPersonPaymentLocation}
-          />
-          <GuestSessionBillSheet
-            open={billSheetOpen}
-            onOpenChange={setBillSheetOpen}
-            slug={slug}
-            token={token}
-            sessionToken={sessionToken}
-            currency={currency}
-            stripeOnboarded={stripeOnboarded}
-            paymentOnlineEnabled={paymentOnlineEnabled}
-            paymentAtBarEnabled={paymentAtBarEnabled}
-            paymentCardAtTableEnabled={paymentCardAtTableEnabled}
-            inPersonPaymentLocation={inPersonPaymentLocation}
-          />
-        </>
       ) : null}
     </>
   );

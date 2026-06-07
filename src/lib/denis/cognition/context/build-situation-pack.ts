@@ -224,6 +224,10 @@ export function buildSituationPack(input: SituationPackInput): string {
     blocks.push(input.vkgPairingBlock.trim());
   }
 
+  if (input.playbookBlock?.trim()) {
+    blocks.push(input.playbookBlock.trim());
+  }
+
   blocks.push(buildPhaseBehaviorSection(input));
 
   return blocks.filter(Boolean).join("\n\n");

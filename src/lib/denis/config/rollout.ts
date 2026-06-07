@@ -15,6 +15,8 @@ export const ConciergeRolloutSchema = z.object({
   mode: ConciergeRolloutModeSchema,
   /** M27 — share of table sessions on Denis guest path when mode=canary. */
   canaryPercent: z.number().int().min(0).max(100).default(10),
+  /** M2 / Phase E — serialized Table Session Actor (requires Redis). */
+  tableSessionActorEnabled: z.boolean().default(false),
 });
 
 export type ConciergeRollout = z.infer<typeof ConciergeRolloutSchema>;
@@ -43,6 +45,7 @@ export function resolveEffectiveRollout(config: {
     return {
       mode: envMode,
       canaryPercent: config.rollout.canaryPercent ?? 10,
+      tableSessionActorEnabled: config.rollout.tableSessionActorEnabled ?? false,
     };
   }
   return config.rollout;
@@ -94,4 +97,16 @@ export function kernelTimelineEnabled(mode: ConciergeRolloutMode): boolean {
 
 export function shouldRunShadowDiff(mode: ConciergeRolloutMode): boolean {
   return mode === "shadow" || mode === "simulation";
+}
+
+export type TableSessionActorRolloutInput = {
+  rollout: Pick<ConciergeRollout, "tableSessionActorEnabled">;
+};
+
+/** Phase E — pilot rollout + Redis infra must both be on. */
+export function resolveTableSessionActorEnabled(
+  config: TableSessionActorRolloutInput,
+  redisAvailable: boolean
+): boolean {
+  return redisAvailable && config.rollout.tableSessionActorEnabled === true;
 }

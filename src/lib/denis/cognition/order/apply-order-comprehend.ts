@@ -4,17 +4,12 @@ import {
   emptyCartSubmitBlockedMessage,
   sanitizeFalseOrderClaimMessage,
 } from "@/lib/ai/ordering/order-flow";
-import {
-  appendOrderGapClarify,
-  buildBackfillNegotiationMessage,
-  extractOrderMessageMeta,
-  maybeBackfillOrderDraft,
-} from "@/lib/ai/ordering/order-message-backfill";
+import { maybeBackfillOrderDraft } from "@/lib/ai/ordering/order-message-backfill";
 import { processOrderingTurn } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { AiStructuredResponse } from "@/lib/ai/types";
 
-export type ApplyPostLlmOrderingInput = {
+export type ApplyOrderComprehendInput = {
   userMessage: string;
   allowOrdering: boolean;
   orderDraft: AiOrderDraft;
@@ -24,7 +19,7 @@ export type ApplyPostLlmOrderingInput = {
   language: string;
 };
 
-export type ApplyPostLlmOrderingResult = {
+export type ApplyOrderComprehendResult = {
   draft: AiOrderDraft;
   cartActions: ReturnType<typeof processOrderingTurn>["cartActions"];
   quickReplies: string[];
@@ -34,12 +29,12 @@ export type ApplyPostLlmOrderingResult = {
 };
 
 /**
- * ADR-010 F8-2 — post-LLM cart + submit flow (kernel ordering path).
- * Shared by legacy adapter (when enabled) and runDenisTurn (when legacy disabled).
+ * ADR-034-A.1 — canonical post-LLM order comprehend (cart + submit intent).
+ * Gap/substitution/drink clarify → cognition/waiter only (enforceWaiterTell + DECIDE).
  */
-export function applyPostLlmOrdering(
-  input: ApplyPostLlmOrderingInput
-): ApplyPostLlmOrderingResult {
+export function applyOrderComprehend(
+  input: ApplyOrderComprehendInput
+): ApplyOrderComprehendResult {
   const orderingResult = processOrderingTurn({
     userMessage: input.userMessage,
     allowOrdering: input.allowOrdering,
@@ -61,21 +56,6 @@ export function applyPostLlmOrdering(
   const cartActionsThisTurn =
     orderingResult.cartActions.length + postOrderBackfill.cartActions.length;
 
-  const orderGaps = {
-    substitution:
-      postOrderBackfill.meta.substitution ??
-      extractOrderMessageMeta(input.userMessage).substitution,
-    needsDrinkClarify:
-      postOrderBackfill.meta.needsDrinkClarify ||
-      extractOrderMessageMeta(input.userMessage).needsDrinkClarify,
-  };
-
-  const negotiationMessage = buildBackfillNegotiationMessage(
-    input.language,
-    workingDraft,
-    orderGaps
-  );
-
   const flowResult = finalizeOrderFlow({
     userMessage: input.userMessage,
     draft: workingDraft,
@@ -87,25 +67,6 @@ export function applyPostLlmOrdering(
   workingDraft = flowResult.draft;
 
   let assistantMessage = flowResult.message;
-  if (orderGaps.needsDrinkClarify || orderGaps.substitution) {
-    if (flowResult.intent === "confirm") {
-      assistantMessage = appendOrderGapClarify(
-        flowResult.message,
-        input.language,
-        workingDraft,
-        orderGaps
-      );
-    } else if (negotiationMessage && cartActionsThisTurn > 0) {
-      assistantMessage = negotiationMessage;
-    } else {
-      assistantMessage = appendOrderGapClarify(
-        flowResult.message,
-        input.language,
-        workingDraft,
-        orderGaps
-      );
-    }
-  }
   let submitOrder = flowResult.submitOrder;
 
   assistantMessage = sanitizeFalseOrderClaimMessage({

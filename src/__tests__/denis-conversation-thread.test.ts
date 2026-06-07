@@ -46,6 +46,7 @@ function minimalState(
       lastAssistantMessage: "Da li ste odlučili?",
       pendingSlot: null,
       model: emptyConversationModel(),
+      obligation: null,
     },
     timeline: [],
     config: CONCIERGE_PLATFORM_DEFAULTS,
@@ -84,6 +85,7 @@ describe("conversation thread evidence", () => {
           lastAssistantMessage: "stale message",
           pendingSlot: null,
           model: emptyConversationModel(),
+      obligation: null,
         },
       }),
       transcript: [

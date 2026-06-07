@@ -1,9 +1,115 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { resolveSessionOutcome } from "@/lib/operator/projections/helpers";
+import type { DenisSessionUpdateReason } from "@/lib/integrations/webhooks/denis-session-updated.schema";
+import {
+  countUserMessages,
+  extractIntentsFromTimeline,
+  resolveSessionOutcome,
+} from "@/lib/operator/projections/helpers";
 import { enqueueDenisOperatorWebhooks } from "@/lib/webhooks/enqueue-denis-operator-webhook";
 import { orgIdForLocation } from "@/lib/webhooks/org-context";
 import { getCurrentTraceId } from "@/lib/resilience/trace-context";
 import { logger } from "@/lib/logger";
+
+export async function emitDenisSessionUpdated(
+  admin: SupabaseClient,
+  input: {
+    tableSessionId: string;
+    updateReason: DenisSessionUpdateReason;
+    traceId?: string;
+    viewVersion?: number;
+  }
+): Promise<void> {
+  const { data: sessionRow } = await admin
+    .from("table_sessions")
+    .select("id, location_id, status, denis_shared_ai_session_id")
+    .eq("id", input.tableSessionId)
+    .maybeSingle();
+
+  if (!sessionRow) return;
+
+  const session = sessionRow as {
+    id: string;
+    location_id: string;
+    status: string;
+    denis_shared_ai_session_id: string | null;
+  };
+
+  const orgId = await orgIdForLocation(session.location_id);
+  if (!orgId) return;
+
+  const { count: ordersCount } = await admin
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", session.id)
+    .neq("status", "cancelled");
+
+  let turnCount = 0;
+  let timelineEvents: Array<{ event_type: string; payload: unknown }> = [];
+
+  if (session.denis_shared_ai_session_id) {
+    const { data: aiRow } = await admin
+      .from("ai_sessions")
+      .select("messages")
+      .eq("id", session.denis_shared_ai_session_id)
+      .maybeSingle();
+
+    if (aiRow) {
+      const ai = aiRow as {
+        messages: Array<{ role: string; content: string }>;
+      };
+      turnCount = countUserMessages(ai.messages ?? []);
+    }
+
+    const { data: timelineRows } = await admin
+      .from("denis_timeline")
+      .select("event_type, payload")
+      .eq("ai_session_id", session.denis_shared_ai_session_id);
+    timelineEvents = (timelineRows ?? []) as typeof timelineEvents;
+  }
+
+  const handoffCount = timelineEvents.filter((event) => {
+    if (event.event_type !== "intent.resolved") return false;
+    const payload = event.payload as { intent?: string } | null;
+    return (
+      payload?.intent === "HANDOFF_WAITER" || payload?.intent === "HANDOFF_PAY"
+    );
+  }).length;
+
+  const outcome = resolveSessionOutcome({
+    status: session.status,
+    ordersCount: ordersCount ?? 0,
+    handoffCount,
+  });
+
+  try {
+    await enqueueDenisOperatorWebhooks(admin, {
+      orgId,
+      event: "denis.session.updated",
+      aggregateId: session.id,
+      payload: {
+        orgId,
+        locationId: session.location_id,
+        sessionId: session.id,
+        outcome,
+        metrics: {
+          updateReason: input.updateReason,
+          status: session.status,
+          outcome,
+          ordersCount: ordersCount ?? 0,
+          turnCount,
+          intents: extractIntentsFromTimeline(timelineEvents),
+          viewVersion: input.viewVersion,
+        },
+        traceId: input.traceId ?? getCurrentTraceId(),
+      },
+    });
+  } catch (error) {
+    logger.warn("denis.session.updated enqueue failed", {
+      sessionId: session.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 export async function emitDenisSessionCompleted(
   admin: SupabaseClient,

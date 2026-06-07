@@ -60,6 +60,7 @@ function baseState(
       lastAssistantMessage: null,
       pendingSlot: null,
       model: emptyConversationModel(),
+      obligation: null,
     },
     timeline: [],
     config,
@@ -77,9 +78,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 11) {
+  if (banterGraph.beliefs.length !== 15) {
     errors.push(
-      `expected 11 beliefs (ADR-030 core), got ${banterGraph.beliefs.length}`
+      `expected 15 beliefs (ADR-030 core + ADR-032 waiter), got ${banterGraph.beliefs.length}`
     );
   }
 
@@ -303,6 +304,7 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
         lastAssistantMessage: "0.3L ili 0.5L?",
         pendingSlot: "serve_size",
         model: emptyConversationModel(),
+      obligation: null,
       },
     }),
     guestMessage: "veliko",

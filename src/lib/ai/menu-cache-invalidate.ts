@@ -6,13 +6,20 @@ function menuCacheKey(locationId: string) {
   return `${AI_CONFIG.menuCacheKeyPrefix}${locationId}`;
 }
 
+function menuRagEmbeddingCacheKey(locationId: string) {
+  return `${AI_CONFIG.menuRagEmbeddingCacheKeyPrefix}${locationId}`;
+}
+
 /** Client-safe — no service-role Supabase import. */
 export async function invalidateMenuCache(locationId: string) {
   const redis = getAiRedis();
   if (!redis) return;
 
   try {
-    await redis.del(menuCacheKey(locationId));
+    await Promise.all([
+      redis.del(menuCacheKey(locationId)),
+      redis.del(menuRagEmbeddingCacheKey(locationId)),
+    ]);
     logger.info("AI menu cache invalidated", { locationId });
   } catch (error) {
     logger.warn("AI menu cache invalidation failed", {

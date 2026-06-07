@@ -116,6 +116,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
   rollout: {
     mode: "shadow",
     canaryPercent: 10,
+    tableSessionActorEnabled: false,
   },
   party: {
     mode: "shared_cart",

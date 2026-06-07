@@ -2,7 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   computeConversionRate,
   computeLlmInvocationRate,
+  computeWaiterGapRate,
   countEscalationsFromTimeline,
+  countSessionsWithWaiterGap,
   topLanguagesFromSessions,
 } from "@/lib/operator/projections/helpers";
 import {
@@ -92,16 +94,21 @@ export async function projectDenisLocationMetrics(
   const totalCredits = aiSessions.reduce((sum, row) => sum + row.credits_used, 0);
 
   let escalationsCount = 0;
+  let sessionsWithGap = 0;
   if (aiSessionIds.length) {
     const { data: timelineRows } = await admin
       .from("denis_timeline")
-      .select("event_type, payload")
+      .select("event_type, payload, ai_session_id")
       .in("ai_session_id", aiSessionIds)
       .gte("created_at", range.from)
       .lte("created_at", range.to);
-    escalationsCount = countEscalationsFromTimeline(
-      (timelineRows ?? []) as Array<{ event_type: string; payload: unknown }>
-    );
+    const timelineEvents = (timelineRows ?? []) as Array<{
+      event_type: string;
+      payload: unknown;
+      ai_session_id: string;
+    }>;
+    escalationsCount = countEscalationsFromTimeline(timelineEvents);
+    sessionsWithGap = countSessionsWithWaiterGap(timelineEvents);
   }
 
   const { data: orgOps } = await admin
@@ -127,6 +134,10 @@ export async function projectDenisLocationMetrics(
     llmInvocationRate: computeLlmInvocationRate({
       sessionsWithActivity: sessionsWithActivity.length,
       sessionsWithLlm: sessionsWithLlm.length,
+    }),
+    waiterGapRate: computeWaiterGapRate({
+      sessionsWithActivity: sessionsWithActivity.length,
+      sessionsWithGap,
     }),
     avgTurnsPerSession:
       sessionsCount > 0 ? Math.round((totalTurns / sessionsCount) * 10) / 10 : 0,

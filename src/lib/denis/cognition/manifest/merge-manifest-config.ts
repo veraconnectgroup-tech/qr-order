@@ -2,6 +2,7 @@ import {
   ConciergeConfigSchema,
   type ConciergeConfig,
 } from "@/lib/denis/config/concierge-config.schema";
+import { resolvePlaybookPackId } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import {
   parseVenueManifest,
   VENUE_MANIFEST_OPEN_CAPABILITIES,
@@ -20,9 +21,11 @@ export type EffectiveRuntimeModels = {
 export type EffectiveRuntimeConfig = {
   config: ConciergeConfig;
   manifest: VenueManifest | null;
+  orgManifest: VenueManifest | null;
   capabilities: VenueManifestCapabilities;
   models: EffectiveRuntimeModels;
   qualityContract: VenueQualityContract | null;
+  playbookPackId: string | null;
 };
 
 export type MergeManifestConfigOptions = {
@@ -209,8 +212,10 @@ export function mergeManifestConfig(
   return {
     config: mergedConfig,
     manifest,
+    orgManifest,
     capabilities,
     models: resolveEffectiveModels(mergedConfig, manifest),
     qualityContract: manifest?.qualityContract ?? null,
+    playbookPackId: resolvePlaybookPackId(orgManifest, manifest),
   };
 }

@@ -21,8 +21,8 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Phase E — serialized Table Session Actor when Redis is available. */
-export function isTableSessionActorEnabled(): boolean {
+/** Phase E — Redis infra available for actor queue + lock. */
+export function isTableSessionActorInfrastructureReady(): boolean {
   return getAiRedis() != null;
 }
 

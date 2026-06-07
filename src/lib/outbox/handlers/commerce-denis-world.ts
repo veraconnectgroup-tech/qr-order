@@ -1,8 +1,10 @@
 import type { CommerceDenisWorldPayload } from "@/lib/denis/ingress/world-types";
 import {
   enqueueWorldSignal,
-  isTableSessionActorEnabled,
+  isTableSessionActorInfrastructureReady,
 } from "@/lib/denis/actor/table-session-actor";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { resolveTableSessionActorEnabled } from "@/lib/denis/config/rollout";
 import { runDenisWorldSignal } from "@/lib/denis/runtime/run-denis-world-signal";
 
 function worldSignalId(payload: CommerceDenisWorldPayload): string {
@@ -12,9 +14,14 @@ function worldSignalId(payload: CommerceDenisWorldPayload): string {
 export async function handleCommerceDenisWorld(
   payload: Record<string, unknown>
 ): Promise<void> {
-  if (isTableSessionActorEnabled()) {
-    const parsed = payload as CommerceDenisWorldPayload;
-    if (parsed.sessionId) {
+  const parsed = payload as CommerceDenisWorldPayload;
+  if (parsed.sessionId && parsed.locationId) {
+    const config = await loadConciergeConfigForLocation(parsed.locationId);
+    const actorEnabled = resolveTableSessionActorEnabled(
+      config,
+      isTableSessionActorInfrastructureReady()
+    );
+    if (actorEnabled) {
       await enqueueWorldSignal(
         parsed.sessionId,
         worldSignalId(parsed),

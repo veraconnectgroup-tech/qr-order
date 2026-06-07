@@ -1,4 +1,8 @@
-import type { SessionOutcome } from "@/lib/operator/types";
+import type {
+  OperatorBeliefsSummary,
+  OperatorSessionMetrics,
+  SessionOutcome,
+} from "@/lib/operator/types";
 
 type MessageRow = { role: string; content: string };
 
@@ -110,4 +114,121 @@ export function computeTipRate(
 ): number | undefined {
   if (paidOrders <= 0) return undefined;
   return Math.round((ordersWithTip / paidOrders) * 1000) / 1000;
+}
+
+export function computeWaiterGapRate(input: {
+  sessionsWithActivity: number;
+  sessionsWithGap: number;
+}): number {
+  if (input.sessionsWithActivity <= 0) return 0;
+  return (
+    Math.round((input.sessionsWithGap / input.sessionsWithActivity) * 1000) /
+    1000
+  );
+}
+
+function sessionHadWaiterGap(
+  events: Array<{ event_type: string; payload: unknown }>
+): boolean {
+  for (const event of events) {
+    if (event.event_type !== "mind.beliefs_compiled") continue;
+    const payload = event.payload as {
+      summary?: Record<string, unknown>;
+    } | null;
+    const gapCount = payload?.summary?.["waiter.gap_count"];
+    if (typeof gapCount === "number" && gapCount > 0) return true;
+  }
+
+  for (const event of events) {
+    if (event.event_type !== "mind.turn_profile") continue;
+    const payload = event.payload as { planReason?: string } | null;
+    if (payload?.planReason === "waiter.gap_blocks_confirm") return true;
+  }
+
+  return false;
+}
+
+export function countSessionsWithWaiterGap(
+  events: Array<{ event_type: string; payload: unknown; ai_session_id?: string }>
+): number {
+  const bySession = new Map<string, Array<{ event_type: string; payload: unknown }>>();
+
+  for (const event of events) {
+    const sessionId = event.ai_session_id;
+    if (!sessionId) continue;
+    const bucket = bySession.get(sessionId) ?? [];
+    bucket.push(event);
+    bySession.set(sessionId, bucket);
+  }
+
+  let count = 0;
+  for (const sessionEvents of bySession.values()) {
+    if (sessionHadWaiterGap(sessionEvents)) count += 1;
+  }
+  return count;
+}
+
+export function aggregateSessionMetricsFromTimeline(
+  events: Array<{ event_type: string; payload: unknown }>
+): OperatorSessionMetrics {
+  const profiles = events.filter((row) => row.event_type === "mind.turn_profile");
+  const turnCount = profiles.length;
+  if (!turnCount) {
+    return {
+      turnCount: 0,
+      llmTurnCount: 0,
+      llmInvocationRate: 0,
+      gapTurnCount: 0,
+      gapRate: 0,
+    };
+  }
+
+  let llmTurnCount = 0;
+  let gapTurnCount = 0;
+  for (const row of profiles) {
+    const payload = row.payload as {
+      llmUsed?: boolean;
+      planReason?: string;
+    } | null;
+    if (payload?.llmUsed === true) llmTurnCount += 1;
+    if (payload?.planReason === "waiter.gap_blocks_confirm") gapTurnCount += 1;
+  }
+
+  return {
+    turnCount,
+    llmTurnCount,
+    llmInvocationRate:
+      Math.round((llmTurnCount / turnCount) * 1000) / 1000,
+    gapTurnCount,
+    gapRate: Math.round((gapTurnCount / turnCount) * 1000) / 1000,
+  };
+}
+
+export function extractLatestBeliefsSummary(
+  events: Array<{
+    event_type: string;
+    payload: unknown;
+    created_at?: string;
+  }>
+): OperatorBeliefsSummary | null {
+  let latest: OperatorBeliefsSummary | null = null;
+
+  for (const event of events) {
+    if (event.event_type !== "mind.beliefs_compiled") continue;
+    const payload = event.payload as {
+      beliefsHash?: string;
+      beliefCount?: number;
+      summary?: Record<string, unknown>;
+    } | null;
+    if (!payload?.beliefsHash) continue;
+
+    latest = {
+      beliefsHash: payload.beliefsHash,
+      beliefCount: payload.beliefCount ?? 0,
+      summary: payload.summary ?? {},
+      compiledAt: event.created_at ?? null,
+    };
+  }
+
+  return latest;
 }

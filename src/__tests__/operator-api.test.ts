@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateSessionMetricsFromTimeline,
   computeAvgCheckCents,
   computeConversionRate,
   computeLlmInvocationRate,
   computeTipRate,
+  computeWaiterGapRate,
+  countSessionsWithWaiterGap,
   countUserMessages,
   extractIntentsFromTimeline,
+  extractLatestBeliefsSummary,
   redactTranscript,
   resolveSessionOutcome,
 } from "@/lib/operator/projections/helpers";
@@ -18,7 +22,9 @@ import {
 import { hasOperatorScope, OPERATOR_SCOPES } from "@/lib/operator/scopes";
 import { parseOperatorPeriod, periodToIsoRange } from "@/lib/operator/parse-period";
 import type {
+  DenisLocationMetrics,
   OperatorOrderListItem,
+  OperatorSessionSummary,
   OperatorTranscript,
 } from "@/lib/operator/types";
 import { requireOperatorScope } from "@/lib/operator/auth";
@@ -123,6 +129,93 @@ describe("operator projection helpers", () => {
     ]);
     expect(intents).toEqual(["ORDER", "HANDOFF_WAITER"]);
   });
+
+  it("computes waiter gap rate from session activity", () => {
+    expect(
+      computeWaiterGapRate({ sessionsWithActivity: 8, sessionsWithGap: 2 })
+    ).toBe(0.25);
+    expect(computeWaiterGapRate({ sessionsWithActivity: 0, sessionsWithGap: 0 })).toBe(
+      0
+    );
+  });
+
+  it("counts sessions with waiter gaps from beliefs or turn profiles", () => {
+    const count = countSessionsWithWaiterGap([
+      {
+        ai_session_id: "ai-1",
+        event_type: "mind.beliefs_compiled",
+        payload: {
+          summary: { "waiter.gap_count": 1 },
+        },
+      },
+      {
+        ai_session_id: "ai-2",
+        event_type: "mind.turn_profile",
+        payload: { planReason: "waiter.gap_blocks_confirm" },
+      },
+      {
+        ai_session_id: "ai-3",
+        event_type: "mind.beliefs_compiled",
+        payload: {
+          summary: { "waiter.gap_count": 0 },
+        },
+      },
+    ]);
+
+    expect(count).toBe(2);
+  });
+
+  it("aggregates session metrics from turn profiles", () => {
+    const metrics = aggregateSessionMetricsFromTimeline([
+      {
+        event_type: "mind.turn_profile",
+        payload: { llmUsed: true, planReason: "commerce.pressure" },
+      },
+      {
+        event_type: "mind.turn_profile",
+        payload: {
+          llmUsed: false,
+          planReason: "waiter.gap_blocks_confirm",
+        },
+      },
+    ]);
+
+    expect(metrics.turnCount).toBe(2);
+    expect(metrics.llmTurnCount).toBe(1);
+    expect(metrics.llmInvocationRate).toBe(0.5);
+    expect(metrics.gapTurnCount).toBe(1);
+    expect(metrics.gapRate).toBe(0.5);
+  });
+
+  it("extracts latest beliefs summary from timeline", () => {
+    const beliefs = extractLatestBeliefsSummary([
+      {
+        event_type: "mind.beliefs_compiled",
+        created_at: "2026-06-06T20:00:00.000Z",
+        payload: {
+          beliefsHash: "hash-1",
+          beliefCount: 2,
+          summary: { "waiter.gap_count": 1 },
+        },
+      },
+      {
+        event_type: "mind.beliefs_compiled",
+        created_at: "2026-06-06T20:05:00.000Z",
+        payload: {
+          beliefsHash: "hash-2",
+          beliefCount: 3,
+          summary: {
+            "waiter.gap_count": 0,
+            "waiter.can_confirm": true,
+          },
+        },
+      },
+    ]);
+
+    expect(beliefs?.beliefsHash).toBe("hash-2");
+    expect(beliefs?.summary["waiter.can_confirm"]).toBe(true);
+    expect(beliefs?.compiledAt).toBe("2026-06-06T20:05:00.000Z");
+  });
 });
 
 describe("OperatorOrderListItem shape contract", () => {
@@ -191,6 +284,7 @@ describe("LocationSummary shape contract", () => {
         avgTurnsPerSession: 0,
         topLanguages: [],
         llmInvocationRate: 0,
+        waiterGapRate: 0,
       },
       ops: {
         rushMinutes: 0,
@@ -207,5 +301,71 @@ describe("LocationSummary shape contract", () => {
     ]);
     expect(sample).not.toHaveProperty("session_token");
     expect(sample).not.toHaveProperty("guest_email");
+  });
+});
+
+describe("DenisLocationMetrics shape contract", () => {
+  it("includes waiterGapRate for Viktor SLA dashboard", () => {
+    const sample: DenisLocationMetrics = {
+      locationId: "loc-1",
+      period: {
+        from: "2026-06-06T00:00:00.000Z",
+        to: "2026-06-06T23:59:59.999Z",
+      },
+      sessionsCount: 10,
+      sessionsWithDenisActivity: 8,
+      sessionsWithOrder: 4,
+      conversionRate: 0.4,
+      llmInvocationRate: 0.25,
+      waiterGapRate: 0.125,
+      avgTurnsPerSession: 3.2,
+      avgCreditsPerSession: 1.1,
+      escalationsCount: 0,
+      topLanguages: [{ lang: "de", count: 6 }],
+      creditBalance: 120,
+      lowBalance: false,
+    };
+
+    expect(sample.waiterGapRate).toBe(0.125);
+    expect(sample).not.toHaveProperty("session_token");
+  });
+});
+
+describe("OperatorSessionSummary shape contract", () => {
+  it("includes session metrics and beliefs summary without PII", () => {
+    const sample: OperatorSessionSummary = {
+      sessionId: "sess-1",
+      locationId: "loc-1",
+      status: "closed",
+      outcome: "ordered",
+      openedAt: "2026-06-06T20:00:00.000Z",
+      closedAt: "2026-06-06T21:00:00.000Z",
+      turnCount: 4,
+      messageCount: 8,
+      language: "de",
+      intents: ["ORDER"],
+      ordersCount: 1,
+      metrics: {
+        turnCount: 4,
+        llmTurnCount: 2,
+        llmInvocationRate: 0.5,
+        gapTurnCount: 1,
+        gapRate: 0.25,
+      },
+      beliefs: {
+        beliefsHash: "abc123",
+        beliefCount: 5,
+        summary: {
+          "waiter.gap_count": 0,
+          "waiter.can_confirm": true,
+        },
+        compiledAt: "2026-06-06T20:55:00.000Z",
+      },
+    };
+
+    expect(sample.metrics?.gapRate).toBe(0.25);
+    expect(sample.beliefs?.summary["waiter.can_confirm"]).toBe(true);
+    expect(sample).not.toHaveProperty("guest_email");
+    expect(sample).not.toHaveProperty("qr_token");
   });
 });

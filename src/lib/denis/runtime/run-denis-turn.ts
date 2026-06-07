@@ -1,14 +1,22 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
-import { perceiveGuestChatTurn } from "@/lib/denis/runtime/perceive/perceive-guest-chat-turn";
-import type { DenisPerceiveTurnOpts } from "@/lib/denis/runtime/perceive/perceive-turn-opts";
+import {
+  perceiveGuestChatTurn,
+  type DenisPerceiveTurnOpts,
+} from "@/lib/denis/cognition/perceive";
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import { planEvidence } from "@/lib/denis/cognition/context/plan-evidence";
 import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
-import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
+import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/load-venue-manifests";
+import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
+import {
+  embedMenuQueryVector,
+  ensureMenuRagEmbeddings,
+} from "@/lib/denis/cognition/context/menu-rag-embeddings";
+import { isMenuRagEnabled } from "@/lib/denis/cognition/context/retrievers/menu-rag";
 import {
   resolvePerceiveModel,
   resolveRuntimeProfile,
@@ -22,6 +30,7 @@ import {
   type TurnPlan,
   type TurnPlanKind,
 } from "@/lib/denis/cognition/tde";
+import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import {
   assertSufficientCredits,
   finalizeTurnMetering,
@@ -117,6 +126,13 @@ import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
 import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
 import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import { sanitizeGuestOrderHonesty } from "@/lib/ai/ordering/order-flow";
+import {
+  assessWaiterObligation,
+  mergeTableSessionObligation,
+  enforceWaiterTell,
+  lastOrderPlacementFromTranscript,
+} from "@/lib/denis/cognition/waiter";
+import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { DenisCartDraft } from "@/lib/denis/kernel/cart-projection";
 import type { MenuSection } from "@/lib/menu-section";
@@ -317,7 +333,13 @@ function buildPendingSlotActPerceiveResult(
   };
 }
 
-function resolvePerceiveMode(turnPlan: TurnPlan): DenisPerceiveMode {
+function resolvePerceiveMode(
+  turnPlan: TurnPlan,
+  interpretationTask?: ReturnType<typeof buildInterpretationTask>
+): DenisPerceiveMode {
+  if (interpretationTask) {
+    return interpretationTask.evidenceBudget.perceiveMode;
+  }
   if (
     turnPlan.kind === "relational_perceive" ||
     turnPlan.kind === "narrate_paraphrase"
@@ -344,7 +366,12 @@ async function runTdePerceive(input: {
   timelineEnabled: boolean;
   orgId: string;
 }): Promise<TdePerceiveResult> {
-  const { profile, effective } = resolveRuntimeProfile(input.ctx.config);
+  const manifestBundle = await loadVenueManifestsForLocation(input.body.locationId);
+  const { profile, effective } = resolveRuntimeProfile(
+    input.ctx.config,
+    manifestBundle.locationRaw,
+    manifestBundle.orgRaw
+  );
 
   const tdeBeliefs = input.beliefs as Parameters<
     typeof decideTurnPlan
@@ -355,6 +382,11 @@ async function runTdePerceive(input: {
     reflex: input.reflexTurn,
     message: input.body.message,
   });
+
+  const interpretationTask = buildInterpretationTask(
+    input.reflexTurn.plan.topGoal,
+    tdeBeliefs
+  );
 
   const utterancePlan = planUtterance({
     beliefs: tdeBeliefs,
@@ -398,6 +430,32 @@ async function runTdePerceive(input: {
     catalog = null;
   }
 
+  let menuRagEmbeddings = null;
+  let menuRagQueryVector = null;
+  if (
+    catalog &&
+    Object.keys(catalog).length > 0 &&
+    isMenuRagEnabled({
+      catalogRagLevel: effective.capabilities.catalogRag,
+      menuRagEnabled: profile.menuRagEnabled,
+    })
+  ) {
+    try {
+      const ragBundle = await ensureMenuRagEmbeddings(
+        input.body.locationId,
+        catalog
+      );
+      menuRagEmbeddings = ragBundle.index;
+      menuRagQueryVector = await embedMenuQueryVector(
+        input.body.message,
+        ragBundle.space
+      );
+    } catch {
+      menuRagEmbeddings = null;
+      menuRagQueryVector = null;
+    }
+  }
+
   const [vkgPairingBlock, playbookBlock] = await Promise.all([
     loadTurnVkgPairingBlock({
       locationId: input.body.locationId,
@@ -406,7 +464,11 @@ async function runTdePerceive(input: {
       reflexTurn: input.reflexTurn,
       guestAllergens: input.body.preferences?.allergies,
     }),
-    getPlaybookPromptBlock(input.orgId, input.body.locationId).catch(() => null),
+    loadTurnPlaybookBlock({
+      orgId: input.orgId,
+      locationId: input.body.locationId,
+      playbookPackId: effective.playbookPackId,
+    }).catch(() => null),
   ]);
 
   const transcriptForTurn = input.ctx.tableSessionState?.timeline
@@ -420,6 +482,7 @@ async function runTdePerceive(input: {
 
   const evidence = planEvidence({
     turnPlan,
+    interpretationTask,
     beliefs: input.beliefs,
     capabilities: effective.capabilities,
     profile,
@@ -432,11 +495,13 @@ async function runTdePerceive(input: {
     venueOps: input.ctx.venueOps,
     opsEffects: input.ctx.opsEffects,
     catalog,
+    menuRagEmbeddings,
+    menuRagQueryVector,
     playbookBlock,
     vkgPairingBlock,
   });
 
-  const perceiveMode = resolvePerceiveMode(turnPlan);
+  const perceiveMode = resolvePerceiveMode(turnPlan, interpretationTask);
   const pressure = getBeliefValue<string>(input.beliefs, "commerce.pressure");
   const awaiting = getBeliefValue<string | null>(
     input.beliefs,
@@ -444,8 +509,9 @@ async function runTdePerceive(input: {
   );
 
   const perceiveOpts: DenisPerceiveTurnOpts = {
-    persistMessages: !input.timelineEnabled,
+    persistMessages: false,
     turnPlan,
+    interpretationTask,
     evidence,
     perceiveMode,
     leadershipContext: {
@@ -763,6 +829,32 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
   }
 
+  const waiterObligation = ctx.tableSessionState
+    ? mergeTableSessionObligation({
+        state: ctx.tableSessionState,
+        source: "turn",
+        guestMessage: parsed.data.message,
+        cartLines: cartDraftForAct.items,
+        pendingSlot:
+          (pendingSlot as PendingSlotKind | null) ??
+          ctx.tableSessionState.conversation.pendingSlot ??
+          null,
+        language: parsed.data.language,
+        atRecap: ctx.flowNodeId === "recap" || ctx.flowNodeId === "submit",
+      })
+    : assessWaiterObligation({
+        guestMessage: parsed.data.message,
+        orderContextMessage: lastOrderPlacementFromTranscript([]),
+        cartLines: cartDraftForAct.items,
+        pendingSlot: (pendingSlot as PendingSlotKind | null) ?? null,
+        language: parsed.data.language,
+        atRecap: ctx.flowNodeId === "recap" || ctx.flowNodeId === "submit",
+      });
+
+  if (data.submitOrder && !waiterObligation.canConfirm) {
+    data.submitOrder = false;
+  }
+
   let actPhase: Awaited<ReturnType<typeof executeActPhase>> = {
     enabled: false,
     dryRun: true,
@@ -936,6 +1028,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     orderSubmitted: Boolean(turnSubmitOutcome.orderId) || hasOpenOrders,
     draft: cartDraftToAiOrderDraft(cartDraftForAct),
   });
+
+  if (!turnSubmitOutcome.orderId && waiterObligation.gaps.length > 0) {
+    guestMessage = enforceWaiterTell({
+      message: guestMessage ?? "",
+      obligation: waiterObligation,
+      language: parsed.data.language,
+      draft: cartDraftToAiOrderDraft(cartDraftForAct),
+    });
+  }
+
   timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {
