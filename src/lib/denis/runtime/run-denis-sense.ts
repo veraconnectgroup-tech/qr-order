@@ -19,6 +19,7 @@ import {
   shouldCommitProactiveToDock,
 } from "@/lib/denis/loop/proactive-dock-tell";
 import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
+import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { mapGuestOrdersToSchedulerSnapshot } from "@/lib/denis/runtime/adapters/map-scheduler-orders";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import {
@@ -190,12 +191,21 @@ export async function runDenisSense(
       offer: state.offer,
       contextHash: fold.meta.truthHash,
     });
-    await maybeAppendOfferConverted(admin, {
+    const converted = await maybeAppendOfferConverted(admin, {
       aiSessionId: draftAiSessionId,
       traceId,
       timeline: state.timeline,
       contextHash: fold.meta.truthHash,
     });
+    if (converted.length > 0) {
+      scheduleDenisAnticipationCommerceProjection(admin, {
+        kind: "offer_converted",
+        aiSessionId: draftAiSessionId,
+        tableSessionId: fold.meta.tableSessionId ?? undefined,
+        traceId,
+        conversions: converted,
+      });
+    }
   }
 
   if (input.channel === "telemetry.browse") {
@@ -212,12 +222,21 @@ export async function runDenisSense(
         envelope
       );
       const timelineAfterBrowse = await loadDenisTimeline(admin, timelineAiSessionId);
-      await maybeAppendOfferConverted(admin, {
+      const converted = await maybeAppendOfferConverted(admin, {
         aiSessionId: timelineAiSessionId,
         traceId,
         timeline: timelineAfterBrowse,
         contextHash: fold.meta.truthHash,
       });
+      if (converted.length > 0) {
+        scheduleDenisAnticipationCommerceProjection(admin, {
+          kind: "offer_converted",
+          aiSessionId: timelineAiSessionId,
+          tableSessionId: fold.meta.tableSessionId ?? undefined,
+          traceId,
+          conversions: converted,
+        });
+      }
     }
   } else if (timelineAiSessionId) {
     await appendDenisTimelineEvent(admin, {
@@ -362,18 +381,28 @@ export async function runDenisSense(
     if (proactiveResult.nudge && aiSessionId) {
       proactiveNudge = proactiveResult.nudge;
 
+      const emittedPayload = buildProactiveEmittedPayload({
+        state,
+        nudge: proactiveResult.nudge,
+        message: proactiveResult.message ?? proactiveResult.nudge.message,
+        turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
+        turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
+        source: "sense.proactive_brain",
+      });
+
       await appendDenisTimelineEvent(admin, {
         aiSessionId,
         eventType: "proactive.emitted",
         traceId,
-        payload: buildProactiveEmittedPayload({
-          state,
-          nudge: proactiveResult.nudge,
-          message: proactiveResult.message ?? proactiveResult.nudge.message,
-          turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
-          turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
-          source: "sense.proactive_brain",
-        }),
+        payload: emittedPayload,
+      });
+
+      scheduleDenisAnticipationCommerceProjection(admin, {
+        kind: "nudge",
+        aiSessionId,
+        tableSessionId: tableSessionId ?? undefined,
+        traceId,
+        payload: emittedPayload,
       });
 
       const dockMessage = proactiveResult.message?.trim();

@@ -8,6 +8,7 @@ import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
+import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
@@ -157,12 +158,21 @@ export async function runSessionWatcherTick(
         offer: fold.state.offer,
         contextHash: fold.meta.truthHash,
       });
-      await maybeAppendOfferConverted(admin, {
+      const converted = await maybeAppendOfferConverted(admin, {
         aiSessionId,
         traceId: watcherTraceId,
         timeline: fold.state.timeline,
         contextHash: fold.meta.truthHash,
       });
+      if (converted.length > 0) {
+        scheduleDenisAnticipationCommerceProjection(admin, {
+          kind: "offer_converted",
+          aiSessionId,
+          tableSessionId: fold.meta.tableSessionId ?? undefined,
+          traceId: watcherTraceId,
+          conversions: converted,
+        });
+      }
 
       const mentalMode = resolveMentalModelMode(config);
       const legacyMinutePayload =

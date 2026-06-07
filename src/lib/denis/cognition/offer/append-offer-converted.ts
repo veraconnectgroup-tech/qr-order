@@ -1,3 +1,4 @@
+import type { OfferConversionRecord } from "@/lib/denis/cognition/offer/offer-conversion-types";
 import {
   buildOfferConvertedPayload,
   findNewOfferConversions,
@@ -15,9 +16,9 @@ export async function maybeAppendOfferConverted(
     timeline: DenisTimelineRow[];
     contextHash?: string | null;
   }
-): Promise<number> {
+): Promise<OfferConversionRecord[]> {
   const fresh = findNewOfferConversions(input.timeline);
-  if (fresh.length === 0) return 0;
+  if (fresh.length === 0) return [];
 
   for (const conversion of fresh) {
     await appendDenisTimelineEvent(admin, {
@@ -29,5 +30,5 @@ export async function maybeAppendOfferConverted(
     });
   }
 
-  return fresh.length;
+  return fresh;
 }

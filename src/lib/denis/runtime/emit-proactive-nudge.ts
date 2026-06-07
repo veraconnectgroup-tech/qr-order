@@ -3,6 +3,7 @@ import {
   buildVenueWelcomeMessage,
 } from "@/lib/denis/cognition/conversation/browsing-defer";
 import { buildProactiveEmittedPayload } from "@/lib/denis/cognition/offer/build-proactive-emitted-payload";
+import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { appendMentalModelGate } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
@@ -135,19 +136,29 @@ export async function emitProactiveNudge(
         ? `${nudge.kind}:${nudge.orderId}`
         : nudge.kind;
 
+  const emittedPayload = buildProactiveEmittedPayload({
+    state: input.state,
+    nudge,
+    message: proactiveResult.message,
+    turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
+    turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
+    dedupeKey,
+    source: input.source,
+  });
+
   await appendDenisTimelineEvent(admin, {
     aiSessionId: input.aiSessionId,
     eventType: "proactive.emitted",
     traceId,
-    payload: buildProactiveEmittedPayload({
-      state: input.state,
-      nudge,
-      message: proactiveResult.message,
-      turnPlanKind: proactiveResult.turnPlan?.kind ?? null,
-      turnPlanReason: proactiveResult.turnPlan?.reason ?? null,
-      dedupeKey,
-      source: input.source,
-    }),
+    payload: emittedPayload,
+  });
+
+  scheduleDenisAnticipationCommerceProjection(admin, {
+    kind: "nudge",
+    aiSessionId: input.aiSessionId,
+    tableSessionId: input.tableSessionId,
+    traceId,
+    payload: emittedPayload,
   });
 
   const dockMessage = proactiveResult.message.trim();

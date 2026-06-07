@@ -33,6 +33,7 @@ function parseIncludeFlags(include: string | null | undefined) {
     payments: parts.has("payments"),
     tax: parts.has("tax"),
     conversion: parts.has("conversion") || parts.has("daily"),
+    anticipation: parts.has("anticipation") || parts.has("conversion"),
   };
 }
 
@@ -112,6 +113,7 @@ export async function projectCommerceInsights(
   let taxSummary: OperatorCommerceInsights["taxSummary"] = undefined;
   let daily: OperatorCommerceInsights["daily"] = undefined;
   let conversion: OperatorCommerceInsights["conversion"] = undefined;
+  let anticipation: OperatorCommerceInsights["anticipation"] = undefined;
 
   const revenueOrderIds = revenueOrders.map((row) => row.id);
   let items: ItemRow[] = [];
@@ -226,6 +228,69 @@ export async function projectCommerceInsights(
     };
   }
 
+  if (flags.anticipation) {
+    const { data: rollupRows } = await admin
+      .from("experience_analytics_daily" as never)
+      .select(
+        "metric_date, nudge_impressions, offer_conversions, conversion_lag_seconds, by_nudge_kind, by_offer_resolution"
+      )
+      .eq("location_id", input.locationId)
+      .gte("metric_date", range.from.slice(0, 10))
+      .lte("metric_date", range.to.slice(0, 10))
+      .order("metric_date", { ascending: true });
+
+    const rows = (rollupRows ?? []) as Array<{
+      metric_date: string;
+      nudge_impressions: number;
+      offer_conversions: number;
+      conversion_lag_seconds: number;
+      by_nudge_kind: Record<string, number>;
+      by_offer_resolution: Record<string, number>;
+    }>;
+
+    const nudgeImpressions = rows.reduce(
+      (sum, row) => sum + (row.nudge_impressions ?? 0),
+      0
+    );
+    const offerConversions = rows.reduce(
+      (sum, row) => sum + (row.offer_conversions ?? 0),
+      0
+    );
+    const conversionLagSeconds = rows.reduce(
+      (sum, row) => sum + (row.conversion_lag_seconds ?? 0),
+      0
+    );
+
+    const byNudgeKind: Record<string, number> = {};
+    const byOfferResolution: Record<string, number> = {};
+
+    for (const row of rows) {
+      for (const [key, value] of Object.entries(row.by_nudge_kind ?? {})) {
+        byNudgeKind[key] = (byNudgeKind[key] ?? 0) + value;
+      }
+      for (const [key, value] of Object.entries(row.by_offer_resolution ?? {})) {
+        byOfferResolution[key] = (byOfferResolution[key] ?? 0) + value;
+      }
+    }
+
+    anticipation = {
+      nudgeImpressions,
+      offerConversions,
+      conversionRate: computeConversionRate(nudgeImpressions, offerConversions),
+      avgLagSeconds:
+        offerConversions > 0
+          ? Math.round(conversionLagSeconds / offerConversions)
+          : 0,
+      byNudgeKind,
+      byOfferResolution,
+      daily: rows.map((row) => ({
+        date: row.metric_date,
+        nudgeImpressions: row.nudge_impressions ?? 0,
+        offerConversions: row.offer_conversions ?? 0,
+      })),
+    };
+  }
+
   const timestamps = revenueOrders.map((row) => row.created_at).sort();
 
   return {
@@ -247,5 +312,6 @@ export async function projectCommerceInsights(
     menu,
     daily,
     conversion,
+    anticipation,
   };
 }

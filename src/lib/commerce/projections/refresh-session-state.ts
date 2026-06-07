@@ -1,6 +1,7 @@
 import {
   COMMERCE_EVENT_TYPES,
 } from "@/lib/commerce/event-types";
+import { upsertAnticipationRollup } from "@/lib/commerce/projections/rollup-anticipation-analytics";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -43,6 +44,7 @@ export async function refreshGuestSessionCommerceState(
     session_id: string;
     order_id: string | null;
     event_type: string;
+    payload: Record<string, unknown>;
     created_at: string;
   };
 
@@ -67,6 +69,19 @@ export async function refreshGuestSessionCommerceState(
 
   if (row.event_type === COMMERCE_EVENT_TYPES.feedbackSubmitted) {
     patch.feedback_submitted = true;
+  }
+
+  if (
+    row.event_type === COMMERCE_EVENT_TYPES.nudgeEmitted ||
+    row.event_type === COMMERCE_EVENT_TYPES.offerConverted
+  ) {
+    await upsertAnticipationRollup(admin, {
+      orgId: row.org_id,
+      locationId: row.location_id,
+      eventType: row.event_type,
+      createdAt: row.created_at,
+      payload: row.payload,
+    });
   }
 
   const { error: upsertError } = await admin

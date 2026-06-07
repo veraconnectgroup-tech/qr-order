@@ -200,6 +200,19 @@ export type OperatorCommerceInsights = {
     sessionsWithOrder: number;
     conversionRate: number;
   };
+  anticipation?: {
+    nudgeImpressions: number;
+    offerConversions: number;
+    conversionRate: number;
+    avgLagSeconds: number;
+    byNudgeKind: Record<string, number>;
+    byOfferResolution: Record<string, number>;
+    daily?: Array<{
+      date: string;
+      nudgeImpressions: number;
+      offerConversions: number;
+    }>;
+  };
 };
 
 export type OperatorFiscalDailyClosing = {
