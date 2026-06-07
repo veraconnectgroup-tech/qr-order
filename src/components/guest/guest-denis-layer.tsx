@@ -387,6 +387,7 @@ export function GuestDenisLayer({
         voiceTtsEnabled={voiceTtsEnabled}
         deviceFingerprint={deviceFingerprint}
         bootstrapTranscript={view?.transcript}
+        onViewRefresh={() => void refreshGuestSceneView()}
         isDemo={menuChat?.isDemo}
         menuCategories={menuChat?.menuCategories}
         menuSectionByProductId={menuChat?.menuSectionByProductId}

@@ -173,11 +173,11 @@ function chatMessagesFromViewTranscript(
   const transcriptKeys = new Set(
     synced.map((message) => `${message.role}:${message.content}`)
   );
-  const keptEphemeral = (options?.ephemeral ?? []).filter(
+  const keptLocal = (options?.ephemeral ?? []).filter(
     (message) => !transcriptKeys.has(`${message.role}:${message.content}`)
   );
 
-  return [...synced, ...keptEphemeral];
+  return [...synced, ...keptLocal];
 }
 
 type ValidatedCartAction = {
@@ -519,6 +519,8 @@ export type AiConciergeChatProps = {
   bootstrapTranscript?: TranscriptEntry[] | null;
   /** M28 — Denis payment handoff opens session bill sheet. */
   onOpenPaymentSheet?: () => void;
+  /** Reload view.transcript after a turn (SSE may lag). */
+  onViewRefresh?: () => void;
 };
 
 export function AiConciergeChat({
@@ -554,6 +556,7 @@ export function AiConciergeChat({
   sceneChrome = null,
   bootstrapTranscript = null,
   onOpenPaymentSheet,
+  onViewRefresh,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
@@ -757,7 +760,7 @@ export function AiConciergeChat({
       chatMessagesFromViewTranscript(bootstrapTranscript, {
         turnExtras: pendingTurnExtrasRef.current,
         usedQuickReplyIds: usedQuickReplyIdsRef.current,
-        ephemeral: prev.filter((message) => message.ephemeral),
+        ephemeral: prev,
       })
     );
     pendingTurnExtrasRef.current = null;
@@ -1104,6 +1107,10 @@ export function AiConciergeChat({
       setPendingThinkingMessage(trimmed);
       setServerThinkingSteps([]);
       setIsTyping(true);
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: "user", content: trimmed },
+      ]);
 
       const requestLanguage = resolveStickyGuestLanguage(
         trimmed,
@@ -1191,12 +1198,32 @@ export function AiConciergeChat({
           onOpenPaymentSheet?.();
         }
 
-        pendingTurnExtrasRef.current = {
-          quickReplies: data.quickReplies?.length ? data.quickReplies : undefined,
-          recommendations: data.recommendations?.length
-            ? data.recommendations
-            : undefined,
-        };
+        const assistantText = data.message?.trim();
+        if (assistantText) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: assistantText,
+              quickReplies: data.quickReplies?.length
+                ? data.quickReplies
+                : undefined,
+              recommendations: data.recommendations?.length
+                ? data.recommendations
+                : undefined,
+            },
+          ]);
+        } else {
+          pendingTurnExtrasRef.current = {
+            quickReplies: data.quickReplies?.length ? data.quickReplies : undefined,
+            recommendations: data.recommendations?.length
+              ? data.recommendations
+              : undefined,
+          };
+        }
+
+        void onViewRefresh?.();
 
         if (
           inputSurface === "voice" &&
@@ -1249,6 +1276,7 @@ export function AiConciergeChat({
       tChat,
       voice,
       onOpenPaymentSheet,
+      onViewRefresh,
       handleDenisOrderSubmit,
       recordGuestOrderPlaced,
     ]
