@@ -15,7 +15,10 @@ import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { extractOrderMessageMeta } from "@/lib/ai/ordering/order-message-backfill";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
-import { obligationForConversationState } from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
+import {
+  mergeTableSessionObligation,
+  obligationForConversationState,
+} from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
 
 function baseState(): TableSessionState {
   return {
@@ -259,6 +262,52 @@ describe("waiter obligation (ADR-032)", () => {
     expect(plan.kind).toBe("template_tell");
     expect(plan.reason).toBe("waiter.gap_clarify");
     expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("fold merge keeps drink gap from transcript order line (view parity)", () => {
+    const state = baseState();
+    state.conversation.flowNodeId = "recap";
+    state.commerce.cart.ai.draft.items.push({
+      productId: "f1",
+      productName: "Beef Burger",
+      quantity: 1,
+      serveSize: null,
+      modifierIds: [],
+      notes: "",
+      lineTotal: 15,
+      menuSection: "food",
+    });
+    state.conversation.model.transcript = [
+      {
+        id: "g1",
+        role: "guest",
+        text: "moze jedno pivo i beef burger",
+        at: "2026-05-29T12:00:00Z",
+      },
+    ];
+
+    const obligation = mergeTableSessionObligation({
+      state,
+      source: "fold",
+    });
+
+    expect(obligation.gaps.some((g) => g.kind === "drink_unspecified")).toBe(
+      true
+    );
+    state.conversation.obligation = obligationForConversationState(obligation);
+
+    const layers = buildViewLayers(
+      state,
+      buildFoldMeta(state, "s1", "ai-1", "ordering"),
+      null
+    );
+    expect(
+      layers.some(
+        (layer) =>
+          layer.kind === "banner" &&
+          String(layer.id ?? "").includes("waiter-gap")
+      )
+    ).toBe(true);
   });
 
   it("substitution gap surfaces in enforceWaiterTell", () => {

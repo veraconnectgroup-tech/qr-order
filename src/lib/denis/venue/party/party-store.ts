@@ -34,6 +34,22 @@ function mapDeviceRow(row: PartyDeviceDbRow): PartyDeviceRow {
   };
 }
 
+export async function loadDenisSharedAiSessionId(
+  admin: SupabaseClient,
+  tableSessionId: string
+): Promise<string | null> {
+  const { data } = await admin
+    .from("table_sessions")
+    .select("denis_shared_ai_session_id")
+    .eq("id", tableSessionId)
+    .maybeSingle();
+
+  return (
+    (data as { denis_shared_ai_session_id: string | null } | null)
+      ?.denis_shared_ai_session_id ?? null
+  );
+}
+
 export async function resolveActiveTableSessionId(
   admin: SupabaseClient,
   input: {

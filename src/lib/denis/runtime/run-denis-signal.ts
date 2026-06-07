@@ -60,11 +60,11 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
   );
 
   if (!result) {
-    logger.warn("Table session actor SLA timeout — inline executeDenisSignalCore", {
+    logger.warn("Table session actor SLA timeout", {
       signalId,
       tableSessionId,
     });
-    return executeDenisSignalCore(rawBody);
+    return signalResultToResponse(null);
   }
 
   return signalResultToResponse(result);

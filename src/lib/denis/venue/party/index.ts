@@ -10,6 +10,7 @@ export {
   resolveSharedAiSessionId,
 } from "@/lib/denis/venue/party/resolve-shared-session";
 export {
+  loadDenisSharedAiSessionId,
   loadTableParty,
   registerPartyDevice,
   resolveActiveTableSessionId,

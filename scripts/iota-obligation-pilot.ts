@@ -15,6 +15,7 @@ import { resolve } from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const TABLE_TOKEN = process.env.IOTA_TABLE_TOKEN ?? "demo-table-1";
+const PILOT_DEVICE_FP = `iota-pilot-${TABLE_TOKEN}`;
 const SIGNAL_SLA_MS = 15_000;
 const SKYLINE_PILOT_LOCATION_ID =
   "b0000000-0000-4000-8000-000000000001";
@@ -122,6 +123,7 @@ async function postSignal(
     sessionToken: string;
     locationId: string;
     tableId: string;
+    deviceFingerprint: string;
     structuredIntent?: string;
   }
 ): Promise<SignalResult> {
@@ -140,6 +142,7 @@ async function postSignal(
       signalId,
       language: "sr",
       allowOrdering: true,
+      deviceFingerprint: input.deviceFingerprint,
       structuredIntent: input.structuredIntent,
     }),
   });
@@ -266,6 +269,15 @@ async function ensureFreshSession(
   if ("error" in created) {
     throw new Error(created.error);
   }
+
+  const { registerPartyDevice } = await import("@/lib/denis/venue/party");
+  await registerPartyDevice(admin, {
+    tableSessionId: created.sessionId,
+    locationId,
+    tableId,
+    deviceFingerprint: PILOT_DEVICE_FP,
+  });
+
   return created;
 }
 
@@ -342,6 +354,7 @@ async function main() {
     sessionToken: session.sessionToken,
     locationId,
     tableId: tableRow.id,
+    deviceFingerprint: PILOT_DEVICE_FP,
   });
   const view1 = await fetchView(baseUrl, TABLE_TOKEN, session.sessionToken);
   const msg1 = String(s1.body.message ?? "").toLowerCase();
@@ -366,6 +379,7 @@ async function main() {
     sessionToken: session.sessionToken,
     locationId,
     tableId: tableRow.id,
+    deviceFingerprint: PILOT_DEVICE_FP,
     structuredIntent: "CONFIRM",
   });
   const view2 = await fetchView(baseUrl, TABLE_TOKEN, session.sessionToken);
@@ -387,6 +401,7 @@ async function main() {
     sessionToken: session.sessionToken,
     locationId,
     tableId: tableRow.id,
+    deviceFingerprint: PILOT_DEVICE_FP,
   });
   const s3b = await postSignal(baseUrl, {
     text: "da",
@@ -394,6 +409,7 @@ async function main() {
     sessionToken: session.sessionToken,
     locationId,
     tableId: tableRow.id,
+    deviceFingerprint: PILOT_DEVICE_FP,
     structuredIntent: "CONFIRM",
   });
   const view3 = await fetchView(baseUrl, TABLE_TOKEN, session.sessionToken);
@@ -422,6 +438,7 @@ async function main() {
     sessionToken: subSession.sessionToken,
     locationId,
     tableId: tableRow.id,
+    deviceFingerprint: PILOT_DEVICE_FP,
   });
   const view4 = await fetchView(baseUrl, TABLE_TOKEN, subSession.sessionToken);
   const msg4 = String(s4.body.message ?? "").toLowerCase();
@@ -461,6 +478,7 @@ async function main() {
       sessionToken: gapSession.sessionToken,
       locationId,
       tableId: tableRow.id,
+      deviceFingerprint: PILOT_DEVICE_FP,
     });
 
     const cronRes = await fetch(`${baseUrl}/api/cron/denis-session-watcher`, {

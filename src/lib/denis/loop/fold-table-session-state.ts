@@ -23,6 +23,7 @@ import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { foldFlowProjection } from "@/lib/denis/platform/fold-flow";
 import { loadEffectiveVenueOps } from "@/lib/denis/venue/ops";
 import {
+  loadDenisSharedAiSessionId,
   loadTableParty,
   resolveActiveTableSessionId,
   resolveDraftAiSessionId,
@@ -70,14 +71,21 @@ export async function foldTableSessionState(
     });
   }
 
+  const sharedAiSessionId =
+    party?.sharedAiSessionId ??
+    (tableSessionId
+      ? await loadDenisSharedAiSessionId(admin, tableSessionId)
+      : null);
+
   const draftAiSessionId =
     input.draftAiSessionId ??
     resolveDraftAiSessionId(
       config.party.mode,
       input.aiSessionId,
-      party?.sharedAiSessionId ?? null
+      sharedAiSessionId
     ) ??
     input.aiSessionId ??
+    sharedAiSessionId ??
     null;
 
   const peerManualCartDraft =

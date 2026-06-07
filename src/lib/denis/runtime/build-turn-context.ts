@@ -7,6 +7,7 @@ import type {
   DenisTurnContext,
 } from "@/lib/denis/runtime/turn-types";
 import {
+  loadDenisSharedAiSessionId,
   loadTableParty,
   registerPartyDevice,
   resolveActiveTableSessionId,
@@ -69,10 +70,16 @@ export async function buildDenisTurnContext(
     });
   }
 
+  const sharedAiSessionId =
+    party?.sharedAiSessionId ??
+    (tableSessionId
+      ? await loadDenisSharedAiSessionId(admin, tableSessionId)
+      : null);
+
   const draftAiSessionId = resolveDraftAiSessionId(
     config.party.mode,
     input.sessionId,
-    party?.sharedAiSessionId ?? null
+    sharedAiSessionId
   );
 
   const fold = await foldTableSessionState(admin, {

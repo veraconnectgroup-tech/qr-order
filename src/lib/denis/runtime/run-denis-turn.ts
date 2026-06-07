@@ -1205,7 +1205,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     cartActions: data.cartActions,
     quickReplies,
     intent: data.intent,
-    submitOrder: false,
+    submitOrder: Boolean(turnSubmitOutcome.orderId),
     creditsRemaining,
     sessionId: timelineAiSessionId ?? data.sessionId,
     ...(actHandoffOutcome.openPaymentSheet
