@@ -15,7 +15,11 @@ if [[ -z "${CRON_SECRET:-}" ]]; then
   exit 1
 fi
 
-echo "== Denis pilot tick =="
+echo "== Denis pilot tick (no auth — expect 401) =="
+curl -sS -o /dev/null -w "unauth:%{http_code}\n" \
+  "${DOMAIN}/api/cron/denis-pilot-tick"
+
+echo "== Denis pilot tick (with CRON_SECRET — expect 200) =="
 curl -sS -w "\nHTTP %{http_code}\n" \
   -H "Authorization: Bearer ${CRON_SECRET}" \
   "${DOMAIN}/api/cron/denis-pilot-tick"
