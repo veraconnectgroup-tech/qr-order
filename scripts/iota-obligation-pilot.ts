@@ -7,8 +7,9 @@
  *
  * Env: NEXT_PUBLIC_APP_URL (or IOTA_URL), NEXT_PUBLIC_SUPABASE_URL,
  *      SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET (scenario 5).
- * Loads .env.local then .env.vercel.local before any app imports.
+ * Loads .env files, then falls back to linked `supabase` CLI project keys.
  */
+import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -57,8 +58,49 @@ function loadEnvFiles() {
   }
 }
 
+function bootstrapFromSupabaseCli(): boolean {
+  const hasUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim());
+  const hasKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  if (hasUrl && hasKey) return false;
+
+  let projectRef = "";
+  try {
+    projectRef = readFileSync(
+      resolve(process.cwd(), "supabase/.temp/project-ref"),
+      "utf8"
+    ).trim();
+  } catch {
+    return false;
+  }
+  if (!projectRef) return false;
+
+  try {
+    const raw = execSync(
+      `supabase projects api-keys --project-ref ${projectRef} -o json`,
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    );
+    const keys = JSON.parse(raw) as Array<{ name?: string; api_key?: string }>;
+    const serviceKey = keys.find((row) => row.name === "service_role")?.api_key;
+
+    if (!hasUrl) {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = `https://${projectRef}.supabase.co`;
+    }
+    if (!hasKey && serviceKey) {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = serviceKey;
+    }
+
+    return Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Must run before dynamic @/ imports (createAdminClient reads env.ts at load time). */
 loadEnvFiles();
+const bootstrappedFromCli = bootstrapFromSupabaseCli();
 
 function randomSignalId(): string {
   return `pilot-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -239,8 +281,17 @@ async function main() {
     console.error(
       "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY."
     );
-    console.error("Add to .env.local or run: vercel env pull .env.vercel.local");
+    console.error("Fix one of:");
+    console.error("  1. Add keys to .env.local (Supabase → Project Settings → API)");
+    console.error("  2. vercel env pull .env.vercel.local");
+    console.error("  3. supabase link --project-ref <ref>  (CLI auto-bootstrap)");
     process.exit(1);
+  }
+
+  if (bootstrappedFromCli) {
+    console.log(
+      "Supabase env bootstrapped from linked CLI project (supabase/.temp/project-ref).\n"
+    );
   }
 
   const admin = createClient(url, serviceKey, {
