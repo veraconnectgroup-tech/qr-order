@@ -80,11 +80,33 @@ function commerceBlocksProactive(
 }
 
 function upsellSuppressed(beliefs: BeliefGraph): boolean {
-  return (
+  if (
     getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueSkipUpsell) ===
       true ||
     getBeliefValue<boolean>(beliefs, CORE_BELIEF_KEYS.venueRush) === true
+  ) {
+    return true;
+  }
+
+  const receptiveness = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalReceptiveness
   );
+  if (receptiveness === "closed" || receptiveness === "polite_decline") {
+    return true;
+  }
+
+  const predictedNeed = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalPredictedNeed
+  );
+  if (predictedNeed === "needs_attention") return true;
+
+  const frustration = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalFrustration
+  );
+  return frustration === "high";
 }
 
 /**

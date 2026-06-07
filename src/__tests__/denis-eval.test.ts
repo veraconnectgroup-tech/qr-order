@@ -60,7 +60,7 @@ describe("Denis eval fixtures M10", () => {
       console.error(JSON.stringify(result.errors, null, 2));
     }
     expect(result.passed).toBe(true);
-    expect(result.beliefCount).toBe(19);
+    expect(result.beliefCount).toBe(20);
   });
 
   it("world tell word-match: push body === tell.committed === headline (Phase D)", () => {

@@ -525,6 +525,12 @@ function resolveMentalBeliefs(state: TableSessionState) {
       "inferred",
       confidence
     ),
+    belief(
+      CORE_BELIEF_KEYS.mentalPriceAffinity,
+      mental.priceAffinity,
+      "inferred",
+      confidence
+    ),
   ];
 }
 

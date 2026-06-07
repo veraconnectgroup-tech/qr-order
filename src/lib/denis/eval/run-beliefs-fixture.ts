@@ -82,9 +82,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 19) {
+  if (banterGraph.beliefs.length !== 20) {
     errors.push(
-      `expected 19 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental), got ${banterGraph.beliefs.length}`
+      `expected 20 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental), got ${banterGraph.beliefs.length}`
     );
   }
 
@@ -392,6 +392,16 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
   if (mentalPredictedNeed !== "none") {
     errors.push(
       `mental.predicted_need: expected none, got ${mentalPredictedNeed ?? "null"}`
+    );
+  }
+
+  const mentalPriceAffinity = getBeliefValue<string>(
+    banterGraph,
+    CORE_BELIEF_KEYS.mentalPriceAffinity
+  );
+  if (mentalPriceAffinity !== "unknown") {
+    errors.push(
+      `mental.price_affinity: expected unknown, got ${mentalPriceAffinity ?? "null"}`
     );
   }
 

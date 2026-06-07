@@ -139,16 +139,36 @@ export function buildInterpretationTask(
       );
     }
 
-    case "UPSELL_ONCE":
-      return relationalTask(
-        topGoal.type,
-        "goal.upsell_once.relational",
-        "upsell_nudge",
-        {
-          includeCatalogRag: true,
-          omitFullMenuWhenNoRag: true,
-        }
+    case "UPSELL_ONCE": {
+      const receptiveness = getBeliefValue<string>(
+        beliefs,
+        CORE_BELIEF_KEYS.mentalReceptiveness
       );
+      if (receptiveness === "closed" || receptiveness === "polite_decline") {
+        return null;
+      }
+
+      const frustration = getBeliefValue<string>(
+        beliefs,
+        CORE_BELIEF_KEYS.mentalFrustration
+      );
+      if (frustration === "high") return null;
+
+      const affinity =
+        getBeliefValue<string>(beliefs, CORE_BELIEF_KEYS.mentalPriceAffinity) ??
+        "unknown";
+      const reason =
+        affinity === "budget"
+          ? "goal.upsell_once.budget"
+          : affinity === "premium"
+            ? "goal.upsell_once.premium"
+            : "goal.upsell_once.relational";
+
+      return relationalTask(topGoal.type, reason, "upsell_nudge", {
+        includeCatalogRag: true,
+        omitFullMenuWhenNoRag: true,
+      });
+    }
 
     case "GUEST_SEATED": {
       const transactional =

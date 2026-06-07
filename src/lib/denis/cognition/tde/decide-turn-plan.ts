@@ -87,6 +87,14 @@ function resolveSuppressUpsell(beliefs: DecideTurnPlanInput["beliefs"]): boolean
     return true;
   }
 
+  const receptiveness = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalReceptiveness
+  );
+  if (receptiveness === "closed" || receptiveness === "polite_decline") {
+    return true;
+  }
+
   const predictedNeed = getBeliefValue<string>(
     beliefs,
     CORE_BELIEF_KEYS.mentalPredictedNeed
@@ -98,6 +106,16 @@ function resolveSuppressUpsell(beliefs: DecideTurnPlanInput["beliefs"]): boolean
     CORE_BELIEF_KEYS.mentalFrustration
   );
   return frustration === "high";
+}
+
+function resolveVagueRecommendReason(beliefs: DecideTurnPlanInput["beliefs"]): string {
+  const affinity = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalPriceAffinity
+  );
+  if (affinity === "budget") return "vague_recommend.budget";
+  if (affinity === "premium") return "vague_recommend.premium";
+  return "vague_recommend";
 }
 
 /** ADR-031 C2 — guest replies always comprehend or deterministic ACT; never slot template loop. */
@@ -291,7 +309,7 @@ function resolvePerceivePlan(
     return buildPlan("relational_perceive", {
       requiresLlm: true,
       suppressUpsell,
-      reason: "vague_recommend",
+      reason: resolveVagueRecommendReason(input.beliefs),
     });
   }
 

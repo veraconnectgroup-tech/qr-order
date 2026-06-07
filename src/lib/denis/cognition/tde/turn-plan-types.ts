@@ -41,6 +41,7 @@ export const CORE_BELIEF_KEYS = {
   mentalReceptiveness: "mental.receptiveness",
   mentalFrustration: "mental.frustration",
   mentalPredictedNeed: "mental.predicted_need",
+  mentalPriceAffinity: "mental.price_affinity",
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";

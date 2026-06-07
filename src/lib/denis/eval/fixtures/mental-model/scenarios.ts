@@ -10,6 +10,7 @@ import type {
   GuestNudgeBudget,
   GuestPace,
   GuestPredictedNeed,
+  GuestPriceAffinity,
   GuestReceptiveness,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
@@ -56,6 +57,7 @@ export type MentalModelScenario = {
     minGuestTurns?: number;
     frustrationLevel?: GuestFrustrationLevel;
     predictedNeed?: GuestPredictedNeed;
+    priceAffinity?: GuestPriceAffinity;
     addressLeader?: boolean;
     groupMode?: "solo" | "party";
   };
@@ -263,6 +265,58 @@ export const MENTAL_MODEL_SCENARIOS: MentalModelScenario[] = [
     },
   },
   {
+    id: "gmm_price_affinity_budget",
+    description: "Short browse dwell → budget price affinity",
+    timeline: [
+      browseRow(1, {
+        action: "view_product",
+        productId: "p1",
+        productName: "Burger",
+        categoryPath: ["food"],
+        menuSection: "food",
+        dwellMs: 2000,
+        timestamp: "2026-06-07T12:00:01.000Z",
+      }),
+      browseRow(2, {
+        action: "view_product",
+        productId: "p2",
+        productName: "Pasta",
+        categoryPath: ["food"],
+        menuSection: "food",
+        dwellMs: 1800,
+        timestamp: "2026-06-07T12:00:02.000Z",
+      }),
+    ],
+    phase: "browsing",
+    expect: { priceAffinity: "budget" },
+  },
+  {
+    id: "gmm_price_affinity_premium",
+    description: "Long browse dwell → premium price affinity",
+    timeline: [
+      browseRow(1, {
+        action: "view_product",
+        productId: "p1",
+        productName: "Wagyu",
+        categoryPath: ["food", "premium"],
+        menuSection: "food",
+        dwellMs: 9000,
+        timestamp: "2026-06-07T12:00:01.000Z",
+      }),
+      browseRow(2, {
+        action: "view_product",
+        productId: "p2",
+        productName: "Truffle pasta",
+        categoryPath: ["food", "premium"],
+        menuSection: "food",
+        dwellMs: 8500,
+        timestamp: "2026-06-07T12:00:02.000Z",
+      }),
+    ],
+    phase: "browsing",
+    expect: { priceAffinity: "premium" },
+  },
+  {
     id: "gmm_frustrated_escalate",
     description: "ČEKAM??? + repeated message → frustration high, needs_attention",
     timeline: [
@@ -386,6 +440,14 @@ export function assertMentalModelExpect(
   ) {
     errors.push(
       `${label}predictedNeed expected ${expect.predictedNeed}, got ${model.predictedNeed}`
+    );
+  }
+  if (
+    expect.priceAffinity !== undefined &&
+    model.priceAffinity !== expect.priceAffinity
+  ) {
+    errors.push(
+      `${label}priceAffinity expected ${expect.priceAffinity}, got ${model.priceAffinity}`
     );
   }
   if (
