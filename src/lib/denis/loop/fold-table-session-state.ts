@@ -1,3 +1,4 @@
+import { foldBrowseProfile } from "@/lib/denis/cognition/browse/fold-browse-profile";
 import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
 import {
   mergeTableSessionObligation,
@@ -216,6 +217,7 @@ export async function foldTableSessionState(
   });
 
   const pendingSlot = pendingSlotKindFromDraft(draft);
+  const browse = foldBrowseProfile(timeline);
   const conversationModel = foldConversationModel({
     timeline,
     flowNodeId,
@@ -262,6 +264,7 @@ export async function foldTableSessionState(
       obligation: null,
     },
     timeline,
+    browse,
     config,
   };
 

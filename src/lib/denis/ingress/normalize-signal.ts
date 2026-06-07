@@ -61,6 +61,8 @@ function telemetryToSenseChannel(
       return "system.proactive_tick";
     case "dwell":
       return "telemetry.scroll";
+    case "browse":
+      return "telemetry.browse";
   }
 }
 

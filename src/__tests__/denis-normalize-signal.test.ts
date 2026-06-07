@@ -61,4 +61,26 @@ describe("normalizeDenisSignal", () => {
     expect(result.signal.route).toBe("sense");
     expect(result.signal.senseChannel).toBe("telemetry.manual_cart");
   });
+
+  it("routes browse telemetry to sense", () => {
+    const result = normalizeDenisSignal({
+      type: "telemetry",
+      kind: "browse",
+      tableToken: "abc123def456ghi789jkl012mno345pq",
+      payload: {
+        browseEvent: {
+          action: "view_category",
+          categoryId: "cat-food",
+          categoryPath: ["food"],
+          timestamp: "2026-06-07T16:40:00.000Z",
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.signal.route).toBe("sense");
+    expect(result.signal.senseChannel).toBe("telemetry.browse");
+  });
 });

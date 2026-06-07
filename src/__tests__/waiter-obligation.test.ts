@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileBeliefs } from "@/lib/denis/cognition/beliefs/compile-beliefs";
 import { decideTurnPlan } from "@/lib/denis/cognition/tde/decide-turn-plan";
+import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import {
   assessWaiterObligation,
@@ -72,6 +73,7 @@ function baseState(): TableSessionState {
       obligation: null,
     },
     timeline: [],
+    browse: emptyBrowseProfile(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 }

@@ -8,6 +8,7 @@ import { runWorldTellUnificationFixture } from "@/lib/denis/eval/run-world-tell-
 import { runPilotGate, runPilotSrEvalSuite } from "@/lib/denis/eval/run-pilot-gate";
 import { runWaiterParitySuite } from "@/lib/denis/eval/run-waiter-parity";
 import { runContinuousMindSuite } from "@/lib/denis/eval/run-continuous-mind-fixture";
+import { runBrowseFoldSuite } from "@/lib/denis/eval/run-browse-fold-fixture";
 import { runTimelineObligationSuite } from "@/lib/denis/eval/run-timeline-obligation-fixture";
 import { runInterpretationTaskSuite } from "@/lib/denis/eval/run-interpretation-task-fixture";
 import { CONTINUOUS_MIND_SCENARIOS } from "@/lib/denis/eval/fixtures/continuous-mind/scenarios";
@@ -100,6 +101,14 @@ describe("Denis eval fixtures M10", () => {
     }
     expect(report.ok).toBe(true);
     expect(report.scenarioCount).toBe(CONTINUOUS_MIND_SCENARIOS.length);
+  });
+
+  it("browse fold eval passes (proactive F1)", () => {
+    const report = runBrowseFoldSuite();
+    if (!report.ok) {
+      console.error(JSON.stringify(report.results.filter((r) => !r.passed), null, 2));
+    }
+    expect(report.ok).toBe(true);
   });
 
   it("iota timeline obligation replay passes (ADR-032 P1-T7)", () => {

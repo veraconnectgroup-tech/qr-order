@@ -1,3 +1,4 @@
+import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import {
@@ -63,6 +64,7 @@ function baseState(
       obligation: null,
     },
     timeline: [],
+    browse: emptyBrowseProfile(),
     config,
     ...overrides,
   };

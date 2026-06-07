@@ -1,3 +1,4 @@
+import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
 import { compileBeliefs } from "@/lib/denis/cognition/beliefs/compile-beliefs";
 import { decideTurnPlan } from "@/lib/denis/cognition/tde/decide-turn-plan";
@@ -97,6 +98,7 @@ function buildStateFromScenario(
       obligation: null,
     },
     timeline: scenario.timeline,
+    browse: emptyBrowseProfile(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
   };
 }

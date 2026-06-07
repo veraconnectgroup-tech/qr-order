@@ -14,6 +14,7 @@ import type {
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
 
+import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
 import type { WaiterObligation } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
@@ -77,6 +78,8 @@ export type TableSessionState = {
     obligation: WaiterObligation | null;
   };
   timeline: DenisTimelineRow[];
+  /** F1 browse telemetry — folded from timeline browse events. */
+  browse: GuestBrowseProfile;
   config: ConciergeConfig;
 };
 

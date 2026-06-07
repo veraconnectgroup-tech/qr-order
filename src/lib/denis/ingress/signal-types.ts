@@ -72,7 +72,7 @@ export const denisChipSignalSchema = denisSignalContextSchema.extend({
 
 export const denisTelemetrySignalSchema = denisSignalContextSchema.extend({
   type: z.literal("telemetry"),
-  kind: z.enum(["cart", "scroll", "dwell", "proactive_tick"]),
+  kind: z.enum(["cart", "scroll", "dwell", "proactive_tick", "browse"]),
   payload: z.record(z.string(), z.unknown()).optional().default({}),
 });
 

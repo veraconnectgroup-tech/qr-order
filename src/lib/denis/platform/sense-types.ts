@@ -25,6 +25,7 @@ export type ManualCartSnapshotInput = z.infer<typeof manualCartSnapshotSchema>;
 export const denisSenseChannelSchema = z.enum([
   "telemetry.manual_cart",
   "telemetry.scroll",
+  "telemetry.browse",
   "realtime.order_status",
   "ui.conversion",
   "system.proactive_tick",

@@ -1,3 +1,7 @@
+import {
+  ingestBrowseTelemetry,
+  parseBrowseEventFromPayload,
+} from "@/lib/denis/cognition/browse";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-mind-beliefs-compiled";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
@@ -150,6 +154,7 @@ export async function runDenisSense(
   });
 
   const { state } = fold;
+  const timelineAiSessionId = draftAiSessionId ?? aiSessionId;
   const aiCartState = state.commerce.cart.ai;
   const peerManualCartDraft = state.commerce.cart.peerManual;
   const venueOps = state.venue.ops;
@@ -169,9 +174,23 @@ export async function runDenisSense(
     });
   }
 
-  if (aiSessionId) {
+  if (input.channel === "telemetry.browse") {
+    const browseEvent = parseBrowseEventFromPayload(input.payload);
+    if (!browseEvent) {
+      return apiError("Invalid browse event.", 400);
+    }
+    if (timelineAiSessionId) {
+      await ingestBrowseTelemetry(
+        admin,
+        timelineAiSessionId,
+        browseEvent,
+        traceId,
+        envelope
+      );
+    }
+  } else if (timelineAiSessionId) {
     await appendDenisTimelineEvent(admin, {
-      aiSessionId,
+      aiSessionId: timelineAiSessionId,
       eventType: "realtime.ingested",
       traceId,
       payload: {
@@ -183,7 +202,7 @@ export async function runDenisSense(
     });
 
     await appendDenisTimelineEvent(admin, {
-      aiSessionId,
+      aiSessionId: timelineAiSessionId,
       eventType: "perception.ingested",
       traceId,
       payload: {
@@ -367,10 +386,10 @@ export async function runDenisSense(
 
   return apiSuccess({
     traceId,
-    aiSessionId,
+    aiSessionId: timelineAiSessionId,
     schedulesUpserted,
     conflictPrompt,
-    ingested: aiSessionId !== null,
+    ingested: timelineAiSessionId !== null,
     proactiveNudge,
     quickReplies,
     partyMode: config.party.mode,

@@ -1,3 +1,4 @@
+import type { BrowseEvent } from "@/lib/denis/cognition/browse/browse-types";
 import type { DenisRiskClass } from "@/lib/denis/platform/risk-levels";
 
 /** Envelope attached to timeline events (ADR-006 §5). */
@@ -39,6 +40,7 @@ export type PerceptionChannel =
   | "ui.quick_reply"
   | "ui.conversion"
   | "telemetry.scroll"
+  | "telemetry.browse"
   | "telemetry.manual_cart"
   | "realtime.order_status"
   | "system.proactive_tick"
@@ -54,7 +56,12 @@ export type PerceptionFrame = {
 };
 
 export type DenisTimelineEventPayload =
-  | { type: "perception.ingested"; frame: PerceptionFrame; envelope: TurnEnvelope }
+  | {
+      type: "perception.ingested";
+      frame: PerceptionFrame;
+      envelope: TurnEnvelope;
+      browseEvent?: BrowseEvent;
+    }
   | {
       type: "intent.resolved";
       intent: GuestIntent;

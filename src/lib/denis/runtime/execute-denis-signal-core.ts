@@ -257,12 +257,17 @@ export async function executeDenisSignalCore(rawBody: unknown): Promise<Response
   }
 
   if (signal.route === "sense" && request.type === "telemetry") {
+    const sharedAiSessionId = await resolveSignalSharedAiSessionId(
+      admin,
+      ctx,
+      request.language ?? "de"
+    );
     const senseResponse = await runDenisSense({
       locationId: ctx.locationId,
       tableId: ctx.tableId,
       sessionToken: ctx.aiContextToken,
       tableSessionToken: ctx.guestSessionToken ?? undefined,
-      aiSessionId: request.aiSessionId,
+      aiSessionId: request.aiSessionId ?? sharedAiSessionId,
       channel: signal.senseChannel!,
       payload: request.payload,
       manualCartSnapshot: request.manualCartSnapshot,

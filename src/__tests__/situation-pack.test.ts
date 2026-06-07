@@ -5,6 +5,7 @@ import { buildSituationPack } from "@/lib/denis/cognition/context/build-situatio
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
+import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 
 function baseState(
@@ -53,6 +54,7 @@ function baseState(
       obligation: null,
     },
     timeline: [],
+    browse: emptyBrowseProfile(),
     config: CONCIERGE_PLATFORM_DEFAULTS,
     ...overrides,
   };
