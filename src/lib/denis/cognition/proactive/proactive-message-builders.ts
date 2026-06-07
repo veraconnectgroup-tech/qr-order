@@ -6,20 +6,28 @@ export function buildWelcomeMessage(
   venueName: string | null | undefined,
   language: string | null | undefined,
   todaySpecial: string | null | undefined,
-  fallback: string
+  fallback: string,
+  rhythmTopProductName?: string | null
 ): string {
   const special = todaySpecial?.trim();
   const venue = venueName?.trim();
   const lang = language?.trim() || "sr";
+  const rhythmProduct = rhythmTopProductName?.trim();
   if (venue) {
     const base = buildVenueWelcomeMessage(venue, lang);
     if (special) {
       return `${base} Specijal danas: ${special}.`;
     }
+    if (rhythmProduct) {
+      return `${base} Večeras je ${rhythmProduct} favorit — mogu da preporučim.`;
+    }
     return base;
   }
   if (special) {
     return `Dobro došli! Naš specijal danas je ${special}. Hoćete da pogledate meni?`;
+  }
+  if (rhythmProduct) {
+    return `Dobro došli! ${rhythmProduct} je večeras favorit. Hoćete da pogledate meni?`;
   }
   return fallback;
 }

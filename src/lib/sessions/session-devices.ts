@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { scheduleSessionCompletedCommerce } from "@/lib/commerce/projections/project-session-completed";
 import { generateTablePin, hashTablePin } from "@/lib/sessions/table-pin";
+import { logger } from "@/lib/logger";
 
 type AdminClient = SupabaseClient;
 
@@ -248,4 +250,13 @@ export async function closeTableSession(
     .eq("id", sessionId);
 
   await revokeSessionDevices(admin, sessionId);
+
+  void scheduleSessionCompletedCommerce(admin, sessionId, billStatus).catch(
+    (error) => {
+      logger.warn("session.completed commerce projection failed", {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  );
 }

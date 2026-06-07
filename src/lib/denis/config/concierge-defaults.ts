@@ -153,6 +153,23 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     frustrationEscalateThreshold: "mild",
     confidenceFallbackThreshold: 0.4,
   },
+  intervention: {
+    enabled: false,
+    mode: "off",
+  },
+  rhythm: {
+    enabled: false,
+    mode: "off",
+    minSampleSessions: 8,
+    minConfidence: 0.4,
+    ops: {
+      rushAlerts: false,
+      staffingHints: false,
+      rushThreshold: 1.8,
+      targetSessionsPerWaiter: 4,
+      staffingOccupancyThreshold: 0.55,
+    },
+  },
 };
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;

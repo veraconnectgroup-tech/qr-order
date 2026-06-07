@@ -201,6 +201,29 @@ const ConciergeMentalModelSchema = z.object({
   confidenceFallbackThreshold: z.number().min(0).max(1).default(0.4),
 });
 
+const ConciergeInterventionSchema = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(["off", "shadow", "enforce"]).default("off"),
+  /** Promoted manifest version id (e.g. ijs-v1) — ADR-041 P3. */
+  manifestVersion: z.string().trim().min(1).max(40).nullable().optional(),
+});
+
+const ConciergeRhythmOpsSchema = z.object({
+  rushAlerts: z.boolean(),
+  staffingHints: z.boolean(),
+  rushThreshold: z.number().min(1).max(5).default(1.8),
+  targetSessionsPerWaiter: z.number().int().min(1).max(12).default(4),
+  staffingOccupancyThreshold: z.number().min(0).max(1).default(0.55),
+});
+
+const ConciergeRhythmSchema = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(["off", "shadow", "enforce"]).default("off"),
+  minSampleSessions: z.number().int().min(1).max(100).default(8),
+  minConfidence: z.number().min(0).max(1).default(0.4),
+  ops: ConciergeRhythmOpsSchema,
+});
+
 export const ConciergeConfigSchema = z.object({
   version: z.literal(1),
   enabled: z.boolean(),
@@ -222,6 +245,8 @@ export const ConciergeConfigSchema = z.object({
   memory: ConciergeMemorySchema,
   surfaces: ConciergeSurfacesSchema,
   mentalModel: ConciergeMentalModelSchema,
+  intervention: ConciergeInterventionSchema,
+  rhythm: ConciergeRhythmSchema,
 });
 
 export type ConciergeConfig = z.infer<typeof ConciergeConfigSchema>;
@@ -244,6 +269,8 @@ export const PartialConciergeLearningSchema = ConciergeLearningSchema.partial();
 export const PartialConciergeMemorySchema = ConciergeMemorySchema.partial();
 export const PartialConciergeSurfacesSchema = ConciergeSurfacesSchema.partial();
 export const PartialConciergeMentalModelSchema = ConciergeMentalModelSchema.partial();
+export const PartialConciergeInterventionSchema = ConciergeInterventionSchema.partial();
+export const PartialConciergeRhythmSchema = ConciergeRhythmSchema.partial();
 
 export const PartialConciergeConfigSchema = z.object({
   version: z.literal(1).optional(),
@@ -266,6 +293,8 @@ export const PartialConciergeConfigSchema = z.object({
   memory: PartialConciergeMemorySchema.optional(),
   surfaces: PartialConciergeSurfacesSchema.optional(),
   mentalModel: PartialConciergeMentalModelSchema.optional(),
+  intervention: PartialConciergeInterventionSchema.optional(),
+  rhythm: PartialConciergeRhythmSchema.optional(),
 });
 
 export type PartialConciergeConfig = z.infer<typeof PartialConciergeConfigSchema>;

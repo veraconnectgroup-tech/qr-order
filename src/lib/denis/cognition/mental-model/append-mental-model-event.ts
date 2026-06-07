@@ -7,6 +7,8 @@ import {
   shouldAppendMentalModelUpdated,
   type MentalModelDiffPayload,
   type MentalModelGatePayload,
+  type MentalModelGateIjsBlock,
+  type MentalModelGateRhythmBlock,
   type MentalModelUpdatedPayload,
 } from "@/lib/denis/cognition/mental-model/mental-model-timeline";
 import type { OfferTimingKind } from "@/lib/denis/cognition/offer/offer-types";
@@ -87,6 +89,8 @@ export async function appendMentalModelGate(
     selectedKind?: GuestProactiveNudgeKind | null;
     source?: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
     policyVersion?: string;
+    ijs?: MentalModelGateIjsBlock;
+    rhythm?: MentalModelGateRhythmBlock;
   }
 ): Promise<void> {
   const payload: MentalModelGatePayload = buildMentalModelGatePayload(input);

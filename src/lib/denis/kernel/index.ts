@@ -100,7 +100,6 @@ export type {
 export {
   buildScheduleDrafts,
   claimDueDenisSchedules,
-  evaluateScheduledIntent,
   upsertDenisSchedules,
 } from "@/lib/denis/kernel/scheduler";
 export type {

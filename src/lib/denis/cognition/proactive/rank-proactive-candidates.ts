@@ -270,7 +270,8 @@ export function rankProactiveCandidates(
           payload.venueName,
           payload.language,
           payload.todaySpecial,
-          messages.guestWelcome
+          messages.guestWelcome,
+          payload.rhythmTopProductName
         ),
       },
       "welcome",
@@ -373,9 +374,13 @@ export function rankProactiveCandidates(
             () => isDismissed(dismissed, "dessert_nudge"),
             now,
             {
-              minMinutes: config.upsell.dessertDelayMinutes,
+              minMinutes:
+                payload.effectiveDessertDelayMinutes ??
+                config.upsell.dessertDelayMinutes,
               maxMinutes: null,
-              preparingMinMinutes: config.upsell.dessertDelayMinutes,
+              preparingMinMinutes:
+                payload.effectiveDessertDelayMinutes ??
+                config.upsell.dessertDelayMinutes,
             }
           );
     const suppressPreparingDessertWhileWaiting =

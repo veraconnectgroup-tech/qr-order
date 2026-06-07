@@ -9,6 +9,19 @@ import { PROACTIVE_POLICY_VERSION } from "@/lib/denis/cognition/proactive/proact
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { ProactiveTurnMessages } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
+import { loadResolvedRhythmContext } from "@/lib/denis/config/load-resolved-rhythm-context";
+import { isRhythmActive } from "@/lib/denis/config/resolve-rhythm-mode";
+import { resolveInterventionManifest } from "@/lib/denis/cognition/intervention/resolve-intervention-manifest";
+import { resolveInterventionLifecycleContext } from "@/lib/denis/cognition/intervention/resolve-intervention-lifecycle-context";
+import {
+  isInterventionJournalActive,
+  resolveInterventionMode,
+} from "@/lib/denis/config/resolve-intervention-mode";
+import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
+import {
+  recordInterventionCommitted,
+  recordInterventionEvaluation,
+} from "@/lib/denis/runtime/record-intervention-evaluation";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { waiterObligationDedupeKey } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
@@ -104,6 +117,56 @@ export async function emitProactiveNudge(
     },
   });
 
+  const lifecycle = isInterventionJournalActive(input.config)
+    ? resolveInterventionLifecycleContext({
+        timeline: input.state.timeline,
+        manifest: resolveInterventionManifest(input.config),
+      })
+    : {
+        previousDecision: null,
+        previousInterventionId: null,
+        deferExpired: false,
+      };
+
+  const journal = await recordInterventionEvaluation(admin, {
+    aiSessionId: input.aiSessionId,
+    tableSessionId: input.tableSessionId,
+    config: input.config,
+    state: input.state,
+    proactiveResult,
+    source: input.source,
+    traceId,
+    previousDecision: lifecycle.previousDecision,
+    previousInterventionId: lifecycle.previousInterventionId,
+    deferExpired: lifecycle.deferExpired,
+  });
+
+  const ijsGateBlock = journal
+    ? {
+        manifestVersion: journal.evaluation.manifestVersion,
+        decision: journal.evaluation.decision,
+        ijsDecision: journal.evaluation.ijsDecision,
+        ruleId: journal.evaluation.ruleId,
+        shouldBlockSpeak: journal.evaluation.shouldBlockSpeak,
+        enforced: resolveInterventionMode(input.config) === "enforce",
+      }
+    : undefined;
+
+  const rhythmGateBlock = isRhythmActive(input.config)
+    ? await loadResolvedRhythmContext(admin, {
+        locationId: input.locationId,
+        config: input.config,
+      }).then((rhythm) => ({
+        mode: rhythm.mode,
+        slotKey: rhythm.slotKey,
+        confidence: rhythm.confidence,
+        applied: rhythm.applied,
+        defaultDessertDelayMin: rhythm.defaultDessertDelayMinutes,
+        wouldOverrideDessertDelayMin: rhythm.wouldOverrideDessertDelayMinutes,
+        servicePeriod: rhythm.servicePeriod,
+      }))
+    : undefined;
+
   if (proactiveResult.mentalGate) {
     await appendMentalModelGate(admin, {
       aiSessionId: input.aiSessionId,
@@ -121,10 +184,47 @@ export async function emitProactiveNudge(
       selectedKind: proactiveResult.mentalGate.selectedKind,
       source: input.source,
       policyVersion: PROACTIVE_POLICY_VERSION,
+      ijs: ijsGateBlock,
+      rhythm: rhythmGateBlock,
+    });
+  } else if (ijsGateBlock && journal?.evaluation.decision === "defer") {
+    await appendMentalModelGate(admin, {
+      aiSessionId: input.aiSessionId,
+      traceId,
+      mental: input.state.mental,
+      mode: resolveMentalModelMode(input.config),
+      candidateKind: proactiveResult.candidateKind ?? "browse_nudge",
+      allow: true,
+      enforced: false,
+      reason: null,
+      wouldBlock: false,
+      source: input.source,
+      policyVersion: PROACTIVE_POLICY_VERSION,
+      ijs: ijsGateBlock,
+      rhythm: rhythmGateBlock,
+    });
+  } else if (rhythmGateBlock) {
+    await appendMentalModelGate(admin, {
+      aiSessionId: input.aiSessionId,
+      traceId,
+      mental: input.state.mental,
+      mode: resolveMentalModelMode(input.config),
+      candidateKind: proactiveResult.candidateKind ?? "browse_nudge",
+      allow: true,
+      enforced: false,
+      reason: null,
+      wouldBlock: false,
+      source: input.source,
+      policyVersion: PROACTIVE_POLICY_VERSION,
+      rhythm: rhythmGateBlock,
     });
   }
 
   if (!proactiveResult.nudge || !proactiveResult.message) {
+    return null;
+  }
+
+  if (journal?.evaluation.shouldBlockSpeak) {
     return null;
   }
 
@@ -173,6 +273,15 @@ export async function emitProactiveNudge(
     traceId,
     payload: emittedPayload,
   });
+
+  if (journal) {
+    await recordInterventionCommitted(admin, {
+      aiSessionId: input.aiSessionId,
+      tableSessionId: input.tableSessionId,
+      journal,
+      source: input.source,
+    });
+  }
 
   const dockMessage = proactiveResult.message.trim();
   if (

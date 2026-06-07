@@ -132,6 +132,25 @@ export type DenisTimelineEventPayload =
       reason: string | null;
       wouldBlock: boolean;
       mentalHash: string;
+      /** ADR-041 P3+ — IJS audit block on proactive gate rows. */
+      ijs?: {
+        manifestVersion: string;
+        decision: string;
+        ijsDecision: string;
+        ruleId: string | null;
+        shouldBlockSpeak: boolean;
+        enforced: boolean;
+      };
+      /** ADR-042 VRP-P0 — rhythm prior audit block. */
+      rhythm?: {
+        mode: string;
+        slotKey: string | null;
+        confidence: number;
+        applied: boolean;
+        defaultDessertDelayMin: number;
+        wouldOverrideDessertDelayMin: number | null;
+        servicePeriod: string | null;
+      };
     }
   | {
       type: "mental_model.diff";

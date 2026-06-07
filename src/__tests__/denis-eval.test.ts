@@ -18,6 +18,10 @@ import { CONTINUOUS_MIND_SCENARIOS } from "@/lib/denis/eval/fixtures/continuous-
 import { MENTAL_MODEL_SCENARIOS } from "@/lib/denis/eval/fixtures/mental-model/scenarios";
 import { OFFER_FOLD_SCENARIOS } from "@/lib/denis/eval/fixtures/offer/scenarios";
 import { runManifestPromoteGateFixture } from "@/lib/denis/eval/run-manifest-promote-gate-fixture";
+import { runInterventionManifestPromoteFixture } from "@/lib/denis/eval/run-intervention-manifest-promote-fixture";
+import { runInterventionManifestCompareSim } from "@/lib/denis/cognition/intervention/run-intervention-manifest-sim";
+import { DEFAULT_INTERVENTION_MANIFEST } from "@/lib/denis/cognition/intervention/intervention-manifest-defaults";
+import { INTERVENTION_MANIFEST_SIM_SCENARIOS } from "@/lib/denis/eval/fixtures/intervention/manifest-sim-scenarios";
 import { MANIFEST_PROMOTE_GATE_SCENARIOS } from "@/lib/denis/eval/fixtures/manifest/promote-gate-scenarios";
 import { runPlaybookPackFixture } from "@/lib/denis/eval/run-playbook-pack-fixture";
 import { IOTA_TIMELINE_OBLIGATION_SCENARIOS } from "@/lib/denis/eval/fixtures/timeline/iota-obligation-scenarios";
@@ -180,6 +184,25 @@ describe("Denis eval fixtures M10", () => {
     expect(report.scenarioCount).toBe(MANIFEST_PROMOTE_GATE_SCENARIOS.length);
   });
 
+  it("intervention manifest promote + sim corpus passes (ADR-041 IJS)", () => {
+    const promote = runInterventionManifestPromoteFixture();
+    if (!promote.ok) {
+      console.error(JSON.stringify(promote.results.filter((r) => !r.passed), null, 2));
+    }
+    expect(promote.ok).toBe(true);
+
+    const sim = runInterventionManifestCompareSim({
+      baseline: DEFAULT_INTERVENTION_MANIFEST,
+      proposed: DEFAULT_INTERVENTION_MANIFEST,
+      scenarios: INTERVENTION_MANIFEST_SIM_SCENARIOS,
+    });
+    if (!sim.ok) {
+      console.error(JSON.stringify(sim.regressions, null, 2));
+    }
+    expect(sim.ok).toBe(true);
+    expect(sim.scenarioCount).toBe(INTERVENTION_MANIFEST_SIM_SCENARIOS.length);
+  });
+
   it("L3 interpretation task goal-directed eval passes (ARCH-7 / C12)", () => {
     const report = runInterpretationTaskSuite();
     if (!report.ok) {
@@ -202,6 +225,8 @@ describe("Denis eval fixtures M10", () => {
             manifestPromoteFailed: gate.manifestPromoteGate.results.filter(
               (r) => !r.passed
             ),
+            interventionManifestPromoteFailed:
+              gate.interventionManifestPromoteGate.results.filter((r) => !r.passed),
             waiterParityFailed: gate.waiterParity.results.filter((r) => !r.passed),
             worldTell: gate.worldTell,
             anticipationFailed: gate.anticipation.results.filter((r) => !r.passed),

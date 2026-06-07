@@ -10,6 +10,12 @@ export const COMMERCE_COMMAND_TYPES = {
   recordNudgeEmitted: "RecordNudgeEmitted",
   recordOfferConverted: "RecordOfferConverted",
   recordNudgeResolved: "RecordNudgeResolved",
+  recordInterventionEvaluated: "RecordInterventionEvaluated",
+  recordInterventionDeclined: "RecordInterventionDeclined",
+  recordInterventionCommitted: "RecordInterventionCommitted",
+  recordInterventionExpired: "RecordInterventionExpired",
+  recordInterventionSuperseded: "RecordInterventionSuperseded",
+  recordSessionCompleted: "RecordSessionCompleted",
 } as const;
 
 export type CommerceCommandType =
@@ -28,6 +34,12 @@ export const COMMERCE_EVENT_TYPES = {
   nudgeEmitted: "anticipation.nudge_emitted",
   offerConverted: "anticipation.offer_converted",
   nudgeResolved: "anticipation.nudge_resolved",
+  interventionEvaluated: "intervention.evaluated",
+  interventionDeclined: "intervention.declined",
+  interventionCommitted: "intervention.committed",
+  interventionExpired: "intervention.expired",
+  interventionSuperseded: "intervention.superseded",
+  sessionCompleted: "session.completed",
 } as const;
 
 export type CommerceEventType =

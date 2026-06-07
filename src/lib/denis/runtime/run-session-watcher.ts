@@ -1,9 +1,7 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
 import { detectStaffProactiveAlerts } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
-import { loadProactiveMenuHints } from "@/lib/denis/cognition/proactive/load-proactive-menu-hints";
 import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/session-watcher-context";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
-import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
@@ -11,8 +9,7 @@ import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-of
 import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
-import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
-import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
+import { enqueueOrRunProactiveSessionTick } from "@/lib/denis/runtime/enqueue-or-run-proactive-tick";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -84,10 +81,6 @@ export async function runSessionWatcherTick(
   }
 
   const rows = (sessions ?? []) as ActiveSessionRow[];
-  const hintsByLocation = new Map<
-    string,
-    Awaited<ReturnType<typeof loadProactiveMenuHints>>
-  >();
   const configByLocation = new Map<
     string,
     Awaited<ReturnType<typeof loadConciergeConfigForLocation>>
@@ -110,15 +103,8 @@ export async function runSessionWatcherTick(
         continue;
       }
 
-      let hints = hintsByLocation.get(row.location_id);
-      if (!hints) {
-        hints = await loadProactiveMenuHints(admin, row.location_id);
-        hintsByLocation.set(row.location_id, hints);
-      }
-
       const aiSessionId = row.denis_shared_ai_session_id;
       const tableName = relationName(row.table)?.trim() || "—";
-      const venueName = relationName(row.location)?.trim() || "Venue";
 
       const [timeline, orders, fold] = await Promise.all([
         loadDenisTimeline(admin, aiSessionId),
@@ -190,58 +176,12 @@ export async function runSessionWatcherTick(
         });
       }
 
-      const mentalMode = resolveMentalModelMode(config);
-      const legacyMinutePayload =
-        mentalMode === "off"
-          ? {
-              idleMinutes: watcherContext.idleMinutes,
-              browseMinutes: watcherContext.idleMinutes,
-            }
-          : {};
-
-      const nudge = await emitProactiveNudge(admin, {
-        aiSessionId,
+      const nudge = await enqueueOrRunProactiveSessionTick(admin, {
         tableSessionId: row.id,
-        tableId: row.table_id,
-        locationId: row.location_id,
-        sessionToken: row.session_token,
-        venueName,
-        config,
-        state: fold.state,
-        orders,
-        sessionPhase: deriveFoldSessionPhase({
-          sessionStatus: fold.state.session.status,
-          accessState: fold.state.session.accessState,
-          orders: fold.state.commerce.orders,
-          hasCartActivity: fold.state.commerce.cart.visibleLines.length > 0,
-          billSettled: fold.state.session.billSettled,
-        }),
         source: "session.watcher",
         traceId: watcherTraceId,
-        payload: {
-          dismissedNudgeKeys: watcherContext.dismissedNudgeKeys,
-          hasSessionOrders: fold.state.commerce.orders.length > 0,
-          cartItemCount: fold.state.commerce.cart.visibleLines.length,
-          sessionAgeSeconds: watcherContext.sessionAgeSeconds,
-          guestMessageCount: watcherContext.guestMessageCount,
-          guestAskedRecommendation: watcherContext.guestAskedRecommendation,
-          popularityPair: hints.popularityPair,
-          todaySpecial: hints.todaySpecial,
-          dessertProductName: hints.dessertProductName,
-          ...legacyMinutePayload,
-          venueName,
-          language:
-            watcherContext.guestMessageCount > 0
-              ? watcherContext.guestLanguage ??
-                config.language.venueDefault ??
-                "sr"
-              : config.language.venueDefault ?? "sr",
-          browsingDeferredAt: watcherContext.browsingDeferredAt,
-          browsingDeferCount: watcherContext.browsingDeferCount,
-          browseFollowUpEmitted: watcherContext.browseFollowUpEmitted,
-          followUpRequestedAt: watcherContext.followUpRequestedAt,
-          followUpDelaySeconds: watcherContext.followUpDelaySeconds,
-        },
+        preambleDone: true,
+        config,
       });
 
       if (nudge) {

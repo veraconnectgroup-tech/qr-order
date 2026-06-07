@@ -2,6 +2,7 @@ import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
 import { loadDenisProactiveAdminState } from "@/lib/admin/denis-proactive-actions";
 import { loadLearnedEdgeQueue } from "@/lib/admin/denis-learned-edges";
 import { loadNudgePerformanceSnapshot } from "@/lib/admin/load-nudge-performance";
+import { loadVenueRhythmAdminSnapshot } from "@/lib/admin/load-venue-rhythm-admin";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { DenisLearnedEdgesManager } from "@/components/admin/denis-learned-edges-manager";
 import {
@@ -9,6 +10,7 @@ import {
   loadDenisLiveOpsSnapshot,
 } from "@/components/admin/denis-live-ops-widget";
 import { DenisNudgePerformancePanel } from "@/components/admin/denis-nudge-performance-panel";
+import { DenisVenueRhythmPanel } from "@/components/admin/denis-venue-rhythm-panel";
 import { DenisProactiveSettingsPanel } from "@/components/admin/denis-proactive-settings-panel";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -23,13 +25,14 @@ export default async function DenisInsightsAdminPage() {
   }
 
   const admin = createAdminClient();
-  const [edges, config, liveOps, proactiveState, nudgePerformance] =
+  const [edges, config, liveOps, proactiveState, nudgePerformance, venueRhythm] =
     await Promise.all([
       loadLearnedEdgeQueue(admin, locationId, "pending"),
       loadConciergeConfigForLocation(locationId),
       loadDenisLiveOpsSnapshot(admin, locationId),
       loadDenisProactiveAdminState(),
       loadNudgePerformanceSnapshot(admin, { locationId, periodDays: 7 }),
+      loadVenueRhythmAdminSnapshot(admin, { locationId, periodDays: 7 }),
     ]);
 
   const productIds = [
@@ -57,6 +60,7 @@ export default async function DenisInsightsAdminPage() {
         <DenisProactiveSettingsPanel initial={proactiveState} />
       )}
       <DenisNudgePerformancePanel snapshot={nudgePerformance} />
+      <DenisVenueRhythmPanel snapshot={venueRhythm} />
       <DenisLearnedEdgesManager
         edges={edges}
         productNames={productNames}

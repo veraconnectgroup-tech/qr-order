@@ -2,6 +2,8 @@ import {
   COMMERCE_EVENT_TYPES,
 } from "@/lib/commerce/event-types";
 import { upsertAnticipationRollup } from "@/lib/commerce/projections/rollup-anticipation-analytics";
+import { upsertVenueRhythmPriors } from "@/lib/commerce/projections/rollup-venue-rhythm-priors";
+import { upsertSessionCompletedDailyRollup } from "@/lib/commerce/projections/rollup-session-daily-analytics";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -74,9 +76,29 @@ export async function refreshGuestSessionCommerceState(
   if (
     row.event_type === COMMERCE_EVENT_TYPES.nudgeEmitted ||
     row.event_type === COMMERCE_EVENT_TYPES.offerConverted ||
-    row.event_type === COMMERCE_EVENT_TYPES.nudgeResolved
+    row.event_type === COMMERCE_EVENT_TYPES.nudgeResolved ||
+    row.event_type === COMMERCE_EVENT_TYPES.interventionEvaluated ||
+    row.event_type === COMMERCE_EVENT_TYPES.interventionDeclined ||
+    row.event_type === COMMERCE_EVENT_TYPES.interventionCommitted ||
+    row.event_type === COMMERCE_EVENT_TYPES.interventionExpired ||
+    row.event_type === COMMERCE_EVENT_TYPES.interventionSuperseded
   ) {
     await upsertAnticipationRollup(admin, {
+      orgId: row.org_id,
+      locationId: row.location_id,
+      eventType: row.event_type,
+      createdAt: row.created_at,
+      payload: row.payload,
+    });
+  }
+
+  if (row.event_type === COMMERCE_EVENT_TYPES.sessionCompleted) {
+    await upsertVenueRhythmPriors(admin, {
+      orgId: row.org_id,
+      locationId: row.location_id,
+      payload: row.payload,
+    });
+    await upsertSessionCompletedDailyRollup(admin, {
       orgId: row.org_id,
       locationId: row.location_id,
       eventType: row.event_type,

@@ -23,6 +23,10 @@ import {
   type WorldTellUnificationResult,
 } from "@/lib/denis/eval/run-world-tell-fixture";
 import {
+  runInterventionManifestPromoteFixture,
+  type InterventionManifestPromoteFixtureReport,
+} from "@/lib/denis/eval/run-intervention-manifest-promote-fixture";
+import {
   runManifestPromoteGateFixture,
   type ManifestPromoteGateFixtureReport,
 } from "@/lib/denis/eval/run-manifest-promote-gate-fixture";
@@ -125,6 +129,7 @@ export type PilotGateReport = {
   waiterParity: WaiterParityReport;
   worldTell: WorldTellUnificationResult;
   manifestPromoteGate: ManifestPromoteGateFixtureReport;
+  interventionManifestPromoteGate: InterventionManifestPromoteFixtureReport;
   qualityContract: ReturnType<typeof runQualityContractEval>;
   anticipation: AnticipationReport;
   narration: PilotNarrationGateResult;
@@ -141,6 +146,7 @@ export function runPilotGate(): PilotGateReport {
   const waiterParity = runWaiterParitySuite();
   const worldTell = runWorldTellUnificationFixture();
   const manifestPromoteGate = runManifestPromoteGateFixture();
+  const interventionManifestPromoteGate = runInterventionManifestPromoteFixture();
   const qualityContract = runQualityContractEval();
   const anticipation = runAnticipationEval();
   const narration = runPilotNarrationGate();
@@ -156,6 +162,7 @@ export function runPilotGate(): PilotGateReport {
           waiterParity.ok &&
           worldTell.passed &&
           manifestPromoteGate.ok &&
+          interventionManifestPromoteGate.ok &&
           qualityContract.ok &&
           anticipation.ok &&
           narration.passed,
@@ -165,6 +172,7 @@ export function runPilotGate(): PilotGateReport {
           waiterParity.ok &&
           worldTell.passed &&
           manifestPromoteGate.ok &&
+          interventionManifestPromoteGate.ok &&
           qualityContract.ok &&
           anticipation.ok &&
           narration.passed,
@@ -180,6 +188,7 @@ export function runPilotGate(): PilotGateReport {
       waiterParity.ok &&
       worldTell.passed &&
       manifestPromoteGate.ok &&
+      interventionManifestPromoteGate.ok &&
       qualityContract.ok &&
       anticipation.ok &&
       narration.passed,
@@ -190,6 +199,7 @@ export function runPilotGate(): PilotGateReport {
     waiterParity,
     worldTell,
     manifestPromoteGate,
+    interventionManifestPromoteGate,
     qualityContract,
     anticipation,
     narration,

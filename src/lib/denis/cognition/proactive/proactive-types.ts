@@ -35,6 +35,10 @@ export type ProactiveTickPayload = {
   followUpRequestedAt?: string | null;
   /** Guest-requested delay in seconds (e.g. "dođi za 1 minut"). */
   followUpDelaySeconds?: number | null;
+  /** ADR-042 VRP-P1 — rhythm-enforced dessert delay for legacy triggers. */
+  effectiveDessertDelayMinutes?: number;
+  /** ADR-042 VRP-P2 — slot top product for welcome copy (enforce). */
+  rhythmTopProductName?: string | null;
 };
 
 export type GuestProactiveNudgeKind =

@@ -85,6 +85,16 @@ async function processQueuedSignal(item: QueuedTableSessionSignal): Promise<void
       return;
     }
 
+    if (item.kind === "proactive" && item.proactivePayload) {
+      const { runProactiveSessionTick } = await import(
+        "@/lib/denis/runtime/run-proactive-session-tick"
+      );
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const admin = createAdminClient();
+      await runProactiveSessionTick(admin, item.proactivePayload);
+      return;
+    }
+
     if (item.kind === "experience" && item.experiencePayload) {
       const { runCommerceExperience } = await import(
         "@/lib/commerce/runtime/run-commerce-experience"
@@ -281,6 +291,20 @@ export async function enqueueCommerceExperienceSignal(
     kind: "experience",
     enqueuedAt: new Date().toISOString(),
     experiencePayload,
+  });
+}
+
+/** ADR-041 P1 — proactive session tick enters actor queue (fire-and-forget). */
+export async function enqueueProactiveTickSignal(
+  tableSessionId: string,
+  signalId: string,
+  proactivePayload: NonNullable<QueuedTableSessionSignal["proactivePayload"]>
+): Promise<void> {
+  await enqueueSignal(tableSessionId, {
+    signalId,
+    kind: "proactive",
+    enqueuedAt: new Date().toISOString(),
+    proactivePayload,
   });
 }
 

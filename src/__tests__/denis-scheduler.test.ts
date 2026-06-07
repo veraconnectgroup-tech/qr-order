@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { buildScheduleDrafts } from "@/lib/denis/kernel/scheduler/build-schedules";
-import { evaluateScheduledIntent } from "@/lib/denis/kernel/scheduler/evaluate-proactive";
 import type { SchedulerOrderSnapshot } from "@/lib/denis/kernel/scheduler/types";
 
 const now = new Date("2026-05-27T11:59:00.000Z");
@@ -40,31 +39,38 @@ describe("scheduler build M8", () => {
     });
     expect(drafts).toHaveLength(0);
   });
-});
 
-describe("scheduler evaluate M8", () => {
-  it("emits pairing nudge for recent order", () => {
-    const evaluation = evaluateScheduledIntent({
-      intentType: "EVALUATE_PAIRING",
-      payload: { orderId: "o1" },
-      orders: [order({ id: "o1" })],
-      shownNudgeKeys: [],
-      slowKitchenThresholdMinutes: 25,
-      now: new Date("2026-05-27T12:00:00.000Z").getTime(),
+  it("uses INTERVENTION_WAKE for dessert defer when IJS active", () => {
+    const drafts = buildScheduleDrafts({
+      orders: [
+        order({
+          id: "o1",
+          status: "delivered",
+          delivered_at: "2026-05-27T11:40:00.000Z",
+        }),
+      ],
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      interventionJournalActive: true,
+      now,
     });
-    expect(evaluation?.kind).toBe("pairing");
-    expect(evaluation?.message).toContain("Burger");
+    expect(drafts.some((row) => row.intentType === "INTERVENTION_WAKE")).toBe(true);
+    expect(drafts.some((row) => row.intentType === "DESSERT_UPSELL")).toBe(false);
   });
 
-  it("respects shown dedupe keys", () => {
-    const evaluation = evaluateScheduledIntent({
-      intentType: "EVALUATE_PAIRING",
-      payload: { orderId: "o1" },
-      orders: [order({ id: "o1" })],
-      shownNudgeKeys: ["pairing:o1"],
-      slowKitchenThresholdMinutes: 25,
-      now: new Date("2026-05-27T12:00:00.000Z").getTime(),
+  it("uses rhythm effective dessert delay when provided (VRP-P1)", () => {
+    const drafts = buildScheduleDrafts({
+      orders: [
+        order({
+          id: "o1",
+          status: "delivered",
+          delivered_at: "2026-05-27T11:40:00.000Z",
+        }),
+      ],
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      effectiveDessertDelayMinutes: 12,
+      now: new Date("2026-05-27T11:45:00.000Z"),
     });
-    expect(evaluation).toBeNull();
+    const dessert = drafts.find((row) => row.intentType === "DESSERT_UPSELL");
+    expect(dessert?.runAt).toBe("2026-05-27T11:52:00.000Z");
   });
 });

@@ -5,12 +5,14 @@ export type ScheduledIntentType =
   | "DESSERT_UPSELL"
   | "SLOW_KITCHEN_CHECK"
   | "REVIEW_PROMPT"
-  | "STATUS_FOLLOWUP";
+  | "STATUS_FOLLOWUP"
+  | "INTERVENTION_WAKE";
 
 export type ScheduledIntentPayload = {
   orderId?: string;
   afterOrderId?: string;
   minutesWaiting?: number;
+  wakeKind?: "post_delivery" | "session_defer";
 };
 
 export type ScheduledIntentDraft = {
