@@ -124,6 +124,58 @@ function runGateScenario(scenario: MentalModelScenario): MentalModelScenarioResu
     }
   }
 
+  if (scenario.id === "gmm_dessert_window") {
+    const dessertGate = gateProactiveNudge({
+      mental,
+      candidate: { kind: "dessert_nudge", message: "test" },
+      config: input.config,
+      now: input.now,
+    });
+    if (!dessertGate.allow) {
+      errors.push(
+        `gate: expected dessert_nudge allowed in dessert_window, got ${dessertGate.reason}`
+      );
+    }
+  }
+
+  if (scenario.id === "gmm_decline_cooldown_no_third") {
+    if (gate.allow) errors.push("gate: expected browse_nudge blocked after 2 declines");
+    if (mental.nudgeBudget.remaining !== 0) {
+      errors.push(`nudgeBudget.remaining: expected 0, got ${mental.nudgeBudget.remaining}`);
+    }
+  }
+
+  if (scenario.id === "gmm_price_affinity_premium") {
+    const popularityGate = gateProactiveNudge({
+      mental,
+      candidate: { kind: "popularity_pair", message: "test" },
+      config: input.config,
+      now: input.now,
+    });
+    if (!popularityGate.allow) {
+      errors.push(
+        `gate: expected popularity_pair allowed for premium affinity, got ${popularityGate.reason}`
+      );
+    }
+  }
+
+  if (scenario.id === "gmm_price_affinity_budget") {
+    const popularityGate = gateProactiveNudge({
+      mental,
+      candidate: { kind: "popularity_pair", message: "test" },
+      config: input.config,
+      now: input.now,
+    });
+    if (popularityGate.allow) {
+      errors.push("gate: expected popularity_pair blocked for budget affinity");
+    }
+    if (popularityGate.reason !== "gmm.price_affinity_mismatch") {
+      errors.push(
+        `gate.reason: expected gmm.price_affinity_mismatch, got ${popularityGate.reason}`
+      );
+    }
+  }
+
   return { id: `${scenario.id}_gate`, passed: errors.length === 0, errors };
 }
 
@@ -136,6 +188,10 @@ export function runMentalModelSuite(): MentalModelReport {
         "gmm_closed_blocks_nudge",
         "gmm_frustrated_escalate",
         "gmm_party_leader_only",
+        "gmm_dessert_window",
+        "gmm_decline_cooldown_no_third",
+        "gmm_price_affinity_premium",
+        "gmm_price_affinity_budget",
       ].includes(row.id)
     ).map(runGateScenario),
   ];

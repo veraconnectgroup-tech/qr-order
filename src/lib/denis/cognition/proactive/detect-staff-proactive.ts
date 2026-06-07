@@ -65,7 +65,8 @@ export function detectStaffProactiveAlerts(input: {
   if (
     input.config.proactive.staffWaiterRequest &&
     !emitted.has("staff_attention_escalation") &&
-    input.mentalPredictedNeed === "needs_attention"
+    input.mentalPredictedNeed === "needs_attention" &&
+    !(input.config.handoff.waiterCall && input.config.handoff.liveExecution)
   ) {
     alerts.push({
       kind: "staff_attention_escalation",

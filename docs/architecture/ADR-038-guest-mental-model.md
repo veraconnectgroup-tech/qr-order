@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | PROPOSED |
+| **Status** | APPROVED |
 | **Parent** | [ADR-020 §Kad](./ADR-020-denis-table-operating-system.md) · [ADR-019](./ADR-019-denis-unified-brain.md) Phase A fold |
 | **Replaces** | Vremenski proactive triggeri (`browseNudgeMinutes`, `popularityBrowseMinutes`, …) kao primarni signal |
-| **Rule** | Jedan PR = jedan stub (GMM-1 → GMM-5). `pnpm eval:denis` + `pnpm verify:denis` PASS posle svakog. |
+| **Rule** | GMM-1 → GMM-8 shipped. `pnpm eval:denis` + `pnpm verify:denis` PASS. Rollout via `mentalModel.mode`. |
 
 ---
 
@@ -17,182 +17,106 @@ Denis proactive sistem danas radi na hardkodovanim minutama (*"gleda meni 3 min 
 
 ## North star
 
-**Guest Mental Model (GMM)** = psihološki profil gosta koji se **rebuild-uje na svakom fold-u** (<5ms, 0 DB, 0 LLM). Koristi se za:
+**Guest Mental Model (GMM)** = operativni guest posture koji se **rebuild-uje na svakom fold-u** (<6ms eval SLA, 0 DB, 0 LLM). Koristi se za:
 
-1. **Gate** — blokira/odobrava proactive nudge-ove
-2. **Routing** — kome se obraća (solo vs party leader)
-3. **Urgency** — frustration → pre waiter handoff-a
-4. **Observability** — `mental_model.updated` + `mental_model.diff` u timeline
+1. **Rank + policy** — svi kandidati, sortirani po `predictedNeed`, prvi koji prođe manifest
+2. **Gate** — deny checks po kind-u (`DEFAULT_PROACTIVE_POLICY`)
+3. **Routing** — kome se obraća (solo vs party leader)
+4. **Urgency** — `needs_attention` → `attention_handoff` + ACL `handoff.waiter` kad `liveExecution`
+5. **Observability** — `mental_model.updated` · `mental_model.gate` · `mental_model.diff`
+6. **TDE beliefs** — `mental.*` keys u `compileBeliefs` (intent, receptiveness, frustration, predicted_need, price_affinity)
 
 ---
 
-## Module layout
+## Module layout (as-built)
 
 ```
 src/lib/denis/cognition/mental-model/
-├── mental-model-types.ts          # sve dimenzije + enums
-├── fold-guest-mental-model.ts     # pure fold (glavna funkcija)
-├── derive-intent.ts               # Intent + transitions
-├── derive-pace.ts
-├── derive-receptiveness.ts
-├── derive-price-affinity.ts
-├── derive-meal-stage.ts
-├── derive-engagement.ts
-├── derive-nudge-budget.ts
-├── derive-predicted-need.ts
-├── derive-group-dynamics.ts       # party leader/follower
-├── derive-frustration.ts
-├── derive-micro-sentiment.ts
-├── gate-proactive-nudge.ts        # gate API za detectProactiveCandidate
-├── diff-mental-model.ts           # before/after + significant change
-├── append-mental-model-event.ts   # timeline writer (poziva se posle fold-a)
+├── mental-model-types.ts
+├── fold-guest-mental-model.ts
+├── fold-guest-signals.ts          # spine (Val A)
+├── decline-state.ts
+├── derive-intent.ts · derive-intent-transitions.ts
+├── derive-pace.ts · derive-receptiveness.ts · derive-engagement.ts
+├── derive-nudge-budget.ts · derive-meal-stage.ts · derive-price-affinity.ts
+├── derive-group-dynamics.ts · derive-affect.ts   # frustration + sentiment merged
+├── synthesize-predicted-need.ts
+├── diff-mental-model.ts · mental-model-timeline.ts · append-mental-model-event.ts
+├── gate-proactive-nudge.ts        # re-export → apply-proactive-policy
 └── empty-mental-model.ts
-```
 
-**Eval:**
-
-```
-src/lib/denis/eval/fixtures/mental-model/scenarios.ts
-src/lib/denis/eval/run-mental-model-fixture.ts
+src/lib/denis/cognition/proactive/
+├── rank-proactive-candidates.ts   # GMM-6
+├── pick-proactive-candidate.ts
+├── proactive-policy-defaults.ts   # canonical manifest
+├── apply-proactive-policy.ts
+├── build-attention-handoff-message.ts  # GMM-7
+└── …
 ```
 
 ---
 
-## Tipovi (dimenzije)
-
-| Dimenzija | Enum / shape | Izvor signala |
-|-----------|--------------|---------------|
-| **Intent** | `arrived` · `exploring` · `comparing` · `decided` · `ordering` · `waiting_food` · `eating` · `finishing` · `paying` | `SessionPhase`, `flowNodeId`, cart, orders, browse dwell pattern |
-| **Pace** | `rushed` · `normal` · `relaxed` · `indecisive` | cart add/remove churn, message length, time-between-actions (iz timeline timestamps, ne wall-clock cron) |
-| **Receptiveness** | `enthusiastic` · `open` · `neutral` · `polite_decline` · `closed` | guestAskedRecommendation, dismissed nudges, defer count, explicit "ne hvala" |
-| **PriceAffinity** | `budget` · `mid` · `premium` · `unknown` | browse profile — category/product dwell; Phase 2: `priceBand` na browse ingest |
-| **MealStage** | `pre_order` · `aperitif` · `main` · `between_courses` · `dessert_window` · `post_meal` · `paying` | orders (drink vs food vs dessert), delivered count, session phase |
-| **Engagement** | `{ guestTurns, avgMsgLen, guestInitiated, nudgeResponseRate }` | `ConversationModel.thread`, `proactive.emitted` + sledeći guest reply |
-| **NudgeBudget** | `{ remaining, max, cooldownUntil }` | start 3; enthusiastic → 5–7; closed → 0; 2× decline → cooldown 3min |
-| **PredictedNeed** | `ready_to_order` · `needs_help_choosing` · `wants_drink` · `wants_dessert` · `wants_bill` · `needs_attention` · `none` | kombinacija Intent + MealStage + frustration + obligation gaps |
-| **GroupDynamics** | `{ mode: solo\|party, leaderDevice?, followerDevices[], addressLeader }` | `TablePartyModel.devices` — first browse, first order, isPrimary |
-| **Frustration** | `{ level: none\|mild\|high, signals[] }` | repeated message, CAPS, `???`, "dugo", "čekam", duplicate intent |
-| **MicroSentiment** | `{ score: -1..1, lastSignals[] }` | pattern match na guest poruke (bez LLM) |
-| **IntentTransitions** | `{ from, to, at, durationMs }[]` | diff između fold-ova; zadnjih 8 prelaza u modelu |
-
-**Root type:** `GuestMentalModel` sa `version`, `computedAt`, `confidence` (0–1), `hash`.
-
----
-
-## Fold integracija
-
-### Gde
-
-U `foldTableSessionState()` — **posle** `foldBrowseProfile` + `foldConversationModel` + `deriveFoldSessionPhase`, **pre** `mergeTableSessionObligation`.
-
-### Šta
-
-1. `mental = foldGuestMentalModel({ timeline, browse, conversation, commerce, party, session, phase, config, previousMental? })`
-2. Dodaj `state.mental` na `TableSessionState` (novo polje u `loop/types.ts`)
-3. Posle fold-a: `appendMentalModelUpdated` ako se hash promenio; `appendMentalModelDiff` ako significant change
-
-### Pure fold contract
-
-- Ulaz: samo podaci već u `TableSessionState` + opcioni `previousMental` iz poslednjeg `mental_model.updated` eventa u timeline (fold iz timeline, ne DB)
-- Izlaz: `GuestMentalModel`
-- SLA: <5ms na 500 timeline redova (benchmark u eval)
-
-### Timeline eventi
-
-| Event | Kada |
-|-------|------|
-| `mental_model.updated` | Svaki fold kad se `mental.hash` promeni |
-| `mental_model.diff` | Kad `diffMentalModel` detektuje significant shift (intent, receptiveness, frustration high, nudgeBudget→0) |
-
-Payload: `{ type, model, diff?, triggers: string[] }` — triggers = koji signal je izazvao (npr. `nudge_declined×2`, `intent:exploring→ordering`).
-
----
-
-## Gate funkcije (proactive)
-
-Nova funkcija: `gateProactiveNudge({ mental, candidate, config }) → { allow, reason }`
-
-**Hard blocks (reason codes):**
-
-| Reason | Uslov |
-|--------|-------|
-| `gmm.receptiveness_closed` | receptiveness = closed |
-| `gmm.nudge_budget_zero` | remaining = 0 |
-| `gmm.nudge_cooldown` | now < cooldownUntil |
-| `gmm.intent_incompatible` | npr. dessert nudge dok intent = exploring |
-| `gmm.frustration_high` | frustration high → samo `needs_attention` / waiter, ne upsell |
-| `gmm.pace_rushed` | rushed → blokiraj browse_nudge, popularity_pair |
-| `gmm.group_address_follower` | party follower device → ne šalji proactive (leader prima) |
-
-**Soft allows:**
-
-| Nudge kind | Zahteva |
-|------------|---------|
-| `guest_welcome` | intent = arrived, engagement.guestInitiated = false |
-| `browse_nudge` | intent ∈ {exploring, comparing}, receptiveness ≥ open, predictedNeed = needs_help_choosing |
-| `popularity_pair` | receptiveness ≥ open, priceAffinity match, nudgeBudget ≥ 1 |
-| `dessert_nudge` | mealStage = dessert_window, receptiveness ≠ closed |
-| `bill_prompt` | mealStage ∈ {post_meal, paying}, predictedNeed = wants_bill |
-| `browse_follow_up` | guest explicitly deferred OR followUpRequestedAt — **ne** na minutama |
-
-### Integracija u postojeći flow
-
-```
-planProactiveTurn()
-  → detectProactiveCandidate()     # i dalje kandidat po vrsti
-  → gateProactiveNudge(mental)     # NOVO — pre decideProactiveTurnPlan
-  → decideProactiveTurnPlan()
-```
-
-`detectProactiveCandidate` **refaktor**: ukloni primarnu zavisnost od `browseMinutes` / `idleMinutes`; koristi `mental.intent`, `mental.predictedNeed`, `mental.mealStage`. Minuti ostaju samo kao **fallback** kad `config.mentalModel.enabled = false`.
-
-`compileBeliefs`: dodaj `CORE_BELIEF_KEYS.mentalIntent`, `mentalReceptiveness`, `mentalFrustration`, `mentalPredictedNeed` — TDE može čitati bez ponovnog fold-a.
-
----
-
-## Config flag
-
-U `ConciergeProactiveSchema` (ili novi `ConciergeMentalModelSchema`):
+## Rollout config
 
 ```ts
 mentalModel: {
-  enabled: boolean,           // default false (rollout)
-  nudgeBudgetDefault: number,   // 3
-  nudgeBudgetEnthusiastic: number, // 6
-  declineCooldownSeconds: number,  // 180
+  enabled: boolean,              // legacy — see resolveMentalModelMode
+  mode: "off" | "shadow" | "enforce",  // default "off"
+  nudgeBudgetDefault: number,
+  nudgeBudgetEnthusiastic: number,
+  declineCooldownSeconds: number,
   frustrationEscalateThreshold: "mild" | "high",
+  confidenceFallbackThreshold: number,  // enforce → legacy pick when confidence low
 }
 ```
 
-Rollout: `config.mentalModel.enabled` + postojeći `config.rollout` slice po location.
+| Mode | Behaviour |
+|------|-----------|
+| `off` | Minute-based legacy pick (production default) |
+| `shadow` | Legacy emit + `mental_model.gate` trace (`wouldBlock`) |
+| `enforce` | Rank → policy → first allowed; low confidence falls back to legacy |
 
 ---
 
-## Stubovi (redosled PR-ova)
+## Stubovi (delivered)
 
-| Stub | Deliverable | Exit |
-|------|-------------|------|
-| **GMM-1** | types + `foldGuestMentalModel` (Intent, Pace, Receptiveness, Engagement, NudgeBudget) + `state.mental` + eval 5 scenarija | fold <5ms, eval PASS |
-| **GMM-2** | MealStage, PriceAffinity, PredictedNeed + gate funkcija + wire u `planProactiveTurn` | anticipation eval: browse_nudge blokiran kad closed |
-| **GMM-3** | Group dynamics + frustration + micro-sentiment | party scenario: follower ne dobija nudge |
-| **GMM-4** | Intent transitions + diff logging + timeline eventi | timeline replay pokazuje diff na intent shift |
-| **GMM-5** | `detectProactiveCandidate` refactor (mental-first) + beliefs keys + ukloni minute-fallback kad enabled | 40+ anticipation scenarija prošireno |
+| Stub | Deliverable |
+|------|-------------|
+| **GMM-1** | types + fold + `state.mental` + eval |
+| **GMM-2** | MealStage, PriceAffinity, PredictedNeed + gate + wire |
+| **GMM-3** | Group dynamics + affect (frustration/sentiment) |
+| **GMM-4** | Intent transitions + diff + timeline |
+| **GMM-5** | Mental-first candidate + beliefs + minute fallback when off |
+| **GMM-6** | Rank all → `DEFAULT_PROACTIVE_POLICY` → pick |
+| **GMM-7** | `attention_handoff` + staff alert + ACL handoff on emit |
+| **GMM-8** | `mental.price_affinity` belief + TDE suppress/routing |
 
 ---
 
-## Eval fixture (minimum 5 scenarija)
+## Acceptance (COMPLETE)
 
-| ID | Setup | Expect |
-|----|-------|--------|
-| `gmm_arrived_welcome_ok` | 0 poruka, phase latent | intent=arrived, welcome gate allow |
-| `gmm_exploring_browse_ok` | browse food 3 produkta, 0 cart | intent=exploring, browse_nudge allow |
-| `gmm_closed_blocks_nudge` | 2× dismissed nudge + "ne hvala" | receptiveness=closed, nudgeBudget=0, gate deny |
-| `gmm_frustrated_escalate` | "ČEKAM???", ponovljena poruka | frustration=high, predictedNeed=needs_attention |
-| `gmm_party_leader_only` | 2 devicea, follower šalje poruku | addressLeader=true na primary, follower gate deny |
-| `gmm_dessert_window` | order delivered, browsed desserts | mealStage=dessert_window, dessert allow |
-| `gmm_indecisive_pace` | 4× add/remove isti produkt | pace=indecisive, popularity deny |
+- [x] `state.mental` na svakom fold-u
+- [x] `mental_model.updated` / `gate` / `diff` u timeline
+- [x] Policy blokira closed / frustrated / rushed / budget popularity mismatch
+- [x] `config.mentalModel.mode` rollout (`off` → `shadow` → `enforce`)
+- [x] Eval ≥10 mental-model scenarija + gate suite PASS
+- [x] Anticipation eval: closed guest nema browse_nudge (enforce)
+- [x] `pnpm verify:denis` + `pnpm type-check` PASS
+- [x] iota-style decline: `gmm_decline_cooldown_no_third` eval (2× decline → budget 0, gate deny)
 
-Runner: `pnpm eval:denis` uključuje `run-mental-model-fixture.ts`; pass rate ≥ 95%.
+---
+
+## Shadow pilot checklist (pre-`enforce` on a location)
+
+Operator — ručno na pilot lokaciji pre nego što `mentalModel.mode = enforce`:
+
+- [ ] **7 dana `shadow`** — proveri `mental_model.gate` timeline: `wouldBlock` rate < 30% na proactive tickovima
+- [ ] **False block audit** — 10 sesija gde shadow blokira; product potvrdi da bi i ručno ćutali
+- [ ] **Attention path** — 1 frustriran sto: guest vidi `attention_handoff`, waiter_calls red up-to-date
+- [ ] **No duplicate push** — isti sto ne dobija staff alert + waiter push dvaput u 5 min
+- [ ] **Rollback** — `mode=off` za 1 sat, minute triggers rade kao pre
+
+> **TODO (operator):** Označiti checklist na pilot lokaciji — nije automatizovano u CI.
 
 ---
 
@@ -201,34 +125,17 @@ Runner: `pnpm eval:denis` uključuje `run-mental-model-fixture.ts`; pass rate �
 - ❌ DB tabela za mental model
 - ❌ LLM poziv za sentiment ili intent
 - ❌ Dupli fold van `foldTableSessionState`
-- ❌ Menjati guest-visible copy u ovom ADR-u (samo gate + routing)
-- ❌ Brisati minute-based triggere dok `mentalModel.enabled = false` (rollout safe)
+- ❌ Brisati minute-based triggere dok `mode = off`
 
 ---
 
-## Reference (postojeći kod)
+## Reference
 
 | Fajl | Uloga |
 |------|-------|
 | `loop/fold-table-session-state.ts` | Integracija fold-a |
-| `cognition/proactive/detect-proactive-candidate.ts` | Refaktor triggera |
-| `cognition/proactive/plan-proactive-turn.ts` | Gate hook |
-| `cognition/proactive/decide-proactive-turn-plan.ts` | Phase guards (ostaje) |
-| `cognition/browse/fold-browse-profile.ts` | Price affinity input |
-| `cognition/conversation/fold-conversation-model.ts` | Engagement input |
-| `cognition/proactive/session-watcher-context.ts` | Watcher payload → mental |
-| `venue/party/types.ts` | Group dynamics |
-| `loop/append-fold-completed.ts` | Obrazac za timeline event |
-
----
-
-## Acceptance (ADR COMPLETE)
-
-- [ ] `state.mental` na svakom fold-u
-- [ ] `mental_model.updated` u timeline
-- [ ] `gateProactiveNudge` blokira closed/frustrated/rushed
-- [ ] `config.mentalModel.enabled` rollout flag
-- [ ] Eval ≥7 scenarija PASS
-- [ ] Anticipation eval: nema browse_nudge na closed guest
-- [ ] `pnpm verify:denis` + `pnpm type-check` PASS
-- [ ] iota pilot: gost odbije 2× → Denis ne šalje 3. nudge 3 min
+| `cognition/proactive/pick-proactive-candidate.ts` | Rank → policy → pick |
+| `cognition/proactive/plan-proactive-turn.ts` | Proactive orchestration |
+| `runtime/emit-proactive-nudge.ts` | Emit + ACL attention handoff |
+| `cognition/beliefs/compile-beliefs.ts` | mental.* beliefs |
+| `cognition/tde/decide-turn-plan.ts` | TDE mental suppress + attention turn |

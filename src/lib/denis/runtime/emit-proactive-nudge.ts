@@ -5,6 +5,7 @@ import {
 import { appendMentalModelGate } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { planProactiveTurn } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
+import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { waiterObligationDedupeKey } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
@@ -20,6 +21,46 @@ import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 import type { SessionPhase } from "@/lib/scene/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
+
+async function maybeExecuteAttentionHandoff(
+  admin: SupabaseClient,
+  input: {
+    config: ConciergeConfig;
+    tableId: string;
+    locationId: string;
+    sessionToken: string;
+    nudge: GuestProactiveNudge;
+    state: Parameters<typeof planProactiveTurn>[0]["state"];
+  }
+): Promise<void> {
+  if (input.nudge.kind !== "attention_handoff") return;
+  if (!input.config.handoff.waiterCall) return;
+  if (!input.config.handoff.liveExecution) return;
+
+  if (
+    input.state.conversation.dismissedNudges.includes("attention_handoff") ||
+    input.state.conversation.dismissedNudges.some((key) =>
+      key.startsWith("waiter_gap:")
+    )
+  ) {
+    return;
+  }
+
+  const handoff = await executeDenisWaiterHandoff(admin, {
+    tableId: input.tableId,
+    locationId: input.locationId,
+    tableToken: input.state.table.token,
+    sessionToken: input.sessionToken,
+  });
+
+  if (!handoff.ok) {
+    logger.warn("attention_handoff ACL failed", {
+      tableId: input.tableId,
+      error: handoff.error,
+    });
+  }
+}
 
 export async function emitProactiveNudge(
   admin: SupabaseClient,
@@ -76,6 +117,16 @@ export async function emitProactiveNudge(
   }
 
   const nudge = proactiveResult.nudge;
+
+  await maybeExecuteAttentionHandoff(admin, {
+    config: input.config,
+    tableId: input.tableId,
+    locationId: input.locationId,
+    sessionToken: input.sessionToken,
+    nudge,
+    state: input.state,
+  });
+
   const dedupeKey =
     nudge.kind === "waiter_gap"
       ? waiterObligationDedupeKey(input.state)

@@ -47,6 +47,14 @@ export function synthesizePredictedNeed(input: {
 
   if (input.mealStage === "post_meal") return "wants_bill";
 
+  if (
+    input.mealStage === "aperitif" ||
+    (input.mealStage === "between_courses" &&
+      (input.intent === "exploring" || input.intent === "comparing"))
+  ) {
+    return "wants_drink";
+  }
+
   if (input.intent === "decided" || input.intent === "ordering") {
     return "ready_to_order";
   }

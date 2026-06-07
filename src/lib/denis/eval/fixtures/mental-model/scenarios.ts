@@ -6,6 +6,7 @@ import type {
   GuestEngagement,
   GuestFrustrationLevel,
   GuestIntent,
+  GuestMealStage,
   GuestMentalModel,
   GuestNudgeBudget,
   GuestPace,
@@ -16,7 +17,7 @@ import type {
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
-import type { SessionPhase } from "@/lib/denis/loop/types";
+import type { OrderFact, SessionPhase } from "@/lib/denis/loop/types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
@@ -47,10 +48,13 @@ export type MentalModelScenario = {
   flowNodeId?: FlowNodeId;
   dismissedNudges?: string[];
   party?: MentalModelPartyFixture | null;
+  orders?: OrderFact[];
+  billSettled?: boolean;
   expect: {
     intent?: GuestIntent;
     pace?: GuestPace;
     receptiveness?: GuestReceptiveness;
+    mealStage?: GuestMealStage;
     nudgeBudgetRemaining?: number;
     nudgeBudgetMax?: number;
     engagementGuestInitiated?: boolean;
@@ -110,7 +114,13 @@ export function guestMessageRow(seq: number, text: string, at: string): DenisTim
 export function buildMentalModelFoldInput(
   scenario: Pick<
     MentalModelScenario,
-    "timeline" | "phase" | "flowNodeId" | "dismissedNudges" | "party"
+    | "timeline"
+    | "phase"
+    | "flowNodeId"
+    | "dismissedNudges"
+    | "party"
+    | "orders"
+    | "billSettled"
   >
 ): FoldGuestMentalModelInput {
   const flowNodeId = scenario.flowNodeId ?? "welcome";
@@ -127,11 +137,11 @@ export function buildMentalModelFoldInput(
     browse,
     conversation,
     commerce: {
-      orders: [],
+      orders: scenario.orders ?? [],
       cart: buildMergedCart({ ai: emptyCartState() }),
     },
     party: scenario.party ?? null,
-    session: { billSettled: false },
+    session: { billSettled: scenario.billSettled ?? false },
     conversationMeta: {
       flowNodeId,
       dismissedNudges: scenario.dismissedNudges ?? [],
@@ -317,6 +327,83 @@ export const MENTAL_MODEL_SCENARIOS: MentalModelScenario[] = [
     expect: { priceAffinity: "premium" },
   },
   {
+    id: "gmm_dessert_window",
+    description: "Food delivered + browsed desserts → dessert_window, dessert gate allow",
+    timeline: [
+      browseRow(1, {
+        action: "view_product",
+        productId: "d1",
+        productName: "Tiramisu",
+        categoryPath: ["desserts"],
+        menuSection: "desserts",
+        dwellMs: 5000,
+        timestamp: "2026-06-07T12:00:01.000Z",
+      }),
+    ],
+    phase: "waiting",
+    orders: [
+      {
+        id: "ord-main",
+        orderNumber: 12,
+        status: "delivered",
+        paymentStatus: "paid",
+        estimatedPrepMinutes: null,
+        createdAt: "2026-06-07T11:30:00.000Z",
+        items: [{ productName: "Burger", quantity: 1 }],
+      },
+    ],
+    expect: {
+      mealStage: "dessert_window",
+      predictedNeed: "wants_dessert",
+    },
+  },
+  {
+    id: "gmm_wants_drink_aperitif",
+    description: "Delivered drink + browsing drinks → wants_drink",
+    timeline: [
+      browseRow(1, {
+        action: "view_product",
+        productId: "beer-1",
+        productName: "Pilsner",
+        categoryPath: ["drinks", "beer"],
+        menuSection: "drinks",
+        dwellMs: 3000,
+        timestamp: "2026-06-07T12:00:01.000Z",
+      }),
+    ],
+    phase: "browsing",
+    orders: [
+      {
+        id: "ord-drink",
+        orderNumber: 3,
+        status: "delivered",
+        paymentStatus: "paid",
+        estimatedPrepMinutes: null,
+        createdAt: "2026-06-07T12:00:00.000Z",
+        items: [{ productName: "Pilsner 0.5L", quantity: 1 }],
+      },
+    ],
+    expect: {
+      mealStage: "between_courses",
+      predictedNeed: "wants_drink",
+      intent: "exploring",
+    },
+  },
+  {
+    id: "gmm_decline_cooldown_no_third",
+    description: "2× decline + cooldown → gate denies third upsell (iota pilot)",
+    timeline: [
+      guestMessageRow(1, "ne hvala", "2026-06-07T12:00:01.000Z"),
+      guestMessageRow(2, "ne treba", "2026-06-07T12:00:02.000Z"),
+    ],
+    phase: "browsing",
+    dismissedNudges: ["browse_nudge", "popularity_pair"],
+    expect: {
+      receptiveness: "closed",
+      nudgeBudgetRemaining: 0,
+    },
+  },
+  {
     id: "gmm_frustrated_escalate",
     description: "ČEKAM??? + repeated message → frustration high, needs_attention",
     timeline: [
@@ -385,6 +472,11 @@ export function assertMentalModelExpect(
   }
   if (expect.pace !== undefined && model.pace !== expect.pace) {
     errors.push(`${label}pace expected ${expect.pace}, got ${model.pace}`);
+  }
+  if (expect.mealStage !== undefined && model.mealStage !== expect.mealStage) {
+    errors.push(
+      `${label}mealStage expected ${expect.mealStage}, got ${model.mealStage}`
+    );
   }
   if (
     expect.receptiveness !== undefined &&
