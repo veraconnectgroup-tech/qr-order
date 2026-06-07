@@ -51,6 +51,19 @@ function mockCatalog(): AiCatalog {
     taxRate: 19,
     allergens: [],
   };
+  const greenTea = {
+    id: "drink-4",
+    name: "Zeleni čaj",
+    price: 3,
+    imageUrl: null,
+    menuSection: "drinks" as const,
+    requiresServeSize: false,
+    serveSizePresets: [],
+    allowCustomServeSize: false,
+    modifierGroups: [],
+    taxRate: 19,
+    allergens: [],
+  };
   const burger = {
     id: "food-1",
     name: "Beef burger",
@@ -80,6 +93,7 @@ function mockCatalog(): AiCatalog {
     [kisela.id]: kisela,
     [pivo.id]: pivo,
     [pilsner.id]: pilsner,
+    [greenTea.id]: greenTea,
     [burger.id]: burger,
   };
 
@@ -104,7 +118,21 @@ describe("order message backfill", () => {
     expect(
       isOrderPlacementMessage("Daj mi kiselu malu i pivo")
     ).toBe(true);
+    expect(isOrderPlacementMessage("veliki pils zeleni caj molim te")).toBe(
+      true
+    );
     expect(isOrderPlacementMessage("da")).toBe(false);
+  });
+
+  it("backfills beer + tea combo without explicit i connector", () => {
+    const catalog = mockCatalog();
+    const result = backfillDraftFromOrderMessage(
+      emptyOrderDraft(),
+      catalog,
+      "veliki pils zeleni caj molim te"
+    );
+    expect(result.cartActions.length).toBeGreaterThanOrEqual(2);
+    expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
   });
 
   it("does not backfill generic jedno veliko pivo to a random beer", () => {

@@ -121,13 +121,9 @@ export function orderingFlowRecoveryReply(
     return "Great — tell me what you'd like and I'll add it to your order.";
   }
 
-  if (lang === "sr" || lang === "hr") {
-    return `Razumem — ${item}. Samo trenutak, nastavljam porudžbinu.`;
-  }
-  if (lang === "de") {
-    return `Alles klar — ${item}. Einen Moment, ich mache weiter.`;
-  }
-  return `Got it — ${item}. One moment, continuing your order.`;
+  // Never promise cart/submit work here — leadership only rewrites refusal copy.
+  // Order comprehend + backfill run separately in the Denis act path.
+  return threadContinuationFallbackReply(language, guestMessage);
 }
 
 export type ApplyConversationLeadershipInput = {

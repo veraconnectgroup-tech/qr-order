@@ -156,7 +156,8 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("clarify");
-    expect(out.message).toMatch(/Weizen|porudžbinu|Razumem/i);
+    expect(out.message).toMatch(/Weizen|Razumem|pomoći/i);
+    expect(out.message).not.toMatch(/nastavljam porudžbinu/i);
     expect(out.message).not.toMatch(/^Dobar dan i dobrodošli/i);
   });
 });

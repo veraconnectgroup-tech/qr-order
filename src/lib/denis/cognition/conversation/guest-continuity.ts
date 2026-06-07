@@ -6,7 +6,10 @@ const BROWSING_DEFER_PATTERN =
   /\b(ne\s+j[oš]s?|nije\s+j[oš]s?|nisam\s+j[oš]s?|jo[sš]\s+(uvek\s+)?(gledamo|razgledavamo|pregledavamo|biramo|odlučujemo)|samo\s+(gledamo|razgledavamo|biramo)|not\s+yet|still\s+(looking|browsing|deciding)|noch\s+nicht|nur\s+am\s+(schauen|überlegen)|haben\s+noch\s+nicht)\b/i;
 
 const GUEST_FOLLOW_UP_VERB_PATTERN =
-  /(?:dođi|dodji|do\s*đi|vrati\s+se|javi(?:\s+se)?|come\s+back|check\s+back|komm\s+zurück)/i;
+  /(?:dođi|dodji|do\s*đi|dodj(?:e|es|i)?|vrati\s+se|javi(?:\s+se)?|come\s+back|check\s+back|komm\s+zurück)/i;
+
+const GUEST_FOLLOW_UP_MINUTE_THEN_VERB_PATTERN =
+  /(?:mo[žz]eš|mozes|can\s+you).{0,40}?\bza\s+(?:(\d{1,2})\s*)?minut.{0,40}?(?:dodj|dođi|dodji|ponovo|again)/i;
 
 const GUEST_FOLLOW_UP_DIGIT_PATTERN =
   new RegExp(
@@ -73,6 +76,15 @@ export function parseGuestFollowUpRequest(
   }
 
   if (GUEST_FOLLOW_UP_VAGUE_PATTERN.test(text)) {
+    return { delaySeconds: DEFAULT_FOLLOW_UP_SECONDS };
+  }
+
+  const minuteThenVerb = text.match(GUEST_FOLLOW_UP_MINUTE_THEN_VERB_PATTERN);
+  if (minuteThenVerb) {
+    const minutes = minuteThenVerb[1] ? Number(minuteThenVerb[1]) : 1;
+    if (Number.isFinite(minutes) && minutes >= 1 && minutes <= 30) {
+      return { delaySeconds: minutes * 60 };
+    }
     return { delaySeconds: DEFAULT_FOLLOW_UP_SECONDS };
   }
 

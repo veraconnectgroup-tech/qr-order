@@ -7,6 +7,10 @@ import {
   quickRepliesFromPending,
   tryResolveQuickReply,
 } from "@/lib/ai/ordering/draft-engine";
+import {
+  backfillDraftFromOrderMessage,
+  isOrderPlacementMessage,
+} from "@/lib/ai/ordering/order-message-backfill";
 import type {
   AiOrderDraft,
   ValidatedCartAction,
@@ -127,6 +131,27 @@ export function processOrderingTurn(input: {
       logger.warn("AI ordering validation failed", {
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+  }
+
+  if (
+    cartActions.length === 0 &&
+    !draft.pending &&
+    draft.items.length === 0 &&
+    isOrderPlacementMessage(input.userMessage)
+  ) {
+    const backfill = backfillDraftFromOrderMessage(
+      draft,
+      input.catalog,
+      input.userMessage
+    );
+    draft = backfill.draft;
+    cartActions = backfill.cartActions;
+    if (backfill.draft.pending) {
+      quickReplies = [
+        ...quickReplies,
+        ...quickRepliesFromPending(backfill.draft.pending),
+      ];
     }
   }
 

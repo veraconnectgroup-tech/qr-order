@@ -139,4 +139,25 @@ describe("browse_follow_up proactive candidate", () => {
 
     expect(candidate).toBeNull();
   });
+
+  it("fires follow-up when guest asked for comeback even with cart items", () => {
+    const deferredAt = new Date(Date.now() - 90_000).toISOString();
+    const candidate = detectProactiveCandidate({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      orders: [],
+      payload: {
+        guestMessageCount: 3,
+        cartItemCount: 2,
+        browsingDeferredAt: deferredAt,
+        followUpRequestedAt: deferredAt,
+        followUpDelaySeconds: 60,
+        browseFollowUpEmitted: false,
+        sessionAgeSeconds: 300,
+      },
+      messages: proactiveMessages,
+      now: Date.now(),
+    });
+
+    expect(candidate?.kind).toBe("browse_follow_up");
+  });
 });

@@ -44,6 +44,15 @@ describe("guest follow-up requests", () => {
     });
   });
 
+  it("parses ASCII dodjes and minute-then-verb phrasing", () => {
+    expect(parseGuestFollowUpRequest("ej nisam jos mozes za minut da dodjes ponovo")).toEqual({
+      delaySeconds: 60,
+    });
+    expect(parseGuestFollowUpRequest("dodjes za 2 minuta")).toEqual({
+      delaySeconds: 120,
+    });
+  });
+
   it("marks pause messages for relational routing", () => {
     expect(isGuestPauseMessage("nisam još")).toBe(true);
     expect(isGuestPauseMessage("dođi za 1 minut ponovo")).toBe(true);

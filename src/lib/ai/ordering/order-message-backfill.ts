@@ -30,6 +30,8 @@ import {
 const ORDER_PREFIX =
   /^(daj\s+mi|daj|ho[ćc]u|hocu|mo[žz]e|želim|zelim|give\s+me|i\s+want|can\s+i\s+get|molim(\s+te)?|please|i\s+need)\s+/i;
 
+const ORDER_SUFFIX = /\s+molim(\s+te|\s+vas)?\s*$/i;
+
 const MULTI_ITEM_SPLIT = /\s+(?:i|und|and)\s+|,\s*/i;
 
 const FRIES_PATTERN = /pomfrit|pones|pommes|fries|kartoffel/i;
@@ -55,15 +57,44 @@ export function isOrderPlacementMessage(message: string): boolean {
   const text = message.trim();
   if (!text || isGuestFinalConfirm(text)) return false;
   if (ORDER_PREFIX.test(text)) return true;
+  if (ORDER_SUFFIX.test(text) && text.length >= 6) return true;
   if (MULTI_ITEM_SPLIT.test(text) && text.length >= 12) return true;
-  return /\b(pivo|pilsner|lager|radler|burger|kisel|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice)\b/i.test(
+  return /\b(pivo|pils|pilsner|lager|radler|burger|kisel|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee)\b/i.test(
     text
   );
 }
 
+function splitCompoundDrinkAnswer(stripped: string): string[] | null {
+  const hasBeer = /\b(pils|pilsner|weizen|lager|pivo|beer|bier|radler)\b/i.test(
+    stripped
+  );
+  const hasTeaOrCoffee =
+    /\b(čaj|caj|tea|tee|kafa|coffee|espresso)\b/i.test(stripped);
+  if (!hasBeer || !hasTeaOrCoffee) return null;
+
+  const split = stripped.replace(
+    /\s+(?=\b(?:(?:zeleni|crni|green|black|kamili[cč]a|chamomile)\s+)?(?:čaj|caj|tea|tee|kafa|coffee|espresso)\b)/i,
+    " |SPLIT| "
+  );
+  if (!split.includes("|SPLIT|")) return null;
+
+  const parts = split
+    .split(" |SPLIT| ")
+    .map((part) => normalizeSegment(part.replace(ORDER_SUFFIX, "")))
+    .filter((part) => part.length >= 2);
+  return parts.length >= 2 ? parts : null;
+}
+
 export function splitOrderMessageSegments(message: string): string[] {
-  const stripped = message.trim().replace(ORDER_PREFIX, "").trim();
+  const stripped = message
+    .trim()
+    .replace(ORDER_PREFIX, "")
+    .replace(ORDER_SUFFIX, "")
+    .trim();
   if (!stripped) return [];
+
+  const compound = splitCompoundDrinkAnswer(stripped);
+  if (compound) return compound;
 
   const parts = stripped
     .split(MULTI_ITEM_SPLIT)

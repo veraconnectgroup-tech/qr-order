@@ -81,6 +81,7 @@ export function detectProactiveCandidate(input: {
   const dismissed = payload.dismissedNudgeKeys ?? [];
   const hasOrdered =
     (payload.cartItemCount ?? 0) > 0 || Boolean(payload.hasSessionOrders);
+  const guestRequestedFollowUp = Boolean(payload.followUpRequestedAt);
 
   if (
     config.proactive.guestWelcome &&
@@ -104,7 +105,7 @@ export function detectProactiveCandidate(input: {
     payload.browsingDeferredAt &&
     !payload.browseFollowUpEmitted &&
     !isDismissed(dismissed, "browse_follow_up") &&
-    !hasOrdered &&
+    (guestRequestedFollowUp || !hasOrdered) &&
     (payload.guestMessageCount ?? 0) > 0
   ) {
     const dueAt = resolveFollowUpDueAt(
