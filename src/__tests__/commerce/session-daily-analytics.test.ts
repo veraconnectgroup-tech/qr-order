@@ -21,7 +21,35 @@ describe("sessionCompletedDailyDelta", () => {
       metricDate: "2026-06-07",
       sessionsClosed: 1,
       sessionRevenueTotal: 84.5,
+      convertedSessions: 1,
+      orderTimeSecondsTotal: 0,
+      returningGuestSessions: 0,
     });
+  });
+
+  it("counts returning guest sessions", () => {
+    const delta = sessionCompletedDailyDelta({
+      orgId: "org-1",
+      locationId: "loc-1",
+      eventType: COMMERCE_EVENT_TYPES.sessionCompleted,
+      createdAt: "2026-06-07T19:30:00.000Z",
+      payload: { revenue: 50, isReturningGuest: true },
+    });
+
+    expect(delta?.returningGuestSessions).toBe(1);
+  });
+
+  it("tracks first-order lag when provided", () => {
+    const delta = sessionCompletedDailyDelta({
+      orgId: "org-1",
+      locationId: "loc-1",
+      eventType: COMMERCE_EVENT_TYPES.sessionCompleted,
+      createdAt: "2026-06-07T19:30:00.000Z",
+      payload: { revenue: 42, firstOrderLagSeconds: 192 },
+    });
+
+    expect(delta?.orderTimeSecondsTotal).toBe(192);
+    expect(delta?.convertedSessions).toBe(1);
   });
 });
 

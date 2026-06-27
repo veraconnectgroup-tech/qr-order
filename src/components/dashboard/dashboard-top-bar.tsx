@@ -11,6 +11,7 @@ import type { OverviewStatsSnapshot } from "@/lib/dashboard/overview-types";
 import { DashboardMobileMenu } from "@/components/dashboard/dashboard-mobile-menu";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { PushOptIn } from "@/components/dashboard/push-opt-in";
+import { StaffNotificationsBell } from "@/components/dashboard/staff-notifications-bell";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
@@ -36,6 +37,7 @@ export function DashboardTopBar() {
   const displayRevenue = todayRevenue;
   const { pendingOrders, pendingPaymentRequests, totalPendingAlerts } =
     useDashboardAlerts();
+  const { aiConciergeEnabled } = useDashboard();
   const isOrdersPage = pathname.startsWith("/dashboard/orders");
   const isTablesPage = pathname.startsWith("/dashboard/tables");
   const headerAlertCount = isOrdersPage
@@ -79,6 +81,7 @@ export function DashboardTopBar() {
         </div>
 
         <SoundToggle />
+        {aiConciergeEnabled ? <StaffNotificationsBell /> : null}
         <PushOptIn />
       </div>
     </header>

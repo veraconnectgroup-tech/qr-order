@@ -6,6 +6,7 @@ import {
   buildSessionRhythmFacts,
   type SessionRhythmOrderRow,
 } from "@/lib/commerce/projections/collect-session-rhythm-facts";
+import { resolveSessionReturningGuest } from "@/lib/commerce/projections/resolve-session-returning-guest";
 import { finalizeCommerceExperienceCommand } from "@/lib/commerce/runtime/finalize-command-rpc";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -21,7 +22,9 @@ export async function projectSessionCompletedToCommerce(
 ): Promise<void> {
   const { data: session, error: sessionError } = await admin
     .from("table_sessions")
-    .select("id, location_id, opened_at, closed_at, bill_status, status")
+    .select(
+      "id, location_id, opened_at, closed_at, bill_status, status, guest_token, guest_device_id"
+    )
     .eq("id", input.sessionId)
     .maybeSingle();
 
@@ -40,6 +43,8 @@ export async function projectSessionCompletedToCommerce(
     closed_at: string | null;
     bill_status: string | null;
     status: string;
+    guest_token: string | null;
+    guest_device_id: string | null;
   };
 
   if (sessionRow.status !== "closed" || !sessionRow.closed_at) {
@@ -100,6 +105,14 @@ export async function projectSessionCompletedToCommerce(
     return;
   }
 
+  const isReturningGuest = await resolveSessionReturningGuest(admin, {
+    locationId: sessionRow.location_id,
+    sessionId: sessionRow.id,
+    openedAt: sessionRow.opened_at,
+    guestToken: sessionRow.guest_token,
+    guestDeviceId: sessionRow.guest_device_id,
+  });
+
   const idempotencyKey = `vrp:session-completed:${sessionRow.id}`;
 
   await finalizeCommerceExperienceCommand(admin, {
@@ -116,6 +129,8 @@ export async function projectSessionCompletedToCommerce(
       durationMin: facts.durationMin,
       dessertDelayMin: facts.dessertDelayMin,
       revenue: facts.revenue,
+      firstOrderLagSeconds: facts.firstOrderLagSeconds,
+      isReturningGuest,
       topProducts: facts.topProducts,
       servicePeriod: facts.servicePeriod,
       closedAt: facts.closedAt,

@@ -5,6 +5,7 @@ import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { DenisRolloutPanel } from "@/components/admin/denis-rollout-panel";
+import { DenisPilotGoLivePanel } from "@/components/admin/denis-pilot-go-live-panel";
 import { DenisQualityContractStrip } from "@/components/admin/denis-quality-contract-strip";
 import { DenisManifestPromotePanel } from "@/components/admin/denis-manifest-promote-panel";
 import { DenisSystemStatusPanel } from "@/components/admin/denis-system-status-panel";
@@ -13,6 +14,7 @@ import { loadDenisManifestAdminState } from "@/lib/admin/denis-manifest-actions"
 import { loadDenisSystemStatus } from "@/lib/admin/denis-system-status";
 import { listDenisDebugSessions } from "@/lib/admin/denis-debug";
 import { loadDenisRolloutAdminState } from "@/lib/admin/denis-rollout-actions";
+import { loadPilotCutoverAdminState } from "@/lib/admin/denis-pilot-cutover-actions";
 import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
@@ -22,8 +24,12 @@ import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel"
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
 import { OperatorApiKeysPanel } from "@/components/admin/operator-api-keys-panel";
 import { OperatorConfigProposalsPanel } from "@/components/admin/operator-config-proposals-panel";
+import { DenisConfigVersioningPanel } from "@/components/admin/denis-config-versioning-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import { listPendingOperatorProposals } from "@/lib/operator/config-proposals";
+import { loadOperatorProposalPreviews } from "@/lib/admin/load-operator-proposal-previews";
+import { loadConfigChangeHistory } from "@/lib/admin/load-config-change-history";
+import { getConfigShadow } from "@/lib/denis/config/config-shadow";
 import type { AiCreditPackage } from "@/types";
 import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
 
@@ -100,6 +106,10 @@ export default async function AdminSettingsPage() {
     staff.org_id
   );
 
+  const operatorProposalPreviews = pendingOperatorProposals.length
+    ? await loadOperatorProposalPreviews(admin, pendingOperatorProposals)
+    : [];
+
   const orgRow = org as {
     stripe_account_id: string | null;
     stripe_onboarded: boolean;
@@ -123,6 +133,20 @@ export default async function AdminSettingsPage() {
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
   } | null;
+
+  const configChangeHistory =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadConfigChangeHistory(admin, {
+          orgId: staff.org_id,
+          locationId,
+          limit: 12,
+        })
+      : [];
+
+  const configShadow =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await getConfigShadow(locationId)
+      : null;
 
   const creditsRow = credits as {
     balance: number;
@@ -150,6 +174,15 @@ export default async function AdminSettingsPage() {
   const denisRollout =
     denisRolloutState && !("error" in denisRolloutState)
       ? denisRolloutState
+      : null;
+
+  const pilotCutoverState =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadPilotCutoverAdminState()
+      : null;
+  const pilotCutover =
+    pilotCutoverState && !("error" in pilotCutoverState)
+      ? pilotCutoverState
       : null;
 
   const qualityContractStrip =
@@ -245,6 +278,10 @@ export default async function AdminSettingsPage() {
               <DenisRolloutPanel initial={denisRollout} />
             )}
 
+            {locationRow.ai_concierge_enabled && pilotCutover && (
+              <DenisPilotGoLivePanel initial={pilotCutover} />
+            )}
+
             {locationRow.ai_concierge_enabled && qualityContractStrip && (
               <DenisQualityContractStrip data={qualityContractStrip} />
             )}
@@ -262,6 +299,14 @@ export default async function AdminSettingsPage() {
               <AiPlaybookPanel
                 playbook={locationRow.ai_playbook}
                 examples={(aiExamples ?? []) as never}
+                canEdit
+              />
+            )}
+
+            {locationRow.ai_concierge_enabled && (
+              <DenisConfigVersioningPanel
+                history={configChangeHistory}
+                shadow={configShadow}
                 canEdit
               />
             )}
@@ -294,6 +339,7 @@ export default async function AdminSettingsPage() {
         <OperatorApiKeysPanel keys={(operatorApiKeys ?? []) as never} canEdit />
         <OperatorConfigProposalsPanel
           proposals={pendingOperatorProposals}
+          previews={operatorProposalPreviews}
           canEdit
         />
         <WebhooksPanel webhooks={(webhooks ?? []) as never} canEdit />

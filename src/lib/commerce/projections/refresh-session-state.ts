@@ -4,6 +4,7 @@ import {
 import { upsertAnticipationRollup } from "@/lib/commerce/projections/rollup-anticipation-analytics";
 import { upsertVenueRhythmPriors } from "@/lib/commerce/projections/rollup-venue-rhythm-priors";
 import { upsertSessionCompletedDailyRollup } from "@/lib/commerce/projections/rollup-session-daily-analytics";
+import { upsertOfferUpsellDailyRollup } from "@/lib/commerce/projections/rollup-denis-roi-daily";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -90,6 +91,24 @@ export async function refreshGuestSessionCommerceState(
       createdAt: row.created_at,
       payload: row.payload,
     });
+
+    if (row.event_type === COMMERCE_EVENT_TYPES.offerConverted) {
+      const revenue = Number(
+        row.payload.revenue ?? row.payload.lineTotal ?? 0
+      );
+      if (Number.isFinite(revenue) && revenue > 0) {
+        await upsertOfferUpsellDailyRollup(admin, {
+          orgId: row.org_id,
+          locationId: row.location_id,
+          createdAt: row.created_at,
+          nudgeKind:
+            typeof row.payload.nudgeKind === "string"
+              ? row.payload.nudgeKind
+              : "unknown",
+          revenue,
+        });
+      }
+    }
   }
 
   if (row.event_type === COMMERCE_EVENT_TYPES.sessionCompleted) {
@@ -104,6 +123,17 @@ export async function refreshGuestSessionCommerceState(
       eventType: row.event_type,
       createdAt: row.created_at,
       payload: row.payload,
+    });
+  }
+
+  if (row.event_type === COMMERCE_EVENT_TYPES.orderDelivered && row.order_id) {
+    const { upsertPrepTimePriorsFromOrderDelivered } = await import(
+      "@/lib/commerce/projections/rollup-prep-time-priors"
+    );
+    await upsertPrepTimePriorsFromOrderDelivered(admin, {
+      orgId: row.org_id,
+      locationId: row.location_id,
+      orderId: row.order_id,
     });
   }
 

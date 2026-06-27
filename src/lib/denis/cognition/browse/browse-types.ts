@@ -16,6 +16,8 @@ export type BrowseEvent = {
   /** Catalog menu_section when known — preferred over path heuristics. */
   menuSection?: BrowseMenuSection | null;
   dwellMs?: number;
+  /** Line total at add_to_cart time (for upsell ROI). */
+  lineTotal?: number;
   timestamp: string;
 };
 
@@ -34,6 +36,8 @@ export type GuestBrowseProfile = {
     totalDwellMs: number;
     addedToCart: boolean;
     removedFromCart: boolean;
+    /** Latest browse telemetry timestamp for this product (fold-derived). */
+    lastViewedAt?: string;
   }>;
   cartAbandoned: Array<{
     productId: string;

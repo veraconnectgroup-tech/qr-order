@@ -9,6 +9,8 @@ import {
   zUuid,
 } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { applyVenueTemplateToLocation } from "@/lib/venue-templates/provision-from-template";
+import { invalidateConciergeConfigCache } from "@/lib/denis/config/config-cache";
 
 const locationSchema = z.object({
   name: zSanitizedText(200).pipe(z.string().min(1)),
@@ -28,6 +30,7 @@ const locationUpdateSchema = locationSchema.extend({
 
 export async function createLocation(formData: FormData) {
   const staff = await requireOwner();
+  const templateId = String(formData.get("template_id") ?? "").trim() || null;
   const parsed = locationSchema.safeParse({
     name: formData.get("name"),
     address: formData.get("address"),
@@ -57,8 +60,34 @@ export async function createLocation(formData: FormData) {
     return { error: error?.message ?? "Could not create location." };
   }
 
+  const locationId = (data as { id: string }).id;
+
+  if (templateId) {
+    try {
+      await applyVenueTemplateToLocation(admin, {
+        orgId: staff.org_id,
+        locationId,
+        templateId,
+        language: "sr",
+      });
+      await invalidateConciergeConfigCache(locationId);
+    } catch (templateError) {
+      return {
+        error:
+          templateError instanceof Error
+            ? templateError.message
+            : "Template apply failed.",
+      };
+    }
+  }
+
   revalidatePath("/admin/locations");
-  return { data: { id: (data as { id: string }).id } };
+  return {
+    data: {
+      id: locationId,
+      templateApplied: Boolean(templateId),
+    },
+  };
 }
 
 export async function updateLocation(locationId: string, formData: FormData) {

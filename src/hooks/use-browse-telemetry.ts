@@ -284,14 +284,24 @@ export function useBrowseTelemetry(options: UseBrowseTelemetryOptions) {
       const before = prev.get(productId) ?? 0;
       if (qty > before) {
         const ctx = productContextRef.current.get(productId);
+        const cartLine = options.cartItems.find((i) => i.productId === productId);
+        const addedQty = qty - before;
+        const unitTotal =
+          cartLine && cartLine.quantity > 0
+            ? cartLine.itemTotal / cartLine.quantity
+            : undefined;
         enqueue(
           buildBrowseEvent({
             action: "add_to_cart",
             productId,
-            productName: ctx?.productName ?? options.cartItems.find((i) => i.productId === productId)?.productName,
+            productName: ctx?.productName ?? cartLine?.productName,
             categoryId: ctx?.categoryId,
             categoryLabel: ctx?.categoryLabel,
             menuSection: ctx?.menuSection,
+            lineTotal:
+              unitTotal != null && Number.isFinite(unitTotal)
+                ? unitTotal * addedQty
+                : cartLine?.itemTotal,
           })
         );
       }

@@ -12,6 +12,7 @@ import { TrialBanner } from "@/components/dashboard/trial-banner";
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DashboardAlertsProvider } from "@/hooks/use-dashboard-alerts";
+import { StaffNotificationsProvider } from "@/hooks/use-staff-notifications";
 import { SoundAlertProvider } from "@/hooks/use-sound-alert";
 
 function DashboardBanners() {
@@ -32,17 +33,19 @@ function DashboardFrame({ children }: { children: React.ReactNode }) {
   return (
     <SoundAlertProvider>
       <DashboardAlertsProvider>
-        <div className="dashboard-theme flex min-h-dvh overflow-x-hidden bg-background text-foreground">
-          <DashboardSidebar />
-        <div className="flex min-h-dvh min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
-          <DashboardBanners />
-          <DashboardTopBar />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
-              {children}
-            </main>
+        <StaffNotificationsProvider>
+          <div className="dashboard-theme flex min-h-dvh overflow-x-hidden bg-background text-foreground">
+            <DashboardSidebar />
+            <div className="flex min-h-dvh min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+              <DashboardBanners />
+              <DashboardTopBar />
+              <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+                {children}
+              </main>
+            </div>
+            <DashboardMobileNav />
           </div>
-          <DashboardMobileNav />
-        </div>
+        </StaffNotificationsProvider>
       </DashboardAlertsProvider>
     </SoundAlertProvider>
   );

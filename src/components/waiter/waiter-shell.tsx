@@ -8,9 +8,11 @@ import {
   type DashboardContextValue,
 } from "@/components/dashboard/dashboard-provider";
 import { DashboardAlertsProvider } from "@/hooks/use-dashboard-alerts";
+import { StaffNotificationsProvider } from "@/hooks/use-staff-notifications";
 import { SoundAlertProvider } from "@/hooks/use-sound-alert";
 import { WaiterBottomNav } from "@/components/waiter/waiter-bottom-nav";
 import { PushOptIn } from "@/components/dashboard/push-opt-in";
+import { StaffNotificationsBell } from "@/components/dashboard/staff-notifications-bell";
 import {
   WaiterDataPrefetch,
   WaiterUxEffects,
@@ -51,9 +53,11 @@ function ConnectionDot({
 function WaiterStatusBar({
   orgName,
   staffName,
+  showDenisAlerts,
 }: {
   orgName: string;
   staffName: string;
+  showDenisAlerts?: boolean;
 }) {
   const { status } = useConnectionStatus();
 
@@ -63,6 +67,7 @@ function WaiterStatusBar({
         {orgName}
       </p>
       <div className="flex items-center gap-1.5 px-2">
+        {showDenisAlerts ? <StaffNotificationsBell compact /> : null}
         <ConnectionDot status={status} />
         <span className="text-[10px] capitalize text-dash-text-muted">
           {status}
@@ -88,7 +93,11 @@ function WaiterFrame({
   return (
     <div className="dashboard-theme flex min-h-dvh flex-col overflow-x-hidden bg-background text-foreground">
       <PushOptIn variant="banner" />
-      <WaiterStatusBar orgName={context.orgName} staffName={context.staffName} />
+      <WaiterStatusBar
+        orgName={context.orgName}
+        staffName={context.staffName}
+        showDenisAlerts={context.aiConciergeEnabled}
+      />
       <main className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]">
         <WaiterDataPrefetch />
         <WaiterUxEffects />
@@ -100,12 +109,18 @@ function WaiterFrame({
 }
 
 export function WaiterShell({ context, children }: Props) {
+  const frame = <WaiterFrame context={context}>{children}</WaiterFrame>;
+
   return (
     <DashboardProvider value={context}>
       <WaiterResilienceShell staffRole={context.staffRole}>
         <SoundAlertProvider>
           <DashboardAlertsProvider variant="waiter">
-            <WaiterFrame context={context}>{children}</WaiterFrame>
+            {context.aiConciergeEnabled ? (
+              <StaffNotificationsProvider>{frame}</StaffNotificationsProvider>
+            ) : (
+              frame
+            )}
           </DashboardAlertsProvider>
         </SoundAlertProvider>
       </WaiterResilienceShell>

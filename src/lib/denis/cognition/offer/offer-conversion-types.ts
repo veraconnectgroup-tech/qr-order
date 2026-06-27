@@ -11,6 +11,8 @@ export type OfferConversionRecord = {
   emittedAt: string;
   convertedAt: string;
   lagSeconds: number;
+  /** Revenue attributed to this nudge conversion (EUR). */
+  revenue?: number;
 };
 
 export type ProductNudgeStats = {

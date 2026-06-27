@@ -11,9 +11,9 @@ import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime
 import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
 import { enqueueOrRunProactiveSessionTick } from "@/lib/denis/runtime/enqueue-or-run-proactive-tick";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
+import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
-import { notifyLocationPush } from "@/lib/push/notify-location";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -25,8 +25,23 @@ type ActiveSessionRow = {
   opened_at: string;
   denis_shared_ai_session_id: string;
   table: { name: string } | { name: string }[] | null;
-  location: { name: string } | { name: string }[] | null;
+  location:
+    | { name: string; org_id: string }
+    | { name: string; org_id: string }[]
+    | null;
 };
+
+function relationOrgId(
+  relation:
+    | { name: string; org_id: string }
+    | { name: string; org_id: string }[]
+    | null
+    | undefined
+): string | null {
+  if (!relation) return null;
+  if (Array.isArray(relation)) return relation[0]?.org_id ?? null;
+  return relation.org_id ?? null;
+}
 
 function relationName(
   relation: { name: string } | { name: string }[] | null | undefined
@@ -66,7 +81,7 @@ export async function runSessionWatcherTick(
       opened_at,
       denis_shared_ai_session_id,
       table:tables(name),
-      location:locations(name)
+      location:locations(name, org_id)
     `
     )
     .eq("status", "active")
@@ -105,6 +120,7 @@ export async function runSessionWatcherTick(
 
       const aiSessionId = row.denis_shared_ai_session_id;
       const tableName = relationName(row.table)?.trim() || "—";
+      const orgId = relationOrgId(row.location);
 
       const [timeline, orders, fold] = await Promise.all([
         loadDenisTimeline(admin, aiSessionId),
@@ -188,10 +204,14 @@ export async function runSessionWatcherTick(
         guestNudges += 1;
 
         if (nudge.kind === "order_delay" && nudge.orderId) {
-          await notifyLocationPush(row.location_id, {
-            title: "Narudžbina kasni",
-            body: `Sto ${tableName} — porudžbina u pripremi duže od ${config.proactive.orderDelayMinutes} min.`,
-            url: "/dashboard/kitchen",
+          await dispatchStaffNotification({
+            orgId: orgId ?? undefined,
+            locationId: row.location_id,
+            type: "long_wait",
+            tableId: row.table_id,
+            tableName,
+            message: `Porudžbina u pripremi duže od ${config.proactive.orderDelayMinutes} min.`,
+            actionUrl: "/kitchen",
           });
         }
       }
@@ -210,6 +230,7 @@ export async function runSessionWatcherTick(
         if (emitted.has(alert.kind)) continue;
         await emitStaffProactiveAlert(admin, {
           locationId: row.location_id,
+          orgId: orgId ?? undefined,
           aiSessionId,
           tableId: row.table_id,
           alert,

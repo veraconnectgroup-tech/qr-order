@@ -10,7 +10,7 @@ import {
 
 export type RealtimeMode = "connecting" | "live" | "polling";
 
-type RealtimeTable = "orders" | "waiter_calls";
+type RealtimeTable = "orders" | "waiter_calls" | "denis_staff_notifications";
 
 type UsePostgresRealtimeOptions = {
   channelName: string;

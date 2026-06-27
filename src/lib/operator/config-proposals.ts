@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invalidateConciergeConfigCache } from "@/lib/denis/config/config-cache";
+import { clearConfigShadow } from "@/lib/denis/config/config-shadow";
 import {
   parsePartialConciergeConfig,
   type PartialConciergeConfig,
@@ -208,6 +209,7 @@ export async function reviewOperatorConfigProposal(
     } as never);
 
     await invalidateConciergeConfigCache(proposal.locationId);
+    await clearConfigShadow(proposal.locationId);
   } else {
     const examples = (proposal.patch as { examples?: unknown }).examples;
     if (!Array.isArray(examples)) {
