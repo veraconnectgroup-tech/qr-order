@@ -4,9 +4,13 @@ test.describe("Landing page", () => {
   test("shows Denis hero section", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Denis", exact: true })).toBeVisible();
-    await expect(page.getByText("Part of Vera Group").first()).toBeVisible();
-    await expect(page.getByText("Der Concierge für Ihren Gastraum.")).toBeVisible();
+    await expect(page.getByText("Denis · Part of Vera Group")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Hospitality operations/i })
+    ).toBeVisible();
+    await expect(
+      page.getByText(/designed for the floor, not for demos/i)
+    ).toBeVisible();
   });
 
   test("nav links point to platform, enterprise, and pricing", async ({ page }) => {
@@ -16,7 +20,7 @@ test.describe("Landing page", () => {
 
     await expect(headerNav.getByRole("link", { name: "Platform" })).toHaveAttribute(
       "href",
-      "#modules"
+      "#features-guest"
     );
     await expect(headerNav.getByRole("link", { name: "Enterprise" })).toHaveAttribute(
       "href",
@@ -34,7 +38,7 @@ test.describe("Landing page", () => {
   test("footer legal links use correct URLs", async ({ page }) => {
     await page.goto("/");
 
-    const footer = page.locator("footer");
+    const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
 
     await expect(footer.getByRole("link", { name: "Datenschutz" })).toHaveAttribute(
