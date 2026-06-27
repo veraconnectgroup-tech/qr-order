@@ -23,6 +23,7 @@ export type SessionRhythmFacts = {
   }>;
   servicePeriod: VenueServicePeriod;
   closedAt: string;
+  firstOrderLagSeconds: number;
 };
 
 type OrderRow = {
@@ -154,6 +155,20 @@ export function buildSessionRhythmFacts(input: {
     0
   );
 
+  let firstOrderLagSeconds = 0;
+  if (revenueOrders.length > 0) {
+    const firstOrderAt = revenueOrders.reduce((earliest, order) => {
+      const createdAt = new Date(order.created_at).getTime();
+      return createdAt < earliest ? createdAt : earliest;
+    }, Number.POSITIVE_INFINITY);
+    if (Number.isFinite(firstOrderAt)) {
+      firstOrderLagSeconds = Math.max(
+        0,
+        Math.round((firstOrderAt - openedAtMs) / 1000)
+      );
+    }
+  }
+
   return {
     orgId: input.orgId,
     locationId: input.locationId,
@@ -168,6 +183,7 @@ export function buildSessionRhythmFacts(input: {
     topProducts: aggregateTopProducts(input.orders),
     servicePeriod: servicePeriodFromHour(hour),
     closedAt: input.closedAt,
+    firstOrderLagSeconds,
   };
 }
 

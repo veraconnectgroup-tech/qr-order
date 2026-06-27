@@ -53,12 +53,14 @@ export type GuestProactiveNudgeKind =
   | "browse_follow_up"
   | "bill_prompt"
   | "order_delay"
-  | "popularity_pair";
+  | "popularity_pair"
+  | "party_incomplete";
 
 export type StaffProactiveAlertKind =
   | "staff_table_idle"
   | "staff_waiter_request"
   | "staff_attention_escalation"
+  | "staff_frustrated_guest"
   | "staff_allergy";
 
 export type GuestProactiveNudge = {
