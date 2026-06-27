@@ -5,7 +5,6 @@ import { isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { AiConciergeSettings } from "@/components/admin/ai-concierge-settings";
 import { DenisRolloutPanel } from "@/components/admin/denis-rollout-panel";
-import { DenisPilotGoLivePanel } from "@/components/admin/denis-pilot-go-live-panel";
 import { DenisQualityContractStrip } from "@/components/admin/denis-quality-contract-strip";
 import { DenisManifestPromotePanel } from "@/components/admin/denis-manifest-promote-panel";
 import { DenisSystemStatusPanel } from "@/components/admin/denis-system-status-panel";
@@ -14,7 +13,6 @@ import { loadDenisManifestAdminState } from "@/lib/admin/denis-manifest-actions"
 import { loadDenisSystemStatus } from "@/lib/admin/denis-system-status";
 import { listDenisDebugSessions } from "@/lib/admin/denis-debug";
 import { loadDenisRolloutAdminState } from "@/lib/admin/denis-rollout-actions";
-import { loadPilotCutoverAdminState } from "@/lib/admin/denis-pilot-cutover-actions";
 import { AiPlaybookPanel } from "@/components/admin/ai-playbook-panel";
 import { LocationSettings } from "@/components/admin/location-settings";
 import { StripeConnectButton } from "@/components/admin/stripe-connect-button";
@@ -176,15 +174,6 @@ export default async function AdminSettingsPage() {
       ? denisRolloutState
       : null;
 
-  const pilotCutoverState =
-    locationId && locationRow?.ai_concierge_enabled
-      ? await loadPilotCutoverAdminState()
-      : null;
-  const pilotCutover =
-    pilotCutoverState && !("error" in pilotCutoverState)
-      ? pilotCutoverState
-      : null;
-
   const qualityContractStrip =
     locationId && locationRow?.ai_concierge_enabled
       ? await loadDenisQualityContractStrip(locationId)
@@ -276,10 +265,6 @@ export default async function AdminSettingsPage() {
 
             {locationRow.ai_concierge_enabled && denisRollout && (
               <DenisRolloutPanel initial={denisRollout} />
-            )}
-
-            {locationRow.ai_concierge_enabled && pilotCutover && (
-              <DenisPilotGoLivePanel initial={pilotCutover} />
             )}
 
             {locationRow.ai_concierge_enabled && qualityContractStrip && (

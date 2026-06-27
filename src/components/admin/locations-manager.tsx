@@ -8,7 +8,6 @@ import {
   setLocationActive,
   updateLocation,
 } from "@/lib/admin/location-actions";
-import { VenuePlaybookWizard } from "@/components/admin/venue-playbook-wizard";
 import { VenueTemplatePicker } from "@/components/admin/venue-template-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +41,6 @@ function LocationDialog({
   onSaved: () => void;
 }) {
   const [pending, startTransition] = useTransition();
-  const [createdLocationId, setCreatedLocationId] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const isEdit = !!location;
 
@@ -63,14 +61,13 @@ function LocationDialog({
       }
 
       if (!isEdit && "data" in result && result.data?.id) {
-        if (result.data.templateApplied) {
-          toast.success("Location created — Denis template applied");
-          onSaved();
-          onClose();
-          return;
-        }
-        setCreatedLocationId(result.data.id);
-        toast.success("Location created — set up Denis playbook");
+        toast.success(
+          result.data.templateApplied
+            ? "Location created — Denis template applied"
+            : "Location created"
+        );
+        onSaved();
+        onClose();
         return;
       }
 
@@ -80,19 +77,11 @@ function LocationDialog({
     });
   }
 
-  function finishPlaybookOnboarding() {
-    toast.success("Playbook saved for new location");
-    setCreatedLocationId(null);
-    onSaved();
-    onClose();
-  }
-
   return (
     <Dialog
       open={open}
       onOpenChange={(value) => {
         if (!value) {
-          setCreatedLocationId(null);
           setTemplateId(null);
           onClose();
         }
@@ -104,24 +93,6 @@ function LocationDialog({
             {isEdit ? "Edit location" : "Create location"}
           </DialogTitle>
         </DialogHeader>
-        {createdLocationId ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Denis can draft playbook rules from five quick questions. You can
-              edit them anytime under Settings → Denis Playbook.
-            </p>
-            <VenuePlaybookWizard
-              canEdit
-              locationId={createdLocationId}
-              onApplied={() => finishPlaybookOnboarding()}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={finishPlaybookOnboarding}>
-                Skip for now
-              </Button>
-            </DialogFooter>
-          </div>
-        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isEdit ? (
             <VenueTemplatePicker value={templateId} onChange={setTemplateId} />
@@ -189,7 +160,6 @@ function LocationDialog({
             </Button>
           </DialogFooter>
         </form>
-        )}
       </DialogContent>
     </Dialog>
   );

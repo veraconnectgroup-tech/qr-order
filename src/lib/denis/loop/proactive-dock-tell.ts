@@ -14,7 +14,8 @@ export type ProactiveNudgeKind =
   | "browse_follow_up"
   | "bill_prompt"
   | "order_delay"
-  | "popularity_pair";
+  | "popularity_pair"
+  | "party_incomplete";
 
 const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
   "waiter_gap",

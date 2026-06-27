@@ -126,17 +126,6 @@ export async function refreshGuestSessionCommerceState(
     });
   }
 
-  if (row.event_type === COMMERCE_EVENT_TYPES.orderDelivered && row.order_id) {
-    const { upsertPrepTimePriorsFromOrderDelivered } = await import(
-      "@/lib/commerce/projections/rollup-prep-time-priors"
-    );
-    await upsertPrepTimePriorsFromOrderDelivered(admin, {
-      orgId: row.org_id,
-      locationId: row.location_id,
-      orderId: row.order_id,
-    });
-  }
-
   const { error: upsertError } = await admin
     .from("guest_session_commerce_state" as never)
     .upsert(

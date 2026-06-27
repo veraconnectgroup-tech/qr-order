@@ -71,6 +71,7 @@ const LEGACY_KIND_PRIORITY: Record<GuestProactiveNudgeKind, number> = {
   cart_recovery: 960,
   drink_pairing: 400,
   waiter_gap: 950,
+  party_incomplete: 875,
 };
 
 function posturePriority(

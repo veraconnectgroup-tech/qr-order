@@ -54,6 +54,8 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.order_delay";
     case "popularity_pair":
       return "proactive.popularity_pair";
+    case "party_incomplete":
+      return "proactive.party_incomplete";
   }
 }
 
