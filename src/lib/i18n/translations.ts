@@ -100,6 +100,10 @@ const de: TranslationMap = {
   "a11y.backToCart": "Zurück zum Warenkorb",
   "a11y.cartSummary": "{count} Artikel, Gesamt {total}",
   "a11y.productCard": "{name}, {price}",
+  "a11y.chatConversation": "Denis Chat",
+  "a11y.chatYouSaid": "Du hast gesagt",
+  "a11y.chatDenisSays": "Denis antwortet",
+  "a11y.cartAdded": "{name} zum Warenkorb hinzugefügt",
 
   "offline.reconnecting": "Offline. Verbindung wird wiederhergestellt…",
   "offline.banner": "Du bist offline",
@@ -249,6 +253,7 @@ const de: TranslationMap = {
   "ai.overlay.unavailable": "Denis ist momentan nicht verfügbar.",
   "ai.overlay.sessionExpired": "Sitzung abgelaufen — bitte erneut starten.",
   "ai.overlay.rateLimited": "Zu viele Anfragen — bitte kurz warten.",
+  "ai.overlay.tryAgain": "Erneut versuchen",
   "ai.overlay.listen": "Vorlesen",
   "ai.recovery.retryGeneral":
     "Einen Moment — ich versuche es noch einmal. Was darf ich für Sie tun?",
@@ -492,6 +497,10 @@ const de: TranslationMap = {
   "payment.atTable.confirm": "Am Tisch bezahlen wenn bereit",
 
   "error.generic": "Etwas ist schiefgelaufen.",
+  "error.rate_limited": "Zu viele Anfragen. Bitte kurz warten.",
+  "error.circuit_open": "Denis ist vorübergehend nicht verfügbar.",
+  "ai.chat.error": "Denis konnte nicht antworten. Bitte erneut versuchen.",
+  "ai.chat.offline": "Du bist offline. Denis antwortet, sobald die Verbindung steht.",
   "error.orderFailed": "Bestellung konnte nicht aufgegeben werden.",
   "error.paymentFailed": "Zahlung fehlgeschlagen.",
   "error.cardDeclined": "Karte abgelehnt. Bitte versuche es erneut.",
@@ -515,6 +524,10 @@ const en: TranslationMap = {
   "a11y.backToCart": "Back to cart",
   "a11y.cartSummary": "{count} items, total {total}",
   "a11y.productCard": "{name}, {price}",
+  "a11y.chatConversation": "Denis chat",
+  "a11y.chatYouSaid": "You said",
+  "a11y.chatDenisSays": "Denis says",
+  "a11y.cartAdded": "{name} added to cart",
 
   "offline.reconnecting": "Offline. Reconnecting…",
   "offline.banner": "You're offline",
@@ -663,6 +676,7 @@ const en: TranslationMap = {
   "ai.overlay.unavailable": "Denis is currently unavailable.",
   "ai.overlay.sessionExpired": "Session expired — please start again.",
   "ai.overlay.rateLimited": "Too many requests — please wait a moment.",
+  "ai.overlay.tryAgain": "Try again",
   "ai.overlay.listen": "Read aloud",
   "ai.recovery.retryGeneral":
     "One moment — let me try again. What can I help you with?",
@@ -906,6 +920,10 @@ const en: TranslationMap = {
   "payment.atTable.confirm": "Pay at your table when ready",
 
   "error.generic": "Something went wrong.",
+  "error.rate_limited": "Too many requests. Please wait a moment.",
+  "error.circuit_open": "Denis is temporarily unavailable.",
+  "ai.chat.error": "Denis could not respond. Please try again.",
+  "ai.chat.offline": "You are offline. Denis will respond when connection returns.",
   "error.orderFailed": "Order could not be placed.",
   "error.paymentFailed": "Payment failed.",
   "error.cardDeclined": "Card declined. Please try again.",
@@ -1126,6 +1144,10 @@ const sr: TranslationMap = {
   "ai.recovery.statusLive": "Porudžbina #{number} — {items}.",
 
   "error.generic": "Nešto nije u redu.",
+  "error.rate_limited": "Previše zahteva. Sačekajte trenutak.",
+  "error.circuit_open": "Denis trenutno nije dostupan.",
+  "ai.chat.error": "Denis nije mogao da odgovori. Pokušajte ponovo.",
+  "ai.chat.offline": "Offline ste. Denis će odgovoriti kada se veza vrati.",
   "error.orderFailed": "Porudžbina nije mogla biti poslata.",
   "error.paymentFailed": "Plaćanje nije uspelo.",
 };
@@ -1281,6 +1303,10 @@ const tr: TranslationMap = {
   "payment.atTable.confirm": "Hazır olunca masada öde",
 
   "error.generic": "Bir şeyler ters gitti.",
+  "error.rate_limited": "Çok fazla istek. Lütfen kısa bir süre bekleyin.",
+  "error.circuit_open": "Denis geçici olarak kullanılamıyor.",
+  "ai.chat.error": "Denis yanıt veremedi. Lütfen tekrar deneyin.",
+  "ai.chat.offline": "Çevrimdışısınız. Bağlantı gelince Denis yanıt verecek.",
   "error.orderFailed": "Sipariş verilemedi.",
   "error.paymentFailed": "Ödeme başarısız.",
 };
@@ -1475,6 +1501,7 @@ const hr: TranslationMap = {
   "ai.overlay.unavailable": "Denis trenutno nije dostupan.",
   "ai.overlay.sessionExpired": "Sesija je istekla — pokušajte ponovo.",
   "ai.overlay.rateLimited": "Previše zahteva — sačekajte trenutak.",
+  "ai.overlay.tryAgain": "Pokušaj ponovo",
   "ai.recovery.retryGeneral":
     "Samo trenutak — pokušavam ponovo. Šta vam mogu doneti?",
   "ai.recovery.retryPayment":
@@ -1547,6 +1574,10 @@ const hr: TranslationMap = {
   "ai.smart.recommendedTitle": "Preporučeno za vas",
 
   "error.generic": "Nešto nije u redu.",
+  "error.rate_limited": "Previše zahtjeva. Pričekajte trenutak.",
+  "error.circuit_open": "Denis trenutno nije dostupan.",
+  "ai.chat.error": "Denis nije mogao odgovoriti. Pokušajte ponovo.",
+  "ai.chat.offline": "Offline ste. Denis će odgovoriti kad se veza vrati.",
   "error.orderFailed": "Narudžba nije mogla biti poslana.",
   "error.paymentFailed": "Plaćanje nije uspjelo.",
 };

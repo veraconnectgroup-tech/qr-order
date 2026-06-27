@@ -8,6 +8,7 @@ import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
 import {
   BarChart3,
   Bell,
+  BookOpen,
   ChefHat,
   CreditCard,
   Grid3X3,
@@ -88,6 +89,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
       { href: "/dashboard/staff", label: "Staff", icon: Users },
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
+      { href: "/dashboard/help", label: "Help", icon: BookOpen },
     ],
   },
 ];

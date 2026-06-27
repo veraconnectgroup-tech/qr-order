@@ -11,6 +11,15 @@
     "test": "vitest",
     "test:run": "vitest run",
     "verify:denis": "vitest run src/__tests__/denis-architecture-compliance.test.ts",
+    "verify:layer12": "vitest run src/__tests__/openapi-spec.test.ts src/__tests__/eval-gate.test.ts src/__tests__/i18n-coverage.test.ts src/__tests__/i18n-native-keys.test.ts src/__tests__/guest-a11y-patterns.test.ts",
+    "eval:gate": "tsx scripts/ci-eval-gate.ts",
+    "eval:update-baseline": "tsx scripts/ci-eval-gate.ts --update-baseline",
+    "perf:check": "tsx scripts/perf-check.ts",
+    "monitor:synthetic": "tsx scripts/synthetic-monitor.ts",
+    "load:normal": "tsx scripts/load-test/denis-load.ts normal",
+    "load:rush": "tsx scripts/load-test/denis-load.ts rush",
+    "load:stress": "tsx scripts/load-test/denis-load.ts stress",
+    "test:e2e:a11y": "playwright test e2e/guest-a11y.spec.ts",
     "eval:denis": "vitest run src/__tests__/denis-eval.test.ts",
     "eval:denis:record": "tsx scripts/record-denis-eval-run.ts",
     "pilot:iota": "tsx scripts/iota-obligation-pilot.ts",
@@ -70,6 +79,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",

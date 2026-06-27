@@ -81,6 +81,8 @@
 | [ADR-038](./ADR-038-guest-mental-model.md) | **Guest Mental Model (GMM)** — posture fold, rank, policy manifest | Approved | Proactive pilot, enforce rollout |
 | [ADR-039](./ADR-039-nudge-outcome-learning.md) | **Nudge outcome loop** — fold → `anticipation.resolved` → M16 | Approved L1–L4 | Learning, admin digest |
 | [ADR-040](./ADR-040-unified-proactive-decision-spine.md) | **UPDS** — one loop/decider/emitter; Kad in offer fold; audit gate | Approved | **Before any proactive refactor PR** |
+| [ADR-041](./ADR-041-intervention-journal-spine.md) | **IJS** — Intervention Journal; trajectory fold; actor wake; commerce spine | **P0–P5 ✅** (default off) | Shadow pilot: `intervention.mode=shadow` + actor |
+| [ADR-042](./ADR-042-venue-rhythm-priors.md) | **VRP** — Venue rhythm priors; session.completed rollup; admin heatmap | **P0–P4 ✅** (default off) | Shadow: `rhythm.mode=shadow` |
 | [ADR-021](./ADR-021-denis-concierge-tuning.md) | **ConciergeConfig tuning** — profiles, LLM tiers, pilot runbook | Accepted | Ops pilot, multilingual |
 | [ADR-022](./ADR-022-denis-elite-enterprise.md) | ~~Elite tier sketch~~ → superseded by ADR-023 | Superseded | Historical |
 | [ADR-009](./ADR-009-atomic-turn-commercial-spine.md) | Metering, credits, timeline debit | Accepted F1–F7 | Commercial/billing |
@@ -264,6 +266,7 @@ Use **one vocabulary** everywhere (ADR-020 §15):
 
 | PR type | Read |
 |---------|------|
+| Layer 12 (docs, a11y, eval gate, ops) | [CONTRIBUTING.md](../CONTRIBUTING.md) · [DENIS-OPS runbook](../runbooks/DENIS-OPS.md) · `/api/docs` |
 | Any Denis | This index · map §3–4 · ADR-019 · ADR-020 §15–16 |
 | Guest UI | ADR-017 · ADR-007 · target FACE from ADR-019 §2 |
 | Handoff / waiter | ADR-018 |

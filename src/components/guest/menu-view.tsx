@@ -1062,13 +1062,14 @@ export function MenuView({
           <div className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
             <div className="px-3 py-2.5 sm:px-4 sm:py-3">
               <div className="relative">
-                <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500 sm:start-4" />
+                <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400 sm:start-4" />
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={tUI("menu.search")}
-                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-3 ps-10 pe-4 text-base text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-zinc-700 sm:py-2.5 sm:text-sm"
+                  aria-label={tUI("menu.search")}
+                  className="w-full rounded-full border border-zinc-800 bg-zinc-900 py-3 ps-10 pe-4 text-base text-zinc-100 placeholder:text-zinc-400 outline-none focus:border-zinc-700 sm:py-2.5 sm:text-sm"
                 />
               </div>
             </div>
@@ -1147,7 +1148,7 @@ export function MenuView({
             <div className="mt-8 flex flex-col gap-4 pb-4">
               {showFeedback && feedbackOrder && (
                 <div className="px-1">
-                  <p className="mb-2 text-center text-xs text-zinc-500">
+                  <p className="mb-2 text-center text-xs text-zinc-400">
                     {tUI("ai.feedback.onMenuHint")}
                   </p>
                   <AiFeedbackPrompt

@@ -57,23 +57,7 @@ export function MenuListItem({
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={onOpenDetail}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpenDetail();
-        }
-      }}
-      aria-label={tUI("a11y.productCard", {
-        name: displayName,
-        price: formatPrice(Number(product.price), currency),
-      })}
-      className={cn(
-        "cursor-pointer transition active:opacity-70",
-        outOfStock && "opacity-50"
-      )}
+      className={cn(outOfStock && "opacity-50")}
       data-product-id={product.id}
     >
       <GuestProductRow
@@ -86,6 +70,11 @@ export function MenuListItem({
         addStyle="icon"
         addAriaLabel={`Add ${displayName}`}
         onAdd={handleAdd}
+        onOpenDetail={onOpenDetail}
+        openDetailAriaLabel={tUI("a11y.productCard", {
+          name: displayName,
+          price: formatPrice(Number(product.price), currency),
+        })}
         meta={
           <>
             {(product.allergens?.length ?? 0) > 0 && (

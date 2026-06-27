@@ -83,7 +83,7 @@ export function AllergenFilter({
   return (
     <div className="border-t border-zinc-800/80 px-3 py-3 sm:px-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
           {tUI("allergen.excludeTitle")}
         </p>
         {count > 0 && (

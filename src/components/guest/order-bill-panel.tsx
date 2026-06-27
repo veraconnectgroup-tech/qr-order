@@ -142,7 +142,11 @@ function StripePayForm({
   return (
     <form onSubmit={handlePay} className="mt-4 space-y-4">
       <PaymentElement options={{ layout: "tabs" }} />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" aria-live="assertive" className="text-sm text-red-400">
+          {error}
+        </p>
+      )}
       <Button
         type="submit"
         disabled={!stripe || processing}
@@ -381,7 +385,9 @@ export function OrderBillPanel({
     if (billLoadError) {
       return (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-center">
-          <p className="text-sm text-red-200">{billLoadError}</p>
+          <p role="alert" aria-live="assertive" className="text-sm text-red-200">
+            {billLoadError}
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -534,7 +540,11 @@ export function OrderBillPanel({
               />
             </div>
           )}
-          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" aria-live="assertive" className="mt-3 text-sm text-red-400">
+              {error}
+            </p>
+          )}
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             {canSplit && (
               <Button

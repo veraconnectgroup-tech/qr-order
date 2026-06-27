@@ -145,6 +145,8 @@ export const ru: TranslationMap = {
   "payment.atTable.confirm": "Оплатить за столом, когда готов",
 
   "error.generic": "Что-то пошло не так.",
+  "error.rate_limited": "Слишком много запросов. Подождите немного.",
+  "error.circuit_open": "Denis временно недоступен.",
   "error.orderFailed": "Не удалось оформить заказ.",
   "error.paymentFailed": "Оплата не прошла.",
 };
