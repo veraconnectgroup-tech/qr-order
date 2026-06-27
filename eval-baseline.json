@@ -1,0 +1,7 @@
+{
+  "waiterParity": 1,
+  "anticipation": 1,
+  "reflexAccuracy": 1,
+  "recordedAt": "2026-06-27T00:00:00.000Z",
+  "note": "Update intentionally via pnpm eval:update-baseline after verified quality improvements"
+}

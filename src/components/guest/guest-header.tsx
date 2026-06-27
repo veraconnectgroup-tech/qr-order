@@ -32,7 +32,7 @@ export function GuestHeader({
           <p className="truncate text-base font-semibold text-zinc-100 sm:text-lg">
             {orgName}
           </p>
-          <p className="truncate text-xs text-zinc-500">{subtitle}</p>
+          <p className="truncate text-xs text-zinc-400">{subtitle}</p>
         </div>
         <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300 sm:px-3 sm:py-1 sm:text-xs">
           {tableName}

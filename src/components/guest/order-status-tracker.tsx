@@ -438,10 +438,10 @@ export function OrderStatusTracker({
       {/* Live status timeline */}
       {!isClosed && (
         <section className="mb-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-4">
-          <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
+          <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-400">
             {tUI("order.liveStatus")}
           </h2>
-          <div className="space-y-0">
+          <ol className="space-y-0" aria-label={tUI("order.liveStatus")}>
             {STEP_KEYS.map((step, idx) => {
               const done = stepIdx > idx;
               const current = order.status === step.key;
@@ -453,7 +453,11 @@ export function OrderStatusTracker({
                   : statusLabel;
 
               return (
-                <div key={step.key} className="relative flex gap-3">
+                <li
+                  key={step.key}
+                  className="relative flex gap-3"
+                  aria-current={current ? "step" : undefined}
+                >
                   {current && statusPulse && !reduceMotion && (
                     <motion.div
                       initial={{ opacity: 0.4, scale: 0.8 }}
@@ -501,10 +505,10 @@ export function OrderStatusTracker({
                       <p className="text-micro text-zinc-500">{time}</p>
                     )}
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </section>
       )}
 
@@ -514,6 +518,8 @@ export function OrderStatusTracker({
           type="button"
           onClick={() => setItemsOpen((v) => !v)}
           className="flex w-full items-center justify-between px-4 py-3 text-start"
+          aria-expanded={itemsOpen}
+          aria-controls="order-items-panel"
         >
           <div>
             <p className="text-sm font-medium text-zinc-200">{tUI("order.thisOrder")}</p>
@@ -529,7 +535,7 @@ export function OrderStatusTracker({
           />
         </button>
         {itemsOpen && (
-          <div className="border-t border-zinc-800 px-4 pb-4 pt-2">
+          <div id="order-items-panel" className="border-t border-zinc-800 px-4 pb-4 pt-2">
             {order.order_items.map((item, i) => (
               <div
                 key={i}

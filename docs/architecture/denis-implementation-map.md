@@ -321,6 +321,10 @@ See **§13 F8** for ordering cutover (legacy adapter retirement).
 ```bash
 pnpm verify:denis    # import matrix, paths, chat-service budget, flow JSON
 pnpm eval:denis      # golden kernel scenarios (M10)
+pnpm verify:layer12  # OpenAPI, i18n, a11y patterns, eval gate unit tests
+pnpm eval:gate       # CI regression gate vs eval-baseline.json
+pnpm perf:check      # fold latency + bundle budget guardrails
+pnpm test:e2e:a11y   # axe WCAG 2.1 AA on demo menu (needs pnpm build first)
 pnpm type-check
 ```
 
@@ -329,6 +333,7 @@ pnpm type-check
 - [ ] Code in correct layer folder  
 - [ ] `pnpm verify:denis` pass  
 - [ ] `pnpm eval:denis` pass (if kernel/planner touched)  
+- [ ] `pnpm verify:layer12` pass (if docs, i18n, a11y, or ops touched)  
 - [ ] `pnpm type-check` pass  
 - [ ] One M-track scope only  
 - [ ] This map updated if API, migrations, or rollout behaviour changed  
@@ -374,6 +379,21 @@ pnpm type-check
 **Remaining:** retire `order-executor.ts` + `/api/ai/order/submit` when all pilot venues on act submit.
 
 **Doc:** [ADR-010](./ADR-010-denis-ordering-cutover.md) · ADR-006 accepted (May 2026)
+
+---
+
+## 14. Layer 12 — docs, eval CI, a11y, perf (AL→AO)
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **AL** | OpenAPI 3.1 (`src/lib/api-docs/`), `/api/docs`, `CONTRIBUTING.md`, `DENIS-OPS` runbook, dashboard Help | ✅ |
+| **AM** | Eval gate (`eval-gate.ts`, `ci-eval-gate.ts`, `eval-baseline.json`), load test (`scripts/load-test/`) | ✅ |
+| **AN** | Guest WCAG fixes, 10-locale error keys, static a11y tests, Playwright axe e2e | ✅ |
+| **AO** | Perf budgets (`src/lib/performance/budgets.ts`), `perf:check`, `/status`, synthetic monitor | ✅ |
+
+**CI:** quality job runs `verify:layer12`, `eval:gate`, `perf:check`; e2e job runs `test:e2e:a11y`.
+
+**Doc:** [CONTRIBUTING.md](../CONTRIBUTING.md) · [DENIS-OPS runbook](../runbooks/DENIS-OPS.md)
 
 ---
 

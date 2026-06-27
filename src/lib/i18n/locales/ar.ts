@@ -153,6 +153,8 @@ export const ar: TranslationMap = {
   "payment.atTable.confirm": "الدفع على الطاولة عند الجاهزية",
 
   "error.generic": "حدث خطأ ما.",
+  "error.rate_limited": "طلبات كثيرة جداً. يرجى الانتظار قليلاً.",
+  "error.circuit_open": "Denis غير متاح مؤقتاً.",
   "error.orderFailed": "تعذر إتمام الطلب.",
   "error.paymentFailed": "فشل الدفع.",
 };

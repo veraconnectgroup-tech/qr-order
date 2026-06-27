@@ -330,14 +330,19 @@ function DenisMessageRow({
   continueLabel: string;
   markState?: "idle" | "listen" | "think";
 }) {
+  const { tUI } = useAppLocale();
+
   if (message.role === "user") {
     return (
-      <DenisMessageBlock role="user">{message.content}</DenisMessageBlock>
+      <div role="article" aria-label={tUI("a11y.chatYouSaid")}>
+        <DenisMessageBlock role="user">{message.content}</DenisMessageBlock>
+      </div>
     );
   }
 
   return (
-    <DenisMessageBlock role="assistant" markState={markState}>
+    <div role="article" aria-label={tUI("a11y.chatDenisSays")}>
+      <DenisMessageBlock role="assistant" markState={markState}>
       <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-[var(--qr-ivory)]">
         {message.content}
       </p>
@@ -367,6 +372,7 @@ function DenisMessageRow({
         />
       )}
     </DenisMessageBlock>
+    </div>
   );
 }
 
@@ -600,6 +606,7 @@ export function AiConciergeChat({
   const [inputFocused, setInputFocused] = useState(false);
   const [aiSessionId, setAiSessionId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(() => new Set());
+  const [cartAnnouncement, setCartAnnouncement] = useState("");
   const preferencesRef = useRef<{ allergies: string[]; mood: string }>({
     allergies: [],
     mood: "",
@@ -1333,6 +1340,7 @@ export function AiConciergeChat({
         hapticClick();
         onAddToCart(rec);
         setAddedIds((prev) => new Set(prev).add(rec.productId));
+        setCartAnnouncement(tUI("a11y.cartAdded", { name: rec.name }));
         return;
       }
 
@@ -1350,6 +1358,7 @@ export function AiConciergeChat({
       });
       toastAddedToCart(rec.name, rec.price, currency);
       setAddedIds((prev) => new Set(prev).add(rec.productId));
+      setCartAnnouncement(tUI("a11y.cartAdded", { name: rec.name }));
 
       if (aiSessionId) {
         void trackAiConversion({
@@ -1374,6 +1383,7 @@ export function AiConciergeChat({
       onAddToCart,
       customizableProductIds,
       onOpenProductDetail,
+      tUI,
     ]
   );
 
@@ -1546,7 +1556,15 @@ export function AiConciergeChat({
           </button>
         </DenisPanelHeader>
 
-        <DenisPanelBody ref={scrollRef}>
+        <DenisPanelBody
+          ref={scrollRef}
+          role="log"
+          aria-live="polite"
+          aria-label={tUI("a11y.chatConversation")}
+        >
+          <div aria-live="assertive" aria-atomic="true" className="sr-only">
+            {cartAnnouncement}
+          </div>
           {messages.map((message, index) => (
             <DenisMessageRow
               key={message.id}
@@ -1610,6 +1628,7 @@ export function AiConciergeChat({
                 onBlur={() => setInputFocused(false)}
                 disabled={!inputEnabled}
                 placeholder={tChat("ai.chat.askDenis")}
+                aria-label={tChat("ai.chat.askDenis")}
                 className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none disabled:opacity-50"
               />
               <button

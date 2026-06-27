@@ -145,6 +145,8 @@ export const es: TranslationMap = {
   "payment.atTable.confirm": "Pagar en la mesa cuando esté listo",
 
   "error.generic": "Algo salió mal.",
+  "error.rate_limited": "Demasiadas solicitudes. Espere un momento.",
+  "error.circuit_open": "Denis no está disponible temporalmente.",
   "error.orderFailed": "No se pudo realizar el pedido.",
   "error.paymentFailed": "El pago falló.",
 };

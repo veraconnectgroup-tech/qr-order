@@ -145,6 +145,8 @@ export const fr: TranslationMap = {
   "payment.atTable.confirm": "Payer à table quand prêt",
 
   "error.generic": "Une erreur s'est produite.",
+  "error.rate_limited": "Trop de requêtes. Veuillez patienter.",
+  "error.circuit_open": "Denis est temporairement indisponible.",
   "error.orderFailed": "La commande n'a pas pu être passée.",
   "error.paymentFailed": "Le paiement a échoué.",
 };

@@ -51,7 +51,7 @@ export function CategoryPills({
             onClick={() => onSelect(cat.id)}
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               isActive
-                ? "bg-orange-500 text-white"
+                ? "bg-orange-700 text-white"
                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
             }`}
           >
