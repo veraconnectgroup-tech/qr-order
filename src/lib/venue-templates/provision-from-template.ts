@@ -22,14 +22,6 @@ export type ProvisionVenueResult = {
   menuSectionIds: string[];
 };
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 48);
-}
-
 export async function provisionVenueFromTemplate(
   admin: SupabaseClient,
   input: ProvisionVenueInput

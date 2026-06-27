@@ -13,6 +13,42 @@ import { cn } from "@/lib/utils";
 
 type SortKey = "locationName" | "sessions" | "conversionRate" | "revenue" | "aiCost";
 
+function OrgAnalyticsSortHeader({
+  label,
+  column,
+  className,
+  sortKey,
+  sortAsc,
+  onToggle,
+}: {
+  label: string;
+  column: SortKey;
+  className?: string;
+  sortKey: SortKey;
+  sortAsc: boolean;
+  onToggle: (key: SortKey) => void;
+}) {
+  const active = sortKey === column;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(column)}
+      className={cn(
+        "inline-flex items-center gap-1 text-left text-xs font-semibold uppercase tracking-wider text-dash-text-disabled hover:text-dash-text-secondary",
+        className
+      )}
+    >
+      {label}
+      {active &&
+        (sortAsc ? (
+          <ArrowUp className="size-3" aria-hidden />
+        ) : (
+          <ArrowDown className="size-3" aria-hidden />
+        ))}
+    </button>
+  );
+}
+
 export function OrgAnalyticsView() {
   const { currency } = useDashboard();
   const [data, setData] = useState<OrgAnalyticsData | null>(null);
@@ -70,36 +106,6 @@ export function OrgAnalyticsView() {
     setSortAsc(false);
   }
 
-  function SortHeader({
-    label,
-    column,
-    className,
-  }: {
-    label: string;
-    column: SortKey;
-    className?: string;
-  }) {
-    const active = sortKey === column;
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(column)}
-        className={cn(
-          "inline-flex items-center gap-1 text-left text-xs font-semibold uppercase tracking-wider text-dash-text-disabled hover:text-dash-text-secondary",
-          className
-        )}
-      >
-        {label}
-        {active &&
-          (sortAsc ? (
-            <ArrowUp className="size-3" aria-hidden />
-          ) : (
-            <ArrowDown className="size-3" aria-hidden />
-          ))}
-      </button>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -134,19 +140,53 @@ export function OrgAnalyticsView() {
               <thead>
                 <tr className="border-b border-dash-border-subtle">
                   <th className="px-4 py-3 text-left">
-                    <SortHeader label="Location" column="locationName" />
+                    <OrgAnalyticsSortHeader
+                      label="Location"
+                      column="locationName"
+                      sortKey={sortKey}
+                      sortAsc={sortAsc}
+                      onToggle={toggleSort}
+                    />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Sessions" column="sessions" className="justify-end" />
+                    <OrgAnalyticsSortHeader
+                      label="Sessions"
+                      column="sessions"
+                      className="justify-end"
+                      sortKey={sortKey}
+                      sortAsc={sortAsc}
+                      onToggle={toggleSort}
+                    />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Conv %" column="conversionRate" className="justify-end" />
+                    <OrgAnalyticsSortHeader
+                      label="Conv %"
+                      column="conversionRate"
+                      className="justify-end"
+                      sortKey={sortKey}
+                      sortAsc={sortAsc}
+                      onToggle={toggleSort}
+                    />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Revenue" column="revenue" className="justify-end" />
+                    <OrgAnalyticsSortHeader
+                      label="Revenue"
+                      column="revenue"
+                      className="justify-end"
+                      sortKey={sortKey}
+                      sortAsc={sortAsc}
+                      onToggle={toggleSort}
+                    />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="AI Cost" column="aiCost" className="justify-end" />
+                    <OrgAnalyticsSortHeader
+                      label="AI Cost"
+                      column="aiCost"
+                      className="justify-end"
+                      sortKey={sortKey}
+                      sortAsc={sortAsc}
+                      onToggle={toggleSort}
+                    />
                   </th>
                 </tr>
               </thead>
