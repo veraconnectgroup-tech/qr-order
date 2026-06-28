@@ -84,6 +84,14 @@ const withPWA = require("next-pwa")({
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // CI runs `pnpm type-check` + `pnpm lint` before deploy; on Vercel's 2-core/8GB
+  // box TypeScript after webpack+PWA+Sentry can thrash until the 45min build limit.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   turbopack: {
     root: projectRoot,
   },
