@@ -1,4 +1,5 @@
 import type { DenisCartLine } from "@/lib/denis/kernel/cart-projection";
+import { isGuestPreorderMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 
 export type PreorderCartLine = Pick<
   DenisCartLine,
@@ -25,20 +26,15 @@ export type PreorderStatus =
 export const PREORDER_MIN_ADVANCE_MINUTES = 30;
 export const PREORDER_NO_SHOW_GRACE_MINUTES = 30;
 
-const PREORDER_INTENT_PATTERN =
-  /\b(naru[čc]i(?:te|mo|m)?|poru[čc]i(?:te|mo|m)?|ho[ćc]u|želim|zelim|order|bestell(?:en)?)\b/i;
-
+/** HH:MM time extraction — format parsing (regex OK). */
 const PREORDER_TIME_PATTERN =
   /\b(?:za|u|at|for|um)\s*(\d{1,2})[:.h](\d{2})\b/i;
 
-/** Guest wants food/drinks for a future time — "naruči za 19:00", "Hoću za 19:00". */
+/** Guest wants food/drinks for a future time — semantic router + time format. */
 export function isPreorderIntentMessage(message: string): boolean {
   const text = message.trim();
   if (!text || !PREORDER_TIME_PATTERN.test(text)) return false;
-  return (
-    PREORDER_INTENT_PATTERN.test(text) ||
-    /\b(ho[ćc]u|želim|zelim)\b/i.test(text)
-  );
+  return isGuestPreorderMessage(text);
 }
 
 /** Parse HH:MM from guest message into ISO scheduled_for (today or tomorrow). */

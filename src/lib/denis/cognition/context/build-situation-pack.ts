@@ -105,6 +105,8 @@ export type SituationPackInput = {
       productName: string;
       quantity: number;
       menuSection?: string | null;
+      foodTags?: string[];
+      prepStation?: string | null;
     }>;
   }> | null;
   /** Adaptive per-turn token budget — enables priority-layer assembly. */
@@ -381,6 +383,8 @@ function buildKitchenSection(input: SituationPackInput, nowMs = Date.now()): str
               product_name: item.productName,
               menu_section: item.menuSection ?? "food",
               quantity: item.quantity,
+              food_tags: item.foodTags,
+              prep_station: item.prepStation ?? null,
             })),
           }))
         )
@@ -498,6 +502,7 @@ function buildKitchenSection(input: SituationPackInput, nowMs = Date.now()): str
         productName: line.productName,
         productId: line.productId,
         menuSection: line.menuSection,
+        foodTags: line.foodTags,
         load: kitchenLoad,
       });
       if (alt) {
@@ -671,7 +676,15 @@ function buildBarSection(input: SituationPackInput, nowMs = Date.now()): string 
     )[0];
   const foodItem = recentFood?.items.find((item) => item.menuSection === "food");
   if (foodItem?.productName && occasion === "pairing") {
-    const pairing = suggestDrinksForFood(foodItem.productName, "pairing");
+    const foodTags =
+      (foodItem as { foodTags?: string[] }).foodTags ??
+      (foodItem as { food_tags?: string[] }).food_tags ??
+      [];
+    const pairing = suggestDrinksForFood(
+      foodItem.productName,
+      "pairing",
+      foodTags
+    );
     if (pairing) {
       lines.push(
         `- sommelier_pairing: ${foodItem.productName} → ${pairing.primary}${pairing.secondary ? ` ili ${pairing.secondary}` : ""}`

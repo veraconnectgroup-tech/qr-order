@@ -5,6 +5,11 @@ import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import type { TablePartyModel } from "@/lib/denis/venue/party/types";
+import {
+  isGuestRoundMessage,
+  isGuestReorderMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
+import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
 export type ReorderCandidate = {
   orderId: string;
   items: {
@@ -23,30 +28,34 @@ export type ReorderTrigger =
   | "returning_guest"
   | "group_round";
 
-export const REORDER_REQUEST_PATTERN =
-  /\b(isto|opet|ponovo|jo[sš]\s+(jedno|jedna|jedan|jednu)|same\s+again|noch\s+einmal|gleich\s+nochmal|repeat|encore)\b/i;
-
-export const GROUP_ROUND_REQUEST_PATTERN =
-  /\b(jo[sš]\s+jednu\s+rundu|jo[sš]\s+jedna\s+runda|another\s+round|noch\s+eine\s+runde|runde\s+für\s+alle|round\s+for\s+the\s+table)\b/i;
-
 export const DRINK_EMPTY_BEER_MINUTES = 15;
 export const DRINK_EMPTY_COCKTAIL_MINUTES = 25;
 
 export function isReorderRequestMessage(message: string): boolean {
-  return REORDER_REQUEST_PATTERN.test(message.trim());
+  return isGuestReorderMessage(message.trim());
 }
 
 export function isGroupRoundRequestMessage(message: string): boolean {
-  return GROUP_ROUND_REQUEST_PATTERN.test(message.trim());
+  return isGuestRoundMessage(message.trim());
 }
 
-const COCKTAIL_NAME_PATTERN =
-  /\b(cocktail|mojito|margarita|martini|spritz|aperol|negroni|whisky|whiskey|rum|gin\s+tonic|long\s+island|cosmopolitan|daiquiri|caipirinha|old\s+fashioned)\b/i;
-
-export function drinkEmptyThresholdMinutes(productName: string): number {
-  return COCKTAIL_NAME_PATTERN.test(productName.trim())
-    ? DRINK_EMPTY_COCKTAIL_MINUTES
-    : DRINK_EMPTY_BEER_MINUTES;
+export function drinkEmptyThresholdMinutes(
+  productName: string,
+  catalogProduct?: Pick<AiCatalogProduct, "drinkFamily" | "menuSection"> | null
+): number {
+  const family = catalogProduct?.drinkFamily?.toLowerCase() ?? "";
+  if (
+    family === "cocktail" ||
+    family === "spirit" ||
+    family === "wine_red" ||
+    family === "wine_white"
+  ) {
+    return DRINK_EMPTY_COCKTAIL_MINUTES;
+  }
+  if (catalogProduct?.menuSection === "drinks") {
+    return DRINK_EMPTY_BEER_MINUTES;
+  }
+  return DRINK_EMPTY_BEER_MINUTES;
 }
 
 export function buildDrinkEmptyNudgeMessage(
@@ -153,7 +162,7 @@ function guestRequestedReorder(timeline: DenisTimelineRow[]): boolean {
   for (let i = timeline.length - 1; i >= 0; i -= 1) {
     const text = guestTextFromTimeline(timeline[i]!);
     if (!text?.trim()) continue;
-    if (REORDER_REQUEST_PATTERN.test(text)) return true;
+    if (isReorderRequestMessage(text)) return true;
   }
   return false;
 }
@@ -249,7 +258,7 @@ function guestRequestedGroupRound(timeline: DenisTimelineRow[]): boolean {
   for (let i = timeline.length - 1; i >= 0; i -= 1) {
     const text = guestTextFromTimeline(timeline[i]!);
     if (!text?.trim()) continue;
-    if (GROUP_ROUND_REQUEST_PATTERN.test(text)) return true;
+    if (isGroupRoundRequestMessage(text)) return true;
   }
   return false;
 }

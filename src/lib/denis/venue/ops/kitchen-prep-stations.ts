@@ -1,5 +1,7 @@
 /** Kitchen Mind Link — per-prep-station routing and default timings. */
 
+import { resolvePrepStationFromProduct } from "@/lib/denis/catalog/product-semantics";
+
 export type KitchenPrepStation = "grill" | "fryer" | "salad" | "cold" | "pass";
 
 export const KITCHEN_PREP_STATIONS: KitchenPrepStation[] = [
@@ -21,17 +23,8 @@ export const DEFAULT_PREP_MINUTES: Record<KitchenPrepStation, number> = {
   pass: 2,
 };
 
-const GRILL_PATTERN =
-  /\b(burger|hamburger|pljeskav|steak|ribeye|grill|roštilj|rostilj|piletina\s+na\s+grilu|beef|teletina|svinjetina|ćevap|cevap)\b/i;
-const FRYER_PATTERN =
-  /\b(pomfrit|fries|prženo|przeno|fried|wings|krilca|tempura|kroket|nuggets)\b/i;
-const SALAD_PATTERN =
-  /\b(salat|salad|salata|cezar|caesar|zelena|bowl)\b/i;
-const COLD_PATTERN =
-  /\b(tatar|carpaccio|bruschetta|suši|sushi|ceviche|hladn)\b/i;
-
 export type StationAlternative = {
-  triggerProductPattern: RegExp;
+  triggerFoodTag: string;
   alternativeName: string;
   alternativeProductId?: string;
   prepMinutes: number;
@@ -45,7 +38,7 @@ export const STATION_ALTERNATIVES: Partial<
 > = {
   grill: [
     {
-      triggerProductPattern: GRILL_PATTERN,
+      triggerFoodTag: "burger",
       alternativeName: "Pečeno pile",
       alternativeProductId: "roasted-chicken-id",
       prepMinutes: 8,
@@ -53,7 +46,15 @@ export const STATION_ALTERNATIVES: Partial<
       reasonKey: "grill_busy_roasted_chicken",
     },
     {
-      triggerProductPattern: /steak|ribeye|teletina/i,
+      triggerFoodTag: "grilled",
+      alternativeName: "Pečeno pile",
+      alternativeProductId: "roasted-chicken-id",
+      prepMinutes: 8,
+      station: "fryer",
+      reasonKey: "grill_busy_roasted_chicken",
+    },
+    {
+      triggerFoodTag: "steak",
       alternativeName: "Tuna steak",
       prepMinutes: 10,
       station: "grill",
@@ -62,7 +63,7 @@ export const STATION_ALTERNATIVES: Partial<
   ],
   fryer: [
     {
-      triggerProductPattern: FRYER_PATTERN,
+      triggerFoodTag: "fried",
       alternativeName: "Salata sa piletinom",
       prepMinutes: 6,
       station: "salad",
@@ -76,21 +77,16 @@ export function resolveKitchenPrepStation(input: {
   productId?: string | null;
   menuSection?: string | null;
   stationTag?: string | null;
+  prepStation?: string | null;
+  foodTags?: string[];
+  drinkFamily?: string | null;
 }): KitchenPrepStation {
-  const tag = input.stationTag?.trim().toLowerCase();
-  if (tag === "grill" || tag === "fryer" || tag === "salad" || tag === "cold") {
-    return tag;
-  }
-
-  if (input.menuSection === "desserts") return "pass";
-
-  const name = input.productName.trim();
-  if (GRILL_PATTERN.test(name)) return "grill";
-  if (FRYER_PATTERN.test(name)) return "fryer";
-  if (SALAD_PATTERN.test(name)) return "salad";
-  if (COLD_PATTERN.test(name)) return "cold";
-
-  return "grill";
+  return resolvePrepStationFromProduct({
+    menuSection: input.menuSection ?? null,
+    foodTags: input.foodTags ?? [],
+    drinkFamily: input.drinkFamily ?? null,
+    prepStation: input.prepStation ?? input.stationTag ?? null,
+  });
 }
 
 export function defaultPrepMinutesForStation(

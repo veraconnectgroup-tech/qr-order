@@ -44,6 +44,7 @@ function grillOrder(id: string, productName = "Burger"): AiGuestOrder {
         unit_price: 12,
         quantity: 1,
         menu_section: "food",
+        food_tags: ["burger"],
       },
     ],
   };
@@ -55,11 +56,11 @@ describe("kitchen load model", () => {
       {
         status: "preparing",
         order_items: [
-          { product_name: "Burger", menu_section: "food" },
-          { product_name: "Burger", menu_section: "food" },
-          { product_name: "Burger", menu_section: "food" },
-          { product_name: "Pomfrit", menu_section: "food" },
-          { product_name: "Ceasar salata", menu_section: "food" },
+          { product_name: "Burger", menu_section: "food", food_tags: ["burger"] },
+          { product_name: "Burger", menu_section: "food", food_tags: ["burger"] },
+          { product_name: "Burger", menu_section: "food", food_tags: ["burger"] },
+          { product_name: "Pomfrit", menu_section: "food", food_tags: ["fries", "side"] },
+          { product_name: "Ceasar salata", menu_section: "food", food_tags: ["salad"] },
         ],
       },
     ]);
@@ -114,6 +115,7 @@ describe("kitchen load model", () => {
             product_name: "Burger",
             menu_section: "food",
             product_id: `b-${index}`,
+            food_tags: ["burger"],
           },
         ],
       }))
@@ -123,6 +125,7 @@ describe("kitchen load model", () => {
       productName: "Burger",
       productId: "burger-id",
       menuSection: "food",
+      foodTags: ["burger"],
       load,
     });
 
@@ -244,7 +247,12 @@ describe("proactive kitchen mind nudges", () => {
 
     const trigger = detectStationBottleneckAvoidanceTrigger({
       cartItems: [
-        { productId: "burger-id", productName: "Burger", menuSection: "food" },
+        {
+          productId: "burger-id",
+          productName: "Burger",
+          menuSection: "food",
+          foodTags: ["burger"],
+        },
       ],
       venueOrders,
       sessionPhase: "ordering",
@@ -259,7 +267,12 @@ describe("proactive kitchen mind nudges", () => {
       orders: [],
       venueKitchenOrders: venueOrders,
       cartItems: [
-        { productId: "burger-id", productName: "Burger", menuSection: "food" },
+        {
+          productId: "burger-id",
+          productName: "Burger",
+          menuSection: "food",
+          foodTags: ["burger"],
+        },
       ],
       payload: {
         dismissedNudgeKeys: [],
@@ -316,6 +329,7 @@ describe("situation pack kitchen pulse", () => {
           productName: "Burger",
           quantity: 1,
           menuSection: "food",
+          foodTags: ["burger"],
         },
       ],
     }));
@@ -349,6 +363,7 @@ describe("situation pack kitchen pulse", () => {
                     notes: "",
                     lineTotal: 12,
                     menuSection: "food",
+                    foodTags: ["burger"],
                   },
                 ],
               },
@@ -363,6 +378,7 @@ describe("situation pack kitchen pulse", () => {
                 notes: "",
                 lineTotal: 12,
                 menuSection: "food",
+                foodTags: ["burger"],
               },
             ],
           },

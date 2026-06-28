@@ -15,6 +15,11 @@ import type { VenueManifestCapabilities } from "@/lib/denis/cognition/manifest/v
 import type { DenisRuntimeResolvedProfile } from "@/lib/denis/cognition/runtime-profile-types";
 import type { InterpretationTask } from "@/lib/denis/cognition/tde/interpretation-task-types";
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
+import {
+  CORE_BELIEF_KEYS,
+  getBeliefValue,
+} from "@/lib/denis/cognition/tde/turn-plan-types";
+import { classifyGuestIntent } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
@@ -81,24 +86,50 @@ export type PlanEvidenceInput = {
   contextAwareness?: ContextAwarenessSnapshot | null;
 };
 
+function guestTurnNeedsMenuContext(
+  turnPlan: TurnPlan,
+  message: string,
+  interpretationTask?: InterpretationTask | null,
+  beliefs?: BeliefGraph
+): boolean {
+  if (interpretationTask?.evidenceBudget.includeCatalogRag) return true;
+  if (turnPlan.kind === "transactional_perceive") return true;
+  if (turnPlan.reason?.startsWith("vague_recommend")) return true;
+  if (turnPlan.reason === "mental.attention_empathy") return true;
+
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+
+  const routed = classifyGuestIntent(trimmed);
+  if (routed.intent === "browse" || routed.intent === "order") return true;
+
+  if (beliefs) {
+    const need = getBeliefValue<string>(
+      beliefs,
+      CORE_BELIEF_KEYS.mentalPredictedNeed
+    );
+    if (need === "wants_drink" || need === "needs_help_choosing") {
+      return true;
+    }
+  }
+
+  return /\b(sta\s+je|šta\s+je|kakv[oa]\s+je|what\s+is|what\s+kind|objasni|explain)\b/i.test(
+    trimmed
+  );
+}
+
 function wantsCatalogRag(
   turnPlan: TurnPlan,
   message: string,
-  interpretationTask?: InterpretationTask | null
+  interpretationTask?: InterpretationTask | null,
+  beliefs?: BeliefGraph
 ): boolean {
-  if (interpretationTask) {
-    return interpretationTask.evidenceBudget.includeCatalogRag;
-  }
-  if (turnPlan.kind === "transactional_perceive") return true;
-  if (/\b(sta\s+je|šta\s+je|kakv[oa]\s+je|what\s+is|what\s+kind|objasni|explain)\b/i.test(message)) {
-    return true;
-  }
-  if (turnPlan.kind === "relational_perceive") {
-    return /\b(preporu[čc]|empfehl|recommend|suggest|meni|menu|bez|gluten)\b/i.test(
-      message
-    );
-  }
-  return false;
+  return guestTurnNeedsMenuContext(
+    turnPlan,
+    message,
+    interpretationTask,
+    beliefs
+  );
 }
 
 /**
@@ -158,6 +189,19 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
       );
       if (comprehendHint) blocks.push(comprehendHint);
     }
+
+    if (
+      guestTurnNeedsMenuContext(
+        input.turnPlan,
+        input.guestMessage,
+        input.interpretationTask,
+        input.beliefs
+      )
+    ) {
+      blocks.push(
+        "MENU DISCOVERY: Guest asks what is available — answer from MENU/CATALOG with concrete items and prices. Do not notify the waiter unless they explicitly request staff."
+      );
+    }
   } else {
     const commerce = retrieveCommerceEvidence(
       input.state,
@@ -212,7 +256,8 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     wantsCatalogRag(
       input.turnPlan,
       input.guestMessage,
-      input.interpretationTask
+      input.interpretationTask,
+      input.beliefs
     ) &&
     isMenuRagEnabled({
       catalogRagLevel: input.capabilities.catalogRag,
@@ -262,7 +307,13 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
   } else if (
     input.turnPlan.kind === "relational_perceive" &&
     !ragEligible &&
-    !input.interpretationTask
+    !input.interpretationTask &&
+    !guestTurnNeedsMenuContext(
+      input.turnPlan,
+      input.guestMessage,
+      input.interpretationTask,
+      input.beliefs
+    )
   ) {
     omitFullMenu = true;
   }

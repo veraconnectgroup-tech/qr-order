@@ -31,6 +31,7 @@ import type {
   GuestPosture,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import { GUEST_MENTAL_MODEL_VERSION } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import { extractTurnInterpretationFromTimeline } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 function stableSerialize(value: unknown): string {
   return JSON.stringify(value, (_key, v) => {
@@ -125,13 +126,19 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     billSettled: input.session.billSettled,
   });
   let priceAffinity = derivePriceAffinity(input.browse);
-  const affect = deriveAffect(spine);
+  const interpretation = extractTurnInterpretationFromTimeline(input.timeline);
+  const affect = deriveAffect(spine, interpretation);
   const groupDynamics = deriveGroupDynamics(input.party);
 
   const localHour =
     input.localHour ?? new Date(now).getHours();
   const dayOfWeek = input.dayOfWeek ?? new Date(now).getDay();
-  const partySize = Math.max(1, input.party?.activeDeviceCount ?? 1);
+  const partySize = Math.max(
+    1,
+    interpretation?.partySize ??
+      input.party?.activeDeviceCount ??
+      1
+  );
   const sessionStartedMs = input.browse.sessionStartedAt
     ? Date.parse(input.browse.sessionStartedAt)
     : now;
@@ -183,6 +190,8 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     browse: input.browse,
     cartLineCount,
     intent,
+    productCatalog: input.productCatalog,
+    basketPairs: input.basketPairs,
   });
 
   const trajectory = predictMealTrajectory({
@@ -190,7 +199,6 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     partySize,
     mealStage,
     intent,
-    lastGuestText: input.conversation.thread.lastGuestText,
   });
 
   const flow = deriveConversationFlow({ intent, intentTransitions });

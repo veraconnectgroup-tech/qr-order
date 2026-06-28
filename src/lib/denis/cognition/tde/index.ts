@@ -56,6 +56,12 @@ export {
   turnPlanFromInterpretationTask,
 } from "@/lib/denis/cognition/tde/build-interpretation-task";
 
+export {
+  hasGuestPostureCommercePressure,
+  resolveGuestPostureMode,
+  type GuestPostureMode,
+} from "@/lib/denis/cognition/tde/resolve-guest-posture";
+
 export type {
   InterpretationEvidenceBudget,
   InterpretationSchema,
@@ -66,6 +72,17 @@ export {
   planUtterance,
   utteranceIncludesUpsellNudge,
 } from "@/lib/denis/cognition/tde/utterance-plan";
+
+export {
+  collectTurnInterpretationsFromTimeline,
+  extractTurnInterpretation,
+  extractTurnInterpretationFromTimeline,
+  normalizeTurnInterpretation,
+  synthesizeTurnInterpretationFromRouter,
+  type ExtractTurnInterpretationInput,
+} from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+
+export type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 
 export {
   defaultGuestChatFallback,

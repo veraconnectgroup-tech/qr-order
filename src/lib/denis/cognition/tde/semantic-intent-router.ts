@@ -13,7 +13,15 @@ export type GuestSemanticCluster =
   | "complaint"
   | "status"
   | "handoff"
-  | "settling";
+  | "settling"
+  | "reorder"
+  | "preorder"
+  | "promo_inquiry"
+  | "round"
+  | "price_inquiry"
+  | "modification"
+  | "copy_order"
+  | "still_browsing";
 
 /** T0 deterministic intents — 100% confidence, 0ms. */
 export type GuestDeterministicIntent =
@@ -64,9 +72,12 @@ const T0_CONFIRM =
   /^(da|ja|yes|yep|ok+|potvrdi|confirm|pošalji|posalji|send|bestellen|naruči|naruci)([\s,.!]|$)/i;
 
 const T0_DECLINE =
-  /^(ne+hvala|ne hvala|ne, hvala|ne treba|nein danke|no thanks?|nope|ne\.?|ne(,|$))/i;
+  /^(ne+hvala|ne hvala|ne, hvala|ne treba|nein danke|no thanks?|nope|ne[.!]?)([\s,.!]|$)/i;
 
 const T0_CLARIFY_REPLY = /^\d{1,2}$/;
+
+const T0_MENU_AVAILABILITY =
+  /^(imate li|imaju li|da li imate|do you have)\s+.+/i;
 
 function normalizeMessage(message: string): string {
   return message
@@ -89,6 +100,9 @@ function classifyT0(message: string): SemanticIntentResult | null {
   }
   if (T0_CLARIFY_REPLY.test(text)) {
     return { intent: "clarify_reply", tier: "T0", confidence: 1 };
+  }
+  if (T0_MENU_AVAILABILITY.test(text)) {
+    return { intent: "order", tier: "T0", confidence: 1 };
   }
   return null;
 }
@@ -322,6 +336,58 @@ export function isGuestHandoffMessage(message: string): boolean {
   return classifyGuestIntent(message).intent === "handoff";
 }
 
+export function isGuestReorderMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "reorder";
+}
+
+export function isGuestPreorderMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "preorder";
+}
+
+export function isGuestPromoInquiryMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "promo_inquiry";
+}
+
+export function isGuestRoundMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "round";
+}
+
+export function isGuestPriceInquiryMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "price_inquiry";
+}
+
+export function isGuestModificationMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "modification";
+}
+
+export function isGuestCopyOrderMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "copy_order";
+}
+
+export function isGuestDeclineMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "decline";
+}
+
+export function isGuestStillBrowsingMessage(message: string): boolean {
+  return classifyGuestIntent(message).intent === "still_browsing";
+}
+
+export function isGuestComplaintMessage(message: string): boolean {
+  const result = classifyGuestIntent(message);
+  return result.intent === "complaint";
+}
+
+export function isGuestMenuInquiryMessage(message: string): boolean {
+  return isGuestVagueBrowseMessage(message);
+}
+
+export function isPureSocialBanterMessage(message: string): boolean {
+  const text = message.trim();
+  if (!text || text.length > 120) return false;
+  const result = classifyGuestIntent(text);
+  return result.intent === "smalltalk" && result.tier !== "T0";
+}
+
 /** Eval-only — social without ordering keywords (replaces isCasualSocialGuestMessage). */
 export function isCasualSocialGuestMessage(message: string): boolean {
   const text = message.trim();
@@ -434,4 +500,7 @@ export const INTENT_ROUTER_AB_FIXTURES: Array<{
   { message: "kellner bitte", expected: "handoff" },
   { message: "surprise me", expected: "browse" },
   { message: "šta imate?", expected: "browse" },
+  { message: "sta ima za pice", expected: "browse" },
+  { message: "šta ima za piće", expected: "browse" },
+  { message: "sta imate za pice", expected: "browse" },
 ];

@@ -1,5 +1,7 @@
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import type { AiOrderDraft, ValidatedCartAction } from "@/lib/ai/ordering/draft-types";
+import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import { classifyGuestIntent } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import {
   applyGuestCartSwap,
   applyGuestRemoval,
@@ -25,7 +27,10 @@ export function applyGuestCartMutations(
     return { draft, cartActions: [], swapped: false, removed: false };
   }
 
-  const swap = parseGuestCartSwap(text);
+  const swap = parseGuestCartSwap(
+    text,
+    extractTurnInterpretation({ guestMessage: text, llmUsed: false })
+  );
   if (swap) {
     const { draft: next, swapped } = applyGuestCartSwap(
       draft,
@@ -62,5 +67,8 @@ export function applyGuestCartMutations(
 export function isMidOrderCartSwapMessage(message: string): boolean {
   const text = message.trim();
   if (!text) return false;
-  return parseGuestCartSwap(text) != null;
+  const interpretation = extractTurnInterpretation({ guestMessage: text, llmUsed: false });
+  if (parseGuestCartSwap(text, interpretation) != null) return true;
+  if (classifyGuestIntent(text).intent !== "modification") return false;
+  return /\b(nego|sondern|but|umesto|instead of|instead)\b/i.test(text);
 }

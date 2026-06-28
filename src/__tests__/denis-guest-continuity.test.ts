@@ -7,6 +7,7 @@ import {
   resolveFollowUpDueAt,
 } from "@/lib/denis/cognition/conversation/guest-continuity";
 import { inferAwaitingFromDialogue } from "@/lib/denis/cognition/conversation/infer-awaiting";
+import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 import { resolveDenisThinkingContext } from "@/lib/guest/denis-thinking-steps";
 import { resolveTurnThinkingStepKeys } from "@/lib/denis/runtime/resolve-turn-thinking-steps";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
@@ -80,20 +81,40 @@ describe("conversation model fold", () => {
       flowNodeId: "welcome",
       pendingSlot: null,
       commerceConfirm: false,
+      timeline: [
+        row(1, "perception.ingested", {
+          type: "perception.ingested",
+          frame: {
+            channel: "chat.message",
+            normalizedText: "nisam još",
+            interpretation: normalizeTurnInterpretation({ awaiting: "browse_decision" }),
+          },
+          interpretation: normalizeTurnInterpretation({ awaiting: "browse_decision" }),
+        }),
+      ],
     });
     expect(awaiting).toBe("browse_decision");
   });
 
   it("folds transcript and summary for defer thread", () => {
+    const followUpInterpretation = normalizeTurnInterpretation({
+      awaiting: "browse_decision",
+      followUpMinutes: 1,
+    });
     const model = foldConversationModel({
       timeline: [
         row(1, "tell.committed", {
           type: "tell.committed",
           message: "Da li ste odlučili?",
         }),
-        row(2, "signal.message", {
-          type: "signal.message",
-          text: "dođi za 1 minut",
+        row(2, "perception.ingested", {
+          type: "perception.ingested",
+          frame: {
+            channel: "chat.message",
+            normalizedText: "dođi za 1 minut",
+            interpretation: followUpInterpretation,
+          },
+          interpretation: followUpInterpretation,
         }),
       ],
       flowNodeId: "welcome",

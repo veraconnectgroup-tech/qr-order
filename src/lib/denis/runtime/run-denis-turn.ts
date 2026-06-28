@@ -46,6 +46,7 @@ import {
 } from "@/lib/denis/cognition/tde";
 import { narrateOfferFromBeliefs } from "@/lib/denis/cognition/offer/narrate-offer-from-beliefs";
 import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
+import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 import {
   assertSufficientCredits,
   finalizeTurnMetering,
@@ -1588,6 +1589,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     );
 
     const writeTurnTimeline = async () => {
+      const turnInterpretation = extractTurnInterpretation({
+        structured: data.structuredPerception,
+        guestMessage: parsed.data.message,
+        llmUsed: perceiveResult.llmUsed,
+      });
+
       await persistDenisTurnTimeline(admin, {
         aiSessionId: timelineAiSessionId,
         locationId: parsed.data.locationId,
@@ -1600,6 +1607,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         reflexTurn,
         channel: perceptionChannel,
         timelineSurface,
+        turnInterpretation,
       });
 
       const followUp = guestFollowUpFromMessage(parsed.data.message);

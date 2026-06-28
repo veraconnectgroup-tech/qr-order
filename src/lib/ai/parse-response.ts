@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AI_CONFIG } from "@/lib/ai/config";
 import type { AiProductSummary, AiStructuredResponse } from "@/lib/ai/types";
 import { zUuid } from "@/lib/security/zod-fields";
+import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 const proposedItemSchema = z.object({
   productId: zUuid(),
@@ -10,6 +11,63 @@ const proposedItemSchema = z.object({
   serveSize: z.string().trim().max(20).nullable().optional(),
   notes: z.string().trim().max(200).optional().default(""),
 });
+
+const turnInterpretationSchema = z
+  .object({
+    sentiment: z
+      .enum(["positive", "neutral", "frustrated", "confused"])
+      .optional()
+      .default("neutral"),
+    mealStage: z
+      .enum([
+        "pre_order",
+        "ordering",
+        "waiting",
+        "eating",
+        "dessert",
+        "paying",
+      ])
+      .nullable()
+      .optional()
+      .default(null),
+    modifications: z
+      .array(
+        z.object({
+          swap: z
+            .object({ from: z.string(), to: z.string() })
+            .optional(),
+          remove: z.string().optional(),
+          add: z.string().optional(),
+          modifier: z.string().optional(),
+          cooking: z.string().optional(),
+        })
+      )
+      .max(8)
+      .optional()
+      .default([]),
+    preferences: z.array(z.string().trim().max(120)).max(8).optional().default([]),
+    followUpMinutes: z.number().int().min(1).max(480).nullable().optional(),
+    partySize: z.number().int().min(1).max(40).nullable().optional(),
+    awaiting: z.string().nullable().optional(),
+    askedDessert: z.boolean().optional().default(false),
+    sidePreference: z.string().nullable().optional(),
+    cookingPreference: z.string().nullable().optional(),
+    agreedOrderLine: z.string().nullable().optional(),
+    guestReferenceKind: z
+      .enum([
+        "active_topic_price",
+        "topic_switch",
+        "clone_for_friend",
+        "first_mentioned",
+        "cheaper_variant",
+        "last_denis_recommendation",
+        "none",
+      ])
+      .nullable()
+      .optional(),
+    guestReferenceDetail: z.string().nullable().optional(),
+  })
+  .optional();
 
 const aiResponseSchema = z.object({
   intent: z
@@ -38,6 +96,7 @@ const aiResponseSchema = z.object({
   quickReplies: z.array(z.string().trim().min(1).max(50)).max(6).optional().default([]),
   submitOrder: z.boolean().optional().default(false),
   message: z.string().trim().min(1).max(2000),
+  turnInterpretation: turnInterpretationSchema,
 });
 
 export type AiChatRecommendation = {
@@ -94,6 +153,13 @@ export function parseAiStructuredResponse(
     quickReplies: result.data.quickReplies,
     submitOrder: result.data.submitOrder,
     message: result.data.message,
+    ...(result.data.turnInterpretation
+      ? {
+          turnInterpretation: normalizeTurnInterpretation(
+            result.data.turnInterpretation
+          ),
+        }
+      : {}),
   };
 
   return { structured, recommendations };

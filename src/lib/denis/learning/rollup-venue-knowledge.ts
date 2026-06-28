@@ -27,7 +27,13 @@ export async function fetchVenueKnowledgeOrderRows(
       `
       session_id,
       created_at,
-      order_items (product_id, product_name, notes, menu_section)
+      order_items (
+        product_id,
+        product_name,
+        notes,
+        menu_section,
+        products ( drink_family, food_tags, prep_station )
+      )
     `
     )
     .eq("location_id", locationId)
@@ -41,7 +47,7 @@ export async function fetchVenueKnowledgeOrderRows(
   }
 
   const rows: VenueKnowledgeOrderRow[] = [];
-  for (const order of (data ?? []) as Array<{
+  for (const order of (data ?? []) as unknown as Array<{
     session_id: string | null;
     created_at: string;
     order_items: Array<{
@@ -49,6 +55,18 @@ export async function fetchVenueKnowledgeOrderRows(
       product_name: string;
       notes: string | null;
       menu_section: string | null;
+      products:
+        | {
+            drink_family: string | null;
+            food_tags: string[] | null;
+            prep_station: string | null;
+          }
+        | Array<{
+            drink_family: string | null;
+            food_tags: string[] | null;
+            prep_station: string | null;
+          }>
+        | null;
     }> | null;
   }>) {
     const tableSessionId = order.session_id?.trim();
@@ -57,11 +75,16 @@ export async function fetchVenueKnowledgeOrderRows(
       const productId = item.product_id?.trim();
       const productName = item.product_name?.trim();
       if (!productId || !productName) continue;
+      const productMeta = Array.isArray(item.products)
+        ? (item.products[0] ?? null)
+        : (item.products ?? null);
       rows.push({
         tableSessionId,
         productId,
         productName,
         menuSection: item.menu_section,
+        drinkFamily: productMeta?.drink_family ?? null,
+        foodTags: productMeta?.food_tags?.filter(Boolean) ?? [],
         createdAt: order.created_at,
         notes: item.notes,
       });

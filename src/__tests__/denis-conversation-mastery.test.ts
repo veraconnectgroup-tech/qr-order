@@ -36,6 +36,54 @@ import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaul
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { planTurnWithReflex as reflexPlan } from "@/lib/denis/kernel/reflex-plan";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
+import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import type { ConversationAwaiting } from "@/lib/denis/cognition/beliefs/belief-types";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
+
+function interpretationRow(
+  seq: number,
+  text: string,
+  interpretation: Partial<TurnInterpretation>
+): DenisTimelineRow {
+  const normalized = normalizeTurnInterpretation(interpretation);
+  return row(seq, "perception.ingested", {
+    type: "perception.ingested",
+    frame: {
+      channel: "chat.message",
+      normalizedText: text,
+      interpretation: normalized,
+    },
+    interpretation: normalized,
+    turnInterpretation: normalized,
+  });
+}
+
+function testInterpretation(
+  overrides: Partial<TurnInterpretation> = {}
+): TurnInterpretation {
+  return normalizeTurnInterpretation({
+    sentiment: "neutral",
+    mealStage: "ordering",
+    modifications: [],
+    preferences: [],
+    followUpMinutes: null,
+    partySize: null,
+    awaiting: null,
+    askedDessert: false,
+    sidePreference: null,
+    cookingPreference: null,
+    agreedOrderLine: null,
+    guestReferenceKind: null,
+    guestReferenceDetail: null,
+    ...overrides,
+  });
+}
+
+function awaitingTimeline(awaiting: ConversationAwaiting): DenisTimelineRow[] {
+  return [
+    interpretationRow(1, "da", { awaiting }),
+  ];
+}
 
 function row(
   seq: number,
@@ -128,6 +176,7 @@ describe("conversation mastery — infer awaiting", () => {
         flowNodeId: "collect",
         pendingSlot: null,
         commerceConfirm: false,
+        timeline: awaitingTimeline("recommendation_pick"),
       })
     ).toBe("recommendation_pick");
   });
@@ -139,6 +188,7 @@ describe("conversation mastery — infer awaiting", () => {
         flowNodeId: "collect",
         pendingSlot: null,
         commerceConfirm: false,
+        timeline: awaitingTimeline("confirm"),
       })
     ).toBe("confirm");
   });
@@ -150,6 +200,7 @@ describe("conversation mastery — infer awaiting", () => {
         flowNodeId: "collect",
         pendingSlot: null,
         commerceConfirm: false,
+        timeline: awaitingTimeline("serve_size"),
       })
     ).toBe("serve_size");
   });
@@ -168,10 +219,13 @@ describe("conversation mastery — infer awaiting", () => {
 
 describe("conversation mastery — guest substitution & modifiers", () => {
   it("parses bez luka as modifier, not new item", () => {
-    const mod = parseGuestModifier("Beef burger ali bez luka");
+    const interpretation = testInterpretation({
+      modifications: [{ modifier: "bez luka" }],
+    });
+    const mod = parseGuestModifier("Beef burger ali bez luka", interpretation);
     expect(mod).not.toBeNull();
     expect(mod?.modifier).toMatch(/bez luka/i);
-    expect(parseGuestSubstitution("Beef burger ali bez luka")).toBeNull();
+    expect(parseGuestSubstitution("Beef burger ali bez luka", interpretation)).toBeNull();
   });
 
   it("backfills burger with modifier note", () => {
@@ -179,7 +233,12 @@ describe("conversation mastery — guest substitution & modifiers", () => {
     const result = backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
-      "Beef burger ali bez luka"
+      "Beef burger ali bez luka",
+      {
+        interpretation: testInterpretation({
+          modifications: [{ modifier: "bez luka" }],
+        }),
+      }
     );
     expect(result.draft.items).toHaveLength(1);
     expect(result.draft.items[0]?.productName).toMatch(/Beef/i);
@@ -187,15 +246,21 @@ describe("conversation mastery — guest substitution & modifiers", () => {
   });
 
   it("parses cart swap Chicken umesto Beef", () => {
-    const swap = parseGuestCartSwap("Zapravo daj Chicken umesto Beef");
+    const interpretation = testInterpretation({
+      modifications: [{ swap: { from: "Beef", to: "Chicken" } }],
+    });
+    const swap = parseGuestCartSwap("Zapravo daj Chicken umesto Beef", interpretation);
     expect(swap).not.toBeNull();
     expect(swap?.requested).toMatch(/chicken/i);
     expect(swap?.insteadOf).toMatch(/beef/i);
   });
 
   it("keeps side substitution separate from cart swap", () => {
-    expect(parseGuestCartSwap("salata umesto pomfrita")).toBeNull();
-    expect(parseGuestSubstitution("salata umesto pomfrita")).not.toBeNull();
+    const sideSub = testInterpretation({
+      modifications: [{ swap: { from: "pomfrit", to: "salata" } }],
+    });
+    expect(parseGuestCartSwap("salata umesto pomfrita", sideSub)).toBeNull();
+    expect(parseGuestSubstitution("salata umesto pomfrita", sideSub)).not.toBeNull();
   });
 
   it("swaps beef for chicken in cart", () => {
@@ -216,7 +281,12 @@ describe("conversation mastery — guest substitution & modifiers", () => {
         },
       ],
     };
-    const swap = parseGuestCartSwap("Chicken umesto Beef")!;
+    const swap = parseGuestCartSwap(
+      "Chicken umesto Beef",
+      testInterpretation({
+        modifications: [{ swap: { from: "Beef", to: "Chicken" } }],
+      })
+    )!;
     const { draft: next, swapped } = applyGuestCartSwap(draft, swap, catalog.catalog);
     expect(swapped).toBe(true);
     expect(next.items[0]?.productName).toMatch(/Chicken/i);
@@ -269,6 +339,7 @@ describe("conversation mastery — multi-turn ordering", () => {
           type: "tell.committed",
           message: "Koji burger? Beef, Chicken ili Veggie?",
         }),
+        interpretationRow(3, "Beef", { awaiting: "recommendation_pick" }),
       ],
       flowNodeId: "collect",
       pendingSlot: null,
@@ -472,6 +543,9 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
 
   it("swap mid-order Pilsner → Weißbier", () => {
     const catalog = masteryCatalog();
+    const interpretation = testInterpretation({
+      modifications: [{ swap: { from: "Pilsner", to: "Weißbier" } }],
+    });
     const draft = {
       ...emptyOrderDraft(),
       items: [
@@ -488,7 +562,10 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
         },
       ],
     };
-    const swap = parseGuestNegationSwap("Zapravo, ne Pilsner nego Weißbier");
+    const swap = parseGuestNegationSwap(
+      "Zapravo, ne Pilsner nego Weißbier",
+      interpretation
+    );
     expect(swap).not.toBeNull();
     const { draft: next, swapped } = applyGuestCartSwap(
       draft,
@@ -504,7 +581,16 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
       emptyOrderDraft(),
       masteryCatalog(),
       "Burger bez luka, sa extra sirom, medium rare",
-      { requirePlacementPattern: false }
+      {
+        requirePlacementPattern: false,
+        interpretation: testInterpretation({
+          modifications: [
+            { modifier: "bez luka" },
+            { modifier: "extra sirom" },
+            { cooking: "medium rare" },
+          ],
+        }),
+      }
     );
     expect(result.draft.items).toHaveLength(1);
     const notes = result.draft.items[0]?.notes ?? "";

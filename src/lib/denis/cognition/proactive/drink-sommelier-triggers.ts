@@ -114,6 +114,9 @@ export function detectSommelierFoodPairingTrigger(
 
   const foodItem = foodItemsFromOrder(recentFood)[0];
   const foodName = foodItem?.product_name ?? "jelo";
+  const foodTags =
+    (foodItem as { food_tags?: string[] | null }).food_tags?.filter(Boolean) ??
+    [];
 
   const suggestion =
     resolveSituationalDrinkOffer({
@@ -122,7 +125,7 @@ export function detectSommelierFoodPairingTrigger(
       hasOpenFoodOrder: true,
       foodName,
       vkgDrinkName: options?.vkgDrinkName,
-    }) ?? suggestDrinksForFood(foodName, "pairing");
+    }) ?? suggestDrinksForFood(foodName, "pairing", foodTags);
 
   if (!suggestion) return null;
   if (suggestion.occasion === "digestif") return null;

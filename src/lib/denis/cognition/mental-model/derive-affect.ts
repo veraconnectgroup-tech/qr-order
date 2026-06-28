@@ -3,19 +3,14 @@ import type {
   GuestFrustrationLevel,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-signal-types";
-
-const WAITING_PATTERN =
-  /\b(čekam|cekam|dugo|još\s+uvijek|jos\s+uvijek|still\s+waiting|where\s+is|gde\s+je|koliko\s+još|koliko\s+jos|kada\s+će|kada\s+ce)\b/i;
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
+import {
+  isGuestComplaintMessage,
+  isGuestStatusQueryMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
 
 const CAPS_BURST_PATTERN = /(?:[A-ZČĆŠĐŽ]{4,}|\b[A-ZČĆŠĐŽ]{2,}(?:\s+[A-ZČĆŠĐŽ]{2,})+\b)/;
-
 const PUNCTUATION_ESCALATION = /[!?]{2,}/;
-
-const NEGATIVE_SENTIMENT_PATTERN =
-  /\b(loše|lose|užasno|uzasno|terrible|awful|disgusting|ne\s+valja|ne\s+radi|ljut|angry|furious|disappointed)\b/i;
-
-const POSITIVE_SENTIMENT_PATTERN =
-  /\b(odlično|odlicno|super|fenomenalno|hvala\s+puno|great|awesome|love\s+it|perfect)\b/i;
 
 function normalizeForRepeat(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
@@ -44,8 +39,27 @@ function clampSentiment(score: number): number {
   return Math.max(-1, Math.min(1, Math.round(score * 100) / 100));
 }
 
+function sentimentFromInterpretation(
+  interpretation: TurnInterpretation | null | undefined
+): number | null {
+  if (!interpretation) return null;
+  switch (interpretation.sentiment) {
+    case "positive":
+      return 0.75;
+    case "frustrated":
+      return -0.75;
+    case "confused":
+      return -0.25;
+    default:
+      return 0;
+  }
+}
+
 /** Frustration + micro-sentiment from guest spine (ADR-038 Val C). */
-export function deriveAffect(spine: GuestSignalSpine): GuestAffect {
+export function deriveAffect(
+  spine: GuestSignalSpine,
+  interpretation?: TurnInterpretation | null
+): GuestAffect {
   const frustrationSignals: string[] = [];
   const sentimentSignals: string[] = [];
   const repeatCounts = new Map<string, number>();
@@ -54,7 +68,7 @@ export function deriveAffect(spine: GuestSignalSpine): GuestAffect {
     const text = message.text.trim();
     if (!text) continue;
 
-    if (WAITING_PATTERN.test(text)) {
+    if (isGuestStatusQueryMessage(text) || isGuestComplaintMessage(text)) {
       frustrationSignals.push(`waiting:${text.slice(0, 40)}`);
     }
     if (CAPS_BURST_PATTERN.test(text)) {
@@ -70,19 +84,15 @@ export function deriveAffect(spine: GuestSignalSpine): GuestAffect {
     if (count >= 2) {
       frustrationSignals.push(`repeat:${normalized.slice(0, 40)}`);
     }
-
-    if (NEGATIVE_SENTIMENT_PATTERN.test(text)) {
-      sentimentSignals.push(`negative:${text.slice(0, 40)}`);
-    } else if (POSITIVE_SENTIMENT_PATTERN.test(text)) {
-      sentimentSignals.push(`positive:${text.slice(0, 40)}`);
-    }
   }
 
   const uniqueFrustrationSignals = [...new Set(frustrationSignals)].slice(-8);
   const uniqueSentimentSignals = [...new Set(sentimentSignals)].slice(-6);
 
-  let sentimentScore = 0;
-  if (uniqueSentimentSignals.length > 0) {
+  const interpretedScore = sentimentFromInterpretation(interpretation);
+  let sentimentScore = interpretedScore ?? 0;
+
+  if (interpretedScore == null && uniqueSentimentSignals.length > 0) {
     let sum = 0;
     for (const signal of uniqueSentimentSignals) {
       sum += signal.startsWith("positive:") ? 1 : -1;
@@ -91,8 +101,22 @@ export function deriveAffect(spine: GuestSignalSpine): GuestAffect {
   }
 
   const frustrationLevel = deriveFrustrationLevel(uniqueFrustrationSignals);
-  if (frustrationLevel === "high" && sentimentScore > -0.5) {
+  if (
+    frustrationLevel === "high" &&
+    sentimentScore > -0.5 &&
+    (interpretation?.sentiment === "frustrated" || interpretedScore == null)
+  ) {
     sentimentScore = clampSentiment(Math.min(sentimentScore, -0.5));
+  }
+
+  if (interpretation?.sentiment === "frustrated" && frustrationLevel === "none") {
+    return {
+      frustration: { level: "mild", signals: ["interpretation:frustrated"] },
+      sentiment: {
+        score: clampSentiment(Math.min(sentimentScore, -0.5)),
+        lastSignals: ["interpretation:frustrated"],
+      },
+    };
   }
 
   return {
@@ -102,7 +126,10 @@ export function deriveAffect(spine: GuestSignalSpine): GuestAffect {
     },
     sentiment: {
       score: sentimentScore,
-      lastSignals: uniqueSentimentSignals,
+      lastSignals:
+        interpretation?.sentiment && interpretation.sentiment !== "neutral"
+          ? [`interpretation:${interpretation.sentiment}`]
+          : uniqueSentimentSignals,
     },
   };
 }

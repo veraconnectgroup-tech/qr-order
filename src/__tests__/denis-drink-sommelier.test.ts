@@ -27,7 +27,11 @@ import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 
 const now = Date.parse("2026-06-07T20:00:00.000Z");
 
-function foodOrder(id: string, productName: string): AiGuestOrder {
+function foodOrder(
+  id: string,
+  productName: string,
+  foodTags: string[] = []
+): AiGuestOrder {
   return {
     id,
     status: "preparing",
@@ -40,6 +44,7 @@ function foodOrder(id: string, productName: string): AiGuestOrder {
         unit_price: 18,
         quantity: 1,
         menu_section: "food",
+        food_tags: foodTags,
       },
     ],
   };
@@ -81,22 +86,30 @@ const rankMessages = {
 
 describe("drink knowledge graph", () => {
   it("classifies Pilsner as Light Lager pairing with salty food", () => {
-    const node = classifyDrinkKnowledge("Pilsner 0.5L");
+    const node = classifyDrinkKnowledge({
+      productName: "Pilsner 0.5L",
+      drinkFamily: "beer",
+      menuSection: "drinks",
+    });
     expect(node.category).toBe("beer");
     expect(node.family).toBe("Light Lager");
     expect(node.pairsWith).toContain("salty");
   });
 
-  it("maps Aperol Spritz to aperitif with mocktail alternative", () => {
-    const node = classifyDrinkKnowledge("Aperol Spritz");
-    expect(node.family).toBe("Aperitif");
+  it("maps Aperol Spritz to cocktail with mocktail alternative", () => {
+    const node = classifyDrinkKnowledge({
+      productName: "Aperol Spritz",
+      drinkFamily: "cocktail",
+      menuSection: "drinks",
+    });
+    expect(node.family).toBe("Cocktail");
     expect(mocktailFor("Aperol Spritz")).toBe("Aperol Spritz 0%");
   });
 });
 
 describe("food-drink sommelier pairing", () => {
   it("steak → Cabernet Sauvignon ili Pilsner", () => {
-    const suggestion = suggestDrinksForFood("Steak", "pairing");
+    const suggestion = suggestDrinksForFood("Steak", "pairing", ["steak", "beef"]);
     expect(suggestion?.primary).toBe("Cabernet Sauvignon");
     expect(suggestion?.secondary).toBe("Pilsner");
 
@@ -110,14 +123,17 @@ describe("food-drink sommelier pairing", () => {
   });
 
   it("salad → Sauvignon Blanc ili Radler", () => {
-    const suggestion = suggestDrinksForFood("Ceasar salata", "pairing");
+    const suggestion = suggestDrinksForFood("Ceasar salata", "pairing", [
+      "salad",
+      "light",
+    ]);
     expect(suggestion?.primary).toBe("Sauvignon Blanc");
     expect(suggestion?.secondary).toBe("Radler");
   });
 
   it("fires sommelier pairing trigger for steak order", () => {
     const trigger = detectSommelierFoodPairingTrigger(
-      [foodOrder("steak-1", "Steak")],
+      [foodOrder("steak-1", "Steak", ["steak", "beef"])],
       () => false,
       now,
       { sessionPhase: "waiting" }
@@ -152,9 +168,15 @@ describe("situational drink occasion", () => {
 
 describe("drink refill prediction", () => {
   it("beer refill target is ~20 minutes", () => {
-    expect(avgDrinkDurationMinutes("Pilsner 0.5L")).toBe(20);
-    expect(avgDrinkDurationMinutes("Cabernet Sauvignon")).toBe(30);
-    expect(avgDrinkDurationMinutes("Negroni")).toBe(25);
+    expect(
+      avgDrinkDurationMinutes("Pilsner 0.5L", { drinkFamily: "beer" })
+    ).toBe(20);
+    expect(
+      avgDrinkDurationMinutes("Cabernet Sauvignon", { drinkFamily: "wine_red" })
+    ).toBe(30);
+    expect(
+      avgDrinkDurationMinutes("Negroni", { drinkFamily: "cocktail" })
+    ).toBe(25);
   });
 
   it("20min after beer → sommelier refill trigger", () => {
@@ -267,6 +289,7 @@ describe("situation pack sommelier bar block", () => {
                   productName: "Steak",
                   quantity: 1,
                   menuSection: "food",
+                  foodTags: ["steak", "beef"],
                 },
               ],
             },

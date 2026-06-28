@@ -868,6 +868,7 @@ export function detectReviewTrigger(input: {
   postRecoveryEligible?: boolean;
   guestSentimentAfterRecovery?: import("@/lib/commerce/experience/resolve-experience-moment").FeedbackSentiment | null;
   recoveryIssueLabel?: string | null;
+  guestAffect?: import("@/lib/denis/cognition/mental-model/mental-model-types").GuestAffect | null;
 }): ProactiveTriggerMatch | null {
   const now = input.now ?? Date.now();
   if (input.phase !== "settling" && input.phase !== "closed") return null;
@@ -886,6 +887,7 @@ export function detectReviewTrigger(input: {
     recoveryCompleted: input.recoveryCompleted,
     postRecoveryEligible: input.postRecoveryEligible,
     lastGuestMessage: input.lastGuestMessage,
+    guestAffect: input.guestAffect ?? null,
   });
 
   if (!isReviewMomentReady(momentResult)) return null;

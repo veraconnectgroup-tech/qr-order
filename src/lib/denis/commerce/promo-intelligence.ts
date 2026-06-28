@@ -1,4 +1,5 @@
 import type { PromoCode } from "@/types";
+import { isGuestPromoInquiryMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 
 export type PromoTrigger =
   | "first_visit"
@@ -55,11 +56,8 @@ export const PROACTIVE_PROMO_TRIGGERS: PromoTrigger[] = [
   "slow_period",
 ];
 
-const GUEST_ASKED_PROMO_PATTERN =
-  /\b(popust\w*|discount|rabat|promo\w*|promocij\w*|kod|code|gutschein|coupon|voucher)\b/i;
-
 export function guestAskedAboutPromo(message: string): boolean {
-  return GUEST_ASKED_PROMO_PATTERN.test(message.trim());
+  return isGuestPromoInquiryMessage(message.trim());
 }
 
 export function isProactivePromoTrigger(trigger: PromoTrigger): boolean {

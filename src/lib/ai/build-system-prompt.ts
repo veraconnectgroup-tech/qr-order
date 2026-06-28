@@ -356,7 +356,22 @@ function outputFormatBlock(): string {
   }],
   "quickReplies": [],
   "submitOrder": false,
-  "message": "message to guest"
+  "message": "message to guest",
+  "turnInterpretation": {
+    "sentiment": "neutral|positive|frustrated|confused",
+    "mealStage": "pre_order|ordering|waiting|eating|dessert|paying|null",
+    "modifications": [{ "swap": {"from":"", "to":""}, "remove": "", "add": "", "modifier": "", "cooking": "" }],
+    "preferences": ["bez luka", "vegan"],
+    "followUpMinutes": null,
+    "partySize": null,
+    "awaiting": null,
+    "askedDessert": false,
+    "sidePreference": null,
+    "cookingPreference": null,
+    "agreedOrderLine": null,
+    "guestReferenceKind": null,
+    "guestReferenceDetail": null
+  }
 }`;
 }
 

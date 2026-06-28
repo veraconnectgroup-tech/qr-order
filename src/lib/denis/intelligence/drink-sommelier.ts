@@ -1,7 +1,7 @@
 import type { GuestMealStage } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import {
   classifyDrinkKnowledge,
-  foodTagsFromProductName,
+  foodTagsFromProduct,
   type DrinkOccasion,
 } from "@/lib/denis/kernel/vkg/drink-knowledge-graph";
 
@@ -24,37 +24,37 @@ export const DRINK_DURATION_MINUTES: Record<string, number> = {
 };
 
 const FOOD_PAIRING_RULES: Array<{
-  foodPattern: RegExp;
+  foodTags: string[];
   primary: string;
   secondary: string;
   reason: string;
 }> = [
   {
-    foodPattern: /\b(steak|ribeye|beef|teletina|burger|pljeskav)\b/i,
+    foodTags: ["steak", "beef", "grilled", "burger"],
     primary: "Cabernet Sauvignon",
     secondary: "Pilsner",
     reason: "bold red or crisp lager with grilled meat",
   },
   {
-    foodPattern: /\b(pizza|pasta|carbonara|margherita|lasagn)\b/i,
+    foodTags: ["pizza", "pasta", "italian"],
     primary: "Chianti",
     secondary: "Pilsner",
     reason: "light red or lager with Italian dishes",
   },
   {
-    foodPattern: /\b(salat|salad|salata|cezar|caesar)\b/i,
+    foodTags: ["salad", "light"],
     primary: "Sauvignon Blanc",
     secondary: "Radler",
     reason: "light white or refreshing radler with salad",
   },
   {
-    foodPattern: /\b(fish|riba|losos|salmon|tuna|brancin)\b/i,
+    foodTags: ["fish"],
     primary: "Riesling",
     secondary: "Pilsner",
     reason: "semi-dry white or lager with fish",
   },
   {
-    foodPattern: /\b(sushi|suši|ramen|wok|azij|asian|curry)\b/i,
+    foodTags: ["asian"],
     primary: "Riesling",
     secondary: "Radler",
     reason: "off-dry white or radler with asian flavors",
@@ -64,8 +64,15 @@ const FOOD_PAIRING_RULES: Array<{
 const APERITIF_SUGGESTIONS = ["Aperol Spritz", "Prosecco", "Pilsner 0.5L"];
 const DIGESTIF_SUGGESTIONS = ["Grappa", "Limoncello", "Espresso"];
 
-export function avgDrinkDurationMinutes(drinkName: string): number {
-  const node = classifyDrinkKnowledge(drinkName);
+export function avgDrinkDurationMinutes(
+  drinkName: string,
+  metadata?: { drinkFamily?: string | null; menuSection?: string | null }
+): number {
+  const node = classifyDrinkKnowledge({
+    productName: drinkName,
+    drinkFamily: metadata?.drinkFamily ?? null,
+    menuSection: metadata?.menuSection ?? "drinks",
+  });
   switch (node.category) {
     case "beer":
       return DRINK_DURATION_MINUTES.beer;
@@ -135,7 +142,8 @@ export function isOccasionAllowed(
 
 export function suggestDrinksForFood(
   foodName: string,
-  occasion: DrinkOccasion = "pairing"
+  occasion: DrinkOccasion = "pairing",
+  foodTags: string[] = []
 ): SommelierPairingSuggestion | null {
   if (occasion === "aperitif") {
     return {
@@ -157,8 +165,9 @@ export function suggestDrinksForFood(
     };
   }
 
+  const tags = foodTagsFromProduct({ foodName, foodTags });
   for (const rule of FOOD_PAIRING_RULES) {
-    if (!rule.foodPattern.test(foodName)) continue;
+    if (!rule.foodTags.some((tag) => tags.includes(tag))) continue;
     return {
       primary: rule.primary,
       secondary: rule.secondary,
@@ -168,7 +177,6 @@ export function suggestDrinksForFood(
     };
   }
 
-  const tags = foodTagsFromProductName(foodName);
   if (tags.includes("steak") || tags.includes("beef")) {
     return {
       primary: "Cabernet Sauvignon",

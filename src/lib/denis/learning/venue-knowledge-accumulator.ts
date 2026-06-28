@@ -28,14 +28,10 @@ import type {
   VenueKnowledgeOrderRow,
 } from "@/lib/denis/learning/venue-knowledge-types";
 
-const BEER_PATTERN =
-  /\b(pilsner|lager|weizen|radler|pivo|beer|ipa|stout|ale|porter)\b/i;
-const WINE_PATTERN =
-  /\b(riesling|sauvignon|chardonnay|pinot|vino|wine|prosecco|šampanjac|champagne|crveno|belo)\b/i;
-const COCKTAIL_PATTERN =
-  /\b(cocktail|spritz|aperol|negroni|mojito|margarita|martini|gin tonic|g&t)\b/i;
-const DESSERT_PATTERN =
-  /\b(torta|cake|desert|dessert|pala[cč]inke|pancake|ice cream|sladoled|tiramisu|cheesecake)\b/i;
+import {
+  classifyDrinkMixCategory,
+  isDessertProduct,
+} from "@/lib/denis/catalog/product-semantics";
 
 const WEEKDAY_LABELS = [
   "Nedelja",
@@ -69,25 +65,23 @@ function normalizeLang(code: string): string {
   return code.trim().toLowerCase().slice(0, 2) || "sr";
 }
 
-function classifyDrinkCategory(productName: string, menuSection?: string | null) {
-  const section = (menuSection ?? "").toLowerCase();
-  const name = productName.trim();
+function classifyDrinkCategory(row: VenueKnowledgeOrderRow) {
+  if (row.drinkFamily) {
+    return classifyDrinkMixCategory(row.drinkFamily);
+  }
+  const section = (row.menuSection ?? "").toLowerCase();
   if (section.includes("drink") || section.includes("bar")) {
-    if (BEER_PATTERN.test(name)) return "beer";
-    if (WINE_PATTERN.test(name)) return "wine";
-    if (COCKTAIL_PATTERN.test(name)) return "cocktail";
     return "other";
   }
-  if (BEER_PATTERN.test(name)) return "beer";
-  if (WINE_PATTERN.test(name)) return "wine";
-  if (COCKTAIL_PATTERN.test(name)) return "cocktail";
   return "other";
 }
 
 function isDessert(row: VenueKnowledgeOrderRow): boolean {
-  const section = (row.menuSection ?? "").toLowerCase();
-  if (section.includes("dessert")) return true;
-  return DESSERT_PATTERN.test(row.productName);
+  return isDessertProduct({
+    menuSection: row.menuSection,
+    foodTags: row.foodTags ?? [],
+    drinkFamily: row.drinkFamily ?? null,
+  });
 }
 
 function toHistoricalRows(rows: VenueKnowledgeOrderRow[]): HistoricalOrderRow[] {
@@ -101,7 +95,7 @@ function toHistoricalRows(rows: VenueKnowledgeOrderRow[]): HistoricalOrderRow[] 
 function computeDrinkMix(rows: VenueKnowledgeOrderRow[]): VenueDrinkMix {
   const counts = { beer: 0, wine: 0, cocktail: 0, other: 0 };
   for (const row of rows) {
-    const category = classifyDrinkCategory(row.productName, row.menuSection);
+    const category = classifyDrinkCategory(row);
     if (category === "beer") counts.beer += 1;
     else if (category === "wine") counts.wine += 1;
     else if (category === "cocktail") counts.cocktail += 1;
@@ -379,10 +373,16 @@ export function accumulateVenueKnowledge(
         ? partitioned.aggregated
         : partitioned.trend;
 
-  const drinkMix = computeDrinkMix(activeRows.filter((row) => {
-    const section = (row.menuSection ?? "").toLowerCase();
-    return section.includes("drink") || section.includes("bar") || classifyDrinkCategory(row.productName, row.menuSection) !== "other";
-  }));
+  const drinkMix = computeDrinkMix(
+    activeRows.filter((row) => {
+      const section = (row.menuSection ?? "").toLowerCase();
+      return (
+        section.includes("drink") ||
+        section.includes("bar") ||
+        Boolean(row.drinkFamily)
+      );
+    })
+  );
 
   const tasteProfile: VenueTasteProfile = {
     drinkMix,

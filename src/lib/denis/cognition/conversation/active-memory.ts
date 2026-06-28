@@ -8,6 +8,10 @@ import {
   resolveGuestReference,
 } from "@/lib/denis/cognition/conversation/topic-tracker";
 import { foldTranscriptFromTimeline } from "@/lib/denis/loop/fold-transcript";
+import {
+  collectTurnInterpretationsFromTimeline,
+  extractTurnInterpretationFromTimeline,
+} from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import {
@@ -40,59 +44,10 @@ type DialogueMessage = { role: "guest" | "denis"; text: string };
 const DEFAULT_MAX_ACTIVE_MEMORY_TOKENS = 500;
 const DENIS_QUESTION_PATTERN = /\?|da\s+li|jeste\s+li|have\s+you|haben\s+sie|möchten\s+sie/i;
 
-const PREFERENCE_PATTERNS: Array<{ pattern: RegExp; format: (match: RegExpMatchArray) => string }> = [
-  {
-    pattern: /\bbez\s+([a-zčćžšđa-zäöüß]+(?:\s+[a-zčćžšđa-zäöüß]+){0,3})/i,
-    format: (m) => `bez ${m[1]!.trim()}`,
-  },
-  {
-    pattern: /\bne\s+(ljuto|pijaci|slatko|slano|luk|luka|mesa|meso)\b/i,
-    format: (m) => `ne ${m[1]!.toLowerCase()}`,
-  },
-  {
-    pattern: /\balergij[aue]?\s+na\s+([^?.!,]+)/i,
-    format: (m) => `alergija na ${m[1]!.trim()}`,
-  },
-  {
-    pattern: /\bwithout\s+([^?.!,]+)/i,
-    format: (m) => `without ${m[1]!.trim()}`,
-  },
-  {
-    pattern: /\bno\s+(onion|garlic|nuts|dairy|meat|spicy|gluten)\b/i,
-    format: (m) => `no ${m[1]!.toLowerCase()}`,
-  },
-  {
-    pattern: /\bohne\s+([^?.!,]+)/i,
-    format: (m) => `ohne ${m[1]!.trim()}`,
-  },
-  {
-    pattern: /\b(vegan(?:sko|ski)?|vegetarijan(?:sko|ski)?)\b/i,
-    format: (m) => m[1]!.toLowerCase(),
-  },
-];
-
-const FRUSTRATION_PATTERN =
-  /\b(čekam|sporo|predugo|loš[eo]|užas|frustri|ljut|annoyed|angry|waiting\s+forever|zu\s+lange|schlecht)\b/i;
-
-const RECOVERY_PATTERN =
-  /\b(hvala|ok|u\s+redu|super|nema\s+veze|passt|danke|thanks|all\s+good|sad\s+je\s+ok)\b/i;
-
-const EMPATHY_DENIS_PATTERN =
-  /\b(izvinite|žao\s+mi\s+je|razumem|verstehe|sorry|empati|čekate|wartezeit)\b/i;
-
 const AGREED_ORDER_PATTERN =
   /\b(\d+\s*[x×]\s*[a-zčćžšđ0-9\s-]{2,40})/i;
 
 const TABLE_PATTERN = /\b(sto|stol|table)\s*#?\s*(\d+)\b/i;
-
-const COOKING_PATTERN =
-  /\b(medium\s+rare|medium|well\s+done|rare|bloody|roštilj|stepen\s+pečenja)\b/i;
-
-const SIDE_PATTERN =
-  /\b(pomfrit(?:om|a)?|pomf|fries|prilog|side|salata|salad|riža|rice)\b/i;
-
-const DESSERT_ASK_PATTERN =
-  /\b(desert|dessert|slatki|slatko|kolač|torta|palačink)\b/i;
 
 const ORDER_VERB_PATTERN =
   /\b(traž|traz|hoću|hocu|daj|naruč|naruc|want|order|bestell|möchte)\b/i;
@@ -111,20 +66,24 @@ function uniqueStrings(values: string[]): string[] {
   return out;
 }
 
-function extractPreferences(messages: DialogueMessage[]): string[] {
-  const prefs: string[] = [];
-  for (const msg of messages) {
-    if (msg.role !== "guest") continue;
-    for (const { pattern, format } of PREFERENCE_PATTERNS) {
-      const match = msg.text.match(pattern);
-      if (match) prefs.push(format(match));
-    }
-  }
+function extractPreferencesFromTimeline(timeline: DenisTimelineRow[]): string[] {
+  const prefs = collectTurnInterpretationsFromTimeline(timeline).flatMap((row) =>
+    row.interpretation.preferences.map((pref) => pref.trim()).filter(Boolean)
+  );
   return uniqueStrings(prefs);
 }
 
-function extractAgreedFacts(messages: DialogueMessage[]): string[] {
+function extractAgreedFacts(
+  messages: DialogueMessage[],
+  timeline: DenisTimelineRow[]
+): string[] {
   const facts: string[] = [];
+
+  for (const row of collectTurnInterpretationsFromTimeline(timeline)) {
+    if (row.interpretation.agreedOrderLine) {
+      facts.push(row.interpretation.agreedOrderLine);
+    }
+  }
 
   for (const msg of messages) {
     const orderMatch = msg.text.match(AGREED_ORDER_PATTERN);
@@ -187,21 +146,28 @@ function extractOpenQuestions(messages: DialogueMessage[]): string[] {
   return uniqueStrings(open).slice(0, 4);
 }
 
-function detectMoodShift(messages: DialogueMessage[]): string | null {
+function detectMoodShiftFromInterpretations(
+  timeline: DenisTimelineRow[]
+): string | null {
+  const interpretations = collectTurnInterpretationsFromTimeline(timeline);
+  if (interpretations.length === 0) {
+    return null;
+  }
+
   let frustratedAt: number | null = null;
   let recoveredAt: number | null = null;
 
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i]!;
-    if (msg.role === "guest" && FRUSTRATION_PATTERN.test(msg.text)) {
+  for (let i = 0; i < interpretations.length; i++) {
+    const row = interpretations[i]!;
+    if (row.interpretation.sentiment === "frustrated") {
       frustratedAt = i;
       recoveredAt = null;
     }
     if (frustratedAt !== null && i > frustratedAt) {
-      if (msg.role === "guest" && RECOVERY_PATTERN.test(msg.text)) {
-        recoveredAt = i;
-      }
-      if (msg.role === "denis" && EMPATHY_DENIS_PATTERN.test(msg.text)) {
+      if (
+        row.interpretation.sentiment === "positive" ||
+        row.interpretation.sentiment === "neutral"
+      ) {
         recoveredAt = i;
       }
     }
@@ -212,6 +178,10 @@ function detectMoodShift(messages: DialogueMessage[]): string | null {
     return "bio frustriran, sada OK nakon empatičnog odgovora";
   }
   return "gost je bio frustriran — budi empatičan";
+}
+
+function detectMoodShift(timeline: DenisTimelineRow[]): string | null {
+  return detectMoodShiftFromInterpretations(timeline);
 }
 
 function buildDeterministicSummary(
@@ -272,57 +242,53 @@ function averageFreshness(
   return sum / messages.length;
 }
 
-function extractCookingPreference(messages: DialogueMessage[]): string | null {
-  for (const msg of messages) {
-    if (msg.role !== "guest") continue;
-    const match = msg.text.match(COOKING_PATTERN);
-    if (match) return match[1]!.toLowerCase();
+function latestCookingPreference(timeline: DenisTimelineRow[]): string | null {
+  const interpretations = collectTurnInterpretationsFromTimeline(timeline);
+  for (let i = interpretations.length - 1; i >= 0; i--) {
+    const cooking = interpretations[i]!.interpretation.cookingPreference;
+    if (cooking) return cooking.toLowerCase();
   }
   return null;
 }
 
-function extractSidePreference(messages: DialogueMessage[]): string | null {
-  for (const msg of messages) {
-    if (msg.role !== "guest") continue;
-    const match = msg.text.match(SIDE_PATTERN);
-    if (match) return match[1]!.toLowerCase();
+function latestSidePreference(timeline: DenisTimelineRow[]): string | null {
+  const interpretations = collectTurnInterpretationsFromTimeline(timeline);
+  for (let i = interpretations.length - 1; i >= 0; i--) {
+    const side = interpretations[i]!.interpretation.sidePreference;
+    if (side) return side.toLowerCase();
   }
   return null;
 }
 
-function extractMainOrderItem(messages: DialogueMessage[]): string | null {
-  for (const msg of messages) {
-    if (msg.role !== "guest") continue;
-    const burger = msg.text.match(/\b(burger|ćevap|steak|pizza|pasta)\b/i);
-    if (burger) return burger[1]!.toLowerCase();
-    const qty = msg.text.match(AGREED_ORDER_PATTERN);
-    if (qty) return qty[1]!.trim();
-  }
-  return null;
-}
-
-function guestAskedAboutDessert(messages: DialogueMessage[]): boolean {
-  return messages.some(
-    (msg) => msg.role === "guest" && DESSERT_ASK_PATTERN.test(msg.text)
+function guestAskedAboutDessert(timeline: DenisTimelineRow[]): boolean {
+  return collectTurnInterpretationsFromTimeline(timeline).some(
+    (row) => row.interpretation.askedDessert
   );
 }
 
 /** Semantic compression — 20 turns → ≤5 key facts, ~40 tokens narrative. */
 export function buildSemanticKeyFacts(input: {
   messages: DialogueMessage[];
-  /** Full thread including raw tail — for open questions / dessert asks. */
-  fullMessages?: DialogueMessage[];
+  timeline: DenisTimelineRow[];
   preferences: string[];
   agreedFacts: string[];
   openQuestions: string[];
 }): { keyFacts: string[]; semanticSummary: string } {
-  const { messages, preferences, agreedFacts, openQuestions } = input;
-  const fullMessages = input.fullMessages ?? messages;
+  const { messages, timeline, preferences, agreedFacts, openQuestions } = input;
   const keyFacts: string[] = [];
 
-  const mainItem = extractMainOrderItem(messages);
-  const cooking = extractCookingPreference(messages);
-  const side = extractSidePreference(messages);
+  const interpretations = collectTurnInterpretationsFromTimeline(timeline);
+  const mainItem =
+    interpretations
+      .map((row) => row.interpretation.agreedOrderLine)
+      .find(Boolean) ??
+    messages
+      .filter((msg) => msg.role === "guest")
+      .map((msg) => msg.text.match(AGREED_ORDER_PATTERN)?.[1]?.trim())
+      .find(Boolean) ??
+    null;
+  const cooking = latestCookingPreference(timeline);
+  const side = latestSidePreference(timeline);
   const prefs = preferences.slice(0, 3);
 
   if (mainItem || prefs.length > 0) {
@@ -338,7 +304,7 @@ export function buildSemanticKeyFacts(input: {
     keyFacts.push(`Dogovoreno: ${fact}`);
   }
 
-  if (guestAskedAboutDessert(fullMessages)) {
+  if (guestAskedAboutDessert(timeline)) {
     keyFacts.push("Pita za desert");
   }
 
@@ -429,12 +395,12 @@ export function buildActiveMemory(
   const guestTurns = messages.filter((m) => m.role === "guest").length;
   const denisTurns = messages.filter((m) => m.role === "denis").length;
 
-  const preferences = extractPreferences(summarized);
-  const agreedFacts = extractAgreedFacts(summarized);
+  const preferences = extractPreferencesFromTimeline(timeline);
+  const agreedFacts = extractAgreedFacts(summarized, timeline);
   const openQuestions = extractOpenQuestions(messages);
   const { keyFacts, semanticSummary } = buildSemanticKeyFacts({
     messages: summarized,
-    fullMessages: messages,
+    timeline,
     preferences,
     agreedFacts,
     openQuestions,
@@ -445,8 +411,13 @@ export function buildActiveMemory(
     .join("\n");
 
   const lastGuestMessage = [...messages].reverse().find((m) => m.role === "guest");
+  const latestInterpretation = extractTurnInterpretationFromTimeline(timeline);
   const referenceResolution = conversationGraph && lastGuestMessage
-    ? resolveGuestReference(conversationGraph, lastGuestMessage.text)
+    ? resolveGuestReference(
+        conversationGraph,
+        lastGuestMessage.text,
+        latestInterpretation
+      )
     : null;
 
   const graphContextBlock = conversationGraph
@@ -459,7 +430,7 @@ export function buildActiveMemory(
     agreedFacts,
     keyFacts,
     semanticSummary,
-    moodShift: detectMoodShift(messages),
+    moodShift: detectMoodShift(timeline),
     conversationSummary:
       semanticSummary ||
       buildDeterministicSummary(summarized, guestTurns, denisTurns),

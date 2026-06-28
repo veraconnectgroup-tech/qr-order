@@ -1,3 +1,4 @@
+import type { GuestAffect } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { SessionPhase } from "@/lib/scene/types";
 
 export type ReviewTriggerMoment =
@@ -12,10 +13,8 @@ export type ReviewMomentBlockReason =
   | "guest_rushed"
   | "no_optimal_window";
 
-const COMPLIMENT_PATTERN =
-  /\b(odličn|odlicn|super|fantasti|savršen|savrsen|preukusn|excellent|amazing|perfect|wonderful|toll|lecker|köstlich|kostlich|great meal|loved it|bilo je odlično|bilo je odlicno)\b/i;
-
 const RUSH_SESSION_MAX_MINUTES = 25;
+const POSITIVE_AFFECT_THRESHOLD = 0.5;
 
 export type DetectReviewMomentInput = {
   phase: SessionPhase;
@@ -29,6 +28,8 @@ export type DetectReviewMomentInput = {
   recoveryCompleted?: boolean;
   postRecoveryEligible?: boolean;
   lastGuestMessage?: string | null;
+  /** Folded guest affect — positive sentiment triggers compliment moment. */
+  guestAffect?: Pick<GuestAffect, "sentiment"> | null;
 };
 
 export type ReviewMomentResult = {
@@ -38,10 +39,11 @@ export type ReviewMomentResult = {
 };
 
 function guestComplimentDetected(input: DetectReviewMomentInput): boolean {
-  const sources = [input.guestComplimentText, input.lastGuestMessage].filter(
-    Boolean
-  ) as string[];
-  return sources.some((text) => COMPLIMENT_PATTERN.test(text));
+  const affectScore = input.guestAffect?.sentiment.score;
+  if (affectScore != null && affectScore >= POSITIVE_AFFECT_THRESHOLD) {
+    return true;
+  }
+  return false;
 }
 
 function isStillEating(input: DetectReviewMomentInput): boolean {

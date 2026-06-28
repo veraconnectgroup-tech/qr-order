@@ -13,6 +13,7 @@ import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
+import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 function tellRow(seq: number, message: string): DenisTimelineRow {
   return {
@@ -28,6 +29,22 @@ function tellRow(seq: number, message: string): DenisTimelineRow {
 }
 
 function guestRow(seq: number, text: string): DenisTimelineRow {
+  const interpretation = normalizeTurnInterpretation({
+    sentiment: "neutral",
+    mealStage: "ordering",
+    modifications: [],
+    preferences: /bez luka/i.test(text) ? ["bez luka"] : [],
+    followUpMinutes: null,
+    partySize: null,
+    awaiting: null,
+    askedDessert: /\bdesert\b/i.test(text),
+    sidePreference: /pomfrit/i.test(text) ? "pomfrit" : null,
+    cookingPreference: /medium rare/i.test(text) ? "medium rare" : null,
+    agreedOrderLine: null,
+    guestReferenceKind: null,
+    guestReferenceDetail: null,
+  });
+
   return {
     id: `guest-${seq}`,
     ai_session_id: "sess-1",
@@ -40,8 +57,11 @@ function guestRow(seq: number, text: string): DenisTimelineRow {
         normalizedText: text,
         structuredIntent: null,
         ingestedAt: new Date().toISOString(),
+        interpretation,
       },
       envelope: { traceId: "t1", surface: "chat" },
+      interpretation,
+      turnInterpretation: interpretation,
     },
     trace_id: null,
     context_hash: null,

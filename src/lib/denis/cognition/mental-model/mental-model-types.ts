@@ -1,4 +1,5 @@
 import type { DeclineState } from "@/lib/denis/cognition/mental-model/decline-state";
+import type { GuestAccessibilityPrefs } from "@/lib/denis/cognition/mental-model/accessibility-types";
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-signal-types";
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
@@ -6,7 +7,8 @@ import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema
 import type { OrderFact, SessionPhase, TableSessionState } from "@/lib/denis/loop/types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import type { TablePartyModel } from "@/lib/denis/venue/party/types";
-import type { GuestAccessibilityPrefs } from "@/lib/denis/cognition/mental-model/accessibility-types";
+import type { BasketPair } from "@/lib/denis/config/basket-pair-types";
+import type { ProductSemanticMeta } from "@/lib/denis/catalog/product-semantics";
 
 export const GUEST_MENTAL_MODEL_VERSION = 1 as const;
 
@@ -270,4 +272,8 @@ export type FoldGuestMentalModelInput = {
   /** Override clock context for deterministic tests. */
   localHour?: number;
   dayOfWeek?: number;
+  /** Catalog semantic tags for L2 predictions (menuSection, foodTags, drinkFamily). */
+  productCatalog?: Record<string, ProductSemanticMeta>;
+  /** Learned basket pairs for bundle prediction. */
+  basketPairs?: BasketPair[];
 };

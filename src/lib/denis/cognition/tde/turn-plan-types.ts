@@ -119,6 +119,7 @@ export type DecideTurnPlanInput = {
   message: string;
   committedFacts?: CommittedFact[];
   conversationGraph?: ConversationGraph | null;
+  interpretation?: import("@/lib/denis/cognition/tde/turn-interpretation-types").TurnInterpretation | null;
 };
 
 export type PlanUtteranceInput = {

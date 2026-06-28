@@ -11,6 +11,11 @@ import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 
 const NOW = Date.parse("2026-06-07T12:30:00.000Z");
 
+const BURGER_FRIES_CATALOG = {
+  "burger-1": { menuSection: "food" as const, foodTags: ["burger"] },
+  "fries-1": { menuSection: "food" as const, foodTags: ["fries", "side"] },
+};
+
 function burgerFriesBrowse() {
   return {
     ...emptyBrowseProfile(),
@@ -49,6 +54,7 @@ describe("predictNextAction", () => {
       browse: burgerFriesBrowse(),
       cartLineCount: 0,
       intent: "comparing",
+      productCatalog: BURGER_FRIES_CATALOG,
     });
 
     expect(result.action).toBe("order_bundle");
@@ -168,10 +174,9 @@ describe("predictMealTrajectory", () => {
         dominantMenuSection: "food",
         browsedDesserts: true,
       },
-      partySize: 1,
+      partySize: 2,
       mealStage: "pre_order",
       intent: "exploring",
-      lastGuestText: "Sto za dvoje, hvala",
     });
 
     expect(result.partySize).toBe(2);
@@ -202,6 +207,7 @@ describe("foldGuestMentalModel L2 wiring", () => {
       now: NOW,
       localHour: 12,
       dayOfWeek: 2,
+      productCatalog: BURGER_FRIES_CATALOG,
     });
 
     expect(mental.predictions.nextAction.probability).toBe(0.85);

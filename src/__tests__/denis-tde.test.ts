@@ -227,7 +227,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.requiresLlm).toBe(true);
   });
 
-  it("ordering belief + hello uses transactional_perceive, not banter", () => {
+  it("ordering belief + hello stays relational (social thread, not cart pressure)", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "ordering"),
       belief("conversation.language", "sr"),
@@ -237,7 +237,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("hello"),
       message: "hello",
     });
-    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.kind).toBe("relational_perceive");
   });
 
   it("pure social greeting stays relational", () => {

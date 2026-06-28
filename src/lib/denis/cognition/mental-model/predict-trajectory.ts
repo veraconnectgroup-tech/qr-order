@@ -6,9 +6,6 @@ import type {
   GuestTrajectoryStep,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 
-const FOR_TWO_PATTERN =
-  /\b(za dvoje|for two|we are two|nas dvoje|we.?re two|table for 2)\b/i;
-
 function resolveCurrentStep(input: {
   mealStage: GuestMealStage;
   intent: GuestIntent;
@@ -51,12 +48,8 @@ export function predictMealTrajectory(input: {
   partySize: number;
   mealStage: GuestMealStage;
   intent: GuestIntent;
-  lastGuestText?: string | null;
 }): GuestTrajectoryPrediction {
-  const forTwo = FOR_TWO_PATTERN.test(input.lastGuestText ?? "");
-  const partySize = forTwo
-    ? Math.max(2, input.partySize)
-    : Math.max(1, input.partySize);
+  const partySize = Math.max(1, Math.round(input.partySize));
 
   const browsingMains =
     input.browse.browsedFood ||
@@ -80,8 +73,8 @@ export function predictMealTrajectory(input: {
   });
 
   let confidence = 0.45;
-  if (forTwo && browsingMains) confidence = 0.82;
-  else if (forTwo) confidence = 0.7;
+  if (partySize >= 2 && browsingMains) confidence = 0.82;
+  else if (partySize >= 2) confidence = 0.7;
   else if (browsingMains) confidence = 0.6;
 
   return {

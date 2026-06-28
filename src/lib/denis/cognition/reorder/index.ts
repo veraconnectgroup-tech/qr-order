@@ -1,7 +1,6 @@
 export {
   REORDER_CHIP_IDS,
   REORDER_NUDGE_PREFIX,
-  REORDER_REQUEST_PATTERN,
   buildDrinkEmptyNudgeMessage,
   buildReorderDockHeadline,
   detectReorderOpportunity,

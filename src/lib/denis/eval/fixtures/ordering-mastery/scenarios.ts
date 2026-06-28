@@ -8,6 +8,8 @@ import {
 import { parseLeadingOrderQuantity } from "@/lib/denis/cognition/conversation/parse-order-quantity";
 import { splitGroupOrderSegments } from "@/lib/denis/cognition/conversation/parse-group-order";
 import { searchCatalogProducts } from "@/lib/ai/catalog/catalog-search";
+import { normalizeTurnInterpretation, extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 
 export type OrderingMasteryScenario = {
   id: string;
@@ -15,6 +17,7 @@ export type OrderingMasteryScenario = {
   message: string;
   catalog: Record<string, AiCatalogProduct>;
   priorDraft?: ReturnType<typeof emptyOrderDraft>;
+  interpretation?: Partial<TurnInterpretation>;
   expect: {
     itemCount?: number;
     productNames?: string[];
@@ -169,6 +172,13 @@ export const ORDERING_MASTERY_SCENARIOS: OrderingMasteryScenario[] = [
     description: "Scenario B — stacked modifiers on one item",
     message: "Burger bez luka, sa extra sirom, medium rare",
     catalog: ORDERING_MASTERY_CATALOG,
+    interpretation: {
+      modifications: [
+        { modifier: "bez luka" },
+        { modifier: "extra sirom" },
+        { cooking: "medium rare" },
+      ],
+    },
     expect: {
       itemCount: 1,
       modifierNotesIncludes: ["bez luka", "extra sirom", "medium rare"],
@@ -179,6 +189,9 @@ export const ORDERING_MASTERY_SCENARIOS: OrderingMasteryScenario[] = [
     description: "Scenario D — swap drink mid-order",
     message: "Zapravo, ne Pilsner nego Weißbier",
     catalog: ORDERING_MASTERY_CATALOG,
+    interpretation: {
+      modifications: [{ swap: { from: "Pilsner", to: "Weißbier" } }],
+    },
     priorDraft: {
       ...emptyOrderDraft(),
       items: [
@@ -285,7 +298,12 @@ export function runOrderingMasteryScenario(
   }
 
   if (scenario.priorDraft && scenario.expect.swappedProductName) {
-    const swap = parseGuestCartSwap(scenario.message);
+    const interpretation = scenario.interpretation
+      ? normalizeTurnInterpretation(scenario.interpretation)
+      : normalizeTurnInterpretation(
+          extractTurnInterpretation({ guestMessage: scenario.message, llmUsed: false })
+        );
+    const swap = parseGuestCartSwap(scenario.message, interpretation);
     if (!swap) {
       errors.push("expected cart swap parse");
     } else {
@@ -319,7 +337,12 @@ export function runOrderingMasteryScenario(
       scenario.priorDraft ?? emptyOrderDraft(),
       catalog,
       scenario.message,
-      { requirePlacementPattern: false }
+      {
+        requirePlacementPattern: false,
+        interpretation: scenario.interpretation
+          ? normalizeTurnInterpretation(scenario.interpretation)
+          : undefined,
+      }
     );
 
     if (scenario.expect.itemCount != null) {

@@ -3,13 +3,19 @@ import type {
   GuestIntent,
   GuestNextActionPrediction,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import {
+  hasFoodTag,
+  type ProductSemanticMeta,
+} from "@/lib/denis/catalog/product-semantics";
+import type { BasketPair } from "@/lib/denis/config/basket-pair-types";
 
-const BURGER_PATTERN = /\bburger\b/i;
-const FRIES_PATTERN = /\b(fri(es)?|pomfrit|pommes)\b/i;
 const MIN_BURGER_DWELL_MS = 90_000;
 const PARALYSIS_VIEW_THRESHOLD = 5;
 const PARALYSIS_PROBABILITY = 0.7;
 const BUNDLE_PROBABILITY = 0.85;
+const BASKET_PAIR_MIN_CONFIDENCE = 65;
+
+type ProductCatalogMeta = Record<string, ProductSemanticMeta>;
 
 function none(): GuestNextActionPrediction {
   return {
@@ -21,13 +27,60 @@ function none(): GuestNextActionPrediction {
   };
 }
 
-function findBrowsedProduct(
+function metaForProduct(
+  productId: string,
+  catalog?: ProductCatalogMeta
+): ProductSemanticMeta {
+  return catalog?.[productId] ?? { foodTags: [], menuSection: null };
+}
+
+function findBrowsedByFoodTag(
   browse: GuestBrowseProfile,
-  pattern: RegExp
+  catalog: ProductCatalogMeta | undefined,
+  tag: string
 ) {
   return browse.viewedProducts.find((product) =>
-    pattern.test(product.productName)
+    hasFoodTag(metaForProduct(product.productId, catalog), tag)
   );
+}
+
+function findBasketPairSuggestion(input: {
+  browse: GuestBrowseProfile;
+  basketPairs?: BasketPair[];
+}): GuestNextActionPrediction | null {
+  if (!input.basketPairs?.length) return null;
+
+  for (const viewed of input.browse.viewedProducts) {
+    const anchorPairs = input.basketPairs.filter(
+      (pair) =>
+        pair.productA === viewed.productId &&
+        pair.confidencePercent >= BASKET_PAIR_MIN_CONFIDENCE
+    );
+    if (!anchorPairs.length) continue;
+
+    const best = anchorPairs.sort(
+      (a, b) => b.confidencePercent - a.confidencePercent
+    )[0]!;
+    const paired = input.browse.viewedProducts.find(
+      (product) => product.productId === best.productB
+    );
+
+    return {
+      action: "order_bundle",
+      probability: Math.min(0.9, best.confidencePercent / 100),
+      label: "learned_basket_pair",
+      preloadProducts: [
+        { productId: viewed.productId, productName: viewed.productName },
+        {
+          productId: best.productB,
+          productName: paired?.productName ?? best.productBName,
+        },
+      ],
+      triggerProactiveHelp: false,
+    };
+  }
+
+  return null;
 }
 
 /** Predict the guest's next move from browse + cart signals (L2). */
@@ -35,6 +88,8 @@ export function predictNextAction(input: {
   browse: GuestBrowseProfile;
   cartLineCount: number;
   intent: GuestIntent;
+  productCatalog?: ProductCatalogMeta;
+  basketPairs?: BasketPair[];
 }): GuestNextActionPrediction {
   const addedAny =
     input.cartLineCount > 0 ||
@@ -58,8 +113,20 @@ export function predictNextAction(input: {
     };
   }
 
-  const burger = findBrowsedProduct(input.browse, BURGER_PATTERN);
-  const fries = findBrowsedProduct(input.browse, FRIES_PATTERN);
+  const pairSuggestion = findBasketPairSuggestion({
+    browse: input.browse,
+    basketPairs: input.basketPairs,
+  });
+  if (pairSuggestion && !addedAny) {
+    return pairSuggestion;
+  }
+
+  const burger = findBrowsedByFoodTag(input.browse, input.productCatalog, "burger");
+  const fries = findBrowsedByFoodTag(
+    input.browse,
+    input.productCatalog,
+    "fries"
+  );
 
   if (
     burger &&

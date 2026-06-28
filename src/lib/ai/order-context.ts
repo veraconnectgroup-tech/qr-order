@@ -9,6 +9,8 @@ export type AiGuestOrderItem = {
   unit_price: number;
   quantity: number;
   menu_section: MenuSection;
+  /** From products.food_tags at order time — sommelier pairing without regex. */
+  food_tags?: string[];
 };
 
 export type AiGuestOrder = {

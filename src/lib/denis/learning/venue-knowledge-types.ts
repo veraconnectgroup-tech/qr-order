@@ -15,6 +15,8 @@ export type VenueKnowledgeOrderRow = {
   productId: string;
   productName: string;
   menuSection?: string | null;
+  drinkFamily?: string | null;
+  foodTags?: string[];
   createdAt: string;
   notes?: string | null;
   modifierNames?: string[];

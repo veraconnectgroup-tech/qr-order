@@ -22,6 +22,8 @@ import {
   buildInterpretationTask,
   turnPlanFromInterpretationTask,
 } from "@/lib/denis/cognition/tde/build-interpretation-task";
+import { synthesizeTurnInterpretationFromRouter } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import { hasGuestPostureCommercePressure } from "@/lib/denis/cognition/tde/resolve-guest-posture";
 import {
   isGuestOrderComplaintMessage,
   isGuestSettlingMessage,
@@ -210,30 +212,13 @@ function buildPlan(
 }
 
 function hasCommercePressure(input: DecideTurnPlanInput): boolean {
-  const pressure = getBeliefValue<CommercePressure>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.commercePressure
-  );
-  const awaiting = getBeliefValue<ConversationAwaiting>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.conversationAwaiting
-  );
-  const mode = getBeliefValue<ConversationMode>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.conversationMode
-  );
-  const pendingSlot = getBeliefValue<string>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.commercePendingSlot
-  );
-
-  return (
-    pressure === "open" ||
-    pressure === "confirm" ||
-    awaiting != null ||
-    Boolean(pendingSlot) ||
-    mode === "ordering"
-  );
+  return hasGuestPostureCommercePressure({
+    beliefs: input.beliefs,
+    guestMessage: input.message,
+    interpretation:
+      input.interpretation ??
+      synthesizeTurnInterpretationFromRouter(input.message),
+  });
 }
 
 /** ADR-030 + ADR-025 — comprehend-first perceive after deterministic exits. */
@@ -744,6 +729,8 @@ function mentalAttentionEscalationTurn(
   const msg = input.message.trim();
   if (!msg) return null;
 
+  if (isGuestVagueBrowseMessage(msg)) return null;
+
   const statusQuery = isGuestStatusQueryMessage(msg);
   const missingComplaint = isGuestOrderComplaintMessage(msg);
   const frustration =
@@ -758,11 +745,10 @@ function mentalAttentionEscalationTurn(
     return null;
   }
 
-  return buildPlan("template_tell", {
-    requiresLlm: false,
+  return buildPlan("relational_perceive", {
+    requiresLlm: true,
     suppressUpsell: true,
-    reason: "mental.attention_handoff",
-    templateKey: "mental.attention_handoff",
+    reason: "mental.attention_empathy",
   });
 }
 
@@ -914,6 +900,9 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
     {
       guestMessage: input.message,
       conversationGraph: input.conversationGraph,
+      interpretation:
+        input.interpretation ??
+        synthesizeTurnInterpretationFromRouter(input.message),
     }
   );
   if (interpretationTask) {

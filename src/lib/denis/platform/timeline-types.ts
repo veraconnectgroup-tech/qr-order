@@ -76,6 +76,8 @@ export type PerceptionFrame = {
   normalizedText: string | null;
   structuredIntent: GuestIntent | null;
   ingestedAt: string;
+  /** L3 guest understanding persisted at perceive time (LLM or router fallback). */
+  interpretation?: import("@/lib/denis/cognition/tde/turn-interpretation-types").TurnInterpretation;
 };
 
 export type DenisTimelineEventPayload =
@@ -84,6 +86,9 @@ export type DenisTimelineEventPayload =
       frame: PerceptionFrame;
       envelope: TurnEnvelope;
       browseEvent?: TimelineBrowseEvent;
+      /** Canonical L3 interpretation for downstream fold (active memory, mental model). */
+      interpretation?: import("@/lib/denis/cognition/tde/turn-interpretation-types").TurnInterpretation;
+      turnInterpretation?: import("@/lib/denis/cognition/tde/turn-interpretation-types").TurnInterpretation;
     }
   | {
       type: "intent.resolved";

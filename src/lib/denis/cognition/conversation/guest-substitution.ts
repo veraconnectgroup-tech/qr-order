@@ -2,9 +2,11 @@ import { searchCatalogProducts } from "@/lib/ai/catalog/catalog-search";
 import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import { processProposedItems } from "@/lib/ai/ordering/draft-engine";
-
-const SUBSTITUTION_PATTERN =
-  /\b(?:umesto|instead of|statt)\s+(.+?)(?:\s*[,.]|$)|(.+?)\s+(?:umesto|instead of|statt)\s+(.+)/i;
+import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import type {
+  TurnInterpretation,
+  TurnModification,
+} from "@/lib/denis/cognition/tde/turn-interpretation-types";
 
 const FRIES_WORD =
   /\b(pomfri\w*|pones\w*|pommes|fries|kartoffel\s*salat\w*|kartoffelsalat|prilog\w*|garnir\w*|beilage\w*|salat\w*)\b/i;
@@ -38,11 +40,13 @@ export type GuestRemovalRequest = {
   rawPhrase: string;
 };
 
-const EXTRA_MODIFIER_PATTERN =
-  /\b(?:sa|with|mit)\s+(?:extra|ekstra)\s+([^,.!?]+)/i;
-
-const COOKING_MODIFIER_PATTERN =
-  /\b(medium\s+rare|medium|well\s+done|rare|bloody|malo\s+pe[cč]eno|dobro\s+pe[cč]eno)\b/i;
+function resolveInterpretation(
+  segment: string,
+  interpretation?: TurnInterpretation | null
+): TurnInterpretation {
+  if (interpretation) return interpretation;
+  return extractTurnInterpretation({ guestMessage: segment, llmUsed: false });
+}
 
 function pushUniqueModifier(out: string[], modifier: string) {
   const normalized = modifier.trim().toLowerCase();
@@ -51,74 +55,91 @@ function pushUniqueModifier(out: string[], modifier: string) {
   out.push(modifier.trim());
 }
 
-/** Collect all modifier phrases on a segment (bez luka, extra sir, medium rare). */
-export function parseGuestModifiers(segment: string): string[] {
-  const text = segment.trim();
-  if (!text) return [];
-
+export function modifiersFromInterpretation(
+  interpretation: TurnInterpretation
+): string[] {
   const modifiers: string[] = [];
-
-  const bezMatch = text.match(/\b(?:ali\s+)?bez\s+([^,.!?]+)/i);
-  if (bezMatch?.[1]) {
-    pushUniqueModifier(modifiers, `bez ${bezMatch[1].trim()}`);
+  for (const mod of interpretation.modifications) {
+    if (mod.modifier) pushUniqueModifier(modifiers, mod.modifier);
+    if (mod.cooking) pushUniqueModifier(modifiers, mod.cooking);
+    if (mod.remove) pushUniqueModifier(modifiers, `bez ${mod.remove}`);
+    if (mod.add) pushUniqueModifier(modifiers, mod.add);
   }
-
-  const withoutMatch = text.match(/\bwithout\s+([^,.!?]+)/i);
-  if (withoutMatch?.[1]) {
-    pushUniqueModifier(modifiers, `without ${withoutMatch[1].trim()}`);
+  for (const pref of interpretation.preferences) {
+    pushUniqueModifier(modifiers, pref);
   }
-
-  const ohneMatch = text.match(/\bohne\s+([^,.!?]+)/i);
-  if (ohneMatch?.[1]) {
-    pushUniqueModifier(modifiers, `ohne ${ohneMatch[1].trim()}`);
+  if (interpretation.cookingPreference) {
+    pushUniqueModifier(modifiers, interpretation.cookingPreference);
   }
-
-  const extraMatch = text.match(EXTRA_MODIFIER_PATTERN);
-  if (extraMatch?.[1]) {
-    pushUniqueModifier(modifiers, `extra ${extraMatch[1].trim()}`);
-  }
-
-  const cookingMatch = text.match(COOKING_MODIFIER_PATTERN);
-  if (cookingMatch?.[0]) {
-    pushUniqueModifier(modifiers, cookingMatch[0].trim());
-  }
-
-  const neMatch = text.match(
-    /\bne\s+(ljuto|pijaci|slatko|slano|luk|luka|mesa|meso|onion|garlic)\b/i
-  );
-  if (neMatch?.[0]) {
-    pushUniqueModifier(modifiers, `ne ${neMatch[1]!.toLowerCase()}`);
-  }
-
   return modifiers;
 }
 
-export function parseGuestModifier(segment: string): GuestModifierRequest | null {
-  const modifiers = parseGuestModifiers(segment);
+export function substitutionFromInterpretation(
+  interpretation: TurnInterpretation
+): GuestSubstitutionRequest | null {
+  for (const mod of interpretation.modifications) {
+    if (!mod.swap?.from || !mod.swap?.to) continue;
+    const requested = mod.swap.to.trim();
+    const insteadOf = mod.swap.from.trim();
+    if (requested.length < 2 || insteadOf.length < 2) continue;
+    return {
+      requested,
+      insteadOf,
+      rawPhrase: `${requested} umesto ${insteadOf}`,
+    };
+  }
+  return null;
+}
+
+function negationSwapFromInterpretation(
+  interpretation: TurnInterpretation
+): GuestCartSwapRequest | null {
+  const sub = substitutionFromInterpretation(interpretation);
+  if (!sub) return null;
+
+  const sideSwap =
+    SIDE_SWAP_HINT.test(sub.requested) || SIDE_SWAP_HINT.test(sub.insteadOf);
+  if (sideSwap) return null;
+
+  return {
+    requested: sub.requested,
+    insteadOf: sub.insteadOf,
+    rawPhrase: sub.rawPhrase,
+  };
+}
+
+/** Collect all modifier phrases on a segment from turn interpretation. */
+export function parseGuestModifiers(
+  segment: string,
+  interpretation?: TurnInterpretation | null
+): string[] {
+  const text = segment.trim();
+  if (!text) return [];
+  return modifiersFromInterpretation(resolveInterpretation(text, interpretation));
+}
+
+export function parseGuestModifier(
+  segment: string,
+  interpretation?: TurnInterpretation | null
+): GuestModifierRequest | null {
+  const modifiers = parseGuestModifiers(segment, interpretation);
   if (!modifiers.length) return null;
   return { modifier: modifiers.join("; "), rawPhrase: segment.trim() };
 }
 
-const MODIFIER_STRIP_PATTERNS = [
-  /\b(?:ali\s+)?bez\s+[^,.!?]+/gi,
-  /\bwithout\s+[^,.!?]+/gi,
-  /\bohne\s+[^,.!?]+/gi,
-  EXTRA_MODIFIER_PATTERN,
-  COOKING_MODIFIER_PATTERN,
-  /\bne\s+(?:ljuto|pijaci|slatko|slano|luk|luka|mesa|meso|onion|garlic)\b/gi,
-];
-
 /** Strip modifier phrases so product search sees "Burger" not "Burger ali bez luka". */
-export function stripGuestModifierPhrase(segment: string): string {
+export function stripGuestModifierPhrase(
+  segment: string,
+  interpretation?: TurnInterpretation | null
+): string {
   let text = segment.trim();
-  for (const pattern of MODIFIER_STRIP_PATTERNS) {
-    text = text.replace(pattern, "");
+  const modifiers = parseGuestModifiers(segment, interpretation);
+  for (const modifier of modifiers) {
+    const escaped = modifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(escaped, "gi"), "");
   }
   return text.replace(/\s+ali\s*$/i, "").replace(/\s+/g, " ").trim();
 }
-
-const NEGATION_SWAP_PATTERN =
-  /\b(?:ne|not|nicht)\s+(.+?)\s+(?:nego|ve[cć]|but|sondern)\s+(.+)/i;
 
 function normalizeCartSwapSegment(segment: string): string {
   return segment
@@ -129,32 +150,21 @@ function normalizeCartSwapSegment(segment: string): string {
 
 /** Mid-order swap — "ne Pilsner nego Weißbier", "not beer but wine". */
 export function parseGuestNegationSwap(
-  segment: string
+  segment: string,
+  interpretation?: TurnInterpretation | null
 ): GuestCartSwapRequest | null {
   const text = normalizeCartSwapSegment(segment);
-  const match = text.match(NEGATION_SWAP_PATTERN);
-  if (!match?.[1] || !match[2]) return null;
-
-  const insteadOf = match[1].trim();
-  const requested = match[2].trim();
-  if (insteadOf.length < 2 || requested.length < 2) return null;
-
-  const sideSwap =
-    SIDE_SWAP_HINT.test(requested) || SIDE_SWAP_HINT.test(insteadOf);
-  if (sideSwap) return null;
-
-  return {
-    requested,
-    insteadOf,
-    rawPhrase: match[0],
-  };
+  return negationSwapFromInterpretation(resolveInterpretation(text, interpretation));
 }
 
-export function parseGuestCartSwap(segment: string): GuestCartSwapRequest | null {
-  const negationSwap = parseGuestNegationSwap(segment);
+export function parseGuestCartSwap(
+  segment: string,
+  interpretation?: TurnInterpretation | null
+): GuestCartSwapRequest | null {
+  const negationSwap = parseGuestNegationSwap(segment, interpretation);
   if (negationSwap) return negationSwap;
 
-  const sub = parseGuestSubstitution(segment);
+  const sub = parseGuestSubstitution(segment, interpretation);
   if (!sub) return null;
 
   const sideSwap =
@@ -275,37 +285,13 @@ export function applyGuestRemoval(
   };
 }
 
-export function parseGuestSubstitution(segment: string): GuestSubstitutionRequest | null {
+export function parseGuestSubstitution(
+  segment: string,
+  interpretation?: TurnInterpretation | null
+): GuestSubstitutionRequest | null {
   const text = segment.trim();
   if (!text) return null;
-
-  const umestoMatch = text.match(
-    /\b(.+?)\s+umesto\s+(.+?)(?:\s*[,.]|$)/i
-  );
-  if (umestoMatch?.[1] && umestoMatch[2]) {
-    const requested = umestoMatch[1].trim();
-    const insteadOf = umestoMatch[2].trim();
-    if (requested.length >= 2 && insteadOf.length >= 2) {
-      return { requested, insteadOf, rawPhrase: umestoMatch[0] };
-    }
-  }
-
-  const insteadMatch = text.match(/\b(?:instead of|statt)\s+(.+)/i);
-  if (insteadMatch?.[1]) {
-    const insteadOf = insteadMatch[1].trim();
-    const requested = text
-      .replace(/\b(?:instead of|statt)\s+.+$/i, "")
-      .trim();
-    if (requested.length >= 2 && insteadOf.length >= 2) {
-      return { requested, insteadOf, rawPhrase: text };
-    }
-  }
-
-  if (SUBSTITUTION_PATTERN.test(text)) {
-    return null;
-  }
-
-  return null;
+  return substitutionFromInterpretation(resolveInterpretation(text, interpretation));
 }
 
 export function isGenericBeerSegment(segment: string): boolean {
@@ -407,3 +393,5 @@ export function buildSubstitutionNegotiationMessage(
     "Understood. Tell me what you'd like and we'll build the order step by step."
   );
 }
+
+export type { TurnModification };

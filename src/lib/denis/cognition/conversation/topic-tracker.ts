@@ -11,24 +11,17 @@ import {
   type ReferenceResolution,
   type TopicCompletionStatus,
 } from "@/lib/denis/cognition/conversation/conversation-graph";
+import { collectTurnInterpretationsFromTimeline } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import {
+  isGuestCopyOrderMessage,
+  isGuestDeclineMessage,
+  isGuestModificationMessage,
+  isGuestPriceInquiryMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
+import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 type DialogueMessage = { role: "guest" | "denis"; text: string };
-
-const PRICE_QUESTION_PATTERN =
-  /\b(koliko\s+(ko[sš]ta|je|bi\s+bilo)|what(?:'s| is) the price|how much|preis|cena)\b/i;
-
-const DRINK_SWITCH_PATTERN =
-  /\b(a\s+)?(ono\s+)?(pivo|piće|pić[ae]|beer|weizen|pilsner)\b/i;
-
-const CLONE_FRIEND_PATTERN =
-  /\b(i\s+za\s+(drugar[a]?|prijatelj[a]?|njega|nju)\s+isto|same for (my )?friend|für meinen freund auch)\b/i;
-
-const FIRST_REF_PATTERN = /\b(prvo|first one|das erste|ono\s+prvo)\b/i;
-
-const CHEAPER_PATTERN = /\b(manje|jeftinij[eao]|cheaper|günstiger|smaller)\b/i;
-
-const LAST_DENIS_REF_PATTERN =
-  /\b(ono\s+(što|sto)\s+(si|ste)\s+(rekao|rekli)|what you (said|recommended)|das was du sagtest)\b/i;
 
 const ORDER_CONFIRM_PATTERN =
   /\b(da|može|potvrđujem|confirm|yes|ja\s+bitte)\b/i;
@@ -36,20 +29,19 @@ const ORDER_CONFIRM_PATTERN =
 const ORDER_VERB_PATTERN =
   /\b(daj|naruč|naruc|hoću|hocu|want|order|bestell|1x|2x|\d+\s*x)\b/i;
 
-const ALLERGY_CHILD_PATTERN =
-  /\b(bez\s+([a-zčćžšđ]+)|gluten|orah|orasi|nuts|without\s+([a-z]+)|alergij\w*\s+na\s+([^?.!,]+))/i;
-
 const TOPIC_DETECTORS: Array<{
   id: string;
   pattern: RegExp;
-  childExtractor?: (text: string) => string | null;
+  childExtractor?: (text: string, interpretation?: TurnInterpretation | null) => string | null;
 }> = [
   {
     id: CONVERSATION_TOPIC_IDS.burger,
     pattern: /\bburger\b/i,
-    childExtractor: (text) => {
-      if (/\bmedium\s+rare\b/i.test(text)) return "medium rare";
-      if (/\b(bez\s+luk[a]?)\b/i.test(text)) return "bez luka";
+    childExtractor: (text, interpretation) => {
+      if (interpretation?.cookingPreference) return interpretation.cookingPreference;
+      if (interpretation?.modifications.some((m) => m.cooking)) {
+        return interpretation.modifications.find((m) => m.cooking)?.cooking ?? null;
+      }
       if (/\bcena\b/i.test(text)) return "cena";
       return null;
     },
@@ -76,10 +68,13 @@ const TOPIC_DETECTORS: Array<{
     id: CONVERSATION_TOPIC_IDS.allergies,
     pattern:
       /\b(alerg|gluten|orah|orasi|nuts|allerg|bez\s+(glutena|oraha|orasi|mleka|laktoze))\b/i,
-    childExtractor: (text) => {
-      const match = text.match(ALLERGY_CHILD_PATTERN);
-      if (!match) return null;
-      return (match[1] ?? match[2] ?? match[3] ?? match[0]).trim().toLowerCase();
+    childExtractor: (_text, interpretation) => {
+      const fromPrefs = interpretation?.preferences[0];
+      if (fromPrefs) return fromPrefs.toLowerCase();
+      const fromRemove = interpretation?.modifications.find((m) => m.remove)?.remove;
+      if (fromRemove) return fromRemove.toLowerCase();
+      const fromModifier = interpretation?.modifications.find((m) => m.modifier)?.modifier;
+      return fromModifier?.toLowerCase() ?? null;
     },
   },
   {
@@ -95,21 +90,38 @@ function detectTopicId(text: string): string | null {
   return null;
 }
 
+function allergyChildrenFromInterpretation(
+  interpretation: TurnInterpretation | null | undefined
+): string[] {
+  if (!interpretation) return [];
+  const children: string[] = [];
+  for (const pref of interpretation.preferences) {
+    children.push(pref.toLowerCase());
+  }
+  for (const mod of interpretation.modifications) {
+    if (mod.remove) children.push(mod.remove.toLowerCase());
+    if (mod.modifier) children.push(mod.modifier.toLowerCase());
+  }
+  return children;
+}
+
 function extractTopicChildren(
   topicId: string,
-  text: string
+  text: string,
+  interpretation?: TurnInterpretation | null
 ): string[] {
   const detector = TOPIC_DETECTORS.find((row) => row.id === topicId);
   const children: string[] = [];
   if (detector?.childExtractor) {
-    const extracted = detector.childExtractor(text);
+    const extracted = detector.childExtractor(text, interpretation);
     if (extracted) children.push(extracted);
   }
 
   if (topicId === CONVERSATION_TOPIC_IDS.burger) {
-    if (/\bmedium\s+rare\b/i.test(text)) children.push("medium rare");
-    if (/\b(bez\s+luk[a]?)\b/i.test(text)) children.push("bez luka");
-    if (PRICE_QUESTION_PATTERN.test(text)) children.push("cena");
+    if (interpretation?.cookingPreference) {
+      children.push(interpretation.cookingPreference);
+    }
+    if (isGuestPriceInquiryMessage(text)) children.push("cena");
   }
 
   if (topicId === CONVERSATION_TOPIC_IDS.drinks) {
@@ -120,15 +132,10 @@ function extractTopicChildren(
   }
 
   if (topicId === CONVERSATION_TOPIC_IDS.allergies) {
-    const match = text.match(ALLERGY_CHILD_PATTERN);
-    if (match) {
-      children.push(
-        (match[1] ?? match[2] ?? match[3] ?? match[0]).trim().toLowerCase()
-      );
-    }
+    children.push(...allergyChildrenFromInterpretation(interpretation));
   }
 
-  return children;
+  return [...new Set(children.filter(Boolean))];
 }
 
 function setTopicStatus(
@@ -198,13 +205,25 @@ function markTopicOrdered(
   return { ...graph, topics };
 }
 
+function guestInterpretationsByTurn(
+  timeline?: DenisTimelineRow[]
+): TurnInterpretation[] {
+  if (!timeline?.length) return [];
+  return collectTurnInterpretationsFromTimeline(timeline).map(
+    (row) => row.interpretation
+  );
+}
+
 /** Fold linear transcript into topic graph. */
 export function foldConversationGraph(
-  messages: DialogueMessage[]
+  messages: DialogueMessage[],
+  timeline?: DenisTimelineRow[]
 ): ConversationGraph {
   let graph = emptyConversationGraph();
   let turn = 0;
   let lastDenisRecommendation: string | null = null;
+  let guestTurnIndex = 0;
+  const guestInterpretations = guestInterpretationsByTurn(timeline);
 
   for (const msg of messages) {
     turn += 1;
@@ -228,16 +247,19 @@ export function foldConversationGraph(
       continue;
     }
 
+    const interpretation = guestInterpretations[guestTurnIndex] ?? null;
+    guestTurnIndex += 1;
+
     const detectedTopic = detectTopicId(msg.text);
     let targetTopicId = graph.activeTopicId;
 
-    if (DRINK_SWITCH_PATTERN.test(msg.text)) {
+    if (detectTopicId(msg.text) === CONVERSATION_TOPIC_IDS.drinks) {
       targetTopicId = CONVERSATION_TOPIC_IDS.drinks;
       graph = switchActiveTopic(graph, targetTopicId, "guest_drink_switch", turn);
     } else if (detectedTopic) {
       targetTopicId = detectedTopic;
       graph = switchActiveTopic(graph, targetTopicId, "guest_topic_mention", turn);
-    } else if (PRICE_QUESTION_PATTERN.test(msg.text) && graph.activeTopicId) {
+    } else if (isGuestPriceInquiryMessage(msg.text) && graph.activeTopicId) {
       targetTopicId = graph.activeTopicId;
     }
 
@@ -247,7 +269,7 @@ export function foldConversationGraph(
     }
 
     if (targetTopicId) {
-      const children = extractTopicChildren(targetTopicId, msg.text);
+      const children = extractTopicChildren(targetTopicId, msg.text, interpretation);
       const topics = graph.topics.map((topic) => {
         if (topic.id !== targetTopicId) return topic;
         let next = topic;
@@ -257,7 +279,9 @@ export function foldConversationGraph(
         if (ORDER_VERB_PATTERN.test(msg.text)) {
           next = {
             ...next,
-            lastGuestOrderLine: msg.text.slice(0, 80).trim(),
+            lastGuestOrderLine:
+              interpretation?.agreedOrderLine ??
+              msg.text.slice(0, 80).trim(),
             status:
               next.status === "ordered" || next.status === "completed"
                 ? next.status
@@ -304,12 +328,24 @@ export function foldConversationGraph(
 
 export function resolveGuestReference(
   graph: ConversationGraph,
-  guestMessage: string
+  guestMessage: string,
+  interpretation?: TurnInterpretation | null
 ): ReferenceResolution {
   const text = guestMessage.trim();
   const active = getActiveTopic(graph);
 
-  if (CLONE_FRIEND_PATTERN.test(text)) {
+  if (
+    interpretation?.guestReferenceKind &&
+    interpretation.guestReferenceKind !== "none"
+  ) {
+    return {
+      kind: interpretation.guestReferenceKind,
+      topicId: active?.id ?? null,
+      detail: interpretation.guestReferenceDetail ?? null,
+    };
+  }
+
+  if (isGuestCopyOrderMessage(text)) {
     const line = active?.lastGuestOrderLine ?? active?.firstMentionedItem;
     return {
       kind: "clone_for_friend",
@@ -318,31 +354,15 @@ export function resolveGuestReference(
     };
   }
 
-  if (FIRST_REF_PATTERN.test(text)) {
-    return {
-      kind: "first_mentioned",
-      topicId: active?.id ?? null,
-      detail: active?.firstMentionedItem ?? active?.children[0] ?? null,
-    };
+  if (isGuestDeclineMessage(text)) {
+    return { kind: "none", topicId: active?.id ?? null, detail: null };
   }
 
-  if (CHEAPER_PATTERN.test(text)) {
-    return {
-      kind: "cheaper_variant",
-      topicId: active?.id ?? null,
-      detail: active?.firstMentionedItem ?? active?.label ?? null,
-    };
+  if (isGuestModificationMessage(text)) {
+    return { kind: "none", topicId: active?.id ?? null, detail: null };
   }
 
-  if (LAST_DENIS_REF_PATTERN.test(text)) {
-    return {
-      kind: "last_denis_recommendation",
-      topicId: active?.id ?? null,
-      detail: active?.lastDenisRecommendation ?? null,
-    };
-  }
-
-  if (DRINK_SWITCH_PATTERN.test(text)) {
+  if (detectTopicId(text) === CONVERSATION_TOPIC_IDS.drinks) {
     return {
       kind: "topic_switch",
       topicId: CONVERSATION_TOPIC_IDS.drinks,
@@ -350,7 +370,7 @@ export function resolveGuestReference(
     };
   }
 
-  if (PRICE_QUESTION_PATTERN.test(text) && active) {
+  if (isGuestPriceInquiryMessage(text) && active) {
     return {
       kind: "active_topic_price",
       topicId: active.id,
@@ -366,9 +386,10 @@ export function resolveGuestReference(
 export function trackActiveTopicForMessage(
   graph: ConversationGraph,
   guestMessage: string,
-  turnIndex: number
+  turnIndex: number,
+  interpretation?: TurnInterpretation | null
 ): ConversationGraph {
-  const resolution = resolveGuestReference(graph, guestMessage);
+  const resolution = resolveGuestReference(graph, guestMessage, interpretation);
   if (resolution.kind === "topic_switch" && resolution.topicId) {
     return switchActiveTopic(
       graph,
@@ -420,9 +441,14 @@ export function formatConversationGraphBlock(graph: ConversationGraph): string {
 export function buildTopicInterpretationDirective(input: {
   graph: ConversationGraph | null | undefined;
   guestMessage: string;
+  interpretation?: TurnInterpretation | null;
 }): string | null {
   if (!input.graph) return null;
-  const resolution = resolveGuestReference(input.graph, input.guestMessage);
+  const resolution = resolveGuestReference(
+    input.graph,
+    input.guestMessage,
+    input.interpretation
+  );
   const block = formatConversationGraphBlock(input.graph);
   const lines = [block];
 

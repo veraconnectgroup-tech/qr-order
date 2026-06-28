@@ -40,6 +40,7 @@ export function foldConversationModel(input: {
     flowNodeId: input.flowNodeId,
     pendingSlot: input.pendingSlot,
     commerceConfirm: input.commerceConfirm,
+    timeline: input.timeline,
   });
 
   const dialogueMessages = transcript
@@ -48,7 +49,7 @@ export function foldConversationModel(input: {
       role: entry.role as "guest" | "denis",
       text: entry.text,
     }));
-  const graph = foldConversationGraph(dialogueMessages);
+  const graph = foldConversationGraph(dialogueMessages, input.timeline);
 
   const model: ConversationModel = {
     transcript,

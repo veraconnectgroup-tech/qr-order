@@ -1,27 +1,12 @@
 import { resolveGuestMessageLanguage } from "@/lib/ai/config";
+import {
+  extractTurnInterpretation,
+  readGuestInterpretationFromTimelineRow,
+} from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import { isGuestStillBrowsingMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import { templateUtteranceForKey } from "@/lib/denis/cognition/tde/template-utterance";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
-
-const BROWSING_DEFER_PATTERN =
-  /\b(ne\s+j[oš]s?|nije\s+j[oš]s?|nisam\s+j[oš]s?|jo[sš]\s+(uvek\s+)?(gledamo|razgledavamo|pregledavamo|biramo|odlučujemo)|samo\s+(gledamo|razgledavamo|biramo)|not\s+yet|still\s+(looking|browsing|deciding)|noch\s+nicht|nur\s+am\s+(schauen|überlegen)|haben\s+noch\s+nicht)\b/i;
-
-const GUEST_FOLLOW_UP_VERB_PATTERN =
-  /(?:dođi|dodji|do\s*đi|dodj(?:e|es|i)?|vrati\s+se|javi(?:\s+se)?|come\s+back|check\s+back|komm\s+zurück)/i;
-
-const GUEST_FOLLOW_UP_MINUTE_THEN_VERB_PATTERN =
-  /(?:mo[žz]eš|mozes|can\s+you).{0,40}?\bza\s+(?:(\d{1,2})\s*)?minut.{0,40}?(?:dodj|dođi|dodji|ponovo|again)/i;
-
-const GUEST_FOLLOW_UP_DIGIT_PATTERN =
-  new RegExp(
-    `${GUEST_FOLLOW_UP_VERB_PATTERN.source}.{0,40}?(\\d{1,2})\\s*(?:minut|minute|min\\b)|(\\d{1,2})\\s*(?:minut|minute|min\\b).{0,30}?(?:ponovo|ponova|again|nochmal)`,
-    "i"
-  );
-
-const GUEST_FOLLOW_UP_VAGUE_PATTERN =
-  new RegExp(
-    `${GUEST_FOLLOW_UP_VERB_PATTERN.source}.{0,30}?(?:za\\s+)?(?:koj[ií]|par|nekoliko|few|ein\\s+paar)\\s*minut`,
-    "i"
-  );
 
 const DEFAULT_FOLLOW_UP_SECONDS = 60;
 
@@ -57,38 +42,32 @@ export function guestTextFromTimeline(event: DenisTimelineRow): string | null {
   return null;
 }
 
+function interpretationForGuestText(
+  guestText: string,
+  rowInterpretation?: TurnInterpretation | null
+): TurnInterpretation {
+  if (rowInterpretation) return rowInterpretation;
+  return extractTurnInterpretation({ guestMessage: guestText, llmUsed: false });
+}
+
 export function isGuestBrowsingDeferMessage(message: string): boolean {
   const text = message.trim();
   if (!text || text.length > 160) return false;
-  return BROWSING_DEFER_PATTERN.test(text);
+  return isGuestStillBrowsingMessage(text);
 }
 
 /** Guest asked Denis to return after N minutes (or vague "in a minute"). */
 export function parseGuestFollowUpRequest(
-  message: string
+  message: string,
+  interpretation?: TurnInterpretation | null
 ): { delaySeconds: number } | null {
   const text = message.trim();
   if (!text || text.length > 160) return null;
 
-  const digitMatch = text.match(GUEST_FOLLOW_UP_DIGIT_PATTERN);
-  if (digitMatch) {
-    const minutes = Number(digitMatch[1] ?? digitMatch[2]);
-    if (Number.isFinite(minutes) && minutes >= 1 && minutes <= 30) {
-      return { delaySeconds: minutes * 60 };
-    }
-  }
-
-  if (GUEST_FOLLOW_UP_VAGUE_PATTERN.test(text)) {
-    return { delaySeconds: DEFAULT_FOLLOW_UP_SECONDS };
-  }
-
-  const minuteThenVerb = text.match(GUEST_FOLLOW_UP_MINUTE_THEN_VERB_PATTERN);
-  if (minuteThenVerb) {
-    const minutes = minuteThenVerb[1] ? Number(minuteThenVerb[1]) : 1;
-    if (Number.isFinite(minutes) && minutes >= 1 && minutes <= 30) {
-      return { delaySeconds: minutes * 60 };
-    }
-    return { delaySeconds: DEFAULT_FOLLOW_UP_SECONDS };
+  const interp =
+    interpretation ?? extractTurnInterpretation({ guestMessage: text, llmUsed: false });
+  if (interp.followUpMinutes != null && interp.followUpMinutes >= 1) {
+    return { delaySeconds: Math.min(interp.followUpMinutes, 30) * 60 };
   }
 
   return null;
@@ -102,15 +81,14 @@ export function isGuestPauseMessage(message: string): boolean {
   );
 }
 
-const MISUNDERSTANDING_DECLINE_PATTERN =
-  /^(ne|n[e]+|no|nein|nope|to nije|nije to|not that|falsch|wrong)([\s,.!]|$)/i;
-
 /** Bare "ne" / correction — Denis misunderstood, not polite decline of whole order. */
 export function isGuestMisunderstandingDecline(message: string): boolean {
   const text = message.trim();
   if (!text || text.length > 80) return false;
   if (/\b(hvala|danke|thanks|treba|potrebno)\b/i.test(text)) return false;
-  return MISUNDERSTANDING_DECLINE_PATTERN.test(text);
+  return /^(ne|n[e]+|no|nein|nope|to nije|nije to|not that|falsch|wrong)([\s,.!]|$)/i.test(
+    text
+  );
 }
 
 export type GuestContinuityState = {
@@ -120,6 +98,32 @@ export type GuestContinuityState = {
   followUpRequestedAt: string | null;
   followUpDelaySeconds: number | null;
 };
+
+function applyGuestContinuityFromText(
+  guestText: string,
+  createdAt: string,
+  interpretation: TurnInterpretation | null | undefined,
+  state: GuestContinuityState
+): GuestContinuityState {
+  const interp = interpretationForGuestText(guestText, interpretation);
+  let next = { ...state };
+
+  if (isGuestBrowsingDeferMessage(guestText)) {
+    next.deferCount += 1;
+    next.lastDeferredAt = createdAt;
+    return next;
+  }
+
+  const followUp = parseGuestFollowUpRequest(guestText, interp);
+  if (followUp) {
+    next.deferCount += 1;
+    next.lastDeferredAt = createdAt;
+    next.followUpRequestedAt = createdAt;
+    next.followUpDelaySeconds = followUp.delaySeconds;
+  }
+
+  return next;
+}
 
 export function extractGuestContinuityState(
   timeline: DenisTimelineRow[]
@@ -150,23 +154,50 @@ export function extractGuestContinuityState(
       continue;
     }
 
+    if (event.event_type === "perception.ingested") {
+      const guestText = guestTextFromTimeline(event);
+      if (!guestText) continue;
+
+      const interpretation = readGuestInterpretationFromTimelineRow(event);
+      const next = applyGuestContinuityFromText(
+        guestText,
+        event.created_at,
+        interpretation,
+        {
+          lastDeferredAt,
+          deferCount,
+          followUpEmitted,
+          followUpRequestedAt,
+          followUpDelaySeconds,
+        }
+      );
+      lastDeferredAt = next.lastDeferredAt;
+      deferCount = next.deferCount;
+      followUpRequestedAt = next.followUpRequestedAt;
+      followUpDelaySeconds = next.followUpDelaySeconds;
+      continue;
+    }
+
     if (event.event_type === "signal.message") {
       const guestText = guestTextFromTimeline(event);
       if (!guestText) continue;
 
-      if (isGuestBrowsingDeferMessage(guestText)) {
-        deferCount += 1;
-        lastDeferredAt = event.created_at;
-        continue;
-      }
-
-      const followUp = parseGuestFollowUpRequest(guestText);
-      if (followUp) {
-        deferCount += 1;
-        lastDeferredAt = event.created_at;
-        followUpRequestedAt = event.created_at;
-        followUpDelaySeconds = followUp.delaySeconds;
-      }
+      const next = applyGuestContinuityFromText(
+        guestText,
+        event.created_at,
+        null,
+        {
+          lastDeferredAt,
+          deferCount,
+          followUpEmitted,
+          followUpRequestedAt,
+          followUpDelaySeconds,
+        }
+      );
+      lastDeferredAt = next.lastDeferredAt;
+      deferCount = next.deferCount;
+      followUpRequestedAt = next.followUpRequestedAt;
+      followUpDelaySeconds = next.followUpDelaySeconds;
       continue;
     }
 

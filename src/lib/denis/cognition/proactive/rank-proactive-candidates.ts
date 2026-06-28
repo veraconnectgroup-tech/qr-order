@@ -136,6 +136,8 @@ export type RankProactiveCandidatesInput = {
     productId: string;
     productName: string;
     menuSection?: string | null;
+    foodTags?: string[];
+    prepStation?: string | null;
   }>;
 };
 
@@ -1089,6 +1091,7 @@ export function rankProactiveCandidates(
       sessionDurationMinutes: payload.sessionDurationMinutes ?? null,
       recoveryCompleted: payload.recoveryCompleted,
       postRecoveryEligible: payload.postRecoveryEligible,
+      guestAffect: mental?.affect ?? null,
       isShown: () =>
         isDismissed(dismissed, "google_review") ||
         isDismissed(dismissed, "internal_feedback"),

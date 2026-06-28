@@ -7,6 +7,7 @@ import {
 import { backfillDraftFromOrderMessage } from "@/lib/ai/ordering/order-message-backfill";
 import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { AiCatalog, AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
+import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 function mockCatalog(): AiCatalog {
   const burger: AiCatalogProduct = {
@@ -46,8 +47,12 @@ function mockCatalog(): AiCatalog {
 
 describe("guest substitution", () => {
   it("parses umesto pomfrita on burger line", () => {
+    const interpretation = normalizeTurnInterpretation({
+      modifications: [{ swap: { from: "pomfrit", to: "kartoffel salata" } }],
+    });
     const sub = parseGuestSubstitution(
-      "veliki beef burger sa kartoffel salatom umesto pomfrita"
+      "veliki beef burger sa kartoffel salatom umesto pomfrita",
+      interpretation
     );
     expect(sub).not.toBeNull();
     expect(sub?.insteadOf).toMatch(/pomfrit/i);
@@ -74,10 +79,14 @@ describe("guest substitution", () => {
   });
 
   it("backfills burger with note and flags generic beer", () => {
+    const interpretation = normalizeTurnInterpretation({
+      modifications: [{ swap: { from: "pomfrit", to: "kartoffel salata" } }],
+    });
     const result = backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       mockCatalog(),
-      "jedno pivo, veliki beef burger sa kartoffel salatom umesto pomfrita"
+      "jedno pivo, veliki beef burger sa kartoffel salatom umesto pomfrita",
+      { interpretation }
     );
     expect(result.draft.items).toHaveLength(1);
     expect(result.draft.items[0]?.productName).toBe("Beef Burger");

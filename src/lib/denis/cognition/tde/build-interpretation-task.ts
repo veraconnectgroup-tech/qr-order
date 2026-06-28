@@ -3,7 +3,6 @@ import {
   CORE_BELIEF_KEYS,
   getBeliefValue,
   type ConversationMode,
-  type CommercePressure,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
 import {
   resolveAdaptiveContextBudget,
@@ -11,6 +10,9 @@ import {
 } from "@/lib/denis/cognition/context/context-budget";
 import type { ConversationGraph } from "@/lib/denis/cognition/conversation/conversation-graph";
 import { buildTopicInterpretationDirective } from "@/lib/denis/cognition/conversation/topic-tracker";
+import { classifyGuestIntent } from "@/lib/denis/cognition/tde/semantic-intent-router";
+import { hasGuestPostureCommercePressure } from "@/lib/denis/cognition/tde/resolve-guest-posture";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 import type { DenisGoal } from "@/lib/denis/kernel/goal-types";
 import type {
   InterpretationEvidenceBudget,
@@ -21,36 +23,21 @@ import type {
 export type InterpretationBudgetInput = {
   guestMessage?: string;
   conversationGraph?: ConversationGraph | null;
+  interpretation?: TurnInterpretation | null;
   maxContextTokens?: number;
   minContextTokens?: number;
   adaptiveContext?: boolean;
 };
 
-function hasCommercePressure(beliefs: BeliefGraph): boolean {
-  const pressure = getBeliefValue<CommercePressure>(
+function hasCommercePressure(
+  beliefs: BeliefGraph,
+  budgetInput?: InterpretationBudgetInput
+): boolean {
+  return hasGuestPostureCommercePressure({
     beliefs,
-    CORE_BELIEF_KEYS.commercePressure
-  );
-  const awaiting = getBeliefValue<string | null>(
-    beliefs,
-    CORE_BELIEF_KEYS.conversationAwaiting
-  );
-  const mode = getBeliefValue<ConversationMode>(
-    beliefs,
-    CORE_BELIEF_KEYS.conversationMode
-  );
-  const pendingSlot = getBeliefValue<string>(
-    beliefs,
-    CORE_BELIEF_KEYS.commercePendingSlot
-  );
-
-  return (
-    pressure === "open" ||
-    pressure === "confirm" ||
-    awaiting != null ||
-    Boolean(pendingSlot) ||
-    mode === "ordering"
-  );
+    guestMessage: budgetInput?.guestMessage,
+    interpretation: budgetInput?.interpretation,
+  });
 }
 
 function directiveBlock(
@@ -199,7 +186,7 @@ export function buildInterpretationTask(
       );
 
     case "COMPLETE_ROUND": {
-      const transactional = hasCommercePressure(beliefs);
+      const transactional = hasCommercePressure(beliefs, budgetInput);
       if (transactional) {
         return withTopicDirective(
           transactionalTask(
@@ -257,12 +244,7 @@ export function buildInterpretationTask(
     }
 
     case "GUEST_SEATED": {
-      const transactional =
-        hasCommercePressure(beliefs) ||
-        getBeliefValue<ConversationMode>(
-          beliefs,
-          CORE_BELIEF_KEYS.conversationMode
-        ) === "ordering";
+      const transactional = hasCommercePressure(beliefs, budgetInput);
       if (transactional) {
         return withTopicDirective(
           transactionalTask(
@@ -277,8 +259,14 @@ export function buildInterpretationTask(
         relationalTask(
           topGoal.type,
           "goal.guest_seated.social",
-          undefined,
-          undefined,
+          "relational_social",
+          classifyGuestIntent(budgetInput?.guestMessage ?? "").intent ===
+            "browse"
+            ? {
+                includeCatalogRag: true,
+                omitFullMenuWhenNoRag: false,
+              }
+            : undefined,
           contextBudget
         ),
         budgetInput

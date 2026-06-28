@@ -44,6 +44,8 @@ export type OrderFact = {
     quantity: number;
     lineTotalCents?: number;
     menuSection?: string | null;
+    foodTags?: string[];
+    drinkFamily?: string | null;
   }>;
 };
 

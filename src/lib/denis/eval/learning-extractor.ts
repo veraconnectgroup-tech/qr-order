@@ -3,6 +3,13 @@ import {
   textSimilarity,
   type ConversationMessage,
 } from "@/lib/denis/monitoring/loop-detection";
+import { collectTurnInterpretationsFromTimeline } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import {
+  classifyGuestIntent,
+  isGuestHandoffMessage,
+  isGuestOrderIntentMessage,
+  isGuestPriceInquiryMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
 export type SessionLearningKind =
@@ -31,21 +38,6 @@ export type SessionEvalMetrics = {
   ordersCount: number;
 };
 
-const CORRECTION_PATTERN =
-  /^(ne\b|no\b|not\b|nije\b|nema\b|pogre[sš]no|wrong|actually|misunderstood|nisam\s+(?:mislio|mislila|tra[žz]io|tra[žz]ila)|ne\s+to\b)/i;
-
-const CONFIRM_PATTERN =
-  /^(da\b|yes\b|ok\b|super\b|u\s+redu\b|mo[žz]e\b|perfect|great|thanks|hvala\b)/i;
-
-const WAITER_PATTERN =
-  /\b(konobar|konobara|waiter|osoba|ljudi|human|person|someone\s+real)\b/i;
-
-const ORDER_KEYWORD_PATTERN =
-  /\b(naru[čc]|poru[čc]|dodaj|stavi|imam|want|order|get\s+me|mo[žz]e\s+.+)\b/i;
-
-const MENU_INQUIRY_PATTERN =
-  /\b(imate\s+li|imam\s+li|do\s+you\s+have|have\s+you|gibt\s+es|habt\s+ihr|da\s+li)\b/i;
-
 function learningId(sessionId: string, kind: SessionLearningKind, index: number): string {
   return `${sessionId}:${kind}:${index}`;
 }
@@ -63,6 +55,18 @@ function guestIntentFromTimeline(
   return null;
 }
 
+function interpretationForGuestText(
+  timeline: DenisTimelineRow[],
+  guestText: string,
+  at: string
+): ReturnType<typeof collectTurnInterpretationsFromTimeline>[number]["interpretation"] | null {
+  const interpretations = collectTurnInterpretationsFromTimeline(timeline);
+  const match = interpretations.find(
+    (row) => row.guestText === guestText || row.atMs >= Date.parse(at)
+  );
+  return match?.interpretation ?? null;
+}
+
 function denisMentionedGuestTopic(guestText: string, denisText: string): boolean {
   const guestTokens = guestText
     .toLowerCase()
@@ -77,12 +81,58 @@ function denisMentionedGuestTopic(guestText: string, denisText: string): boolean
   return overlap / guestTokens.length >= 0.34 || textSimilarity(guestText, denisText) >= 0.45;
 }
 
-function extractCorrectedTo(guestText: string): string | null {
+function extractCorrectedTo(
+  guestText: string,
+  interpretation: ReturnType<typeof interpretationForGuestText>
+): string | null {
+  if (interpretation?.agreedOrderLine?.trim()) {
+    return interpretation.agreedOrderLine.trim();
+  }
   const trimmed = guestText.trim();
   const afterComma = trimmed.split(/[,—–-]\s+/).slice(1).join(" ").trim();
   if (afterComma.length >= 3) return afterComma;
-  const afterNe = trimmed.replace(CORRECTION_PATTERN, "").trim();
-  return afterNe.length >= 3 ? afterNe : null;
+  return null;
+}
+
+function isGuestCorrectionMessage(
+  guestText: string,
+  interpretation: ReturnType<typeof interpretationForGuestText>
+): boolean {
+  if (interpretation?.sentiment === "confused") return true;
+  if ((interpretation?.modifications?.length ?? 0) > 0) return true;
+  const route = classifyGuestIntent(guestText);
+  if (route.intent === "decline" && guestText.trim().length > 4) return true;
+  if (route.intent === "modification") return true;
+  const corrected = extractCorrectedTo(guestText, interpretation);
+  return Boolean(corrected && guestTextStartsWithNe(guestText));
+}
+
+function guestTextStartsWithNe(guestText: string): boolean {
+  return guestText
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .startsWith("ne");
+}
+
+function isGuestReinforcementMessage(
+  guestText: string,
+  interpretation: ReturnType<typeof interpretationForGuestText>
+): boolean {
+  if (interpretation?.sentiment === "positive") return true;
+  const route = classifyGuestIntent(guestText);
+  return route.intent === "confirm";
+}
+
+function isGuestMismatchCandidate(guestText: string): boolean {
+  const route = classifyGuestIntent(guestText);
+  return (
+    isGuestOrderIntentMessage(guestText) ||
+    isGuestPriceInquiryMessage(guestText) ||
+    route.intent === "browse" ||
+    route.intent === "modification"
+  );
 }
 
 /** Pure extraction of session learnings from transcript + timeline. */
@@ -104,11 +154,11 @@ export function extractSessionLearnings(input: {
     const turn = messages[index];
     if (turn.role !== "guest") continue;
 
+    const interpretation = interpretationForGuestText(timeline, turn.text, turn.at);
     const nextDenis = messages[index + 1];
     if (
       nextDenis?.role === "denis" &&
-      (MENU_INQUIRY_PATTERN.test(turn.text) ||
-        ORDER_KEYWORD_PATTERN.test(turn.text)) &&
+      isGuestMismatchCandidate(turn.text) &&
       !denisMentionedGuestTopic(turn.text, nextDenis.text)
     ) {
       const duplicate = learnings.some(
@@ -135,13 +185,13 @@ export function extractSessionLearnings(input: {
       .reverse()
       .find((row) => row.role === "denis");
 
-    if (CORRECTION_PATTERN.test(turn.text) && priorDenis) {
+    if (priorDenis && isGuestCorrectionMessage(turn.text, interpretation)) {
       learnings.push({
         id: learningId(input.sessionId, "correction", learnings.length),
         kind: "correction",
         guestMessage: turn.text,
         denisResponse: priorDenis.text,
-        correctedTo: extractCorrectedTo(turn.text) ?? undefined,
+        correctedTo: extractCorrectedTo(turn.text, interpretation) ?? undefined,
         sessionId: input.sessionId,
         locationId: input.locationId,
         capturedAt,
@@ -150,7 +200,7 @@ export function extractSessionLearnings(input: {
       continue;
     }
 
-    if (priorDenis && WAITER_PATTERN.test(turn.text)) {
+    if (priorDenis && isGuestHandoffMessage(turn.text)) {
       learnings.push({
         id: learningId(input.sessionId, "waiter_failure", learnings.length),
         kind: "waiter_failure",
@@ -166,7 +216,7 @@ export function extractSessionLearnings(input: {
 
     if (
       priorDenis &&
-      ORDER_KEYWORD_PATTERN.test(turn.text) &&
+      isGuestOrderIntentMessage(turn.text) &&
       !denisMentionedGuestTopic(turn.text, priorDenis.text)
     ) {
       learnings.push({
@@ -182,7 +232,7 @@ export function extractSessionLearnings(input: {
       continue;
     }
 
-    if (priorDenis && CONFIRM_PATTERN.test(turn.text)) {
+    if (priorDenis && isGuestReinforcementMessage(turn.text, interpretation)) {
       learnings.push({
         id: learningId(input.sessionId, "reinforcement", learnings.length),
         kind: "reinforcement",
@@ -232,7 +282,7 @@ export function extractSessionLearnings(input: {
   if (timeline.length > 0) {
     for (let index = 0; index < messages.length; index += 1) {
       const guest = messages[index];
-      if (guest.role !== "guest" || !ORDER_KEYWORD_PATTERN.test(guest.text)) {
+      if (guest.role !== "guest" || !isGuestMismatchCandidate(guest.text)) {
         continue;
       }
 

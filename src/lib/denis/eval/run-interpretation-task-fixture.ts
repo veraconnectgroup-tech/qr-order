@@ -140,7 +140,9 @@ function runScenario(
     message: scenario.message,
   });
 
-  const task = buildInterpretationTask(reflex.plan.topGoal, beliefs);
+  const task = buildInterpretationTask(reflex.plan.topGoal, beliefs, {
+    guestMessage: scenario.message,
+  });
 
   if (plan.kind !== scenario.expect.planKind) {
     errors.push(

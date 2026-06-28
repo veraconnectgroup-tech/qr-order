@@ -36,6 +36,10 @@ type RawProduct = {
   sort_order: number;
   ai_description: string | null;
   allergens: string[] | null;
+  tags?: string[] | null;
+  drink_family?: string | null;
+  food_tags?: string[] | null;
+  prep_station?: string | null;
   requires_serve_size?: boolean;
   serve_size_presets?: string[] | null;
   allow_custom_serve_size?: boolean;
@@ -172,6 +176,10 @@ export function buildAiCatalog(
         menuSection,
         taxRate: product.tax_rate != null ? Number(product.tax_rate) : null,
         allergens: product.allergens ?? [],
+        tags: product.tags ?? [],
+        drinkFamily: product.drink_family ?? null,
+        foodTags: product.food_tags ?? [],
+        prepStation: product.prep_station ?? null,
         modifierGroups,
         requiresServeSize,
         serveSizePresets,

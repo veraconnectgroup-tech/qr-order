@@ -21,8 +21,25 @@ import {
 } from "@/lib/denis/cognition/context/priority-layers";
 import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import { belief, beliefGraph } from "@/lib/denis/cognition/tde";
+import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 function guestRow(seq: number, text: string, ageMs = seq * 1000): DenisTimelineRow {
+  const interpretation = normalizeTurnInterpretation({
+    sentiment: "neutral",
+    mealStage: "ordering",
+    modifications: [],
+    preferences: /bez luka/i.test(text) ? ["bez luka"] : [],
+    followUpMinutes: null,
+    partySize: null,
+    awaiting: null,
+    askedDessert: /\bdesert\b/i.test(text),
+    sidePreference: /pomfrit/i.test(text) ? "pomfrit" : null,
+    cookingPreference: /medium rare/i.test(text) ? "medium rare" : null,
+    agreedOrderLine: /burger/i.test(text) ? "burger" : null,
+    guestReferenceKind: null,
+    guestReferenceDetail: null,
+  });
+
   return {
     id: `guest-${seq}`,
     ai_session_id: "sess-1",
@@ -35,8 +52,11 @@ function guestRow(seq: number, text: string, ageMs = seq * 1000): DenisTimelineR
         normalizedText: text,
         structuredIntent: null,
         ingestedAt: new Date(Date.now() - ageMs).toISOString(),
+        interpretation,
       },
       envelope: { traceId: "t1", surface: "chat" },
+      interpretation,
+      turnInterpretation: interpretation,
     },
     trace_id: null,
     context_hash: null,
@@ -126,9 +146,14 @@ describe("semantic compression (11→2)", () => {
       { role: "denis" as const, text: "Odlično!" },
       { role: "guest" as const, text: "A desert?" },
     ];
+    const timeline = [
+      guestRow(1, "Burger bez luka, medium rare, sa pomfritom"),
+      guestRow(2, "A desert?"),
+    ];
 
     const { keyFacts, semanticSummary } = buildSemanticKeyFacts({
       messages,
+      timeline,
       preferences: ["bez luka"],
       agreedFacts: [],
       openQuestions: [],

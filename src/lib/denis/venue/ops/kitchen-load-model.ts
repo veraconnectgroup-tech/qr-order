@@ -22,6 +22,9 @@ export type KitchenLoadOrderItem = {
   menu_section?: string | null;
   quantity?: number;
   station_tag?: string | null;
+  food_tags?: string[];
+  prep_station?: string | null;
+  drink_family?: string | null;
 };
 
 export type KitchenLoadOrder = {
@@ -95,6 +98,9 @@ export function buildKitchenLoadSnapshot(
         productId: item.product_id,
         menuSection: item.menu_section,
         stationTag: item.station_tag,
+        foodTags: item.food_tags,
+        prepStation: item.prep_station,
+        drinkFamily: item.drink_family,
       });
       counts.set(station, (counts.get(station) ?? 0) + qty);
     }
@@ -222,12 +228,11 @@ export function priorsFromRhythmPrepTimeJson(
 
 function findAlternative(
   station: KitchenPrepStation,
-  productName: string
+  foodTags: string[] = []
 ): StationAlternative | null {
   const options = STATION_ALTERNATIVES[station] ?? [];
   return (
-    options.find((option) => option.triggerProductPattern.test(productName)) ??
-    null
+    options.find((option) => foodTags.includes(option.triggerFoodTag)) ?? null
   );
 }
 
@@ -237,6 +242,9 @@ export function suggestBottleneckAlternative(input: {
   productId?: string | null;
   menuSection?: string | null;
   stationTag?: string | null;
+  prepStation?: string | null;
+  foodTags?: string[];
+  drinkFamily?: string | null;
   load: KitchenLoadSnapshot;
   minQueueDepth?: number;
 }): BottleneckSuggestion | null {
@@ -245,13 +253,16 @@ export function suggestBottleneckAlternative(input: {
     productId: input.productId,
     menuSection: input.menuSection,
     stationTag: input.stationTag,
+    prepStation: input.prepStation,
+    foodTags: input.foodTags,
+    drinkFamily: input.drinkFamily,
   });
 
   const stationLoad = input.load.stations.find((row) => row.station === station);
   const minDepth = input.minQueueDepth ?? STATION_RUSH_QUEUE_THRESHOLD;
   if (!stationLoad || stationLoad.queueDepth <= minDepth) return null;
 
-  const alternative = findAlternative(station, input.productName);
+  const alternative = findAlternative(station, input.foodTags ?? []);
   if (!alternative) return null;
 
   return {
@@ -274,6 +285,9 @@ export function buildVenueKitchenLoad(
       product_name: string;
       menu_section?: string | null;
       quantity?: number;
+      food_tags?: string[];
+      prep_station?: string | null;
+      drink_family?: string | null;
     }>;
   }>
 ): KitchenLoadSnapshot {

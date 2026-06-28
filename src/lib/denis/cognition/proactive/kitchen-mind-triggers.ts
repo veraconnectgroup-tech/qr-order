@@ -153,6 +153,8 @@ export function detectStationBottleneckAvoidanceTrigger(input: {
     productId: string;
     productName: string;
     menuSection?: string | null;
+    foodTags?: string[];
+    prepStation?: string | null;
   }>;
   venueOrders: AiGuestOrder[];
   sessionPhase?: SessionPhase | null;
@@ -176,6 +178,8 @@ export function detectStationBottleneckAvoidanceTrigger(input: {
       productName: item.productName,
       productId: item.productId,
       menuSection: item.menuSection,
+      foodTags: item.foodTags,
+      prepStation: item.prepStation,
       load,
     });
 

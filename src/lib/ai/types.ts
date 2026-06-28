@@ -48,6 +48,8 @@ export type AiRecommendation = {
   name?: string;
 };
 
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
+
 export type AiStructuredResponse = {
   intent: AiConciergeIntent;
   recommendations: AiRecommendation[];
@@ -58,9 +60,12 @@ export type AiStructuredResponse = {
   message: string;
   sessionId?: string;
   creditsRemaining?: number;
+  /** L3 guest understanding — sentiment, preferences, modifications (regex purge). */
+  turnInterpretation?: TurnInterpretation;
   structuredPerception?: Partial<AiStructuredResponse> & {
     intent?: AiConciergeIntent | string;
     submitOrder?: boolean;
+    turnInterpretation?: TurnInterpretation;
     [key: string]: unknown;
   };
 };

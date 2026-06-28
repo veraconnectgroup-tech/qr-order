@@ -33,6 +33,18 @@ describe("semantic-intent-router", () => {
     );
   });
 
+  it("sta ima za piće → browse via embeddings (LLM path, not smalltalk)", () => {
+    for (const msg of [
+      "sta ima za pice",
+      "šta ima za piće",
+      "sta imate za pice",
+    ]) {
+      const result = classifyGuestIntent(msg);
+      expect(result.intent).toBe("browse");
+      expect(isGuestVagueBrowseMessage(msg)).toBe(true);
+    }
+  });
+
   it("mixed language phrases route to correct cluster", () => {
     expect(classifyGuestIntent("bestell ein bier").intent).toBe("order");
     expect(classifyGuestIntent("hallo wie gehts").intent).toBe("smalltalk");

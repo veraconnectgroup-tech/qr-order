@@ -83,6 +83,7 @@ export function resolveReviewSessionSignals(
       recoveryCompleted,
       postRecoveryEligible: input?.postRecoveryEligible ?? lowScore,
       lastGuestMessage: state.conversation.model?.thread?.lastGuestText ?? null,
+      guestAffect: state.mental?.affect ?? null,
     },
   };
 }

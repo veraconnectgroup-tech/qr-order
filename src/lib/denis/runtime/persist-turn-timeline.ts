@@ -1,4 +1,5 @@
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import {
   buildTurnEnvelope,
@@ -23,6 +24,7 @@ export type PersistDenisTurnTimelineInput = {
   reflexTurn: ReflexTurnResult;
   channel?: PerceptionChannel;
   timelineSurface?: TurnEnvelope["surface"];
+  turnInterpretation?: TurnInterpretation | null;
 };
 
 /** Append PPAN timeline events from a completed turn (M7). */
@@ -62,7 +64,16 @@ export async function persistDenisTurnTimeline(
           normalizedText: input.guestMessage,
           structuredIntent: input.intent,
           ingestedAt: new Date().toISOString(),
+          ...(input.turnInterpretation
+            ? { interpretation: input.turnInterpretation }
+            : {}),
         },
+        ...(input.turnInterpretation
+          ? {
+              interpretation: input.turnInterpretation,
+              turnInterpretation: input.turnInterpretation,
+            }
+          : {}),
       },
     });
 

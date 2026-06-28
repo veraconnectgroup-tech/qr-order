@@ -13,12 +13,10 @@ import {
 } from "@/lib/fiscal/storno-copilot";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { StaffProactiveAlert } from "@/lib/denis/cognition/proactive/proactive-types";
-
-const WAITER_REQUEST_PATTERN =
-  /\b(konobar|waiter|help|pomoc|pomoć|garson|kelner|kellner|pozovi)\b/i;
-
-const RECOMMENDATION_PATTERN =
-  /\b(preporuk|recommend|empfehl|suggest|šta da|sta da|what should)\b/i;
+import {
+  isGuestHandoffMessage,
+  isGuestVagueBrowseMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
 
 const ALLERGY_PATTERN =
   /\b(alergij\w*|allerg\w*|intoleran\w*|bez\s+(glutena|laktoze|mleka|kikirikija|oraha))\b/i;
@@ -27,7 +25,7 @@ const ALLERGY_PATTERN =
 export const STAFF_ATTENTION_GUEST_MESSAGE_MIN = 3;
 
 export function guestAskedForRecommendation(message: string): boolean {
-  return RECOMMENDATION_PATTERN.test(message.trim());
+  return isGuestVagueBrowseMessage(message.trim());
 }
 
 export function detectAllergyMention(message: string): string | null {
@@ -37,7 +35,7 @@ export function detectAllergyMention(message: string): string | null {
 }
 
 export function detectWaiterRequest(message: string): boolean {
-  return WAITER_REQUEST_PATTERN.test(message.trim());
+  return isGuestHandoffMessage(message.trim());
 }
 
 export function isGuestFrustrated(affect: GuestAffect | null | undefined): boolean {

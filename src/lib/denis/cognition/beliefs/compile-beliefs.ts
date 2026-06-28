@@ -22,6 +22,15 @@ import { mergeTableSessionObligation } from "@/lib/denis/cognition/waiter/merge-
 import type { WaiterGapKind, WaiterNextAction } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
 import { deriveCommerceLifecycleFacts } from "@/lib/denis/cognition/beliefs/compile-commerce-lifecycle";
 import { isOrderPlacementMessage } from "@/lib/ai/ordering/order-message-backfill";
+import { detectGuestScript } from "@/lib/denis/cognition/conversation/script-detector";
+import { parseCodeSwitchedMessage } from "@/lib/denis/cognition/conversation/code-switch-parser";
+import {
+  isGuestMenuInquiryMessage,
+  isGuestSettlingMessage,
+  isPureSocialBanterMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
+
+export { isPureSocialBanterMessage };
 
 export type CompileBeliefsInput = {
   state: TableSessionState;
@@ -73,21 +82,6 @@ const EXPLICIT_LANGUAGE_PREFERENCE: Array<{
     lang: "en",
   },
 ];
-
-const LATIN_BALKAN_PATTERN =
-  /\b(jedn[auo]|molim|hvala|naru[čc]|poru[čc]|potvrd|donesi|donij|imam|alergij|pivo|cola|kola|jo[sš]|sve|nema|mo[žz]e|moze|želim|zelim|ho[ćc]u|hocu|imate|zdravo|dobar|gde|gdje|sta|šta|kako|si|ste|sam|smo|brate|bre|legendo|legend|ćao|cao|jel|jesi|nisi|reci|recite|ajde|idem|idemo|super|odlično|odlicno|samo|sad|sada|kasnije|hajde|izvini|izvinite|naravno|važi|vazi|može|moze)\b/i;
-
-const LATIN_GERMAN_PATTERN =
-  /\b(bitte|danke|ein|eine|einen|einem|gross|groß|klein|bier|wasser|wein|cola|kaffee|tee|ich|möchte|mochte|hätte|hatte|bestellen|rechnung|kellner|hallo|guten|morgen|tag|abend|gerne|wollen|würde|wurde|noch|alles|spritz|pilsner|lager|weizen|radler)\b/i;
-
-const LATIN_ENGLISH_PATTERN =
-  /\b(please|thanks|thank you|could i|can i|i want|i'd like|allergies|order|hello|hi)\b/i;
-
-const SETTLING_GUEST_PATTERN =
-  /\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat|pay|rechnung bitte|that's it|done ordering)\b/i;
-
-const MENU_INQUIRY_PATTERN =
-  /(šta imate|sta imate|what do you have|was habt ihr|šta nudite|imate li)/i;
 
 const NEUTRAL_LANGUAGE_MESSAGE =
   /^(0[,.]3|0[,.]5|0[,.]33|1|2)(\s*(l|liter|litre|litr))?$/i;
@@ -151,16 +145,30 @@ function detectMessageLanguage(
     return { lang: "es", confidence: 0.95, source: "inferred" };
   }
 
-  const lower = text.toLowerCase();
-  if (LATIN_BALKAN_PATTERN.test(lower)) {
-    if (venue === "hr") return { lang: "hr", confidence: 0.9, source: "inferred" };
-    return { lang: "sr", confidence: 0.9, source: "inferred" };
+  const script = detectGuestScript(text);
+  if (script.inputScript === "cyrillic") {
+    return {
+      lang: venue === "hr" ? "hr" : "sr",
+      confidence: 0.9,
+      source: "inferred",
+    };
   }
-  if (LATIN_GERMAN_PATTERN.test(lower)) {
-    return { lang: "de", confidence: 0.85, source: "inferred" };
-  }
-  if (LATIN_ENGLISH_PATTERN.test(lower)) {
-    return { lang: "en", confidence: 0.85, source: "inferred" };
+
+  if (script.inputScript === "latin") {
+    const codeSwitch = parseCodeSwitchedMessage(text, {
+      venueLanguage: venue,
+    });
+    const dominant = codeSwitch.dominantLanguage;
+    if (
+      dominant &&
+      (SUPPORTED_LANGUAGES as readonly string[]).includes(dominant)
+    ) {
+      return {
+        lang: dominant as SupportedLanguage,
+        confidence: codeSwitch.codeSwitched ? 0.88 : 0.85,
+        source: "inferred",
+      };
+    }
   }
 
   return { lang: venue, confidence: 0.55, source: "inferred" };
@@ -233,16 +241,6 @@ function resolveConversationLanguage(
     detected.source,
     detected.confidence
   );
-}
-
-/** Narrow pure-social greeting — relational tier only (ADR-030). */
-const PURE_SOCIAL_BANTER_PATTERN =
-  /^(zdravo|ćao|cao|hello|hi|hey|guten tag|guten abend|merhaba|que tal|ciao|hola)[\s,!.-]*((kako si|how are|sta si|sta ima|legendo|legend).*)?$/i;
-
-export function isPureSocialBanterMessage(message: string): boolean {
-  const text = message.trim();
-  if (!text || text.length > 120) return false;
-  return PURE_SOCIAL_BANTER_PATTERN.test(text);
 }
 
 function resolveCommercePressure(
@@ -345,7 +343,7 @@ function resolveConversationMode(
     );
   }
 
-  if (SETTLING_GUEST_PATTERN.test(guestMessage)) {
+  if (isGuestSettlingMessage(guestMessage)) {
     const hasUnsentCart =
       state.commerce.cart.visibleLines.length > 0 ||
       state.conversation.pendingSlot != null;
@@ -398,13 +396,17 @@ function resolveConversationMode(
     );
   }
 
-  if (MENU_INQUIRY_PATTERN.test(guestMessage.trim())) {
+  if (isGuestMenuInquiryMessage(guestMessage.trim())) {
     return belief(
       CORE_BELIEF_KEYS.conversationMode,
       "ordering",
       "inferred",
       0.85
     );
+  }
+
+  if (isPureSocialBanterMessage(guestMessage.trim())) {
+    return belief(CORE_BELIEF_KEYS.conversationMode, "banter", "inferred", 0.85);
   }
 
   return belief(CORE_BELIEF_KEYS.conversationMode, "banter", "inferred", 0.75);
@@ -429,10 +431,7 @@ function resolvePendingSlot(
 
   const missingDrinkServeSize = state.commerce.cart.ai.draft.items.some(
     (line) =>
-      (line.menuSection === "drinks" ||
-        /\b(pivo|beer|bier|cola|kola|weizen|pilsner|sprite)\b/i.test(
-          line.productName
-        )) &&
+      line.menuSection === "drinks" &&
       !line.serveSize?.trim()
   );
 

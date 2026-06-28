@@ -18,6 +18,8 @@ import {
 } from "@/lib/ai/ordering/serve-size-logic";
 import { isGenericCategorySegment } from "@/lib/ai/ordering/category-order-logic";
 import { isGuestFinalConfirm } from "@/lib/ai/ordering/order-flow";
+import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import type { TurnInterpretation } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 import {
   buildSubstitutionNegotiationMessage,
   drinkClarifySnippet,
@@ -222,15 +224,16 @@ function segmentLineKey(productId: string, notes: string): string {
 
 function segmentToProposedItem(
   segment: ParsedOrderSegment | string,
-  catalog: AiCatalog
+  catalog: AiCatalog,
+  interpretation?: TurnInterpretation | null
 ): { item: AiProposedItem | null; substitution: GuestSubstitutionRequest | null } {
   const parsed: ParsedOrderSegment =
     typeof segment === "string" ? parseOrderSegment(segment) : segment;
 
   const rawSegment = parsed.productText;
-  const modifierNotes = parseGuestModifiers(rawSegment);
-  const productSegment = stripGuestModifierPhrase(rawSegment);
-  const substitution = parseGuestSubstitution(productSegment);
+  const modifierNotes = parseGuestModifiers(rawSegment, interpretation);
+  const productSegment = stripGuestModifierPhrase(rawSegment, interpretation);
+  const substitution = parseGuestSubstitution(productSegment, interpretation);
   const product = pickProductForSegment(productSegment, catalog.catalog);
   if (!product) {
     return { item: null, substitution };
@@ -290,9 +293,10 @@ export function extractOrderMessageMeta(message: string): OrderBackfillMeta {
 
   const segments = splitOrderMessageSegments(text);
   let substitution: GuestSubstitutionRequest | null = null;
+  const interpretation = extractTurnInterpretation({ guestMessage: text, llmUsed: false });
 
   for (const segment of segments) {
-    const parsed = parseGuestSubstitution(segment);
+    const parsed = parseGuestSubstitution(segment, interpretation);
     if (parsed && !substitution) {
       substitution = parsed;
     }
@@ -377,7 +381,11 @@ export function backfillDraftFromOrderMessage(
   draft: AiOrderDraft,
   catalog: AiCatalog,
   message: string,
-  options?: { requirePlacementPattern?: boolean; additive?: boolean }
+  options?: {
+    requirePlacementPattern?: boolean;
+    additive?: boolean;
+    interpretation?: TurnInterpretation | null;
+  }
 ): {
   draft: AiOrderDraft;
   cartActions: ValidatedCartAction[];
@@ -385,6 +393,9 @@ export function backfillDraftFromOrderMessage(
 } {
   const metaFromMessage = extractOrderMessageMeta(message);
   const additive = options?.additive === true;
+  const interpretation =
+    options?.interpretation ??
+    extractTurnInterpretation({ guestMessage: message, llmUsed: false });
   if (draft.pending) {
     return { draft, cartActions: [], meta: metaFromMessage };
   }
@@ -425,7 +436,7 @@ export function backfillDraftFromOrderMessage(
       continue;
     }
 
-    const parsed = segmentToProposedItem(segment, catalog);
+    const parsed = segmentToProposedItem(segment, catalog, interpretation);
     if (parsed.substitution && !substitution) {
       substitution = parsed.substitution;
     }
