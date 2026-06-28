@@ -1,7 +1,9 @@
 import { StaffBoard } from "@/components/dashboard/staff-board";
 import { getStaffAccess } from "@/lib/auth/get-staff-access";
 import { loadStaffPermissionOverridesBatch } from "@/lib/auth/load-staff-permission-overrides";
-import { requireStaff } from "@/lib/auth/session";
+import { getStaffLocationContext, requireStaff } from "@/lib/auth/session";
+import { loadStaffTrainingSnapshot } from "@/lib/admin/load-staff-training-insight";
+import { loadStaffLocationsBatch } from "@/lib/staff/staff-locations";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function StaffPage() {
@@ -47,6 +49,29 @@ export default async function StaffPage() {
     staff.role === "owner" ? null : actorAccess.permissions;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { locationId, accessibleLocations } = await getStaffLocationContext(staff);
+
+  const locationsByStaffId =
+    canManage && teamRows.length
+      ? Object.fromEntries(
+          (
+            await loadStaffLocationsBatch(
+              admin,
+              teamRows.map((member) => member.id)
+            )
+          ).entries()
+        )
+      : {};
+
+  const trainingSnapshot =
+    canManage && locationId
+      ? await loadStaffTrainingSnapshot(admin, {
+          locationId,
+          orgId: staff.org_id,
+          periodDays: 30,
+          includePriorTrend: true,
+        })
+      : null;
 
   return (
     <StaffBoard
@@ -72,6 +97,9 @@ export default async function StaffPage() {
       canManage={canManage}
       overridesByStaffId={overridesByStaffId}
       actorGrantable={actorGrantable}
+      trainingSnapshot={trainingSnapshot}
+      locationsByStaffId={locationsByStaffId}
+      allLocations={accessibleLocations}
     />
   );
 }

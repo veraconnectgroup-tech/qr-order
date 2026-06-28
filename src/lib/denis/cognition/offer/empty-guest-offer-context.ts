@@ -15,6 +15,7 @@ export function emptyGuestOfferContext(now = 0): GuestOfferContext {
     primary: null,
     alternative: null,
     cartRecovery: null,
+    smartRecovery: null,
     sequencePattern: "unknown",
     scoredProducts: [],
     trace: {

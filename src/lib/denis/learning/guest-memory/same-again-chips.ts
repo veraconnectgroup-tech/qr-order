@@ -1,4 +1,4 @@
-/** T0 chips for return-guest welcome (M17). */
+/** T0 chips for return-guest welcome + drink-empty reorder nudge (M17). */
 export function sameAgainQuickReplyLabels(language: string): {
   sameAgain: string;
   somethingElse: string;
@@ -8,7 +8,7 @@ export function sameAgainQuickReplyLabels(language: string): {
     return { sameAgain: "Ja, dasselbe", somethingElse: "Etwas anderes" };
   }
   if (lang === "en") {
-    return { sameAgain: "Yes, same again", somethingElse: "Something else" };
+    return { sameAgain: "Yes, same", somethingElse: "Something else" };
   }
   return { sameAgain: "Da, isto", somethingElse: "Nešto drugo" };
 }

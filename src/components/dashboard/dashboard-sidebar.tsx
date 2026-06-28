@@ -9,6 +9,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  Building2,
   ChefHat,
   CreditCard,
   Grid3X3,
@@ -19,6 +20,8 @@ import {
   TrendingUp,
   Users,
   UtensilsCrossed,
+  Clock,
+  Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LocationSwitcher } from "@/components/dashboard/location-switcher";
@@ -77,6 +80,11 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
         alertKey: "calls",
       },
       {
+        href: "/dashboard/waitlist",
+        label: "Waitlist",
+        icon: Clock,
+      },
+      {
         href: "/dashboard/denis",
         label: "Denis",
         icon: DenisNavIcon,
@@ -94,6 +102,19 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
         icon: TrendingUp,
         roles: ["owner", "manager"],
         requiresDenis: true,
+      },
+      {
+        href: "/dashboard/optimization",
+        label: "Timing",
+        icon: Gauge,
+        roles: ["owner", "manager"],
+        requiresDenis: true,
+      },
+      {
+        href: "/dashboard/org",
+        label: "Org Hub",
+        icon: Building2,
+        roles: ["owner"],
       },
       {
         href: "/dashboard/org-analytics",

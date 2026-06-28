@@ -7,6 +7,7 @@ import { deriveGuestMemoryToken } from "@/lib/guest/denis-guest-memory-token";
 import { buildNarrationFacts } from "@/lib/denis/runtime/narrate";
 import { resolveTurnQuickReplies } from "@/lib/denis/runtime/narrate/build-turn-quick-replies";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
+import { emptyGuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 
@@ -52,15 +53,16 @@ describe("guest memory M17", () => {
       language: "en",
       reflexTurn,
       flowNodeId: "welcome",
-      guestMemory: {
-        favoriteProductIds: [],
-        allergySheetIds: [],
-        allergyLabels: [],
+      guestMemory: emptyGuestMemoryProjection({
         preferredLanguage: "en",
+        language: "en",
         visitCount: 2,
+        hasMemoryConsent: true,
         lastVisitItemNames: ["Burger", "IPA"],
+        favoriteItems: ["Burger", "IPA"],
         lastVisitAt: new Date().toISOString(),
-      },
+        lastVisit: new Date().toISOString(),
+      }),
     });
 
     expect(facts.committed.returnGuestWelcome).toContain("Burger, IPA");

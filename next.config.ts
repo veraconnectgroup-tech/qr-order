@@ -20,7 +20,7 @@ const withPWA = require("next-pwa")({
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/(products|categories)(\/|\?).*/i,
-      handler: "CacheFirst",
+      handler: "StaleWhileRevalidate",
       options: {
         cacheName: "menu-data",
         expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
@@ -45,6 +45,14 @@ const withPWA = require("next-pwa")({
         cacheName: "dashboard-pages",
         networkTimeoutSeconds: 10,
         expiration: { maxEntries: 10, maxAgeSeconds: 300 },
+      },
+    },
+    {
+      urlPattern: /\/api\/orders(\/|\?|$)/i,
+      handler: "NetworkOnly",
+      method: "POST",
+      options: {
+        cacheName: "order-submit",
       },
     },
     {

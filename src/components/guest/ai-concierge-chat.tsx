@@ -31,20 +31,26 @@ import {
   type ProductRecommendation,
 } from "@/components/guest/product-recommendation-card";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
-import { resolveAiPromptLanguage, type AI_SUPPORTED_LANGUAGES } from "@/lib/ai/config";
+import { useGuestAccessibility } from "@/components/guest/guest-accessibility-provider";
+import { detectClientAccessibilitySignals } from "@/lib/guest/detect-client-accessibility";
+import { resolveAiPromptLanguage, AI_SUPPORTED_LANGUAGES } from "@/lib/ai/config";
 import {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
 } from "@/lib/ai/guest-language";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { runDenisOfflineTurn } from "@/lib/guest/denis-offline-turn";
 import {
   bumpGuestRecoveryFailureCount,
   clearGuestRecoveryFailureCount,
   GuestRecoveryError,
+  GuestRetryableChatError,
   isInfrastructureChatError,
   resolveGuestRecoveryResponse,
   tryLocalGuestAnswer,
   type GuestRecoveryResult,
 } from "@/lib/guest/denis-guest-recovery";
+import { ERROR_CODES, parseApiErrorFromJson, resolveGuestApiError } from "@/lib/api-error-client";
 import { requestGuestPaymentHandoff } from "@/lib/guest/request-payment-handoff";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
 import type { DenisGuestApiMeta } from "@/lib/denis/surfaces/format-denis-api-meta";
@@ -91,13 +97,14 @@ import {
   postDenisThinkingPreview,
 } from "@/lib/guest/denis-signal-client";
 import {
+  MAX_DENIS_THINKING_STEPS,
   resolveDenisThinkingStepKeys,
   useRotatingThinkingLabel,
 } from "@/lib/guest/denis-thinking-steps";
 import { transcriptEntriesToChatMessages } from "@/lib/guest/view-transcript-bootstrap";
 import type { TranscriptEntry } from "@/lib/denis/loop/view-types";
 import { useCart } from "@/hooks/use-cart";
-import { useDenisVoice } from "@/hooks/use-denis-voice";
+import { useDenisVoice, type VoiceCaptureResult } from "@/hooks/use-denis-voice";
 import { DenisVoiceMicButton } from "@/components/guest/denis-voice-mic-button";
 import type { SceneSituation } from "@/lib/scene/types";
 import { cn } from "@/lib/utils";
@@ -203,7 +210,9 @@ function mapAiChatError(
   error: string | undefined,
   status: number,
   details: { code?: string } | undefined,
-  tUI: (key: string) => string
+  tUI: (key: string) => string,
+  language: string,
+  parsedError?: ReturnType<typeof parseApiErrorFromJson>
 ): string {
   if (details?.code === "not_configured" || error?.includes("not configured")) {
     return tUI("ai.overlay.unavailable");
@@ -214,32 +223,23 @@ function mapAiChatError(
   if (error?.includes("not enabled")) {
     return tUI("ai.overlay.unavailable");
   }
-  if (status === 401 || error?.includes("Session expired")) {
-    return tUI("ai.overlay.sessionExpired");
+
+  const resolved = resolveGuestApiError(
+    parsedError ??
+      (error
+        ? {
+            code: ERROR_CODES.INTERNAL,
+            message: error,
+            retryable: status === 429,
+          }
+        : null),
+    status,
+    language
+  );
+  if (resolved.rescanQr || status === 401 || status === 410 || status === 429 || status >= 500) {
+    return resolved.message;
   }
-  if (
-    status === 410 ||
-    error?.includes("no longer active") ||
-    error?.includes("message limit")
-  ) {
-    return tUI("ai.overlay.sessionExpired");
-  }
-  if (status === 403 && error?.includes("Session does not match")) {
-    return tUI("ai.overlay.sessionExpired");
-  }
-  if (status === 429) {
-    return tUI("ai.overlay.rateLimited");
-  }
-  if (status === 502 || status === 503 || status === 504) {
-    return tUI("ai.recovery.connection");
-  }
-  if (
-    error === "signal_timeout" ||
-    error === "signal_processing_failed" ||
-    error === "signal_failed"
-  ) {
-    return tUI("ai.recovery.connection");
-  }
+
   return error ?? tUI("ai.overlay.error");
 }
 
@@ -257,9 +257,11 @@ function aiLegacySessionTokens(
 function isStaleAiSessionResponse(
   status: number,
   error: string | undefined,
-  sessionId: string | undefined
+  sessionId: string | undefined,
+  code?: string
 ) {
   if (!sessionId) return false;
+  if (code === ERROR_CODES.SESSION_EXPIRED) return true;
   if (status === 401 || status === 404 || status === 410) return true;
   return (
     error?.includes("no longer active") === true ||
@@ -330,43 +332,49 @@ function DenisMessageRow({
   continueLabel: string;
   markState?: "idle" | "listen" | "think";
 }) {
+  const { tUI } = useAppLocale();
+
   if (message.role === "user") {
     return (
-      <DenisMessageBlock role="user">{message.content}</DenisMessageBlock>
+      <div role="article" aria-label={tUI("a11y.chatYouSaid")}>
+        <DenisMessageBlock role="user">{message.content}</DenisMessageBlock>
+      </div>
     );
   }
 
   return (
-    <DenisMessageBlock role="assistant" markState={markState}>
-      <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-[var(--qr-ivory)]">
-        {message.content}
-      </p>
-      {message.quickPicks && onQuickPickConfirm && (
-        <ChatQuickPicks
-          options={message.quickPicks.options}
-          mode={message.quickPicks.mode}
-          confirmed={message.quickPicks.confirmed}
-          continueLabel={continueLabel}
-          onConfirm={(ids) => onQuickPickConfirm(message.id, ids)}
-        />
-      )}
-      {message.quickReplies?.length && onQuickReply && (
-        <ChatQuickReplies
-          options={message.quickReplies}
-          used={message.quickRepliesUsed ?? false}
-          onSelect={(label) => onQuickReply(message.id, label)}
-        />
-      )}
-      {message.recommendations && (
-        <DenisRecommendList
-          recommendations={message.recommendations}
-          currency={currency}
-          orderingDisabled={orderingDisabled}
-          addedIds={addedIds}
-          onAdd={onAddRecommendation}
-        />
-      )}
-    </DenisMessageBlock>
+    <div role="article" aria-label={tUI("a11y.chatDenisSays")}>
+      <DenisMessageBlock role="assistant" markState={markState}>
+        <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-[var(--qr-ivory)]">
+          {message.content}
+        </p>
+        {message.quickPicks && onQuickPickConfirm && (
+          <ChatQuickPicks
+            options={message.quickPicks.options}
+            mode={message.quickPicks.mode}
+            confirmed={message.quickPicks.confirmed}
+            continueLabel={continueLabel}
+            onConfirm={(ids) => onQuickPickConfirm(message.id, ids)}
+          />
+        )}
+        {message.quickReplies?.length && onQuickReply && (
+          <ChatQuickReplies
+            options={message.quickReplies}
+            used={message.quickRepliesUsed ?? false}
+            onSelect={(label) => onQuickReply(message.id, label)}
+          />
+        )}
+        {message.recommendations && (
+          <DenisRecommendList
+            recommendations={message.recommendations}
+            currency={currency}
+            orderingDisabled={orderingDisabled}
+            addedIds={addedIds}
+            onAdd={onAddRecommendation}
+          />
+        )}
+      </DenisMessageBlock>
+    </div>
   );
 }
 
@@ -521,6 +529,8 @@ export type AiConciergeChatProps = {
   onOpenPaymentSheet?: () => void;
   /** Reload view.transcript after a turn (SSE may lag). */
   onViewRefresh?: () => void;
+  /** Prompt 38 — first-message language detection adapts menu + chips. */
+  onGuestLanguageDetected?: (language: string) => void;
 };
 
 export function AiConciergeChat({
@@ -557,8 +567,11 @@ export function AiConciergeChat({
   bootstrapTranscript = null,
   onOpenPaymentSheet,
   onViewRefresh,
+  onGuestLanguageDetected,
 }: AiConciergeChatProps) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
+  const { prefs: a11yPrefs } = useGuestAccessibility();
+  const isOnline = useOnlineStatus();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
   const venueGreeting = useMemo(
     () => tForAiGuestLanguage("ai.chat.greeting", menuLocale),
@@ -588,6 +601,9 @@ export function AiConciergeChat({
   const approvalPollCleanupRef = useRef<(() => void) | null>(null);
   const pendingTurnExtrasRef = useRef<TurnExtras | null>(null);
   const usedQuickReplyIdsRef = useRef<Set<string>>(new Set());
+  const pendingRetryRef = useRef(
+    new Map<string, { userMessage: string; tryAgainLabel: string }>()
+  );
   const chatWasOpenRef = useRef(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("chat");
@@ -600,6 +616,7 @@ export function AiConciergeChat({
   const [inputFocused, setInputFocused] = useState(false);
   const [aiSessionId, setAiSessionId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(() => new Set());
+  const [cartAnnouncement, setCartAnnouncement] = useState("");
   const preferencesRef = useRef<{ allergies: string[]; mood: string }>({
     allergies: [],
     mood: "",
@@ -904,6 +921,7 @@ export function AiConciergeChat({
   const voice = useDenisVoice({
     enabled: voiceEnabled && open,
     language: chatLanguage,
+    menuLanguage: menuLocale,
     autoSpeak: voiceTtsEnabled,
   });
 
@@ -913,13 +931,37 @@ export function AiConciergeChat({
     [chatLanguage]
   );
 
+  const thinkingPersonalization = useMemo(
+    () => ({
+      isReturningGuest:
+        (guestProfile?.visitHistory?.length ?? 0) > 0 ||
+        (guestProfile?.favorites?.length ?? 0) > 0 ||
+        guestProfile?.lastVisitAt != null,
+      hasAllergy:
+        resolvedAllergySelection.length > 0 ||
+        preferencesRef.current.allergies.length > 0,
+      isLargeOrder:
+        cartItems.reduce((sum, item) => sum + item.quantity, 0) >= 4 ||
+        cartItems.length >= 3,
+    }),
+    [guestProfile, resolvedAllergySelection, cartItems]
+  );
+
   const thinkingSteps = useMemo(() => {
-    if (serverThinkingSteps.length > 0) return serverThinkingSteps;
+    if (serverThinkingSteps.length > 0) {
+      return serverThinkingSteps.slice(0, MAX_DENIS_THINKING_STEPS);
+    }
     if (!pendingThinkingMessage) return [];
-    return resolveDenisThinkingStepKeys(pendingThinkingMessage).map((key) =>
-      tChat(key)
-    );
-  }, [serverThinkingSteps, pendingThinkingMessage, tChat]);
+    return resolveDenisThinkingStepKeys(
+      pendingThinkingMessage,
+      thinkingPersonalization
+    ).map((key) => tChat(key));
+  }, [
+    serverThinkingSteps,
+    pendingThinkingMessage,
+    thinkingPersonalization,
+    tChat,
+  ]);
 
   const thinkingHeadline = useRotatingThinkingLabel(thinkingSteps, isTyping);
 
@@ -972,6 +1014,7 @@ export function AiConciergeChat({
             deviceFingerprint: resolvedDeviceFingerprint,
             deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
             surface: inputSurface,
+            accessibilitySignals: detectClientAccessibilitySignals(),
           },
           { signal: controller.signal }
         );
@@ -988,7 +1031,8 @@ export function AiConciergeChat({
       }
 
       const json = (await res.json()) as {
-        error?: string;
+        ok?: boolean;
+        error?: string | { code?: string; message?: string; retryable?: boolean };
         details?: { code?: string };
         data?: {
           message: string;
@@ -1004,10 +1048,19 @@ export function AiConciergeChat({
         };
       };
 
+      const parsedError = !res.ok
+        ? parseApiErrorFromJson(json, res.status)
+        : null;
+
       if (!res.ok) {
         if (
           !retryWithoutSession &&
-          isStaleAiSessionResponse(res.status, json.error, sessionId)
+          isStaleAiSessionResponse(
+            res.status,
+            parsedError?.message,
+            sessionId,
+            parsedError?.code
+          )
         ) {
           if (sessionId) {
             void completeAiSession({
@@ -1026,15 +1079,47 @@ export function AiConciergeChat({
           return callAiChat(message, prefs, true, inputSurface);
         }
 
-        if (isInfrastructureChatError(json.error, res.status)) {
+        if (isInfrastructureChatError(parsedError, res.status)) {
           const failureCount = bumpGuestRecoveryFailureCount(recoveryScopeKey);
-          throw new GuestRecoveryError(
-            buildRecovery(message, failureCount, requestLanguage)
+          const recovery = buildRecovery(message, failureCount, requestLanguage);
+          const apiError = resolveGuestApiError(
+            parsedError,
+            res.status,
+            requestLanguage
           );
+          throw new GuestRecoveryError({
+            ...recovery,
+            message: apiError.message,
+          });
+        }
+
+        if (
+          parsedError?.retryable &&
+          parsedError.code === ERROR_CODES.RATE_LIMITED
+        ) {
+          throw new GuestRetryableChatError({
+            displayMessage: resolveGuestApiError(
+              parsedError,
+              res.status,
+              requestLanguage
+            ).message,
+            retryUserMessage: message,
+            tryAgainLabel: tForAiGuestLanguage(
+              "ai.overlay.tryAgain",
+              requestLanguage
+            ),
+          });
         }
 
         throw new Error(
-          mapAiChatError(json.error, res.status, json.details, tChat)
+          mapAiChatError(
+            parsedError?.message,
+            res.status,
+            json.details,
+            tChat,
+            requestLanguage,
+            parsedError
+          )
         );
       }
 
@@ -1054,6 +1139,7 @@ export function AiConciergeChat({
       }
 
       setChatLanguage(requestLanguage);
+      onGuestLanguageDetected?.(requestLanguage);
 
       return data;
     },
@@ -1071,6 +1157,7 @@ export function AiConciergeChat({
       resolvedDeviceFingerprint,
       recoveryScopeKey,
       buildRecovery,
+      onGuestLanguageDetected,
     ]
   );
 
@@ -1125,6 +1212,7 @@ export function AiConciergeChat({
         menuLocale,
         chatLanguage
       );
+      onGuestLanguageDetected?.(requestLanguage);
 
       const legacyTokens = aiLegacySessionTokens(tableId, sessionToken);
       const previewSessionId =
@@ -1149,7 +1237,9 @@ export function AiConciergeChat({
         surface: inputSurface,
       }).then((preview) => {
         if (preview?.steps?.length) {
-          setServerThinkingSteps(preview.steps);
+          setServerThinkingSteps(
+            preview.steps.slice(0, MAX_DENIS_THINKING_STEPS)
+          );
         }
       });
 
@@ -1165,6 +1255,30 @@ export function AiConciergeChat({
               recommendations: demo.recommendations.length
                 ? demo.recommendations
                 : undefined,
+              ephemeral: true,
+            },
+          ]);
+          return;
+        }
+
+        if (!isOnline) {
+          const offlineTurn = runDenisOfflineTurn({
+            guestMessage: trimmed,
+            language: chatLanguage,
+            categories: menuCategories,
+            cartItemCount: cartItems.length,
+            cartTotal,
+            currency,
+            situation: sceneChrome?.situation,
+          });
+          applyCartActions(offlineTurn.cartActions);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: offlineTurn.message,
+              quickReplies: offlineTurn.quickReplies,
               ephemeral: true,
             },
           ]);
@@ -1243,6 +1357,25 @@ export function AiConciergeChat({
           voice.speak(data.voice.speakText);
         }
       } catch (err) {
+        if (err instanceof GuestRetryableChatError) {
+          const messageId = nextId();
+          pendingRetryRef.current.set(messageId, {
+            userMessage: err.retryUserMessage,
+            tryAgainLabel: err.tryAgainLabel,
+          });
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: messageId,
+              role: "assistant",
+              content: err.displayMessage,
+              quickReplies: [err.tryAgainLabel],
+              ephemeral: true,
+            },
+          ]);
+          return;
+        }
+
         const recovery =
           err instanceof GuestRecoveryError
             ? err.recovery
@@ -1273,6 +1406,7 @@ export function AiConciergeChat({
       isTyping,
       phase,
       isDemo,
+      isOnline,
       menuCategories,
       sceneChrome?.situation,
       cartItems.length,
@@ -1294,15 +1428,64 @@ export function AiConciergeChat({
     ]
   );
 
-  const handleVoiceTranscript = useCallback(
-    (transcript: string) => {
-      void sendUserMessage(transcript, { inputSurface: "voice" });
+  const handleVoiceResult = useCallback(
+    (result: VoiceCaptureResult) => {
+      if (!result.ok) {
+        if (
+          result.reason === "low_confidence" ||
+          result.reason === "noise_gate" ||
+          result.reason === "no_speech"
+        ) {
+          const retryText = tUI("ai.voice.retry");
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: retryText,
+              ephemeral: true,
+            },
+          ]);
+          if (voiceTtsEnabled) {
+            voice.speak(retryText, chatLanguage);
+          }
+        }
+        return;
+      }
+
+      if (result.detectedLanguage !== chatLanguage) {
+        const detected = result.detectedLanguage;
+        if (
+          (AI_SUPPORTED_LANGUAGES as readonly string[]).includes(detected)
+        ) {
+          setChatLanguage(
+            detected as (typeof AI_SUPPORTED_LANGUAGES)[number]
+          );
+        }
+      }
+
+      void sendUserMessage(result.transcript, { inputSurface: "voice" });
     },
-    [sendUserMessage]
+    [sendUserMessage, tUI, voice, voiceTtsEnabled, chatLanguage]
   );
 
   const handleQuickReply = useCallback(
     (messageId: string, label: string) => {
+      const retry = pendingRetryRef.current.get(messageId);
+      if (retry && label === retry.tryAgainLabel) {
+        pendingRetryRef.current.delete(messageId);
+        usedQuickReplyIdsRef.current.add(messageId);
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === messageId
+              ? { ...message, quickRepliesUsed: true }
+              : message
+          )
+        );
+        void sendUserMessage(retry.userMessage);
+        return;
+      }
+
       usedQuickReplyIdsRef.current.add(messageId);
       setMessages((prev) =>
         prev.map((message) =>
@@ -1333,6 +1516,7 @@ export function AiConciergeChat({
         hapticClick();
         onAddToCart(rec);
         setAddedIds((prev) => new Set(prev).add(rec.productId));
+        setCartAnnouncement(tUI("a11y.cartAdded", { name: rec.name }));
         return;
       }
 
@@ -1350,6 +1534,7 @@ export function AiConciergeChat({
       });
       toastAddedToCart(rec.name, rec.price, currency);
       setAddedIds((prev) => new Set(prev).add(rec.productId));
+      setCartAnnouncement(tUI("a11y.cartAdded", { name: rec.name }));
 
       if (aiSessionId) {
         void trackAiConversion({
@@ -1374,6 +1559,7 @@ export function AiConciergeChat({
       onAddToCart,
       customizableProductIds,
       onOpenProductDetail,
+      tUI,
     ]
   );
 
@@ -1546,7 +1732,15 @@ export function AiConciergeChat({
           </button>
         </DenisPanelHeader>
 
-        <DenisPanelBody ref={scrollRef}>
+        <DenisPanelBody
+          ref={scrollRef}
+          role="log"
+          aria-live="polite"
+          aria-label={tUI("a11y.chatConversation")}
+        >
+          <div aria-live="assertive" aria-atomic="true" className="sr-only">
+            {cartAnnouncement}
+          </div>
           {messages.map((message, index) => (
             <DenisMessageRow
               key={message.id}
@@ -1590,7 +1784,7 @@ export function AiConciergeChat({
                   listenLabel={tUI("ai.voice.listen")}
                   listeningLabel={tUI("ai.voice.listening")}
                   unsupportedLabel={tUI("ai.voice.unsupported")}
-                  onPressStart={() => voice.startListening(handleVoiceTranscript)}
+                  onPressStart={() => voice.startListening(handleVoiceResult)}
                   onPressEnd={() => voice.stopListening()}
                 />
               )}
@@ -1610,6 +1804,7 @@ export function AiConciergeChat({
                 onBlur={() => setInputFocused(false)}
                 disabled={!inputEnabled}
                 placeholder={tChat("ai.chat.askDenis")}
+                aria-label={tChat("ai.chat.askDenis")}
                 className="min-h-0 min-w-0 flex-1 border-0 bg-transparent py-2 text-base text-[var(--qr-ivory)] placeholder:text-[var(--qr-muted)] outline-none disabled:opacity-50"
               />
               <button

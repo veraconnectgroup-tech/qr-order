@@ -1,9 +1,10 @@
+import type { ParsedApiError } from "@/lib/api-error-client";
+import { ERROR_CODES } from "@/lib/api-error-client";
 import { parseHandoffPaymentMethod } from "@/lib/denis/commands/perceive-table-guest-command";
 import { templateUtteranceForKey } from "@/lib/denis/cognition/tde/template-utterance";
 import {
   handoffNarrationMessage,
   paymentMethodNarrationKey,
-  paymentMethodQuickReplyLabels,
 } from "@/lib/denis/runtime/act/handoff-narration";
 import type { OrderFact } from "@/lib/denis/loop/types";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
@@ -26,6 +27,8 @@ export type GuestRecoveryAction = {
   openPaymentSheet?: boolean;
   tryWaiterCall?: boolean;
   tryPaymentHandoff?: SelectablePaymentMethod;
+  /** Navigate guest to manual cart — LLM degraded for ordering intent. */
+  suggestManualCart?: boolean;
 };
 
 export type GuestRecoveryResult = {
@@ -47,6 +50,41 @@ export class GuestRecoveryError extends Error {
   }
 }
 
+/** Retryable API failure — guest can tap "Try again" to resend the same message. */
+export class GuestRetryableChatError extends Error {
+  readonly displayMessage: string;
+  readonly retryUserMessage: string;
+  readonly tryAgainLabel: string;
+
+  constructor(input: {
+    displayMessage: string;
+    retryUserMessage: string;
+    tryAgainLabel: string;
+  }) {
+    super(input.displayMessage);
+    this.name = "GuestRetryableChatError";
+    this.displayMessage = input.displayMessage;
+    this.retryUserMessage = input.retryUserMessage;
+    this.tryAgainLabel = input.tryAgainLabel;
+  }
+}
+
+/** Menu browse / recommendation — guest thinking + recovery heuristics. */
+export const MENU_BROWSE_PATTERN =
+  /(šta\s+imate|sta\s+imate|šta\s+imam|sta\s+imam|was\s+habt|what\s+do\s+you\s+have|preporuk|empfehl|recommend|suggest|pivo|pizza|jelo|piće|pice|drink|dessert|desert|vegan|vegetar|gluten|allerg)/i;
+
+/** Guest asked Denis to wait — pause thinking context. */
+export const GUEST_PAUSE_PATTERN =
+  /\b(nisam\s+j[oš]s?|ne\s+j[oš]s?|jo[sš]\s+gledamo|not\s+yet|noch\s+nicht|dođi|dodji|vrati\s+se|come\s+back|za\s+\d+\s*minut|\d+\s*minut\s+ponovo|za\s+koj[ií]\s+minut)\b/i;
+
+export function isGuestPauseMessage(message: string): boolean {
+  return GUEST_PAUSE_PATTERN.test(message.trim());
+}
+
+export function isMenuBrowseMessage(message: string): boolean {
+  return MENU_BROWSE_PATTERN.test(message.trim());
+}
+
 const PAYMENT_PATTERN =
   /\b(platim|platiti|platimo|zaplat|ho[ćc]u\s+da\s+platim|mogu\s+li\s+da\s+platim|rechnung\s+bitte|pay\s+now|bezahlen|checkout)\b/i;
 
@@ -64,6 +102,15 @@ const ORDER_PATTERN =
 
 const WAITER_CONFIRM_PATTERN =
   /^(da,?\s*)?(pozovi|pozovite)\s+konobara/i;
+
+const PAY_CARD_CHIP_PATTERN =
+  /^(plati\s+karticom|pay\s+by\s+card|mit\s+karte\s+zahlen)$/i;
+const SPLIT_BILL_CHIP_PATTERN =
+  /^(podeli\s+(račun|racun)|split(\s+the)?\s+bill|rechnung\s+teilen)$/i;
+const CALL_WAITER_CHIP_PATTERN =
+  /^(pozovi\s+konobara|call\s+(the\s+)?waiter|kellner\s+rufen)$/i;
+const STATUS_DETAIL_CHIP_PATTERN =
+  /^(detaljnije|more\s+details|mehr\s+details)$/i;
 
 const SETTLING_PATTERN =
   /\b(to je sve|to je to|samo to|that's all|that's it|fertig|das war'?s|done ordering)\b/i;
@@ -89,6 +136,36 @@ export function classifyGuestRecoveryIntent(message: string): GuestRecoveryInten
   if (WAITER_PATTERN.test(text)) return "waiter";
   if (ORDER_PATTERN.test(text)) return "order";
   return "general";
+}
+
+/** Route intent to recovery tier — 0 local, 1 contextual, 2 LLM. */
+export function resolveIntentRecoveryTier(
+  intent: GuestRecoveryIntent
+): GuestRecoveryTier {
+  switch (intent) {
+    case "payment":
+    case "status":
+      return 0;
+    case "bill_amount":
+    case "waiter":
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+export function paymentRecoveryQuickReplies(language: string): string[] {
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "de") return ["Mit Karte zahlen", "Rechnung teilen", "Kellner rufen"];
+  if (lang === "en") return ["Pay by card", "Split bill", "Call waiter"];
+  return ["Plati karticom", "Podeli račun", "Pozovi konobara"];
+}
+
+export function statusRecoveryQuickReplies(language: string): string[] {
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "de") return ["Mehr Details", "Kellner rufen"];
+  if (lang === "en") return ["More details", "Call waiter"];
+  return ["Detaljnije", "Pozovi konobara"];
 }
 
 export function isWaiterConfirmMessage(message: string): boolean {
@@ -165,7 +242,7 @@ function billAmountReply(input: {
           : `Trenutno u korpi: ${total}.`;
     return {
       message,
-      quickReplies: paymentMethodQuickReplyLabels(input.language),
+      quickReplies: paymentRecoveryQuickReplies(input.language),
     };
   }
 
@@ -188,7 +265,7 @@ function billAmountReply(input: {
     return {
       message,
       action: { openPaymentSheet: true },
-      quickReplies: paymentMethodQuickReplyLabels(input.language),
+      quickReplies: paymentRecoveryQuickReplies(input.language),
     };
   }
 
@@ -202,18 +279,7 @@ function statusFollowUpChips(
   situation: SceneSituation | null | undefined
 ): string[] | undefined {
   if (!situation) return undefined;
-  const lang = language.toLowerCase().slice(0, 2);
-  if (situation.hasActiveKitchen) {
-    if (lang === "de") return ["Noch etwas", "Bezahlen"];
-    if (lang === "en") return ["Add more", "Pay"];
-    return ["Još nešto", "Platiti"];
-  }
-  if (situation.hasReadyOrder) {
-    if (lang === "de") return ["Danke"];
-    if (lang === "en") return ["Thanks"];
-    return ["Hvala"];
-  }
-  return undefined;
+  return statusRecoveryQuickReplies(language);
 }
 
 function recoveryKey(
@@ -266,6 +332,98 @@ function resolvePaymentMethodAnswer(
   };
 }
 
+function detailedStatusMessage(
+  situation: SceneSituation | null | undefined,
+  language: string
+): string | null {
+  const open = openSituationOrders(situation);
+  if (!open.length) return null;
+
+  const lang = language.toLowerCase().slice(0, 2);
+  const lines = open.map((order) => {
+    const number = order.orderNumber > 0 ? `#${order.orderNumber}` : "";
+    const prep =
+      order.prepMinutes != null && order.prepMinutes > 0
+        ? lang === "de"
+          ? ` · ~${order.prepMinutes} Min`
+          : lang === "en"
+            ? ` · ~${order.prepMinutes} min`
+            : ` · ~${order.prepMinutes} min`
+        : "";
+    return `${number} ${order.itemsLabel} (${order.status})${prep}`.trim();
+  });
+
+  const header =
+    lang === "de"
+      ? "Ihre Bestellungen:"
+      : lang === "en"
+        ? "Your orders:"
+        : "Vaše porudžbine:";
+  return `${header}\n${lines.join("\n")}`;
+}
+
+/** Parse recovery quick-reply chip taps — tier 0, no API. */
+function parseRecoveryChipReply(input: {
+  guestMessage: string;
+  language: string;
+  situation?: SceneSituation | null;
+}): GuestRecoveryResult | null {
+  const text = input.guestMessage.trim();
+  if (!text) return null;
+
+  if (PAY_CARD_CHIP_PATTERN.test(text)) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: handoffNarrationMessage("payment_online", input.language),
+      action: {
+        tryPaymentHandoff: "online",
+        openPaymentSheet: true,
+      },
+    };
+  }
+
+  if (SPLIT_BILL_CHIP_PATTERN.test(text)) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: handoffNarrationMessage("split_bill_active", input.language),
+      action: { openPaymentSheet: true },
+    };
+  }
+
+  if (CALL_WAITER_CHIP_PATTERN.test(text)) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: handoffNarrationMessage("waiter_on_way", input.language),
+      action: { tryWaiterCall: true },
+    };
+  }
+
+  if (STATUS_DETAIL_CHIP_PATTERN.test(text)) {
+    const detail = detailedStatusMessage(input.situation, input.language);
+    if (!detail) {
+      return {
+        tier: 0,
+        answeredLocally: true,
+        message: tForAiGuestLanguage(
+          "ai.recovery.noOpenOrders",
+          input.language
+        ),
+      };
+    }
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: detail,
+      quickReplies: statusRecoveryQuickReplies(input.language),
+    };
+  }
+
+  return null;
+}
+
 function postOrderSettleMessage(
   situation: SceneSituation | null | undefined,
   language: string
@@ -283,7 +441,7 @@ function contextualTier0Message(input: {
   language: string;
   situation?: SceneSituation | null;
   cartItemCount: number;
-}): Pick<GuestRecoveryResult, "message" | "quickReplies"> {
+}): Pick<GuestRecoveryResult, "message" | "quickReplies" | "action"> {
   if (input.intent === "status") {
     const status = knownStatusMessage(input.situation, input.language);
     if (status) {
@@ -305,8 +463,9 @@ function contextualTier0Message(input: {
       };
     }
     return {
-      message: handoffNarrationMessage("ask_payment_method", input.language),
-      quickReplies: paymentMethodQuickReplyLabels(input.language),
+      message: handoffNarrationMessage("payment_online", input.language),
+      quickReplies: paymentRecoveryQuickReplies(input.language),
+      action: { openPaymentSheet: true },
     };
   }
 
@@ -398,18 +557,25 @@ export function resolveGuestRecoveryResponse(input: {
     message = `${knownStatus}\n\n${escalation}`;
   }
 
-  const quickReplies =
-    tier === 1 && intent === "payment" && hasPayableContext({ ...input, cartItemCount })
-      ? paymentMethodQuickReplyLabels(input.language)
-      : tier === 1 && intent === "waiter"
-        ? [waiterConfirmQuickReply(input.language)]
+  let quickReplies: string[] | undefined;
+  if (tier === 1 && intent === "payment" && hasPayableContext({ ...input, cartItemCount })) {
+    quickReplies = paymentRecoveryQuickReplies(input.language);
+  } else if (tier === 1 && intent === "waiter") {
+    quickReplies = [waiterConfirmQuickReply(input.language)];
+  }
+
+  const action =
+    tier === 2
+      ? { tryWaiterCall: true as const }
+      : tier === 1 && intent === "order"
+        ? { suggestManualCart: true as const }
         : undefined;
 
   return {
     tier,
     message,
     quickReplies,
-    action: tier === 2 ? { tryWaiterCall: true } : undefined,
+    action,
   };
 }
 
@@ -435,6 +601,9 @@ export function tryLocalGuestAnswer(input: {
   cartTotal?: number;
   currency?: string;
 }): GuestRecoveryResult | null {
+  const chipReply = parseRecoveryChipReply(input);
+  if (chipReply) return chipReply;
+
   if (ADD_MORE_CHIP_PATTERN.test(input.guestMessage.trim())) {
     return {
       tier: 0,
@@ -526,8 +695,9 @@ export function tryLocalGuestAnswer(input: {
     return {
       tier: 0,
       answeredLocally: true,
-      message: handoffNarrationMessage("ask_payment_method", input.language),
-      quickReplies: paymentMethodQuickReplyLabels(input.language),
+      message: handoffNarrationMessage("payment_online", input.language),
+      quickReplies: paymentRecoveryQuickReplies(input.language),
+      action: { openPaymentSheet: true },
     };
   }
 
@@ -555,14 +725,31 @@ export function tryLocalGuestAnswer(input: {
 }
 
 export function isInfrastructureChatError(
-  error: string | undefined,
+  error: string | ParsedApiError | null | undefined,
   status: number
 ): boolean {
   if (status === 504 || status === 502 || status === 503) return true;
+
+  const code =
+    error && typeof error === "object" ? error.code : undefined;
+  const message =
+    error && typeof error === "object"
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : undefined;
+
   if (
-    error === "signal_timeout" ||
-    error === "signal_processing_failed" ||
-    error === "signal_failed"
+    code === ERROR_CODES.CIRCUIT_OPEN ||
+    code === ERROR_CODES.INTERNAL
+  ) {
+    return true;
+  }
+
+  if (
+    message === "signal_timeout" ||
+    message === "signal_processing_failed" ||
+    message === "signal_failed"
   ) {
     return true;
   }

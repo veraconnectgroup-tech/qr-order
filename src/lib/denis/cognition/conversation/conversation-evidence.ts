@@ -1,4 +1,6 @@
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
+import { formatConversationGraphBlock } from "@/lib/denis/cognition/conversation/topic-tracker";
+import { isGuestMisunderstandingDecline } from "@/lib/denis/cognition/conversation/guest-continuity";
 import { retrieveTranscriptWindowEvidence } from "@/lib/denis/cognition/context/retrievers/transcript-window";
 
 function awaitingInstruction(awaiting: ConversationModel["awaiting"]): string | null {
@@ -14,6 +16,8 @@ function awaitingInstruction(awaiting: ConversationModel["awaiting"]): string | 
     case "serve_size":
     case "modifier":
       return "Guest is answering size/modifier — fill slot, do not re-ask.";
+    case "product":
+      return "Guest is picking a product Denis asked about — map to catalog, one item.";
     default:
       return null;
   }
@@ -31,6 +35,10 @@ export function buildConversationEvidence(
     lines.push(`- session_summary: ${model.summary}`);
   }
 
+  if (model.graph?.activeTopicId) {
+    lines.push("", formatConversationGraphBlock(model.graph));
+  }
+
   lines.push(`- guest_turns: ${model.thread.guestTurns}`);
   lines.push(`- denis_turns: ${model.thread.denisTurns}`);
 
@@ -39,6 +47,14 @@ export function buildConversationEvidence(
   }
   if (model.thread.lastGuestText) {
     lines.push(`- last_guest_said: ${model.thread.lastGuestText.slice(0, 240)}`);
+    if (
+      model.awaiting &&
+      isGuestMisunderstandingDecline(model.thread.lastGuestText)
+    ) {
+      lines.push(
+        "- instruction: Guest declined — Denis misunderstood. Apologize briefly, restate options, ask again. Do NOT treat as order cancel."
+      );
+    }
   }
 
   if (model.awaiting) {

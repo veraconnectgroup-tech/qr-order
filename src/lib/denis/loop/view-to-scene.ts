@@ -1,9 +1,15 @@
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
+import { filterSceneLayersForAccessibility } from "@/lib/denis/intelligence/accessibility-adapter";
+import { toSceneAccessibility } from "@/lib/denis/cognition/mental-model/accessibility-types";
+import type { GuestAccessibilityPrefs } from "@/lib/denis/cognition/mental-model/accessibility-types";
 import { deriveGuestSituation } from "@/lib/scene/derive-guest-situation";
 import type { Scene } from "@/lib/scene/types";
 
 /** Bridge TableSessionView → legacy Scene for dock/chat renderers (Phase B). */
-export function tableSessionViewToScene(view: TableSessionView): Scene {
+export function tableSessionViewToScene(
+  view: TableSessionView,
+  accessibility?: GuestAccessibilityPrefs | null
+): Scene {
   const situation = deriveGuestSituation(
     view.orders.map((order) => ({
       id: order.id,
@@ -41,6 +47,9 @@ export function tableSessionViewToScene(view: TableSessionView): Scene {
             }
           : null,
     },
-    layers: view.layers,
+    layers: filterSceneLayersForAccessibility(view.layers, accessibility),
+    accessibility: accessibility
+      ? toSceneAccessibility(accessibility)
+      : view.accessibility ?? null,
   };
 }

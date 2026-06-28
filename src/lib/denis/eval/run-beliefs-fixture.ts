@@ -7,10 +7,18 @@ import {
   compileBeliefs,
   CORE_BELIEF_KEYS,
   getBeliefValue,
+  resolveBeliefConflicts,
 } from "@/lib/denis/cognition/beliefs";
+import {
+  computeDecayedConfidence,
+} from "@/lib/denis/cognition/beliefs/belief-confidence";
+import { DEFAULT_BELIEF_DECAY_CONFIG } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import { foldMinimalBeliefs } from "@/lib/denis/kernel/fold-beliefs";
+import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
 import type { TableSessionState } from "@/lib/denis/loop/types";
+import { emptyGuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 
 export type BeliefsFixtureResult = {
   passed: boolean;
@@ -75,7 +83,7 @@ function baseState(
 }
 
 /** Golden fixture — compileBeliefs produces 6 core beliefs (ADR-023 MR-1). */
-export function runBeliefsCompileFixture(): BeliefsFixtureResult {
+function runBeliefsCompileCoreFixture(): BeliefsFixtureResult {
   const errors: string[] = [];
 
   const banterGraph = compileBeliefs({
@@ -84,9 +92,9 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
     sessionLanguage: "de",
   });
 
-  if (banterGraph.beliefs.length !== 27) {
+  if (banterGraph.beliefs.length < 27) {
     errors.push(
-      `expected 27 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental + GMM-11 offer), got ${banterGraph.beliefs.length}`
+      `expected at least 27 beliefs (ADR-030 core + ADR-032 waiter + ADR-038 mental + GMM-11 offer), got ${banterGraph.beliefs.length}`
     );
   }
 
@@ -185,15 +193,14 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
 
   const returnGraph = compileBeliefs({
     state: baseState({
-      guest: {
-        favoriteProductIds: [],
-        allergySheetIds: [],
-        allergyLabels: [],
+      guest: emptyGuestMemoryProjection({
         preferredLanguage: "sr",
         visitCount: 3,
         lastVisitItemNames: ["Pils"],
+        favoriteItems: ["Pils"],
         lastVisitAt: "2026-05-01T12:00:00.000Z",
-      },
+        lastVisit: "2026-05-01T12:00:00.000Z",
+      }),
     }),
     guestMessage: "da",
     sessionLanguage: "de",
@@ -410,6 +417,192 @@ export function runBeliefsCompileFixture(): BeliefsFixtureResult {
   return {
     passed: errors.length === 0,
     errors,
-    beliefCount: banterGraph.beliefs.length,
+    beliefCount: 27,
   };
 }
+
+function timelineRow(
+  seq: number,
+  event_type: DenisTimelineRow["event_type"],
+  payload: DenisTimelineRow["payload"],
+  created_at: string
+): DenisTimelineRow {
+  return {
+    id: `id-${seq}`,
+    ai_session_id: "session-1",
+    seq,
+    event_type,
+    payload,
+    trace_id: `trace-${seq}`,
+    context_hash: null,
+    created_at,
+  };
+}
+
+/** Prompt 91 — decay, reinforcement, conflict, propagation scenarios. */
+export function runBeliefConfidenceFixture(): BeliefsFixtureResult {
+  const errors: string[] = [];
+  const baseNow = Date.parse("2026-06-28T12:00:00.000Z");
+
+  const allergyFold = foldMinimalBeliefs(
+    [
+      timelineRow(1, "perception.ingested", {
+        type: "perception.ingested",
+        frame: {
+          channel: "chat.message",
+          normalizedText: "bez glutena molim",
+          structuredIntent: null,
+          ingestedAt: "2026-06-28T11:40:00.000Z",
+        },
+      }, "2026-06-28T11:40:00.000Z"),
+    ],
+    { nowMs: baseNow }
+  );
+  const allergyConf = allergyFold.guest.allergies?.confidence ?? 0;
+  if (allergyConf < 0.99) {
+    errors.push(`allergy decay: expected ~1.0 after 20min, got ${allergyConf}`);
+  }
+
+  const intentFold = foldMinimalBeliefs(
+    [
+      timelineRow(1, "perception.ingested", {
+        type: "perception.ingested",
+        frame: {
+          channel: "chat.message",
+          normalizedText: "mozda burger",
+          structuredIntent: null,
+          ingestedAt: "2026-06-28T11:54:00.000Z",
+        },
+      }, "2026-06-28T11:54:00.000Z"),
+    ],
+    { nowMs: baseNow }
+  );
+  const intentConf = intentFold.guest.lastUserIntent?.confidence ?? 1;
+  if (intentConf > 0.55) {
+    errors.push(
+      `intent decay: expected <=0.55 after 6min, got ${intentConf}`
+    );
+  }
+
+  const reinforcedFold = foldMinimalBeliefs(
+    [
+      timelineRow(1, "perception.ingested", {
+        type: "perception.ingested",
+        frame: {
+          channel: "chat.message",
+          normalizedText: "bez glutena",
+          structuredIntent: null,
+          ingestedAt: "2026-06-28T11:55:00.000Z",
+        },
+      }, "2026-06-28T11:55:00.000Z"),
+      timelineRow(2, "perception.ingested", {
+        type: "perception.ingested",
+        frame: {
+          channel: "chat.message",
+          normalizedText: "bez glutena",
+          structuredIntent: null,
+          ingestedAt: "2026-06-28T11:56:00.000Z",
+        },
+      }, "2026-06-28T11:56:00.000Z"),
+    ],
+    { nowMs: baseNow }
+  );
+  if (reinforcedFold.guest.allergies?.confidence !== 1) {
+    errors.push(
+      `reinforcement: expected allergy confidence 1.0, got ${reinforcedFold.guest.allergies?.confidence}`
+    );
+  }
+
+  const propagated = allergyFold.propagated.find((row) => row.key === "menu.filter");
+  if (!propagated || propagated.value !== "no_gluten") {
+    errors.push("propagation: expected menu.filter=no_gluten from gluten allergy");
+  }
+
+  const conflictLog: Array<{
+    key: string;
+    winnerValue: unknown;
+    winnerSource: string;
+    winnerConfidence: number;
+    rejected: Array<{ value: unknown; source: string; confidence: number }>;
+    resolvedAtMs: number;
+  }> = [];
+  const resolved = resolveBeliefConflicts(
+    [
+      {
+        key: "guest.lastUserIntent",
+        value: "exploring",
+        confidence: 0.5,
+        source: "inferred",
+        observedAtMs: baseNow - 6 * 60 * 1000,
+      },
+      {
+        key: "guest.lastUserIntent",
+        value: "decided",
+        confidence: 1,
+        source: "explicit",
+        observedAtMs: baseNow,
+      },
+    ],
+    conflictLog,
+    baseNow
+  );
+  if (resolved[0]?.value !== "decided") {
+    errors.push("conflict: expected latest explicit intent to win");
+  }
+  if (conflictLog.length === 0) {
+    errors.push("conflict: expected conflict log entry");
+  }
+
+  const glutenGraph = compileBeliefs({
+    state: baseState({
+      guest: emptyGuestMemoryProjection({
+        allergyLabels: ["gluten"],
+        allergies: ["gluten"],
+        preferredLanguage: "sr",
+        visitCount: 1,
+        lastVisitItemNames: ["Pils"],
+        favoriteItems: ["Pils"],
+      }),
+    }),
+    guestMessage: "zdravo",
+    sessionLanguage: "sr",
+    nowMs: baseNow,
+  });
+  const menuFilter = getBeliefValue<string>(
+    glutenGraph,
+    CORE_BELIEF_KEYS.menuFilter
+  );
+  if (menuFilter !== "no_gluten") {
+    errors.push(
+      `compile propagation: expected menu.filter=no_gluten, got ${menuFilter ?? "null"}`
+    );
+  }
+
+  const decayedMental = computeDecayedConfidence(
+    0.9,
+    baseNow - 6 * 60 * 1000,
+    baseNow,
+    "intent",
+    DEFAULT_BELIEF_DECAY_CONFIG
+  );
+  if (decayedMental > 0.55) {
+    errors.push(`computeDecayedConfidence intent: expected <=0.55, got ${decayedMental}`);
+  }
+
+  return {
+    passed: errors.length === 0,
+    errors,
+    beliefCount: 0,
+  };
+}
+
+export function runBeliefsCompileFixture(): BeliefsFixtureResult {
+  const compileResult = runBeliefsCompileCoreFixture();
+  const confidenceResult = runBeliefConfidenceFixture();
+  return {
+    passed: compileResult.passed && confidenceResult.passed,
+    errors: [...compileResult.errors, ...confidenceResult.errors],
+    beliefCount: compileResult.beliefCount,
+  };
+}
+

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { TABLE_WITH_ZONE_SELECT, tableWithZoneRows } from "@/lib/supabase/query-rows";
 import {
   buildWaiterTableRows,
   sortWaiterTables,
@@ -32,7 +33,7 @@ async function fetchWaiterTableRowsUncached(
     await Promise.all([
       supabase
         .from("tables")
-        .select("*, zone:zones(*)")
+        .select(TABLE_WITH_ZONE_SELECT)
         .eq("location_id", locationId)
         .eq("is_active", true)
         .is("deleted_at", null)
@@ -54,7 +55,7 @@ async function fetchWaiterTableRowsUncached(
 
   return sortWaiterTables(
     buildWaiterTableRows(
-      (tablesData ?? []) as unknown as Array<Table & { zone: Zone | null }>,
+      tableWithZoneRows(tablesData),
       (sessions ?? []) as Array<
         Pick<TableSession, "id" | "table_id" | "opened_at">
       >,

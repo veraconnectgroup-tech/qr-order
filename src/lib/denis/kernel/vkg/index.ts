@@ -6,6 +6,7 @@ export type {
   VkgProductExplain,
   VkgProductNode,
   VkgSubstituteSuggestion,
+  VkgUnavailableSubstitute,
 } from "@/lib/denis/kernel/vkg/types";
 export {
   buildVenueKnowledgeGraph,
@@ -14,12 +15,25 @@ export {
   type UpsellRuleSnapshot,
 } from "@/lib/denis/kernel/vkg/build-graph";
 export {
+  allergySafeMenuProductIds,
+  explainPopularProducts,
   explainProduct,
+  matchProductsInMessage,
   pairingFor,
   pairingForSafe,
   safeForAllergies,
   substituteFor,
+  substitutesForUnavailable,
 } from "@/lib/denis/kernel/vkg/queries";
+export {
+  classifyDrinkKnowledge,
+  foodTagsFromProductName,
+  mocktailFor,
+  formatDrinkNodeLine,
+  type DrinkCategory,
+  type DrinkKnowledgeNode,
+  type DrinkOccasion,
+} from "@/lib/denis/kernel/vkg/drink-knowledge-graph";
 export {
   loadVenueKnowledgeGraph,
   invalidateVenueKnowledgeGraphCache,

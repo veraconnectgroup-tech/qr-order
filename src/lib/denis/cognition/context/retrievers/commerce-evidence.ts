@@ -4,7 +4,8 @@ import type { TableSessionState } from "@/lib/denis/loop/types";
 export function retrieveCommerceEvidence(
   state: TableSessionState | null | undefined,
   orderContext: string | null | undefined,
-  orderDraftContext: string | null | undefined
+  orderDraftContext: string | null | undefined,
+  options?: { nowMs?: number }
 ): string {
   const blocks: string[] = [];
 
@@ -23,8 +24,41 @@ export function retrieveCommerceEvidence(
     );
     if (openOrders.length > 0) {
       const lines = openOrders.map(
-        (order) =>
-          `#${order.orderNumber ?? "?"} ${order.status} (${order.items.length} items)`
+        (order) => {
+          const createdMs = new Date(order.createdAt).getTime();
+          const waitMinutes =
+            options?.nowMs != null && Number.isFinite(createdMs)
+              ? Math.max(0, Math.floor((options.nowMs - createdMs) / 60_000))
+              : null;
+          const estimate = order.estimatedPrepMinutes;
+          const confidence = order.prepEstimateConfidence ?? "none";
+          const late =
+            waitMinutes != null &&
+            estimate != null &&
+            waitMinutes > estimate;
+          const etaLine =
+            estimate != null && confidence === "high"
+              ? `ETA: ~${estimate} min, high confidence`
+              : estimate != null
+                ? `ETA: ~${estimate} min`
+                : order.status === "preparing" ||
+                    order.status === "accepted" ||
+                    order.status === "pending"
+                  ? "ETA: preparing"
+                  : null;
+          return [
+            `#${order.orderNumber ?? "?"} ${order.status} (${order.items.length} items)`,
+            waitMinutes != null ? `guest_waiting: ${waitMinutes} min` : null,
+            etaLine,
+            estimate != null
+              ? late
+                ? "LATE, empathy needed"
+                : "on track"
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" — ");
+        }
       );
       blocks.push(`OPEN TABLE ORDERS:\n${lines.join("\n")}`);
     }

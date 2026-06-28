@@ -1,5 +1,5 @@
 import { compileBeliefs } from "@/lib/denis/cognition/beliefs/compile-beliefs";
-import { decideProactiveTurnPlan } from "@/lib/denis/cognition/proactive/decide-proactive-turn-plan";
+import { decideProactiveTurnPlan, commerceBlocksProactive } from "@/lib/denis/cognition/proactive/decide-proactive-turn-plan";
 import { planUtterance } from "@/lib/denis/cognition/tde/utterance-plan";
 import { tryTemplateUtterance } from "@/lib/denis/cognition/tde/template-utterance";
 import type { BeliefGraph, TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
@@ -14,7 +14,13 @@ import {
   pickProactiveCandidate,
   type PickProactiveCandidateResult,
 } from "@/lib/denis/cognition/proactive/pick-proactive-candidate";
+import { derivePartyIntelligence } from "@/lib/denis/venue/party/derive-party-intelligence";
 import { detectWaiterObligationTell } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
+import { computeSessionCheckEuros } from "@/lib/denis/config/revenue-intelligence";
+import {
+  buildSessionExperienceScore,
+  resolvePaidAnchorAt,
+} from "@/lib/denis/commerce/session-experience-score";
 import type { MentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import type {
   GuestProactiveNudge,
@@ -150,6 +156,9 @@ export function planProactiveTurn(input: {
     input.config.language.venueDefault ??
     "sr";
 
+  const sessionCheckEuros = computeSessionCheckEuros(input.orders);
+  const revenueStrategy = input.payload.revenueStrategy ?? null;
+
   const obligationTell = detectWaiterObligationTell(input.state, language);
   if (obligationTell) {
     const decided = decideProactiveTurnPlan({
@@ -158,6 +167,9 @@ export function planProactiveTurn(input: {
       sessionPhase: input.sessionPhase,
       config: input.config,
       cartLineCount: input.state.commerce.cart.visibleLines.length,
+      revenueStrategy,
+      sessionCheckEuros,
+      mental: input.state.mental,
     });
 
     if (decided.ok && obligationTell.message.trim()) {
@@ -173,22 +185,102 @@ export function planProactiveTurn(input: {
     }
   }
 
+  const partyFacts = input.state.party
+    ? derivePartyIntelligence({
+        party: input.state.party,
+        orders: input.state.commerce.orders.map((order) => ({
+          id: order.id,
+          status: order.status,
+          createdAt: order.createdAt,
+          deviceFingerprint: order.deviceFingerprint,
+          items: order.items.map((item) => ({
+            productName: item.productName,
+            quantity: item.quantity,
+          })),
+        })),
+        nowMs: input.now,
+      })
+    : null;
+
+  const cartLineCount = Math.max(
+    input.state.commerce.cart.visibleLines.length,
+    input.state.commerce.cart.ai.draft.items.length,
+    input.payload.cartItemCount ?? 0
+  );
+
   const pick = pickProactiveCandidate({
     config: input.config,
     orders: input.orders,
+    browse: input.state.browse,
     mental: input.state.mental,
     offer: input.state.offer,
     language,
+    venueOps: input.state.venue.ops,
+    opsEffects: input.state.venue.opsEffects,
+    partyFacts,
     payload: {
       ...input.payload,
       sessionPhase: input.sessionPhase,
       hasSessionOrders: input.state.commerce.orders.length > 0,
+      cartItemCount: cartLineCount,
+      kdsStress: input.state.venue.ops.kdsStress,
+      kitchenEstimatedWaitMinutes:
+        input.payload.kitchenEstimatedWaitMinutes ??
+        input.state.venue.opsEffects.capacityBanner?.estimatedWaitMinutes ??
+        input.state.venue.ops.stationStress?.find(
+          (station) => station.station === "kitchen"
+        )?.avgWaitMinutes ??
+        null,
+      kitchenPendingCount:
+        input.payload.kitchenPendingCount ??
+        input.state.venue.ops.stationStress?.find(
+          (station) => station.station === "kitchen"
+        )?.activeCount ??
+        0,
       dismissedNudgeKeys:
         input.payload.dismissedNudgeKeys ??
         input.state.conversation.dismissedNudges,
+      cartAbandonedRemovedAt:
+        input.payload.cartAbandonedRemovedAt ??
+        input.state.browse.cartAbandoned[0]?.removedAt ??
+        null,
+      experienceScore: buildSessionExperienceScore(input.state).overallScore,
+      googleReviewUrl: input.payload.googleReviewUrl ?? null,
+      lastReviewPromptAt: input.state.guest?.lastReviewPromptAt ?? null,
+      lastReviewDismissAt: input.state.guest?.lastReviewDismissAt ?? null,
+      paidAnchorAt:
+        input.payload.paidAnchorAt ??
+        resolvePaidAnchorAt(input.state.commerce.orders),
+      billSettled: input.state.session.billSettled,
+      tipRecorded: input.state.commerce.orders.some(
+        (order) => (order.tipAmount ?? 0) > 0
+      ),
+      waitingForBill: !input.state.session.billSettled,
+      lastGuestMessage:
+        input.state.conversation.model?.thread?.lastGuestText ?? null,
+      mealStage: input.state.mental.mealStage ?? null,
+      sessionDurationMinutes: (() => {
+        const orders = input.state.commerce.orders;
+        if (!orders.length) return null;
+        const first = Math.min(
+          ...orders
+            .map((order) => Date.parse(order.createdAt))
+            .filter(Number.isFinite)
+        );
+        if (!Number.isFinite(first)) return null;
+        return Math.max(0, ((input.now ?? Date.now()) - first) / 60_000);
+      })(),
+      recoveryCompleted: input.payload.recoveryCompleted,
+      postRecoveryEligible:
+        input.payload.postRecoveryEligible ??
+        (input.state.session.feedbackSubmitted &&
+          input.state.session.feedbackSentiment === "negative"),
     },
     messages,
     now: input.now,
+    revenueStrategy,
+    sessionCheckEuros,
+    menuEngineeringCategories: input.payload.menuEngineeringCategories,
   });
 
   const candidate = pick.candidate;
@@ -198,6 +290,23 @@ export function planProactiveTurn(input: {
   );
 
   if (!candidate) {
+    const commerceActive =
+      commerceBlocksProactive(beliefs, cartLineCount) ||
+      Boolean(input.state.conversation.pendingSlot);
+
+    if (commerceActive) {
+      return {
+        beliefs,
+        turnPlan: null,
+        nudge: null,
+        message: null,
+        skipped: true,
+        skipReason: "commerce.active",
+        candidateKind: mentalGate?.candidateKind ?? "browse_nudge",
+        mentalGate,
+      };
+    }
+
     return {
       beliefs,
       turnPlan: null,
@@ -215,7 +324,10 @@ export function planProactiveTurn(input: {
     candidate,
     sessionPhase: input.sessionPhase,
     config: input.config,
-    cartLineCount: input.state.commerce.cart.visibleLines.length,
+    cartLineCount,
+    revenueStrategy,
+    sessionCheckEuros,
+    mental: input.state.mental,
   });
 
   if (!decided.ok) {

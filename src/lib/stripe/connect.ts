@@ -156,3 +156,8 @@ export function calcPlatformFee(
   // Stripe requires application_fee < payment amount.
   return Math.min(feeCents, Math.max(0, totalCents - 1));
 }
+
+export {
+  PAYMENT_LARGE_ORDER_THRESHOLD_EUR,
+  PAYMENT_SMALL_ORDER_THRESHOLD_EUR,
+} from "@/lib/denis/commerce/payment-intelligence";

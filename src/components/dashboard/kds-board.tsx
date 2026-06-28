@@ -27,7 +27,13 @@ import {
   isKdsSoundEnabled,
   setKdsSoundEnabled,
   playNewOrderSound,
+  playKdsCriticalAlarm,
 } from "@/lib/audio/notification-sound";
+import {
+  extractKitchenAllergyBanner,
+  kdsUrgencyForOrder,
+  sortKitchenOrdersByUrgency,
+} from "@/lib/kitchen/kds-intelligence";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
 import {
   hasAutoKitchenPrinters,
@@ -116,8 +122,12 @@ function KdsOrderCard({
   const isDelivered = !isProvisional && order.status === "delivered";
   const elapsed = formatKdsElapsed(order.created_at);
   const minutes = kdsElapsedMinutes(order.created_at);
+  const urgency = isProvisional ? "green" : kdsUrgencyForOrder(order);
   const timerColor = kdsTimerColor(minutes);
-  const isLate = minutes >= timerWarningMin;
+  const isLate = urgency === "red";
+  const allergyBanner = isProvisional
+    ? null
+    : extractKitchenAllergyBanner(order);
   const actionLabel =
     isProvisional || isDelivered ? null : kdsActionLabel(order.status);
 
@@ -153,6 +163,13 @@ function KdsOrderCard({
                     : "border-green-500"
       )}
     >
+      {allergyBanner && (
+        <div className="mb-3 rounded-lg border-2 border-red-600 bg-red-600 px-3 py-2 text-center text-sm font-bold uppercase tracking-wide text-white">
+          {allergyBanner.headline}
+          {allergyBanner.detail ? ` — ${allergyBanner.detail}` : ""}
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           {isProvisional ? (
@@ -254,6 +271,8 @@ function KdsOrderCard({
             order={order}
             orgName={orgName}
             className="min-h-14 px-4 text-base"
+            reprint
+            label="Reprint"
             onResult={onPrintResult}
           />
         )}
@@ -268,6 +287,8 @@ export function KdsBoard() {
   const { status: connectionStatus } = useConnectionStatus();
   const {
     orders,
+    kitchenOrders,
+    prepBatches,
     loading,
     error,
     refetch,
@@ -293,6 +314,7 @@ export function KdsBoard() {
   const seenIdsRef = useRef<Set<string>>(new Set());
   const seenProvisionalRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+  const criticalIdsRef = useRef<Set<string>>(new Set());
 
   const handlePrintResult = useCallback((result: KitchenPrintResult) => {
     setLastPrint(result);
@@ -407,19 +429,30 @@ export function KdsBoard() {
     );
   }, [orders, loading, autoPrintOrder]);
 
+  useEffect(() => {
+    if (loading || !isKdsSoundEnabled()) return;
+    for (const order of kitchenOrders) {
+      if (kdsUrgencyForOrder(order) === "red" && !criticalIdsRef.current.has(order.id)) {
+        criticalIdsRef.current.add(order.id);
+        playKdsCriticalAlarm();
+      }
+    }
+  }, [kitchenOrders, loading]);
+
   const ordersByColumn = useMemo(() => {
     const map = new Map<string, OrderWithDetails[]>();
     for (const column of KDS_COLUMNS) {
       map.set(
         column.id,
         orders
-          .filter((order) =>
+          .filter((order): order is OrderWithDetails =>
+            !isProvisionalKdsOrder(order) &&
             (column.statuses as readonly string[]).includes(order.status)
           )
-          .sort(
-            (a, b) =>
-              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          )
+          .sort((a, b) => {
+            const sorted = sortKitchenOrdersByUrgency([a, b]);
+            return sorted[0]?.id === a.id ? -1 : 1;
+          })
       );
     }
     return map;
@@ -561,6 +594,21 @@ export function KdsBoard() {
       {provisionalSyncFailedCount > 0 && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200">
           Sync failed — provisional ticket timed out ({provisionalSyncFailedCount})
+        </div>
+      )}
+
+      {prepBatches.length > 0 && (
+        <div className="border-b border-zinc-800 bg-zinc-950 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Denis prep batch
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {prepBatches.map((batch) => (
+              <li key={batch.productName} className="text-sm text-orange-300">
+                {batch.label}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

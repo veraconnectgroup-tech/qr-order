@@ -3,12 +3,15 @@
 import { useMemo, useState, useTransition } from "react";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { ActionableInsightsWidget } from "@/components/admin/analytics/actionable-insights-widget";
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { QrCard } from "@/components/design-system/qr-card";
 import { StaffCopilotTableList } from "@/components/dashboard/denis-staff-copilot-parts";
+import { FloorGraphLiveMap } from "@/components/dashboard/floor-graph-live-map";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useAiInsights } from "@/hooks/use-ai-insights";
 import { useDenisStaffCopilot } from "@/hooks/use-denis-staff-copilot";
+import { useFloorGraph } from "@/hooks/use-floor-graph";
 import type { AiInsightsRange } from "@/lib/dashboard/ai-insights-data";
 import {
   setDenisKdsStress,
@@ -70,6 +73,11 @@ export function DenisDashboardView() {
   } = useAiInsights("today");
   const { data: copilot, loading: copilotLoading, error: copilotError, refresh } =
     useDenisStaffCopilot();
+  const {
+    data: floorGraph,
+    loading: floorGraphLoading,
+    error: floorGraphError,
+  } = useFloorGraph();
   const [pending, startTransition] = useTransition();
   const [hintTableId, setHintTableId] = useState("");
   const [hintText, setHintText] = useState("");
@@ -112,7 +120,8 @@ export function DenisDashboardView() {
     );
   }
 
-  const { summary, menuGaps, topProducts, alerts } = insights;
+  const { summary, menuGaps, topProducts, alerts, actionableInsights, dailyBriefingLine } =
+    insights;
   const conversionPct = Math.round(summary.conversionRate * 100);
   const backlogHigh =
     copilot?.kdsBacklogMinutes != null &&
@@ -254,6 +263,15 @@ export function DenisDashboardView() {
           ))}
         </div>
 
+        <div className="border-b border-dash-border px-4 py-4 md:px-6">
+          <InsightBlock title="Actionable insights">
+            <ActionableInsightsWidget
+              insights={actionableInsights ?? []}
+              dailyBriefingLine={dailyBriefingLine}
+            />
+          </InsightBlock>
+        </div>
+
         <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-dash-border">
           <div className="space-y-5 border-b border-dash-border p-4 md:p-6 lg:border-b-0">
             <InsightBlock title="Menu gaps">
@@ -367,9 +385,37 @@ export function DenisDashboardView() {
                   {copilot.autoRushEnabled && backlogHigh ? (
                     <p className="mt-3 flex items-center gap-2 text-sm text-amber-200">
                       <AlertTriangle className="size-4 shrink-0" />
-                      Backlog exceeds auto-rush threshold (
-                      {copilot.autoRushBacklogMinutes} min).
+                      {copilot.rushModeSuggestion ??
+                        `Backlog exceeds auto-rush threshold (${copilot.autoRushBacklogMinutes} min).`}
                     </p>
+                  ) : null}
+                  {copilot.gatheringHint ? (
+                    <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                      {copilot.gatheringHint}
+                    </p>
+                  ) : null}
+                  {copilot.inventoryBrief ? (
+                    <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 font-mono text-xs leading-relaxed text-dash-text-secondary whitespace-pre-wrap">
+                      {copilot.inventoryBrief}
+                    </div>
+                  ) : null}
+                  {copilot.eventBlock ? (
+                    <div className="mt-3 rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-dash-accent">
+                        {copilot.eventBlock.title}
+                      </p>
+                      <pre className="mt-2 font-mono text-xs leading-relaxed whitespace-pre-wrap text-dash-text-secondary">
+                        {copilot.eventBlock.lines.join("\n")}
+                      </pre>
+                    </div>
+                  ) : null}
+                  {copilot.learnedPairingsBlock ? (
+                    <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 font-mono text-xs leading-relaxed text-dash-text-secondary whitespace-pre-wrap">
+                      <p className="mb-1 font-sans text-[11px] font-medium uppercase tracking-wide text-emerald-200/80">
+                        {copilot.learnedPairingsBlock.title}
+                      </p>
+                      {copilot.learnedPairingsBlock.lines.join("\n")}
+                    </div>
                   ) : null}
                 </div>
 
@@ -435,6 +481,14 @@ export function DenisDashboardView() {
 
         {copilot?.enabled ? (
           <>
+            <div className="border-t border-dash-border p-4 md:p-6">
+              <FloorGraphLiveMap
+                data={floorGraph}
+                loading={floorGraphLoading}
+                error={floorGraphError}
+              />
+            </div>
+
             <div className="border-t border-dash-border p-4 md:p-6">
               <SectionHeading>Priority tables</SectionHeading>
               <div className="mt-3">

@@ -20,14 +20,7 @@ import {
 } from "@/lib/denis/config/count-location-completed-sessions";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-type LocationConfigRow = {
-  menu_locale: string;
-  ai_concierge_config: unknown;
-  organization: {
-    ai_concierge_config: unknown;
-  } | null;
-};
+import { parseLocationConciergeConfigRow } from "@/lib/supabase/parse-location-rows";
 
 export type LoadConciergeConfigOptions = {
   bypassCache?: boolean;
@@ -59,7 +52,7 @@ export async function loadConciergeConfigForLocation(
     return resolveConciergeConfig({});
   }
 
-  const row = data as unknown as LocationConfigRow;
+  const row = parseLocationConciergeConfigRow(data);
   const orgPartial = parsePartialConciergeConfig(
     row.organization?.ai_concierge_config ?? null
   );

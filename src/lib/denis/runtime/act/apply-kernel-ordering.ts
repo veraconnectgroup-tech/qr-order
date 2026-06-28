@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ApplyOrderComprehendResult } from "@/lib/denis/cognition/order";
 import type { AiOrderDraft } from "@/lib/denis/cognition/order";
+import { toJson } from "@/lib/supabase/json";
 import { logger } from "@/lib/logger";
 
 /** Persist kernel ordering draft to ai_sessions (F8-2). */
@@ -12,7 +13,7 @@ export async function persistKernelOrderingDraft(
   const { error } = await admin
     .from("ai_sessions")
     .update({
-      order_draft: draft as unknown as import("@/types/database").Json,
+      order_draft: toJson(draft),
     })
     .eq("id", aiSessionId);
 

@@ -69,7 +69,7 @@ export type MentalModelScenario = {
 
 const AI = "00000000-0000-4000-8000-000000000099";
 const NOW = Date.parse("2026-06-07T12:30:00.000Z");
-const PRODUCT = "11111111-1111-4111-8111-111111111111";
+export const MENTAL_MODEL_PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 
 export function browseRow(seq: number, event: BrowseEvent): DenisTimelineRow {
   return {
@@ -222,7 +222,7 @@ export const MENTAL_MODEL_SCENARIOS: MentalModelScenario[] = [
     timeline: [
       browseRow(1, {
         action: "add_to_cart",
-        productId: PRODUCT,
+        productId: MENTAL_MODEL_PRODUCT_ID,
         productName: "Pilsner",
         categoryPath: ["drinks", "beer"],
         menuSection: "drinks",
@@ -230,7 +230,7 @@ export const MENTAL_MODEL_SCENARIOS: MentalModelScenario[] = [
       }),
       browseRow(2, {
         action: "remove_from_cart",
-        productId: PRODUCT,
+        productId: MENTAL_MODEL_PRODUCT_ID,
         productName: "Pilsner",
         categoryPath: ["drinks", "beer"],
         menuSection: "drinks",
@@ -238,7 +238,7 @@ export const MENTAL_MODEL_SCENARIOS: MentalModelScenario[] = [
       }),
       browseRow(3, {
         action: "add_to_cart",
-        productId: PRODUCT,
+        productId: MENTAL_MODEL_PRODUCT_ID,
         productName: "Pilsner",
         categoryPath: ["drinks", "beer"],
         menuSection: "drinks",
@@ -246,7 +246,7 @@ export const MENTAL_MODEL_SCENARIOS: MentalModelScenario[] = [
       }),
       browseRow(4, {
         action: "remove_from_cart",
-        productId: PRODUCT,
+        productId: MENTAL_MODEL_PRODUCT_ID,
         productName: "Pilsner",
         categoryPath: ["drinks", "beer"],
         menuSection: "drinks",

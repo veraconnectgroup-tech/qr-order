@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { MenuSection } from "@/lib/menu-section";
+import type { OrderMode } from "@/lib/denis/commerce/delivery-mode";
 import {
   STANDARD_VAT_RATE,
   calculateOrderTaxFromItems,
-  resolveItemTaxRate,
+  resolveItemTaxRateForOrderMode,
   type TaxBreakdownLine,
 } from "@/lib/tax/vat";
 
@@ -17,6 +18,8 @@ export interface CartItem {
   serveSize?: string | null;
   menuSection?: MenuSection;
   productTaxRate?: number | null;
+  /** Per-line fulfillment for mixed dine-in / takeaway carts. */
+  fulfillmentMode?: OrderMode;
   modifiers: Array<{
     modifierId: string;
     modifierName: string;
@@ -32,6 +35,9 @@ interface CartStore {
   tableToken: string | null;
   tableName: string | null;
   cartBump: number;
+  /** Product IDs removed this session — Denis must not re-offer them. */
+  removedProductIds: string[];
+  lastCartChangeAt: number;
 
   setSession: (
     slug: string,
@@ -43,14 +49,16 @@ interface CartStore {
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
+  replaceItems: (items: CartItem[]) => void;
+  setItemFulfillmentMode: (index: number, mode: OrderMode) => void;
 
   subtotal: () => number;
   taxBreakdown: (
-    isTakeaway: boolean,
+    orderMode: OrderMode | boolean,
     orgDefaultRate?: number
   ) => TaxBreakdownLine[];
-  taxAmount: (isTakeaway: boolean, orgDefaultRate?: number) => number;
-  total: (isTakeaway: boolean, orgDefaultRate?: number) => number;
+  taxAmount: (orderMode: OrderMode | boolean, orgDefaultRate?: number) => number;
+  total: (orderMode: OrderMode | boolean, orgDefaultRate?: number) => number;
   itemCount: () => number;
 }
 
@@ -61,20 +69,35 @@ function calcItemTotal(item: Omit<CartItem, "itemTotal">) {
 
 function cartTaxCalculation(
   items: CartItem[],
-  isTakeaway: boolean,
+  orderMode: OrderMode | boolean,
   orgDefaultRate = STANDARD_VAT_RATE
 ) {
+  const defaultMode: OrderMode =
+    typeof orderMode === "boolean"
+      ? orderMode
+        ? "takeaway"
+        : "dine_in"
+      : orderMode;
+
   return calculateOrderTaxFromItems(
     items.map((item) => ({
       lineTotal: item.itemTotal,
-      taxRate: resolveItemTaxRate({
+      taxRate: resolveItemTaxRateForOrderMode({
         productTaxRate: item.productTaxRate,
         menuSection: item.menuSection ?? "food",
-        isTakeaway,
+        orderMode: item.fulfillmentMode ?? defaultMode,
         orgDefaultRate,
       }),
     }))
   );
+}
+
+function bumpCartMutation<T extends Partial<CartStore>>(patch: T): T {
+  return {
+    ...patch,
+    cartBump: Date.now(),
+    lastCartChangeAt: Date.now(),
+  };
 }
 
 export const useCart = create<CartStore>()(
@@ -86,6 +109,8 @@ export const useCart = create<CartStore>()(
       tableToken: null,
       tableName: null,
       cartBump: 0,
+      removedProductIds: [],
+      lastCartChangeAt: 0,
 
       setSession: (slug, token, tableName, sessionToken) =>
         set((state) => {
@@ -98,44 +123,86 @@ export const useCart = create<CartStore>()(
             tableName,
             sessionToken,
             items: sameTable || firstSession ? state.items : [],
+            removedProductIds:
+              sameTable || firstSession ? state.removedProductIds : [],
           };
         }),
 
       addItem: (item) => {
         const itemTotal = calcItemTotal(item);
-        set((state) => ({
-          items: [...state.items, { ...item, itemTotal }],
-          cartBump: Date.now(),
-        }));
+        set((state) =>
+          bumpCartMutation({
+            items: [...state.items, { ...item, itemTotal }],
+          })
+        );
       },
 
       removeItem: (index) =>
-        set((state) => ({
-          items: state.items.filter((_, i) => i !== index),
-        })),
+        set((state) => {
+          const removed = state.items[index];
+          const removedProductIds = removed
+            ? [...new Set([...state.removedProductIds, removed.productId])]
+            : state.removedProductIds;
+          return bumpCartMutation({
+            items: state.items.filter((_, i) => i !== index),
+            removedProductIds,
+          });
+        }),
 
       updateQuantity: (index, quantity) =>
+        set((state) => {
+          const existing = state.items[index];
+          if (!existing) return state;
+          if (quantity <= 0) {
+            return bumpCartMutation({
+              items: state.items.filter((_, i) => i !== index),
+              removedProductIds: [
+                ...new Set([...state.removedProductIds, existing.productId]),
+              ],
+            });
+          }
+          return bumpCartMutation({
+            items: state.items.map((item, i) =>
+              i === index
+                ? {
+                    ...item,
+                    quantity,
+                    itemTotal: calcItemTotal({ ...item, quantity }),
+                  }
+                : item
+            ),
+          });
+        }),
+
+      clearCart: () =>
+        set({
+          items: [],
+          removedProductIds: [],
+          cartBump: Date.now(),
+          lastCartChangeAt: Date.now(),
+        }),
+
+      replaceItems: (items) =>
+        set(
+          bumpCartMutation({
+            items,
+          })
+        ),
+
+      setItemFulfillmentMode: (index, mode) =>
         set((state) => ({
           items: state.items.map((item, i) =>
-            i === index
-              ? {
-                  ...item,
-                  quantity,
-                  itemTotal: calcItemTotal({ ...item, quantity }),
-                }
-              : item
+            i === index ? { ...item, fulfillmentMode: mode } : item
           ),
         })),
 
-      clearCart: () => set({ items: [] }),
-
       subtotal: () => get().items.reduce((sum, item) => sum + item.itemTotal, 0),
-      taxBreakdown: (isTakeaway, orgDefaultRate) =>
-        cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).breakdown,
-      taxAmount: (isTakeaway, orgDefaultRate) =>
-        cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).taxAmount,
-      total: (isTakeaway, orgDefaultRate) =>
-        cartTaxCalculation(get().items, isTakeaway, orgDefaultRate).total,
+      taxBreakdown: (orderMode, orgDefaultRate) =>
+        cartTaxCalculation(get().items, orderMode, orgDefaultRate).breakdown,
+      taxAmount: (orderMode, orgDefaultRate) =>
+        cartTaxCalculation(get().items, orderMode, orgDefaultRate).taxAmount,
+      total: (orderMode, orgDefaultRate) =>
+        cartTaxCalculation(get().items, orderMode, orgDefaultRate).total,
       itemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
     }),
     {
@@ -150,7 +217,7 @@ export const useCart = create<CartStore>()(
           const boundToCurrent =
             current.restaurantSlug != null && current.tableToken != null;
           if (boundToCurrent) {
-            return { ...current, items: [] };
+            return { ...current, items: [], removedProductIds: [] };
           }
           return { ...current, ...saved };
         }
@@ -158,7 +225,12 @@ export const useCart = create<CartStore>()(
           current.items.length >= (saved.items?.length ?? 0)
             ? current.items
             : (saved.items ?? []);
-        return { ...current, ...saved, items };
+        return {
+          ...current,
+          ...saved,
+          items,
+          removedProductIds: saved.removedProductIds ?? current.removedProductIds ?? [],
+        };
       },
     }
   )

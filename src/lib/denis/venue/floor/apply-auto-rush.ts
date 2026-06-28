@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { FloorGraph } from "@/lib/denis/venue/floor/types";
+import { shouldAutoRushFromFloor } from "@/lib/denis/venue/floor/should-auto-rush-from-floor";
 import type { VenueOperatingMode } from "@/lib/denis/venue/ops/types";
 
 type LocationOpsRow = {
@@ -15,15 +16,10 @@ type LocationOpsRow = {
 export async function applyAutoRushFromFloor(
   admin: SupabaseClient,
   locationId: string,
-  floor: Pick<FloorGraph, "house">,
+  floor: Pick<FloorGraph, "house" | "tables">,
   config: Pick<ConciergeConfig, "ops">
 ): Promise<boolean> {
-  if (!config.ops.autoRushEnabled) return false;
-
-  const backlog = floor.house.kdsBacklogMinutes;
-  if (backlog == null || backlog < config.ops.autoRushBacklogMinutes) {
-    return false;
-  }
+  if (!shouldAutoRushFromFloor(floor, config)) return false;
 
   const { data: row } = await admin
     .from("locations")

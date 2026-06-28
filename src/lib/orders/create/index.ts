@@ -17,7 +17,7 @@ export type { CreateOrderResult } from "@/lib/orders/create/types";
 
 export async function createOrderFromCart(
   input: CreateOrderInput,
-  options?: { idempotencyKey?: string | null }
+  options?: { idempotencyKey?: string | null; clientIp?: string | null }
 ): Promise<CreateOrderResult> {
   const admin = createAdminClient();
   const ctxResult = await resolveGuestOrderContext(admin, input);
@@ -43,7 +43,7 @@ export async function createOrderFromCart(
 
   const modeResult = demoSessionId
     ? ok({ kind: "demo" as const, sessionId: demoSessionId })
-    : await assertOrderAccess(admin, input, context);
+    : await assertOrderAccess(admin, input, context, options?.clientIp);
   if (!modeResult.ok) return toApi(modeResult.error);
 
   const draft: OrderDraft = {

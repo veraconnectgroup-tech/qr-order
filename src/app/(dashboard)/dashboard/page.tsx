@@ -13,7 +13,10 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const initialData = await fetchDashboardOverviewInitialData(locationId);
+  const initialData = await fetchDashboardOverviewInitialData(
+    locationId,
+    staff.org_id
+  );
 
   return <DashboardOverview initialData={initialData} />;
 }

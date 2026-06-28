@@ -92,6 +92,7 @@ export type HealthSummary = {
   circuits?: {
     stripe?: string;
     fiskaly?: string;
+    openai?: string;
   };
 };
 

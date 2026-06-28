@@ -23,10 +23,16 @@ type ReceiptData = {
   paymentStatus: string;
   items: ReceiptItem[];
   orderUrl?: string;
+  logoUrl?: string | null;
+  accentColor?: string;
+  footerMessage?: string;
+  poweredByLabel?: string;
+  hidePoweredBy?: boolean;
 };
 
 export function buildOrderReceiptHtml(data: ReceiptData) {
   const paid = data.paymentStatus === "paid";
+  const accent = data.accentColor ?? "#f97316";
   const date = new Date(data.createdAt).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -57,13 +63,22 @@ export function buildOrderReceiptHtml(data: ReceiptData) {
     .join("");
 
   const trackLink = data.orderUrl
-    ? `<p style="margin:24px 0 0"><a href="${escapeHtml(data.orderUrl)}" style="color:#f97316;text-decoration:none">Track your order →</a></p>`
+    ? `<p style="margin:24px 0 0"><a href="${escapeHtml(data.orderUrl)}" style="color:${escapeHtml(accent)};text-decoration:none">Track your order →</a></p>`
     : "";
+
+  const logoBlock = data.logoUrl
+    ? `<img src="${escapeHtml(data.logoUrl)}" alt="" width="48" height="48" style="border-radius:8px;margin-bottom:12px" />`
+    : "";
+
+  const poweredBy = data.hidePoweredBy
+    ? ""
+    : `<p style="margin:32px 0 0;font-size:12px;color:#52525b;text-align:center">${escapeHtml(data.footerMessage ?? "Thank you for your order")}${data.poweredByLabel ? ` · ${escapeHtml(data.poweredByLabel)}` : ""}</p>`;
 
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#09090b;font-family:Inter,system-ui,sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:32px 20px">
+    ${logoBlock}
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#71717a">Receipt</p>
     <h1 style="margin:0 0 8px;font-size:24px;color:#fafafa">${escapeHtml(data.orgName)}</h1>
     <p style="margin:0 0 24px;color:#a1a1aa;font-size:14px">${escapeHtml(data.locationName)}${data.tableName ? ` · ${escapeHtml(data.tableName)}` : ""}</p>
@@ -95,9 +110,7 @@ export function buildOrderReceiptHtml(data: ReceiptData) {
 
     ${trackLink}
 
-    <p style="margin:32px 0 0;font-size:12px;color:#52525b;text-align:center">
-      Thank you for your order · Powered by QR Order
-    </p>
+    ${poweredBy}
   </div>
 </body>
 </html>`;

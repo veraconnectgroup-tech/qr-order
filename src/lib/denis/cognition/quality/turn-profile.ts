@@ -10,6 +10,9 @@ export type MindTurnProfilePayload = {
   planKind: string;
   planReason: string;
   llmUsed: boolean;
+  modelTier?: string;
+  model?: string | null;
+  complexityScore?: number;
   beliefsHash?: string;
   evidencePointers?: string[];
   pendingSlotActResolved?: boolean;
@@ -19,6 +22,9 @@ export type BuildTurnProfileInput = {
   turnPlan: TurnPlan;
   llmUsed: boolean;
   tier: string;
+  modelTier?: string;
+  model?: string | null;
+  complexityScore?: number;
   beliefs?: BeliefGraph | null;
   evidencePointers?: string[];
   pendingSlotActResolved?: boolean;
@@ -33,6 +39,9 @@ export function buildTurnProfile(
     planKind: input.turnPlan.kind,
     planReason: input.turnPlan.reason,
     llmUsed: input.llmUsed,
+    modelTier: input.modelTier,
+    model: input.model,
+    complexityScore: input.complexityScore,
     beliefsHash: input.beliefs ? computeBeliefsHash(input.beliefs) : undefined,
     evidencePointers: input.evidencePointers?.length
       ? input.evidencePointers

@@ -1,14 +1,25 @@
 "use client";
 
 import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ExperienceScoreWidget } from "@/components/dashboard/experience-score-widget";
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { QrCard } from "@/components/design-system/qr-card";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDenisRoi, type DenisRoiRange } from "@/hooks/use-denis-roi";
 import {
+  formatCostPerSession,
   formatOrderDuration,
   formatRoiRatio,
+  formatWaiterHoursSaved,
 } from "@/lib/dashboard/denis-roi";
 import { formatPrice } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -20,6 +31,13 @@ const RANGE_OPTIONS: Array<{ value: DenisRoiRange; label: string }> = [
   { value: "30d", label: "30 days" },
   { value: "90d", label: "90 days" },
 ];
+
+const CHART_TOOLTIP_STYLE = {
+  backgroundColor: "#18181b",
+  border: "1px solid #3f3f46",
+  borderRadius: "8px",
+  fontSize: "12px",
+};
 
 function ChangeBadge({
   value,
@@ -33,7 +51,7 @@ function ChangeBadge({
   const positive = value >= 0;
   const formatted = isPp
     ? `${positive ? "+" : ""}${value.toFixed(1)}pp`
-    : `${Math.abs(value).toFixed(1)}${suffix}`;
+    : `${positive ? "+" : ""}${Math.abs(value).toFixed(1)}${suffix}`;
 
   return (
     <span
@@ -57,11 +75,13 @@ function KpiCard({
   value,
   change,
   isPp,
+  hint,
 }: {
   label: string;
   value: string;
   change?: number;
   isPp?: boolean;
+  hint?: string;
 }) {
   return (
     <QrCard className="border-dash-border-subtle bg-dash-surface-raised">
@@ -76,41 +96,24 @@ function KpiCard({
           <ChangeBadge value={change} isPp={isPp} />
         </div>
       )}
+      {hint && (
+        <p className="mt-1 text-xs text-dash-text-disabled">{hint}</p>
+      )}
     </QrCard>
   );
 }
 
-function MiniTrendBar({
-  label,
-  points,
-  maxValue,
-  formatValue,
+function InsightBanner({
+  title,
+  body,
 }: {
-  label: string;
-  points: number[];
-  maxValue: number;
-  formatValue: (v: number) => string;
+  title: string;
+  body: string;
 }) {
-  const peak = maxValue > 0 ? maxValue : Math.max(...points, 1);
-
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-dash-text-secondary">{label}</p>
-        <p className="font-mono text-xs text-dash-text-disabled">
-          {points.length > 0 ? formatValue(points[points.length - 1] ?? 0) : "—"}
-        </p>
-      </div>
-      <div className="flex h-8 items-end gap-px">
-        {points.map((value, index) => (
-          <div
-            key={index}
-            className="min-w-[2px] flex-1 rounded-sm bg-dash-accent/70"
-            style={{ height: `${Math.max(4, (value / peak) * 100)}%` }}
-            title={formatValue(value)}
-          />
-        ))}
-      </div>
+    <div className="rounded-xl border border-dash-accent/30 bg-dash-accent/10 px-4 py-3">
+      <p className="text-sm font-semibold text-dash-text-primary">{title}</p>
+      <p className="mt-1 text-sm text-dash-text-secondary">{body}</p>
     </div>
   );
 }
@@ -146,6 +149,169 @@ function ImpactRow({
   );
 }
 
+function formatShortDate(isoDate: string): string {
+  const date = new Date(`${isoDate}T12:00:00`);
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function RevenueLineChart({
+  daily,
+  currency,
+}: {
+  daily: Array<{ date: string; revenue: number; upsellRevenue: number }>;
+  currency: string;
+}) {
+  const chartData = daily.map((row) => ({
+    label: formatShortDate(row.date),
+    revenue: row.revenue,
+    upsell: row.upsellRevenue,
+  }));
+
+  const hasData = chartData.some((row) => row.revenue > 0);
+
+  if (!hasData) {
+    return (
+      <p className="flex h-[220px] items-center justify-center text-sm text-dash-text-disabled">
+        No revenue in this period
+      </p>
+    );
+  }
+
+  return (
+    <div className="h-[220px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={chartData}
+          margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid stroke="#27272a" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "#71717a", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: "#71717a", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={48}
+            tickFormatter={(v: number) =>
+              v >= 1000 ? `€${(v / 1000).toFixed(1)}k` : `€${v}`
+            }
+          />
+          <Tooltip
+            contentStyle={CHART_TOOLTIP_STYLE}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const row = payload[0]?.payload as {
+                revenue: number;
+                upsell: number;
+              };
+              return (
+                <div className="rounded-lg border border-dash-surface-overlay bg-dash-surface px-2.5 py-1.5 text-xs shadow-lg">
+                  <p className="font-mono font-semibold text-[var(--qr-ember)]">
+                    {formatPrice(row.revenue, currency)}
+                  </p>
+                  <p className="text-dash-text-muted">
+                    Upsell {formatPrice(row.upsell, currency)}
+                  </p>
+                </div>
+              );
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="revenue"
+            stroke="var(--qr-ember)"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4, fill: "var(--qr-ember)" }}
+          />
+          <Line
+            type="monotone"
+            dataKey="upsell"
+            stroke="#a78bfa"
+            strokeWidth={2}
+            strokeDasharray="4 4"
+            dot={false}
+            activeDot={{ r: 4, fill: "#a78bfa" }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function ExperienceScoreTrendChart({
+  daily,
+}: {
+  daily: Array<{ date: string; experienceScore: number | null }>;
+}) {
+  const chartData = daily
+    .filter((row) => row.experienceScore != null)
+    .map((row) => ({
+      label: formatShortDate(row.date),
+      score: row.experienceScore as number,
+    }));
+
+  if (chartData.length === 0) {
+    return (
+      <p className="flex h-[180px] items-center justify-center text-sm text-dash-text-disabled">
+        No experience scores yet
+      </p>
+    );
+  }
+
+  return (
+    <div className="h-[180px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={chartData}
+          margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid stroke="#27272a" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "#71717a", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tick={{ fill: "#71717a", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={32}
+          />
+          <Tooltip
+            contentStyle={CHART_TOOLTIP_STYLE}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const score = Number(payload[0]?.value ?? 0);
+              return (
+                <div className="rounded-lg border border-dash-surface-overlay bg-dash-surface px-2.5 py-1.5 text-xs shadow-lg">
+                  <p className="font-mono font-semibold text-emerald-400">
+                    {score.toFixed(1)}
+                  </p>
+                </div>
+              );
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="score"
+            stroke="#34d399"
+            strokeWidth={2}
+            dot={{ r: 3, fill: "#34d399" }}
+            activeDot={{ r: 5, fill: "#34d399" }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function DenisRoiView() {
   const { currency } = useDashboard();
   const { data, loading, error, range, setRange, refresh } = useDenisRoi("30d");
@@ -155,9 +321,12 @@ export function DenisRoiView() {
       ? `${data.period.start} — ${data.period.end}`
       : "";
 
-  const revenuePoints = data?.daily.map((d) => d.revenue) ?? [];
-  const sessionPoints = data?.daily.map((d) => d.sessions) ?? [];
-  const convPoints = data?.daily.map((d) => d.conversionRate * 100) ?? [];
+  const weeklyHoursLabel =
+    range === "7d"
+      ? "ove nedelje"
+      : range === "30d"
+        ? "u poslednjih 30 dana"
+        : "u poslednjih 90 dana";
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
@@ -223,9 +392,163 @@ export function DenisRoiView() {
             loading={loading}
           />
 
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InsightBanner
+              title={`Denis uštedeo ${formatWaiterHoursSaved(data.savings.waiterHoursSaved)} konobarskog vremena ${weeklyHoursLabel}`}
+              body={`${data.savings.waiterCallsSaved.toLocaleString()} poziva konobaru Denis je preuzeo — procena ${formatWaiterHoursSaved(data.savings.waiterHoursSaved)} manje obilaska stola.`}
+            />
+            <InsightBanner
+              title={`${formatCostPerSession(data.cost.costPerSession)} po sesiji — isplati se od ${data.cost.breakEvenUpsellsPerDay} upsell-a dnevno`}
+              body={`Denis košta ${data.cost.denisVsWaiterRatio > 0 ? `${data.cost.denisVsWaiterRatio}× manje` : "manje"} od jednog konobarskog odgovora · ${data.cost.tokensPerSession.toLocaleString()} tokena po sesiji`}
+            />
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Revenue
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <KpiCard
+                label="Upsell revenue"
+                value={formatPrice(data.revenue.upsellRevenue, currency)}
+                change={data.revenue.vsPrevious}
+              />
+              <KpiCard
+                label="Saved orders"
+                value={String(data.revenue.savedOrders.count)}
+                hint={`${formatPrice(data.revenue.savedOrders.revenue, currency)} recovered from cart abandonment`}
+              />
+              <KpiCard
+                label="Avg order increase"
+                value={`${data.revenue.avgOrderIncreasePct >= 0 ? "+" : ""}${data.revenue.avgOrderIncreasePct.toFixed(1)}%`}
+                hint={`Avg order ${formatPrice(data.revenueIntelligence.avgOrderValue, currency)}`}
+              />
+            </div>
+          </div>
+
+          <QrCard className="border-dash-border-subtle bg-dash-surface-raised">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Revenue by day
+            </p>
+            <p className="mb-4 text-xs text-dash-text-disabled">
+              Solid line = total revenue · dashed = Denis upsell
+            </p>
+            <RevenueLineChart daily={data.daily} currency={currency} />
+          </QrCard>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Savings
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <KpiCard
+                label="Waiter calls saved"
+                value={data.savings.waiterCallsSaved.toLocaleString()}
+                hint={`≈ ${formatWaiterHoursSaved(data.savings.waiterHoursSaved)} floor time`}
+              />
+              <KpiCard
+                label="Kitchen delays prevented"
+                value={String(data.savings.kitchenDelayPrevented)}
+                hint="Proactive capacity nudges accepted"
+              />
+              <KpiCard
+                label="Allergy catches"
+                value={String(data.savings.allergyCatches)}
+                hint="Safe-menu filters before order"
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Satisfaction
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <KpiCard
+                label="Experience score"
+                value={
+                  data.satisfaction.experienceScoreAvg != null
+                    ? data.satisfaction.experienceScoreAvg.toFixed(1)
+                    : "—"
+                }
+              />
+              <KpiCard
+                label="Review conversion"
+                value={`${(data.satisfaction.reviewConversionRate * 100).toFixed(1)}%`}
+                hint="Sessions → Google review click"
+              />
+              <KpiCard
+                label="Return rate"
+                value={`${(data.satisfaction.returnRate * 100).toFixed(0)}%`}
+                hint="Denis remembers returning guests"
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Smart tips
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <KpiCard
+                label="Avg tip"
+                value={`${data.tips.avgTipPercent.toFixed(1)}%`}
+                change={data.tips.avgTipVsPreviousPct}
+              />
+              <KpiCard
+                label="Tips total"
+                value={formatPrice(data.tips.tipTotal, "EUR")}
+                hint={`${data.tips.tipCount} tips in period`}
+              />
+              <KpiCard
+                label="Denis tip correlation"
+                value={
+                  data.tips.denisPromptCount > 0
+                    ? `${(data.tips.denisCorrelation * 100).toFixed(0)}%`
+                    : "—"
+                }
+                hint="Post-settle Denis prompt → tip"
+              />
+            </div>
+          </div>
+
+          <QrCard className="border-dash-border-subtle bg-dash-surface-raised">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Experience score trend
+            </p>
+            <ExperienceScoreTrendChart daily={data.daily} />
+          </QrCard>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              AI cost
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <KpiCard
+                label="Tokens per session"
+                value={data.cost.tokensPerSession.toLocaleString()}
+                hint={`${(data.cost.t0Percent * 100).toFixed(0)}% T0 reflex (no LLM)`}
+              />
+              <KpiCard
+                label="Cost per session"
+                value={formatCostPerSession(data.cost.costPerSession)}
+                hint={`Total ${formatPrice(data.cost.totalAiCost, currency)}`}
+              />
+              <KpiCard
+                label="Denis vs waiter"
+                value={
+                  data.cost.denisVsWaiterRatio > 0
+                    ? `${data.cost.denisVsWaiterRatio}× cheaper`
+                    : "—"
+                }
+                hint="Per interaction vs floor staff"
+              />
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <KpiCard
-              label="Revenue"
+              label="Total revenue"
               value={formatPrice(data.revenue.total, currency)}
               change={data.revenue.vsPrevious}
             />
@@ -233,7 +556,6 @@ export function DenisRoiView() {
               label="Sessions"
               value={data.sessions.total.toLocaleString()}
               change={data.sessions.vsPrevious}
-              isPp
             />
             <KpiCard
               label="Conversion"
@@ -245,14 +567,40 @@ export function DenisRoiView() {
 
           <QrCard className="border-dash-border-subtle bg-dash-surface-raised">
             <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-              Denis impact
+              Revenue intelligence
             </p>
             <div className="mt-2">
               <ImpactRow
-                icon="🍺"
-                label="Upsell revenue"
-                value={`${formatPrice(data.revenue.denisUpsell, currency)} (${data.revenue.upsellPercent.toFixed(1)}% of total)`}
+                icon="🧾"
+                label="Avg order value"
+                value={`${formatPrice(data.revenueIntelligence.avgOrderValue, currency)} (${data.revenueIntelligence.avgOrderVsPreviousPct >= 0 ? "+" : ""}${data.revenueIntelligence.avgOrderVsPreviousPct.toFixed(1)}% vs prev)`}
               />
+              <ImpactRow
+                icon="🍺"
+                label="Denis upsell contribution"
+                value={formatPrice(
+                  data.revenueIntelligence.denisUpsellContribution,
+                  currency
+                )}
+              />
+              {data.revenueIntelligence.lowPerformingTableLabels.length > 0 && (
+                <ImpactRow
+                  icon="📉"
+                  label="Low-check tables (no upsell)"
+                  value={data.revenueIntelligence.lowPerformingTableLabels.join(
+                    ", "
+                  )}
+                  hint="Denis nije uspešno upsell-ovao"
+                />
+              )}
+            </div>
+          </QrCard>
+
+          <QrCard className="border-dash-border-subtle bg-dash-surface-raised">
+            <p className="text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
+              Denis impact
+            </p>
+            <div className="mt-2">
               <ImpactRow
                 icon="⏱️"
                 label="Avg order time"
@@ -260,53 +608,10 @@ export function DenisRoiView() {
                 hint="From session open to first order"
               />
               <ImpactRow
-                icon="🔄"
-                label="Return guest rate"
-                value={`${(data.guests.returningPercent * 100).toFixed(0)}%`}
-                hint="Denis remembers returning guests"
-              />
-              <ImpactRow
-                icon="🤖"
-                label="T0 reflex rate"
-                value={`${(data.cost.t0Percent * 100).toFixed(0)}%`}
-                hint="No LLM cost"
-              />
-              <ImpactRow
-                icon="💸"
-                label="AI cost"
-                value={`${formatPrice(data.cost.totalAiCost, currency)} (${formatPrice(data.cost.costPerSession, currency)}/session)`}
-              />
-              <ImpactRow
                 icon="📈"
                 label="ROI"
                 value={formatRoiRatio(data.cost.roi)}
                 hint="Upsell revenue ÷ AI cost"
-              />
-            </div>
-          </QrCard>
-
-          <QrCard className="border-dash-border-subtle bg-dash-surface-raised">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-dash-text-disabled">
-              Trending
-            </p>
-            <div className="space-y-5">
-              <MiniTrendBar
-                label="Revenue"
-                points={revenuePoints}
-                maxValue={Math.max(...revenuePoints, 0)}
-                formatValue={(v) => formatPrice(v, currency)}
-              />
-              <MiniTrendBar
-                label="Sessions"
-                points={sessionPoints}
-                maxValue={Math.max(...sessionPoints, 0)}
-                formatValue={(v) => String(Math.round(v))}
-              />
-              <MiniTrendBar
-                label="Conversion %"
-                points={convPoints}
-                maxValue={100}
-                formatValue={(v) => `${v.toFixed(1)}%`}
               />
             </div>
           </QrCard>

@@ -82,6 +82,8 @@ describe("rankProactiveCandidates", () => {
       mealStage: "post_meal",
       predictedNeed: "wants_bill",
       intent: "finishing",
+      receptiveness: "open",
+      nudgeBudget: { remaining: 2, max: 2, cooldownUntil: null },
     };
 
     const ranked = rankProactiveCandidates({
@@ -196,6 +198,7 @@ describe("rankProactiveCandidates", () => {
         mealStage: "main",
         predictedNeed: "ready_to_order",
         receptiveness: "open",
+        nudgeBudget: { remaining: 2, max: 2, cooldownUntil: null },
       },
       payload: {
         sessionPhase: "settling",
@@ -218,6 +221,7 @@ describe("rankProactiveCandidates", () => {
         mealStage: "dessert_window",
         predictedNeed: "wants_dessert",
         receptiveness: "open",
+        nudgeBudget: { remaining: 2, max: 2, cooldownUntil: null },
       },
       payload: {
         sessionPhase: "settling",

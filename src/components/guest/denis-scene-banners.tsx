@@ -45,12 +45,19 @@ export function DenisSceneBanners({
   if (visible.length === 0) return null;
 
   return (
-    <div className="space-y-2 px-4 pb-2">
-      {visible.map((banner) => (
+    <div
+      className="space-y-2 px-4 pb-2"
+      role="region"
+      aria-label={tUI("a11y.chatDenisSays")}
+    >
+      {visible.map((banner) => {
+        const message = bannerMessage(banner);
+        return (
         <div
           key={banner.id}
           role="button"
           tabIndex={0}
+          aria-label={message}
           onClick={() => {
             hapticClick();
             onBannerAction(banner);
@@ -68,7 +75,7 @@ export function DenisSceneBanners({
         >
           <DenisMarkBadge size="md" />
           <p className="min-w-0 flex-1 text-sm leading-snug text-[var(--qr-ivory)]">
-            {bannerMessage(banner)}
+            {message}
           </p>
           <button
             type="button"
@@ -83,7 +90,8 @@ export function DenisSceneBanners({
             <X className="size-4" />
           </button>
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }

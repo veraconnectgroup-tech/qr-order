@@ -151,6 +151,7 @@ export function useGuestMemory(
 
   return {
     profile,
+    memoryProjection: serverProjection,
     isReturning,
     lastVisitItems,
     hasKnownAllergies,

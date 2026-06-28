@@ -16,6 +16,7 @@ export const FlowSignalSchema = z.enum([
   "DRAFT_HAS_FOOD",
   "SUCCESS",
   "FAIL",
+  "PREORDER",
 ]);
 
 export type FlowSignal = z.infer<typeof FlowSignalSchema>;

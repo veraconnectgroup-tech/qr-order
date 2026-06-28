@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateDenisRoiRows,
   buildDenisRoiData,
+  deriveBreakEvenUpsellsPerDay,
+  deriveDenisVsWaiterRatio,
+  deriveWaiterHoursSaved,
+  formatCostPerSession,
   formatOrderDuration,
   formatRoiRatio,
+  formatWaiterHoursSaved,
   type ExperienceAnalyticsDailyRow,
 } from "@/lib/dashboard/denis-roi";
 
@@ -78,6 +83,35 @@ describe("aggregateDenisRoiRows", () => {
       revenue: 9,
     });
   });
+
+  it("merges by_roi_impact and experience scores across days", () => {
+    const agg = aggregateDenisRoiRows([
+      seedRow("2026-06-01", {
+        by_roi_impact: {
+          waiter_calls_saved: 10,
+          allergy_catches: 2,
+          tokens_total: 5000,
+        },
+        experience_score: 82,
+      }),
+      seedRow("2026-06-02", {
+        by_roi_impact: {
+          waiter_calls_saved: 5,
+          kitchen_delay_prevented: 3,
+          review_clicks: 4,
+          tokens_total: 3000,
+        },
+        experience_score: 88,
+      }),
+    ]);
+
+    expect(agg.roiImpact.waiter_calls_saved).toBe(15);
+    expect(agg.roiImpact.allergy_catches).toBe(2);
+    expect(agg.roiImpact.kitchen_delay_prevented).toBe(3);
+    expect(agg.roiImpact.tokens_total).toBe(8000);
+    expect(agg.daily[0]?.experienceScore).toBe(82);
+    expect(agg.daily[1]?.experienceScore).toBe(88);
+  });
 });
 
 describe("buildDenisRoiData", () => {
@@ -141,6 +175,62 @@ describe("buildDenisRoiData", () => {
     expect(data.topPerformers[0]?.category).toBe("dessert_upsell");
     expect(data.topPerformers[0]?.accepted).toBe(234);
     expect(data.topPerformers[0]?.revenue).toBe(1870);
+
+    expect(data.revenue.savedOrders.count).toBe(0);
+    expect(data.savings.waiterCallsSaved).toBeGreaterThan(0);
+    expect(data.savings.waiterHoursSaved).toBeGreaterThan(0);
+    expect(data.cost.tokensPerSession).toBeGreaterThan(0);
+    expect(data.cost.denisVsWaiterRatio).toBeGreaterThan(0);
+    expect(data.cost.breakEvenUpsellsPerDay).toBeGreaterThanOrEqual(1);
+    expect(data.satisfaction.returnRate).toBeCloseTo(0.34, 2);
+  });
+
+  it("uses cart_recovery and roi impact counters when present", () => {
+    const current = aggregateDenisRoiRows([
+      seedRow("2026-06-20", {
+        sessions_closed: 50,
+        session_revenue_total: 5000,
+        converted_sessions: 40,
+        upsell_revenue_total: 800,
+        ai_cost_cents: 150,
+        t0_turns: 100,
+        llm_turns: 50,
+        returning_guest_sessions: 10,
+        order_time_seconds_total: 8000,
+        offer_conversions: 20,
+        experience_score: 91,
+        by_nudge_revenue: {
+          cart_recovery: { accepted: 6, revenue: 180 },
+          kitchen_busy: { accepted: 4, revenue: 0 },
+        },
+        by_roi_impact: {
+          waiter_calls_saved: 42,
+          kitchen_delay_prevented: 4,
+          allergy_catches: 3,
+          review_clicks: 8,
+          tokens_total: 36000,
+        },
+      }),
+    ]);
+
+    const previous = aggregateDenisRoiRows([
+      seedRow("2026-05-20", { sessions_closed: 40 }),
+    ]);
+
+    const data = buildDenisRoiData(current, previous, {
+      start: "2026-06-20",
+      end: "2026-06-20",
+    });
+
+    expect(data.revenue.savedOrders).toEqual({ count: 6, revenue: 180 });
+    expect(data.savings.waiterCallsSaved).toBe(42);
+    expect(data.savings.kitchenDelayPrevented).toBe(4);
+    expect(data.savings.allergyCatches).toBe(3);
+    expect(data.satisfaction.experienceScoreAvg).toBe(91);
+    expect(data.satisfaction.reviewConversionRate).toBeCloseTo(8 / 50, 3);
+    expect(data.cost.tokensPerSession).toBe(720);
+    expect(data.cost.costPerSession).toBeCloseTo(0.03, 2);
+    expect(data.cost.breakEvenUpsellsPerDay).toBe(1);
   });
 });
 
@@ -154,5 +244,31 @@ describe("format helpers", () => {
   it("formats ROI ratio", () => {
     expect(formatRoiRatio(45.3)).toBe("45:1");
     expect(formatRoiRatio(0)).toBe("—");
+  });
+
+  it("formats cost and waiter hours", () => {
+    expect(formatCostPerSession(0.03)).toBe("€0.03");
+    expect(formatWaiterHoursSaved(2.5)).toBe("2.5h");
+    expect(formatWaiterHoursSaved(0.5)).toBe("30min");
+  });
+});
+
+describe("derived ROI helpers", () => {
+  it("derives waiter hours from deflection count", () => {
+    expect(deriveWaiterHoursSaved(24)).toBe(1);
+  });
+
+  it("derives Denis vs waiter cost ratio", () => {
+    expect(deriveDenisVsWaiterRatio(0.03)).toBeCloseTo(21.7, 0);
+  });
+
+  it("derives break-even upsells per day", () => {
+    expect(
+      deriveBreakEvenUpsellsPerDay({
+        costPerSession: 0.03,
+        avgUpsellValue: 4,
+        sessionsPerDay: 100,
+      })
+    ).toBe(1);
   });
 });

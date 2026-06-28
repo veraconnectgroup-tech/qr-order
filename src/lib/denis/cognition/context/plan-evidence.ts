@@ -1,5 +1,6 @@
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { buildSituationPack } from "@/lib/denis/cognition/context/build-situation-pack";
+import { resolveAdaptiveContextBudget } from "@/lib/denis/cognition/context/context-budget";
 import { retrieveCommerceEvidence } from "@/lib/denis/cognition/context/retrievers/commerce-evidence";
 import { retrieveGuestIntelEvidence } from "@/lib/denis/cognition/context/retrievers/guest-intel-evidence";
 import {
@@ -17,11 +18,13 @@ import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import type { ResolvedRhythmContext } from "@/lib/denis/config/rhythm-prior-types";
 import type { SessionPhase } from "@/lib/scene/types";
 import type {
   OpsPlannerEffects,
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
+import type { ContextAwarenessSnapshot } from "@/lib/denis/intelligence/event-context";
 
 export type EvidencePointer =
   | "commerce.*"
@@ -69,6 +72,13 @@ export type PlanEvidenceInput = {
   menuRagQueryVector?: number[] | null;
   playbookBlock?: string | null;
   vkgPairingBlock?: string | null;
+  frustrationRecoveryBlock?: string | null;
+  rhythm?: ResolvedRhythmContext | null;
+  revenueInsight?: unknown;
+  accessibilityBlock?: string | null;
+  promoBlock?: string | null;
+  crossDeviceBlock?: string | null;
+  contextAwareness?: ContextAwarenessSnapshot | null;
 };
 
 function wantsCatalogRag(
@@ -126,6 +136,18 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
           includePlaybookInFsp && input.playbookBlock?.trim()
             ? input.playbookBlock
             : null,
+        contextTokenBudget: input.profile.adaptiveContext
+          ? (input.interpretationTask?.evidenceBudget.contextTokenBudget ??
+            resolveAdaptiveContextBudget({
+              guestMessage: input.guestMessage,
+              maxContextTokens: input.profile.maxContextTokens,
+              minContextTokens: input.profile.minContextTokens,
+              adaptiveEnabled: input.profile.adaptiveContext,
+              beliefs: input.beliefs,
+            }).tokenBudget)
+          : undefined,
+        guestMessage: input.guestMessage,
+        contextAwareness: input.contextAwareness,
       })
     );
 
@@ -157,6 +179,22 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     pointers.push("guest.memory");
     const guestIntel = retrieveGuestIntelEvidence(input.guestMemory);
     if (guestIntel) blocks.push(guestIntel);
+  }
+
+  if (input.frustrationRecoveryBlock?.trim()) {
+    blocks.push(input.frustrationRecoveryBlock.trim());
+  }
+
+  if (input.promoBlock?.trim()) {
+    blocks.push(input.promoBlock.trim());
+  }
+
+  if (input.crossDeviceBlock?.trim()) {
+    blocks.push(input.crossDeviceBlock.trim());
+  }
+
+  if (input.accessibilityBlock?.trim()) {
+    blocks.push(input.accessibilityBlock.trim());
   }
 
   if (

@@ -1,11 +1,15 @@
 import { AI_CONFIG } from "@/lib/ai/config";
-import { buildAiCatalog } from "@/lib/ai/catalog/catalog-builder";
+import {
+  buildAiCatalog,
+  parseAiCatalogCategories,
+} from "@/lib/ai/catalog/catalog-builder";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { getAiRedis } from "@/lib/ai/redis";
 import { logRedisDegradation } from "@/lib/redis/client";
 import type { AiMenuCachePayload, AiProductSummary } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseLocationCurrencyRow } from "@/lib/supabase/parse-location-rows";
 
 function menuCacheKey(locationId: string) {
   return `${AI_CONFIG.menuCacheKeyPrefix}${locationId}`;
@@ -27,9 +31,7 @@ async function loadMenuFromDb(
     throw new Error("Location not found.");
   }
 
-  const org = (location as unknown as {
-    organization: { currency: string } | null;
-  }).organization;
+  const org = parseLocationCurrencyRow(location).organization;
   const currency = org?.currency ?? "EUR";
 
   const { data: categories, error } = await admin
@@ -88,7 +90,7 @@ async function loadMenuFromDb(
   }
 
   return buildAiCatalog(
-    (categories ?? []) as unknown as Parameters<typeof buildAiCatalog>[0],
+    parseAiCatalogCategories(categories),
     currency,
     useEnglish
   );

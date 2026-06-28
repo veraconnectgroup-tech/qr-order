@@ -10,17 +10,20 @@ import {
   nextKdsStatus,
   patchOrderStatus,
 } from "@/lib/orders/patch-order-status";
+import { barPrepLabel, type BarQueueEntry } from "@/lib/bar/bar-intelligence";
 import { cn } from "@/lib/utils";
 import { hapticClick, hapticSuccess } from "@/lib/haptics";
-import type { OrderWithDetails } from "@/types";
 
 type Props = {
-  order: OrderWithDetails;
+  entry: BarQueueEntry;
   currency: string;
   busy: boolean;
   onBusyChange: (busy: boolean) => void;
   onUpdated: () => void;
-  onOptimisticStatus: (orderId: string, status: OrderWithDetails["status"]) => void;
+  onOptimisticStatus: (
+    orderId: string,
+    status: BarQueueEntry["order"]["status"]
+  ) => void;
 };
 
 function statusBadgeClass(status: string) {
@@ -57,13 +60,14 @@ function statusLabel(status: string) {
 }
 
 export function BarOrderRow({
-  order,
+  entry,
   currency,
   busy,
   onBusyChange,
   onUpdated,
   onOptimisticStatus,
 }: Props) {
+  const { order } = entry;
   const tableName = order.tables?.name ?? "—";
   const drinkItems = groupOrderItemsForDisplay(getDrinksOrderItems(order));
   const actionLabel = kdsActionLabel(order.status);
@@ -91,6 +95,7 @@ export function BarOrderRow({
     <article
       className={cn(
         "rounded-xl border border-dash-border-subtle bg-dash-surface p-4 shadow-sm",
+        entry.foodWaitingBoost && "border-amber-500/40 ring-1 ring-amber-500/20",
         isDelivered && "opacity-60"
       )}
     >
@@ -108,11 +113,20 @@ export function BarOrderRow({
             >
               {statusLabel(order.status)}
             </span>
+            <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
+              {barPrepLabel(entry)}
+            </span>
+            {entry.foodWaitingBoost ? (
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                Drink first
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm text-dash-text-secondary">
             Table {tableName}
           </p>
           <p className="text-xs text-dash-text-muted">
+            {entry.priorityReasons.join(" · ")} ·{" "}
             {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
           </p>
         </div>
@@ -139,6 +153,36 @@ export function BarOrderRow({
           </li>
         ))}
       </ul>
+
+      {entry.cocktailCard ? (
+        <div
+          className={cn(
+            "mt-3 rounded-lg border px-3 py-2.5",
+            entry.cocktailCard.is86
+              ? "border-red-500/30 bg-red-500/10"
+              : "border-dash-border-subtle bg-dash-bg/40"
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-dash-text-secondary">
+              Cocktail card
+            </p>
+            {entry.cocktailCard.is86 ? (
+              <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-200">
+                86 — {entry.cocktailCard.missingIngredients.join(", ")}
+              </span>
+            ) : null}
+          </div>
+          <ol className="mt-2 space-y-1 text-xs text-dash-text">
+            {entry.cocktailCard.steps.map((step) => (
+              <li key={step.label}>
+                <span className="font-semibold">{step.label}:</span>{" "}
+                {step.detail}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
 
       {actionLabel && nextStatus && (
         <button

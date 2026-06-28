@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
-import { loadDenisSessionDebugGraph } from "@/lib/admin/denis-debug";
-import { DenisDebugGraphView } from "@/components/admin/denis-debug-graph-view";
+import { loadDenisSessionReplay } from "@/lib/admin/denis-debug";
+import { DenisDebugReplayView } from "@/components/admin/denis-debug-replay-view";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function DenisDebugSessionPage({
@@ -20,18 +20,18 @@ export default async function DenisDebugSessionPage({
   }
 
   const admin = createAdminClient();
-  const graph = await loadDenisSessionDebugGraph(admin, {
+  const replay = await loadDenisSessionReplay(admin, {
     sessionId,
     locationId,
   });
 
-  if (!graph) {
+  if (!replay) {
     notFound();
   }
 
   return (
     <div className="mx-auto max-w-5xl">
-      <DenisDebugGraphView sessionId={sessionId} graph={graph} />
+      <DenisDebugReplayView sessionId={sessionId} replay={replay} />
     </div>
   );
 }

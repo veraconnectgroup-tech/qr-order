@@ -21,4 +21,16 @@ export {
   summarizeBeliefGraph,
 } from "@/lib/denis/cognition/beliefs/compute-beliefs-hash";
 
+export {
+  applyBeliefConfidencePipeline,
+  applyBeliefDecay,
+  beliefCategoryForKey,
+  computeDecayedConfidence,
+  propagateBeliefs,
+  reinforceBeliefConfidence,
+  resolveBeliefConflicts,
+  type BeliefConflictLog,
+  type BeliefHistoryEntry,
+} from "@/lib/denis/cognition/beliefs/belief-confidence";
+
 export { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-mind-beliefs-compiled";

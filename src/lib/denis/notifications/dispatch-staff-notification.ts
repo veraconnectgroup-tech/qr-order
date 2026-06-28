@@ -1,9 +1,16 @@
 import {
+  buildStaffPushEnvelope,
+  mapStaffNotificationToPushType,
+  shouldThrottleTablePush,
+  TABLE_THROTTLE_SEC,
+} from "@/lib/push/push-intelligence";
+import {
   buildStaffNotification,
   DEFAULT_NOTIFICATION_RULES,
   shouldDeliverStaffNotification,
   type NotificationRules,
   type StaffNotification,
+  type StaffNotificationPriority,
   type StaffNotificationType,
 } from "@/lib/denis/notifications/staff-notifications";
 import { logger } from "@/lib/logger";
@@ -12,7 +19,7 @@ import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { persistStaffNotification } from "@/lib/denis/notifications/persist-staff-notification";
 
-const TABLE_THROTTLE_SEC = 300;
+export { TABLE_THROTTLE_SEC };
 
 function throttleKey(locationId: string, tableId: string) {
   return `denis:staff-notify:${locationId}:${tableId}`;
@@ -24,6 +31,7 @@ function actionUrlForType(
 ): string {
   switch (type) {
     case "allergy_alert":
+      return "/kitchen";
     case "denis_escalation":
     case "high_value_order":
       return "/dashboard/denis";
@@ -34,6 +42,10 @@ function actionUrlForType(
       return "/kitchen";
     case "payment_issue":
       return "/dashboard/orders";
+    case "table_transfer":
+      return tableId ? `/waiter/tables/${tableId}` : "/waiter/tables";
+    case "staff_training":
+      return "/dashboard/staff";
     default:
       return "/dashboard";
   }
@@ -83,6 +95,8 @@ export async function dispatchStaffNotification(input: {
   rules?: NotificationRules;
   recipientStaffId?: string;
   assignedWaiterId?: string | null;
+  priorityOverride?: StaffNotificationPriority;
+  playSound?: boolean;
 }): Promise<{ delivered: boolean; notification: StaffNotification }> {
   const rules = input.rules ?? DEFAULT_NOTIFICATION_RULES;
   const notification = buildStaffNotification({
@@ -91,12 +105,22 @@ export async function dispatchStaffNotification(input: {
     tableId: input.tableId,
     tableName: input.tableName,
     actionUrl: input.actionUrl ?? actionUrlForType(input.type, input.tableId),
+    priority: input.priorityOverride,
   });
 
   const lastAt =
     input.tableId != null
       ? await lastTableNotificationAt(input.locationId, input.tableId)
       : null;
+
+  if (
+    input.tableId &&
+    shouldThrottleTablePush(lastAt) &&
+    notification.priority !== "urgent" &&
+    input.type !== "allergy_alert"
+  ) {
+    return { delivered: false, notification };
+  }
 
   const shouldDeliver = shouldDeliverStaffNotification({
     rules,
@@ -111,16 +135,33 @@ export async function dispatchStaffNotification(input: {
     return { delivered: false, notification };
   }
 
-  const result = await notifyLocationPush(input.locationId, {
-    title:
-      notification.priority === "urgent"
-        ? "Denis — urgent"
-        : "Denis — staff alert",
-    body: input.tableName
-      ? `${input.tableName}: ${input.message}`
-      : input.message,
-    url: notification.actionUrl,
+  const pushType = mapStaffNotificationToPushType(input.type);
+  const envelope = buildStaffPushEnvelope({
+    pushType,
+    message: input.message,
+    tableName: input.tableName,
+    actionUrl: notification.actionUrl,
+    priority: notification.priority,
+    playSound: input.playSound,
   });
+
+  const result = await notifyLocationPush(
+    input.locationId,
+    {
+      title: envelope.title,
+      body: envelope.body,
+      url: envelope.url,
+      sound: envelope.sound,
+      urgent: envelope.urgent,
+      type: envelope.type,
+      soundProfile: envelope.soundProfile,
+      vibrate: envelope.vibrate,
+    },
+    {
+      assignedStaffId: input.assignedWaiterId,
+      broadcast: envelope.broadcast,
+    }
+  );
 
   if (input.tableId) {
     await markTableNotification(input.locationId, input.tableId);
@@ -145,10 +186,13 @@ export async function dispatchStaffNotification(input: {
 
   logger.info("Denis staff notification dispatched", {
     type: input.type,
+    pushType: envelope.type,
     locationId: input.locationId,
     tableId: input.tableId,
     priority: notification.priority,
+    broadcast: envelope.broadcast,
     pushSent: result.sent,
+    targeted: result.targeted,
   });
 
   return { delivered: result.sent > 0, notification };

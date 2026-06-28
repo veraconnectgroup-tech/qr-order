@@ -110,7 +110,10 @@ export async function runFiscalZClosingPipeline(
 
   const zBonDisplay = await loadZBonDisplayData(admin, id, data.orgId);
   if (zBonDisplay) {
-    await persistZBonArtifact(admin, rpcRow.fiscal_transaction_id, zBonDisplay);
+    await persistZBonArtifact(admin, rpcRow.fiscal_transaction_id, zBonDisplay, {
+      orgId: data.orgId,
+      locationId: data.locationId,
+    });
   }
 
   logger.info("Fiscal Z closing pipeline completed", {

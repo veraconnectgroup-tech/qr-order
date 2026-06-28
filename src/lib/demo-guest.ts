@@ -7,6 +7,7 @@ import {
   AI_SHEET_ALLERGY_OPTIONS,
   AI_SHEET_MOOD_OPTIONS,
 } from "@/lib/ai/guest-sheet-preferences";
+import { toSceneAccessibility, DEFAULT_GUEST_ACCESSIBILITY } from "@/lib/denis/cognition/mental-model/accessibility-types";
 import { tableSessionViewToScene } from "@/lib/denis/loop/view-to-scene";
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
 import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
@@ -81,6 +82,15 @@ export function getDemoGuestDenisView() {
     },
     orders: [],
     actions: [],
+    dock: {
+      headline: "Pregledajte meni",
+      subline: null,
+      chips: [],
+      urgency: "idle",
+      reorderOffer: null,
+    },
+    smartTipOffer: null,
+    accessibility: toSceneAccessibility(DEFAULT_GUEST_ACCESSIBILITY),
   };
 
   return {

@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  ORDER_WITH_DETAILS_SELECT,
+  orderWithDetailsRows,
+} from "@/lib/supabase/query-rows";
+
+import {
   KDS_REALTIME_FALLBACK_POLL_MS,
   REALTIME_BACKUP_POLL_MS,
 } from "@/lib/constants";
@@ -11,13 +16,15 @@ import { useProvisionalPosOrders } from "@/hooks/use-provisional-pos-orders";
 import { KDS_DELIVERED_HIDE_MS } from "@/lib/kds/settings";
 import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 import {
+  buildKitchenPrepBatches,
+  sortKitchenOrdersByUrgency,
+} from "@/lib/kitchen/kds-intelligence";
+import {
   mergeKdsOrdersWithProvisionals,
+  isProvisionalKdsOrder,
   type ProvisionalKdsOrder,
 } from "@/lib/pos/provisional-display";
 import type { OrderWithDetails } from "@/types";
-
-const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name))";
 
 const ACTIVE_STATUSES = ["pending", "accepted", "preparing", "ready"] as const;
 
@@ -38,7 +45,7 @@ export function useKdsOrders(locationId: string) {
 
     const { data, error: fetchError } = await supabase
       .from("orders")
-      .select(ORDER_SELECT)
+      .select(ORDER_WITH_DETAILS_SELECT)
       .eq("location_id", locationId)
       .or(
         `status.in.(${ACTIVE_STATUSES.join(",")}),and(status.eq.delivered,delivered_at.gte.${deliveredCutoff})`
@@ -56,7 +63,7 @@ export function useKdsOrders(locationId: string) {
     setError(null);
     setFetchOk(true);
     setLastUpdatedAt(new Date());
-    const rows = (data as unknown as OrderWithDetails[]) ?? [];
+    const rows = orderWithDetailsRows(data);
     setOrders(rows.filter(orderHasKitchenItems));
     setLoading(false);
   }, [locationId]);
@@ -114,9 +121,32 @@ export function useKdsOrders(locationId: string) {
     [orders, provisional.entries]
   );
 
+  const kitchenOrders = useMemo(
+    () =>
+      displayOrders.filter(
+        (order): order is OrderWithDetails => !isProvisionalKdsOrder(order)
+      ),
+    [displayOrders]
+  );
+
+  const sortedOrders = useMemo(() => {
+    const provisionals = displayOrders.filter(isProvisionalKdsOrder);
+    return [
+      ...sortKitchenOrdersByUrgency(kitchenOrders),
+      ...provisionals,
+    ] as Array<OrderWithDetails | ProvisionalKdsOrder>;
+  }, [displayOrders, kitchenOrders]);
+
+  const prepBatches = useMemo(
+    () => buildKitchenPrepBatches(kitchenOrders),
+    [kitchenOrders]
+  );
+
   return {
-    orders: displayOrders,
+    orders: sortedOrders,
     serverOrders: orders,
+    kitchenOrders,
+    prepBatches,
     loading,
     error,
     refetch: fetchOrders,

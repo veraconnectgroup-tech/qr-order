@@ -36,11 +36,23 @@ import {
   registerOrderSync,
 } from "@/lib/pwa/offline-order-queue";
 import type { TaxBreakdownLine } from "@/lib/tax/vat";
-import { useOnlineStatus } from "@/hooks/use-online-status";
+import {
+  buildDeliveryQuoteMessage,
+  buildDenisPickupPrompt,
+  buildTakeawayPickupSlots,
+  DEFAULT_DELIVERY_CONFIG,
+  estimatePrepMinutesFromCart,
+  legacyIsTakeaway,
+  validateDeliveryOrder,
+  type OrderMode,
+} from "@/lib/denis/commerce/delivery-mode";
+import { OrderModeSelector } from "@/components/guest/order-mode-selector";
+import { CheckoutPaymentHint } from "@/components/guest/checkout-payment-hint";
+import { getAvailablePaymentMethods } from "@/lib/payment-methods";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 async function saveGuestEmail(sessionToken: string, guestEmail: string) {
   if (!guestEmail.trim()) return;
@@ -137,6 +149,10 @@ export function CheckoutForm({
   currency,
   isDemo = false,
   acceptingOrders = true,
+  paymentOnlineEnabled = true,
+  paymentAtBarEnabled = true,
+  paymentCardAtTableEnabled = false,
+  stripeOnboarded = false,
 }: {
   slug: string;
   token: string;
@@ -145,6 +161,10 @@ export function CheckoutForm({
   currency: string;
   isDemo?: boolean;
   acceptingOrders?: boolean;
+  paymentOnlineEnabled?: boolean;
+  paymentAtBarEnabled?: boolean;
+  paymentCardAtTableEnabled?: boolean;
+  stripeOnboarded?: boolean;
 }) {
   const { tUI } = useAppLocale();
   const items = useCart((s) => s.items);
@@ -172,21 +192,65 @@ export function CheckoutForm({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
-  const [isTakeaway, setIsTakeaway] = useState(false);
+  const [orderMode, setOrderMode] = useState<OrderMode>("dine_in");
+  const [selectedPickupIndex, setSelectedPickupIndex] = useState(0);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
   const [approvalOrderId, setApprovalOrderId] = useState<string | null>(null);
   const [autoOpenedPin, setAutoOpenedPin] = useState<string | null>(null);
   const [autoOpenedOrderId, setAutoOpenedOrderId] = useState<string | null>(null);
   const [pinVerified, setPinVerified] = useState(false);
 
-  const breakdown = taxBreakdown(isTakeaway, taxPercent);
-  const computedTax = taxAmount(isTakeaway, taxPercent);
-  const preDiscountTotal = total(isTakeaway, taxPercent);
+  const isTakeaway = legacyIsTakeaway(orderMode);
+  const breakdown = taxBreakdown(orderMode, taxPercent);
+  const computedTax = taxAmount(orderMode, taxPercent);
+  const preDiscountTotal = total(orderMode, taxPercent);
   const discountAmount = appliedPromo?.discountAmount ?? 0;
   const computedTotal = Math.max(
     0,
     Math.round((preDiscountTotal - discountAmount) * 100) / 100
   );
+
+  const availablePaymentMethods = getAvailablePaymentMethods({
+    stripeOnboarded,
+    stripePublishableKey: Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
+    paymentOnlineEnabled,
+    paymentAtBarEnabled,
+    paymentCardAtTableEnabled,
+  });
+
+  const prepMinutes = estimatePrepMinutesFromCart({
+    items: items.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      menuSection: item.menuSection,
+    })),
+    baseMinutes: DEFAULT_DELIVERY_CONFIG.estimatedPrepMinutes,
+  });
+  const pickupSlots = buildTakeawayPickupSlots({ prepMinutes });
+  const selectedPickup = pickupSlots[selectedPickupIndex] ?? pickupSlots[0];
+
+  const deliveryValidation =
+    orderMode === "delivery"
+      ? validateDeliveryOrder({
+          mode: "delivery",
+          config: DEFAULT_DELIVERY_CONFIG,
+          address: deliveryAddress,
+          cartTotal: preDiscountTotal,
+          distanceKm: 6,
+        })
+      : null;
+
+  const deliveryQuote =
+    orderMode === "delivery" && deliveryValidation?.valid
+      ? buildDeliveryQuoteMessage({
+          address: deliveryAddress,
+          fee: deliveryValidation.fee,
+          estimatedMinutes: deliveryValidation.estimatedMinutes,
+          currency,
+        })
+      : null;
 
   const activeApprovalOrderId = resolveActiveApprovalOrderId(
     approvalOrderId,
@@ -316,12 +380,52 @@ export function CheckoutForm({
     return json.data;
   }
 
+  async function queueOfflineCheckout(activeSessionToken?: string) {
+    const resolvedTableId = context?.tableId ?? tableId ?? "";
+    const deviceFingerprint = getOrCreateDeviceFingerprint();
+    const deviceToken = resolvedTableId
+      ? getStoredDeviceToken(locationId, resolvedTableId)
+      : null;
+
+    enqueueOfflineOrder({
+      sessionToken: activeSessionToken ?? sessionToken ?? "",
+      tableToken: token,
+      payload: {
+        sessionToken: activeSessionToken ?? sessionToken ?? undefined,
+        tableToken: token,
+        deviceFingerprint,
+        deviceToken: deviceToken ?? undefined,
+        items,
+        guestEmail: guestEmail.trim() || undefined,
+        isTakeaway,
+        paymentMethod: "unset",
+        promoCodeId: appliedPromo?.promoCodeId,
+      },
+    });
+    void registerOrderSync();
+    toast.success(tUI("offline.orderQueued"));
+  }
+
   async function handlePlaceOrder() {
-    if (!isOnline || processing) return;
+    if (processing) return;
 
     if (!acceptingOrders) {
       setError(tUI("menu.orderingPaused"));
       return;
+    }
+
+    if (orderMode === "delivery") {
+      const check = validateDeliveryOrder({
+        mode: "delivery",
+        config: DEFAULT_DELIVERY_CONFIG,
+        address: deliveryAddress,
+        cartTotal: preDiscountTotal,
+        distanceKm: 6,
+      });
+      if (!check.valid) {
+        setError(tUI("checkout.deliveryOutOfRange"));
+        return;
+      }
     }
 
     if (
@@ -341,6 +445,24 @@ export function CheckoutForm({
       }
       if (items.length > 0) {
         clearCart();
+      }
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setProcessing(true);
+      setError(null);
+      try {
+        const activeSessionToken = isDemo
+          ? (sessionToken ??
+            (await ensureTableSession(slug, token, tableId ?? undefined)) ??
+            undefined)
+          : (context?.sessionToken ?? sessionToken ?? undefined);
+        await queueOfflineCheckout(activeSessionToken ?? undefined);
+        orderPlacedRef.current = true;
+        clearCart();
+      } finally {
+        setProcessing(false);
       }
       return;
     }
@@ -397,15 +519,17 @@ export function CheckoutForm({
         return;
       }
 
-      if (activeSessionToken && guestEmail.trim()) {
-        await saveGuestEmail(activeSessionToken, guestEmail);
-      }
-
       orderPlacedRef.current = true;
       recordGuestOrderPlaced();
       hapticSuccess();
       router.replace(`/${slug}/${token}/order/${result.orderId}?placed=1`);
       clearCart();
+
+      if (activeSessionToken && guestEmail.trim()) {
+        void saveGuestEmail(activeSessionToken, guestEmail);
+      }
+      setProcessing(false);
+      return;
     } catch (e) {
       const message = e instanceof Error ? e.message : "";
       if (message === "pin_required") {
@@ -433,29 +557,9 @@ export function CheckoutForm({
         return;
       }
       if (!navigator.onLine || e instanceof TypeError) {
-        const resolvedTableId = context?.tableId ?? tableId ?? "";
-        const deviceFingerprint = getOrCreateDeviceFingerprint();
-        const deviceToken = resolvedTableId
-          ? getStoredDeviceToken(locationId, resolvedTableId)
-          : null;
-
-        enqueueOfflineOrder({
-          sessionToken: activeSessionToken ?? sessionToken ?? "",
-          tableToken: token,
-          payload: {
-            sessionToken: activeSessionToken ?? sessionToken ?? undefined,
-            tableToken: token,
-            deviceFingerprint,
-            deviceToken: deviceToken ?? undefined,
-            items,
-            guestEmail: guestEmail.trim() || undefined,
-            isTakeaway,
-            paymentMethod: "unset",
-            promoCodeId: appliedPromo?.promoCodeId,
-          },
-        });
-        void registerOrderSync();
-        toast.success(tUI("offline.orderQueued"));
+        await queueOfflineCheckout(activeSessionToken ?? sessionToken ?? undefined);
+        orderPlacedRef.current = true;
+        clearCart();
         setProcessing(false);
         return;
       }
@@ -527,7 +631,7 @@ export function CheckoutForm({
     !isDemo && context?.capabilities.deviceBlocked;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-label={tUI("checkout.title")}>
       {showDeviceBlocked && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
           <p className="font-semibold text-red-300">
@@ -561,23 +665,29 @@ export function CheckoutForm({
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-zinc-100">
-              {tUI("checkout.takeaway")}
-            </p>
-            <p className="mt-0.5 text-xs text-zinc-500">
-              {tUI("checkout.takeawayHint")}
-            </p>
-          </div>
-          <Switch
-            checked={isTakeaway}
-            onCheckedChange={setIsTakeaway}
-            aria-label={tUI("checkout.takeaway")}
-          />
-        </div>
-      </div>
+      <OrderModeSelector
+        orderMode={orderMode}
+        onOrderModeChange={setOrderMode}
+        takeawayEnabled={DEFAULT_DELIVERY_CONFIG.takeawayEnabled}
+        deliveryEnabled={DEFAULT_DELIVERY_CONFIG.deliveryEnabled}
+        pickupSlots={pickupSlots}
+        selectedPickupIndex={selectedPickupIndex}
+        onPickupIndexChange={setSelectedPickupIndex}
+        deliveryAddress={deliveryAddress}
+        onDeliveryAddressChange={setDeliveryAddress}
+        deliveryQuote={deliveryQuote}
+        deliveryError={
+          deliveryValidation && !deliveryValidation.valid
+            ? deliveryValidation.error === "outside_delivery_radius"
+              ? tUI("checkout.deliveryOutOfRange")
+              : deliveryValidation.error ?? null
+            : null
+        }
+        dineInLabel={tUI("checkout.dineIn")}
+        takeawayLabel={tUI("checkout.takeaway")}
+        deliveryLabel={tUI("checkout.delivery")}
+        pickupPrompt={buildDenisPickupPrompt()}
+      />
 
       <PromoInput
         locationId={locationId}
@@ -596,6 +706,11 @@ export function CheckoutForm({
         discountAmount={discountAmount}
         currency={currency}
         tUI={tUI}
+      />
+
+      <CheckoutPaymentHint
+        orderTotal={computedTotal}
+        availableMethods={availablePaymentMethods}
       />
 
       <div>
@@ -627,7 +742,7 @@ export function CheckoutForm({
 
       <Button
         type="button"
-        disabled={processing || !isOnline || !acceptingOrders}
+        disabled={processing || !acceptingOrders}
         onClick={handlePlaceOrder}
         className="h-14 w-full rounded-xl bg-orange-500 text-base font-bold hover:bg-orange-600 disabled:opacity-80"
       >
@@ -639,7 +754,7 @@ export function CheckoutForm({
             })}
           </span>
         ) : !isOnline ? (
-          tUI("offline.banner")
+          tUI("offline.orderQueuedShort")
         ) : (
           tUI("checkout.placeOrderWithTotal", {
             amount: formatPrice(computedTotal, currency),

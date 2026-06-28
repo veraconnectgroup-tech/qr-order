@@ -1,4 +1,5 @@
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
+import { emptyConversationGraph } from "@/lib/denis/cognition/conversation/conversation-graph";
 
 /** Test / eval fixture — empty folded conversation. */
 export function emptyConversationModel(): ConversationModel {
@@ -20,5 +21,6 @@ export function emptyConversationModel(): ConversationModel {
       followUpDelaySeconds: null,
       followUpEmitted: false,
     },
+    graph: emptyConversationGraph(),
   };
 }

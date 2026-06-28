@@ -17,28 +17,30 @@ const display = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Vera — Die Plattform für Gastronomie",
-    template: "%s — Vera",
+    default: "Denis — AI waiter that never sleeps · Vera Group",
+    template: "%s · Denis · Vera Group",
   },
   description:
-    "Bestellung, Küche, Zahlung und Analyse für Gastronomie in Deutschland. KassenSichV-konform. 0 € / Monat.",
+    "Guests order by QR; kitchen and floor stay in sync — Denis assists at the table. KassenSichV ready. €0 / month.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://qr-order-iota.vercel.app"
   ),
   manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "Vera — Die Plattform für Gastronomie",
+    title: "Denis — AI waiter that never sleeps · Vera Group",
     description:
-      "Bestellung. Küche. Zahlung. Die All-in-One Plattform für Gastronomie.",
-    siteName: "Vera",
-    locale: "de_DE",
+      "Ordering, kitchen, payments, and Denis intelligence for hospitality in Germany.",
+    siteName: "Denis · Vera Group",
+    locale: "en_US",
+    alternateLocale: ["de_DE", "sr_RS"],
     type: "website",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vera",
-    description: "Die All-in-One Plattform für Gastronomie in Deutschland",
+    title: "Denis · Vera Group",
+    description:
+      "Hospitality operating system — QR ordering, kitchen display, Denis AI.",
     images: ["/opengraph-image"],
   },
   robots: { index: true, follow: true },

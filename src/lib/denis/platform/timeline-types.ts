@@ -1,18 +1,25 @@
 import type { DenisRiskClass } from "@/lib/denis/platform/risk-levels";
 
+/** Browse telemetry action vocabulary (platform-owned — cognition re-exports). */
+export type BrowseAction =
+  | "view_category"
+  | "view_product"
+  | "close_product"
+  | "add_to_cart"
+  | "remove_from_cart"
+  | "scroll_menu"
+  | "nudge_interaction";
+
+export type BrowseMenuSection = "food" | "drinks" | "desserts";
+
 /** Browse telemetry embedded in timeline perception events (platform-owned shape). */
 export type TimelineBrowseEvent = {
-  action:
-    | "view_category"
-    | "view_product"
-    | "add_to_cart"
-    | "remove_from_cart"
-    | "scroll_menu";
+  action: BrowseAction;
   productId?: string;
   productName?: string;
   categoryId?: string;
   categoryPath?: string[];
-  menuSection?: "food" | "drinks" | "desserts" | null;
+  menuSection?: BrowseMenuSection | null;
   dwellMs?: number;
   timestamp: string;
 };
@@ -212,6 +219,44 @@ export type DenisTimelineEventPayload =
       resolvedAt: string;
       lagMs: number | null;
     }
+  | {
+      type: "learning.menu_gap";
+      term: string;
+      guestMessage: string;
+      locationId: string;
+      capturedAt: string;
+    }
+  | {
+      type: "learning.price_resistance";
+      guestMessage: string;
+      productHint?: string | null;
+      locationId: string;
+      capturedAt: string;
+    }
+  | {
+      type: "learning.allergy_coverage";
+      guestAllergens: string[];
+      excludedFoodCount: number;
+      locationId: string;
+      capturedAt: string;
+    }
+  | {
+      type: "learning.language_unsupported";
+      detected: string;
+      guestMessage: string;
+      locationId: string;
+      capturedAt: string;
+    }
+  | {
+      type: "security.blocked";
+      direction: "input" | "output";
+      reason: string;
+      layer: string;
+      preview: string;
+      blockCount: number;
+      sessionFlagged: boolean;
+      traceId?: string | null;
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -239,7 +284,12 @@ export type DenisTimelineEventType =
   | "mental_model.diff"
   | "offer.resolved"
   | "offer.converted"
-  | "anticipation.resolved";
+  | "anticipation.resolved"
+  | "learning.menu_gap"
+  | "learning.price_resistance"
+  | "learning.allergy_coverage"
+  | "learning.language_unsupported"
+  | "security.blocked";
 
 export type DenisTimelineRow = {
   id: string;

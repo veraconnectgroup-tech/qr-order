@@ -37,11 +37,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Category, Product, UpsellRule } from "@/types";
+import {
+  UPSELL_RULE_TYPE_LABELS,
+  parseAbVariants,
+  type UpsellRuleType,
+} from "@/lib/upsell/rule-types";
+import { computeAcceptRate } from "@/lib/upsell/rule-engine";
 
 function SortableRuleRow({
   rule,
   triggerLabel,
   suggestLabel,
+  typeLabel,
+  acceptRate,
   onEdit,
   onDelete,
   onToggle,
@@ -49,6 +57,8 @@ function SortableRuleRow({
   rule: UpsellRule;
   triggerLabel: string;
   suggestLabel: string;
+  typeLabel: string;
+  acceptRate: string;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
@@ -74,11 +84,13 @@ function SortableRuleRow({
           <GripVertical className="size-4" />
         </button>
       </td>
+      <td className="px-4 py-3 text-xs text-muted-foreground">{typeLabel}</td>
       <td className="px-4 py-3 text-foreground/90">{triggerLabel}</td>
       <td className="px-4 py-3 font-medium">{suggestLabel}</td>
       <td className="max-w-xs truncate px-4 py-3 text-muted-foreground">
         {rule.message ?? "—"}
       </td>
+      <td className="px-4 py-3 tabular-nums text-muted-foreground">{acceptRate}</td>
       <td className="px-4 py-3">
         <span className={rule.is_active ? "text-green-600" : "text-muted-foreground/70"}>
           {rule.is_active ? "Active" : "Inactive"}
@@ -121,21 +133,66 @@ function UpsellForm({
   pending: boolean;
   error: string | null;
 }) {
-  const defaultTriggerType = rule?.trigger_product_id ? "product" : "category";
+  const defaultRuleType = (rule?.rule_type as UpsellRuleType | undefined) ??
+    (rule?.trigger_product_id ? "product_product" : "category_product");
+  const abVariants = parseAbVariants(rule?.ab_variants);
+  const abMessageB = abVariants.find((variant) => variant.id === "b")?.message ?? "";
+  const conditions = (rule?.conditions ?? {}) as {
+    afterHour?: number;
+    minCartEuros?: number;
+    guestTags?: string[];
+  };
 
   return (
     <form action={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="trigger_type">Trigger</Label>
+        <Label htmlFor="rule_type">Rule type</Label>
         <select
-          id="trigger_type"
-          name="trigger_type"
-          defaultValue={defaultTriggerType}
+          id="rule_type"
+          name="rule_type"
+          defaultValue={defaultRuleType}
           className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         >
-          <option value="product">Product in cart</option>
-          <option value="category">Category in cart</option>
+          {Object.entries(UPSELL_RULE_TYPE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </select>
+      </div>
+      <div>
+        <Label htmlFor="after_hour">After hour (time-based)</Label>
+        <Input
+          id="after_hour"
+          name="after_hour"
+          type="number"
+          min={0}
+          max={23}
+          defaultValue={conditions.afterHour ?? 18}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="min_cart_euros">Min cart € (cart value)</Label>
+        <Input
+          id="min_cart_euros"
+          name="min_cart_euros"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={conditions.minCartEuros ?? 30}
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="guest_tags">Guest tags (comma-separated)</Label>
+        <Input
+          id="guest_tags"
+          name="guest_tags"
+          defaultValue={(conditions.guestTags ?? []).join(", ")}
+          placeholder="vip, regular"
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor="trigger_product_id">Trigger product</Label>
@@ -189,12 +246,22 @@ function UpsellForm({
         </select>
       </div>
       <div>
-        <Label htmlFor="message">Message (optional)</Label>
+        <Label htmlFor="message">Message A (optional)</Label>
         <Input
           id="message"
           name="message"
           defaultValue={rule?.message ?? ""}
           placeholder="Add fries for only €2.90?"
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="ab_message_b">Message B — A/B test (optional)</Label>
+        <Input
+          id="ab_message_b"
+          name="ab_message_b"
+          defaultValue={abMessageB}
+          placeholder="Alternative upsell copy"
           className="mt-1"
         />
       </div>
@@ -244,6 +311,20 @@ export function UpsellManager({
   );
 
   function triggerLabel(rule: UpsellRule) {
+    const conditions = (rule.conditions ?? {}) as {
+      afterHour?: number;
+      minCartEuros?: number;
+      guestTags?: string[];
+    };
+    if (rule.rule_type === "time_based") {
+      return `After ${conditions.afterHour ?? 18}:00`;
+    }
+    if (rule.rule_type === "cart_value") {
+      return `Cart ≥ €${conditions.minCartEuros ?? 0}`;
+    }
+    if (rule.rule_type === "guest_level") {
+      return (conditions.guestTags ?? []).join(", ") || "VIP";
+    }
     if (rule.trigger_product_id) {
       return productMap.get(rule.trigger_product_id)?.name ?? "Product";
     }
@@ -251,6 +332,24 @@ export function UpsellManager({
       return categoryMap.get(rule.trigger_category_id)?.name ?? "Category";
     }
     return "—";
+  }
+
+  function typeLabel(rule: UpsellRule) {
+    const type = rule.rule_type as UpsellRuleType | undefined;
+    return type ? UPSELL_RULE_TYPE_LABELS[type] : "Product → Product";
+  }
+
+  function acceptRateLabel(rule: UpsellRule) {
+    const normalized = {
+      ...rule,
+      rule_type: (rule.rule_type as UpsellRuleType) ?? "product_product",
+      conditions: (rule.conditions ?? {}) as import("@/lib/upsell/rule-types").UpsellRuleConditions,
+      ab_variants: parseAbVariants(rule.ab_variants),
+      impressions_count: rule.impressions_count ?? 0,
+      conversions_count: rule.conversions_count ?? 0,
+      declines_count: rule.declines_count ?? 0,
+    };
+    return `${computeAcceptRate(normalized)}%`;
   }
 
   async function handleCreate(formData: FormData) {
@@ -303,7 +402,7 @@ export function UpsellManager({
         <div>
           <h1 className="text-2xl font-bold text-foreground">Upsell rules</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cart and checkout recommendations based on cart contents
+            Owner-defined upsell strategy — Denis uses rules for cart, VKG, and proactive nudges
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -343,9 +442,11 @@ export function UpsellManager({
               <thead className="border-b bg-muted/30 text-left">
                 <tr>
                   <th className="w-10 px-2 py-3" />
+                  <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Trigger</th>
                   <th className="px-4 py-3 font-medium">Suggestion</th>
                   <th className="px-4 py-3 font-medium">Message</th>
+                  <th className="px-4 py-3 font-medium">Accept</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium" />
                 </tr>
@@ -359,10 +460,12 @@ export function UpsellManager({
                     <SortableRuleRow
                       key={rule.id}
                       rule={rule}
+                      typeLabel={typeLabel(rule)}
                       triggerLabel={triggerLabel(rule)}
                       suggestLabel={
                         productMap.get(rule.suggest_product_id)?.name ?? "—"
                       }
+                      acceptRate={acceptRateLabel(rule)}
                       onEdit={() => {
                         setError(null);
                         setEditRule(rule);

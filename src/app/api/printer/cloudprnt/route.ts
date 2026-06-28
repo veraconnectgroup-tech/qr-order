@@ -4,6 +4,7 @@ import {
   decodePrintPayload,
   normalizePrinterMac,
 } from "@/lib/printer/print-jobs";
+import { withRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const STAR_MEDIA_TYPE = "application/vnd.star.starprnt";
@@ -75,6 +76,9 @@ function jobReadyResponse(ready: boolean) {
 }
 
 export const POST = withErrorHandler("cloudprnt-post", async (req) => {
+  const limited = await withRateLimit(req, "default");
+  if (limited) return limited;
+
   let body: { statusCode?: unknown; printerMAC?: unknown };
   try {
     body = (await req.json()) as typeof body;

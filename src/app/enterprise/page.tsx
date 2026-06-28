@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LandingEnterprise } from "@/components/landing/landing-enterprise";
 import { LandingFooter } from "@/components/landing/landing-footer";
+import { LandingLocaleProvider } from "@/components/landing/landing-locale-provider";
 import { LandingNav } from "@/components/landing/landing-nav";
 
 export const metadata: Metadata = {
@@ -11,12 +12,14 @@ export const metadata: Metadata = {
 
 export default function EnterprisePage() {
   return (
-    <div className="landing-page min-h-screen overflow-x-hidden antialiased">
-      <LandingNav />
-      <main>
-        <LandingEnterprise fullPage />
-      </main>
-      <LandingFooter />
-    </div>
+    <LandingLocaleProvider>
+      <div className="landing-page min-h-screen overflow-x-hidden antialiased">
+        <LandingNav />
+        <main>
+          <LandingEnterprise fullPage />
+        </main>
+        <LandingFooter />
+      </div>
+    </LandingLocaleProvider>
   );
 }

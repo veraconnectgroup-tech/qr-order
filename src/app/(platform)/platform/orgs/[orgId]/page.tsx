@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { FeatureFlagToggles } from "@/components/platform/feature-flag-toggles";
 import { CopyableText } from "@/components/platform/copyable-text";
+import { OrgQuickActions } from "@/components/platform/org-quick-actions";
 import { AnalyticsMetricCard } from "@/components/admin/analytics-metric-card";
 import { Button } from "@/components/ui/button";
-import { loadPlatformOrgDetail } from "@/lib/platform/platform-stats";
+import { loadPlatformOrgDetail, loadPlatformOrgPerformance } from "@/lib/platform/platform-stats";
 import { impersonateOrgAction } from "@/lib/platform/platform-actions";
+import { hasFeature } from "@/lib/platform/feature-flags";
 import { formatPrice, fromCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/types/database";
@@ -34,6 +36,8 @@ export default async function PlatformOrgDetailPage({
   const { orgId } = await params;
   const detail = await loadPlatformOrgDetail(orgId);
   if (!detail) notFound();
+
+  const performance = await loadPlatformOrgPerformance(orgId);
 
   const {
     org,
@@ -71,6 +75,7 @@ export default async function PlatformOrgDetailPage({
   };
 
   const tseActive = Boolean(orgRow.fiskaly_tss_id);
+  const denisEnabled = hasFeature(orgRow, "ai_concierge");
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -89,6 +94,9 @@ export default async function PlatformOrgDetailPage({
             <> · trial until {new Date(orgRow.trial_ends_at).toLocaleDateString()}</>
           )}
         </p>
+        <div className="mt-4">
+          <OrgQuickActions orgId={orgId} denisEnabled={denisEnabled} />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -100,6 +108,45 @@ export default async function PlatformOrgDetailPage({
           value={formatPrice(revenue, orgRow.currency)}
         />
       </div>
+
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Denis performance (30d)</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <AnalyticsMetricCard
+            label="Sessions"
+            value={String(performance.sessions30d)}
+          />
+          <AnalyticsMetricCard
+            label="Conversion"
+            value={`${performance.conversionRate}%`}
+          />
+          <AnalyticsMetricCard
+            label="Upsell revenue"
+            value={formatPrice(performance.upsellRevenue30d, orgRow.currency)}
+          />
+          <AnalyticsMetricCard
+            label="Experience score"
+            value={
+              performance.avgExperienceScore != null
+                ? `${performance.avgExperienceScore}/100`
+                : "—"
+            }
+          />
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-muted-foreground">AI credits</dt>
+            <dd className={cn("font-medium", performance.lowBalance && "text-amber-700")}>
+              {performance.creditBalance} remaining
+              {performance.lowBalance ? " (low balance)" : ""}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">LLM turns (30d)</dt>
+            <dd className="font-medium">{performance.llmTurns30d}</dd>
+          </div>
+        </dl>
+      </section>
 
       <section className="rounded-lg border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground">Stripe</h2>

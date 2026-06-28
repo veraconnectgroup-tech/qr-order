@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { ResolvedTheme } from "@/lib/theme/types";
 
 export type DashboardContextValue = {
   locationId: string;
@@ -27,6 +28,7 @@ export type DashboardContextValue = {
   menuLocale: import("@/lib/i18n/translations").MenuLocale;
   fiscalTssEnabled: boolean;
   aiConciergeEnabled: boolean;
+  venueTheme: ResolvedTheme;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);

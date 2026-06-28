@@ -1,35 +1,95 @@
+"use client";
+
 import Link from "next/link";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
+import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 
 const columns = [
   {
-    title: "Product",
+    titleKey: "product" as const,
     links: [
-      { href: "/#features-guest", label: "Platform" },
-      { href: "/enterprise", label: "Enterprise" },
-      { href: "/#pricing", label: "Pricing" },
-      { href: "/skyline-lounge/demo-table-8", label: "Live demo" },
+      { href: "/#features-guest", labelKey: "platform" as const },
+      { href: "/#enterprise", labelKey: "enterprise" as const },
+      { href: "/#pricing", labelKey: "pricing" as const },
+      { href: "/skyline-lounge/demo-table-8", labelKey: "demo" as const },
     ],
   },
   {
-    title: "Company",
+    titleKey: "company" as const,
     links: [
-      { href: "mailto:kontakt@verait.de", label: "Contact" },
-      { href: "/#faq", label: "FAQ" },
-      { href: "/login", label: "Sign in" },
-      { href: "/signup", label: "Request access" },
+      { href: "mailto:kontakt@verait.de", labelKey: "contact" as const },
+      { href: "/#faq", labelKey: "faq" as const },
+      { href: "/login", labelKey: "signIn" as const },
+      { href: "/signup", labelKey: "cta" as const },
     ],
   },
   {
-    title: "Legal",
+    titleKey: "legal" as const,
     links: [
-      { href: "/datenschutz", label: "Datenschutz" },
-      { href: "/agb", label: "AGB" },
-      { href: "/impressum", label: "Impressum" },
+      { href: "/datenschutz", labelKey: "privacy" as const },
+      { href: "/agb", labelKey: "terms" as const },
+      { href: "/impressum", labelKey: "imprint" as const },
     ],
   },
 ];
+
+const footerLabels = {
+  de: {
+    product: "Produkt",
+    company: "Unternehmen",
+    legal: "Rechtliches",
+    platform: "Plattform",
+    enterprise: "Enterprise",
+    pricing: "Preise",
+    demo: "Live-Demo",
+    contact: "Kontakt",
+    faq: "FAQ",
+    signIn: "Anmelden",
+    cta: "Kostenlos starten",
+    privacy: "Datenschutz",
+    terms: "AGB",
+    imprint: "Impressum",
+    builtWith: "Built with",
+    payments: "Payments powered by Stripe Connect",
+  },
+  en: {
+    product: "Product",
+    company: "Company",
+    legal: "Legal",
+    platform: "Platform",
+    enterprise: "Enterprise",
+    pricing: "Pricing",
+    demo: "Live demo",
+    contact: "Contact",
+    faq: "FAQ",
+    signIn: "Sign in",
+    cta: "Try for free",
+    privacy: "Privacy",
+    terms: "Terms",
+    imprint: "Imprint",
+    builtWith: "Built with",
+    payments: "Payments powered by Stripe Connect",
+  },
+  sr: {
+    product: "Proizvod",
+    company: "Kompanija",
+    legal: "Pravno",
+    platform: "Platforma",
+    enterprise: "Enterprise",
+    pricing: "Cene",
+    demo: "Live demo",
+    contact: "Kontakt",
+    faq: "FAQ",
+    signIn: "Prijava",
+    cta: "Probaj besplatno",
+    privacy: "Privatnost",
+    terms: "Uslovi",
+    imprint: "Impresum",
+    builtWith: "Built with",
+    payments: "Plaćanja preko Stripe Connect",
+  },
+};
 
 function NextJsLogo() {
   return (
@@ -46,7 +106,6 @@ function StripeMark() {
         fill="#635BFF"
         d="M13.5 10.2c0-.9-.7-1.2-1.9-1.4-1.6-.2-1.9-.5-1.9-.9 0-.5.4-.8 1.2-.8.7 0 1.2.2 1.6.6l1-1.2c-.6-.5-1.4-.8-2.6-.8-1.8 0-3 1-3 2.4 0 1.5 1.1 2 2.8 2.2 1.5.2 1.8.5 1.8.9 0 .6-.5.9-1.5.9-1 0-1.7-.3-2.2-.8l-1 1.2c.7.7 1.7 1.1 3.2 1.1 2 0 3.2-1 3.2-2.6Z"
       />
-      <path fill="#635BFF" d="M4 6.5h2.2V17H4V6.5Zm4.2 0H10v10.5H8.2V6.5Z" />
     </svg>
   );
 }
@@ -57,11 +116,6 @@ function SupabaseLogo() {
       <path
         fill="#3ECF8E"
         d="M11.9 2.2c-.4 0-.8.3-.9.8L8.1 18.1c-.1.5.3 1 .8 1h6.2c.4 0 .8-.3.9-.8l2.9-15.1c.1-.5-.3-1-.8-1H11.9Z"
-      />
-      <path
-        fill="#3ECF8E"
-        fillOpacity=".5"
-        d="M8.1 18.1 6.2 8.5c-.1-.5.3-1 .8-1h4.9l-3.8 10.6Z"
       />
     </svg>
   );
@@ -83,6 +137,9 @@ const builtWith = [
 ] as const;
 
 export function LandingFooter() {
+  const { locale, copy } = useLandingCopy();
+  const labels = footerLabels[locale];
+
   return (
     <footer className="relative z-[2] border-t border-[#1e1e2e]/60 bg-black py-16 text-zinc-400 sm:py-20">
       <LandingContainer wide>
@@ -90,23 +147,22 @@ export function LandingFooter() {
           <div>
             <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
-              Denis — hospitality operating system for ordering, kitchen,
-              payments, and compliance. Part of Vera Group.
+              {copy.footer.tagline}
             </p>
           </div>
           {columns.map((col) => (
-            <div key={col.title}>
+            <div key={col.titleKey}>
               <h4 className="text-[12px] font-medium uppercase tracking-wider text-zinc-500">
-                {col.title}
+                {labels[col.titleKey]}
               </h4>
               <ul className="mt-4 space-y-2">
                 {col.links.map((link) => (
-                  <li key={link.label}>
+                  <li key={link.labelKey}>
                     <Link
                       href={link.href}
                       className="text-[13px] transition-colors hover:text-white"
                     >
-                      {link.label}
+                      {labels[link.labelKey]}
                     </Link>
                   </li>
                 ))}
@@ -116,7 +172,7 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-14 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-zinc-600">
-          <span>Built with</span>
+          <span>{labels.builtWith}</span>
           {builtWith.map(({ name, Logo }) => (
             <span
               key={name}
@@ -130,10 +186,8 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-6 flex flex-col gap-2 border-t border-[#1e1e2e] pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px]">© 2026 Vera Group · Hamburg, Deutschland</p>
-          <p className="text-[12px] text-zinc-500">
-            Payments powered by Stripe Connect
-          </p>
+          <p className="text-[12px]">{copy.footer.copyright}</p>
+          <p className="text-[12px] text-zinc-500">{labels.payments}</p>
         </div>
       </LandingContainer>
     </footer>

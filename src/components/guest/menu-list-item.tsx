@@ -8,8 +8,11 @@ import { AllergenBadges } from "@/components/guest/allergen-badges";
 import { productHasServeSize } from "@/lib/serve-size";
 import { cn } from "@/lib/utils";
 import type { MenuSection } from "@/lib/menu-section";
+import type { MenuProductWithGuestTranslation } from "@/hooks/use-translated-menu";
 import type { ProductWithModifiers } from "@/types";
 import { GuestProductRow } from "@/components/design-system/guest-product-row";
+import { MenuPersonalizationBadge } from "@/components/guest/personalized-menu-highlights";
+import type { PersonalizedMenuBoost } from "@/lib/denis/intelligence/menu-personalization";
 import { formatPrice } from "@/lib/format";
 
 export function MenuListItem({
@@ -18,17 +21,39 @@ export function MenuListItem({
   menuSection = "food",
   onOpenDetail,
   orderingDisabled = false,
+  personalizationBoost = null,
+  personalizationRecommendedLabel = null,
+  allergenWarning = null,
+  simplifiedMenu = false,
 }: {
-  product: ProductWithModifiers;
+  product: ProductWithModifiers | MenuProductWithGuestTranslation;
   currency: string;
   menuSection?: MenuSection;
   onOpenDetail: () => void;
   orderingDisabled?: boolean;
+  personalizationBoost?: PersonalizedMenuBoost;
+  personalizationRecommendedLabel?: string | null;
+  allergenWarning?: string | null;
+  simplifiedMenu?: boolean;
 }) {
   const addItem = useCart((s) => s.addItem);
   const { tName, tDescription, tUI } = useAppLocale();
-  const displayName = tName(product);
-  const displayDescription = tDescription(product);
+  const guestTranslation = (product as MenuProductWithGuestTranslation)
+    .guestTranslation;
+  const displayName = guestTranslation ? product.name : tName(product);
+  const nameSecondary =
+    guestTranslation && guestTranslation.name !== product.name
+      ? guestTranslation.name
+      : null;
+  const displayDescription = guestTranslation
+    ? product.description ?? null
+    : tDescription(product);
+  const descriptionSecondary =
+    guestTranslation &&
+    guestTranslation.description &&
+    guestTranslation.description !== (product.description ?? "")
+      ? guestTranslation.description
+      : null;
   const hasModifiers = (product.modifier_groups?.length ?? 0) > 0;
   const needsConfiguration = hasModifiers || productHasServeSize(product);
   const outOfStock = !product.is_available;
@@ -57,51 +82,72 @@ export function MenuListItem({
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={onOpenDetail}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpenDetail();
-        }
-      }}
+      className={cn(outOfStock && "opacity-50", simplifiedMenu && "guest-a11y-simplified-menu-only")}
+      data-product-id={product.id}
       aria-label={tUI("a11y.productCard", {
         name: displayName,
         price: formatPrice(Number(product.price), currency),
       })}
-      className={cn(
-        "cursor-pointer transition active:opacity-70",
-        outOfStock && "opacity-50"
-      )}
-      data-product-id={product.id}
     >
       <GuestProductRow
         name={displayName}
+        nameSecondary={simplifiedMenu ? null : nameSecondary}
         price={Number(product.price)}
         currency={currency}
-        subtitle={displayDescription || null}
+        subtitle={simplifiedMenu ? null : displayDescription || null}
+        subtitleSecondary={simplifiedMenu ? null : descriptionSecondary}
         density="menu"
         disabled={cannotOrder}
         addStyle="icon"
         addAriaLabel={`Add ${displayName}`}
         onAdd={handleAdd}
+        onOpenDetail={onOpenDetail}
+        openDetailAriaLabel={tUI("a11y.productCard", {
+          name: displayName,
+          price: formatPrice(Number(product.price), currency),
+        })}
         meta={
-          <>
-            {(product.allergens?.length ?? 0) > 0 && (
-              <AllergenBadges allergens={product.allergens} className="mt-3" />
-            )}
-            {outOfStock && (
-              <p className="mt-2 text-xs text-[var(--qr-muted)]">
-                {tUI("menu.currentlyUnavailable")}
-              </p>
-            )}
-            {orderingDisabled && !outOfStock && (
-              <p className="mt-2 text-xs text-[var(--qr-muted)]">
-                {tUI("menu.paused")}
-              </p>
-            )}
-          </>
+          simplifiedMenu ? (
+            outOfStock || orderingDisabled ? (
+              <>
+                {outOfStock && (
+                  <p className="mt-2 text-xs text-[var(--qr-muted)]">
+                    {tUI("menu.currentlyUnavailable")}
+                  </p>
+                )}
+                {orderingDisabled && !outOfStock && (
+                  <p className="mt-2 text-xs text-[var(--qr-muted)]">
+                    {tUI("menu.paused")}
+                  </p>
+                )}
+              </>
+            ) : null
+          ) : (
+            <>
+              <MenuPersonalizationBadge
+                boost={personalizationBoost}
+                recommendedLabel={personalizationRecommendedLabel}
+              />
+              {allergenWarning ? (
+                <p className="mt-2 text-xs font-medium text-amber-300/90">
+                  {allergenWarning}
+                </p>
+              ) : null}
+              {(product.allergens?.length ?? 0) > 0 && (
+                <AllergenBadges allergens={product.allergens} className="mt-3" />
+              )}
+              {outOfStock && (
+                <p className="mt-2 text-xs text-[var(--qr-muted)]">
+                  {tUI("menu.currentlyUnavailable")}
+                </p>
+              )}
+              {orderingDisabled && !outOfStock && (
+                <p className="mt-2 text-xs text-[var(--qr-muted)]">
+                  {tUI("menu.paused")}
+                </p>
+              )}
+            </>
+          )
         }
       />
     </article>

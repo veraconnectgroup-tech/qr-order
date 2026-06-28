@@ -4,11 +4,17 @@ import { AppLocaleProvider } from "@/components/guest/app-locale-provider";
 import { GuestResilienceShell } from "@/components/guest/guest-resilience-shell";
 import { GuestSkipLink } from "@/components/guest/guest-skip-link";
 import { GuestSwCacheReset } from "@/components/guest/guest-sw-cache-reset";
+import { GuestThemeInjector } from "@/components/theme/guest-theme-injector";
+import { VenueThemeProvider } from "@/components/theme/venue-theme-context";
 import { createServerClient } from "@/lib/supabase/server";
+import { parseGuestLayoutTable } from "@/lib/guest/parse-guest-table-rows";
 import { isDemoGuestRoute } from "@/lib/demo-guest";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import { SKYLINE_PILOT_LOCATION_ID } from "@/lib/denis/config/pilot-wiring";
 import { guestPageMetadata } from "@/lib/seo/guest-metadata";
+import { loadThemeForOrgLocation } from "@/lib/theme/load-theme-for-location";
+import { resolveTheme, themeMetaColor } from "@/lib/theme/theme-resolver";
+import type { ResolvedTheme } from "@/lib/theme/types";
 import type { MenuLocale } from "@/lib/i18n/translations";
 
 export async function generateMetadata({
@@ -50,11 +56,40 @@ export async function generateMetadata({
   }
 }
 
-export const viewport: Viewport = {
-  themeColor: "#f97316",
-  // Resize layout when mobile keyboard opens (iOS 15+ / Chrome 108+).
-  interactiveWidget: "resizes-content",
-};
+export async function generateViewport({
+  params,
+}: {
+  params: Promise<{ slug: string; token: string }>;
+}): Promise<Viewport> {
+  const { slug, token } = await params;
+  let themeColor = "#f97316";
+
+  if (!isDemoGuestRoute(slug, token)) {
+    try {
+      const supabase = await createServerClient();
+      const { data } = await supabase
+        .from("tables")
+        .select("location_id")
+        .eq("qr_token", token)
+        .maybeSingle();
+      const locationId = (data as { location_id: string } | null)?.location_id;
+      if (locationId) {
+        const theme = await loadThemeForOrgLocation({
+          orgName: "",
+          locationId,
+        });
+        themeColor = themeMetaColor(theme);
+      }
+    } catch {
+      // keep default
+    }
+  }
+
+  return {
+    themeColor,
+    interactiveWidget: "resizes-content",
+  };
+}
 
 export default async function GuestTokenLayout({
   children,
@@ -68,6 +103,8 @@ export default async function GuestTokenLayout({
   let locationId = "demo-location";
   let orgName = "Restaurant";
   let logoUrl: string | null = null;
+
+  let theme: ResolvedTheme | null = null;
 
   if (isDemoGuestRoute(slug, token)) {
     menuLocale = "de";
@@ -94,16 +131,8 @@ export default async function GuestTokenLayout({
         .maybeSingle();
 
       if (data) {
-        const row = data as unknown as {
-          location_id: string;
-          location: {
-            id: string;
-            menu_locale: string | null;
-            default_locale: string | null;
-            organization: { slug: string; name: string; logo_url: string | null };
-          };
-        };
-        if (row.location.organization.slug !== slug) {
+        const row = parseGuestLayoutTable(data);
+        if (!row || row.location.organization.slug !== slug) {
           notFound();
         }
         locationId = row.location.id;
@@ -117,24 +146,42 @@ export default async function GuestTokenLayout({
     } catch {
       // Offline / partial schema — keep defaults
     }
+
+    if (locationId !== "demo-location") {
+      theme = await loadThemeForOrgLocation({
+        orgName,
+        logoUrl,
+        locationId,
+      });
+    }
   }
 
   if (locationId === SKYLINE_PILOT_LOCATION_ID) {
     menuLocale = "sr";
   }
 
+  const resolvedTheme =
+    theme ??
+    resolveTheme({
+      orgName,
+      logoUrl,
+    });
+
   return (
-    <AppLocaleProvider
-      locationId={locationId}
-      menuLocale={menuLocale}
-      orgName={orgName}
-      logoUrl={logoUrl}
-    >
-      <GuestSwCacheReset />
-      <GuestSkipLink />
-      <GuestResilienceShell>
-        <main id="main-content">{children}</main>
-      </GuestResilienceShell>
-    </AppLocaleProvider>
+    <VenueThemeProvider theme={resolvedTheme}>
+      <AppLocaleProvider
+        locationId={locationId}
+        menuLocale={menuLocale}
+        orgName={orgName}
+        logoUrl={logoUrl}
+      >
+        <GuestThemeInjector theme={resolvedTheme} />
+        <GuestSwCacheReset />
+        <GuestSkipLink />
+        <GuestResilienceShell>
+          <main id="main-content">{children}</main>
+        </GuestResilienceShell>
+      </AppLocaleProvider>
+    </VenueThemeProvider>
   );
 }

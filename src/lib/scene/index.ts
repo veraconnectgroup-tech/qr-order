@@ -11,7 +11,9 @@ export type {
   StaffTileView,
 } from "./types";
 
-export { composeScene, deriveSessionPhase } from "./compose-scene";
+export { composeScene, deriveSessionPhase, enrichComposeSceneInput, deriveSceneIntelligenceBanners, deriveSceneIntelligenceInline, resolveVkgPairingForScene, detectSlowKitchenForScene } from "./compose-scene";
+export { deriveWaitlistSessionPhase } from "@/lib/denis/loop/infer-session-phase";
+export type { SceneIntelligenceContext, SceneIntelligenceOrder, VkgPairingMatch } from "./compose-scene";
 export { deriveGuestSituation, situationSupportChips } from "./derive-guest-situation";
 export { sceneStaffDetail, sceneStaffTile } from "./staff-views";
 export { loadComposeSceneInput } from "./load-scene-input";
@@ -25,6 +27,16 @@ export {
   mapTurnQuickRepliesToChips,
   mapTurnRecommendationsToInline,
 } from "./map-turn-to-scene-overrides";
+export {
+  mapRecoveryToSceneLayer,
+  mergeRecoverySceneLayers,
+} from "./guest-recovery-layers";
+export {
+  mergePaymentIntelligenceLayers,
+  PAYMENT_SCENE_BANNER_IDS,
+  SPLIT_BILL_CHIP_IDS,
+} from "./payment-intelligence-layers";
+export type { PaymentIntelligenceContext } from "./payment-intelligence-layers";
 export type { SceneRefreshOverrides } from "./map-turn-to-scene-overrides";
 export {
   enqueueGuestSceneRefresh,
@@ -34,8 +46,10 @@ export { scheduleOrderSceneRefresh } from "./schedule-order-scene-refresh";
 export {
   resolveTableActionChips,
   resolveSituationOrderAction,
+  resolvePhaseSceneChips,
   isTableActionChipId,
   TABLE_ACTION_CHIP_IDS,
+  PHASE_SCENE_CHIP_IDS,
 } from "./resolve-table-actions";
 export { extractPersistedSceneLayers } from "./extract-scene-layer-state";
 export {

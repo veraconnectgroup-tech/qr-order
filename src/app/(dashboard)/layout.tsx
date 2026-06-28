@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 import { sumOrderRevenue } from "@/lib/orders/revenue";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+import { loadThemeForLocation } from "@/lib/theme/load-theme-for-location";
+import { resolveTheme } from "@/lib/theme/theme-resolver";
 
 async function getTodayRevenue(locationId: string) {
   const admin = createAdminClient();
@@ -94,6 +96,13 @@ export default async function DashboardLayout({
     locationRow?.default_locale
   );
 
+  const venueTheme = await loadThemeForLocation(locationId).catch(() =>
+    resolveTheme({
+      orgName: orgRow?.name ?? "Restaurant",
+      logoUrl: orgRow?.logo_url ?? null,
+    })
+  );
+
   return (
     <StaffAccessProvider access={access}>
       <OnboardingGuard onboardingCompleted={orgRow?.onboarding_completed ?? true}>
@@ -124,6 +133,7 @@ export default async function DashboardLayout({
           menuLocale,
           fiscalTssEnabled: Boolean(orgRow?.fiskaly_tss_id),
           aiConciergeEnabled: locationRow?.ai_concierge_enabled ?? false,
+          venueTheme,
         }}
       >
         {children}

@@ -1,13 +1,22 @@
 "use client";
 
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { FloorView } from "@/components/dashboard/floor-view";
 import { OverviewDenisStrip } from "@/components/dashboard/overview-denis-strip";
-import { OverviewFloorSnapshot } from "@/components/dashboard/overview-floor-snapshot";
 import { OverviewKpiStrip } from "@/components/dashboard/overview-kpi-strip";
 import { OverviewLiveFeed } from "@/components/dashboard/overview-live-feed";
 import { OverviewQuickActions } from "@/components/dashboard/overview-quick-actions";
+import { PeakHoursHeatmap } from "@/components/dashboard/peak-hours-heatmap";
+import { RevenueTicker } from "@/components/dashboard/revenue-ticker";
+import { StaffPerformancePanel } from "@/components/dashboard/staff-performance-panel";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
+import { useDenisActivityFeed } from "@/hooks/use-denis-activity-feed";
+import { useFloorStatus } from "@/hooks/use-floor-status";
+import { usePeakHours } from "@/hooks/use-peak-hours";
+import { useRealtimeOrderTicker } from "@/hooks/use-realtime-orders";
+import { useStaffPerformance } from "@/hooks/use-staff-performance";
 import type { DashboardOverviewInitialData } from "@/lib/dashboard/overview-types";
 
 export function DashboardOverview({
@@ -31,11 +40,27 @@ export function DashboardOverview({
   const {
     loading: overviewLoading,
     sparkline,
-    tableStatuses,
   } = useDashboardOverview({
     sparkline: initialData.sparkline,
     tableStatuses: initialData.tableStatuses,
   });
+  const { loading: tickerLoading, ...ticker } = useRealtimeOrderTicker({
+    todayRevenue: initialData.stats.todayRevenue,
+    todayOrderCount: initialData.stats.todayOrderCount,
+    todayAvgTicket: initialData.stats.todayAvgTicket,
+  });
+  const { loading: floorLoading, tables: floorTables } = useFloorStatus(
+    initialData.floorTables
+  );
+  const { loading: activityLoading, items: activityItems } = useDenisActivityFeed(
+    initialData.denisActivity
+  );
+  const { loading: staffLoading, rows: staffRows } = useStaffPerformance(
+    initialData.staffPerformance
+  );
+  const { loading: peakLoading, buckets: peakBuckets } = usePeakHours(
+    initialData.peakHours
+  );
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
@@ -47,6 +72,14 @@ export function DashboardOverview({
           {locationName}
         </h2>
       </div>
+
+      <RevenueTicker
+        currency={currency}
+        revenue={ticker.todayRevenue}
+        orderCount={ticker.todayOrderCount}
+        avgTicket={ticker.todayAvgTicket}
+        loading={tickerLoading && statsLoading}
+      />
 
       <OverviewKpiStrip
         currency={currency}
@@ -66,19 +99,39 @@ export function DashboardOverview({
 
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-8">
-          <OverviewFloorSnapshot
-            tables={tableStatuses}
-            loading={overviewLoading}
+          <FloorView
+            tables={floorTables}
+            loading={floorLoading}
             currency={currency}
           />
-          <OverviewLiveFeed initialOrders={initialData.liveFeed} compact maxOrders={4} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <StaffPerformancePanel
+              rows={staffRows}
+              currency={currency}
+              loading={staffLoading}
+            />
+            <PeakHoursHeatmap
+              buckets={peakBuckets}
+              currency={currency}
+              loading={peakLoading}
+            />
+          </div>
+          <OverviewLiveFeed
+            initialOrders={initialData.liveFeed}
+            compact
+            maxOrders={4}
+          />
         </div>
-        <div className="lg:col-span-4">
-          <div className="lg:sticky lg:top-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-muted">
-              Quick actions
-            </p>
-            <OverviewQuickActions />
+
+        <div className="space-y-4 lg:col-span-4">
+          <div className="lg:sticky lg:top-4 lg:space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-muted">
+                Quick actions
+              </p>
+              <OverviewQuickActions />
+            </div>
+            <ActivityFeed items={activityItems} loading={activityLoading} />
           </div>
         </div>
       </div>

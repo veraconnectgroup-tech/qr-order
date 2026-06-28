@@ -12,7 +12,7 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     actSubmitEnabled: true,
   },
   memory: { returnGuestEnabled: true },
-  surfaces: { voiceEnabled: false },
+  surfaces: { voiceEnabled: true, voiceTtsEnabled: true },
   ops: {
     staffHintsEnabled: true,
     rushSkipUpsell: true,
@@ -54,6 +54,9 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     ops: {
       rushAlerts: true,
       staffingHints: true,
+      rushThreshold: 1.8,
+      targetSessionsPerWaiter: 4,
+      staffingOccupancyThreshold: 0.55,
     },
   },
 };

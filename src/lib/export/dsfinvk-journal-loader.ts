@@ -8,6 +8,7 @@ import {
   buildStornoBonOrder,
   orderBusinessDate,
 } from "@/lib/export/dsfinvk";
+import { parseDsfinvkOrderRows } from "@/lib/export/parse-export-order-rows";
 import { roundMoney } from "@/lib/tax/vat";
 
 const BERLIN_TZ = "Europe/Berlin";
@@ -139,7 +140,7 @@ export async function tryLoadJournalDsfinvkContext(
   }
 
   const ordersById = new Map<string, DsfinvkOrderRow>();
-  for (const order of (ordersRaw ?? []) as unknown as DsfinvkOrderRow[]) {
+  for (const order of parseDsfinvkOrderRows(ordersRaw)) {
     ordersById.set(order.id, { ...order, order_items: [] });
   }
 

@@ -56,7 +56,7 @@ function PromoForm({
           required
           defaultValue={promo?.code ?? ""}
           className="mt-1 uppercase"
-          placeholder="SUMMER20"
+          placeholder="WELCOME10"
         />
       </div>
       <div className="grid grid-cols-2 gap-4">

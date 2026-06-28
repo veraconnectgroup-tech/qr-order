@@ -24,7 +24,7 @@ export function LanguageToggle({ compact = false }: { compact?: boolean }) {
           "rounded-full px-2.5 py-1 font-semibold transition touch-manipulation",
           compact ? "min-h-7" : "min-h-8 px-3",
           !isEnglish
-            ? "bg-orange-500 text-white"
+            ? "bg-orange-700 text-white"
             : "text-zinc-400 hover:text-zinc-200"
         )}
         aria-pressed={!isEnglish}
@@ -39,7 +39,7 @@ export function LanguageToggle({ compact = false }: { compact?: boolean }) {
           "rounded-full px-2.5 py-1 font-semibold transition touch-manipulation",
           compact ? "min-h-7" : "min-h-8 px-3",
           isEnglish
-            ? "bg-orange-500 text-white"
+            ? "bg-orange-700 text-white"
             : "text-zinc-400 hover:text-zinc-200"
         )}
         aria-pressed={isEnglish}

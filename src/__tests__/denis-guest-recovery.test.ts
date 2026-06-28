@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   classifyGuestRecoveryIntent,
   openOrderStatusGuestMessage,
+  paymentRecoveryQuickReplies,
   resolveGuestRecoveryResponse,
+  resolveIntentRecoveryTier,
   tryLocalGuestAnswer,
 } from "@/lib/guest/denis-guest-recovery";
 import type { SceneSituation } from "@/lib/scene/types";
@@ -88,7 +90,7 @@ describe("denis guest recovery ladder", () => {
     expect(local?.answeredLocally).toBe(true);
     expect(local?.message).toContain("5");
     expect(local?.message).toContain("Chicken Burger");
-    expect(local?.quickReplies).toContain("Platiti");
+    expect(local?.quickReplies).toEqual(["Detaljnije", "Pozovi konobara"]);
   });
 
   it("auto-calls waiter when guest cannot reach staff", () => {
@@ -102,15 +104,25 @@ describe("denis guest recovery ladder", () => {
     expect(local?.message.toLowerCase()).toMatch(/putu|trenutak/);
   });
 
-  it("offers payment chips locally when bill exists", () => {
+  it("routes payment and status to tier 0, bill/waiter to tier 1", () => {
+    expect(resolveIntentRecoveryTier("payment")).toBe(0);
+    expect(resolveIntentRecoveryTier("status")).toBe(0);
+    expect(resolveIntentRecoveryTier("bill_amount")).toBe(1);
+    expect(resolveIntentRecoveryTier("waiter")).toBe(1);
+    expect(resolveIntentRecoveryTier("order")).toBe(2);
+  });
+
+  it("payment intent answers locally at tier 0 and opens payment sheet", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Mogu li da platim?",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local?.quickReplies).toEqual(["Kes", "Kartica", "Online"]);
-    expect(local?.message.toLowerCase()).toContain("plać");
+    expect(local?.tier).toBe(0);
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.action?.openPaymentSheet).toBe(true);
+    expect(local?.quickReplies).toEqual(paymentRecoveryQuickReplies("sr"));
   });
 
   it("confirms cash payment locally without generic retry", () => {

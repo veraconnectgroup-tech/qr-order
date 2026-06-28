@@ -4,6 +4,8 @@ import {
   COMMERCE_EVENT_TYPES,
 } from "@/lib/commerce/event-types";
 import { submitFeedbackCommandMeta } from "@/lib/commerce/capabilities/feedback-v2/submit-feedback";
+import { recordGoogleReviewClickCommandMeta } from "@/lib/commerce/capabilities/reviews/record-google-review-click";
+import { recordTipSelectionCommandMeta } from "@/lib/commerce/capabilities/tips/record-tip-selection";
 import type { CommerceTrigger } from "@/lib/commerce/runtime/types";
 
 export type CommerceIntent =
@@ -54,6 +56,32 @@ export function resolveCommerceIntent(
 
   if (trigger.kind === "guest_command" && trigger.command.type === "SubmitFeedback") {
     const meta = submitFeedbackCommandMeta();
+    return {
+      type: "emit",
+      commandType: meta.commandType,
+      eventType: meta.eventType,
+      payload: trigger.command.payload,
+    };
+  }
+
+  if (
+    trigger.kind === "guest_command" &&
+    trigger.command.type === "RecordGoogleReviewClick"
+  ) {
+    const meta = recordGoogleReviewClickCommandMeta();
+    return {
+      type: "emit",
+      commandType: meta.commandType,
+      eventType: meta.eventType,
+      payload: trigger.command.payload,
+    };
+  }
+
+  if (
+    trigger.kind === "guest_command" &&
+    trigger.command.type === "RecordTipSelection"
+  ) {
+    const meta = recordTipSelectionCommandMeta();
     return {
       type: "emit",
       commandType: meta.commandType,

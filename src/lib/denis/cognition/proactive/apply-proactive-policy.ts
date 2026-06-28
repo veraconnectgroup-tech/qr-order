@@ -16,6 +16,7 @@ import type {
   ProactiveTickPayload,
 } from "@/lib/denis/cognition/proactive/proactive-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
 import type { RankedProactiveCandidate } from "@/lib/denis/cognition/proactive/rank-proactive-candidates";
 
 function receptivenessAtLeastOpen(
@@ -27,11 +28,13 @@ function receptivenessAtLeastOpen(
 function frustrationBlocksUpsell(
   mental: GuestMentalModel,
   threshold: ConciergeConfig["mentalModel"]["frustrationEscalateThreshold"]
-): boolean {
+): ProactivePolicyReason | null {
   const level = mental.affect.frustration.level;
-  if (level === "high") return true;
-  if (threshold === "mild" && level === "mild") return true;
-  return false;
+  if (level === "high") return "gmm.frustration_high";
+  if (threshold === "mild" && level === "mild") {
+    return "gmm.frustration_mild";
+  }
+  return null;
 }
 
 const CHECK_REASON: Record<ProactivePolicyDenyCheck, ProactivePolicyReason> = {
@@ -93,15 +96,10 @@ function evaluateDenyCheck(input: {
       return null;
 
     case "frustration_blocks_upsell":
-      if (
-        frustrationBlocksUpsell(
-          mental,
-          config.mentalModel.frustrationEscalateThreshold
-        )
-      ) {
-        return CHECK_REASON.frustration_blocks_upsell;
-      }
-      return null;
+      return frustrationBlocksUpsell(
+        mental,
+        config.mentalModel.frustrationEscalateThreshold
+      );
 
     case "nudge_budget_zero":
       if (mental.nudgeBudget.remaining <= 0) {
@@ -162,10 +160,9 @@ function evaluateDenyCheck(input: {
       return null;
 
     case "browse_requires_needs_help":
-      if (
-        kind === "browse_nudge" &&
-        mental.predictedNeed !== "needs_help_choosing"
-      ) {
+      if (kind !== "browse_nudge") return null;
+      if (resolveMentalModelMode(input.config) === "enforce") return null;
+      if (mental.predictedNeed !== "needs_help_choosing") {
         return CHECK_REASON.browse_requires_needs_help;
       }
       return null;
@@ -285,6 +282,13 @@ export function evaluateProactivePolicyForKind(input: {
   const policy = input.policy ?? DEFAULT_PROACTIVE_POLICY;
   const now = input.now ?? Date.now();
   const kindPolicy = resolveKindPolicy(policy, input.kind);
+
+  if (
+    input.mental.affect.frustration.level === "high" &&
+    input.kind !== "attention_handoff"
+  ) {
+    return { allow: false, reason: "gmm.frustration_high" };
+  }
 
   for (const check of kindPolicy.denyChecks) {
     const reason = evaluateDenyCheck({

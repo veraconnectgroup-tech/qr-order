@@ -1,5 +1,6 @@
 import type { TranscriptEntry } from "@/lib/denis/loop/view-types";
 import type { ConversationAwaiting } from "@/lib/denis/cognition/beliefs/belief-types";
+import type { ConversationGraph } from "@/lib/denis/cognition/conversation/conversation-graph";
 
 export type ConversationThread = {
   guestTurns: number;
@@ -24,4 +25,6 @@ export type ConversationModel = {
   awaiting: ConversationAwaiting;
   summary: string | null;
   attention: ConversationAttention;
+  /** Non-linear topic graph (Prompt 93). */
+  graph: ConversationGraph;
 };

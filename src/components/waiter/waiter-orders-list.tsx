@@ -6,7 +6,11 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
-import { startOfTodayIso } from "@/lib/dashboard/waiter-table-data";
+import {
+  parseWaiterDetailOrders,
+  startOfTodayIso,
+} from "@/lib/dashboard/waiter-table-data";
+import { WAITER_ORDERS_LIST_SELECT } from "@/lib/supabase/query-rows";
 import {
   WaiterOrderRow,
   type WaiterDetailOrder,
@@ -15,8 +19,7 @@ import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { cn } from "@/lib/utils";
 
-const ORDER_SELECT =
-  "id, order_number, status, total, created_at, table_id, order_items(*, order_item_modifiers(*)), tables(name)";
+const ORDER_SELECT = WAITER_ORDERS_LIST_SELECT;
 
 export function WaiterOrdersList() {
   const { locationId, currency, staffRole } = useDashboard();
@@ -41,7 +44,7 @@ export function WaiterOrdersList() {
       ])
       .order("created_at", { ascending: false });
 
-    setOrders((data ?? []) as unknown as WaiterDetailOrder[]);
+    setOrders(parseWaiterDetailOrders(data));
     setLoading(false);
   }, [locationId]);
 

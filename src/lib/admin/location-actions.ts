@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOwner } from "@/lib/auth/session";
+import { getPlanTierDefinition } from "@/lib/billing/tiers";
 import {
   zOptionalSanitizedText,
   zSanitizedText,
@@ -43,6 +44,24 @@ export async function createLocation(formData: FormData) {
   }
 
   const admin = createAdminClient();
+
+  const [{ count: activeCount }, { data: org }] = await Promise.all([
+    admin
+      .from("locations")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", staff.org_id)
+      .eq("is_active", true),
+    admin.from("organizations").select("plan_id").eq("id", staff.org_id).single(),
+  ]);
+
+  const planId = (org as { plan_id: string | null } | null)?.plan_id ?? "starter";
+  const maxLocations = getPlanTierDefinition(planId).limits.maxLocations;
+  if (maxLocations != null && (activeCount ?? 0) >= maxLocations) {
+    return {
+      error: `Plan limit reached (${maxLocations} location${maxLocations === 1 ? "" : "s"}). Upgrade to add more venues.`,
+    };
+  }
+
   const { data, error } = await admin
     .from("locations")
     .insert({

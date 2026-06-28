@@ -1,5 +1,6 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
 import { loadProactiveMenuHints } from "@/lib/denis/cognition/proactive/load-proactive-menu-hints";
+import { loadAdminUpsellMatches } from "@/lib/upsell/load-admin-matches";
 import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/session-watcher-context";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
@@ -7,6 +8,7 @@ import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-off
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
 import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { loadRevenueInsight } from "@/lib/denis/config/load-revenue-insight";
 import {
   loadRhythmRuntimeContext,
 } from "@/lib/denis/config/load-rhythm-prep-products";
@@ -94,7 +96,7 @@ export async function runProactiveSessionTick(
   const venueName = relationName(session.location)?.trim() || "Venue";
   const traceId = input.traceId ?? createTurnTraceId();
 
-  const [timeline, orders, fold, hints] = await Promise.all([
+  const [timeline, orders, fold] = await Promise.all([
     loadDenisTimeline(admin, aiSessionId),
     loadGuestOrdersForAi(admin, session.table_id, session.session_token),
     foldTableSessionState(admin, {
@@ -105,8 +107,13 @@ export async function runProactiveSessionTick(
       aiSessionId,
       config,
     }),
-    loadProactiveMenuHints(admin, session.location_id),
   ]);
+
+  const cartLines = fold.state.commerce.cart.visibleLines;
+  const cartProductIds = cartLines.map((line) => line.productId);
+  const hints = await loadProactiveMenuHints(admin, session.location_id, {
+    cartProductIds,
+  });
 
   const watcherContext = buildSessionWatcherContext({
     timeline,
@@ -166,6 +173,11 @@ export async function runProactiveSessionTick(
     locationId: session.location_id,
     config,
   });
+  const revenueInsight = await loadRevenueInsight(admin, {
+    locationId: session.location_id,
+    config,
+    rhythm,
+  });
   const effectiveDessertDelayMinutes = resolveEffectiveDessertDelayMinutes(
     config,
     rhythm
@@ -181,6 +193,18 @@ export async function runProactiveSessionTick(
           browseMinutes: watcherContext.idleMinutes,
         }
       : {};
+
+  const cartTotalEuros = cartLines.reduce((sum, line) => sum + line.lineTotal, 0);
+  const adminUpsellMatches =
+    cartProductIds.length > 0
+      ? await loadAdminUpsellMatches(admin, {
+          locationId: session.location_id,
+          cartProductIds,
+          cartTotalEuros,
+          dismissedNudgeKeys: watcherContext.dismissedNudgeKeys,
+          respectDecline: config.upsell.respectDecline,
+        })
+      : [];
 
   return emitProactiveNudge(admin, {
     aiSessionId,
@@ -211,8 +235,11 @@ export async function runProactiveSessionTick(
       popularityPair: hints.popularityPair,
       todaySpecial: hints.todaySpecial,
       dessertProductName: hints.dessertProductName,
+      puzzleProductName: hints.puzzleProductName,
+      menuEngineeringCategories: hints.menuEngineeringCategories,
       effectiveDessertDelayMinutes,
       rhythmTopProductName,
+      revenueStrategy: revenueInsight?.strategy ?? null,
       ...legacyMinutePayload,
       venueName,
       language:
@@ -228,6 +255,7 @@ export async function runProactiveSessionTick(
       browseFollowUpEmitted: watcherContext.browseFollowUpEmitted,
       followUpRequestedAt: watcherContext.followUpRequestedAt,
       followUpDelaySeconds: watcherContext.followUpDelaySeconds,
+      adminUpsellMatches,
     },
   });
 }

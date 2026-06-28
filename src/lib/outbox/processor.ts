@@ -1,26 +1,27 @@
 import { getOutboxHandler } from "@/lib/outbox/handlers/registry";
 import { moveToDeadLetterQueue } from "@/lib/outbox/dead-letter-queue";
 import { computeOutboxNextRetryAt } from "@/lib/outbox/retry-delay";
+import type { OutboxHandlerMetric } from "@/lib/outbox/types";
 import { criticalPath } from "@/lib/orders/critical-path-events";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/types/database";
+
+export type OutboxEventRow = Database["public"]["Tables"]["outbox_events"]["Row"];
 
 export const OUTBOX_BATCH_SIZE = 50;
 const STALE_PROCESSING_MS = 10 * 60 * 1000;
+const METRICS_WINDOW_HOURS = 24;
 
-export type OutboxEventRow = {
-  id: string;
-  aggregate_type: string;
-  aggregate_id: string;
-  domain: string;
-  event_type: string;
-  payload: Record<string, unknown>;
-  status: string;
-  attempts: number;
-  max_attempts: number;
-  next_retry_at: string;
-  last_error: string | null;
-};
+export type OutboxHandlerMetricsSnapshot = Record<
+  string,
+  {
+    processed: number;
+    failed: number;
+    deadLetter: number;
+    totalLatencyMs: number;
+  }
+>;
 
 export type ProcessOutboxResult = {
   claimed: number;
@@ -28,7 +29,62 @@ export type ProcessOutboxResult = {
   failed: number;
   deadLetter: number;
   recoveredStale: number;
+  handlerMetrics: OutboxHandlerMetricsSnapshot;
 };
+
+function emptyHandlerMetrics(): OutboxHandlerMetricsSnapshot {
+  return {};
+}
+
+function recordHandlerMetric(
+  metrics: OutboxHandlerMetricsSnapshot,
+  eventType: string,
+  outcome: "processed" | "failed" | "deadLetter",
+  latencyMs: number
+) {
+  const row = metrics[eventType] ?? {
+    processed: 0,
+    failed: 0,
+    deadLetter: 0,
+    totalLatencyMs: 0,
+  };
+
+  if (outcome === "processed") {
+    row.processed += 1;
+    row.totalLatencyMs += latencyMs;
+  } else if (outcome === "failed") {
+    row.failed += 1;
+  } else {
+    row.deadLetter += 1;
+  }
+
+  metrics[eventType] = row;
+}
+
+export function snapshotToHandlerMetrics(
+  snapshot: OutboxHandlerMetricsSnapshot
+): OutboxHandlerMetric[] {
+  return Object.entries(snapshot)
+    .map(([eventType, row]) => {
+      const attempts = row.processed + row.failed + row.deadLetter;
+      const failureRate =
+        attempts > 0
+          ? Math.round(((row.failed + row.deadLetter) / attempts) * 1000) / 10
+          : 0;
+      const avgLatencyMs =
+        row.processed > 0 ? Math.round(row.totalLatencyMs / row.processed) : 0;
+
+      return {
+        eventType,
+        throughput: row.processed,
+        failed: row.failed,
+        deadLetter: row.deadLetter,
+        failureRate,
+        avgLatencyMs,
+      };
+    })
+    .sort((a, b) => a.eventType.localeCompare(b.eventType));
+}
 
 async function recoverStaleProcessing(
   admin: ReturnType<typeof createAdminClient>
@@ -80,16 +136,166 @@ async function completeOutboxEvent(
   }
 }
 
+export type ProcessClaimedOutboxOutcome = "succeeded" | "failed" | "deadLetter";
+
+/** Process one claimed row — exported for unit tests. */
+export async function processClaimedOutboxEvent(
+  admin: ReturnType<typeof createAdminClient>,
+  event: OutboxEventRow,
+  handlerMetrics: OutboxHandlerMetricsSnapshot
+): Promise<ProcessClaimedOutboxOutcome> {
+  const handler = getOutboxHandler(event.event_type);
+  const payload =
+    event.payload && typeof event.payload === "object"
+      ? (event.payload as Record<string, unknown>)
+      : {};
+  const startedAt = Date.now();
+
+  try {
+    if (!handler) {
+      throw new Error(`No handler for event_type: ${event.event_type}`);
+    }
+
+    await handler(payload);
+
+    await completeOutboxEvent(admin, {
+      id: event.id,
+      success: true,
+      attempts: event.attempts,
+    });
+
+    const durationMs = Date.now() - startedAt;
+    recordHandlerMetric(handlerMetrics, event.event_type, "processed", durationMs);
+    criticalPath.outboxProcessed({
+      eventId: event.id,
+      domain: event.domain,
+      eventType: event.event_type,
+      duration_ms: durationMs,
+    });
+    return "succeeded";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    await completeOutboxEvent(admin, {
+      id: event.id,
+      success: false,
+      error: message,
+      attempts: event.attempts,
+    });
+
+    if (event.attempts >= event.max_attempts) {
+      await moveToDeadLetterQueue(admin, event, message);
+      recordHandlerMetric(handlerMetrics, event.event_type, "deadLetter", 0);
+      criticalPath.outboxDeadLetter({
+        eventId: event.id,
+        totalAttempts: event.attempts,
+      });
+      logger.error("Outbox event dead-lettered", {
+        outboxId: event.id,
+        eventType: event.event_type,
+        aggregateId: event.aggregate_id,
+        error: message,
+      });
+      return "deadLetter";
+    }
+
+    recordHandlerMetric(handlerMetrics, event.event_type, "failed", 0);
+    criticalPath.outboxFailed({
+      eventId: event.id,
+      attempts: event.attempts,
+      maxAttempts: event.max_attempts,
+      error: message,
+    });
+    logger.warn("Outbox event scheduled for retry", {
+      outboxId: event.id,
+      eventType: event.event_type,
+      attempts: event.attempts,
+      error: message,
+    });
+    return "failed";
+  }
+}
+
+/** Rolling handler throughput / failure / latency for one org (last 24h). */
+export async function loadOrgOutboxHandlerMetrics(
+  orgId: string,
+  hours = METRICS_WINDOW_HOURS
+): Promise<OutboxHandlerMetric[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  const { data: locations, error: locError } = await admin
+    .from("locations")
+    .select("id")
+    .eq("org_id", orgId);
+
+  if (locError || !locations?.length) {
+    return [];
+  }
+
+  const locationIds = locations.map((row) => (row as { id: string }).id);
+
+  const { data: orders, error: orderError } = await admin
+    .from("orders")
+    .select("id")
+    .in("location_id", locationIds)
+    .gte("created_at", since);
+
+  if (orderError || !orders?.length) {
+    return [];
+  }
+
+  const orderIds = orders.map((row) => (row as { id: string }).id);
+
+  const { data: events, error: eventError } = await admin
+    .from("outbox_events")
+    .select("event_type, status, created_at, processed_at")
+    .in("aggregate_id", orderIds)
+    .gte("created_at", since);
+
+  if (eventError || !events?.length) {
+    return [];
+  }
+
+  const snapshot: OutboxHandlerMetricsSnapshot = {};
+
+  for (const row of events) {
+    const event = row as {
+      event_type: string;
+      status: string;
+      created_at: string;
+      processed_at: string | null;
+    };
+
+    if (event.status === "done") {
+      const latencyMs = event.processed_at
+        ? Math.max(
+            0,
+            new Date(event.processed_at).getTime() -
+              new Date(event.created_at).getTime()
+          )
+        : 0;
+      recordHandlerMetric(snapshot, event.event_type, "processed", latencyMs);
+    } else if (event.status === "failed") {
+      recordHandlerMetric(snapshot, event.event_type, "deadLetter", 0);
+    }
+  }
+
+  return snapshotToHandlerMetrics(snapshot);
+}
+
 export async function processOutboxBatch(
   batchSize = OUTBOX_BATCH_SIZE
 ): Promise<ProcessOutboxResult> {
   const admin = createAdminClient();
+  const handlerMetrics = emptyHandlerMetrics();
   const result: ProcessOutboxResult = {
     claimed: 0,
     succeeded: 0,
     failed: 0,
     deadLetter: 0,
     recoveredStale: 0,
+    handlerMetrics,
   };
 
   result.recoveredStale = await recoverStaleProcessing(admin);
@@ -112,79 +318,26 @@ export async function processOutboxBatch(
     throw new Error(claimError.message);
   }
 
-  const events = (claimed ?? []) as unknown as OutboxEventRow[];
+  const events: OutboxEventRow[] = claimed ?? [];
   result.claimed = events.length;
 
   for (const event of events) {
-    const handler = getOutboxHandler(event.event_type);
-    const payload =
-      event.payload && typeof event.payload === "object"
-        ? (event.payload as Record<string, unknown>)
-        : {};
-    const startedAt = Date.now();
+    const outcome = await processClaimedOutboxEvent(admin, event, handlerMetrics);
 
-    try {
-      if (!handler) {
-        throw new Error(`No handler for event_type: ${event.event_type}`);
-      }
-
-      await handler(payload);
-
-      await completeOutboxEvent(admin, {
-        id: event.id,
-        success: true,
-        attempts: event.attempts,
-      });
+    if (outcome === "succeeded") {
       result.succeeded += 1;
-      criticalPath.outboxProcessed({
-        eventId: event.id,
-        domain: event.domain,
-        eventType: event.event_type,
-        duration_ms: Date.now() - startedAt,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      await completeOutboxEvent(admin, {
-        id: event.id,
-        success: false,
-        error: message,
-        attempts: event.attempts,
-      });
-
-      if (event.attempts >= event.max_attempts) {
-        await moveToDeadLetterQueue(admin, event, message);
-        result.deadLetter += 1;
-        criticalPath.outboxDeadLetter({
-          eventId: event.id,
-          totalAttempts: event.attempts,
-        });
-        logger.error("Outbox event dead-lettered", {
-          outboxId: event.id,
-          eventType: event.event_type,
-          aggregateId: event.aggregate_id,
-          error: message,
-        });
-      } else {
-        result.failed += 1;
-        criticalPath.outboxFailed({
-          eventId: event.id,
-          attempts: event.attempts,
-          maxAttempts: event.max_attempts,
-          error: message,
-        });
-        logger.warn("Outbox event scheduled for retry", {
-          outboxId: event.id,
-          eventType: event.event_type,
-          attempts: event.attempts,
-          error: message,
-        });
-      }
+    } else if (outcome === "failed") {
+      result.failed += 1;
+    } else {
+      result.deadLetter += 1;
     }
   }
 
   if (result.claimed > 0) {
-    logger.info("Outbox batch processed", result);
+    logger.info("Outbox batch processed", {
+      ...result,
+      handlerMetrics: snapshotToHandlerMetrics(handlerMetrics),
+    });
   }
 
   return result;

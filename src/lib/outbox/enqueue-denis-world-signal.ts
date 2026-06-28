@@ -2,6 +2,7 @@ import type { CommerceWorldSignalKind } from "@/lib/denis/loop/tell-world-order"
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseDenisWorldSignalOrderRow } from "@/lib/supabase/parse-order-rows";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function enqueueDenisWorldSignal(
@@ -71,12 +72,7 @@ export async function enqueueDenisWorldSignalForOrder(
     return;
   }
 
-  const order = orderRow as unknown as {
-    order_number: number;
-    location_id: string;
-    session_id: string | null;
-    tables: { id: string; qr_token: string };
-  };
+  const order = parseDenisWorldSignalOrderRow(orderRow);
 
   if (!order.session_id || order.session_id !== input.sessionId) return;
 

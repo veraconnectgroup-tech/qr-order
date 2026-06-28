@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Receipt } from "lucide-react";
+import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
 import { printReceiptOrder } from "@/lib/printer/print-receipt-order";
 import type { OrderWithDetails } from "@/types";
@@ -13,6 +14,7 @@ export function ReceiptPrintButton({
   currency,
   className,
   label = "Print Receipt",
+  reprint = false,
   light = false,
 }: {
   order: OrderWithDetails;
@@ -20,16 +22,23 @@ export function ReceiptPrintButton({
   currency: string;
   className?: string;
   label?: string;
+  reprint?: boolean;
   light?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const { orgLogoUrl, venueTheme } = useDashboard();
 
   async function handlePrint() {
     if (busy) return;
     setBusy(true);
     try {
       const setup = await loadPrinterSetup();
-      await printReceiptOrder(order, orgName, currency, setup);
+      await printReceiptOrder(order, orgName, currency, setup, {
+        logoUrl: orgLogoUrl,
+        footerMessage: venueTheme.receiptFooter,
+        poweredByLabel: venueTheme.poweredByLabel,
+        hidePoweredBy: venueTheme.hidePoweredBy,
+      });
     } finally {
       setBusy(false);
     }

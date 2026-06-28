@@ -1,21 +1,13 @@
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
+import type { OutboxEventRow } from "@/lib/outbox/processor";
 import type { OutboxDomain, OutboxEventType } from "@/lib/outbox/types";
 import { logger } from "@/lib/logger";
+import { toJson } from "@/lib/supabase/json";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { OutboxEventRow } from "@/lib/outbox/processor";
+import type { Database } from "@/types/database";
 
-export type DeadLetterQueueRow = {
-  id: string;
-  org_id: string;
-  job_type: string;
-  payload: Record<string, unknown>;
-  error_message: string | null;
-  attempts: number;
-  max_attempts: number;
-  created_at: string;
-  resolved_at: string | null;
-  resolved_by: string | null;
-};
+export type DeadLetterQueueRow =
+  Database["public"]["Tables"]["dead_letter_queue"]["Row"];
 
 type DlqPayloadEnvelope = {
   outboxPayload?: Record<string, unknown>;
@@ -39,10 +31,10 @@ async function resolveOrgIdForOrder(
   const { data: location } = await admin
     .from("locations")
     .select("org_id")
-    .eq("id", (order as { location_id: string }).location_id)
+    .eq("id", order.location_id)
     .maybeSingle();
 
-  return (location as { org_id: string } | null)?.org_id ?? null;
+  return location?.org_id ?? null;
 }
 
 export async function moveToDeadLetterQueue(
@@ -68,19 +60,19 @@ export async function moveToDeadLetterQueue(
       ? (event.payload as Record<string, unknown>)
       : {};
 
-  const { error } = await admin.from("dead_letter_queue" as never).insert({
+  const { error } = await admin.from("dead_letter_queue").insert({
     org_id: orgId,
     job_type: event.event_type,
-    payload: {
+    payload: toJson({
       outboxPayload: payload,
       aggregateId: event.aggregate_id,
       domain: event.domain,
       outboxEventId: event.id,
-    },
+    }),
     error_message: errorMessage.slice(0, 2000),
     attempts: event.attempts,
     max_attempts: event.max_attempts,
-  } as never);
+  });
 
   if (error) {
     logger.error("dead_letter_queue insert failed", {
@@ -101,7 +93,7 @@ export async function moveToDeadLetterQueue(
 export async function countUnresolvedDlq(): Promise<number> {
   const admin = createAdminClient();
   const { count, error } = await admin
-    .from("dead_letter_queue" as never)
+    .from("dead_letter_queue")
     .select("id", { count: "exact", head: true })
     .is("resolved_at", null);
 
@@ -118,7 +110,7 @@ export async function loadOrgDeadLetterQueue(
 ): Promise<DeadLetterQueueRow[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
-    .from("dead_letter_queue" as never)
+    .from("dead_letter_queue")
     .select("*")
     .eq("org_id", orgId)
     .is("resolved_at", null)
@@ -129,7 +121,7 @@ export async function loadOrgDeadLetterQueue(
     return [];
   }
 
-  return (data ?? []) as unknown as DeadLetterQueueRow[];
+  return data ?? [];
 }
 
 export async function retryDeadLetterQueueItem(
@@ -139,7 +131,7 @@ export async function retryDeadLetterQueueItem(
   const admin = createAdminClient();
 
   const { data: row, error: loadError } = await admin
-    .from("dead_letter_queue" as never)
+    .from("dead_letter_queue")
     .select("*")
     .eq("id", dlqId)
     .is("resolved_at", null)
@@ -149,10 +141,16 @@ export async function retryDeadLetterQueueItem(
     return { error: loadError?.message ?? "Failed job not found." };
   }
 
-  const dlq = row as unknown as DeadLetterQueueRow;
+  const dlq = row;
   const envelope = dlq.payload as DlqPayloadEnvelope;
   const outboxPayload = envelope.outboxPayload ?? {};
-  const aggregateId = envelope.aggregateId ?? dlq.payload.orderId;
+  const aggregateId =
+    envelope.aggregateId ??
+    (typeof dlq.payload === "object" &&
+    dlq.payload !== null &&
+    "orderId" in dlq.payload
+      ? String((dlq.payload as { orderId?: unknown }).orderId ?? "")
+      : undefined);
   const domain = envelope.domain;
   const eventType = dlq.job_type as OutboxEventType;
 
@@ -170,11 +168,11 @@ export async function retryDeadLetterQueueItem(
   ]);
 
   const { error: updateError } = await admin
-    .from("dead_letter_queue" as never)
+    .from("dead_letter_queue")
     .update({
       resolved_at: new Date().toISOString(),
       resolved_by: resolvedByUserId,
-    } as never)
+    })
     .eq("id", dlqId);
 
   if (updateError) {

@@ -12,6 +12,7 @@ import {
   type DsfinvkOrderRow,
   zipDsfinvkCsvFiles,
 } from "@/lib/export/dsfinvk";
+import { validateDsfinvkExportContext } from "@/lib/export/audit-pack";
 
 const originalStornoOrder: DsfinvkOrderRow = {
   id: "order-002",
@@ -157,6 +158,85 @@ function findReferenceRow(content: string, bonId: string): string[] | undefined 
   return rows.find((row) => row[bonIdIndex] === bonId);
 }
 
+function findLinesRow(content: string, bonId: string): string[] | undefined {
+  const [header, ...rows] = parseCsvRows(content);
+  const bonIdIndex = header.indexOf("BON_ID");
+  return rows.find((row) => row[bonIdIndex] === bonId);
+}
+
+function findLinesInhaus(content: string, bonId: string): string | undefined {
+  const row = findLinesRow(content, bonId);
+  if (!row) return undefined;
+  const [header] = parseCsvRows(content);
+  const inhausIndex = header.indexOf("INHAUS");
+  return row[inhausIndex];
+}
+
+function tenOrderContext(): DsfinvkExportContext {
+  const orders: DsfinvkOrderRow[] = Array.from({ length: 10 }, (_, i) => ({
+    id: `order-${String(i + 1).padStart(3, "0")}`,
+    order_number: 100 + i,
+    subtotal: 16.81,
+    total: 20,
+    tax_amount: 3.19,
+    payment_method: i % 2 === 0 ? "online" : "at_bar",
+    payment_status: "paid",
+    status: "delivered",
+    created_at: `2026-05-23T${String(10 + i).padStart(2, "0")}:00:00.000Z`,
+    accepted_at: `2026-05-23T${String(10 + i).padStart(2, "0")}:01:00.000Z`,
+    delivered_at: `2026-05-23T${String(10 + i).padStart(2, "0")}:15:00.000Z`,
+    is_takeaway: i % 3 === 0,
+    tse_signature: `sig-${i + 1}`,
+    tse_data: {
+      tss_serial: "TSS-SN-001",
+      signature_counter: 100 + i,
+      client_id: "client-abc",
+      tss_id: "tss-uuid-001",
+    },
+    created_by_staff_id: null,
+    order_source: "qr",
+    order_items: [
+      {
+        product_name: i % 3 === 0 ? "Salat" : "Burger",
+        quantity: 1,
+        total: i % 3 === 0 ? 10 : 20,
+        tax_rate: i % 3 === 0 ? 7 : 19,
+      },
+    ],
+  }));
+
+  const totalGross = orders.reduce((sum, o) => sum + Number(o.total), 0);
+
+  return {
+    kasseId: "loc-001",
+    locationName: "Skyline Lounge",
+    locationAddress: "Hafenstraße 1",
+    locationCity: "Hamburg",
+    locationPostalCode: "20457",
+    locationTimezone: "Europe/Berlin",
+    currency: "EUR",
+    fiskalyClientId: "client-abc",
+    fiskalyTssId: "tss-xyz",
+    closings: [
+      {
+        id: "closing-1",
+        business_date: "2026-05-23",
+        z_nr: 1,
+        total_gross: totalGross,
+        total_cash: 100,
+        total_non_cash: totalGross - 100,
+        closed_at: "2026-05-23T22:05:00.000Z",
+        order_count: 10,
+      },
+    ],
+    closingNumberByDate: new Map([["2026-05-23", 1]]),
+    orders,
+    stornoBonOrders: [],
+    stornoRecords: new Map(),
+    staffNames: new Map(),
+  };
+}
+
 describe("dsfinvk helpers", () => {
   it("formats amounts with dot decimal separator", () => {
     expect(formatDsfinvkAmount(12.345)).toBe("12.35");
@@ -290,5 +370,56 @@ describe("dsfinvk export files", () => {
       "transactions.csv",
       "transactions_tse.csv",
     ]);
+  });
+});
+
+describe("Prompt 82 — DSFinV-K compliance wire", () => {
+  it("exports 10 orders as valid DSFinV-K CSV set", () => {
+    const ctx = tenOrderContext();
+    const validation = validateDsfinvkExportContext(ctx);
+
+    expect(validation.valid).toBe(true);
+    expect(validation.orderCount).toBe(10);
+    expect(validation.fileCount).toBe(11);
+
+    const files = buildDsfinvkCsvFiles(ctx);
+    const txRows = parseCsvRows(files["transactions.csv"]);
+    expect(txRows.length - 1).toBe(10);
+
+    for (const content of Object.values(files)) {
+      expect(content.startsWith("\uFEFF")).toBe(true);
+      expect(content).toContain("\r\n");
+    }
+  });
+
+  it("maps takeaway orders to INHAUS=0 (7% VAT takeaway)", () => {
+    const ctx = tenOrderContext();
+    const files = buildDsfinvkCsvFiles(ctx);
+
+    expect(findLinesInhaus(files["lines.csv"], "order-001")).toBe("0");
+    expect(findLinesInhaus(files["lines.csv"], "order-004")).toBe("0");
+    expect(findLinesInhaus(files["lines.csv"], "order-002")).toBe("1");
+    expect(findLinesInhaus(files["lines.csv"], "order-003")).toBe("1");
+
+    expect(files["lines_vat.csv"]).toContain("7.00");
+    expect(files["lines_vat.csv"]).toContain("2");
+  });
+
+  it("takeaway line uses 7% VAT key (UST_SCHLUESSEL=2) in lines_vat.csv", () => {
+    const files = buildDsfinvkCsvFiles(tenOrderContext());
+    const rows = parseCsvRows(files["lines_vat.csv"]);
+    const header = rows[0]!;
+    const ustKeyIndex = header.indexOf("UST_SCHLUESSEL");
+    const bonIdIndex = header.indexOf("BON_ID");
+
+    const takeawayVatRows = rows.slice(1).filter((row) => {
+      const bonId = row[bonIdIndex];
+      return bonId === "order-001" || bonId === "order-004" || bonId === "order-007";
+    });
+
+    expect(takeawayVatRows.length).toBeGreaterThan(0);
+    for (const row of takeawayVatRows) {
+      expect(row[ustKeyIndex]).toBe("2");
+    }
   });
 });

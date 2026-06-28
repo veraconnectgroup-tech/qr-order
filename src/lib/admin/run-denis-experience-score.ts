@@ -5,6 +5,7 @@ import {
 } from "@/lib/denis/analytics/experience-score";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 
 export type ExperienceScoreTickResult = {
   processed: number;
@@ -13,28 +14,31 @@ export type ExperienceScoreTickResult = {
   errors: string[];
 };
 
-type DailyRow = {
-  org_id: string;
-  location_id: string;
-  metric_date: string;
-  sessions_closed: number;
-  converted_sessions: number;
-  abandoned_sessions: number;
-  cart_corrections: number;
-  repeated_questions: number;
-  total_turns: number;
-  t0_turns: number;
-  llm_turns: number;
-  order_time_seconds_total: number;
-  returning_guest_sessions: number;
-};
+type AdminClient = SupabaseClient<Database>;
+
+type DailyRow = Pick<
+  Database["public"]["Tables"]["experience_analytics_daily"]["Row"],
+  | "org_id"
+  | "location_id"
+  | "metric_date"
+  | "sessions_closed"
+  | "converted_sessions"
+  | "abandoned_sessions"
+  | "cart_corrections"
+  | "repeated_questions"
+  | "total_turns"
+  | "t0_turns"
+  | "llm_turns"
+  | "order_time_seconds_total"
+  | "returning_guest_sessions"
+>;
 
 export async function runDenisExperienceScoreForLocation(
-  admin: SupabaseClient,
+  admin: AdminClient,
   input: { locationId: string; metricDate: string }
 ): Promise<{ updated: boolean; score: number | null }> {
   const { data: row, error } = await admin
-    .from("experience_analytics_daily" as never)
+    .from("experience_analytics_daily")
     .select(
       "org_id, location_id, metric_date, sessions_closed, converted_sessions, abandoned_sessions, cart_corrections, repeated_questions, total_turns, t0_turns, llm_turns, order_time_seconds_total, returning_guest_sessions"
     )
@@ -62,12 +66,12 @@ export async function runDenisExperienceScoreForLocation(
   });
 
   const { error: updateError } = await admin
-    .from("experience_analytics_daily" as never)
+    .from("experience_analytics_daily")
     .update({
       experience_score: score.overallScore,
       experience_score_components: score.components,
       updated_at: new Date().toISOString(),
-    } as never)
+    })
     .eq("location_id", input.locationId)
     .eq("metric_date", input.metricDate);
 
@@ -79,7 +83,7 @@ export async function runDenisExperienceScoreForLocation(
 }
 
 export async function runDenisExperienceScoreTick(
-  admin: SupabaseClient,
+  admin: AdminClient,
   input?: { metricDate?: string; limit?: number }
 ): Promise<ExperienceScoreTickResult> {
   const metricDate =
@@ -99,9 +103,7 @@ export async function runDenisExperienceScoreTick(
     throw new Error(locError.message);
   }
 
-  const locationIds = (locations ?? []).map(
-    (row) => (row as { id: string }).id
-  );
+  const locationIds = (locations ?? []).map((row) => row.id);
 
   for (const locationId of locationIds) {
     try {

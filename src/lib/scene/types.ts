@@ -1,10 +1,17 @@
 /** ADR-016 SC-1 — versioned guest/staff UI contract (read-only projection). */
 
+import type {
+  GuestAccessibilityPrefs,
+  SceneAccessibility,
+} from "@/lib/denis/cognition/mental-model/accessibility-types";
+
 export type SessionPhase =
   | "latent"
+  | "waitlist"
   | "browsing"
   | "ordering"
   | "waiting"
+  | "eating"
   | "settling"
   | "closed";
 
@@ -90,6 +97,7 @@ export type Scene = {
   phase: SessionPhase;
   chrome: SceneChrome;
   layers: SceneLayer[];
+  accessibility?: SceneAccessibility | GuestAccessibilityPrefs | null;
 };
 
 /** Pure inputs for composeScene — loaded from DB projections + optional runtime overrides. */
@@ -123,6 +131,7 @@ export type ComposeSceneInput = {
   }>;
   chips: Array<{ id: string; label: string; selected?: boolean }>;
   situation: SceneSituation | null;
+  accessibility?: GuestAccessibilityPrefs | SceneAccessibility | null;
 };
 
 export type StaffTileView = {

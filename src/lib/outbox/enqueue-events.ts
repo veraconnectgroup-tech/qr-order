@@ -1,5 +1,5 @@
 import { scheduleOutboxProcess } from "@/lib/outbox/schedule-process";
-import type { OutboxInsert } from "@/lib/outbox/types";
+import { OUTBOX_MAX_ATTEMPTS, type OutboxInsert } from "@/lib/outbox/types";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -31,6 +31,7 @@ export async function enqueueOutboxEvents(
       domain: row.domain,
       event_type: row.event_type,
       payload: row.payload,
+      max_attempts: OUTBOX_MAX_ATTEMPTS,
     })) as never
   );
 

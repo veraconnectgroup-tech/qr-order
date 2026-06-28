@@ -14,6 +14,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       "digital waiter",
       "ne mogu da pozovem",
       "cannot call",
+      "as an ai",
+      "language model",
     ],
     emoji: false,
     maxWordsPerReply: 45,
@@ -31,6 +33,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     orderHistory: true,
     includePairingHistory: true,
     maxContextTokens: 2000,
+    adaptiveContext: true,
+    minContextTokens: 500,
   },
   ordering: {
     flow: "denis_short",
@@ -134,6 +138,13 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     learnedEdgesEnabled: false,
     minAcceptRateForSuggestion: 0.15,
     minImpressionsForSuggestion: 3,
+    crossVenue: {
+      enabled: true,
+      venueType: "casual",
+    },
+  },
+  thresholdOptimizer: {
+    autoApply: false,
   },
   memory: {
     returnGuestEnabled: false,
@@ -170,7 +181,34 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       staffingOccupancyThreshold: 0.55,
     },
   },
+  intelligence: {
+    contextAwareness: true,
+    timezone: "Europe/Belgrade",
+    dailyMenuLabel: null,
+    localSportsTeam: null,
+    weather: {
+      enabled: true,
+      openWeatherMapApiKey: null,
+      latitude: null,
+      longitude: null,
+    },
+  },
+  pipeline: {
+    enabled: true,
+    preSkills: ["pre.allergy_guard", "pre.cart_state", "pre.menu_filter"],
+    postSkills: [
+      "post.order_validator",
+      "post.price_check",
+      "post.tone_guard",
+      "post.safety_guard",
+    ],
+  },
 };
+
+/** Deep clone for tests/runtime paths that must not mutate platform defaults. */
+export function cloneConciergePlatformDefaults(): ConciergeConfig {
+  return structuredClone(CONCIERGE_PLATFORM_DEFAULTS);
+}
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;
 export const CONCIERGE_CONFIG_CACHE_KEY_PREFIX = "ai:config:";

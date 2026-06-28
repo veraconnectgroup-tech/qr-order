@@ -1,12 +1,16 @@
+"use client";
+
 import { DenisTableMark, type DenisTableMarkState } from "./denis-table-mark";
+import { useVenueThemeOptional } from "@/components/theme/venue-theme-context";
 import { cn } from "@/lib/utils";
 
 export type DenisBrandMarkProps = {
   className?: string;
   markSize?: 24 | 32 | 40;
   markState?: DenisTableMarkState;
-  /** Hide wordmark + subline; show Table D mark only */
   markOnly?: boolean;
+  displayName?: string;
+  subline?: string;
 };
 
 export function DenisBrandMark({
@@ -14,7 +18,14 @@ export function DenisBrandMark({
   markSize = 24,
   markState = "idle",
   markOnly = false,
+  displayName: displayNameProp,
+  subline: sublineProp,
 }: DenisBrandMarkProps) {
+  const theme = useVenueThemeOptional();
+  const displayName = displayNameProp ?? theme?.displayName ?? "Denis";
+  const subline =
+    sublineProp ?? theme?.theme.productSubline ?? "Part of Vera Group";
+
   if (markOnly) {
     return (
       <div className={cn("flex flex-col items-start gap-1.5", className)}>
@@ -44,7 +55,9 @@ export function DenisBrandMark({
       </div>
       <div className="min-w-0">
         <div className="inline-block min-w-0">
-          <p className="text-sm font-bold tracking-tight text-dash-text">Denis</p>
+          <p className="text-sm font-bold tracking-tight text-dash-text">
+            {displayName}
+          </p>
           <span
             className={cn(
               "denis-presence-line",
@@ -54,7 +67,7 @@ export function DenisBrandMark({
           />
         </div>
         <p className="text-[11px] font-medium leading-snug text-dash-text-muted">
-          Part of Vera Group
+          {subline}
         </p>
       </div>
     </div>

@@ -1,28 +1,5 @@
 import type { OrderSlotItem, OrderSlots } from "@/lib/denis/runtime/perceive/order-slots.schema";
-
-const WORD_QUANTITY: Record<string, number> = {
-  ein: 1,
-  eine: 1,
-  einen: 1,
-  eins: 1,
-  one: 1,
-  a: 1,
-  jedan: 1,
-  jedna: 1,
-  jedno: 1,
-  dva: 2,
-  zwei: 2,
-  two: 2,
-  tri: 3,
-  drei: 3,
-  three: 3,
-  cetiri: 4,
-  četiri: 4,
-  four: 4,
-  pet: 5,
-  fünf: 5,
-  five: 5,
-};
+import { parseOrderQuantityToken } from "@/lib/denis/cognition/conversation/parse-order-quantity";
 
 const SPLIT_RE = /\s*(?:,| und | and | i | oraz | plus |\+)\s*/i;
 
@@ -31,11 +8,7 @@ function normalizeUtterance(text: string): string {
 }
 
 function parseQuantityToken(token: string): number | null {
-  const lower = token.toLowerCase();
-  if (WORD_QUANTITY[lower] != null) return WORD_QUANTITY[lower];
-  const numeric = Number.parseInt(lower, 10);
-  if (Number.isFinite(numeric) && numeric > 0) return numeric;
-  return null;
+  return parseOrderQuantityToken(token);
 }
 
 function parseClause(clause: string): OrderSlotItem | null {

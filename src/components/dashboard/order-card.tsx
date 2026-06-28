@@ -501,7 +501,13 @@ export function OrderCard({
 
       {orgName && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <KitchenPrintButton order={order} orgName={orgName} className="flex-1" />
+          <KitchenPrintButton
+            order={order}
+            orgName={orgName}
+            className="flex-1"
+            reprint
+            label="Reprint kitchen"
+          />
           {paid && (
             <ReceiptPrintButton
               order={order}
@@ -509,6 +515,8 @@ export function OrderCard({
               currency={currency}
               light={light}
               className="flex-1"
+              reprint
+              label="Reprint receipt"
             />
           )}
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive } from "lucide-react";
+import { Archive, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const MONTHS = [
@@ -40,6 +40,7 @@ export function DsfinvkExportPanel({
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [downloading, setDownloading] = useState(false);
+  const [preparingAudit, setPreparingAudit] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const yearOptions = useMemo(() => {
@@ -69,25 +70,58 @@ export function DsfinvkExportPanel({
         throw new Error(json?.error ?? "Export failed.");
       }
 
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="([^"]+)"/);
-      const filename =
-        filenameMatch?.[1] ??
-        `DSFinV-K_Export_${locationName}_${toIsoDate(from)}_${toIsoDate(to)}.zip`;
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      await downloadBlob(res, `DSFinV-K_Export_${locationName}_${toIsoDate(from)}_${toIsoDate(to)}.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function downloadBlob(res: Response, fallbackFilename: string) {
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition");
+    const filenameMatch = disposition?.match(/filename="([^"]+)"/);
+    const filename = filenameMatch?.[1] ?? fallbackFilename;
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handlePrepareAudit() {
+    setPreparingAudit(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        locationId,
+        from: toIsoDate(from),
+        to: toIsoDate(to),
+      });
+
+      const res = await fetch(`/api/export/audit-pack?${params.toString()}`);
+
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(json?.error ?? "Audit pack failed.");
+      }
+
+      await downloadBlob(
+        res,
+        `Finanzamt_Audit_${locationName}_${toIsoDate(from)}_${toIsoDate(to)}.zip`
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Audit pack failed.");
+    } finally {
+      setPreparingAudit(false);
     }
   }
 
@@ -143,17 +177,29 @@ export function DsfinvkExportPanel({
         <Button
           type="button"
           onClick={handleDownload}
-          disabled={downloading}
+          disabled={downloading || preparingAudit}
           className="gap-2"
         >
           <Archive className="size-4" />
           {downloading ? "Exportiere…" : "DSFinV-K Export herunterladen"}
         </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handlePrepareAudit}
+          disabled={downloading || preparingAudit}
+          className="gap-2"
+        >
+          <ShieldCheck className="size-4" />
+          {preparingAudit ? "Bereite vor…" : "Für Prüfung vorbereiten"}
+        </Button>
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">
         Standort: {locationName} · Zeitraum: {toIsoDate(from)} – {toIsoDate(to)}
-        · Nur Tage mit Tagesabschluss (Z-Bon)
+        · Nur Tage mit Tagesabschluss (Z-Bon) · „Für Prüfung vorbereiten“
+        enthält DSFinV-K CSVs + signierte Z-Bon HTML-Dateien
       </p>
 
       {error && (

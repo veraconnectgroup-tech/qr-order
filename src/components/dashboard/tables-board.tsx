@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Download, Plus, RefreshCw, ArrowRightLeft, Receipt, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { TABLE_WITH_ZONE_SELECT, tableWithZoneRows } from "@/lib/supabase/query-rows";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useAppBaseUrl } from "@/hooks/use-app-base-url";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/dashboard/table-active-orders";
 import {
   buildQrTableCardPrintHtml,
+  formatBrandSubline,
   generateTableQrDataUrl,
   openQrTableCardPrintWindow,
   prepareQrTableCardItems,
@@ -102,8 +104,16 @@ function startOfTodayIso() {
 
 
 export function TablesBoard() {
-  const { locationId, orgId, orgSlug: contextOrgSlug, orgName, currency, menuLocale } =
-    useDashboard();
+  const {
+    locationId,
+    orgId,
+    orgSlug: contextOrgSlug,
+    orgName,
+    orgLogoUrl,
+    currency,
+    menuLocale,
+    venueTheme,
+  } = useDashboard();
   const appUrl = useAppBaseUrl();
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState(contextOrgSlug);
   const guestUrlUnsafe = isUnsafeGuestBaseUrl(appUrl);
@@ -170,7 +180,7 @@ export function TablesBoard() {
         .order("sort_order"),
       supabase
         .from("tables")
-        .select("*, zone:zones(*)")
+        .select(TABLE_WITH_ZONE_SELECT)
         .eq("location_id", locationId)
         .eq("is_active", true)
         .is("deleted_at", null)
@@ -214,7 +224,7 @@ export function TablesBoard() {
     }
 
     const enriched: TableRow[] = (
-      (tablesData ?? []) as unknown as Array<Table & { zone: Zone | null }>
+      tableWithZoneRows(tablesData)
     ).map((t) => {
       const session = sessionMap.get(t.id) ?? null;
       const activeOrders = (ordersByTable.get(t.id) ?? []).sort(
@@ -326,8 +336,11 @@ export function TablesBoard() {
       return;
     }
     const url = guestTableUrl(resolvedOrgSlug, selected.qr_token, appUrl);
-    generateTableQrDataUrl(url, 200).then(setQrUrl);
-  }, [selected, appUrl, resolvedOrgSlug]);
+    generateTableQrDataUrl(url, 200, {
+      brandColor: venueTheme.primaryColor,
+      logoUrl: orgLogoUrl,
+    }).then(setQrUrl);
+  }, [selected, appUrl, resolvedOrgSlug, venueTheme.primaryColor, orgLogoUrl]);
 
   async function regenerateToken(tableId: string) {
     const supabase = createClient();
@@ -451,12 +464,18 @@ export function TablesBoard() {
   }
 
   async function downloadAllQrCodes() {
+    const branding = {
+      brandColor: venueTheme.primaryColor,
+      logoUrl: orgLogoUrl,
+    };
     const items = await prepareQrTableCardItems(
       tables.map((table) => ({
         tableName: table.name,
         zoneName: table.zone?.name,
         scanUrl: guestTableUrl(resolvedOrgSlug, table.qr_token, appUrl),
-      }))
+      })),
+      200,
+      branding
     );
 
     const html = buildQrTableCardPrintHtml({
@@ -464,6 +483,11 @@ export function TablesBoard() {
       items,
       locale: resolveQrTableCardLocale(menuLocale),
       autoPrint: true,
+      brandColor: venueTheme.primaryColor,
+      brandSubline: formatBrandSubline(
+        venueTheme.displayName,
+        venueTheme.productSubline
+      ),
     });
 
     const win = openQrTableCardPrintWindow(html);

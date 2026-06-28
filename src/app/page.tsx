@@ -1,18 +1,52 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { LandingPage } from "@/components/landing/landing-page";
+import { landingAlternates, landingJsonLd } from "@/lib/landing/landing-seo";
+import { landingCopy } from "@/lib/landing/landing-copy";
+
+const defaultCopy = landingCopy("en");
 
 export const metadata: Metadata = {
-  title: "Denis — Hospitality operating system · Vera Group",
-  description:
-    "Guest ordering, kitchen display, staff coordination, and payments — one enterprise platform. Part of Vera Group. KassenSichV compliant. €0 / month.",
+  title: defaultCopy.meta.title,
+  description: defaultCopy.meta.description,
+  alternates: landingAlternates(),
   openGraph: {
-    title: "Denis — Hospitality operating system",
-    description:
-      "Run the floor, serve faster, stay compliant. Intelligence embedded — not advertised.",
+    title: defaultCopy.meta.title,
+    description: defaultCopy.meta.description,
     locale: "en_US",
+    alternateLocale: ["de_DE", "sr_RS"],
+    type: "website",
+    siteName: "Denis · Vera Group",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultCopy.meta.title,
+    description: defaultCopy.meta.description,
+    images: ["/opengraph-image"],
+  },
+  keywords: [
+    "Denis",
+    "AI waiter",
+    "QR ordering",
+    "restaurant POS",
+    "KassenSichV",
+    "kitchen display",
+    "hospitality software",
+  ],
 };
 
 export default function HomePage() {
-  return <LandingPage />;
+  const jsonLd = landingJsonLd("en");
+
+  return (
+    <>
+      <Script
+        id="landing-json-ld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <LandingPage />
+    </>
+  );
 }

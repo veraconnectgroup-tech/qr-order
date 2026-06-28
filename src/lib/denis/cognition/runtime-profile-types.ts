@@ -17,6 +17,15 @@ export const DenisPerceiveModeSchema = z.enum(["social", "commerce"]);
 
 export type DenisPerceiveMode = z.infer<typeof DenisPerceiveModeSchema>;
 
+export const DenisModelTierSchema = z.enum([
+  "template",
+  "mini",
+  "full",
+  "extended",
+]);
+
+export type DenisModelTier = z.infer<typeof DenisModelTierSchema>;
+
 export type DenisRuntimeModelProfile = {
   social: string;
   commerce: string;
@@ -29,5 +38,10 @@ export type DenisRuntimeResolvedProfile = {
   perceivePipeline: DenisPerceivePipeline;
   menuRagEnabled: boolean;
   models: DenisRuntimeModelProfile;
+  /** Adaptive ceiling for context window assembly. */
   maxContextTokens: number;
+  adaptiveContext: boolean;
+  minContextTokens: number;
+  /** Default model tier when adaptive routing disabled. */
+  defaultModelTier?: DenisModelTier;
 };

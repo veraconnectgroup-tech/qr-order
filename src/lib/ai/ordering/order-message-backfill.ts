@@ -22,10 +22,19 @@ import {
   buildSubstitutionNegotiationMessage,
   drinkClarifySnippet,
   isGenericBeerSegment,
+  parseGuestModifier,
+  parseGuestModifiers,
   parseGuestSubstitution,
+  stripGuestModifierPhrase,
   substitutionReplacesFries,
   type GuestSubstitutionRequest,
 } from "@/lib/denis/cognition/conversation/guest-substitution";
+import {
+  parseOrderSegment,
+  splitGroupOrderSegments,
+  type ParsedOrderSegment,
+} from "@/lib/denis/cognition/conversation/parse-group-order";
+import { applyGuestCartMutations } from "@/lib/denis/cognition/conversation/apply-guest-cart-mutations";
 
 const ORDER_PREFIX =
   /^(daj\s+mi|daj|ho[ćc]u|hocu|mo[žz]e|želim|zelim|give\s+me|i\s+want|can\s+i\s+get|molim(\s+te)?|please|i\s+need)\s+/i;
@@ -59,7 +68,7 @@ export function isOrderPlacementMessage(message: string): boolean {
   if (ORDER_PREFIX.test(text)) return true;
   if (ORDER_SUFFIX.test(text) && text.length >= 6) return true;
   if (MULTI_ITEM_SPLIT.test(text) && text.length >= 12) return true;
-  return /\b(pivo|pils|pilsner|lager|radler|burger|kisel|kisela|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee|cevap|ćevap|pile[cć]i|dodaj|dodati)\b/i.test(
+  return /\b(pivo|pils|pilsner|lager|radler|beer|bier|burger|kisel|kisela|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee|cevap|ćevap|pile[cć]i|dodaj|dodati)\b/i.test(
     text
   );
 }
@@ -86,22 +95,28 @@ function splitCompoundDrinkAnswer(stripped: string): string[] | null {
 }
 
 export function splitOrderMessageSegments(message: string): string[] {
+  return splitGroupOrderSegments(message).map((segment) =>
+    segment.persona
+      ? `${segment.persona} ${segment.quantity > 1 ? `${segment.quantity}× ` : ""}${segment.productText}`.trim()
+      : segment.quantity > 1
+        ? `${segment.quantity}× ${segment.productText}`.trim()
+        : segment.productText
+  );
+}
+
+function parsedSegmentsFromMessage(message: string): ParsedOrderSegment[] {
   const stripped = message
     .trim()
     .replace(ORDER_PREFIX, "")
     .replace(ORDER_SUFFIX, "")
     .trim();
-  if (!stripped) return [];
 
   const compound = splitCompoundDrinkAnswer(stripped);
-  if (compound) return compound;
+  if (compound) {
+    return compound.map((part) => parseOrderSegment(part));
+  }
 
-  const parts = stripped
-    .split(MULTI_ITEM_SPLIT)
-    .map((part) => normalizeSegment(part))
-    .filter((part) => part.length >= 2);
-
-  return parts.length ? parts : [stripped];
+  return splitGroupOrderSegments(message);
 }
 
 function scoreSegmentMatch(segment: string, product: AiCatalogProduct): number {
@@ -158,7 +173,7 @@ function pickProductForSegment(
     }
   }
 
-  return best?.product ?? null;
+  return best?.product ?? candidates[0] ?? null;
 }
 
 function inferServeSizeFromSegment(
@@ -201,24 +216,38 @@ function inferModifierIdsFromSegment(
   return ids;
 }
 
+function segmentLineKey(productId: string, notes: string): string {
+  return `${productId}|${notes.trim().toLowerCase()}`;
+}
+
 function segmentToProposedItem(
-  segment: string,
+  segment: ParsedOrderSegment | string,
   catalog: AiCatalog
 ): { item: AiProposedItem | null; substitution: GuestSubstitutionRequest | null } {
-  const substitution = parseGuestSubstitution(segment);
-  const product = pickProductForSegment(segment, catalog.catalog);
+  const parsed: ParsedOrderSegment =
+    typeof segment === "string" ? parseOrderSegment(segment) : segment;
+
+  const rawSegment = parsed.productText;
+  const modifierNotes = parseGuestModifiers(rawSegment);
+  const productSegment = stripGuestModifierPhrase(rawSegment);
+  const substitution = parseGuestSubstitution(productSegment);
+  const product = pickProductForSegment(productSegment, catalog.catalog);
   if (!product) {
     return { item: null, substitution };
   }
 
+  const notesParts: string[] = [];
+  if (parsed.persona) notesParts.push(parsed.persona);
+  if (modifierNotes.length) notesParts.push(...modifierNotes);
+  const notes = notesParts.join("; ");
+
   return {
     item: {
       productId: product.id,
-      quantity: 1,
-      modifierIds: inferModifierIdsFromSegment(segment, product, substitution),
-      serveSize: inferServeSizeFromSegment(segment, product),
-      // Kitchen note is added after guest confirms substitution (ADR-033 obligation gap).
-      notes: "",
+      quantity: parsed.quantity,
+      modifierIds: inferModifierIdsFromSegment(productSegment, product, substitution),
+      serveSize: inferServeSizeFromSegment(productSegment, product),
+      notes,
     },
     substitution,
   };
@@ -367,14 +396,31 @@ export function backfillDraftFromOrderMessage(
     return { draft, cartActions: [], meta: metaFromMessage };
   }
 
-  const segments = splitOrderMessageSegments(message);
+  const mutation = applyGuestCartMutations(draft, catalog, message);
+  draft = mutation.draft;
+  if (mutation.swapped || mutation.removed) {
+    return {
+      draft,
+      cartActions: mutation.cartActions,
+      meta: metaFromMessage,
+    };
+  }
+
+  const segments = parsedSegmentsFromMessage(message);
   const proposed: AiProposedItem[] = [];
-  const usedProductIds = new Set(draft.items.map((line) => line.productId));
+  const usedLineKeys = new Set(
+    draft.items.map((line) => segmentLineKey(line.productId, line.notes ?? ""))
+  );
   let substitution: GuestSubstitutionRequest | null = null;
   let needsDrinkClarify = false;
 
   for (const segment of segments) {
-    if (isGenericBeerSegment(segment)) {
+    const segmentText = segment.productText;
+    if (
+      isGenericBeerSegment(segmentText) ||
+      (GENERIC_BEER_INLINE.test(segmentText) &&
+        !TYPED_DRINK_PATTERN.test(segmentText))
+    ) {
       needsDrinkClarify = true;
       continue;
     }
@@ -385,9 +431,11 @@ export function backfillDraftFromOrderMessage(
     }
 
     const item = parsed.item;
-    if (!item || usedProductIds.has(item.productId)) continue;
+    if (!item) continue;
+    const lineKey = segmentLineKey(item.productId, item.notes ?? "");
+    if (usedLineKeys.has(lineKey)) continue;
     proposed.push(item);
-    usedProductIds.add(item.productId);
+    usedLineKeys.add(lineKey);
   }
 
   if (!proposed.length) {

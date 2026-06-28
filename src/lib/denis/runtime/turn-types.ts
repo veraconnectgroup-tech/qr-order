@@ -16,6 +16,9 @@ import type {
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
 import type { NarrationTier } from "@/lib/denis/runtime/narrate/narration-facts.schema";
+import type { ResolvedRhythmContext } from "@/lib/denis/config/rhythm-prior-types";
+import type { RevenueInsight } from "@/lib/denis/config/revenue-intelligence";
+import type { ClientAccessibilitySignals } from "@/lib/denis/cognition/mental-model/accessibility-types";
 
 export type DenisChannel = "chat" | "voice" | "proactive" | "status_poll";
 
@@ -54,6 +57,7 @@ export const denisChatBodySchema = aiChatRequestSchema.extend({
   /** M28 — structured chip / UI command (bypasses free-text LLM routing). */
   structuredIntent: guestIntentSchema.optional(),
   handoffPaymentMethod: handoffPaymentMethodSchema.optional(),
+  accessibilitySignals: z.custom<ClientAccessibilitySignals>().optional(),
 });
 
 export type DenisChatBody = z.infer<typeof denisChatBodySchema>;
@@ -77,6 +81,14 @@ export type DenisTurnContext = {
   opsEffects?: OpsPlannerEffects;
   foodUpsellAsked: boolean;
   guestMemory?: GuestMemoryProjection | null;
+  rhythmContext?: ResolvedRhythmContext | null;
+  revenueInsight?: RevenueInsight | null;
+  healthOverrides?: {
+    forceT0Only?: boolean;
+    reduceProactive?: boolean;
+    denisOffline?: boolean;
+    degradationLevel?: string;
+  };
   lastAssistantMessage?: string | null;
   /** ADR-019 Phase A — FOLD metadata for timeline + idempotency. */
   foldMeta?: FoldMeta;
@@ -103,6 +115,7 @@ export type DenisTurnMeta = {
   actSubmitLive?: boolean;
   actSubmitAttempted?: boolean;
   actOrderNumber?: number;
+  healthStatus?: string;
 };
 
 export type { ManualCartSnapshot };

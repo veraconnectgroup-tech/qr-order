@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { CartView } from "@/components/guest/cart-view";
 import { getDemoGuestMenuProps, isDemoGuestRoute } from "@/lib/demo-guest";
+import { parseGuestCartTable } from "@/lib/guest/parse-guest-table-rows";
 
 export default async function CartPage({
   params,
@@ -61,11 +62,8 @@ export default async function CartPage({
 
   if (!tableData) notFound();
 
-  const table = tableData as unknown as {
-    name: string;
-    location_id: string;
-    location: { accepting_orders: boolean; ordering_enabled: boolean };
-  };
+  const table = parseGuestCartTable(tableData);
+  if (!table) notFound();
 
   if (!table.location.ordering_enabled) {
     redirect(`/${slug}/${token}`);

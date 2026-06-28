@@ -4,9 +4,13 @@ import { getCurrentStaff } from "@/lib/auth/session";
 import { resolveStaffOrderByClientOrderId } from "@/lib/orders/create-staff-order";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { zUuid } from "@/lib/security/zod-fields";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 
 /** Recover a POS sync row when the order was created but the client never got 200. */
 export const GET = withErrorHandler("staff-orders-recover", async (req, _ctx) => {
+  const limited = await withStaffRateLimit(req);
+  if (limited) return limited;
+
   const staff = await getCurrentStaff();
   if (!staff) {
     return apiError("Unauthorized.", 401);

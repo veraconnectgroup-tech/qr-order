@@ -13,6 +13,7 @@ import { countsTowardRevenue } from "@/lib/orders/revenue";
 import { groupGrossByRate, roundMoney } from "@/lib/tax/vat";
 import { logger } from "@/lib/logger";
 import { escapeHtml } from "@/lib/security/escape";
+import { toJson } from "@/lib/supabase/json";
 import type { Json } from "@/types/database";
 
 export type VatSummaryEntry = {
@@ -205,52 +206,38 @@ function buildDailyClosingTseSchema(
   };
 }
 
-export async function computeDailyClosing(
-  admin: SupabaseClient,
-  orgId: string,
-  locationId: string,
-  businessDate: string,
-  timezone: string
-): Promise<DailyClosingData> {
-  const { startIso, endIso } = businessDayUtcBounds(businessDate, timezone);
+export type DailyClosingOrderRow = {
+  id: string;
+  status: string;
+  total: number;
+  tax_amount: number;
+  payment_method: string;
+  tip_amount?: number | null;
+};
 
-  const { data: orders, error: ordersError } = await admin
-    .from("orders")
-    .select("id, status, total, tax_amount, payment_method, tip_amount")
-    .eq("location_id", locationId)
-    .gte("created_at", startIso)
-    .lt("created_at", endIso);
+export type DailyClosingRefundRow = {
+  id: string;
+  total: number;
+  payment_status: string;
+};
 
-  if (ordersError) {
-    throw new Error(`Daily closing orders query failed: ${ordersError.message}`);
-  }
+export type DailyClosingItemRow = {
+  total: number;
+  tax_rate: number;
+};
 
-  const revenueOrders = (orders ?? []).filter((row) =>
-    countsTowardRevenue((row as { status: string }).status)
-  ) as Array<{
-    id: string;
-    status: string;
-    total: number;
-    tax_amount: number;
-    payment_method: string;
-    tip_amount: number | null;
-  }>;
+export type DailyClosingTotals = Omit<
+  DailyClosingData,
+  "orgId" | "locationId" | "businessDate"
+>;
 
-  const orderIds = revenueOrders.map((o) => o.id);
-  let orderItems: Array<{ total: number; tax_rate: number }> = [];
-
-  if (orderIds.length > 0) {
-    const { data: items, error: itemsError } = await admin
-      .from("order_items")
-      .select("total, tax_rate")
-      .in("order_id", orderIds);
-
-    if (itemsError) {
-      throw new Error(`Daily closing items query failed: ${itemsError.message}`);
-    }
-
-    orderItems = (items ?? []) as Array<{ total: number; tax_rate: number }>;
-  }
+/** Pure aggregation for Z-Bon totals (orders + stornos + tips). */
+export function aggregateDailyClosingTotals(
+  orders: DailyClosingOrderRow[],
+  orderItems: DailyClosingItemRow[],
+  refunds: DailyClosingRefundRow[]
+): DailyClosingTotals {
+  const revenueOrders = orders.filter((row) => countsTowardRevenue(row.status));
 
   const vatSummary = groupItemsByVatRate(orderItems);
   const totalGross = roundMoney(
@@ -278,6 +265,64 @@ export async function computeDailyClosing(
     revenueOrders.reduce((sum, o) => sum + Number(o.tip_amount ?? 0), 0)
   );
 
+  const refundTotal = roundMoney(
+    refunds.reduce((sum, o) => sum + Number(o.total), 0)
+  );
+
+  return {
+    totalGross,
+    totalNet,
+    totalTax,
+    totalCash,
+    totalNonCash,
+    totalTips,
+    vatSummary,
+    orderCount: revenueOrders.length,
+    refundCount: refunds.length,
+    refundTotal,
+  };
+}
+
+export async function computeDailyClosing(
+  admin: SupabaseClient,
+  orgId: string,
+  locationId: string,
+  businessDate: string,
+  timezone: string
+): Promise<DailyClosingData> {
+  const { startIso, endIso } = businessDayUtcBounds(businessDate, timezone);
+
+  const { data: orders, error: ordersError } = await admin
+    .from("orders")
+    .select("id, status, total, tax_amount, payment_method, tip_amount")
+    .eq("location_id", locationId)
+    .gte("created_at", startIso)
+    .lt("created_at", endIso);
+
+  if (ordersError) {
+    throw new Error(`Daily closing orders query failed: ${ordersError.message}`);
+  }
+
+  const revenueOrders = (orders ?? []) as DailyClosingOrderRow[];
+
+  const orderIds = revenueOrders
+    .filter((row) => countsTowardRevenue(row.status))
+    .map((o) => o.id);
+  let orderItems: DailyClosingItemRow[] = [];
+
+  if (orderIds.length > 0) {
+    const { data: items, error: itemsError } = await admin
+      .from("order_items")
+      .select("total, tax_rate")
+      .in("order_id", orderIds);
+
+    if (itemsError) {
+      throw new Error(`Daily closing items query failed: ${itemsError.message}`);
+    }
+
+    orderItems = (items ?? []) as DailyClosingItemRow[];
+  }
+
   const { data: refunds, error: refundsError } = await admin
     .from("orders")
     .select("id, total, payment_status, refunded_at")
@@ -290,31 +335,19 @@ export async function computeDailyClosing(
     throw new Error(`Daily closing refunds query failed: ${refundsError.message}`);
   }
 
-  const refundRows = (refunds ?? []) as Array<{
-    id: string;
-    total: number;
-    payment_status: string;
-    refunded_at: string | null;
-  }>;
+  const refundRows = (refunds ?? []) as DailyClosingRefundRow[];
 
-  const refundTotal = roundMoney(
-    refundRows.reduce((sum, o) => sum + Number(o.total), 0)
+  const totals = aggregateDailyClosingTotals(
+    revenueOrders,
+    orderItems,
+    refundRows
   );
 
   return {
     orgId,
     locationId,
     businessDate,
-    totalGross,
-    totalNet,
-    totalTax,
-    totalCash,
-    totalNonCash,
-    totalTips,
-    vatSummary,
-    orderCount: revenueOrders.length,
-    refundCount: refundRows.length,
-    refundTotal,
+    ...totals,
   };
 }
 
@@ -365,7 +398,7 @@ export async function saveDailyClosing(
     total_cash: data.totalCash,
     total_non_cash: data.totalNonCash,
     total_tips: data.totalTips,
-    vat_summary: data.vatSummary as unknown as Json,
+    vat_summary: toJson(data.vatSummary),
     order_count: data.orderCount,
     refund_count: data.refundCount,
     refund_total: data.refundTotal,
@@ -483,7 +516,7 @@ export async function signDailyClosingTse(
     .from("daily_closings" as never)
     .update({
       tse_closing_signature: signature,
-      tse_closing_data: tseData as unknown as Json,
+      tse_closing_data: toJson(tseData),
     } as never)
     .eq("id", closingId);
 

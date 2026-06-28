@@ -44,6 +44,9 @@ export function guestTextFromTimeline(event: DenisTimelineRow): string | null {
   if (event.event_type === "perception.ingested") {
     const frame = asRecord(event.payload).frame;
     if (!frame || typeof frame !== "object") return null;
+    if ((frame as Record<string, unknown>).channel === "telemetry.browse") {
+      return null;
+    }
     const text =
       typeof (frame as Record<string, unknown>).normalizedText === "string"
         ? ((frame as Record<string, unknown>).normalizedText as string).trim()
@@ -97,6 +100,17 @@ export function isGuestPauseMessage(message: string): boolean {
     isGuestBrowsingDeferMessage(message) ||
     parseGuestFollowUpRequest(message) !== null
   );
+}
+
+const MISUNDERSTANDING_DECLINE_PATTERN =
+  /^(ne|n[e]+|no|nein|nope|to nije|nije to|not that|falsch|wrong)([\s,.!]|$)/i;
+
+/** Bare "ne" / correction — Denis misunderstood, not polite decline of whole order. */
+export function isGuestMisunderstandingDecline(message: string): boolean {
+  const text = message.trim();
+  if (!text || text.length > 80) return false;
+  if (/\b(hvala|danke|thanks|treba|potrebno)\b/i.test(text)) return false;
+  return MISUNDERSTANDING_DECLINE_PATTERN.test(text);
 }
 
 export type GuestContinuityState = {

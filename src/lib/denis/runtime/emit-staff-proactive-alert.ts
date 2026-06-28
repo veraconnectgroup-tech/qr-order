@@ -1,4 +1,9 @@
 import type { StaffProactiveAlert } from "@/lib/denis/cognition/proactive/proactive-types";
+import {
+  actionUrlForStaffProactiveAlert,
+  priorityForStaffProactiveAlert,
+  shouldPlayStaffAlertSound,
+} from "@/lib/denis/cognition/proactive/detect-staff-proactive";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import { mapStaffProactiveAlertToNotificationType } from "@/lib/denis/notifications/staff-notifications";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
@@ -58,6 +63,12 @@ export async function emitStaffProactiveAlert(
     message: input.alert.message,
     tableId: input.tableId,
     tableName: input.alert.tableName,
+    actionUrl: actionUrlForStaffProactiveAlert({
+      kind: input.alert.kind,
+      tableId: input.tableId,
+    }),
+    priorityOverride: priorityForStaffProactiveAlert(input.alert.kind),
+    playSound: shouldPlayStaffAlertSound(input.alert.kind),
   });
 
   logger.info("Staff proactive alert delivered", {

@@ -1,4 +1,11 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { moderateGuestInput, shieldGracefulGuestMessage } from "@/lib/ai/moderation";
+import {
+  buildSecurityBlockedPayload,
+  logShieldBlock,
+  recordShieldBlock,
+  screenOutput,
+} from "@/lib/ai/prompt-shield";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
 import {
@@ -14,6 +21,7 @@ import {
 import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
 import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/load-venue-manifests";
 import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
+import { resolveContextAwareness } from "@/lib/denis/intelligence/resolve-context-awareness";
 import type { MenuRagCatalog } from "@/lib/denis/cognition/context/menu-rag-types";
 import {
   embedMenuQueryVector,
@@ -21,10 +29,13 @@ import {
 } from "@/lib/denis/cognition/context/menu-rag-embeddings";
 import { isMenuRagEnabled } from "@/lib/denis/cognition/context/retrievers/menu-rag";
 import {
-  resolvePerceiveModel,
+  resolveAdaptiveModelRoute,
   resolveRuntimeProfile,
 } from "@/lib/denis/cognition/resolve-runtime-profile";
-import type { DenisPerceiveMode } from "@/lib/denis/cognition/runtime-profile-types";
+import type {
+  DenisModelTier,
+  DenisPerceiveMode,
+} from "@/lib/denis/cognition/runtime-profile-types";
 import {
   decideTurnPlan,
   planUtterance,
@@ -58,6 +69,9 @@ import {
   sessionDraftHasPendingSlot,
   type PendingSlotActResult,
 } from "@/lib/denis/runtime/act/resolve-pending-slot-act";
+import { tryApplyGuestReorderAct } from "@/lib/denis/runtime/act/apply-guest-reorder-act";
+import { buildGuestReorderActPerceiveResult } from "@/lib/denis/runtime/phases/run-tde-perceive";
+import type { TdePerceiveResult } from "@/lib/denis/runtime/phases/phase-types";
 import {
   appendMindTurnProfile,
   buildTurnProfile,
@@ -81,6 +95,7 @@ import {
   persistGuestFollowUpRequest,
 } from "@/lib/denis/runtime/persist-guest-continuity";
 import { persistDenisTurnTimeline } from "@/lib/denis/runtime/persist-turn-timeline";
+import { maybeEmitTurnLearningSignals } from "@/lib/denis/runtime/maybe-emit-turn-learning-signals";
 import {
   buildNarrationFacts,
   resolveTurnQuickReplies,
@@ -110,6 +125,10 @@ import {
   emptyTurnTimings,
   logDenisTurnObservability,
 } from "@/lib/denis/runtime/turn-observability";
+import {
+  buildTurnTrace,
+  scheduleTurnTraceWrite,
+} from "@/lib/denis/runtime/turn-trace";
 import type { AiStructuredResponse, AiRecommendation } from "@/lib/ai/types";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
 import type {
@@ -126,6 +145,7 @@ import type {
   TurnEnvelope,
 } from "@/lib/denis/platform/timeline-types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import {
   resolveActiveTableSessionId,
   resolveGuestTableSessionLookupToken,
@@ -309,6 +329,62 @@ function buildCommerceStatusSummary(orders: OrderFact[]): string | null {
     .join(", ");
 }
 
+async function handleInputShieldBlock(input: {
+  admin: ReturnType<typeof createAdminClient>;
+  message: string;
+  reason: string;
+  sessionId: string;
+  locationId: string;
+  tableId: string;
+  orgId: string;
+  traceId: string;
+}): Promise<Response> {
+  const shieldState = await recordShieldBlock(input.sessionId);
+  logShieldBlock("regex", input.reason, input.message, "input");
+
+  await appendDenisTimelineEvent(input.admin, {
+    aiSessionId: input.sessionId,
+    eventType: "security.blocked",
+    traceId: input.traceId,
+    payload: buildSecurityBlockedPayload({
+      direction: "input",
+      reason: input.reason,
+      layer: "regex",
+      preview: input.message,
+      blockCount: shieldState.blockCount,
+      sessionFlagged: shieldState.flagged,
+      traceId: input.traceId,
+    }),
+  });
+
+  if (shieldState.notifyStaff) {
+    void dispatchStaffNotification({
+      orgId: input.orgId,
+      locationId: input.locationId,
+      type: "denis_escalation",
+      message: `Denis prompt shield: ${shieldState.blockCount} blocked attempts at this table — session flagged.`,
+      tableId: input.tableId,
+      priorityOverride: "high",
+      playSound: true,
+    }).catch((error) => {
+      logger.warn("Prompt shield staff alert failed", {
+        sessionId: input.sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+
+  return apiSuccess({
+    message: shieldGracefulGuestMessage(),
+    recommendations: [],
+    cartActions: [],
+    quickReplies: [],
+    intent: "chat",
+    submitOrder: false,
+    sessionId: input.sessionId,
+  });
+}
+
 /** Direct ACL when act phase did not commit handoff (ADR-032 belt-and-suspenders). */
 async function runHandoffAclFallback(
   admin: ReturnType<typeof createAdminClient>,
@@ -421,17 +497,6 @@ function isSupportedTurnChannel(
   return channel === "chat" || channel === "voice";
 }
 
-type TdePerceiveResult = {
-  response: Response;
-  turnPlan: TurnPlan;
-  llmUsed: boolean;
-  planKind: TurnPlanKind;
-  tier: string;
-  evidencePointers: string[];
-  pendingSlotActResolved?: boolean;
-  cartDraftFromAct?: DenisTurnContext["aiCartState"]["draft"];
-};
-
 function buildPendingSlotActPerceiveResult(
   act: Extract<PendingSlotActResult, { resolved: true }>,
   suppressUpsell: boolean,
@@ -509,15 +574,23 @@ async function runTdePerceive(input: {
     typeof decideTurnPlan
   >[0]["beliefs"];
 
+  const conversationGraph =
+    input.ctx.tableSessionState?.conversation.model.graph ?? null;
+
   const turnPlan = decideTurnPlan({
     beliefs: tdeBeliefs,
     reflex: input.reflexTurn,
     message: input.body.message,
+    conversationGraph,
   });
 
   const interpretationTask = buildInterpretationTask(
     input.reflexTurn.plan.topGoal,
-    tdeBeliefs
+    tdeBeliefs,
+    {
+      guestMessage: input.body.message,
+      conversationGraph,
+    }
   );
 
   const utterancePlan = planUtterance({
@@ -578,6 +651,9 @@ async function runTdePerceive(input: {
     input.ctx.aiCartState.draft?.items?.length ??
     input.ctx.tableSessionState?.commerce.cart.visibleLines.length ??
     0;
+  const conversationMode = getBeliefValue<
+    "banter" | "ordering" | "settling"
+  >(input.beliefs, "conversation.mode");
   const leadershipContext = {
     inOrderingFlow:
       pressure === "open" ||
@@ -587,6 +663,11 @@ async function runTdePerceive(input: {
     awaitingAnswer: awaiting != null && awaiting !== "",
     transactionalTurn: turnPlan.kind === "transactional_perceive",
     hasPriorMessages: (transcriptForTurn?.length ?? 0) > 0,
+    conversationMode,
+    commercePressure:
+      pressure === "open" || pressure === "confirm"
+        ? (pressure as "open" | "confirm")
+        : ("none" as const),
   };
 
   if (!turnPlan.requiresLlm) {
@@ -612,6 +693,9 @@ async function runTdePerceive(input: {
       llmUsed: false,
       planKind: turnPlan.kind,
       tier: profile.tier,
+      modelTier: "template",
+      model: null,
+      complexityScore: 0,
       evidencePointers: [],
     };
   }
@@ -657,18 +741,32 @@ async function runTdePerceive(input: {
     }
   }
 
-  const [vkgPairingBlock, playbookBlock] = await Promise.all([
+  const [vkgPairingBlock, playbookBlock, contextAwareness] = await Promise.all([
     loadTurnVkgPairingBlock({
       locationId: input.body.locationId,
       config: input.ctx.config,
       state: input.ctx.tableSessionState,
       reflexTurn: input.reflexTurn,
       guestAllergens: input.body.preferences?.allergies,
+      guestMessage: input.body.message,
+      turnPlan,
+      unavailableProductIds: input.ctx.venueOps?.unavailableProductIds ?? [],
+      popularProductIds:
+        input.ctx.rhythmContext?.topProducts.flatMap((row) =>
+          row.productId ? [row.productId] : []
+        ) ?? [],
     }),
     loadTurnPlaybookBlock({
       orgId: input.orgId,
       locationId: input.body.locationId,
       playbookPackId: effective.playbookPackId,
+      customPlaybookPack: effective.customPlaybookPack,
+    }).catch(() => null),
+    resolveContextAwareness({
+      locationId: input.body.locationId,
+      intelligence: input.ctx.config.intelligence,
+      language: input.body.language,
+      venueEventConfig: input.ctx.venueOps?.eventConfig,
     }).catch(() => null),
   ]);
 
@@ -691,6 +789,15 @@ async function runTdePerceive(input: {
     menuRagQueryVector,
     playbookBlock,
     vkgPairingBlock,
+    contextAwareness,
+  });
+
+  const modelRoute = resolveAdaptiveModelRoute({
+    message: input.body.message,
+    turnPlan,
+    profile,
+    perceiveMode,
+    beliefs: tdeBeliefs,
   });
 
   const response = await perceiveGuestChatTurn(input.body, {
@@ -699,7 +806,25 @@ async function runTdePerceive(input: {
     evidence,
     perceiveMode,
     leadershipContext,
-    model: resolvePerceiveModel(profile, perceiveMode),
+    model: modelRoute.model ?? undefined,
+    modelTier: modelRoute.modelTier,
+    extendedThinking: modelRoute.extendedThinking,
+    complexityScore: modelRoute.complexity.score,
+    pipeline: {
+      allergyLabels: input.body.preferences?.allergies,
+      unavailableProductIds: input.ctx.venueOps?.unavailableProductIds ?? [],
+      reflexIntent:
+        input.reflexTurn.pipelineHints?.reflexIntent ??
+        input.reflexTurn.pipelineHints?.handoffIntent,
+    },
+  });
+
+  logger.info("Denis adaptive model route", {
+    modelTier: modelRoute.modelTier,
+    model: modelRoute.model,
+    complexityScore: modelRoute.complexity.score,
+    complexityBand: modelRoute.complexity.band,
+    relativeCost: modelRoute.relativeCost,
   });
 
   return {
@@ -708,6 +833,9 @@ async function runTdePerceive(input: {
     llmUsed: true,
     planKind: turnPlan.kind,
     tier: profile.tier,
+    modelTier: modelRoute.modelTier,
+    model: modelRoute.model,
+    complexityScore: modelRoute.complexity.score,
     evidencePointers: evidence.pointers,
   };
 }
@@ -761,6 +889,20 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const creditCheck = await assertSufficientCredits(admin, orgResult.data.orgId);
   if (!creditCheck.ok) {
     return apiError("insufficient_credits", 402);
+  }
+
+  const inputModeration = moderateGuestInput(parsed.data.message);
+  if (!inputModeration.safe) {
+    return handleInputShieldBlock({
+      admin,
+      message: parsed.data.message,
+      reason: inputModeration.reason,
+      sessionId: parsed.data.sessionId ?? "",
+      locationId: parsed.data.locationId,
+      tableId: parsed.data.tableId,
+      orgId: orgResult.data.orgId,
+      traceId,
+    });
   }
 
   const ctxStarted = performance.now();
@@ -934,6 +1076,32 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const perceiveStarted = performance.now();
   let perceiveResult: TdePerceiveResult;
 
+  const resolveGuestReorderPerceive = async (): Promise<TdePerceiveResult | null> => {
+    if (!aiSessionId || !ctx.tableSessionState || !beliefGraph) return null;
+    const reorderPlan = decideTurnPlan({
+      beliefs: beliefGraph,
+      reflex: reflexTurn,
+      message: parsed.data.message,
+    });
+    if (reorderPlan.reason !== "commerce.reorder.guest_request") return null;
+
+    const reorderAct = await tryApplyGuestReorderAct({
+      admin,
+      sessionId: aiSessionId,
+      locationId: parsed.data.locationId,
+      userMessage: parsed.data.message,
+      language: parsed.data.language,
+      state: ctx.tableSessionState,
+    });
+    if (!reorderAct.resolved) return null;
+
+    return buildGuestReorderActPerceiveResult(
+      reorderAct,
+      reorderPlan.suppressUpsell,
+      profile.tier
+    );
+  };
+
   if ((pendingSlot || hasPendingDraft) && aiSessionId) {
     const slotAct = await tryResolvePendingSlotAct({
       admin,
@@ -951,24 +1119,28 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         profile.tier
       );
     } else {
-      perceiveResult = await runTdePerceive({
+      perceiveResult =
+        (await resolveGuestReorderPerceive()) ??
+        (await runTdePerceive({
+          body: perceiveBody,
+          ctx,
+          reflexTurn,
+          beliefs: beliefGraph ?? { beliefs: [] },
+          timelineEnabled,
+          orgId: orgResult.data.orgId,
+        }));
+    }
+  } else {
+    perceiveResult =
+      (await resolveGuestReorderPerceive()) ??
+      (await runTdePerceive({
         body: perceiveBody,
         ctx,
         reflexTurn,
         beliefs: beliefGraph ?? { beliefs: [] },
         timelineEnabled,
         orgId: orgResult.data.orgId,
-      });
-    }
-  } else {
-    perceiveResult = await runTdePerceive({
-      body: perceiveBody,
-      ctx,
-      reflexTurn,
-      beliefs: beliefGraph ?? { beliefs: [] },
-      timelineEnabled,
-      orgId: orgResult.data.orgId,
-    });
+      }));
   }
   const perceiveResponse = perceiveResult.response;
   timings.legacyMs = elapsedMs(perceiveStarted);
@@ -1008,6 +1180,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         turnPlan: perceiveResult.turnPlan,
         llmUsed: perceiveResult.llmUsed,
         tier: perceiveResult.tier,
+        modelTier: perceiveResult.modelTier,
+        model: perceiveResult.model,
+        complexityScore: perceiveResult.complexityScore,
         beliefs: beliefGraph,
         evidencePointers: perceiveResult.evidencePointers,
         pendingSlotActResolved: perceiveResult.pendingSlotActResolved,
@@ -1324,6 +1499,51 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     });
   }
 
+  const outputShield = screenOutput(guestMessage ?? "");
+  if (!outputShield.safe) {
+    logShieldBlock(
+      outputShield.layer,
+      outputShield.reason ?? "output_leak",
+      guestMessage ?? "",
+      "output"
+    );
+    const shieldSessionId = timelineAiSessionId ?? parsed.data.sessionId;
+    const shieldState = await recordShieldBlock(shieldSessionId ?? "");
+    if (timelineAiSessionId && kernelTimelineEnabled(rollout.mode)) {
+      await appendDenisTimelineEvent(admin, {
+        aiSessionId: timelineAiSessionId,
+        eventType: "security.blocked",
+        traceId,
+        payload: buildSecurityBlockedPayload({
+          direction: "output",
+          reason: outputShield.reason ?? "output_leak",
+          layer: outputShield.layer,
+          preview: guestMessage ?? "",
+          blockCount: shieldState.blockCount,
+          sessionFlagged: shieldState.flagged,
+          traceId,
+        }),
+      });
+    }
+    if (shieldState.notifyStaff) {
+      void dispatchStaffNotification({
+        orgId: orgResult.data.orgId,
+        locationId: parsed.data.locationId,
+        type: "denis_escalation",
+        message: `Denis output shield: ${shieldState.blockCount} blocked attempts at this table — session flagged.`,
+        tableId: parsed.data.tableId,
+        priorityOverride: "high",
+        playSound: true,
+      }).catch((error) => {
+        logger.warn("Prompt shield staff alert failed", {
+          sessionId: shieldSessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
+    guestMessage = shieldGracefulGuestMessage();
+  }
+
   timings.narrateMs = elapsedMs(narrateStarted);
 
   if (shouldRunShadowDiff(rollout.mode)) {
@@ -1423,6 +1643,19 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
           },
         });
       }
+
+      await maybeEmitTurnLearningSignals(admin, {
+        aiSessionId: timelineAiSessionId,
+        traceId,
+        locationId: parsed.data.locationId,
+        guestMessage: parsed.data.message,
+        legacyIntent: data.intent ?? null,
+        guestIntent: intent,
+        menuLanguage: parsed.data.language,
+        guestAllergens: parsed.data.preferences?.allergies,
+        cartChanged: cartChangedThisTurn,
+        orderSubmitted: Boolean(turnSubmitOutcome.orderId),
+      });
     };
 
     if (deferTimelineForReflexSubmit) {
@@ -1481,6 +1714,36 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   timings.totalMs = elapsedMs(turnStarted);
 
+  if (timelineAiSessionId) {
+    scheduleTurnTraceWrite(
+      buildTurnTrace({
+        traceId,
+        aiSessionId: timelineAiSessionId,
+        locationId: parsed.data.locationId,
+        guestInput: parsed.data.message,
+        language: parsed.data.language,
+        orgId: orgResult.data.orgId,
+        creditsRemaining,
+        contextMs: timings.contextMs ?? 0,
+        legacyMs: timings.legacyMs ?? 0,
+        actMs: timings.actMs ?? 0,
+        narrateMs: timings.narrateMs ?? 0,
+        totalMs: timings.totalMs ?? 0,
+        tier: perceiveResult.tier ?? "t0",
+        planKind: perceiveResult.planKind ?? "plan",
+        llmUsed: perceiveResult.llmUsed,
+        modelTier: perceiveResult.modelTier,
+        model: perceiveResult.model ?? undefined,
+        complexityScore: perceiveResult.complexityScore,
+        cartActionCount: data.cartActions?.length ?? 0,
+        submitTriggered: turnSubmitOutcome.attempted,
+        obligationFired: waiterObligation.gaps.length > 0,
+        denisResponse: guestMessage,
+        quickReplies: quickReplies ?? [],
+      })
+    );
+  }
+
   logDenisTurnObservability({
     traceId,
     locationId: parsed.data.locationId,
@@ -1499,6 +1762,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     llmUsed: perceiveResult.llmUsed,
     planKind: perceiveResult.planKind,
     tier: perceiveResult.tier,
+    modelTier: perceiveResult.modelTier,
+    model: perceiveResult.model,
     evidencePointers: perceiveResult.evidencePointers,
     timings,
   });

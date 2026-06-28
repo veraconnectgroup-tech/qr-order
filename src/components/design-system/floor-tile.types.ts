@@ -31,5 +31,6 @@ export type FloorTileProps = {
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
+  style?: import("react").CSSProperties;
   children?: ReactNode;
 };

@@ -236,7 +236,7 @@ function isGuestPushRegistration(
   return scriptUrl?.endsWith(GUEST_PUSH_SW) ?? false;
 }
 
-/** Register minimal push SW for guest QR (no Workbox — avoids stale menu CSS). */
+/** Register minimal push SW for guest QR (offline queue + menu cache handlers). */
 export async function registerGuestPushServiceWorker(): Promise<ServiceWorkerRegistration> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     throw new ServiceWorkerUnavailableError(

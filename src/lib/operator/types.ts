@@ -256,3 +256,25 @@ export type OperatorFiscalDailyClosing = {
   closedAt: string;
   zBonPath: string;
 };
+
+export type OperatorLocationLearnings = {
+  locationId: string;
+  period: { from: string; to: string };
+  menuGap: Array<{
+    term: string;
+    count: number;
+    lastSeenAt: string;
+    suggestMenuAdd: boolean;
+  }>;
+  priceResistance: { count: number };
+  allergyCoverage: { count: number };
+  languageUnsupported: { count: number; detected: string[] };
+  popularPairing: Array<{
+    fromProductName: string;
+    toProductName: string;
+    sessionCount: number;
+  }>;
+  peakHourBottleneck: Array<{ hour: number; lateSignals: number }>;
+  dessertConversion: { nudged: number; converted: number; rate: number };
+  upsellSuccessRate: { attempts: number; accepts: number; rate: number };
+};

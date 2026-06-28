@@ -1,6 +1,6 @@
-export const MAX_ITEMS_PER_ORDER = 50;
+export const MAX_ITEMS_PER_ORDER = 100;
 export const MAX_ORDER_AMOUNT = 5000;
-export const MAX_QUANTITY_PER_ITEM = 20;
+export const MAX_QUANTITY_PER_ITEM = 99;
 export const REFUND_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const PRICE_EPSILON = 0.02;
 

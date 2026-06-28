@@ -85,5 +85,5 @@ export function useConnectionStatus() {
     return () => clearInterval(tick);
   }, [status]);
 
-  return { status, lastOnlineAt, secondsOffline, recheck: evaluate };
+  return { status, lastOnlineAt, secondsOffline, recheck: evaluate, isOnline: status === "online" };
 }

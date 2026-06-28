@@ -1,3 +1,4 @@
+import type { ClientAccessibilitySignals } from "@/lib/denis/platform/accessibility-signals";
 import { z } from "zod";
 import {
   manualCartSnapshotSchema,
@@ -30,6 +31,14 @@ const handoffPaymentMethodSchema = z.enum([
   "card_at_table",
 ]);
 
+const clientAccessibilitySignalsSchema = z.object({
+  screenReader: z.boolean().optional(),
+  browserZoom: z.number().optional(),
+  prefersReducedMotion: z.boolean().optional(),
+  voiceInput: z.boolean().optional(),
+  coarsePointer: z.boolean().optional(),
+});
+
 export const denisSignalContextSchema = z.object({
   tableToken: zTableToken(),
   sessionToken: zSessionToken().optional(),
@@ -51,6 +60,7 @@ export const denisSignalContextSchema = z.object({
       mood: z.string(),
     })
     .optional(),
+  accessibilitySignals: clientAccessibilitySignalsSchema.optional(),
 });
 
 export const denisMessageSignalSchema = denisSignalContextSchema.extend({

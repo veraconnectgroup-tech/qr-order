@@ -7,8 +7,14 @@ export type StaffNotificationType =
   | "waiter_call"
   | "vip_guest"
   | "kitchen_backup"
+  | "kitchen_prep_brief"
   | "denis_escalation"
-  | "payment_issue";
+  | "payment_issue"
+  | "table_transfer"
+  | "staff_training"
+  | "inventory_running_low"
+  | "inventory_will_run_out"
+  | "inventory_just_ran_out";
 
 export type StaffNotificationPriority = "low" | "medium" | "high" | "urgent";
 
@@ -59,8 +65,14 @@ export function isWithinQuietHours(
 const PRIORITY_BY_TYPE: Record<StaffNotificationType, StaffNotificationPriority> = {
   allergy_alert: "urgent",
   payment_issue: "urgent",
+  staff_training: "high",
   denis_escalation: "high",
   kitchen_backup: "high",
+  table_transfer: "high",
+  inventory_will_run_out: "high",
+  inventory_just_ran_out: "urgent",
+  inventory_running_low: "medium",
+  kitchen_prep_brief: "medium",
   long_wait: "medium",
   waiter_call: "medium",
   high_value_order: "medium",
@@ -79,7 +91,12 @@ export function mapStaffProactiveAlertToNotificationType(
       return "long_wait";
     case "staff_attention_escalation":
     case "staff_frustrated_guest":
+    case "staff_low_experience":
+    case "staff_kitchen_delay":
+    case "staff_multi_table_delay":
       return "denis_escalation";
+    case "staff_preorder_heads_up":
+      return "kitchen_prep_brief";
     default:
       return "denis_escalation";
   }
@@ -136,10 +153,11 @@ export function buildStaffNotification(input: {
   message: string;
   actionUrl?: string;
   createdAt?: string;
+  priority?: StaffNotificationPriority;
 }): StaffNotification {
   return {
     type: input.type,
-    priority: notificationPriority(input.type),
+    priority: input.priority ?? notificationPriority(input.type),
     tableId: input.tableId,
     tableName: input.tableName,
     message: input.message,

@@ -105,7 +105,7 @@ export async function prepareStorno(
     return { error: "Order not found", code: 404 };
   }
 
-  const row = order as unknown as StornoOrderRow;
+  const row = parseStornoOrderRow(order);
 
   if (!row.tse_signature) {
     return {
@@ -146,6 +146,13 @@ export async function prepareStorno(
     alreadyStornoed,
     maxStornoable,
   };
+}
+
+function parseStornoOrderRow(data: unknown): StornoOrderRow {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Invalid storno order row");
+  }
+  return data as StornoOrderRow;
 }
 
 export async function performStorno(

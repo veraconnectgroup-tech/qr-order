@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { logger } from "@/lib/logger";
 import { handleDeliverectWebhook } from "@/lib/pos/deliverect-webhook";
+import { withRateLimit } from "@/lib/rate-limit";
 
 function verifyDeliverectSignature(
   body: string,
@@ -23,6 +24,9 @@ function verifyDeliverectSignature(
 export const POST = withErrorHandler(
   "deliverect-webhook-post",
   async (req) => {
+  const limited = await withRateLimit(req, "default");
+  if (limited) return limited;
+
     const body = await req.text();
     const signature =
       req.headers.get("x-deliverect-signature") ??

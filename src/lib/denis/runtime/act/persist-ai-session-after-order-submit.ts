@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clearedDraftAfterSubmit } from "@/lib/denis/cognition/order";
+import { toJson } from "@/lib/supabase/json";
 import {
   emitDenisSessionConverted,
   emitDenisSessionUpdated,
@@ -42,7 +43,7 @@ export async function persistAiSessionAfterOrderSubmit(
   const { error: updateError } = await admin
     .from("ai_sessions")
     .update({
-      order_draft: clearedDraftAfterSubmit() as unknown as import("@/types/database").Json,
+      order_draft: toJson(clearedDraftAfterSubmit()),
       linked_order_ids: linkedIds,
     })
     .eq("id", input.aiSessionId);

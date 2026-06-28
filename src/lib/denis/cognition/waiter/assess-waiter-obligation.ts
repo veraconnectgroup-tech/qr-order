@@ -17,6 +17,17 @@ import {
   type WaiterNextAction,
   type WaiterObligation,
 } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
+import type { AllergyGuardResult } from "@/lib/denis/cognition/safety/allergy-guard";
+import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import type { LocationPrepTimePriorsJson } from "@/lib/denis/config/prep-time-priors";
+import {
+  formatPerItemPrepCommunication,
+  locationPrepTimePriorsFromJson,
+} from "@/lib/denis/config/prep-time-priors";
+import {
+  estimateParallelPrepMinutes,
+  type KitchenLoadSnapshot,
+} from "@/lib/denis/venue/ops/kitchen-load-model";
 
 /** Typed drink only — generic pivo/beer/bier does not close drink_unspecified (ADR-033). */
 const TYPED_DRINK_IN_CART =
@@ -99,6 +110,81 @@ function gapForPendingSlot(
   };
 }
 
+function learnedSubstitutionGaps(
+  patterns: unknown,
+  lines: DenisCartLine[],
+  language: string
+): WaiterGap[] {
+  if (!Array.isArray(patterns)) return [];
+  const out: WaiterGap[] = [];
+
+  for (const line of lines) {
+    const pattern = patterns.find((entry) => {
+      if (!entry || typeof entry !== "object") return false;
+      const row = entry as Record<string, unknown>;
+      return (
+        row.productId === line.productId &&
+        typeof row.original === "string" &&
+        typeof row.replacement === "string" &&
+        Number(row.percentage) >= 0.5
+      );
+    }) as Record<string, unknown> | undefined;
+
+    if (!pattern) continue;
+    const original = String(pattern.original);
+    const replacement = String(pattern.replacement);
+    const notes = line.notes?.toLowerCase() ?? "";
+    if (
+      notes.includes(original.toLowerCase()) ||
+      notes.includes(replacement.toLowerCase())
+    ) {
+      continue;
+    }
+
+    const lang = language.slice(0, 2);
+    out.push({
+      kind: "serve_size",
+      prompt:
+        lang === "de"
+          ? `Mit ${original} oder ${replacement}?`
+          : lang === "en"
+            ? `With ${original} or ${replacement}?`
+            : `Sa ${original} ili ${replacement}?`,
+    });
+  }
+
+  return out;
+}
+
+function guestMemoryModifierGaps(
+  memory: GuestMemoryProjection | null | undefined,
+  lines: DenisCartLine[],
+  language: string
+): WaiterGap[] {
+  const prefs = (memory?.modifierPreferences ?? [])
+    .map((pref) => pref.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+  if (prefs.length === 0 || lines.length === 0) return [];
+
+  const notes = lines.map((line) => line.notes?.toLowerCase() ?? "").join(" ");
+  const missing = prefs.filter((pref) => !notes.includes(pref.toLowerCase()));
+  if (missing.length === 0) return [];
+
+  const lang = language.slice(0, 2);
+  return [
+    {
+      kind: "modifier",
+      prompt:
+        lang === "de"
+          ? `Wie beim letzten Mal: ${missing.join(", ")}?`
+          : lang === "en"
+            ? `Like last time: ${missing.join(", ")}?`
+            : `Kao prošli put: ${missing.join(", ")}?`,
+    },
+  ];
+}
+
 function mergeMessageMeta(messages: Array<string | null | undefined>) {
   let substitution: GuestSubstitutionRequest | null = null;
   let needsDrinkClarify = false;
@@ -127,6 +213,38 @@ function resolveNextAction(input: {
   return "continue_browse";
 }
 
+function buildPrepTimeCommunication(
+  input: AssessWaiterObligationInput
+): string | null {
+  if (!input.prepTimePriorsJson || input.cartLines.length === 0) return null;
+
+  const priors = locationPrepTimePriorsFromJson(input.prepTimePriorsJson);
+
+  const estimate = estimateParallelPrepMinutes({
+    items: input.cartLines.map((line) => ({
+      productId: line.productId,
+      productName: line.productName,
+      menuSection: line.menuSection ?? null,
+    })),
+    priors,
+    load: input.kitchenLoad ?? null,
+  });
+
+  const perItem = estimate.perItem
+    .filter((row) => row.etaMinutes > 0)
+    .map((row) => ({
+      productName: row.productName,
+      etaMinutes: row.etaMinutes,
+    }));
+
+  if (perItem.length === 0) return null;
+
+  return formatPerItemPrepCommunication({
+    perItem,
+    language: input.language,
+  });
+}
+
 export type AssessWaiterObligationInput = {
   guestMessage?: string | null;
   orderContextMessage?: string | null;
@@ -134,8 +252,13 @@ export type AssessWaiterObligationInput = {
   pendingSlot: PendingSlotKind | null;
   language: string;
   atRecap?: boolean;
+  allergyGuard?: AllergyGuardResult | null;
+  allergyAcknowledged?: boolean;
+  substitutionPatterns?: unknown;
+  guestMemory?: GuestMemoryProjection | null;
+  kitchenLoad?: KitchenLoadSnapshot | null;
+  prepTimePriorsJson?: LocationPrepTimePriorsJson | null;
 };
-
 /**
  * ADR-032 — deterministic waiter contract from cart + order context.
  * Gaps persist until cart has a typed drink — generic pivo/beer does not close drink_unspecified.
@@ -166,6 +289,28 @@ export function assessWaiterObligation(
   if (substitution) {
     const subGap = gapForSubstitution(substitution, lines, input.language);
     if (subGap) gaps.push(subGap);
+  }
+
+  gaps.push(
+    ...learnedSubstitutionGaps(
+      input.substitutionPatterns,
+      lines,
+      input.language
+    )
+  );
+  gaps.push(...guestMemoryModifierGaps(input.guestMemory, lines, input.language));
+
+  if (
+    input.allergyGuard &&
+    !input.allergyGuard.safe &&
+    !input.allergyAcknowledged
+  ) {
+    gaps.push({
+      kind: "allergy_warning",
+      prompt:
+        input.allergyGuard.message ??
+        "Allergy warning: please review this with staff before ordering.",
+    });
   }
 
   const primaryGap = gaps[0]?.kind ?? null;
@@ -203,6 +348,7 @@ export function assessWaiterObligation(
     nextAction,
     canConfirm,
     primaryGap,
+    prepTimeCommunication: buildPrepTimeCommunication(input),
   };
 }
 

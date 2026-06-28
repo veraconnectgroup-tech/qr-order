@@ -41,7 +41,11 @@ export type VenueKnowledgeGraph = {
   products: Record<string, VkgProductNode>;
   categories: Record<string, VkgCategoryNode>;
   edges: VkgEdge[];
+  /** Basket-analysis pairings merged at query time (X1). */
+  learnedPairings?: import("@/lib/denis/intelligence/dynamic-vkg").LearnedPairing[];
 };
+
+export type VkgPairingSource = "admin" | "learned";
 
 export type VkgPairingSuggestion = {
   productId: string;
@@ -51,6 +55,14 @@ export type VkgPairingSuggestion = {
   weight: number;
   reason: string;
   ruleId: string | null;
+  source?: VkgPairingSource;
+  /** Learned pairing stats for staff copilot / debugging. */
+  stats?: {
+    confidence: number;
+    lift: number;
+    support: number;
+    coOrderCount: number;
+  };
 };
 
 export type VkgProductExplain = {
@@ -69,4 +81,10 @@ export type VkgSubstituteSuggestion = {
   price: number;
   menuSection: string;
   reason: string;
+};
+
+export type VkgUnavailableSubstitute = {
+  sourceProductId: string;
+  sourceName: string;
+  substitutes: VkgSubstituteSuggestion[];
 };

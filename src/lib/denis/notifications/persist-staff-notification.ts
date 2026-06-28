@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 import type { StaffNotification } from "@/lib/denis/notifications/staff-notifications";
 
 export type StaffNotificationRow = {
@@ -15,49 +16,11 @@ export type StaffNotificationRow = {
   createdAt: string;
 };
 
-export async function persistStaffNotification(
-  admin: SupabaseClient,
-  input: {
-    orgId: string;
-    locationId: string;
-    notification: StaffNotification;
-  }
-): Promise<StaffNotificationRow | null> {
-  const { data, error } = await admin
-    .from("denis_staff_notifications" as never)
-    .insert({
-      org_id: input.orgId,
-      location_id: input.locationId,
-      type: input.notification.type,
-      priority: input.notification.priority,
-      message: input.notification.message,
-      table_id: input.notification.tableId ?? null,
-      table_name: input.notification.tableName ?? null,
-      action_url: input.notification.actionUrl ?? null,
-    } as never)
-    .select(
-      "id, org_id, location_id, type, priority, message, table_id, table_name, action_url, read_at, created_at"
-    )
-    .single();
+type AdminClient = SupabaseClient<Database>;
 
-  if (error || !data) {
-    return null;
-  }
-
-  const row = data as {
-    id: string;
-    org_id: string;
-    location_id: string;
-    type: string;
-    priority: string;
-    message: string;
-    table_id: string | null;
-    table_name: string | null;
-    action_url: string | null;
-    read_at: string | null;
-    created_at: string;
-  };
-
+function mapRow(
+  row: Database["public"]["Tables"]["denis_staff_notifications"]["Row"]
+): StaffNotificationRow {
   return {
     id: row.id,
     orgId: row.org_id,
@@ -73,8 +36,40 @@ export async function persistStaffNotification(
   };
 }
 
+export async function persistStaffNotification(
+  admin: AdminClient,
+  input: {
+    orgId: string;
+    locationId: string;
+    notification: StaffNotification;
+  }
+): Promise<StaffNotificationRow | null> {
+  const { data, error } = await admin
+    .from("denis_staff_notifications")
+    .insert({
+      org_id: input.orgId,
+      location_id: input.locationId,
+      type: input.notification.type,
+      priority: input.notification.priority,
+      message: input.notification.message,
+      table_id: input.notification.tableId ?? null,
+      table_name: input.notification.tableName ?? null,
+      action_url: input.notification.actionUrl ?? null,
+    })
+    .select(
+      "id, org_id, location_id, type, priority, message, table_id, table_name, action_url, read_at, created_at"
+    )
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return mapRow(data);
+}
+
 export async function loadStaffNotifications(
-  admin: SupabaseClient,
+  admin: AdminClient,
   input: {
     orgId: string;
     locationId: string;
@@ -83,7 +78,7 @@ export async function loadStaffNotifications(
   }
 ): Promise<StaffNotificationRow[]> {
   let query = admin
-    .from("denis_staff_notifications" as never)
+    .from("denis_staff_notifications")
     .select(
       "id, org_id, location_id, type, priority, message, table_id, table_name, action_url, read_at, created_at"
     )
@@ -101,39 +96,11 @@ export async function loadStaffNotifications(
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => {
-    const typed = row as {
-      id: string;
-      org_id: string;
-      location_id: string;
-      type: string;
-      priority: string;
-      message: string;
-      table_id: string | null;
-      table_name: string | null;
-      action_url: string | null;
-      read_at: string | null;
-      created_at: string;
-    };
-
-    return {
-      id: typed.id,
-      orgId: typed.org_id,
-      locationId: typed.location_id,
-      type: typed.type,
-      priority: typed.priority,
-      message: typed.message,
-      tableId: typed.table_id,
-      tableName: typed.table_name,
-      actionUrl: typed.action_url,
-      readAt: typed.read_at,
-      createdAt: typed.created_at,
-    };
-  });
+  return (data ?? []).map(mapRow);
 }
 
 export async function markStaffNotificationRead(
-  admin: SupabaseClient,
+  admin: AdminClient,
   input: {
     orgId: string;
     locationId: string;
@@ -141,8 +108,8 @@ export async function markStaffNotificationRead(
   }
 ): Promise<boolean> {
   const { error } = await admin
-    .from("denis_staff_notifications" as never)
-    .update({ read_at: new Date().toISOString() } as never)
+    .from("denis_staff_notifications")
+    .update({ read_at: new Date().toISOString() })
     .eq("id", input.notificationId)
     .eq("org_id", input.orgId)
     .eq("location_id", input.locationId)
@@ -152,12 +119,12 @@ export async function markStaffNotificationRead(
 }
 
 export async function markAllStaffNotificationsRead(
-  admin: SupabaseClient,
+  admin: AdminClient,
   input: { orgId: string; locationId: string }
 ): Promise<number> {
   const { data, error } = await admin
-    .from("denis_staff_notifications" as never)
-    .update({ read_at: new Date().toISOString() } as never)
+    .from("denis_staff_notifications")
+    .update({ read_at: new Date().toISOString() })
     .eq("org_id", input.orgId)
     .eq("location_id", input.locationId)
     .is("read_at", null)

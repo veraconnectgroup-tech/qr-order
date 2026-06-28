@@ -1,8 +1,16 @@
 /** AI Concierge — centralized configuration */
 
+import {
+  advanceLanguagePersistence,
+  parseCodeSwitchedMessage,
+  resolvePersistentResponseLanguage,
+  type LanguagePersistenceState,
+} from "@/lib/denis/cognition/conversation/code-switch-parser";
+import { detectGuestScript } from "@/lib/denis/cognition/conversation/script-detector";
+
 export const AI_CONFIG = {
   /** Primary chat model */
-  model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
+  model: process.env.OPENAI_MODEL?.trim() || "gpt-4o",
   /** Fallback when primary fails or is unavailable */
   fallbackModel: process.env.OPENAI_FALLBACK_MODEL?.trim() || "gpt-4o-mini",
   maxTokens: 800,
@@ -53,7 +61,14 @@ export const AI_CONFIG = {
     perTablePerHour: 30,
     perLocationPerMinute: 60,
   },
+  /** Static system prompt budget excluding MENU text (chars/4 estimate). */
+  maxSystemPromptTokens: 3000,
 } as const;
+
+/** Rough token estimate for prompt budgeting (OpenAI ~4 chars/token). */
+export function estimatePromptTokens(text: string): number {
+  return Math.max(1, Math.ceil(text.trim().length / 4));
+}
 
 /**
  * Case-insensitive patterns for prompt-injection / jailbreak attempts.
@@ -116,10 +131,29 @@ export function resolveAiPromptLanguage(language: string): (typeof AI_SUPPORTED_
 export type GuestLanguageDetection = {
   detected: (typeof AI_SUPPORTED_LANGUAGES)[number] | "unknown";
   confidence: "high" | "low";
+  /** Dominant language for reply (may differ from single-token detection when code-switching). */
+  responseLanguage?: (typeof AI_SUPPORTED_LANGUAGES)[number];
+  /** Extracted menu/product terms across languages in the utterance. */
+  menuItemHints?: string[];
+  casualMode?: boolean;
+  dialect?: "sr" | "hr" | "bs" | null;
+  codeSwitched?: boolean;
+  responseScript?: "latin" | "cyrillic";
+  languageConfidence?: number;
+};
+
+export type DetectGuestMessageLanguageOptions = {
+  menuScript?: "latin" | "cyrillic";
+  preferredScript?: "latin" | "cyrillic" | null;
+  languagePersistence?: LanguagePersistenceState | null;
 };
 
 const LATIN_BALKAN_PATTERN =
   /\b(jedn[auo]|molim|hvala|naru[čc]|poru[čc]|potvrd|donesi|donij|imam|alergij|pivo|cola|kola|jo[sš]|sve|nema|mo[žz]e|moze|želim|zelim|ho[ćc]u|hocu|imate|zdravo|dobar|gde|gdje|sta|šta|kako|si|ste|sam|smo|brate|bre|legendo|legend|ćao|cao|jel|jesi|nisi|reci|recite|ajde|idem|idemo|super|odlično|odlicno|samo|sad|sada|kasnije|hajde|izvini|izvinite|naravno|važi|vazi|može|moze|mali|velik[oa]?|ra[čc]un|racun|po[sš]alji|posalji|denis[e]?)\b/i;
+
+/** Extended Balkan hints — typos/slang/menu questions not in ordering regex (Prompt 5). */
+const BALKAN_HINTS =
+  /\b(šta|sta|imate|želim|zelim|zelite|ho[ćc]u|hocu|mo[žz]e|moze|daj|ne[šs]to|nesto|koliko|ko[sš]ta|kosta|jel|postoji|alergij|vegans?|gladn|žedn|zedn|preporu[čc]|preporuc|legendo|brate|ćao|cao|zdravo|ej|hej|alo|dobar\s*dan|dobro\s*jutro|dobro\s*ve[čc]e|dobro\s*vece)\b/i;
 
 /** Guest explicitly asks to switch language ("nur auf Serbisch", "na srpskom"). */
 const EXPLICIT_LANGUAGE_PREFERENCE: Array<{
@@ -153,7 +187,7 @@ const LATIN_ITALIAN_PATTERN =
 
 /** German without umlauts (mobile keyboards, typos): "ein grosses bier bitte". */
 const LATIN_GERMAN_PATTERN =
-  /\b(bitte|danke|ein|eine|einen|einem|gross|groß|klein|bier|wasser|wein|cola|kaffee|tee|ich|möchte|mochte|hätte|hatte|bestellen|rechnung|kellner|hallo|guten|morgen|tag|abend|gerne|wollen|würde|wurde|noch|alles|spritz|pilsner|lager|weizen|radler)\b/i;
+  /\b(bitte|danke|ein|eine|einen|einem|zwei|drei|und|gross|groß|klein|bier|wasser|wein|cola|kaffee|tee|ich|möchte|mochte|hätte|hatte|bestellen|rechnung|kellner|hallo|guten|morgen|tag|abend|gerne|wollen|würde|wurde|noch|alles|spritz|pilsner|lager|weizen|radler|burger)\b/i;
 
 const UNSUPPORTED_SCRIPT_PATTERN =
   /[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0900-\u097F]/;
@@ -161,67 +195,213 @@ const UNSUPPORTED_SCRIPT_PATTERN =
 /** Infer guest language from message text; venue language is the default. */
 export function detectGuestMessageLanguage(
   guestMessage: string,
-  menuLanguage: string
+  menuLanguage: string,
+  options?: DetectGuestMessageLanguageOptions
 ): GuestLanguageDetection {
   const text = guestMessage.trim();
   const venue = resolveAiPromptLanguage(menuLanguage);
+  const script = detectGuestScript(text, {
+    menuScript: options?.menuScript ?? "latin",
+    preferredScript: options?.preferredScript ?? null,
+  });
 
-  if (!text) {
-    return { detected: venue, confidence: "high" };
+  const workingText = script.normalizedLatinText.trim() || text;
+
+  if (!workingText) {
+    return { detected: venue, confidence: "high", responseScript: script.responseScript };
   }
 
   for (const row of EXPLICIT_LANGUAGE_PREFERENCE) {
-    if (row.pattern.test(text)) {
-      return { detected: row.lang, confidence: "high" };
+    if (row.pattern.test(workingText)) {
+      const persistence = advanceLanguagePersistence({
+        detectedLanguage: row.lang,
+        prior: options?.languagePersistence ?? null,
+        message: workingText,
+        script: script.responseScript,
+      });
+      return {
+        detected: row.lang,
+        confidence: "high",
+        responseLanguage: row.lang,
+        responseScript: script.responseScript,
+        languageConfidence: persistence.confidence,
+        casualMode: false,
+      };
     }
   }
 
-  if (UNSUPPORTED_SCRIPT_PATTERN.test(text)) {
-    return { detected: "unknown", confidence: "high" };
+  if (UNSUPPORTED_SCRIPT_PATTERN.test(workingText)) {
+    return { detected: "unknown", confidence: "high", responseScript: script.responseScript };
   }
 
-  if (/[\u0600-\u06FF]/.test(text)) return { detected: "ar", confidence: "high" };
-  if (/[ђЂјЈљЉњЊћЋ]/.test(text)) {
-    return { detected: venue === "hr" ? "hr" : "sr", confidence: "high" };
+  if (/[\u0600-\u06FF]/.test(workingText)) {
+    return { detected: "ar", confidence: "high", responseScript: script.responseScript };
   }
-  if (/[\u0400-\u04FF]/.test(text)) return { detected: "ru", confidence: "high" };
-  if (/[ğüşöçıİĞÜŞÖÇ]/.test(text)) return { detected: "tr", confidence: "high" };
-  if (/[äöüßÄÖÜ]/.test(text)) return { detected: "de", confidence: "high" };
-  if (/[àâçéèêëïîôùûüœæ]/i.test(text)) return { detected: "fr", confidence: "high" };
-  if (/[ñ¿¡]/i.test(text)) return { detected: "es", confidence: "high" };
 
-  const lower = text.toLowerCase();
-  if (LATIN_BALKAN_PATTERN.test(lower)) {
-    if (venue === "hr") return { detected: "hr", confidence: "high" };
-    if (venue === "sr") return { detected: "sr", confidence: "high" };
-    return { detected: "sr", confidence: "high" };
+  const codeSwitch = parseCodeSwitchedMessage(workingText, {
+    venueLanguage: venue,
+    fallbackLanguage: venue,
+  });
+
+  if (script.inputScript === "cyrillic" || /[ђЂјЈљЉњЊћЋ]/.test(text)) {
+    const detected = venue === "hr" ? "hr" : "sr";
+    const persistence = advanceLanguagePersistence({
+      detectedLanguage: detected,
+      prior: options?.languagePersistence ?? null,
+      message: workingText,
+      script: script.responseScript,
+    });
+    const responseLanguage = resolvePersistentResponseLanguage({
+      detectedLanguage: detected,
+      persistence,
+    });
+    return {
+      detected,
+      confidence: "high",
+      responseLanguage,
+      menuItemHints: codeSwitch.menuItemHints,
+      casualMode: codeSwitch.casualMode,
+      dialect: codeSwitch.dialect,
+      codeSwitched: codeSwitch.codeSwitched,
+      responseScript: script.responseScript,
+      languageConfidence: persistence.confidence,
+    };
+  }
+
+  if (/[\u0400-\u04FF]/.test(text)) {
+    return { detected: "ru", confidence: "high", responseScript: script.responseScript };
+  }
+  if (/[ğüşöçıİĞÜŞÖÇ]/.test(workingText)) {
+    return { detected: "tr", confidence: "high", responseScript: script.responseScript };
+  }
+  if (/[äöüßÄÖÜ]/.test(workingText)) {
+    return { detected: "de", confidence: "high", responseScript: script.responseScript };
+  }
+  if (/[àâçéèêëïîôùûüœæ]/i.test(workingText)) {
+    return { detected: "fr", confidence: "high", responseScript: script.responseScript };
+  }
+  if (/[ñ¿¡]/i.test(workingText)) {
+    return { detected: "es", confidence: "high", responseScript: script.responseScript };
+  }
+
+  if (codeSwitch.codeSwitched || codeSwitch.menuItemHints.length > 0) {
+    const detected = codeSwitch.dominantLanguage;
+    const persistence = advanceLanguagePersistence({
+      detectedLanguage: detected,
+      prior: options?.languagePersistence ?? null,
+      message: workingText,
+      script: script.responseScript,
+    });
+    const responseLanguage = resolvePersistentResponseLanguage({
+      detectedLanguage: codeSwitch.responseLanguage,
+      persistence,
+    });
+    return {
+      detected,
+      confidence: "high",
+      responseLanguage,
+      menuItemHints: codeSwitch.menuItemHints,
+      casualMode: codeSwitch.casualMode,
+      dialect: codeSwitch.dialect,
+      codeSwitched: codeSwitch.codeSwitched,
+      responseScript: script.responseScript,
+      languageConfidence: persistence.confidence,
+    };
+  }
+
+  const lower = workingText.toLowerCase();
+  if (LATIN_BALKAN_PATTERN.test(lower) || BALKAN_HINTS.test(lower)) {
+    const detected =
+      codeSwitch.dialect === "hr" || venue === "hr"
+        ? "hr"
+        : codeSwitch.dialect === "sr" || venue === "sr"
+          ? "sr"
+          : "sr";
+    const persistence = advanceLanguagePersistence({
+      detectedLanguage: detected,
+      prior: options?.languagePersistence ?? null,
+      message: workingText,
+      script: script.responseScript,
+    });
+    const responseLanguage = resolvePersistentResponseLanguage({
+      detectedLanguage: detected,
+      persistence,
+    });
+    return {
+      detected,
+      confidence: "high",
+      responseLanguage,
+      menuItemHints: codeSwitch.menuItemHints,
+      casualMode: codeSwitch.casualMode,
+      dialect: codeSwitch.dialect ?? (detected === "hr" ? "hr" : "sr"),
+      responseScript: script.responseScript,
+      languageConfidence: persistence.confidence,
+    };
   }
 
   if (LATIN_ITALIAN_PATTERN.test(lower)) {
-    return { detected: "it", confidence: "high" };
+    return { detected: "it", confidence: "high", responseScript: script.responseScript };
   }
 
   if (LATIN_GERMAN_PATTERN.test(lower)) {
-    return { detected: "de", confidence: "high" };
+    return { detected: "de", confidence: "high", responseScript: script.responseScript };
   }
 
   if (LATIN_ENGLISH_PATTERN.test(lower)) {
-    return { detected: "en", confidence: "high" };
+    const persistence = advanceLanguagePersistence({
+      detectedLanguage: "en",
+      prior: options?.languagePersistence ?? null,
+      message: workingText,
+      script: script.responseScript,
+    });
+    const responseLanguage = resolvePersistentResponseLanguage({
+      detectedLanguage: "en",
+      persistence,
+    });
+    return {
+      detected: "en",
+      confidence: venue === "de" ? "high" : "high",
+      responseLanguage,
+      menuItemHints: codeSwitch.menuItemHints,
+      casualMode: codeSwitch.casualMode,
+      responseScript: script.responseScript,
+      languageConfidence: persistence.confidence,
+    };
   }
 
-  return { detected: venue, confidence: "low" };
+  const persistence = advanceLanguagePersistence({
+    detectedLanguage: venue,
+    prior: options?.languagePersistence ?? null,
+    message: workingText,
+    script: script.responseScript,
+  });
+
+  return {
+    detected: venue,
+    confidence: "low",
+    responseLanguage: resolvePersistentResponseLanguage({
+      detectedLanguage: venue,
+      persistence,
+    }),
+    responseScript: script.responseScript,
+    languageConfidence: persistence.confidence,
+  };
 }
 
 /** @deprecated Prefer detectGuestMessageLanguage for confidence-aware handling. */
 export function resolveGuestMessageLanguage(
   guestMessage: string,
-  menuLanguage: string
+  menuLanguage: string,
+  options?: DetectGuestMessageLanguageOptions
 ): (typeof AI_SUPPORTED_LANGUAGES)[number] {
-  const { detected } = detectGuestMessageLanguage(guestMessage, menuLanguage);
-  if (detected === "unknown") {
+  const detection = detectGuestMessageLanguage(guestMessage, menuLanguage, options);
+  if (detection.responseLanguage) {
+    return detection.responseLanguage;
+  }
+  if (detection.detected === "unknown") {
     return resolveAiPromptLanguage(menuLanguage);
   }
-  return detected;
+  return detection.detected;
 }
 
 export function isOpenAiConfigured(): boolean {

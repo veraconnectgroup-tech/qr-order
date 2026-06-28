@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  loadVenueInventorySnapshot,
+  mergeUnavailableProductIds,
+} from "@/lib/denis/intelligence/load-venue-inventory";
 import type {
   StaffTableHint,
   VenueOpsBeliefs,
@@ -9,9 +13,11 @@ type LocationOpsRow = {
   denis_operating_mode: VenueOperatingMode;
   denis_kds_stress: "normal" | "high";
   accepting_orders: boolean;
+  denis_event_config: unknown;
+  timezone: string | null;
 };
 
-type UnavailableRow = { id: string };
+type UnavailableRow = { id: string; name: string };
 
 type HintRow = {
   text: string;
@@ -27,16 +33,21 @@ export async function loadVenueOpsBeliefs(
     tableId: string;
   }
 ): Promise<VenueOpsBeliefs> {
-  const [{ data: locationRow }, { data: unavailableRows }, { data: hintRow }] =
+  const { data: locationRow } = await admin
+    .from("locations")
+    .select(
+      "denis_operating_mode, denis_kds_stress, accepting_orders, denis_event_config, timezone"
+    )
+    .eq("id", input.locationId)
+    .maybeSingle();
+
+  const location = locationRow as LocationOpsRow | null;
+
+  const [{ data: unavailableRows }, { data: hintRow }, inventorySnapshot] =
     await Promise.all([
       admin
-        .from("locations")
-        .select("denis_operating_mode, denis_kds_stress, accepting_orders")
-        .eq("id", input.locationId)
-        .maybeSingle(),
-      admin
         .from("products")
-        .select("id")
+        .select("id, name")
         .eq("location_id", input.locationId)
         .eq("is_available", false)
         .is("deleted_at", null),
@@ -50,11 +61,29 @@ export async function loadVenueOpsBeliefs(
         .order("expires_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      loadVenueInventorySnapshot(admin, {
+        locationId: input.locationId,
+        timezone: location?.timezone,
+      }),
     ]);
 
-  const location = locationRow as LocationOpsRow | null;
   const unavailable = (unavailableRows ?? []) as UnavailableRow[];
   const hint = hintRow as HintRow | null;
+
+  const unavailableProductIds = mergeUnavailableProductIds(
+    unavailable.map((row) => row.id),
+    inventorySnapshot
+  );
+
+  const unavailableById = new Map(unavailable.map((row) => [row.id, row.name]));
+  for (const level of inventorySnapshot.levels) {
+    if (level.status === "out") {
+      unavailableById.set(level.productId, level.productName);
+    }
+  }
+  const unavailableProductNames = unavailableProductIds
+    .map((id) => unavailableById.get(id))
+    .filter((name): name is string => Boolean(name?.trim()));
 
   let staffHint: StaffTableHint | null = null;
   if (hint?.text?.trim()) {
@@ -69,7 +98,9 @@ export async function loadVenueOpsBeliefs(
     operatingMode: location?.denis_operating_mode ?? "normal",
     kdsStress: location?.denis_kds_stress ?? "normal",
     acceptingOrders: location?.accepting_orders ?? true,
-    unavailableProductIds: unavailable.map((row) => row.id),
+    unavailableProductIds,
+    unavailableProductNames,
     staffHint,
+    eventConfig: location?.denis_event_config ?? null,
   };
 }

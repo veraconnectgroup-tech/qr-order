@@ -1,5 +1,6 @@
 import {
   foldMinimalBeliefs,
+  beliefConfidenceColor,
   type DenisMinimalBeliefs,
 } from "@/lib/denis/kernel/fold-beliefs";
 import { deriveGoalStack, topGoal } from "@/lib/denis/kernel/goal-stack";
@@ -13,6 +14,17 @@ export type DebugBeliefRow = {
   confidence: number;
   source: string;
   evidenceSeq: number;
+  confidenceColor: string;
+  propagatedFrom?: string;
+};
+
+export type DebugBeliefHistoryRow = {
+  atMs: number;
+  key: string;
+  value: string;
+  confidence: number;
+  source: string;
+  event: string;
 };
 
 export type DebugTurnSummary = {
@@ -30,6 +42,14 @@ export type DebugTurnSummary = {
 
 export type DenisSessionDebugGraph = {
   beliefs: DebugBeliefRow[];
+  beliefHistory: DebugBeliefHistoryRow[];
+  beliefConflicts: Array<{
+    key: string;
+    winnerValue: string;
+    winnerSource: string;
+    winnerConfidence: number;
+    rejectedCount: number;
+  }>;
   flow: {
     currentNodeId: string;
     previousNodeId: string | null;
@@ -84,10 +104,41 @@ function flattenBeliefs(state: DenisMinimalBeliefs): DebugBeliefRow[] {
       confidence: belief.confidence,
       source: belief.source,
       evidenceSeq: belief.evidenceEventSeq,
+      confidenceColor: beliefConfidenceColor(belief.confidence),
+      propagatedFrom: belief.propagatedFrom,
+    });
+  }
+
+  for (const propagated of state.propagated) {
+    rows.push({
+      key: propagated.key,
+      value:
+        typeof propagated.value === "string"
+          ? propagated.value
+          : JSON.stringify(propagated.value),
+      confidence: propagated.confidence,
+      source: propagated.source,
+      evidenceSeq: 0,
+      confidenceColor: beliefConfidenceColor(propagated.confidence),
+      propagatedFrom: propagated.propagatedFrom,
     });
   }
 
   return rows.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function flattenBeliefHistory(state: DenisMinimalBeliefs): DebugBeliefHistoryRow[] {
+  return state.history.map((entry) => ({
+    atMs: entry.atMs,
+    key: entry.key,
+    value:
+      typeof entry.value === "string"
+        ? entry.value
+        : JSON.stringify(entry.value),
+    confidence: entry.confidence,
+    source: String(entry.source),
+    event: entry.event,
+  }));
 }
 
 function sessionHasCartConflict(events: DenisTimelineRow[]): boolean {
@@ -176,9 +227,10 @@ function payloadPreview(payload: DenisTimelineRow["payload"]): string {
 /** M19 — replay beliefs, flow, goals, and per-trace turns from append-only timeline. */
 export function buildSessionDebugGraph(
   events: DenisTimelineRow[],
-  entryFlowNode: FlowNodeId = "welcome"
+  entryFlowNode: FlowNodeId = "welcome",
+  options?: { nowMs?: number }
 ): DenisSessionDebugGraph {
-  const beliefsState = foldMinimalBeliefs(events);
+  const beliefsState = foldMinimalBeliefs(events, { nowMs: options?.nowMs });
   const flow = foldFlowProjection(events, entryFlowNode);
   const cartConflict = sessionHasCartConflict(events);
   const goalStack = deriveGoalStack({
@@ -192,6 +244,17 @@ export function buildSessionDebugGraph(
 
   return {
     beliefs: flattenBeliefs(beliefsState),
+    beliefHistory: flattenBeliefHistory(beliefsState),
+    beliefConflicts: beliefsState.conflicts.map((row) => ({
+      key: row.key,
+      winnerValue:
+        typeof row.winnerValue === "string"
+          ? row.winnerValue
+          : JSON.stringify(row.winnerValue),
+      winnerSource: String(row.winnerSource),
+      winnerConfidence: row.winnerConfidence,
+      rejectedCount: row.rejected.length,
+    })),
     flow: {
       currentNodeId: flow.currentNodeId,
       previousNodeId: flow.previousNodeId,

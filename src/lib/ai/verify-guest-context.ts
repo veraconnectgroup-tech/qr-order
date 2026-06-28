@@ -3,6 +3,7 @@ import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
 import type { MenuLocale } from "@/lib/i18n/translations";
 import { hasFeature } from "@/lib/platform/feature-flags";
+import { parseAiGuestLocationRow } from "@/lib/supabase/parse-location-rows";
 
 export type AiGuestContext = {
   orgId: string;
@@ -35,14 +36,7 @@ export async function verifyAiGuestContext(
     return { error: "Location not found.", status: 404 };
   }
 
-  const row = location as unknown as {
-    id: string;
-    org_id: string;
-    menu_locale: string | null;
-    default_locale: string | null;
-    ai_concierge_enabled: boolean;
-    organization: { id: string; name: string; feature_flags?: unknown } | null;
-  };
+  const row = parseAiGuestLocationRow(location);
 
   if (
     !row.ai_concierge_enabled ||

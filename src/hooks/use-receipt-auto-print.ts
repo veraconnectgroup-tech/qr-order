@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
 import { printReceiptOrder } from "@/lib/printer/print-receipt-order";
 import type { OrderWithDetails } from "@/types";
@@ -22,6 +23,7 @@ export function useReceiptAutoPrint({
 }) {
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+  const { orgLogoUrl, venueTheme } = useDashboard();
 
   useEffect(() => {
     if (!enabled) return;
@@ -59,10 +61,14 @@ export function useReceiptAutoPrint({
       for (const order of newReceipts) {
         await printReceiptOrder(order, orgName, currency, setup, {
           silent: true,
+          logoUrl: orgLogoUrl,
+          footerMessage: venueTheme.receiptFooter,
+          poweredByLabel: venueTheme.poweredByLabel,
+          hidePoweredBy: venueTheme.hidePoweredBy,
         });
       }
 
       seenIdsRef.current = currentIds;
     })();
-  }, [orders, orgName, currency, enabled]);
+  }, [orders, orgName, currency, enabled, orgLogoUrl, venueTheme]);
 }

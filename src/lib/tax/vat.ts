@@ -1,3 +1,5 @@
+import type { OrderMode } from "@/lib/denis/commerce/delivery-mode";
+import { isOffPremiseMode } from "@/lib/denis/commerce/delivery-mode";
 import type { MenuSection } from "@/lib/menu-section";
 
 export const STANDARD_VAT_RATE = 19;
@@ -18,19 +20,44 @@ export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+export function isTakeawayForVat(mode: OrderMode | boolean): boolean {
+  if (typeof mode === "boolean") return mode;
+  return isOffPremiseMode(mode);
+}
+
+/** DSFinV-K INHAUS: 1 = dine-in (19%), 0 = takeaway/delivery (7% food). */
+export function dsfinvkInhausFlag(mode: OrderMode | boolean): "0" | "1" {
+  return isTakeawayForVat(mode) ? "0" : "1";
+}
+
 export function resolveItemTaxRate(params: {
   productTaxRate: number | null | undefined;
   menuSection: MenuSection;
   isTakeaway: boolean;
   orgDefaultRate?: number;
 }): number {
+  return resolveItemTaxRateForOrderMode({
+    productTaxRate: params.productTaxRate,
+    menuSection: params.menuSection,
+    orderMode: params.isTakeaway ? "takeaway" : "dine_in",
+    orgDefaultRate: params.orgDefaultRate,
+  });
+}
+
+export function resolveItemTaxRateForOrderMode(params: {
+  productTaxRate: number | null | undefined;
+  menuSection: MenuSection;
+  orderMode: OrderMode;
+  orgDefaultRate?: number;
+}): number {
   const orgDefault = params.orgDefaultRate ?? STANDARD_VAT_RATE;
+  const isTakeaway = isOffPremiseMode(params.orderMode);
 
   if (params.menuSection === "drinks") {
     return STANDARD_VAT_RATE;
   }
 
-  if (params.isTakeaway && params.productTaxRate === REDUCED_VAT_RATE) {
+  if (isTakeaway && params.productTaxRate === REDUCED_VAT_RATE) {
     return REDUCED_VAT_RATE;
   }
 
@@ -137,16 +164,24 @@ export function cartTaxBreakdown(
     itemTotal: number;
     menuSection?: MenuSection;
     productTaxRate?: number | null;
+    fulfillmentMode?: OrderMode;
   }>,
-  isTakeaway: boolean,
+  orderMode: OrderMode | boolean,
   orgDefaultRate = STANDARD_VAT_RATE
 ): TaxBreakdownLine[] {
+  const defaultMode: OrderMode =
+    typeof orderMode === "boolean"
+      ? orderMode
+        ? "takeaway"
+        : "dine_in"
+      : orderMode;
+
   const taxed = items.map((item) => ({
     lineTotal: item.itemTotal,
-    taxRate: resolveItemTaxRate({
+    taxRate: resolveItemTaxRateForOrderMode({
       productTaxRate: item.productTaxRate,
       menuSection: item.menuSection ?? "food",
-      isTakeaway,
+      orderMode: item.fulfillmentMode ?? defaultMode,
       orgDefaultRate,
     }),
   }));

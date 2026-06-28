@@ -6,6 +6,8 @@ import type { ComposeSceneInput, Scene } from "./types";
 import type { SceneRefreshOverrides } from "./map-turn-to-scene-overrides";
 
 type SceneRefreshPayload = SceneRefreshOverrides & {
+  phase?: ComposeSceneInput["phase"];
+  cartProductIds?: string[];
   proactiveBanner?: {
     id: string;
     message: string;
@@ -44,6 +46,8 @@ export async function refreshGuestScene(
     proactiveBanner: payload.proactiveBanner ?? undefined,
     chips: payload.chips,
     inlineRecommendations: payload.inlineRecommendations,
+    phase: payload.phase,
+    cartProductIds: payload.cartProductIds,
   });
 
   if (!input) {

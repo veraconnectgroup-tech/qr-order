@@ -1,3 +1,8 @@
+import type { StaffNotificationRow } from "@/lib/denis/notifications/persist-staff-notification";
+import type { FloorTableRow } from "@/lib/dashboard/floor-status";
+import type { PeakHourBucket } from "@/lib/dashboard/peak-hours";
+import type { StaffPerformanceRow } from "@/lib/dashboard/staff-performance";
+
 export type OverviewSparklinePoint = {
   date: string;
   revenue: number;
@@ -40,4 +45,8 @@ export type DashboardOverviewInitialData = {
   liveFeed: OverviewLiveFeedOrder[];
   sparkline: OverviewSparklinePoint[];
   tableStatuses: OverviewTableStatus[];
+  floorTables: FloorTableRow[];
+  peakHours: PeakHourBucket[];
+  staffPerformance: StaffPerformanceRow[];
+  denisActivity: StaffNotificationRow[];
 };

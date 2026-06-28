@@ -6,6 +6,8 @@ export type ProactiveTickPayload = {
   cartItemCount?: number;
   hasSessionOrders?: boolean;
   hasDrinkInCart?: boolean;
+  /** Cart contains food/dessert lines — kitchen preorder posture. */
+  hasFoodInCart?: boolean;
   dismissedNudgeKeys?: string[];
   /** Server watcher — seconds since table session opened. */
   sessionAgeSeconds?: number;
@@ -17,10 +19,26 @@ export type ProactiveTickPayload = {
   guestAskedRecommendation?: boolean;
   /** Popularity pair from order history. */
   popularityPair?: { from: string; to: string } | null;
+  /** Owner-defined upsell rules matched for current cart (Prompt 75). */
+  adminUpsellMatches?: Array<{
+    ruleId: string;
+    suggestProductId: string;
+    suggestProductName: string;
+    message: string;
+    sortOrder: number;
+    dismissKey: string;
+  }>;
   /** Venue daily special product name (optional). */
   todaySpecial?: string | null;
   /** Suggested dessert product name (optional). */
   dessertProductName?: string | null;
+  /** K2 puzzle item for "Jeste li probali…?" nudge. */
+  puzzleProductName?: string | null;
+  /** K2 BCG map — dogs never recommended. */
+  menuEngineeringCategories?: Record<
+    string,
+    import("@/lib/denis/platform/menu-engineering").MenuEngineeringCategory
+  >;
   /** Venue display name for welcome / follow-up copy. */
   venueName?: string | null;
   /** Guest conversation language (menu / session). */
@@ -39,6 +57,41 @@ export type ProactiveTickPayload = {
   effectiveDessertDelayMinutes?: number;
   /** ADR-042 VRP-P2 — slot top product for welcome copy (enforce). */
   rhythmTopProductName?: string | null;
+  /** Prompt 50 — service period for period-aware welcome. */
+  servicePeriod?: import("@/lib/denis/config/rhythm-prior-types").VenueServicePeriod | null;
+  /** Venue-wide kitchen pending orders (floor snapshot). */
+  kitchenPendingCount?: number;
+  /** Estimated kitchen wait from capacity / KDS backlog. */
+  kitchenEstimatedWaitMinutes?: number | null;
+  /** Venue KDS stress from ops fold. */
+  kdsStress?: "normal" | "high";
+  /** ADR-020 venueSchedule.happyHour — bar upsell window. */
+  happyHourActive?: boolean;
+  /** VKG pairing for food → drink proactive (bar intelligence). */
+  vkgDrinkPairing?: {
+    foodName: string;
+    drinkName: string;
+    serveSize?: string | null;
+  } | null;
+  /** Latest cart abandon remove timestamp — smart recovery delay gate. */
+  cartAbandonedRemovedAt?: string | null;
+  /** H2 — venue-wide revenue strategy (turnover / check_size / balanced). */
+  revenueStrategy?: "turnover" | "check_size" | "balanced" | null;
+  /** Q1 — session experience score (0–10) for review funnel routing. */
+  experienceScore?: number | null;
+  googleReviewUrl?: string | null;
+  lastReviewPromptAt?: string | null;
+  lastReviewDismissAt?: string | null;
+  paidAnchorAt?: string | null;
+  billSettled?: boolean;
+  /** L2 review orchestration — tip recorded this session. */
+  tipRecorded?: boolean;
+  waitingForBill?: boolean;
+  lastGuestMessage?: string | null;
+  mealStage?: string | null;
+  sessionDurationMinutes?: number | null;
+  recoveryCompleted?: boolean;
+  postRecoveryEligible?: boolean;
 };
 
 export type GuestProactiveNudgeKind =
@@ -46,6 +99,7 @@ export type GuestProactiveNudgeKind =
   | "attention_handoff"
   | "browse_nudge"
   | "cart_recovery"
+  | "cart_abandonment_prevention"
   | "drink_pairing"
   | "dessert_nudge"
   | "slow_kitchen"
@@ -53,15 +107,40 @@ export type GuestProactiveNudgeKind =
   | "browse_follow_up"
   | "bill_prompt"
   | "order_delay"
+  | "order_eta_update"
+  | "order_ready"
+  | "order_ready_notify"
+  | "kitchen_busy"
+  | "kitchen_busy_preorder"
+  | "cooking_grill_started"
+  | "cooking_plating"
+  | "station_bottleneck_avoid"
+  | "drink_refill"
+  | "drink_with_food"
+  | "sommelier_pairing"
+  | "sommelier_refill"
+  | "party_drink_gap"
+  | "round_two"
+  | "happy_hour_upsell"
   | "popularity_pair"
-  | "party_incomplete";
+  | "party_incomplete"
+  | "google_review"
+  | "internal_feedback"
+  | "scroll_search"
+  | "scroll_category"
+  | "scroll_bottom";
 
 export type StaffProactiveAlertKind =
   | "staff_table_idle"
   | "staff_waiter_request"
   | "staff_attention_escalation"
   | "staff_frustrated_guest"
-  | "staff_allergy";
+  | "staff_allergy"
+  | "staff_kitchen_delay"
+  | "staff_multi_table_delay"
+  | "staff_preorder_heads_up"
+  | "staff_low_experience"
+  | "staff_storno_suggestion";
 
 export type GuestProactiveNudge = {
   kind: GuestProactiveNudgeKind;

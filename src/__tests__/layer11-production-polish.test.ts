@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   resolveDenisFallbackLevel,
@@ -18,6 +20,47 @@ import {
   buildConfigVersion,
   rollbackTargetVersion,
 } from "@/lib/denis/config/config-versioning";
+
+describe("Layer 11 database types", () => {
+  it("includes experience_analytics_daily with ROI + score columns", () => {
+    const typesPath = path.join(process.cwd(), "src/types/database.ts");
+    const sql = fs.readFileSync(typesPath, "utf8");
+    expect(sql).toContain("experience_analytics_daily:");
+    expect(sql).toContain("experience_score:");
+    expect(sql).toContain("upsell_revenue_total:");
+    expect(sql).toContain("by_nudge_revenue:");
+  });
+
+  it("includes denis_staff_notifications table", () => {
+    const typesPath = path.join(process.cwd(), "src/types/database.ts");
+    const sql = fs.readFileSync(typesPath, "utf8");
+    expect(sql).toContain("denis_staff_notifications:");
+  });
+
+  it("migrations 00134–00137 define Layer 11 schema", () => {
+    const migrations = [
+      "00134_experience_analytics_roi.sql",
+      "00135_experience_score.sql",
+      "00136_denis_staff_notifications.sql",
+      "00137_denis_staff_notifications_realtime.sql",
+    ];
+    for (const file of migrations) {
+      const sql = fs.readFileSync(
+        path.join(process.cwd(), "supabase/migrations", file),
+        "utf8"
+      );
+      expect(sql.length).toBeGreaterThan(20);
+    }
+    const staffSql = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/00136_denis_staff_notifications.sql"
+      ),
+      "utf8"
+    );
+    expect(staffSql).toContain("ENABLE ROW LEVEL SECURITY");
+  });
+});
 
 describe("denis welcome", () => {
   it("shows localized welcome for new guests", () => {

@@ -1,6 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiErrorResponse, ERROR_CODES } from "@/lib/api-response";
 import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -157,7 +157,12 @@ export async function getRateLimitUserId(): Promise<string | null> {
 }
 
 function tooManyRequests(retryAfterSeconds: number): NextResponse {
-  const response = apiError("Too many requests", 429);
+  const response = apiErrorResponse(
+    ERROR_CODES.RATE_LIMITED,
+    "Too many requests. Please wait a moment.",
+    429,
+    { retryable: true }
+  );
   response.headers.set(
     "Retry-After",
     String(Math.max(1, retryAfterSeconds))
@@ -249,6 +254,12 @@ export async function withGuestRateLimits(
     if (orgLimited) return orgLimited;
   }
   return withRateLimit(req, scope);
+}
+
+export async function withOperatorOrgRateLimit(
+  orgId: string
+): Promise<NextResponse | null> {
+  return withRateLimitByKey("operator", orgId);
 }
 
 export async function withRateLimit(

@@ -19,6 +19,7 @@ type ProductContext = {
   categoryId: string;
   categoryLabel: string;
   menuSection: ReturnType<typeof inferMenuSection>;
+  unitPrice: number;
 };
 
 export type UseBrowseTelemetryOptions = {
@@ -117,6 +118,7 @@ export function useBrowseTelemetry(options: UseBrowseTelemetryOptions) {
           categoryId: category.id,
           categoryLabel,
           menuSection,
+          unitPrice: Number(product.price) || 0,
         });
       }
     }
@@ -185,13 +187,14 @@ export function useBrowseTelemetry(options: UseBrowseTelemetryOptions) {
 
     enqueue(
       buildBrowseEvent({
-        action: "view_product",
+        action: "close_product",
         productId: ctx.productId,
         productName: ctx.productName,
         categoryId: ctx.categoryId,
         categoryLabel: ctx.categoryLabel,
         menuSection: ctx.menuSection,
         dwellMs,
+        unitPrice: ctx.unitPrice,
       })
     );
   }, [options.enabled, options.detailProduct, enqueue]);
@@ -215,6 +218,7 @@ export function useBrowseTelemetry(options: UseBrowseTelemetryOptions) {
           categoryLabel: ctx.categoryLabel,
           menuSection: ctx.menuSection,
           dwellMs,
+          unitPrice: ctx.unitPrice,
         })
       );
     };

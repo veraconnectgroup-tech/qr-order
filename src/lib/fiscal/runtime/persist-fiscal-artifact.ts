@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildBelegHtml, type BelegData } from "@/lib/fiscal/beleg";
 import { buildZBonHtml, type ZBonDisplayData } from "@/lib/fiscal/daily-closing";
+import { archiveZBonToCloud } from "@/lib/fiscal/z-bon-archive";
 import { logger } from "@/lib/logger";
 import type { Json } from "@/types/database";
 
@@ -90,7 +91,8 @@ export async function persistBelegArtifact(
 export async function persistZBonArtifact(
   admin: SupabaseClient,
   fiscalTransactionId: string,
-  display: ZBonDisplayData
+  display: ZBonDisplayData,
+  options?: { orgId?: string; locationId?: string }
 ): Promise<{ persisted: boolean; artifactId?: string }> {
   const { data: existing } = await admin
     .from("fiscal_artifacts")
@@ -124,10 +126,22 @@ export async function persistZBonArtifact(
     throw new Error(`fiscal_artifacts z_bon insert failed: ${error.message}`);
   }
 
+  const artifactId = (inserted as { id: string }).id;
+
+  if (options?.orgId && options?.locationId) {
+    await archiveZBonToCloud(admin, {
+      orgId: options.orgId,
+      locationId: options.locationId,
+      businessDate: display.businessDate,
+      html,
+      display,
+    });
+  }
+
   logger.info("Fiscal Z-Bon artifact persisted", {
     fiscalTransactionId,
-    artifactId: (inserted as { id: string }).id,
+    artifactId,
   });
 
-  return { persisted: true, artifactId: (inserted as { id: string }).id };
+  return { persisted: true, artifactId };
 }

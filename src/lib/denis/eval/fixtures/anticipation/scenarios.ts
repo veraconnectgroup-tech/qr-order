@@ -1,6 +1,7 @@
 import type { AnticipationScenario } from "@/lib/denis/eval/anticipation-types";
 import { browseRow, guestMessageRow } from "@/lib/denis/eval/fixtures/mental-model/scenarios";
 import { drinkLine } from "@/lib/denis/eval/fixtures/waiter-parity/helpers";
+import { ANTICIPATION_PROMPT35_SCENARIOS } from "@/lib/denis/eval/fixtures/anticipation/prompt35-scenarios";
 
 const NOW = Date.parse("2026-05-29T20:00:00.000Z");
 
@@ -108,7 +109,7 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       ],
     },
     payload: {},
-    expect: { emit: false, skipReason: "venue.upsell_suppressed", kind: "drink_pairing" },
+    expect: { emit: false, skipReason: "venue.upsell_suppressed", kind: "sommelier_pairing" },
   },
   {
     id: "pairing-skip-upsell",
@@ -129,14 +130,14 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       ],
     },
     payload: {},
-    expect: { emit: false, skipReason: "venue.upsell_suppressed", kind: "drink_pairing" },
+    expect: { emit: false, skipReason: "venue.upsell_suppressed", kind: "sommelier_pairing" },
   },
   {
     id: "pairing-dismissed",
     description: "Dismissed pairing stays silent",
     setup: {
       sessionPhase: "waiting",
-      dismissedNudges: ["drink_pairing:ord-dismiss"],
+      dismissedNudges: ["sommelier_pairing:ord-dismiss"],
       orders: [
         {
           id: "ord-dismiss",
@@ -149,7 +150,7 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
         },
       ],
     },
-    payload: { dismissedNudgeKeys: ["drink_pairing:ord-dismiss"] },
+    payload: { dismissedNudgeKeys: ["sommelier_pairing:ord-dismiss"] },
     expect: { emit: false, skipReason: "no_candidate" },
   },
   {
@@ -238,7 +239,8 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
           orderNumber: 10,
           status: "preparing",
           paymentStatus: "paid",
-          estimatedPrepMinutes: 20,
+          estimatedPrepMinutes: 12,
+          prepEstimateConfidence: "high",
           createdAt: isoMinutesAgo(18),
           items: [{ productName: "Ribs", quantity: 1 }],
         },
@@ -320,7 +322,7 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       ],
     },
     payload: {},
-    expect: { emit: false, skipReason: "session.settling", kind: "drink_pairing" },
+    expect: { emit: false, skipReason: "session.settling", kind: "sommelier_pairing" },
   },
   {
     id: "session-closed",
@@ -379,7 +381,8 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
   },
   {
     id: "slow-kitchen-disabled-flag",
-    description: "Venue slow-kitchen flag off blocks empathy nudge",
+    description:
+      "Venue slow-kitchen flag off blocks empathy nudge but order_eta_update still fires",
     setup: {
       sessionPhase: "waiting",
       slowKitchenEnabled: false,
@@ -389,14 +392,20 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
           orderNumber: 15,
           status: "preparing",
           paymentStatus: "paid",
-          estimatedPrepMinutes: 20,
-          createdAt: isoMinutesAgo(20),
+          estimatedPrepMinutes: 12,
+          prepEstimateConfidence: "high",
+          createdAt: isoMinutesAgo(18),
           items: [{ productName: "Fish", quantity: 1 }],
         },
       ],
     },
     payload: {},
-    expect: { emit: false, skipReason: "proactive.slow_kitchen_disabled", kind: "slow_kitchen" },
+    expect: {
+      emit: true,
+      kind: "order_eta_update",
+      planKind: "template_tell",
+      requiresLlm: false,
+    },
   },
   {
     id: "gmm-closed-blocks-browse",
@@ -421,8 +430,7 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
     payload: { browseMinutes: 10, dismissedNudgeKeys: [] },
     expect: {
       emit: false,
-      skipReason: "gmm.receptiveness_closed",
-      kind: "bill_prompt",
+      skipReason: "no_candidate",
     },
   },
   {
@@ -601,7 +609,8 @@ export const ANTICIPATION_SCENARIOS: AnticipationScenario[] = [
       kind: "bill_prompt",
     },
   },
+  ...ANTICIPATION_PROMPT35_SCENARIOS,
 ];
 
-export const ANTICIPATION_MIN_SCENARIOS = 20;
+export const ANTICIPATION_MIN_SCENARIOS = 40;
 export const ANTICIPATION_MIN_PASS_RATE = 0.95;

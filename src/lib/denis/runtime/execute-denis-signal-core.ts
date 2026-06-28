@@ -80,6 +80,7 @@ function buildTurnBody(
     inputSurface: normalized.channel === "voice" ? "voice" : "chat",
     includeOrderContext:
       request.type === "message" ? request.includeOrderContext : undefined,
+    accessibilitySignals: request.accessibilitySignals,
   };
 }
 

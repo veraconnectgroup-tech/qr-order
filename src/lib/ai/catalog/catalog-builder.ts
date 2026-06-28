@@ -53,6 +53,11 @@ type RawCategory = {
   products: RawProduct[] | null;
 };
 
+export function parseAiCatalogCategories(data: unknown): RawCategory[] {
+  if (!Array.isArray(data)) return [];
+  return data as RawCategory[];
+}
+
 function pickName(row: { name: string; name_en: string | null }, useEnglish: boolean) {
   if (useEnglish && row.name_en?.trim()) return row.name_en.trim();
   return row.name;

@@ -24,12 +24,16 @@ export const ConciergeLanguageFallbackSchema = z.enum(["venue", "english"]);
 export const ConciergePlaybookVariantSchema = z.enum(["A", "B"]);
 
 const ConciergePersonaSchema = z.object({
+  /** Display name — default "Denis". Wired into system prompt identity block. */
   name: z.string().trim().min(1).max(40),
   role: z.string().trim().max(120),
+  /** Venue tone overlay — warm_short | formal | playful_luxury | efficient. */
   tone: ConciergeToneSchema,
   greetingStyle: ConciergeGreetingStyleSchema,
+  /** Post-process strip list + humor safety guard. */
   forbiddenPhrases: z.array(z.string().trim().max(200)).max(50),
   emoji: z.boolean(),
+  /** Reply length cap — personality engine enforces in prompt. */
   maxWordsPerReply: z.number().int().min(10).max(200),
 });
 
@@ -46,7 +50,12 @@ const ConciergeContextSchema = z.object({
   manualCart: z.boolean(),
   orderHistory: z.boolean(),
   includePairingHistory: z.boolean(),
+  /** Adaptive ceiling — per-turn budget scales down for simple turns. */
   maxContextTokens: z.number().int().min(500).max(8000),
+  /** When true, resolve per-turn budget from turn complexity (500–4000). */
+  adaptiveContext: z.boolean().default(true),
+  /** Floor for adaptive context budget on simple turns. */
+  minContextTokens: z.number().int().min(200).max(2000).default(500),
 });
 
 const ConciergeOrderingSchema = z.object({
@@ -121,6 +130,27 @@ const ConciergeProactiveSchema = z.object({
   dailyReportHour: ProactiveTimeOfDaySchema,
 });
 
+const ConciergePipelineSchema = z.object({
+  enabled: z.boolean().default(true),
+  preSkills: z
+    .array(z.string().trim().max(64))
+    .max(20)
+    .default([
+      "pre.allergy_guard",
+      "pre.cart_state",
+      "pre.menu_filter",
+    ]),
+  postSkills: z
+    .array(z.string().trim().max(64))
+    .max(20)
+    .default([
+      "post.order_validator",
+      "post.price_check",
+      "post.tone_guard",
+      "post.safety_guard",
+    ]),
+});
+
 const ConciergePolicySchema = z.object({
   allergiesStrict: z.boolean(),
   blockAlcoholWithoutFood: z.boolean(),
@@ -177,6 +207,19 @@ const ConciergeLearningSchema = z.object({
   learnedEdgesEnabled: z.boolean(),
   minAcceptRateForSuggestion: z.number().min(0).max(1),
   minImpressionsForSuggestion: z.number().int().min(1).max(1000),
+  crossVenue: z
+    .object({
+      enabled: z.boolean().default(true),
+      venueType: z
+        .enum(["casual", "fine_dining", "cafe", "bar"])
+        .default("casual"),
+    })
+    .default({ enabled: true, venueType: "casual" }),
+});
+
+/** M3 — proactive timing optimizer; owner approves unless autoApply. */
+const ConciergeThresholdOptimizerSchema = z.object({
+  autoApply: z.boolean().default(false),
 });
 
 const ConciergeMemorySchema = z.object({
@@ -224,6 +267,23 @@ const ConciergeRhythmSchema = z.object({
   ops: ConciergeRhythmOpsSchema,
 });
 
+const ConciergeIntelligenceWeatherSchema = z.object({
+  enabled: z.boolean(),
+  openWeatherMapApiKey: z.string().trim().max(128).nullable(),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+});
+
+export const ConciergeIntelligenceSchema = z.object({
+  contextAwareness: z.boolean(),
+  timezone: z.string().trim().min(1).max(64),
+  dailyMenuLabel: z.string().trim().max(120).nullable(),
+  localSportsTeam: z.string().trim().max(80).nullable(),
+  weather: ConciergeIntelligenceWeatherSchema,
+});
+
+export type ConciergeIntelligence = z.infer<typeof ConciergeIntelligenceSchema>;
+
 export const ConciergeConfigSchema = z.object({
   version: z.literal(1),
   enabled: z.boolean(),
@@ -242,14 +302,43 @@ export const ConciergeConfigSchema = z.object({
   party: ConciergePartySchema,
   ops: ConciergeOpsSchema,
   learning: ConciergeLearningSchema,
+  thresholdOptimizer: ConciergeThresholdOptimizerSchema,
   memory: ConciergeMemorySchema,
   surfaces: ConciergeSurfacesSchema,
   mentalModel: ConciergeMentalModelSchema,
   intervention: ConciergeInterventionSchema,
   rhythm: ConciergeRhythmSchema,
+  intelligence: ConciergeIntelligenceSchema,
+  pipeline: ConciergePipelineSchema.default({
+    enabled: true,
+    preSkills: [
+      "pre.allergy_guard",
+      "pre.cart_state",
+      "pre.menu_filter",
+    ],
+    postSkills: [
+      "post.order_validator",
+      "post.price_check",
+      "post.tone_guard",
+      "post.safety_guard",
+    ],
+  }),
 });
 
 export type ConciergeConfig = z.infer<typeof ConciergeConfigSchema>;
+
+export type ConciergeTone = z.infer<typeof ConciergeToneSchema>;
+export type ConciergeGreetingStyle = z.infer<typeof ConciergeGreetingStyleSchema>;
+export type ConciergeFlowPreset = z.infer<typeof ConciergeFlowPresetSchema>;
+export type ConciergeLanguageFallback = z.infer<
+  typeof ConciergeLanguageFallbackSchema
+>;
+export type ConciergePersona = z.infer<typeof ConciergePersonaSchema>;
+export type ConciergeLanguage = z.infer<typeof ConciergeLanguageSchema>;
+export type ConciergeContext = z.infer<typeof ConciergeContextSchema>;
+export type ConciergeOrdering = z.infer<typeof ConciergeOrderingSchema>;
+export type ConciergeUpsell = z.infer<typeof ConciergeUpsellSchema>;
+export type ConciergeProactive = z.infer<typeof ConciergeProactiveSchema>;
 
 export const PartialConciergePersonaSchema = ConciergePersonaSchema.partial();
 export const PartialConciergeLanguageSchema = ConciergeLanguageSchema.partial();
@@ -266,6 +355,8 @@ export const PartialConciergeRolloutSchema = ConciergeRolloutSchema.partial();
 export const PartialConciergePartySchema = ConciergePartySchema.partial();
 export const PartialConciergeOpsSchema = ConciergeOpsSchema.partial();
 export const PartialConciergeLearningSchema = ConciergeLearningSchema.partial();
+export const PartialConciergeThresholdOptimizerSchema =
+  ConciergeThresholdOptimizerSchema.partial();
 export const PartialConciergeMemorySchema = ConciergeMemorySchema.partial();
 export const PartialConciergeSurfacesSchema = ConciergeSurfacesSchema.partial();
 export const PartialConciergeMentalModelSchema = ConciergeMentalModelSchema.partial();
@@ -276,6 +367,15 @@ export const PartialConciergeRhythmSchema = ConciergeRhythmSchema.omit({ ops: tr
   .extend({
     ops: PartialConciergeRhythmOpsSchema.optional(),
   });
+export const PartialConciergeIntelligenceWeatherSchema =
+  ConciergeIntelligenceWeatherSchema.partial();
+export const PartialConciergeIntelligenceSchema =
+  ConciergeIntelligenceSchema.omit({ weather: true })
+    .partial()
+    .extend({
+      weather: PartialConciergeIntelligenceWeatherSchema.optional(),
+    });
+export const PartialConciergePipelineSchema = ConciergePipelineSchema.partial();
 
 export const PartialConciergeConfigSchema = z.object({
   version: z.literal(1).optional(),
@@ -295,11 +395,14 @@ export const PartialConciergeConfigSchema = z.object({
   party: PartialConciergePartySchema.optional(),
   ops: PartialConciergeOpsSchema.optional(),
   learning: PartialConciergeLearningSchema.optional(),
+  thresholdOptimizer: PartialConciergeThresholdOptimizerSchema.optional(),
   memory: PartialConciergeMemorySchema.optional(),
   surfaces: PartialConciergeSurfacesSchema.optional(),
   mentalModel: PartialConciergeMentalModelSchema.optional(),
   intervention: PartialConciergeInterventionSchema.optional(),
   rhythm: PartialConciergeRhythmSchema.optional(),
+  intelligence: PartialConciergeIntelligenceSchema.optional(),
+  pipeline: PartialConciergePipelineSchema.optional(),
 });
 
 export type PartialConciergeConfig = z.infer<typeof PartialConciergeConfigSchema>;

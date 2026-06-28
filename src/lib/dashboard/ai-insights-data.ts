@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScrollContext } from "@/lib/ai/scroll-context";
+import type { ActionableInsight } from "@/lib/dashboard/generate-actionable-insights";
+import {
+  buildDailyBriefingHeadline,
+  generateActionableInsights,
+  topActionableInsights,
+} from "@/lib/dashboard/generate-actionable-insights";
 
 export type AiInsightsRange = "today" | "week";
 
@@ -49,6 +55,8 @@ export type AiInsightsDashboardPayload = {
   topProducts: AiInsightsTopProduct[];
   alerts: AiInsightsAlert[];
   insights: AiInsightRow[];
+  actionableInsights: ActionableInsight[];
+  dailyBriefingLine: string | null;
 };
 
 type SessionRow = {
@@ -228,6 +236,8 @@ export async function fetchAiInsightsDashboard(
     topProducts: [],
     alerts: [],
     insights: [],
+    actionableInsights: [],
+    dailyBriefingLine: null,
   };
 
   if (!enabled) return empty;
@@ -406,22 +416,79 @@ export async function fetchAiInsightsDashboard(
     });
   }
 
+  const summary: AiInsightsSummary = {
+    aiRevenue,
+    conversionRate: recommendedCount > 0 ? addedCount / recommendedCount : 0,
+    addedCount,
+    recommendedCount,
+    sessionCount: sessions.length,
+    averageRating,
+    avgMinutesToFirstOrder,
+  };
+
+  const insightInput = {
+    currentPeriod: summary,
+    previousPeriod: emptyInsightsSummary(),
+    menuGaps,
+  };
+  const actionableInsights = topActionableInsights(
+    generateActionableInsights(insightInput),
+    3
+  );
+  const dailyBriefingLine = buildDailyBriefingHeadline(insightInput);
+
   return {
     enabled,
     range,
-    summary: {
-      aiRevenue,
-      conversionRate:
-        recommendedCount > 0 ? addedCount / recommendedCount : 0,
-      addedCount,
-      recommendedCount,
-      sessionCount: sessions.length,
-      averageRating,
-      avgMinutesToFirstOrder,
-    },
+    summary,
     menuGaps,
     topProducts,
     alerts: alerts.slice(0, 5),
     insights,
+    actionableInsights,
+    dailyBriefingLine,
   };
+}
+
+function emptyInsightsSummary(): AiInsightsSummary {
+  return {
+    aiRevenue: 0,
+    conversionRate: 0,
+    addedCount: 0,
+    recommendedCount: 0,
+    sessionCount: 0,
+    averageRating: null,
+    avgMinutesToFirstOrder: null,
+  };
+}
+
+/** Dashboard payload without actionable insights (avoids recursion in context loader). */
+export async function fetchAiInsightsDashboardBase(
+  admin: SupabaseClient,
+  input: {
+    orgId: string;
+    locationId: string;
+    range: AiInsightsRange;
+  }
+): Promise<Omit<AiInsightsDashboardPayload, "actionableInsights" | "dailyBriefingLine">> {
+  const payload = await fetchAiInsightsDashboard(admin, input);
+  const { actionableInsights: _a, dailyBriefingLine: _d, ...base } = payload;
+  return base;
+}
+
+export async function loadActionableInsightsForLocation(
+  admin: SupabaseClient,
+  input: {
+    orgId: string;
+    locationId: string;
+    range: AiInsightsRange;
+    menuGaps?: AiInsightsMenuGap[];
+    currencyLabel?: string;
+  }
+): Promise<ActionableInsight[]> {
+  const { loadActionableInsightsContext } = await import(
+    "@/lib/dashboard/load-actionable-insights-context"
+  );
+  const context = await loadActionableInsightsContext(admin, input);
+  return generateActionableInsights(context);
 }

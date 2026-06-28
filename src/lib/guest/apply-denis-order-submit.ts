@@ -1,5 +1,11 @@
 "use client";
 
+import type { AllergenId } from "@/lib/allergens";
+import type { CartItem } from "@/hooks/use-cart";
+import {
+  checkAllergyConflict,
+  type AllergyGuardProduct,
+} from "@/lib/denis/kernel/safety/allergy-guard";
 import {
   getOrCreateDeviceFingerprint,
   setStoredDeviceToken,
@@ -18,6 +24,92 @@ export type DenisOrderSubmitPayload = {
     tablePin?: string;
   };
 };
+
+export type DenisOrderSubmitValidation = {
+  ok: boolean;
+  warnings: string[];
+  blockers: string[];
+};
+
+function buildAllergySubmitWarning(input: {
+  productName: string;
+  allergen: string;
+  language: string;
+}): string {
+  const lang = input.language.slice(0, 2);
+  if (lang === "de") {
+    return `⚠️ Wir haben eine Allergie gegen ${input.allergen} notiert. ${input.productName} enthält ${input.allergen}.`;
+  }
+  if (lang === "en") {
+    return `⚠️ We noted an allergy to ${input.allergen}. ${input.productName} contains ${input.allergen}.`;
+  }
+  return `⚠️ Primetili smo da imate alergiju na ${input.allergen}. ${input.productName} sadrži ${input.allergen}.`;
+}
+
+function buildUnavailableBlocker(productName: string, language: string): string {
+  const lang = language.slice(0, 2);
+  if (lang === "de") {
+    return `${productName} ist gerade nicht verfügbar.`;
+  }
+  if (lang === "en") {
+    return `${productName} is not available right now.`;
+  }
+  return `${productName} trenutno nije dostupan.`;
+}
+
+/** Denis pre-submit gate — allergy WARN + availability BLOCK before kitchen. */
+export function validateDenisOrderSubmit(input: {
+  cartItems: CartItem[];
+  knownAllergens: AllergenId[];
+  products: Map<string, AllergyGuardProduct> | Record<string, AllergyGuardProduct>;
+  unavailableProductIds?: ReadonlySet<string>;
+  language?: string;
+}): DenisOrderSubmitValidation {
+  const language = input.language ?? "sr";
+  const warnings: string[] = [];
+  const blockers: string[] = [];
+
+  const unavailable = input.unavailableProductIds ?? new Set<string>();
+  for (const line of input.cartItems) {
+    if (unavailable.has(line.productId)) {
+      blockers.push(buildUnavailableBlocker(line.productName, language));
+    }
+  }
+
+  const allergy = checkAllergyConflict({
+    cartItems: input.cartItems.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      serveSize: item.serveSize ?? null,
+      modifierIds: item.modifiers.map((modifier) => modifier.modifierId),
+      notes: item.notes,
+      lineTotal: item.itemTotal,
+      menuSection: item.menuSection ?? null,
+      productTaxRate: item.productTaxRate ?? null,
+    })),
+    knownAllergens: input.knownAllergens,
+    products: input.products,
+    language,
+  });
+
+  if (!allergy.safe && allergy.conflicts[0]) {
+    const primary = allergy.conflicts[0];
+    warnings.push(
+      buildAllergySubmitWarning({
+        productName: primary.productName,
+        allergen: primary.allergen,
+        language,
+      })
+    );
+  }
+
+  return {
+    ok: blockers.length === 0,
+    warnings,
+    blockers,
+  };
+}
 
 export function applyDenisOrderSessionOpened(input: {
   slug: string;

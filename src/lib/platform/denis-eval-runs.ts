@@ -2,6 +2,10 @@
 
 import { requirePlatformAdmin } from "@/lib/auth/session";
 import type { ScenarioRunResult } from "@/lib/denis/eval/types";
+import {
+  parseDenisEvalRunDetailRow,
+  parseDenisEvalRunRows,
+} from "@/lib/supabase/parse-eval-rows";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type DenisEvalRunRow = {
@@ -34,17 +38,7 @@ export async function listRecentDenisEvalRuns(
     return [];
   }
 
-  const rows = data as unknown as Array<{
-    id: string;
-    source: string;
-    git_sha: string | null;
-    scenario_count: number;
-    passed: number;
-    failed: number;
-    ok: boolean;
-    shadow_parity_threshold: number;
-    created_at: string;
-  }>;
+  const rows = parseDenisEvalRunRows(data);
 
   return rows.map((row) => ({
     id: row.id,
@@ -81,18 +75,7 @@ export async function getDenisEvalRunById(
     return null;
   }
 
-  const row = data as unknown as {
-    id: string;
-    source: string;
-    git_sha: string | null;
-    scenario_count: number;
-    passed: number;
-    failed: number;
-    ok: boolean;
-    shadow_parity_threshold: number;
-    created_at: string;
-    results: ScenarioRunResult[];
-  };
+  const row = parseDenisEvalRunDetailRow(data);
 
   return {
     id: row.id,

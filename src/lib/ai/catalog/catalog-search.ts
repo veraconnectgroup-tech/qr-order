@@ -1,5 +1,10 @@
 import { AI_CONFIG } from "@/lib/ai/config";
 import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
+import {
+  fuzzyMatchCatalogProducts,
+  type FuzzySearchOutcome,
+} from "@/lib/ai/catalog/fuzzy-match-engine";
+import type { TypoCorrectionMap } from "@/lib/denis/learning/typo-corrections";
 import type { AiChatRecommendation } from "@/lib/ai/parse-response";
 import type { AiProductSummary } from "@/lib/ai/types";
 import { formatPrice } from "@/lib/format";
@@ -11,45 +16,10 @@ function normalizeText(value: string) {
     .replace(/\p{M}/gu, "");
 }
 
-const STOP_WORDS = new Set([
-  "i",
-  "a",
-  "to",
-  "je",
-  "da",
-  "ne",
-  "mi",
-  "vi",
-  "we",
-  "the",
-  "and",
-  "or",
-  "for",
-  "you",
-  "your",
-  "one",
-  "jedan",
-  "jedna",
-  "jedno",
-  "ovaj",
-  "ova",
-  "ove",
-  "that",
-  "this",
-  "hvala",
-  "thanks",
-  "please",
-  "molim",
-  "bitte",
-  "ok",
-  "okej",
-  "okay",
-]);
-
 function tokenize(query: string) {
   return normalizeText(query)
     .split(/[^\p{L}\p{N}]+/u)
-    .filter((token) => token.length >= 3 && !STOP_WORDS.has(token));
+    .filter((token) => token.length >= 2);
 }
 
 const ORDER_VERB_PATTERN =
@@ -92,39 +62,41 @@ export function isSimpleBrowseQuery(message: string): boolean {
   return isExplicitBrowseQuery(message);
 }
 
+export type CatalogSearchOptions = {
+  maxResults?: number;
+  learnedCorrections?: TypoCorrectionMap;
+  language?: string;
+};
+
+/** Full fuzzy outcome — ambiguity, confidence, clarify prompt. */
+export function searchCatalogWithFuzzyOutcome(
+  catalog: Record<string, AiCatalogProduct>,
+  query: string,
+  options?: CatalogSearchOptions
+): FuzzySearchOutcome {
+  return fuzzyMatchCatalogProducts(catalog, query, {
+    maxResults: options?.maxResults ?? AI_CONFIG.maxBrowseRecommendations,
+    learnedCorrections: options?.learnedCorrections,
+    language: options?.language,
+  });
+}
+
 export function searchCatalogProducts(
   catalog: Record<string, AiCatalogProduct>,
   query: string,
-  maxResults = AI_CONFIG.maxBrowseRecommendations
+  maxResults: number = AI_CONFIG.maxBrowseRecommendations,
+  options?: Omit<CatalogSearchOptions, "maxResults">
 ): AiCatalogProduct[] {
-  const tokens = tokenize(query);
-  if (!tokens.length) return [];
+  const outcome = searchCatalogWithFuzzyOutcome(catalog, query, {
+    maxResults,
+    ...options,
+  });
 
-  const scored: Array<{ product: AiCatalogProduct; score: number }> = [];
-
-  for (const product of Object.values(catalog)) {
-    const haystack = normalizeText(product.name);
-
-    let score = 0;
-    for (const token of tokens) {
-      if (haystack.includes(token)) score += 12;
-      if (haystack.split(/\s+/).some((word) => word.startsWith(token))) {
-        score += 6;
-      }
-    }
-
-    if (score > 0) {
-      scored.push({ product, score });
-    }
-  }
-
-  return scored
-    .sort(
-      (a, b) =>
-        b.score - a.score || a.product.name.localeCompare(b.product.name)
-    )
-    .slice(0, maxResults)
-    .map((entry) => entry.product);
+  const productById = catalog;
+  return outcome.matches
+    .map((match) => productById[match.productId])
+    .filter((product): product is AiCatalogProduct => Boolean(product))
+    .slice(0, maxResults);
 }
 
 export function catalogMatchesToRecommendations(
@@ -265,3 +237,12 @@ export function buildBrowseMessage(
   const template = templates[lang] ?? templates.en;
   return template(names, remaining);
 }
+
+export {
+  buildFuzzyClarifyPrompt,
+  fuzzyMatchCatalog,
+  fuzzyMatchCatalogProducts,
+  type FuzzyMatchLayer,
+  type FuzzyMatchResult,
+  type FuzzySearchOutcome,
+} from "@/lib/ai/catalog/fuzzy-match-engine";

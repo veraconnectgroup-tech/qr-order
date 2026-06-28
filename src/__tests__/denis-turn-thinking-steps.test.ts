@@ -13,7 +13,7 @@ describe("resolveTurnThinkingStepKeys", () => {
     ).toEqual(["ai.chat.thinking.status"]);
   });
 
-  it("maps vague recommend to menu + recommend + llm", () => {
+  it("caps vague recommend to two steps", () => {
     expect(
       resolveTurnThinkingStepKeys({
         kind: "relational_perceive",
@@ -24,7 +24,6 @@ describe("resolveTurnThinkingStepKeys", () => {
     ).toEqual([
       "ai.chat.thinking.menu",
       "ai.chat.thinking.recommend",
-      "ai.chat.thinking.llm",
     ]);
   });
 
@@ -42,7 +41,7 @@ describe("resolveTurnThinkingStepKeys", () => {
     ).toEqual(["ai.chat.thinking.waiter"]);
   });
 
-  it("maps confirm comprehend to cart steps", () => {
+  it("caps confirm comprehend to two cart steps", () => {
     expect(
       resolveTurnThinkingStepKeys({
         kind: "transactional_perceive",
@@ -53,7 +52,17 @@ describe("resolveTurnThinkingStepKeys", () => {
     ).toEqual([
       "ai.chat.thinking.cart",
       "ai.chat.thinking.confirm",
-      "ai.chat.thinking.llm",
     ]);
+  });
+
+  it("maps guest pause to a single pause step", () => {
+    expect(
+      resolveTurnThinkingStepKeys({
+        kind: "relational_perceive",
+        requiresLlm: true,
+        suppressUpsell: false,
+        reason: "conversation.guest_pause",
+      })
+    ).toEqual(["ai.chat.thinking.pause"]);
   });
 });

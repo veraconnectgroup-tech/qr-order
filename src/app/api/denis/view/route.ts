@@ -99,6 +99,13 @@ export const GET = withErrorHandler("denis-view-get", async (req, _ctx) => {
     locationId: table.location_id,
     tableToken: tableParsed.data,
     venueName,
+    language: venue
+      ? ((MENU_LOCALES.includes(
+          (venue.default_locale ?? venue.menu_locale ?? "de") as MenuLocale
+        )
+          ? (venue.default_locale ?? venue.menu_locale ?? "de")
+          : "de") as MenuLocale)
+      : undefined,
   });
 
   if (!loaded) {

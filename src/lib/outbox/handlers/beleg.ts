@@ -4,11 +4,12 @@ import { persistBelegArtifact } from "@/lib/fiscal/runtime/persist-fiscal-artifa
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { logger } from "@/lib/logger";
+import { toJson } from "@/lib/supabase/json";
 import type { Json } from "@/types/database";
 
 function parseBelegSnapshot(raw: Json | null): BelegData | null {
   if (!raw || typeof raw !== "object") return null;
-  return raw as unknown as BelegData;
+  return raw as BelegData;
 }
 
 export async function handleFiscalBeleg(
@@ -66,7 +67,7 @@ export async function handleFiscalBeleg(
     if (needsSnapshot) {
       const snapshot = await loadBelegData(admin, orderId);
       if (snapshot) {
-        update.beleg_snapshot = snapshot as unknown as Json;
+        update.beleg_snapshot = toJson(snapshot);
         snapshotForArtifact = snapshot;
       }
     }

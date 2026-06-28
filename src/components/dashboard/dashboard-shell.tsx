@@ -14,6 +14,8 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DashboardAlertsProvider } from "@/hooks/use-dashboard-alerts";
 import { StaffNotificationsProvider } from "@/hooks/use-staff-notifications";
 import { SoundAlertProvider } from "@/hooks/use-sound-alert";
+import { VenueThemeProvider } from "@/components/theme/venue-theme-context";
+import { DashboardThemeStyle } from "@/components/theme/venue-theme-provider";
 
 function DashboardBanners() {
   const { impersonating, impersonatedOrgName } = useDashboard();
@@ -61,10 +63,16 @@ export function DashboardShell({
   const pathname = usePathname();
   const isKitchen = pathname.startsWith("/dashboard/kitchen");
   const isSetup = pathname.startsWith("/dashboard/setup");
+  const { venueTheme } = context;
 
   return (
     <DashboardProvider value={context}>
-      <DashboardResilienceShell staffRole={context.staffRole}>
+      <VenueThemeProvider theme={venueTheme}>
+        <DashboardThemeStyle
+          cssVars={venueTheme.cssVars}
+          fontFamily={venueTheme.fontFamily}
+        />
+        <DashboardResilienceShell staffRole={context.staffRole}>
         {isSetup ? (
           <div className="dashboard-theme min-h-dvh overflow-x-hidden bg-background text-foreground">
             {children}
@@ -81,7 +89,8 @@ export function DashboardShell({
         ) : (
           <DashboardFrame>{children}</DashboardFrame>
         )}
-      </DashboardResilienceShell>
+        </DashboardResilienceShell>
+      </VenueThemeProvider>
     </DashboardProvider>
   );
 }

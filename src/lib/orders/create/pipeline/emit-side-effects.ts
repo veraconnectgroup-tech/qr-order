@@ -2,8 +2,10 @@ import type {
   CreateOrderSuccess,
   OrderDraft,
 } from "@/lib/orders/create/types";
+import { applyOrderInventoryDecrement } from "@/lib/denis/intelligence/apply-order-inventory";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import { scheduleDenisWorldSignal } from "@/lib/outbox/enqueue-denis-world-signal";
+import { scheduleOrderSceneRefresh } from "@/lib/scene/schedule-order-scene-refresh";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -43,5 +45,24 @@ export async function emitOrderSideEffects(
       sessionId: draft.mode.sessionId,
       status: "pending",
     });
+
+    void scheduleOrderSceneRefresh(admin, {
+      sessionId: draft.mode.sessionId,
+      orderId: result.orderId,
+      orderNumber: result.orderNumber,
+      placed: true,
+    }).catch(() => undefined);
+
+    if (draft.mode.kind === "normal") {
+      void applyOrderInventoryDecrement(admin, {
+        locationId: draft.context.table.location_id,
+        orgId: draft.context.org.id,
+        lines: draft.lineItems.map((line) => ({
+          productId: line.productId,
+          productName: line.productName,
+          quantity: line.quantity,
+        })),
+      }).catch(() => undefined);
+    }
   }
 }

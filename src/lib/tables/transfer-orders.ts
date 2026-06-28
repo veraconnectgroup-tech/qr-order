@@ -3,6 +3,7 @@ import { closeTableSession } from "@/lib/sessions/session-devices";
 import { logger } from "@/lib/logger";
 import { sanitizeOrderNotes } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { migrateSessionOnTransfer } from "@/lib/tables/migrate-session-on-transfer";
 
 export type TransferOrdersInput = {
   fromTableId: string;
@@ -11,6 +12,9 @@ export type TransferOrdersInput = {
   staffId: string;
   locationId: string;
   note?: string;
+  /** When set, orders attach to this session instead of find-or-create. */
+  toSessionId?: string;
+  guestNotifyKind?: "transfer" | "split" | "none";
 };
 
 export type TransferOrdersResult = {
@@ -135,11 +139,9 @@ export async function transferOrders(
     rows.find((o) => o.session_id)?.session_id ??
     null;
 
-  const sessionResult = await findOrCreateTableSession(
-    admin,
-    toTableId,
-    locationId
-  );
+  const sessionResult = input.toSessionId
+    ? { sessionId: input.toSessionId }
+    : await findOrCreateTableSession(admin, toTableId, locationId);
 
   if ("error" in sessionResult) {
     return { error: sessionResult.error, status: sessionResult.status };
@@ -180,6 +182,23 @@ export async function transferOrders(
     });
     return { error: "Transfer audit could not be saved.", status: 500 };
   }
+
+  await migrateSessionOnTransfer({
+    admin,
+    locationId,
+    fromTableId,
+    toTableId,
+    fromSessionId,
+    toSessionId,
+    toTableName: (toTable as { name: string }).name,
+    transferType,
+    orderIds,
+    notifyGuests: input.guestNotifyKind !== "none",
+    guestNotifyKind:
+      input.guestNotifyKind === "none" || input.guestNotifyKind === undefined
+        ? "transfer"
+        : input.guestNotifyKind,
+  });
 
   if (transferType === "full" && fromSessionId) {
     const { count, error: countError } = await admin

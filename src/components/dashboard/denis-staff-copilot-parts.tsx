@@ -3,9 +3,50 @@
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import {
   floorHintLabel,
+  staffCopilotPriorityLabel,
+  type StaffCopilotTablePriority,
   type StaffCopilotTableRow,
+  type StaffRevenueOpportunity,
 } from "@/lib/denis/venue/copilot";
 import { cn } from "@/lib/utils";
+
+function priorityStyles(priority: StaffCopilotTablePriority) {
+  switch (priority) {
+    case "urgent":
+      return "bg-red-500/15 text-red-300 border-red-500/30";
+    case "high":
+      return "bg-amber-500/15 text-amber-200 border-amber-500/30";
+    case "normal":
+      return "bg-emerald-500/10 text-emerald-200 border-emerald-500/20";
+    case "idle":
+      return "bg-dash-surface-raised text-dash-text-muted border-dash-border";
+  }
+}
+
+export function PriorityBadge({
+  priority,
+}: {
+  priority: StaffCopilotTablePriority;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
+        priorityStyles(priority)
+      )}
+    >
+      {staffCopilotPriorityLabel(priority)}
+    </span>
+  );
+}
+
+function revenueOpportunityTitle(
+  opportunity: StaffRevenueOpportunity
+): string | null {
+  if (!opportunity) return null;
+  if (typeof opportunity === "string") return opportunity;
+  return opportunity.title;
+}
 
 export function HintBadge({
   hint,
@@ -82,13 +123,24 @@ export function TableCopilotRow({ table }: { table: StaffCopilotTableRow }) {
           </p>
         </div>
         <HintBadge hint={table.operatingHint} />
+        <PriorityBadge priority={table.priority} />
       </div>
-      {table.staffHint ? (
+      {table.staffBrief ? (
+        <p className="mt-2 text-sm leading-relaxed text-dash-text-secondary">
+          {table.staffBrief}
+        </p>
+      ) : null}
+      {table.staffHint && !table.staffBrief?.includes(table.staffHint.text) ? (
         <DenisStaffHintBlock
           tableName={table.tableName}
           text={table.staffHint.text}
           visibility={table.staffHint.visibility}
         />
+      ) : null}
+      {revenueOpportunityTitle(table.revenueOpportunity) ? (
+        <p className="mt-2 text-xs font-medium text-dash-accent">
+          {revenueOpportunityTitle(table.revenueOpportunity)}
+        </p>
       ) : null}
     </div>
   );
@@ -116,10 +168,22 @@ export function DenisStaffTableBrief({ table }: { table: StaffCopilotTableRow })
               ? ` · ${table.openOrderCount} open order${table.openOrderCount === 1 ? "" : "s"}`
               : ""}
             {hintLabel ? ` · ${hintLabel}` : ""}
+            {table.guestWaitMinutes != null && table.guestWaitMinutes >= 5
+              ? ` · čeka ${table.guestWaitMinutes}min`
+              : ""}
           </p>
-          {table.staffHint ? (
+          {table.staffBrief ? (
+            <p className="mt-2 text-sm leading-relaxed text-dash-text-secondary">
+              {table.staffBrief}
+            </p>
+          ) : table.staffHint ? (
             <p className="mt-2 text-sm leading-relaxed text-dash-text-secondary">
               {table.staffHint.text}
+            </p>
+          ) : null}
+          {revenueOpportunityTitle(table.revenueOpportunity) ? (
+            <p className="mt-2 text-xs font-medium text-dash-accent">
+              {revenueOpportunityTitle(table.revenueOpportunity)}
             </p>
           ) : null}
         </div>

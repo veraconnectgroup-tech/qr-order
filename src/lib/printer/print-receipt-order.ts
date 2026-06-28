@@ -12,7 +12,13 @@ export async function printReceiptOrder(
   orgName: string,
   currency: string,
   setup: PrinterSetup,
-  options?: { silent?: boolean }
+  options?: {
+    silent?: boolean;
+    logoUrl?: string | null;
+    footerMessage?: string;
+    poweredByLabel?: string;
+    hidePoweredBy?: boolean;
+  }
 ): Promise<boolean> {
   const receiptPrinters = setup.configs.filter((config) =>
     config.print_for.includes("receipt")
@@ -28,10 +34,16 @@ export async function printReceiptOrder(
   const printer = receiptPrinters[0];
   const data = buildReceiptEscPos(
     order,
-    { name: orgName },
+    { name: orgName, logo_url: options?.logoUrl ?? null },
     setup.location,
     printer.paper_width as PaperWidth,
-    currency
+    currency,
+    {
+      logoUrl: options?.logoUrl ?? null,
+      footerMessage: options?.footerMessage,
+      poweredByLabel: options?.poweredByLabel,
+      hidePoweredBy: options?.hidePoweredBy,
+    }
   );
 
   for (const candidate of receiptPrinters) {
@@ -43,4 +55,13 @@ export async function printReceiptOrder(
     toast.error("Receipt printer offline.");
   }
   return false;
+}
+
+export async function reprintReceiptOrder(
+  order: OrderWithDetails,
+  orgName: string,
+  currency: string,
+  setup: PrinterSetup
+): Promise<boolean> {
+  return printReceiptOrder(order, orgName, currency, setup);
 }

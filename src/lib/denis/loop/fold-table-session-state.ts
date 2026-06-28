@@ -1,5 +1,6 @@
 import { foldBrowseProfile } from "@/lib/denis/cognition/browse/fold-browse-profile";
 import { foldConversationModel } from "@/lib/denis/cognition/conversation/fold-conversation-model";
+import { deriveGuestAccessibility } from "@/lib/denis/cognition/mental-model/derive-accessibility";
 import { foldGuestMentalModel } from "@/lib/denis/cognition/mental-model/fold-guest-mental-model";
 import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
 import { foldGuestOfferContext } from "@/lib/denis/cognition/offer/fold-guest-offer-context";
@@ -12,11 +13,15 @@ import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import { pendingSlotKindFromDraft } from "@/lib/ai/ordering/pending-slot-kind";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
+import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
 import { buildFoldMeta } from "@/lib/denis/loop/compute-truth-hash";
 import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { extractDismissedNudges, extractProactiveDedupeKeys } from "@/lib/denis/loop/extract-dismissed-nudges";
 import { loadOrderFactsForSession } from "@/lib/denis/loop/load-order-facts";
-import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
+import { combineManualDrafts } from "@/lib/denis/kernel/conflict/peer-manual";
+import { buildPosPeerManualFromOrders } from "@/lib/pos/inbound/peer-cart";
+import { isPosBridgeEnabled } from "@/lib/pos/feature-flags";
+import { isPosStaffEditActive } from "@/lib/pos/session-edit-store";
 import { lastTellFromTimeline } from "@/lib/denis/loop/fold-transcript";
 import type { FoldInput, FoldResult, TableSessionState } from "@/lib/denis/loop/types";
 import {
@@ -168,6 +173,20 @@ export async function foldTableSessionState(
     ? await loadOrderFactsForSession(admin, tableSessionId)
     : [];
 
+  const posPeerManual =
+    tableSessionId && isPosBridgeEnabled(input.locationId)
+      ? buildPosPeerManualFromOrders(orders)
+      : undefined;
+
+  const effectivePeerManual =
+    posPeerManual?.items.length
+      ? combineManualDrafts(peerManualCartDraft, posPeerManual)
+      : peerManualCartDraft;
+
+  const posStaffEditActive = tableSessionId
+    ? await isPosStaffEditActive(tableSessionId)
+    : false;
+
   const draftRow = sessionRow.data as SessionDraftRow | null;
   const draft = initDraftFromStorage(draftRow?.order_draft ?? null);
   const aiCartState = draftAiSessionId
@@ -199,6 +218,7 @@ export async function foldTableSessionState(
   }
 
   const tableSession = tableSessionRow.data as TableSessionRow | null;
+  const effectiveConfig = venueBundle.effectiveConfig;
   const commerce = commerceState.data as {
     bill_settled?: boolean;
     feedback_submitted?: boolean;
@@ -234,7 +254,7 @@ export async function foldTableSessionState(
     dismissedNudgeKeys: dismissedNudges,
   });
 
-  const mental = foldGuestMentalModel({
+  const mentalBase = foldGuestMentalModel({
     timeline,
     browse,
     conversation: conversationModel,
@@ -243,7 +263,7 @@ export async function foldTableSessionState(
       cart: buildMergedCart({
         ai: aiCartState,
         manual: manualCartDraft,
-        peerManual: peerManualCartDraft,
+        peerManual: effectivePeerManual,
       }),
     },
     party,
@@ -253,15 +273,39 @@ export async function foldTableSessionState(
       dismissedNudges,
     },
     phase,
-    config,
+    config: effectiveConfig,
     previousFold: extractPreviousMentalFoldContext(timeline),
     spine: guestSpine,
   });
 
+  const accessibility = deriveGuestAccessibility({
+    timeline,
+    guestMessage: input.guestMessage,
+    clientSignals: input.clientAccessibilitySignals,
+    guestMemory,
+    previous: mentalBase.accessibility ?? null,
+  });
+
+  let mental = { ...mentalBase, accessibility };
+
+  if (
+    accessibility.preferredMode === "simplified" ||
+    accessibility.preferredMode === "voice"
+  ) {
+    mental = {
+      ...mental,
+      nudgeBudget: {
+        ...mental.nudgeBudget,
+        max: Math.min(mental.nudgeBudget.max, 1),
+        remaining: Math.min(mental.nudgeBudget.remaining, 1),
+      },
+    };
+  }
+
   const mergedCart = buildMergedCart({
     ai: aiCartState,
     manual: manualCartDraft,
-    peerManual: peerManualCartDraft,
+    peerManual: effectivePeerManual,
   });
 
   const offer = foldGuestOfferContext({
@@ -272,7 +316,7 @@ export async function foldTableSessionState(
     venueOps: venueBundle.venueOps,
     phase,
     cartLineCount: mergedCart.visibleLines.length,
-    config,
+    config: effectiveConfig,
     orders,
   });
 
@@ -290,13 +334,14 @@ export async function foldTableSessionState(
       feedbackSubmitted: Boolean(commerce?.feedback_submitted),
       denisEnabled,
       denisActive,
+      posStaffEditActive,
     },
     commerce: {
       orders,
       cart: buildMergedCart({
         ai: aiCartState,
         manual: manualCartDraft,
-        peerManual: peerManualCartDraft,
+        peerManual: effectivePeerManual,
       }),
     },
     venue: {
@@ -318,7 +363,7 @@ export async function foldTableSessionState(
     browse,
     mental,
     offer,
-    config,
+    config: effectiveConfig,
   };
 
   const obligation = mergeTableSessionObligation({

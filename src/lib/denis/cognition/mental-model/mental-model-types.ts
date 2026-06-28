@@ -6,8 +6,15 @@ import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema
 import type { OrderFact, SessionPhase, TableSessionState } from "@/lib/denis/loop/types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import type { TablePartyModel } from "@/lib/denis/venue/party/types";
+import type { GuestAccessibilityPrefs } from "@/lib/denis/cognition/mental-model/accessibility-types";
 
 export const GUEST_MENTAL_MODEL_VERSION = 1 as const;
+
+export type {
+  BeliefDecayCategory,
+  BeliefDecayConfig,
+} from "@/lib/denis/kernel/beliefs/belief-decay-config";
+export { DEFAULT_BELIEF_DECAY_CONFIG } from "@/lib/denis/kernel/beliefs/belief-decay-config";
 
 export type GuestIntent =
   | "arrived"
@@ -62,6 +69,54 @@ export type GuestPredictedNeed =
   | "needs_attention"
   | "none";
 
+export type GuestReadinessBand = "low" | "medium" | "high";
+
+/** Composite readiness 0–1 from fused signals (Prompt 92). */
+export type GuestReadiness = {
+  score: number;
+  band: GuestReadinessBand;
+  /** High readiness — Denis may offer cart submit / confirm. */
+  offerSubmit: boolean;
+};
+
+export type GuestFusionStyle =
+  | "short_direct"
+  | "detailed_storytelling"
+  | "helpful_discovery"
+  | "wait"
+  | "reorder_during_meal"
+  | "default";
+
+export type GuestFusionGuidance = {
+  style: GuestFusionStyle;
+  nextLogicalStep: GuestIntent | null;
+  abnormalTransition: GuestIntentTransition | null;
+  hint: string | null;
+};
+
+export type GuestAnomalyKind =
+  | "menu_silence"
+  | "browse_no_cart"
+  | "cart_churn_indecisive";
+
+export type GuestAnomalySuggestedAction =
+  | "gentle_nudge"
+  | "offer_help"
+  | "offer_comparison";
+
+export type GuestAnomaly = {
+  kind: GuestAnomalyKind;
+  severity: "low" | "medium";
+  suggestedAction: GuestAnomalySuggestedAction;
+  detail: string;
+};
+
+export type GuestMentalModelFusion = {
+  readiness: GuestReadiness;
+  guidance: GuestFusionGuidance;
+  anomalies: GuestAnomaly[];
+};
+
 export type GuestFrustrationLevel = "none" | "mild" | "high";
 
 export type GuestFrustration = {
@@ -97,6 +152,68 @@ export type GuestIntentTransition = {
   durationMs: number;
 };
 
+/** L2 — invisible guest predictions (Denis internal only). */
+export type GuestNextActionKind =
+  | "order_bundle"
+  | "needs_help"
+  | "add_to_cart"
+  | "order_drink"
+  | "checkout"
+  | "none";
+
+export type GuestNextActionPrediction = {
+  action: GuestNextActionKind;
+  probability: number;
+  label: string;
+  preloadProducts: Array<{ productId: string; productName: string }>;
+  triggerProactiveHelp: boolean;
+};
+
+export type GuestTrajectoryStep =
+  | "greet"
+  | "drinks"
+  | "mains"
+  | "dessert"
+  | "bill";
+
+export type GuestTrajectoryPrediction = {
+  partySize: number;
+  predictedMains: number;
+  predictedDrinks: number;
+  predictedDessert: boolean;
+  plannedSteps: GuestTrajectoryStep[];
+  currentStep: GuestTrajectoryStep;
+  confidence: number;
+};
+
+export type GuestSpendTier = "low" | "mid" | "high";
+
+export type GuestUpsellTier = "value" | "standard" | "premium";
+
+export type GuestSpendPrediction = {
+  tier: GuestSpendTier;
+  predictedTotalCents: number;
+  perGuestCents: number;
+  confidence: number;
+  upsellTier: GuestUpsellTier;
+};
+
+export type GuestSessionDurationMode = "efficient" | "normal" | "relaxed";
+
+export type GuestSessionDurationPrediction = {
+  predictedMinutes: number;
+  mode: GuestSessionDurationMode;
+  confidence: number;
+  priorSource: "table_history" | "heuristic";
+};
+
+export type GuestPredictiveModel = {
+  nextAction: GuestNextActionPrediction;
+  trajectory: GuestTrajectoryPrediction;
+  spend: GuestSpendPrediction;
+  duration: GuestSessionDurationPrediction;
+};
+
 /** Prior fold context restored from timeline for transition derivation (ADR-038 Val D). */
 export type PreviousMentalFoldContext = {
   intent: GuestIntent;
@@ -122,6 +239,10 @@ export type GuestMentalModel = {
   predictedNeed: GuestPredictedNeed;
   affect: GuestAffect;
   groupDynamics: GuestGroupDynamics;
+  fusion: GuestMentalModelFusion;
+  /** L2 predictive modeling — never shown to guest UI. */
+  predictions: GuestPredictiveModel;
+  accessibility?: GuestAccessibilityPrefs | null;
 };
 
 /** Operational guest posture — same snapshot as GuestMentalModel (Val A). */
@@ -144,4 +265,9 @@ export type FoldGuestMentalModelInput = {
   now?: number;
   /** When provided, skips internal foldGuestSignals (ADR-040 PDS-4). */
   spine?: GuestSignalSpine;
+  /** Optional table EWMA prior for session duration (L2). */
+  tableTurnoverPriorMinutes?: number | null;
+  /** Override clock context for deterministic tests. */
+  localHour?: number;
+  dayOfWeek?: number;
 };

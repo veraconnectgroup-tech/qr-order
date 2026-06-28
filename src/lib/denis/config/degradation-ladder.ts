@@ -82,11 +82,32 @@ const DISABLED_BY_LEVEL: Record<DegradationLevel, readonly string[]> = {
 
 const STAFF_MESSAGE: Record<DegradationLevel, string> = {
   full: "Denis radi normalno.",
-  reduced: "Denis radi u smanjenom modu — samo naručivanje.",
+  reduced: "Denis radi sporije, osnovne funkcije aktivne.",
   essential: "Denis samo prima narudžbe.",
   fallback: "Denis na autopilotu — samo basic narudžbe.",
   offline: "Denis privremeno nedostupan — gosti vide statični meni.",
 };
+
+export type DegradationFeatureId =
+  | "proactive_nudges"
+  | "upsell"
+  | "scene_intelligence"
+  | "menu_personalization"
+  | "reorder"
+  | "tips"
+  | "llm"
+  | "denis";
+
+export function isDegradationFeatureDisabled(
+  level: DegradationLevel,
+  featureId: DegradationFeatureId | string
+): boolean {
+  return DISABLED_BY_LEVEL[level].includes(featureId);
+}
+
+export function degradationAllowsLlm(level: DegradationLevel): boolean {
+  return !isDegradationFeatureDisabled(level, "llm");
+}
 
 export function degradationLevelIndex(level: DegradationLevel): number {
   return DEGRADATION_LEVEL_ORDER.indexOf(level);

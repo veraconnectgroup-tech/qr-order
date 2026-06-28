@@ -41,8 +41,10 @@ const MODULE_LEVEL_MAP_SET_RE =
   /^(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Map|Set)\s*[<(]/m;
 const PERCEIVE_GUEST_CHAT_TURN_FN_IMPORT_RE =
   /import\s+(?:type\s+)?\{[^}]*\bperceiveGuestChatTurn\b/;
-const PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLER =
-  "src/lib/denis/runtime/run-denis-turn.ts";
+const PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLERS = new Set([
+  "src/lib/denis/runtime/run-denis-turn.ts",
+  "src/lib/denis/runtime/phases/run-tde-perceive.ts",
+]);
 const CREATE_ORDER_IMPORT_RE = /from\s+["']@\/lib\/orders\/create-order["']/;
 
 function walkTsFiles(dir: string): string[] {
@@ -180,7 +182,7 @@ function checkPerceiveGuestChatTurnSingleCaller(report: ComplianceReport): void 
     }
     const content = readFileSync(file, "utf8");
     if (!PERCEIVE_GUEST_CHAT_TURN_FN_IMPORT_RE.test(content)) continue;
-    if (normalized !== PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLER) {
+    if (!PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLERS.has(normalized)) {
       pushIssue(report, {
         severity: "error",
         code: "PERCEIVE_GUEST_CHAT_TURN_SINGLE_CALLER",

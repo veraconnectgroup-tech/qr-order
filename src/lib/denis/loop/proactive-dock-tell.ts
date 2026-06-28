@@ -14,15 +14,41 @@ export type ProactiveNudgeKind =
   | "browse_follow_up"
   | "bill_prompt"
   | "order_delay"
+  | "order_eta_update"
+  | "order_ready"
+  | "order_ready_notify"
+  | "kitchen_busy"
+  | "kitchen_busy_preorder"
+  | "cooking_grill_started"
+  | "cooking_plating"
+  | "station_bottleneck_avoid"
+  | "drink_refill"
+  | "drink_with_food"
+  | "sommelier_pairing"
+  | "sommelier_refill"
+  | "party_drink_gap"
+  | "round_two"
+  | "happy_hour_upsell"
   | "popularity_pair"
-  | "party_incomplete";
+  | "party_incomplete"
+  | "cart_abandonment_prevention"
+  | "google_review"
+  | "internal_feedback"
+  | "scroll_search"
+  | "scroll_category"
+  | "scroll_bottom";
 
 const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
   "waiter_gap",
   "attention_handoff",
   "guest_welcome",
   "browse_follow_up",
+  "order_ready_notify",
+  "order_ready",
+  "cooking_plating",
+  "cooking_grill_started",
   "slow_kitchen",
+  "order_eta_update",
   "order_delay",
   "dessert_nudge",
   "bill_prompt",
@@ -38,7 +64,12 @@ export function proactiveDockMarkState(kind: ProactiveNudgeKind): SceneMarkState
   if (
     kind === "waiter_gap" ||
     kind === "attention_handoff" ||
+    kind === "order_ready_notify" ||
+    kind === "order_ready" ||
+    kind === "cooking_plating" ||
+    kind === "cooking_grill_started" ||
     kind === "slow_kitchen" ||
+    kind === "order_eta_update" ||
     kind === "order_delay"
   ) {
     return "think";

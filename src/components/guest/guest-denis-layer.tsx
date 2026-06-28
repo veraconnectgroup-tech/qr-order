@@ -15,8 +15,9 @@ import {
 } from "@/lib/guest/denis-scene-turn";
 import { hapticClick } from "@/lib/haptics";
 import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
+import { detectClientAccessibilitySignals } from "@/lib/guest/detect-client-accessibility";
 import { requestGuestWaiterCall } from "@/lib/guest/request-waiter-call";
-import { TABLE_ACTION_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
+import { TABLE_ACTION_CHIP_IDS, PHASE_SCENE_CHIP_IDS } from "@/lib/scene/resolve-table-actions";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
 import type { Scene } from "@/lib/scene/types";
@@ -24,6 +25,7 @@ import type { AllergenId } from "@/lib/allergens";
 import type { AiSheetAllergyId, AiSheetSelections } from "@/lib/ai/guest-sheet-preferences";
 import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
 import type { MenuSection } from "@/lib/menu-section";
+import type { GuestReorderCartItem } from "@/lib/guest/execute-guest-reorder";
 
 const DenisGuestDock = dynamic(
   () =>
@@ -53,6 +55,14 @@ const GuestSessionBillSheet = dynamic(
   () =>
     import("@/components/guest/guest-session-bill-sheet").then((m) => ({
       default: m.GuestSessionBillSheet,
+    })),
+  { ssr: false }
+);
+
+const GuestLoyaltyOverlay = dynamic(
+  () =>
+    import("@/components/guest/guest-loyalty-overlay").then((m) => ({
+      default: m.GuestLoyaltyOverlay,
     })),
   { ssr: false }
 );
@@ -117,6 +127,7 @@ export function GuestDenisLayer({
   orderMoreChipAction = "navigate",
   getBrowsingContext,
   onChatOpenChange,
+  onGuestLanguageDetected,
   onSceneTurnResult,
   onSceneChipSelections,
   onInlineAddProduct,
@@ -148,9 +159,11 @@ export function GuestDenisLayer({
   orderMoreChipAction?: "navigate" | "scroll";
   getBrowsingContext?: () => string | null;
   onChatOpenChange?: (open: boolean) => void;
+  onGuestLanguageDetected?: (language: string) => void;
   onSceneTurnResult?: (result: GuestDenisTurnResult) => void;
   onSceneChipSelections?: (selections: AiSheetSelections) => void;
   onInlineAddProduct?: (productId: string) => void;
+  onApplyReorderItems?: (items: GuestReorderCartItem[]) => void;
   menuChat?: GuestDenisMenuChatProps;
 }) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
@@ -208,6 +221,7 @@ export function GuestDenisLayer({
           browsingContext: getBrowsingContext?.() ?? undefined,
           selections: input.selections ?? undefined,
           allowOrdering: !orderingDisabled,
+          accessibilitySignals: detectClientAccessibilitySignals(),
         });
         onSceneTurnResult?.(result);
         await refreshGuestSceneView();
@@ -245,7 +259,31 @@ export function GuestDenisLayer({
         return;
       }
 
+      if (chipId === "tip-leave") {
+        setBillSheetOpen(true);
+        return;
+      }
+
+      if (chipId === "tip-skip") {
+        return;
+      }
+
       if (chipId === TABLE_ACTION_CHIP_IDS.viewBill) {
+        setBillSheetOpen(true);
+        return;
+      }
+
+      if (chipId === PHASE_SCENE_CHIP_IDS.splitBill) {
+        setBillSheetOpen(true);
+        return;
+      }
+
+      if (chipId === PHASE_SCENE_CHIP_IDS.viewMenu) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      if (chipId === "pay-online") {
         setBillSheetOpen(true);
         return;
       }
@@ -290,6 +328,7 @@ export function GuestDenisLayer({
               structuredIntent: handoffChip.structuredIntent,
               handoffPaymentMethod: handoffChip.handoffPaymentMethod,
               allowOrdering: !orderingDisabled,
+              accessibilitySignals: detectClientAccessibilitySignals(),
             });
             if (result.openPaymentSheet) {
               setBillSheetOpen(true);
@@ -370,6 +409,12 @@ export function GuestDenisLayer({
 
   return (
     <>
+      <GuestLoyaltyOverlay
+        locationId={locationId}
+        guestToken={deviceFingerprint}
+        enabled={enabled}
+      />
+
       <AiConciergeChat
         open={aiChatOpen}
         onOpenChange={handleAiChatOpenChange}
@@ -400,6 +445,7 @@ export function GuestDenisLayer({
         onOpenProductDetail={menuChat?.onOpenProductDetail}
         onRecommendations={menuChat?.onRecommendations}
         onSaveAllergies={menuChat?.onSaveAllergies}
+        onGuestLanguageDetected={onGuestLanguageDetected}
       />
 
       {!aiChatOpen ? (
@@ -452,6 +498,7 @@ export function GuestDenisLayer({
             paymentAtBarEnabled={paymentAtBarEnabled}
             paymentCardAtTableEnabled={paymentCardAtTableEnabled}
             inPersonPaymentLocation={inPersonPaymentLocation}
+            smartTipOffer={view?.smartTipOffer ?? null}
           />
         </>
       ) : null}

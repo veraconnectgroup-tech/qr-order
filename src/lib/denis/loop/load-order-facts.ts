@@ -1,21 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrderFact } from "@/lib/denis/loop/types";
-
-type RawOrderRow = {
-  id: string;
-  order_number: number | null;
-  status: string;
-  payment_status: string;
-  estimated_prep_minutes: number | null;
-  created_at: string;
-  order_items: Array<{
-    id: string;
-    product_id: string | null;
-    product_name: string;
-    quantity: number;
-    total: number | string;
-  }> | null;
-};
+import { parseOrderFactRows } from "@/lib/supabase/parse-order-rows";
 
 function lineTotalCents(total: number | string): number {
   const value = typeof total === "string" ? Number.parseFloat(total) : total;
@@ -38,6 +23,7 @@ export async function loadOrderFactsForSession(
       payment_status,
       estimated_prep_minutes,
       created_at,
+      order_source,
       order_items (id, product_id, product_name, quantity, total)
     `
     )
@@ -49,13 +35,14 @@ export async function loadOrderFactsForSession(
     throw new Error(error.message);
   }
 
-  return ((orders ?? []) as unknown as RawOrderRow[]).map((order) => ({
+  return parseOrderFactRows(orders).map((order) => ({
     id: order.id,
     orderNumber: order.order_number,
     status: order.status,
     paymentStatus: order.payment_status,
     estimatedPrepMinutes: order.estimated_prep_minutes,
     createdAt: order.created_at,
+    orderSource: order.order_source ?? null,
     items: (order.order_items ?? []).map((item) => ({
       orderItemId: item.id,
       productId: item.product_id,

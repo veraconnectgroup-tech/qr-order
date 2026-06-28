@@ -68,20 +68,25 @@ export {
 export type { DenisSkillId, SkillDefinition } from "@/lib/denis/kernel/skill-registry";
 
 export {
+  allergySafeMenuProductIds,
   buildVenueKnowledgeGraph,
+  explainPopularProducts,
   explainProduct,
   invalidateVenueKnowledgeGraphCache,
   loadVenueKnowledgeGraph,
+  matchProductsInMessage,
   pairingFor,
   pairingForSafe,
   safeForAllergies,
   substituteFor,
+  substitutesForUnavailable,
 } from "@/lib/denis/kernel/vkg";
 export type {
   VenueKnowledgeGraph,
   VkgPairingSuggestion,
   VkgProductExplain,
   VkgSubstituteSuggestion,
+  VkgUnavailableSubstitute,
 } from "@/lib/denis/kernel/vkg";
 
 export {

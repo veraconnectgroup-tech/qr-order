@@ -20,9 +20,36 @@ export {
 export {
   decideTurnPlan,
   isCasualSocialGuestMessage,
+  isVagueRecommendMessage,
   looksLikeOrderLine,
   turnPlanAllowsUpsell,
 } from "@/lib/denis/cognition/tde/decide-turn-plan";
+
+export {
+  classifyGuestIntent,
+  classifyGuestIntentRegex,
+  runIntentRouterAbEval,
+  SemanticIntentCache,
+  INTENT_ROUTER_AB_FIXTURES,
+  type GuestRoutedIntent,
+  type IntentRouteTier,
+  type SemanticIntentResult,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
+
+export {
+  modelTierForScore,
+  routeTurnModel,
+  runModelRouterEval,
+  ModelEscalationRegistry,
+  MODEL_ROUTER_EVAL_FIXTURES,
+  type DenisModelTier,
+  type ModelRouteDecision,
+} from "@/lib/denis/cognition/tde/model-router";
+
+export {
+  scoreTurnComplexity,
+  type TurnComplexityScore,
+} from "@/lib/denis/cognition/tde/turn-complexity-scorer";
 
 export {
   buildInterpretationTask,

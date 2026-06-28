@@ -46,7 +46,7 @@ export function combineManualDrafts(
   };
 }
 
-/** Guest prompt when another device at the table added items (M12). */
+/** Guest prompt when another device at the table added items (M12 / G3). */
 export function buildPeerAddedPrompt(lines: DenisCartLine[]): string | null {
   if (lines.length === 0) return null;
 
@@ -55,5 +55,6 @@ export function buildPeerAddedPrompt(lines: DenisCartLine[]): string | null {
   ];
   if (names.length === 0) return null;
 
-  return `Tvoj drug je dodao ${joinNames(names)} — da uključim u narudžbinu?`;
+  const items = joinNames(names);
+  return `Vidim da je neko već dodao ${items} — hoćete li još nešto?`;
 }

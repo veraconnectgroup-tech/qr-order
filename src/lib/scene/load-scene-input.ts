@@ -10,11 +10,21 @@ import {
   deriveGuestSituation,
   situationSupportChips,
 } from "./derive-guest-situation";
-import { resolveTableActionChips } from "./resolve-table-actions";
-import { composeScene, deriveSessionPhase } from "./compose-scene";
+import { resolvePhaseSceneChips, resolveTableActionChips } from "./resolve-table-actions";
 import { extractPersistedSceneLayers } from "./extract-scene-layer-state";
+import {
+  composeScene,
+  deriveSessionPhase,
+  enrichComposeSceneInput,
+  type SceneIntelligenceContext,
+} from "./compose-scene";
+import { loadVenueKnowledgeGraph } from "@/lib/denis/kernel/vkg/load-graph";
+import { initDraftFromStorage } from "@/lib/ai/ordering/draft-engine";
 import type { ComposeSceneInput, Scene } from "./types";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
+import { getAvailablePaymentMethods } from "@/lib/payment-methods";
+import { isTerminalPaymentEligible } from "@/lib/stripe/terminal-guest-copy";
+import { parseComposeSceneSessionRow } from "@/lib/supabase/parse-session-rows";
 
 const KITCHEN_OPEN_STATUSES = new Set([
   "pending",
@@ -30,6 +40,10 @@ type LoadSceneOptions = {
   proactiveBanner?: ComposeSceneInput["banners"][number] | null;
   chips?: ComposeSceneInput["chips"];
   inlineRecommendations?: ComposeSceneInput["inlineRecommendations"];
+  phase?: ComposeSceneInput["phase"];
+  cartProductIds?: string[];
+  sceneIntelligenceEnabled?: boolean;
+  language?: string;
 };
 
 function defaultOnboardingChips(): ComposeSceneInput["chips"] {
@@ -53,9 +67,19 @@ function resolveSceneChips(input: {
   phase: ComposeSceneInput["phase"];
   situation: ComposeSceneInput["situation"];
   hasUnpaidOrders: boolean;
+  sceneIntelligenceEnabled: boolean;
+  language?: string;
 }): ComposeSceneInput["chips"] {
   if (input.override?.length) return input.override;
   if (input.persisted.length) return input.persisted;
+
+  if (input.sceneIntelligenceEnabled) {
+    return resolvePhaseSceneChips({
+      phase: input.phase,
+      language: input.language,
+      hasUnpaidOrders: input.hasUnpaidOrders,
+    });
+  }
 
   const tableActions = resolveTableActionChips({
     phase: input.phase,
@@ -109,7 +133,13 @@ export async function loadComposeSceneInput(
         id,
         org_id,
         ai_concierge_enabled,
-        organization:organizations!inner(name)
+        payment_online_enabled,
+        payment_at_bar_enabled,
+        payment_card_at_table_enabled,
+        organization:organizations!inner(
+          name,
+          stripe_onboarded
+        )
       )
     `
     )
@@ -118,21 +148,7 @@ export async function loadComposeSceneInput(
 
   if (sessionError || !sessionRow) return null;
 
-  const session = sessionRow as unknown as {
-    id: string;
-    status: string;
-    access_state: string | null;
-    session_token: string;
-    table_id: string;
-    location_id: string;
-    table: { name: string };
-    location: {
-      id: string;
-      org_id: string;
-      ai_concierge_enabled: boolean;
-      organization: { name: string };
-    };
-  };
+  const session = parseComposeSceneSessionRow(sessionRow);
 
   const locationId = session.location.id;
   const tableId = session.table_id;
@@ -147,7 +163,7 @@ export async function loadComposeSceneInput(
         .maybeSingle(),
       admin
         .from("ai_sessions")
-        .select("id, status")
+        .select("id, status, order_draft")
         .eq("session_token", session.session_token)
         .eq("table_id", tableId)
         .eq("status", "active")
@@ -161,6 +177,8 @@ export async function loadComposeSceneInput(
           status,
           payment_status,
           estimated_prep_minutes,
+          created_at,
+          total,
           order_items (product_name, quantity)
         `
         )
@@ -180,10 +198,16 @@ export async function loadComposeSceneInput(
     status: string;
     payment_status: string;
     estimated_prep_minutes: number | null;
+    created_at: string;
+    total: number;
     order_items: Array<{ product_name: string; quantity: number }> | null;
   }>;
 
-  const hasUnpaidOrders = orderRows.some(
+  const amountDue = orderRows
+    .filter((o) => !isPaidPaymentStatus(o.payment_status))
+    .reduce((sum, o) => sum + Number(o.total), 0);
+
+  const hasUnpaidOrders = amountDue > 0 || orderRows.some(
     (o) => !isPaidPaymentStatus(o.payment_status)
   );
 
@@ -224,13 +248,13 @@ export async function loadComposeSceneInput(
   const config = denisEnabled
     ? await loadConciergeConfigForLocation(locationId)
     : null;
-  const { venueOps } = denisEnabled
+  const { venueOps, opsEffects } = denisEnabled
     ? await loadEffectiveVenueOps(admin, {
         locationId,
         tableId,
         config: config!,
       })
-    : { venueOps: null };
+    : { venueOps: null, opsEffects: null };
 
   const banners: ComposeSceneInput["banners"] = [];
 
@@ -268,6 +292,14 @@ export async function loadComposeSceneInput(
     });
   }
 
+  if (opsEffects?.groupBillEnabled && !commerce?.bill_settled) {
+    banners.push({
+      id: "group-bill-split",
+      message: "Grupni račun — podelite račun sa gostima za stolom.",
+      action: "view_bill",
+    });
+  }
+
   if (latestPaidOrder && commerce) {
     const moment = resolveExperienceMoment({
       paymentStatus: latestPaidOrder.payment_status,
@@ -286,11 +318,24 @@ export async function loadComposeSceneInput(
     }
   }
 
-  return {
+  const aiSessionRow = aiSessions?.[0] as
+    | { order_draft?: unknown }
+    | undefined;
+  const draftItems = initDraftFromStorage(aiSessionRow?.order_draft ?? null).items;
+  const cartProductIds =
+    opts.cartProductIds ??
+    draftItems
+      .map((item) => item.productId)
+      .filter((id): id is string => Boolean(id));
+
+  const sceneIntelligenceEnabled =
+    opts.sceneIntelligenceEnabled ?? !opsEffects?.skipUpsell;
+
+  const baseInput: ComposeSceneInput = {
     sessionId,
     tableName: session.table.name,
     venueName: session.location.organization.name,
-    phase,
+    phase: opts.phase ?? phase,
     markState: opts.markState ?? "idle",
     denisActive,
     sheetOpen: opts.sheetOpen ?? false,
@@ -307,12 +352,74 @@ export async function loadComposeSceneInput(
       persisted: persistedLayers.chips,
       denisEnabled,
       denisActive,
-      phase,
+      phase: opts.phase ?? phase,
       situation,
       hasUnpaidOrders,
+      sceneIntelligenceEnabled,
+      language: opts.language,
     }),
     situation,
   };
+
+  if (!sceneIntelligenceEnabled) {
+    return baseInput;
+  }
+
+  const vkgGraph = denisEnabled
+    ? await loadVenueKnowledgeGraph(locationId)
+    : null;
+
+  const locationRow = sessionRow as unknown as {
+    location: {
+      payment_online_enabled: boolean;
+      payment_at_bar_enabled: boolean;
+      payment_card_at_table_enabled: boolean;
+      organization: { stripe_onboarded: boolean };
+    };
+  };
+
+  const stripeOnboarded = Boolean(
+    locationRow.location.organization.stripe_onboarded
+  );
+  const availableMethods = getAvailablePaymentMethods({
+    stripeOnboarded,
+    stripePublishableKey: Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
+    paymentOnlineEnabled: locationRow.location.payment_online_enabled,
+    paymentAtBarEnabled: locationRow.location.payment_at_bar_enabled,
+    paymentCardAtTableEnabled: locationRow.location.payment_card_at_table_enabled,
+  });
+
+  const partySize = Math.max(
+    opsEffects?.groupBillEnabled ? 2 : 0,
+    aiSessions?.length ?? 0
+  );
+
+  const intelCtx: SceneIntelligenceContext = {
+    enabled: true,
+    phase: baseInput.phase,
+    language: opts.language,
+    cartProductIds,
+    vkgGraph,
+    orders: orderRows.map((order) => ({
+      id: order.id,
+      status: order.status,
+      createdAt: order.created_at,
+      estimatedPrepMinutes: order.estimated_prep_minutes,
+    })),
+    hasUnpaidOrders,
+    slowKitchen: baseInput.phase === "waiting",
+    amountDue: Math.round(amountDue * 100) / 100,
+    partySize: partySize >= 2 ? partySize : undefined,
+    availableMethods,
+    terminalEligible: isTerminalPaymentEligible({
+      stripeOnboarded,
+      paymentCardAtTableEnabled:
+        locationRow.location.payment_card_at_table_enabled,
+    }),
+    paymentAtBarEnabled: locationRow.location.payment_at_bar_enabled,
+  };
+
+  return enrichComposeSceneInput(baseInput, intelCtx);
 }
 
 export async function previewGuestScene(

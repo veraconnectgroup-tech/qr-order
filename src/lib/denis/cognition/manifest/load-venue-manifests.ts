@@ -1,13 +1,7 @@
 import { parseVenueManifest } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-type LocationManifestRow = {
-  venue_manifest: unknown;
-  organization: {
-    venue_manifest: unknown;
-  } | null;
-};
+import { parseLocationVenueManifestRow } from "@/lib/supabase/parse-location-rows";
 
 export type VenueManifestBundle = {
   locationRaw: unknown;
@@ -34,7 +28,7 @@ export async function loadVenueManifestsForLocation(
     return { locationRaw: null, orgRaw: null };
   }
 
-  const row = data as unknown as LocationManifestRow;
+  const row = parseLocationVenueManifestRow(data);
   return {
     locationRaw: row.venue_manifest ?? null,
     orgRaw: row.organization?.venue_manifest ?? null,

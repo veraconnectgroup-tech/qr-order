@@ -91,3 +91,17 @@ export function countTimedOutProvisionals(
   }
   return count;
 }
+
+/** Provisional → final merge when guest confirms order (Prompt 39). */
+export function mergeProvisionalToFinal(
+  map: ProvisionalMap,
+  clientOrderId: string,
+  final: { orderId: string; orderNumber: number }
+): ProvisionalMap {
+  return applyPosBroadcastEvent(map, {
+    type: "order_confirmed",
+    clientOrderId,
+    orderId: final.orderId,
+    orderNumber: final.orderNumber,
+  });
+}

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { LanguageSplash } from "@/components/guest/language-splash";
+import { useVenueThemeOptional } from "@/components/theme/venue-theme-context";
 import {
   persistGuestLangChoice,
   readGuestLangChoice,
@@ -19,6 +20,7 @@ import {
   localizedName,
 } from "@/lib/i18n/menu-locale";
 import { t, type MenuLocale, type TranslationKey } from "@/lib/i18n/translations";
+import { replaceConciergeDisplayName } from "@/lib/theme/theme-resolver";
 
 type AppLocaleContextValue = {
   menuLocale: MenuLocale;
@@ -53,6 +55,8 @@ export function AppLocaleProvider({
   const [ready, setReady] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [isEnglish, setIsEnglishState] = useState(false);
+  const venueTheme = useVenueThemeOptional();
+  const displayName = venueTheme?.displayName;
 
   useEffect(() => {
     const saved = readGuestLangChoice(locationId);
@@ -87,8 +91,12 @@ export function AppLocaleProvider({
       menuLocale,
       isEnglish,
       setIsEnglish,
-      tUI: (key: TranslationKey | string, vars?: Record<string, string | number>) =>
-        t(key, menuLocale, isEnglish, vars),
+      tUI: (key: TranslationKey | string, vars?: Record<string, string | number>) => {
+        const translated = t(key, menuLocale, isEnglish, vars);
+        return displayName
+          ? replaceConciergeDisplayName(translated, displayName)
+          : translated;
+      },
       tName: (item: { name: string; name_en?: string | null }) =>
         localizedName(item, isEnglish),
       tDescription: (item: {
@@ -96,7 +104,7 @@ export function AppLocaleProvider({
         description_en?: string | null;
       }) => localizedDescription(item, isEnglish),
     }),
-    [menuLocale, isEnglish, setIsEnglish]
+    [menuLocale, isEnglish, setIsEnglish, displayName]
   );
 
   if (!ready) {

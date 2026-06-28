@@ -10,18 +10,9 @@ import { cn } from "@/lib/utils";
 import { hapticClick, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
-import type { OrderItem, OrderItemModifier } from "@/types";
+import type { WaiterDetailOrderRow } from "@/lib/dashboard/waiter-table-data";
 
-export type WaiterDetailOrder = {
-  id: string;
-  order_number: number;
-  status: string;
-  total: number;
-  created_at: string;
-  order_items: Array<
-    OrderItem & { order_item_modifiers: OrderItemModifier[] }
-  >;
-};
+export type WaiterDetailOrder = WaiterDetailOrderRow;
 
 const SWIPE_ACTION_WIDTH = 112;
 const SWIPE_THRESHOLD = 72;

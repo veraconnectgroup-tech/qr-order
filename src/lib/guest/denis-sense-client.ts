@@ -1,7 +1,12 @@
 import type { GuestManualCartSnapshot } from "@/lib/guest/manual-cart-snapshot";
 
 export type DenisSenseProactiveNudge = {
-  kind: "browse_nudge" | "drink_pairing" | "dessert_nudge" | "slow_kitchen";
+  kind:
+    | "browse_nudge"
+    | "drink_pairing"
+    | "dessert_nudge"
+    | "slow_kitchen"
+    | "cart_abandonment_prevention";
   message: string;
   orderId?: string;
   prompt?: string;

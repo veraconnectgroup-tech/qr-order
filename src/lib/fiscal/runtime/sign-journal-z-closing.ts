@@ -6,6 +6,7 @@ import {
   isFiskalyConfigured,
 } from "@/lib/fiscal/fiskaly";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toJson } from "@/lib/supabase/json";
 import type { Json } from "@/types/database";
 import type { TseSignatureResult } from "@/lib/fiscal/sign-transaction";
 import {
@@ -319,7 +320,7 @@ export async function signFiscalJournalZClosing(
     .from("daily_closings" as never)
     .update({
       tse_closing_signature: signatureValue,
-      tse_closing_data: tseData as unknown as Json,
+      tse_closing_data: toJson(tseData),
       fiscal_transaction_id: fiscalTransactionId,
       z_nr: loaded.tx.z_nr,
     } as never)

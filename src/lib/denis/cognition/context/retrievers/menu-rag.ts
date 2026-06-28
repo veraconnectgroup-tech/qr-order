@@ -96,8 +96,14 @@ function rankMenuRagProducts(
   maxResults: number,
   options: MenuRagRetrieveOptions = {}
 ): AiCatalogProduct[] {
+  const effectiveExcluded = new Set(excluded);
+  options.sessionExcludedAllergens?.forEach((allergen) => {
+    const normalized = normalizeAllergenId(allergen);
+    if (normalized) effectiveExcluded.add(normalized);
+  });
+
   const keywordMatches = searchCatalogProducts(catalog, query)
-    .filter((product) => passesAllergenFilter(product, excluded))
+    .filter((product) => passesAllergenFilter(product, effectiveExcluded))
     .slice(0, maxResults);
 
   const embeddingMatches =
@@ -110,18 +116,18 @@ function rankMenuRagProducts(
           options.embeddings,
           maxResults,
           options.queryVector
-        ).filter((product) => passesAllergenFilter(product, excluded))
+        ).filter((product) => passesAllergenFilter(product, effectiveExcluded))
       : [];
 
   const primary =
     keywordMatches.length > 0 ? keywordMatches : embeddingMatches;
 
-  if (excluded.size === 0) {
+  if (effectiveExcluded.size === 0) {
     return primary.slice(0, maxResults);
   }
 
   const allergenSafe = Object.values(catalog)
-    .filter((product) => passesAllergenFilter(product, excluded))
+    .filter((product) => passesAllergenFilter(product, effectiveExcluded))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   if (primary.length > 0) {

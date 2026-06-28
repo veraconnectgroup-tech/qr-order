@@ -38,6 +38,23 @@ jobs:
       - name: Denis golden eval
         run: pnpm eval:denis
 
+      - name: Layer 12 verify (docs, i18n, a11y, eval gate)
+        run: pnpm verify:layer12
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+
+      - name: Denis eval gate
+        run: pnpm eval:gate
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+
+      - name: Performance budget check
+        run: pnpm perf:check
+
       - name: Record Denis eval run (main, optional)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         continue-on-error: true
@@ -81,6 +98,15 @@ jobs:
 
       - name: E2E tests
         run: pnpm test:e2e
+        env:
+          CI: true
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'placeholder' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder' }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+
+      - name: Guest a11y (axe WCAG 2.1 AA)
+        run: pnpm test:e2e:a11y
         env:
           CI: true
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}

@@ -2,6 +2,7 @@
 
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { OrderBillPanel } from "@/components/guest/order-bill-panel";
+import type { SmartTipOffer } from "@/lib/denis/loop/view-types";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { GUEST_SHEET_OVERLAY } from "@/components/guest/guest-sheet-styles";
 import {
@@ -23,6 +24,7 @@ export function GuestSessionBillSheet({
   paymentAtBarEnabled,
   paymentCardAtTableEnabled,
   inPersonPaymentLocation = "bar",
+  smartTipOffer = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +37,7 @@ export function GuestSessionBillSheet({
   paymentAtBarEnabled: boolean;
   paymentCardAtTableEnabled: boolean;
   inPersonPaymentLocation?: InPersonPaymentLocation;
+  smartTipOffer?: SmartTipOffer | null;
 }) {
   const { tUI } = useAppLocale();
 
@@ -62,6 +65,7 @@ export function GuestSessionBillSheet({
             isPaid={false}
             slug={slug}
             onPaid={() => onOpenChange(false)}
+            smartTipOffer={smartTipOffer}
           />
         </div>
       </SheetContent>

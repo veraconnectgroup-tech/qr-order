@@ -5,12 +5,26 @@ import {
   type ConversationMode,
   type CommercePressure,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
+import {
+  resolveAdaptiveContextBudget,
+  type TurnComplexity,
+} from "@/lib/denis/cognition/context/context-budget";
+import type { ConversationGraph } from "@/lib/denis/cognition/conversation/conversation-graph";
+import { buildTopicInterpretationDirective } from "@/lib/denis/cognition/conversation/topic-tracker";
 import type { DenisGoal } from "@/lib/denis/kernel/goal-types";
 import type {
   InterpretationEvidenceBudget,
   InterpretationSchema,
   InterpretationTask,
 } from "@/lib/denis/cognition/tde/interpretation-task-types";
+
+export type InterpretationBudgetInput = {
+  guestMessage?: string;
+  conversationGraph?: ConversationGraph | null;
+  maxContextTokens?: number;
+  minContextTokens?: number;
+  adaptiveContext?: boolean;
+};
 
 function hasCommercePressure(beliefs: BeliefGraph): boolean {
   const pressure = getBeliefValue<CommercePressure>(
@@ -52,19 +66,48 @@ function directiveBlock(
 }
 
 function baseBudget(
-  partial: Omit<InterpretationEvidenceBudget, "pointers"> & {
+  partial: Omit<
+    InterpretationEvidenceBudget,
+    "pointers" | "contextTokenBudget" | "turnComplexity"
+  > & {
     pointers?: InterpretationEvidenceBudget["pointers"];
+    contextTokenBudget?: number;
+    turnComplexity?: TurnComplexity;
   }
 ): InterpretationEvidenceBudget {
   return {
     pointers: partial.pointers ?? ["commerce.*", "transcript.window", "situation.pack"],
+    contextTokenBudget: partial.contextTokenBudget ?? 2000,
+    turnComplexity: partial.turnComplexity ?? "moderate",
     ...partial,
+  };
+}
+
+function resolveTaskContextBudget(
+  beliefs: BeliefGraph,
+  budgetInput?: InterpretationBudgetInput
+): Pick<InterpretationEvidenceBudget, "contextTokenBudget" | "turnComplexity"> {
+  const guestMessage = budgetInput?.guestMessage ?? "";
+  const resolved = resolveAdaptiveContextBudget({
+    guestMessage,
+    maxContextTokens: budgetInput?.maxContextTokens ?? 2000,
+    minContextTokens: budgetInput?.minContextTokens ?? 500,
+    adaptiveEnabled: budgetInput?.adaptiveContext,
+    beliefs,
+  });
+  return {
+    contextTokenBudget: resolved.tokenBudget,
+    turnComplexity: resolved.complexity,
   };
 }
 
 function transactionalTask(
   goalType: DenisGoal["type"],
-  reason: string
+  reason: string,
+  contextBudget: Pick<
+    InterpretationEvidenceBudget,
+    "contextTokenBudget" | "turnComplexity"
+  >
 ): InterpretationTask {
   const schema: InterpretationSchema =
     goalType === "CLARIFY_SLOT" ? "slot_reply" : "transactional_order";
@@ -80,6 +123,7 @@ function transactionalTask(
       includeCatalogRag: true,
       includePlaybook: true,
       omitFullMenuWhenNoRag: false,
+      ...contextBudget,
     }),
   };
 }
@@ -88,7 +132,11 @@ function relationalTask(
   goalType: DenisGoal["type"],
   reason: string,
   schema: InterpretationSchema = "relational_social",
-  budget?: Partial<InterpretationEvidenceBudget>
+  budget?: Partial<InterpretationEvidenceBudget>,
+  contextBudget?: Pick<
+    InterpretationEvidenceBudget,
+    "contextTokenBudget" | "turnComplexity"
+  >
 ): InterpretationTask {
   return {
     schema,
@@ -101,8 +149,24 @@ function relationalTask(
       includeCatalogRag: schema === "upsell_nudge",
       includePlaybook: true,
       omitFullMenuWhenNoRag: true,
+      ...contextBudget,
       ...budget,
     }),
+  };
+}
+
+function withTopicDirective(
+  task: InterpretationTask,
+  budgetInput?: InterpretationBudgetInput
+): InterpretationTask {
+  const topicBlock = buildTopicInterpretationDirective({
+    graph: budgetInput?.conversationGraph,
+    guestMessage: budgetInput?.guestMessage ?? "",
+  });
+  if (!topicBlock) return task;
+  return {
+    ...task,
+    directiveBlock: `${task.directiveBlock}\n${topicBlock}`,
   };
 }
 
@@ -112,9 +176,12 @@ function relationalTask(
  */
 export function buildInterpretationTask(
   topGoal: DenisGoal | null,
-  beliefs: BeliefGraph
+  beliefs: BeliefGraph,
+  budgetInput?: InterpretationBudgetInput
 ): InterpretationTask | null {
   if (!topGoal) return null;
+
+  const contextBudget = resolveTaskContextBudget(beliefs, budgetInput);
 
   switch (topGoal.type) {
     case "RECONCILE_CART":
@@ -122,20 +189,36 @@ export function buildInterpretationTask(
       return null;
 
     case "CLARIFY_SLOT":
-      return transactionalTask(topGoal.type, "goal.clarify_slot.interpret");
+      return withTopicDirective(
+        transactionalTask(
+          topGoal.type,
+          "goal.clarify_slot.interpret",
+          contextBudget
+        ),
+        budgetInput
+      );
 
     case "COMPLETE_ROUND": {
       const transactional = hasCommercePressure(beliefs);
       if (transactional) {
-        return transactionalTask(
-          topGoal.type,
-          "goal.complete_round.transactional"
+        return withTopicDirective(
+          transactionalTask(
+            topGoal.type,
+            "goal.complete_round.transactional",
+            contextBudget
+          ),
+          budgetInput
         );
       }
-      return relationalTask(
-        topGoal.type,
-        "goal.complete_round.social",
-        "relational_social"
+      return withTopicDirective(
+        relationalTask(
+          topGoal.type,
+          "goal.complete_round.social",
+          "relational_social",
+          undefined,
+          contextBudget
+        ),
+        budgetInput
       );
     }
 
@@ -164,10 +247,13 @@ export function buildInterpretationTask(
             ? "goal.upsell_once.premium"
             : "goal.upsell_once.relational";
 
-      return relationalTask(topGoal.type, reason, "upsell_nudge", {
-        includeCatalogRag: true,
-        omitFullMenuWhenNoRag: true,
-      });
+      return withTopicDirective(
+        relationalTask(topGoal.type, reason, "upsell_nudge", {
+          includeCatalogRag: true,
+          omitFullMenuWhenNoRag: true,
+        }, contextBudget),
+        budgetInput
+      );
     }
 
     case "GUEST_SEATED": {
@@ -178,16 +264,48 @@ export function buildInterpretationTask(
           CORE_BELIEF_KEYS.conversationMode
         ) === "ordering";
       if (transactional) {
-        return transactionalTask(topGoal.type, "goal.guest_seated.ordering");
+        return withTopicDirective(
+          transactionalTask(
+            topGoal.type,
+            "goal.guest_seated.ordering",
+            contextBudget
+          ),
+          budgetInput
+        );
       }
-      return relationalTask(topGoal.type, "goal.guest_seated.social");
+      return withTopicDirective(
+        relationalTask(
+          topGoal.type,
+          "goal.guest_seated.social",
+          undefined,
+          undefined,
+          contextBudget
+        ),
+        budgetInput
+      );
     }
 
     case "HANDOFF":
-      return transactionalTask(topGoal.type, "goal.handoff.transactional");
+      return withTopicDirective(
+        transactionalTask(
+          topGoal.type,
+          "goal.handoff.transactional",
+          contextBudget
+        ),
+        budgetInput
+      );
 
     case "CLOSE_VISIT":
-      return relationalTask(topGoal.type, "goal.close_visit.social");
+      return withTopicDirective(
+        relationalTask(
+          topGoal.type,
+          "goal.close_visit.social",
+          undefined,
+          undefined,
+          contextBudget
+        ),
+        budgetInput
+      );
 
     default:
       return null;

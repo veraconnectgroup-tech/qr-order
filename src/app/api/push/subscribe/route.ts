@@ -24,26 +24,6 @@ const unsubscribeSchema = z.object({
   endpoint: z.string().url().max(2048),
 });
 
-function pushSubscriptionsTable(admin: ReturnType<typeof createAdminClient>) {
-  return admin.from("push_subscriptions" as never) as unknown as {
-    upsert: (
-      row: Record<string, string | null>,
-      options: { onConflict: string }
-    ) => Promise<{ error: { message: string } | null }>;
-    delete: () => {
-      eq: (
-        column: string,
-        value: string
-      ) => {
-        eq: (
-          column: string,
-          value: string
-        ) => Promise<{ error: { message: string } | null }>;
-      };
-    };
-  };
-}
-
 async function staffCanAccessLocation(
   staff: NonNullable<Awaited<ReturnType<typeof getCurrentStaff>>>,
   locationId: string
@@ -100,20 +80,18 @@ export const POST = withErrorHandler(
     }
 
     const admin = createAdminClient();
-    const upsertRow: Record<string, string | null> = {
-      user_id: user.id,
-      staff_id: staff.id,
-      location_id: locationId,
-      endpoint: subscription.endpoint,
-      p256dh: subscription.keys.p256dh,
-      auth: subscription.keys.auth,
-    };
-    const userAgent = req.headers.get("user-agent")?.slice(0, 512);
-    if (userAgent) upsertRow.user_agent = userAgent;
-
-    const { error } = await pushSubscriptionsTable(admin).upsert(upsertRow, {
-      onConflict: "endpoint",
-    });
+    const { error } = await admin.from("push_subscriptions").upsert(
+      {
+        user_id: user.id,
+        staff_id: staff.id,
+        location_id: locationId,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        user_agent: req.headers.get("user-agent")?.slice(0, 512) ?? null,
+      },
+      { onConflict: "endpoint" }
+    );
 
     if (error) {
       return apiError(
@@ -159,7 +137,8 @@ export const DELETE = withErrorHandler(
     }
 
     const admin = createAdminClient();
-    const { error } = await pushSubscriptionsTable(admin)
+    const { error } = await admin
+      .from("push_subscriptions")
       .delete()
       .eq("endpoint", parsed.data.endpoint)
       .eq("user_id", user.id);

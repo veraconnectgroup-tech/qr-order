@@ -7,6 +7,7 @@ import {
   healthHttpStatus,
   runDeepHealthChecks,
 } from "@/lib/health/checks";
+import { withRateLimit } from "@/lib/rate-limit";
 
 async function authorizeDeepHealth(req: NextRequest): Promise<boolean> {
   const secret = process.env.HEALTH_CHECK_SECRET?.trim();
@@ -28,6 +29,9 @@ async function authorizeDeepHealth(req: NextRequest): Promise<boolean> {
 }
 
 export const GET = withErrorHandler("health-deep-get", async (req, _ctx) => {
+  const limited = await withRateLimit(req, "default");
+  if (limited) return limited;
+
   if (!(await authorizeDeepHealth(req))) {
     return apiError("Unauthorized", 401, undefined, noCache());
   }

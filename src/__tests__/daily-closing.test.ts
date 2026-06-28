@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateDailyClosingTotals,
   buildZBonHtml,
   businessDayUtcBounds,
   isCashPaymentMethod,
   yesterdayBusinessDate,
 } from "@/lib/fiscal/daily-closing";
+import { roundMoney } from "@/lib/tax/vat";
 
 const sampleZBon = {
   orgName: "Café Berlin",
@@ -93,5 +95,97 @@ describe("buildZBonHtml", () => {
       tseData: null,
     });
     expect(html).not.toContain("TSE-signiert");
+  });
+});
+
+describe("aggregateDailyClosingTotals", () => {
+  it("sums 10 revenue orders and 1 storno correctly", () => {
+    const orders = [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `o-online-${i}`,
+        status: "delivered",
+        total: 20,
+        tax_amount: 3.19,
+        payment_method: "online",
+        tip_amount: i === 0 ? 5 : 0,
+      })),
+      ...Array.from({ length: 3 }, (_, i) => ({
+        id: `o-cash-${i}`,
+        status: "accepted",
+        total: 10,
+        tax_amount: 1.6,
+        payment_method: "cash",
+        tip_amount: 0,
+      })),
+    ];
+
+    const orderItems = [
+      ...Array.from({ length: 7 }, () => ({ total: 20, tax_rate: 19 })),
+      ...Array.from({ length: 3 }, () => ({ total: 10, tax_rate: 19 })),
+    ];
+
+    const refunds = [
+      {
+        id: "ref-1",
+        total: 25,
+        payment_status: "refunded",
+      },
+    ];
+
+    const totals = aggregateDailyClosingTotals(orders, orderItems, refunds);
+
+    expect(totals.orderCount).toBe(10);
+    expect(totals.refundCount).toBe(1);
+    expect(totals.refundTotal).toBe(25);
+    expect(totals.totalGross).toBe(170);
+    expect(totals.totalCash).toBe(30);
+    expect(totals.totalNonCash).toBe(140);
+    expect(totals.totalTips).toBe(5);
+    expect(totals.totalTax).toBe(roundMoney(7 * 3.19 + 3 * 1.6));
+    expect(totals.vatSummary).toEqual([
+      expect.objectContaining({ rate: 19, gross: 170 }),
+    ]);
+  });
+
+  it("renders Z-Bon HTML with storno row for aggregated day", async () => {
+    const html = await buildZBonHtml({
+      ...sampleZBon,
+      orderCount: 10,
+      refundCount: 1,
+      refundTotal: 25,
+      totalGross: 170,
+      totalCash: 30,
+      totalNonCash: 140,
+    });
+
+    expect(html).toContain("Stornos (1)");
+    expect(html).toContain("Anzahl Transaktionen");
+    expect(html).toContain("10");
+  });
+});
+
+describe("Z-Bon totals", () => {
+  it("matches computed gross from 10 mixed-VAT orders", () => {
+    const orders = Array.from({ length: 10 }, (_, i) => ({
+      total: i % 3 === 0 ? 10 : 20,
+    }));
+    const totalGross = roundMoney(
+      orders.reduce((sum, o) => sum + o.total, 0)
+    );
+    expect(totalGross).toBe(160);
+
+    const cashTotal = roundMoney(
+      orders
+        .filter((_, i) => i % 2 !== 0)
+        .reduce((sum, o) => sum + o.total, 0)
+    );
+    expect(cashTotal).toBe(80);
+  });
+
+  it("renders correct totalGross in Z-Bon HTML", async () => {
+    const html = await buildZBonHtml(sampleZBon);
+    expect(html).toContain("1.250,50");
+    expect(html).toContain("Gesamtumsatz (brutto)");
+    expect(html).toContain("42");
   });
 });

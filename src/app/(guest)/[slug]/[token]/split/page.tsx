@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { SplitPageClient } from "@/components/guest/split-page-client";
+import { parseGuestSplitOrgSlug } from "@/lib/guest/parse-guest-table-rows";
 
 export default async function SplitBillPage({
   params,
@@ -28,13 +29,8 @@ export default async function SplitBillPage({
 
   if (!tableData) notFound();
 
-  const org = (
-    tableData as unknown as {
-      location: { organization: { slug: string } };
-    }
-  ).location.organization;
-
-  if (org.slug !== slug) notFound();
+  const orgSlug = parseGuestSplitOrgSlug(tableData);
+  if (!orgSlug || orgSlug !== slug) notFound();
 
   return (
     <Suspense

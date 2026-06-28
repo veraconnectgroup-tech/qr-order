@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  parseWaiterCallTableRows,
+  WAITER_CALL_TABLE_SELECT,
+} from "@/lib/supabase/query-rows";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import type { WaiterCall } from "@/types";
 
@@ -26,16 +30,13 @@ async function enrichCalls(
 
   const { data: tablesData } = await supabase
     .from("tables")
-    .select("id, name, zone:zones(name)")
+    .select(WAITER_CALL_TABLE_SELECT)
     .eq("location_id", locationId)
     .is("deleted_at", null)
     .in("id", tableIds);
 
   const tableMap = new Map(
-    (tablesData ?? []).map((t) => [
-      (t as { id: string }).id,
-      t as unknown as { name: string; zone: { name: string } | null },
-    ])
+    parseWaiterCallTableRows(tablesData).map((t) => [t.id, t])
   );
 
   return calls.map((call) => ({

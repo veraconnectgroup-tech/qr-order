@@ -19,9 +19,13 @@ describe("mapTurnToSceneOverrides", () => {
         },
       ],
       markState: "idle",
+      phase: "ordering",
+      cartProductIds: ["burger"],
     });
 
     expect(payload.sessionId).toBe("sess-1");
+    expect(payload.phase).toBe("ordering");
+    expect(payload.cartProductIds).toEqual(["burger"]);
     expect(payload.chips).toEqual([
       { id: "chip-ja", label: "Ja" },
       { id: "chip-nein-danke", label: "Nein, danke" },

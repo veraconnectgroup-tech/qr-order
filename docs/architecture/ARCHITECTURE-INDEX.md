@@ -266,6 +266,7 @@ Use **one vocabulary** everywhere (ADR-020 §15):
 
 | PR type | Read |
 |---------|------|
+| Layer 12 (docs, a11y, eval gate, ops) | [CONTRIBUTING.md](../CONTRIBUTING.md) · [DENIS-OPS runbook](../runbooks/DENIS-OPS.md) · `/api/docs` |
 | Any Denis | This index · map §3–4 · ADR-019 · ADR-020 §15–16 |
 | Guest UI | ADR-017 · ADR-007 · target FACE from ADR-019 §2 |
 | Handoff / waiter | ADR-018 |

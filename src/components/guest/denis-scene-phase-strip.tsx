@@ -5,9 +5,11 @@ import type { Scene, SessionPhase } from "@/lib/scene/types";
 
 const PHASE_KEYS: Record<SessionPhase, string> = {
   latent: "scene.phase.latent",
+  waitlist: "scene.phase.waitlist",
   browsing: "scene.phase.browsing",
   ordering: "scene.phase.ordering",
   waiting: "scene.phase.waiting",
+  eating: "scene.phase.eating",
   settling: "scene.phase.settling",
   closed: "scene.phase.closed",
 };

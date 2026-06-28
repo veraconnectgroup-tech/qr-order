@@ -45,7 +45,8 @@ type ChatCompletionResponse = {
 async function callOpenAiOnce(
   model: string,
   messages: OpenAiChatMessage[],
-  signal: AbortSignal
+  signal: AbortSignal,
+  callOptions?: { temperature?: number; maxTokens?: number }
 ): Promise<OpenAiCallResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
@@ -61,8 +62,8 @@ async function callOpenAiOnce(
     body: JSON.stringify({
       model,
       messages,
-      temperature: AI_CONFIG.temperature,
-      max_tokens: AI_CONFIG.maxTokens,
+      temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
+      max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
       response_format: { type: "json_object" },
     }),
     signal,
@@ -97,7 +98,11 @@ async function callOpenAiOnce(
 
 async function callOpenAiWithRetries(
   messages: OpenAiChatMessage[],
-  options?: { model?: string }
+  options?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+  }
 ): Promise<OpenAiCallResult> {
   const primaryModel = options?.model ?? AI_CONFIG.model;
   const models = [primaryModel];
@@ -115,7 +120,11 @@ async function callOpenAiWithRetries(
         const result = await callOpenAiOnce(
           model,
           messages,
-          AbortSignal.timeout(AI_CONFIG.requestTimeoutMs)
+          AbortSignal.timeout(AI_CONFIG.requestTimeoutMs),
+          {
+            temperature: options?.temperature,
+            maxTokens: options?.maxTokens,
+          }
         );
 
         logger.info("OpenAI chat completion", {
@@ -160,15 +169,28 @@ async function callOpenAiWithRetries(
 
 export async function callOpenAiChat(
   messages: OpenAiChatMessage[],
-  options?: { model?: string }
+  options?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    extendedThinking?: boolean;
+  }
 ): Promise<OpenAiCallResult> {
   if (!isOpenAiConfigured()) {
     throw new AiOpenAiError("OpenAI is not configured.");
   }
 
+  const callOptions = options?.extendedThinking
+    ? {
+        temperature: 0.2,
+        maxTokens: Math.max(AI_CONFIG.maxTokens, 1200),
+        ...options,
+      }
+    : options;
+
   return withCircuitBreaker(
     "openai",
-    () => callOpenAiWithRetries(messages, options),
+    () => callOpenAiWithRetries(messages, callOptions),
     () => {
       throw new AiCircuitOpenError();
     }

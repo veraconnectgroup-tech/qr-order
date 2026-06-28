@@ -3,6 +3,7 @@ export {
   AI_BLOCKED_PATTERNS,
   AI_SUPPORTED_LANGUAGES,
   detectGuestMessageLanguage,
+  estimatePromptTokens,
   isOpenAiConfigured,
   menuLanguageLabel,
   resolveAiPromptLanguage,
@@ -13,8 +14,8 @@ export {
   resolveStickyGuestLanguage,
   tForAiGuestLanguage,
 } from "@/lib/ai/guest-language";
-export type { GuestLanguageDetection } from "@/lib/ai/config";
-export { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
+export type { GuestLanguageDetection, DetectGuestMessageLanguageOptions } from "@/lib/ai/config";
+export { buildSystemPrompt, estimateSystemPromptTokens, measureSystemPromptBlocks } from "@/lib/ai/build-system-prompt";
 export { getCachedMenuForLocation, invalidateMenuCache } from "@/lib/ai/menu-cache";
 export { moderateGuestInput } from "@/lib/ai/moderation";
 export {

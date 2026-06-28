@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { OrderPageClient } from "@/components/guest/order-page-client";
+import { parseGuestOrderPageTable } from "@/lib/guest/parse-guest-table-rows";
 
 export default async function OrderPage({
   params,
@@ -39,23 +40,8 @@ export default async function OrderPage({
 
   if (!tableData) notFound();
 
-  const table = tableData as unknown as {
-    id: string;
-    location: {
-      id: string;
-      ai_concierge_enabled: boolean;
-      payment_online_enabled: boolean;
-      payment_at_bar_enabled: boolean;
-      payment_card_at_table_enabled: boolean;
-      google_review_url: string | null;
-      organization: {
-        slug: string;
-        currency: string;
-        stripe_onboarded: boolean;
-        default_tax_percent: number | null;
-      };
-    };
-  };
+  const table = parseGuestOrderPageTable(tableData);
+  if (!table) notFound();
 
   const org = table.location.organization;
   if (org.slug !== slug) notFound();

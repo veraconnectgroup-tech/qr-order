@@ -32,6 +32,8 @@ describe("qr-table-card-print", () => {
     const html = buildQrTableCardPrintHtml({
       venueName: "Skyline Lounge",
       locale: "de",
+      brandColor: "#ff0000",
+      brandSubline: "Mario · Part of Vera Group",
       items: [
         {
           tableName: "T12",
@@ -45,8 +47,9 @@ describe("qr-table-card-print", () => {
     expect(html).toContain("Skyline Lounge — Tischbestellung");
     expect(html).toContain("T12 · Rooftop");
     expect(html).toContain("Scannen zum Bestellen &amp; Bezahlen");
-    expect(html).toContain("Denis · Part of Vera Group");
-    expect(html).toContain('stroke="#f97316"');
+    expect(html).toContain("Mario · Part of Vera Group");
+    expect(html).toContain('stroke="#ff0000"');
+    expect(html).toContain("background: #ff0000");
     expect(html).not.toContain("QR Order");
   });
 });

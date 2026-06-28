@@ -34,12 +34,6 @@ const COMPLIANCE_COLORS: Record<OrgComplianceStatus, string> = {
   critical: "bg-red-500",
 };
 
-function truncateSteuernummer(value: string) {
-  const trimmed = value.trim();
-  if (trimmed.length <= 12) return trimmed;
-  return `${trimmed.slice(0, 10)}…`;
-}
-
 export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -96,10 +90,11 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
             <tr>
               <th className="px-4 py-3">Organization</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Plan</th>
               <th className="px-4 py-3">Orders</th>
               <th className="px-4 py-3">Revenue</th>
+              <th className="px-4 py-3">Denis</th>
               <th className="px-4 py-3">TSE</th>
-              <th className="px-4 py-3">St-Nr</th>
               <th className="px-4 py-3">Stripe</th>
             </tr>
           </thead>
@@ -144,9 +139,37 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                     {org.trial_status}
                   </span>
                 </td>
+                <td className="px-4 py-3 text-xs">
+                  <span className="font-medium text-foreground">{org.plan_name}</span>
+                  {org.subscription_status && (
+                    <p className="text-muted-foreground capitalize">
+                      {org.subscription_status}
+                    </p>
+                  )}
+                </td>
                 <td className="px-4 py-3 tabular-nums">{org.order_count}</td>
                 <td className="px-4 py-3 tabular-nums">
                   {formatPrice(org.revenue, org.currency)}
+                </td>
+                <td className="px-4 py-3 text-xs">
+                  {!org.denis_enabled ? (
+                    <span className="text-muted-foreground">Off</span>
+                  ) : (
+                    <div>
+                      <span className="tabular-nums text-foreground">
+                        {org.denis_turns_24h} turns
+                      </span>
+                      <p
+                        className={cn(
+                          "tabular-nums",
+                          org.low_balance ? "text-amber-700" : "text-muted-foreground"
+                        )}
+                      >
+                        {org.credit_balance} credits
+                        {org.low_balance ? " · low" : ""}
+                      </p>
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -156,11 +179,6 @@ export function OrgListTable({ orgs }: { orgs: PlatformOrgRow[] }) {
                     )}
                     title={org.fiskaly_tss_id ? "TSE aktiv" : "TSE nicht eingerichtet"}
                   />
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                  {org.steuernummer?.trim()
-                    ? truncateSteuernummer(org.steuernummer)
-                    : "—"}
                 </td>
                 <td className="px-4 py-3">
                   {org.stripe_onboarded ? (

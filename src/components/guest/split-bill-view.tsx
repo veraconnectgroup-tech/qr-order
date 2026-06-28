@@ -17,6 +17,14 @@ import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { TipSelector } from "@/components/guest/tip-selector";
 import { MIN_SPLIT_PARTS, MAX_SPLIT_PARTS } from "@/lib/orders/split-payments";
+import {
+  buildSplitEqualPreview,
+  resolvePaymentDeclinedRecovery,
+  resolveSplitBillSuggestion,
+  splitModeFromChipId,
+  isStripeDeclinedError,
+} from "@/lib/denis/commerce/payment-intelligence";
+import { getStripeConfirmErrorMessage } from "@/lib/payment/stripe-errors";
 import { Button } from "@/components/ui/button";
 
 type SplitItem = {
@@ -71,11 +79,13 @@ function SplitPayForm({
   currency,
   onSuccess,
   tUI,
+  language,
 }: {
   total: number;
   currency: string;
   onSuccess: () => void;
   tUI: ReturnType<typeof useAppLocale>["tUI"];
+  language?: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -94,7 +104,13 @@ function SplitPayForm({
     });
 
     if (submitError) {
-      setError(submitError.message ?? tUI("error.paymentFailed"));
+      const recovery = isStripeDeclinedError(submitError)
+        ? resolvePaymentDeclinedRecovery({ language })
+        : null;
+      setError(
+        recovery?.message ??
+          getStripeConfirmErrorMessage(submitError, tUI)
+      );
       setProcessing(false);
       return;
     }
@@ -136,7 +152,12 @@ export function SplitBillView({
   orderId: string;
   sessionToken: string;
 }) {
-  const { tUI } = useAppLocale();
+  const { tUI, menuLocale, isEnglish } = useAppLocale();
+  const language = isEnglish ? "en" : menuLocale;
+  const splitSuggestion = useMemo(
+    () => resolveSplitBillSuggestion({ language }),
+    [language]
+  );
   const [state, setState] = useState<SplitState | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"equal" | "by_items">("equal");
@@ -147,6 +168,14 @@ export function SplitBillView({
   const [submitting, setSubmitting] = useState(false);
   const [selectedTip, setSelectedTip] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  const equalPreview = useMemo(
+    () =>
+      state && mode === "equal"
+        ? buildSplitEqualPreview(state.order.total, parts)
+        : null,
+    [state, mode, parts]
+  );
 
   const load = useCallback(async () => {
     const res = await fetch(
@@ -294,6 +323,28 @@ export function SplitBillView({
 
       {showSetup && (
         <div className="mt-6 space-y-5">
+          <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 px-4 py-3">
+            <p className="text-sm font-medium text-orange-100">
+              {splitSuggestion.prompt}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {splitSuggestion.chips.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => {
+                    const nextMode = splitModeFromChipId(chip.id);
+                    if (nextMode === "by_items") setMode("by_items");
+                    else if (nextMode === "per_device") setMode("by_items");
+                    else setMode("equal");
+                  }}
+                  className="rounded-full border border-orange-500/30 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-orange-100"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -348,7 +399,10 @@ export function SplitBillView({
               </div>
               <p className="mt-4 text-center text-sm text-zinc-500">
                 {tUI("split.perPerson", {
-                  amount: formatPrice(state.order.total / parts, currency),
+                  amount: formatPrice(
+                    equalPreview?.perPerson ?? (state.order.total / parts),
+                    currency
+                  ),
                 })}
               </p>
             </div>
@@ -600,6 +654,7 @@ export function SplitBillView({
                   total={activeSplit.chargeTotal}
                   currency={currency}
                   tUI={tUI}
+                  language={language}
                   onSuccess={() => {
                     setActiveSplitId(null);
                     void load();

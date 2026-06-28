@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { CheckoutForm } from "@/components/guest/checkout-form";
 import { GuestCheckoutHeader } from "@/components/guest/guest-checkout-header";
 import { getDemoGuestMenuProps, isDemoGuestRoute } from "@/lib/demo-guest";
+import { parseGuestCheckoutTable } from "@/lib/guest/parse-guest-table-rows";
 
 export default async function CheckoutPage({
   params,
@@ -24,6 +25,9 @@ export default async function CheckoutPage({
           taxPercent={demo.taxPercent}
           currency={demo.currency}
           isDemo
+          paymentOnlineEnabled
+          paymentAtBarEnabled
+          stripeOnboarded
         />
       </div>
     );
@@ -39,10 +43,14 @@ export default async function CheckoutPage({
       location:locations!inner(
         ordering_enabled,
         accepting_orders,
+        payment_online_enabled,
+        payment_at_bar_enabled,
+        payment_card_at_table_enabled,
         organization:organizations!inner(
           default_tax_percent,
           currency,
-          slug
+          slug,
+          stripe_onboarded
         )
       )
     `
@@ -54,21 +62,18 @@ export default async function CheckoutPage({
 
   if (!tableData) notFound();
 
-  const table = tableData as unknown as {
-    location_id: string;
-    location: {
-      ordering_enabled: boolean;
-      accepting_orders: boolean;
-      organization: {
-        slug: string;
-        default_tax_percent: number;
-        currency: string;
-      };
-    };
-  };
+  const table = parseGuestCheckoutTable(tableData);
+  if (!table) notFound();
 
   const org = table.location.organization;
   if (org.slug !== slug) notFound();
+
+  const loc = table.location as unknown as {
+    payment_online_enabled: boolean;
+    payment_at_bar_enabled: boolean;
+    payment_card_at_table_enabled: boolean;
+    organization: { stripe_onboarded: boolean };
+  };
 
   if (!table.location.ordering_enabled) {
     redirect(`/${slug}/${token}`);
@@ -84,6 +89,10 @@ export default async function CheckoutPage({
         taxPercent={Number(org.default_tax_percent)}
         currency={org.currency}
         acceptingOrders={table.location.accepting_orders}
+        paymentOnlineEnabled={loc.payment_online_enabled}
+        paymentAtBarEnabled={loc.payment_at_bar_enabled}
+        paymentCardAtTableEnabled={loc.payment_card_at_table_enabled}
+        stripeOnboarded={Boolean(loc.organization.stripe_onboarded)}
       />
     </div>
   );

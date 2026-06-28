@@ -1,13 +1,13 @@
 import type { NextRequest } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError, apiErrorResponse, ERROR_CODES } from "@/lib/api-response";
 import { ApiUnauthorizedError } from "@/lib/auth/require-staff-permission";
 import { PermissionDeniedError } from "@/lib/auth/staff-access";
 import { logger } from "@/lib/logger";
 import {
   applyTraceToSentry,
   getTraceId,
-  runWithTraceIdAsync,
 } from "@/lib/resilience/trace";
+import { runWithTraceIdAsync } from "@/lib/resilience/trace.server";
 
 type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -39,7 +39,12 @@ export function withErrorHandler(
           url: req.nextUrl.pathname,
           error: error instanceof Error ? error.message : String(error),
         });
-        return apiError("Internal server error.", 500);
+        return apiErrorResponse(
+          ERROR_CODES.INTERNAL,
+          "Internal server error.",
+          500,
+          { traceId, retryable: true }
+        );
       }
     });
   };

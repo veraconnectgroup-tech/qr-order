@@ -8,7 +8,7 @@ import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import { isPaymentMethodAllowed } from "@/lib/orders/shared/payment-method";
 import type { PaymentMethod } from "@/lib/constants";
 import { withStaffRateLimit } from "@/lib/rate-limit";
-import { getCurrentTraceId } from "@/lib/resilience/trace";
+import { getCurrentTraceId } from "@/lib/resilience/trace.server";
 import { isUuid } from "@/lib/security/sanitize";
 import { closeTableSession } from "@/lib/sessions/session-devices";
 import { createAdminClient } from "@/lib/supabase/admin";

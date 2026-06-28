@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { parseDashboardTableStatusRows } from "@/lib/supabase/query-rows";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
@@ -126,12 +127,7 @@ export function useDashboardOverview(initial?: OverviewInitial) {
       });
     }
 
-    const allTables = (tablesRows ?? []) as unknown as Array<{
-      id: string;
-      name: string;
-      zone_id: string | null;
-      zone: { id: string; name: string } | null;
-    }>;
+    const allTables = parseDashboardTableStatusRows(tablesRows);
     setTableStatuses(
       allTables.map((table) => {
         const session = sessionByTable.get(table.id);

@@ -34,7 +34,7 @@ export default async function PlatformOrgsPage({
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Organizations</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Search and filter venues on the platform.
+          All restaurants — status, plan, revenue, and Denis usage.
         </p>
       </div>
 

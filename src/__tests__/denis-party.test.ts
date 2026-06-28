@@ -87,11 +87,12 @@ describe("party peer manual M12", () => {
     expect(peer.items[0]?.productName).toBe("Cola");
   });
 
-  it("uses peer-added guest prompt for tablemate items", () => {
+  it("uses peer-added Denis prompt for tablemate items", () => {
     const prompt = buildPeerAddedPrompt([
       line({ productId: "cola-id", productName: "Cola" }),
     ]);
-    expect(prompt).toContain("Tvoj drug je dodao Cola");
+    expect(prompt).toContain("Vidim da je neko već dodao Cola");
+    expect(prompt).toContain("hoćete li još nešto");
   });
 
   it("overrides conflict prompt when peer manual diverges from ai draft", () => {
@@ -108,6 +109,6 @@ describe("party peer manual M12", () => {
       config: CONCIERGE_PLATFORM_DEFAULTS,
     });
 
-    expect(resolution.guestPrompt).toContain("Tvoj drug je dodao Cola");
+    expect(resolution.guestPrompt).toContain("Vidim da je neko već dodao Cola");
   });
 });

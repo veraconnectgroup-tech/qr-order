@@ -1,5 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
+import {
+  displayPlanName,
+  getPlanTierDefinition,
+  PLAN_TIER_DEFINITIONS,
+  type PlanTierDefinition,
+} from "@/lib/billing/tiers";
 
 export type PlanRow = {
   id: string;
@@ -11,6 +17,8 @@ export type PlanRow = {
   sort_order: number;
   is_active: boolean;
 };
+
+export { PLAN_TIER_DEFINITIONS, getPlanTierDefinition, displayPlanName, type PlanTierDefinition };
 
 function parsePlanFeatures(features: Json): string[] {
   if (!Array.isArray(features)) return [];

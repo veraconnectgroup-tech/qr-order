@@ -1,18 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ORDER_WITH_DETAILS_SELECT,
+  orderWithDetailsRows,
+} from "@/lib/supabase/query-rows";
+import {
+  buildBarStatsSnapshot,
+  groupBarDrinkRounds,
+  predictBarRefillHints,
+  prioritizeBarQueue,
+  type BarQueueEntry,
+  type BarRefillHint,
+  type BarRoundGroup,
+  type BarStatsSnapshot,
+} from "@/lib/bar/bar-intelligence";
 import {
   KDS_REALTIME_FALLBACK_POLL_MS,
   REALTIME_BACKUP_POLL_MS,
 } from "@/lib/constants";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
+import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { KDS_DELIVERED_HIDE_MS } from "@/lib/kds/settings";
 import { orderHasDrinksItems } from "@/lib/kitchen/menu-section";
 import type { OrderWithDetails } from "@/types";
-
-const ORDER_SELECT =
-  "*, order_items(*, order_item_modifiers(*)), tables(name, zone:zones(name))";
 
 const ACTIVE_STATUSES = [
   "pending_approval",
@@ -22,10 +34,20 @@ const ACTIVE_STATUSES = [
   "ready",
 ] as const;
 
+export type BarOrdersSnapshot = {
+  queue: BarQueueEntry[];
+  rounds: BarRoundGroup[];
+  refillHints: BarRefillHint[];
+  stats: BarStatsSnapshot;
+};
+
 export function useBarOrders(locationId: string) {
-  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [allOrders, setAllOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+  const { play } = useSoundAlert();
 
   const fetchOrders = useCallback(async () => {
     if (!locationId) return;
@@ -37,7 +59,7 @@ export function useBarOrders(locationId: string) {
 
     const { data, error: fetchError } = await supabase
       .from("orders")
-      .select(ORDER_SELECT)
+      .select(ORDER_WITH_DETAILS_SELECT)
       .eq("location_id", locationId)
       .or(
         `status.in.(${ACTIVE_STATUSES.join(",")}),and(status.eq.delivered,delivered_at.gte.${deliveredCutoff})`
@@ -52,15 +74,33 @@ export function useBarOrders(locationId: string) {
     }
 
     setError(null);
-    const rows = (data as unknown as OrderWithDetails[]) ?? [];
-    setOrders(rows.filter(orderHasDrinksItems));
+    const rows = orderWithDetailsRows(data);
+    setAllOrders(rows);
+
+    const drinkOrders = rows.filter(orderHasDrinksItems);
+    if (initializedRef.current) {
+      for (const order of drinkOrders) {
+        if (
+          !knownOrderIdsRef.current.has(order.id) &&
+          (order.status === "pending" ||
+            order.status === "pending_approval" ||
+            order.status === "accepted")
+        ) {
+          play("bar-order");
+          break;
+        }
+      }
+    }
+
+    knownOrderIdsRef.current = new Set(drinkOrders.map((order) => order.id));
+    initializedRef.current = true;
     setLoading(false);
-  }, [locationId]);
+  }, [locationId, play]);
 
   const optimisticUpdateStatus = useCallback(
     (orderId: string, status: OrderWithDetails["status"]) => {
       const now = new Date().toISOString();
-      setOrders((prev) =>
+      setAllOrders((prev) =>
         prev.map((order) => {
           if (order.id !== orderId) return order;
           const patch: Partial<OrderWithDetails> = { status };
@@ -74,6 +114,17 @@ export function useBarOrders(locationId: string) {
     },
     []
   );
+
+  const snapshot = useMemo((): BarOrdersSnapshot => {
+    const drinkOrders = allOrders.filter(orderHasDrinksItems);
+    const queue = prioritizeBarQueue(drinkOrders, allOrders);
+    return {
+      queue,
+      rounds: groupBarDrinkRounds(queue),
+      refillHints: predictBarRefillHints(allOrders),
+      stats: buildBarStatsSnapshot(allOrders),
+    };
+  }, [allOrders]);
 
   useEffect(() => {
     if (!locationId) {
@@ -97,7 +148,11 @@ export function useBarOrders(locationId: string) {
   });
 
   return {
-    orders,
+    orders: snapshot.queue.map((entry) => entry.order),
+    queue: snapshot.queue,
+    rounds: snapshot.rounds,
+    refillHints: snapshot.refillHints,
+    stats: snapshot.stats,
     loading,
     error,
     refetch: fetchOrders,

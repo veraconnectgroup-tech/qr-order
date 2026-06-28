@@ -122,6 +122,6 @@ describe("thinking steps for guest pause", () => {
       suppressUpsell: false,
       reason: "conversation.guest_pause",
     });
-    expect(keys[0]).toBe("ai.chat.thinking.pause");
+    expect(keys).toEqual(["ai.chat.thinking.pause"]);
   });
 });

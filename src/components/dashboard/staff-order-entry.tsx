@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { StaffOrderModifierDialog } from "@/components/dashboard/staff-order-modifier-dialog";
 import { StaffOrderConflictSheet } from "@/components/dashboard/staff-order-conflict-sheet";
+import { WaiterOrderAssistPanel } from "@/components/waiter/waiter-order-assist-panel";
 import {
   PosTrustIndicator,
   advanceTrustToKitchen,
@@ -66,6 +67,7 @@ import {
 import { isPosLocalFirstEnabled } from "@/lib/pos/feature-flags";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
 import { createClient } from "@/lib/supabase/client";
+import { STAFF_TABLE_WITH_ZONE_SELECT, staffTableWithZoneRows } from "@/lib/supabase/query-rows";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { inferMenuSection, type MenuSection } from "@/lib/menu-section";
 import type { InPersonPaymentLocation } from "@/lib/constants";
@@ -165,6 +167,8 @@ function normalizeLoadedProduct(
     price: row.price,
     image_url: row.image_url,
     is_available: row.is_available,
+    track_stock: false,
+    stock_quantity: null,
     prep_time_minutes: null,
     allergens: row.allergens,
     tags: null,
@@ -311,7 +315,8 @@ export function StaffOrderEntry({
 } = {}) {
   const router = useRouter();
   const pathname = usePathname();
-  const ordersRedirect = pathname.startsWith("/waiter")
+  const isWaiterSurface = pathname.startsWith("/waiter");
+  const ordersRedirect = isWaiterSurface
     ? "/waiter/orders"
     : "/dashboard/orders";
   const {
@@ -439,7 +444,7 @@ export function StaffOrderEntry({
     ] = await Promise.all([
       supabase
         .from("tables")
-        .select("id, name, location_id, zone_id, zone:zones(name)")
+        .select(STAFF_TABLE_WITH_ZONE_SELECT)
         .eq("location_id", locationId)
         .eq("is_active", true)
         .is("deleted_at", null)
@@ -474,7 +479,7 @@ export function StaffOrderEntry({
       productsByCategory.set(product.category_id, list);
     }
 
-    const tableRows = (tablesData ?? []) as unknown as TableWithZone[];
+    const tableRows = staffTableWithZoneRows(tablesData);
     setTables(tableRows);
     setSelectedTable((prev) => {
       if (prev && tableRows.some((table) => table.id === prev)) {
@@ -607,6 +612,11 @@ export function StaffOrderEntry({
       }))
     );
   }, [cart, isTakeaway, defaultTaxPercent]);
+
+  const cartProductIds = useMemo(
+    () => [...new Set(cart.map((item) => item.productId))],
+    [cart]
+  );
 
   function addCartItem(item: Omit<StaffCartItem, "id" | "lineTotal">) {
     setCart((prev) => [
@@ -1036,6 +1046,22 @@ export function StaffOrderEntry({
               className="h-11 border-dash-border bg-dash-surface pl-10 text-dash-text placeholder:text-dash-text-disabled"
             />
           </div>
+
+          {isWaiterSurface ? (
+            <WaiterOrderAssistPanel
+              query={searchQuery}
+              cartProductIds={cartProductIds}
+              onPickProduct={(productId) => {
+                const match = flatProducts.find(
+                  (row) => row.product.id === productId
+                );
+                if (match) {
+                  handleProductClick(match.product, match.menuSection);
+                  setSearchQuery("");
+                }
+              }}
+            />
+          ) : null}
 
           <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <CategoryPill

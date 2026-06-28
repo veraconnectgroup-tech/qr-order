@@ -28,18 +28,32 @@ export function evaluateGuestProactiveTick(input: {
   const { config } = input;
   if (!config.proactive.enabled) return null;
 
-  const candidate = rankProactiveCandidates(input)[0]?.nudge ?? null;
-  if (!candidate) return null;
+  const resolvedNow = input.now ?? Date.now();
+  const ranked = rankProactiveCandidates({ ...input, now: resolvedNow });
+  for (const row of ranked) {
+    const candidate = row.nudge;
+    if (candidate.kind === "drink_pairing" && !config.proactive.pairing) {
+      continue;
+    }
+    if (candidate.kind === "sommelier_pairing" && !config.proactive.pairing) {
+      continue;
+    }
+    if (candidate.kind === "dessert_nudge" && !config.proactive.dessert) {
+      continue;
+    }
+    if (candidate.kind === "slow_kitchen" && !config.proactive.slowKitchen) {
+      continue;
+    }
+    if (
+      (candidate.kind === "order_delay" ||
+        candidate.kind === "order_eta_update") &&
+      !config.proactive.orderDelay
+    ) {
+      continue;
+    }
 
-  if (candidate.kind === "drink_pairing" && !config.proactive.pairing) {
-    return null;
-  }
-  if (candidate.kind === "dessert_nudge" && !config.proactive.dessert) {
-    return null;
-  }
-  if (candidate.kind === "slow_kitchen" && !config.proactive.slowKitchen) {
-    return null;
+    return candidate;
   }
 
-  return candidate;
+  return null;
 }

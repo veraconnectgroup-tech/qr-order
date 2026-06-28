@@ -122,6 +122,7 @@ describe("staff proactive alerts", () => {
       config: CONCIERGE_PLATFORM_DEFAULTS,
       tableName: "7",
       idleMinutes: 18,
+      hasSessionOrders: false,
       emittedKeys: [],
       recentGuestMessages: [],
       waiterEscalated: false,

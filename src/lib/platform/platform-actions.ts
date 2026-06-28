@@ -12,6 +12,8 @@ import {
 } from "@/lib/platform/feature-flags";
 import { IMPERSONATE_COOKIE } from "@/lib/platform/impersonation-cookie";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { extendTrialEndDate, resolvePlanChangeDirection } from "@/lib/billing/invoicing";
+import { loadActivePlans } from "@/lib/billing/plans";
 
 export async function startImpersonation(orgId: string) {
   await requirePlatformAdmin();
@@ -84,11 +86,10 @@ export async function updateOrgPlanAction(orgId: string, planId: string) {
   const staff = await requirePlatformAdmin();
   const admin = createAdminClient();
 
-  const { data: beforeOrg } = await admin
-    .from("organizations")
-    .select("plan_id")
-    .eq("id", orgId)
-    .maybeSingle();
+  const [{ data: beforeOrg }, plans] = await Promise.all([
+    admin.from("organizations").select("plan_id").eq("id", orgId).maybeSingle(),
+    loadActivePlans(),
+  ]);
 
   const { data: plan } = await admin
     .from("plans")
@@ -98,6 +99,12 @@ export async function updateOrgPlanAction(orgId: string, planId: string) {
     .maybeSingle();
 
   if (!plan) return { error: "Plan not found." };
+
+  const direction = resolvePlanChangeDirection(
+    (beforeOrg as { plan_id?: string | null } | null)?.plan_id ?? null,
+    planId,
+    plans
+  );
 
   const { error } = await admin
     .from("organizations")
@@ -116,12 +123,63 @@ export async function updateOrgPlanAction(orgId: string, planId: string) {
     entityType: "subscription_plan",
     entityId: orgId,
     oldValue: beforeOrg ?? undefined,
-    newValue: { plan_id: planId },
+    newValue: { plan_id: planId, direction },
   });
 
   revalidatePath(`/platform/orgs/${orgId}`);
   revalidatePath("/platform/orgs");
-  return { success: true };
+  revalidatePath("/platform/analytics");
+  return { success: true, direction };
+}
+
+export async function extendOrgTrialAction(orgId: string, days: number) {
+  const staff = await requirePlatformAdmin();
+  if (!Number.isFinite(days) || days < 1 || days > 90) {
+    return { error: "Trial extension must be between 1 and 90 days." };
+  }
+
+  const admin = createAdminClient();
+  const { data: org } = await admin
+    .from("organizations")
+    .select("trial_ends_at")
+    .eq("id", orgId)
+    .maybeSingle();
+
+  if (!org) return { error: "Organization not found." };
+
+  const nextEndsAt = extendTrialEndDate(
+    (org as { trial_ends_at: string | null }).trial_ends_at,
+    days
+  );
+
+  const { error } = await admin
+    .from("organizations")
+    .update({
+      trial_ends_at: nextEndsAt,
+      subscription_status: "trialing",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orgId);
+
+  if (error) return { error: error.message };
+
+  await auditLog({
+    orgId,
+    userId: staff.user_id,
+    action: "update",
+    entityType: "trial_extension",
+    entityId: orgId,
+    oldValue: org,
+    newValue: { trial_ends_at: nextEndsAt, days },
+  });
+
+  revalidatePath(`/platform/orgs/${orgId}`);
+  revalidatePath("/platform/orgs");
+  return { success: true, trialEndsAt: nextEndsAt };
+}
+
+export async function setDenisEnabledAction(orgId: string, enabled: boolean) {
+  return toggleOrgFeature(orgId, "ai_concierge", enabled);
 }
 
 export async function retryDlqItemAction(dlqId: string) {

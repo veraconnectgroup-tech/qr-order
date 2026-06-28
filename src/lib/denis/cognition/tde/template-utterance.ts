@@ -46,6 +46,21 @@ const TEMPLATE_CATALOG: Record<
     de: "Brauchen Sie Hilfe bei der Auswahl?",
     en: "Need help choosing from the menu?",
   },
+  "proactive.scroll_search": {
+    sr: "Tražite nešto? Mogu pomoći!",
+    de: "Suchen Sie etwas Bestimmtes? Ich helfe gern!",
+    en: "Looking for something? I can help!",
+  },
+  "proactive.scroll_category": {
+    sr: "Naši burgeri su hit danas!",
+    de: "Diese Kategorie ist heute beliebt!",
+    en: "This category is popular tonight!",
+  },
+  "proactive.scroll_bottom": {
+    sr: "Nešto vas zanima? Pitajte me!",
+    de: "Interessiert Sie etwas? Fragen Sie mich!",
+    en: "See something you like? Just ask!",
+  },
   "proactive.dessert": {
     sr: "Spremni za desert?",
     de: "Bereit für ein Dessert?",
@@ -60,6 +75,26 @@ const TEMPLATE_CATALOG: Record<
     sr: "Uz to bi dobro leglo piće — da dodam nešto?",
     de: "Dazu passt ein Getränk — soll ich etwas vorschlagen?",
     en: "That pairs well with a drink — want me to suggest something?",
+  },
+  "proactive.drink_with_food": {
+    sr: "Uz jelo odlično ide piće — da preporučim nešto konkretno?",
+    de: "Zum Essen passt ein Getränk — soll ich etwas Konkretes vorschlagen?",
+    en: "That dish pairs with a drink — want a specific suggestion?",
+  },
+  "proactive.drink_refill": {
+    sr: "Hoćete li još jedno piće? Ili da probate nešto drugo?",
+    de: "Möchten Sie noch ein Getränk? Oder etwas anderes probieren?",
+    en: "Would you like another drink? Or try something different?",
+  },
+  "proactive.round_two": {
+    sr: "Još jedna runda za sto?",
+    de: "Noch eine Runde für den Tisch?",
+    en: "Another round for the table?",
+  },
+  "proactive.happy_hour_upsell": {
+    sr: "Trenutno je Happy Hour — sva pića po specijalnoj ceni!",
+    de: "Gerade Happy Hour — alle Getränke zum Sonderpreis!",
+    en: "It's Happy Hour — all drinks at special prices!",
   },
   "proactive.guest_welcome": {
     sr: "Dobar dan i dobrodošli u {venueName}! Tu sam — da li ste već odlučili šta biste želeli?",
@@ -90,6 +125,26 @@ const TEMPLATE_CATALOG: Record<
     sr: "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
     de: "Ihre Bestellung wird zubereitet und kommt gleich. Danke für Ihre Geduld!",
     en: "Your order is being prepared and will arrive soon. Thanks for your patience!",
+  },
+  "proactive.order_eta_update": {
+    sr: "Vaša narudžbina se priprema — javljam vam tačan ETA čim ga imam.",
+    de: "Ihre Bestellung wird zubereitet — ich melde mich mit dem genauen ETA.",
+    en: "Your order is being prepared — I'll update you with the exact ETA.",
+  },
+  "proactive.kitchen_busy_preorder": {
+    sr: "Kuhinja je trenutno zauzeta — želite da naručite ili da sačekate?",
+    de: "Die Küche ist voll — möchten Sie bestellen oder warten?",
+    en: "The kitchen is busy — would you like to order or wait?",
+  },
+  "proactive.order_ready": {
+    sr: "Vaše jelo je spremno!",
+    de: "Ihr Essen ist fertig!",
+    en: "Your food is ready!",
+  },
+  "proactive.kitchen_busy": {
+    sr: "Kuhinja je trenutno zauzeta — narudžbe mogu potrajati malo duže.",
+    de: "Die Küche ist gerade stark ausgelastet.",
+    en: "The kitchen is busy right now.",
   },
   "proactive.popularity_pair": {
     sr: "Gosti koji naruče ovo često uzmu i nešto uz to — hoćete da dodam?",
@@ -125,6 +180,11 @@ const TEMPLATE_CATALOG: Record<
     sr: "Pre slanja treba mi još jedan detalj — možete da precizirate?",
     de: "Bevor ich sende brauche ich noch ein Detail — können Sie das präzisieren?",
     en: "Before I send I need one more detail — can you clarify?",
+  },
+  "preorder.confirmation": {
+    sr: "Narudžba je zakazana — vidimo se uskoro!",
+    de: "Bestellung geplant — bis gleich!",
+    en: "Order scheduled — see you soon!",
   },
 };
 

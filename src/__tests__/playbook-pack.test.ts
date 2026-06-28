@@ -3,6 +3,7 @@ import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaul
 import { mergeManifestConfig } from "@/lib/denis/cognition/manifest/merge-manifest-config";
 import {
   formatPlaybookPackBlock,
+  previewPlaybookPackTurn,
   resolvePlaybookPackId,
 } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import { parseVenueManifest } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
@@ -27,19 +28,19 @@ describe("MR-9 playbook pack", () => {
     expect(manifest?.playbookPackId).toBe("skyline");
   });
 
-  it("org manifest pack id wins over location manifest", () => {
+  it("location manifest pack id wins over org manifest", () => {
     const org = parseVenueManifest({
       manifest_version: 1,
-      playbook_pack_id: "generic-chain",
+      playbook_pack_id: "formal-de",
       capabilities: OPEN_CAPABILITIES,
     });
     const location = parseVenueManifest({
       manifest_version: 1,
-      playbook_pack_id: "skyline",
+      playbook_pack_id: "casual-de",
       capabilities: OPEN_CAPABILITIES,
     });
 
-    expect(resolvePlaybookPackId(org, location)).toBe("generic-chain");
+    expect(resolvePlaybookPackId(org, location)).toBe("casual-de");
   });
 
   it("mergeManifestConfig exposes resolved playbookPackId", () => {
@@ -55,13 +56,30 @@ describe("MR-9 playbook pack", () => {
     expect(effective.orgManifest?.playbookPackId).toBe("skyline");
   });
 
-  it("skyline and generic-chain packs produce different tone blocks", () => {
-    const skyline = formatPlaybookPackBlock("skyline");
-    const chain = formatPlaybookPackBlock("generic-chain");
+  it("formal and casual packs produce different tone blocks", () => {
+    const formal = formatPlaybookPackBlock("formal-de");
+    const casual = formatPlaybookPackBlock("casual-de");
 
-    expect(skyline).toContain("Skyline Lounge");
-    expect(chain).toContain("CHAIN HOTEL PLAYBOOK");
-    expect(skyline).not.toBe(chain);
+    expect(formal).toContain("Tone: formal");
+    expect(casual).toContain("Tone: casual");
+    expect(formal).not.toBe(casual);
+  });
+
+  it("formal burger order is polite; casual is relaxed with signature phrase", () => {
+    const formal = previewPlaybookPackTurn({
+      packId: "formal-de",
+      orgName: "Hotel Alpha",
+      userMessage: "Daj mi burger",
+    });
+    const casual = previewPlaybookPackTurn({
+      packId: "casual-de",
+      orgName: "Beach Bar",
+      userMessage: "Daj mi burger",
+    });
+
+    expect(formal.assistantMessage).toMatch(/Guten Appetit|Sehr gerne|Dürfte ich/i);
+    expect(casual.assistantMessage).toMatch(/Lass dir's schmecken|Klar/i);
+    expect(formal.assistantMessage).not.toBe(casual.assistantMessage);
   });
 
   it("playbook pack eval fixture passes", () => {

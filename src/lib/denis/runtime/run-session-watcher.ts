@@ -1,8 +1,13 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
 import { detectStaffProactiveAlerts } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
+import {
+  maxKitchenWaitMinutesForTable,
+  type KitchenTableWait,
+} from "@/lib/denis/cognition/proactive/triggers";
 import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/session-watcher-context";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { buildSessionExperienceScore } from "@/lib/denis/commerce/session-experience-score";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
@@ -104,6 +109,8 @@ export async function runSessionWatcherTick(
   let guestNudges = 0;
   let staffAlerts = 0;
   let skipped = 0;
+  const kitchenWaitsByLocation = new Map<string, KitchenTableWait[]>();
+  const kitchenEscalationEmitted = new Set<string>();
 
   for (const row of rows) {
     try {
@@ -141,6 +148,17 @@ export async function runSessionWatcherTick(
         sessionOpenedAt: row.opened_at,
         venueDefaultLanguage: config.language.venueDefault ?? "sr",
       });
+
+      const tableWaitMinutes = Math.floor(maxKitchenWaitMinutesForTable(orders));
+      if (tableWaitMinutes > 0) {
+        const bucket = kitchenWaitsByLocation.get(row.location_id) ?? [];
+        bucket.push({
+          tableId: row.table_id,
+          tableName,
+          waitMinutes: tableWaitMinutes,
+        });
+        kitchenWaitsByLocation.set(row.location_id, bucket);
+      }
 
       const emitted = new Set([
         ...watcherContext.emittedKeys,
@@ -203,7 +221,10 @@ export async function runSessionWatcherTick(
       if (nudge) {
         guestNudges += 1;
 
-        if (nudge.kind === "order_delay" && nudge.orderId) {
+        if (
+          (nudge.kind === "order_delay" || nudge.kind === "order_eta_update") &&
+          nudge.orderId
+        ) {
           await dispatchStaffNotification({
             orgId: orgId ?? undefined,
             locationId: row.location_id,
@@ -220,14 +241,41 @@ export async function runSessionWatcherTick(
         config,
         tableName,
         idleMinutes: watcherContext.idleMinutes,
+        hasSessionOrders: orders.some((order) => order.status !== "cancelled"),
+        guestMessageCount: watcherContext.guestMessageCount,
+        hasKitchenResponse: orders.some((order) =>
+          ["pending", "pending_approval", "accepted", "preparing", "ready", "delivered"].includes(
+            order.status
+          )
+        ),
         emittedKeys: [...emitted],
         recentGuestMessages: watcherContext.recentGuestMessages,
         waiterEscalated: watcherContext.waiterEscalated,
-        mentalPredictedNeed: fold.state.mental?.predictedNeed ?? null,
+        guestAffect: fold.state.mental?.affect ?? null,
+        kitchenTableWaits: kitchenWaitsByLocation.get(row.location_id),
+        experienceScore: buildSessionExperienceScore(fold.state).overallScore,
+        language: fold.state.guest?.preferredLanguage ?? null,
       });
 
       for (const alert of staffAlertsForSession) {
-        if (emitted.has(alert.kind)) continue;
+        if (alert.kind === "staff_multi_table_delay" || alert.kind === "staff_kitchen_delay") {
+          if (kitchenEscalationEmitted.has(row.location_id)) continue;
+          kitchenEscalationEmitted.add(row.location_id);
+        } else if (emitted.has(alert.kind)) {
+          continue;
+        }
+        if (alert.kind === "staff_multi_table_delay" || alert.kind === "staff_kitchen_delay") {
+          await dispatchStaffNotification({
+            orgId: orgId ?? undefined,
+            locationId: row.location_id,
+            type: "kitchen_backup",
+            tableId: row.table_id,
+            tableName,
+            message: alert.message,
+            actionUrl: "/kitchen",
+          });
+        }
+
         await emitStaffProactiveAlert(admin, {
           locationId: row.location_id,
           orgId: orgId ?? undefined,

@@ -1,5 +1,7 @@
 /** Client-safe API error parsing — no Node/server dependencies. */
 
+import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
+
 export const ERROR_CODES = {
   RATE_LIMITED: "rate_limited",
   CART_EMPTY: "cart_empty",
@@ -23,6 +25,13 @@ export type ParsedApiError = {
   retryable: boolean;
   traceId?: string;
   details?: unknown;
+};
+
+export type GuestApiErrorDisplay = {
+  message: string;
+  code: string;
+  retryable: boolean;
+  rescanQr?: boolean;
 };
 
 const ORDER_BUSINESS_CODES = new Set([
@@ -145,4 +154,63 @@ export function readApiErrorMessage(
   fallback = "Something went wrong."
 ): string {
   return parseApiErrorFromJson(json, status)?.message ?? fallback;
+}
+
+/** Guest-facing Denis chat error copy — maps API codes to localized recovery text. */
+export function resolveGuestApiError(
+  error: ParsedApiError | null,
+  status: number,
+  language: string
+): GuestApiErrorDisplay {
+  const code =
+    error?.code ??
+    (status === 429
+      ? ERROR_CODES.RATE_LIMITED
+      : status === 401 || status === 410
+        ? ERROR_CODES.SESSION_EXPIRED
+        : mapStatusToErrorCode(status));
+
+  if (
+    code === ERROR_CODES.SESSION_EXPIRED ||
+    status === 401 ||
+    status === 410
+  ) {
+    return {
+      code,
+      retryable: false,
+      rescanQr: true,
+      message: tForAiGuestLanguage("ai.overlay.sessionExpired", language),
+    };
+  }
+
+  if (code === ERROR_CODES.RATE_LIMITED || status === 429) {
+    return {
+      code,
+      retryable: true,
+      message: tForAiGuestLanguage("ai.overlay.rateLimited", language),
+    };
+  }
+
+  if (
+    code === ERROR_CODES.CIRCUIT_OPEN ||
+    code === ERROR_CODES.CREDIT_EXHAUSTED ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    status >= 500
+  ) {
+    return {
+      code,
+      retryable: true,
+      message: tForAiGuestLanguage("ai.overlay.error", language),
+    };
+  }
+
+  return {
+    code,
+    retryable: Boolean(error?.retryable),
+    message:
+      error?.message ??
+      tForAiGuestLanguage("ai.overlay.error", language),
+  };
 }

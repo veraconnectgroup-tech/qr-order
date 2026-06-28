@@ -3,6 +3,10 @@ import {
   buildInterpretationTask,
 } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import { decideTurnPlan } from "@/lib/denis/cognition/tde/decide-turn-plan";
+import {
+  INTENT_ROUTER_AB_FIXTURES,
+  runIntentRouterAbEval,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
 import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
@@ -28,6 +32,14 @@ export type InterpretationTaskReport = {
   ok: boolean;
   scenarioCount: number;
   results: InterpretationTaskScenarioResult[];
+  intentRouterAb?: {
+    ok: boolean;
+    regexAccuracy: number;
+    semanticAccuracy: number;
+    t0Rate: number;
+    t1Rate: number;
+    t2Rate: number;
+  };
 };
 
 function buildState(setup: WaiterParitySetup): TableSessionState {
@@ -162,9 +174,18 @@ function runScenario(
 
 export function runInterpretationTaskSuite(): InterpretationTaskReport {
   const results = INTERPRETATION_TASK_SCENARIOS.map(runScenario);
+  const intentRouterAb = runIntentRouterAbEval(INTENT_ROUTER_AB_FIXTURES);
   return {
-    ok: results.every((row) => row.passed),
+    ok: results.every((row) => row.passed) && intentRouterAb.ok,
     scenarioCount: results.length,
     results,
+    intentRouterAb: {
+      ok: intentRouterAb.ok,
+      regexAccuracy: intentRouterAb.regexAccuracy,
+      semanticAccuracy: intentRouterAb.semanticAccuracy,
+      t0Rate: intentRouterAb.t0Rate,
+      t1Rate: intentRouterAb.t1Rate,
+      t2Rate: intentRouterAb.t2Rate,
+    },
   };
 }

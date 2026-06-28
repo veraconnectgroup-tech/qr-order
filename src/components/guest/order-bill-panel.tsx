@@ -20,8 +20,19 @@ import {
   getAvailablePaymentMethods,
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
+import {
+  resolveDefaultPaymentMethod,
+  resolvePaymentDeclinedRecovery,
+  resolvePaymentSuggestion,
+  resolveReceiptOptions,
+  isStripeDeclinedError,
+} from "@/lib/denis/commerce/payment-intelligence";
+import { resolveGuestTerminalPrompt } from "@/lib/stripe/terminal-guest-copy";
+import { PaymentSurfaceBar } from "@/components/guest/payment-surface-bar";
 import { PaymentMethodSelector } from "@/components/guest/payment-method-selector";
 import { TipSelector } from "@/components/guest/tip-selector";
+import { SmartTipSheet } from "@/components/guest/smart-tip-sheet";
+import type { SmartTipOffer } from "@/lib/denis/loop/view-types";
 import { readJsonResponse } from "@/lib/api/read-json-response";
 import { fetchWithRetry } from "@/lib/payment/fetch-with-retry";
 import {
@@ -84,13 +95,17 @@ function StripePayForm({
   currency,
   onSuccess,
   tUI,
+  language,
   paymentAtBarEnabled,
+  availableMethods,
 }: {
   total: number;
   currency: string;
   onSuccess: () => void;
   tUI: ReturnType<typeof useAppLocale>["tUI"];
+  language?: string;
   paymentAtBarEnabled: boolean;
+  availableMethods: SelectablePaymentMethod[];
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -109,10 +124,18 @@ function StripePayForm({
     });
 
     if (submitError) {
+      const recovery = isStripeDeclinedError(submitError)
+        ? resolvePaymentDeclinedRecovery({
+            language,
+            paymentAtBarEnabled,
+            availableMethods,
+          })
+        : null;
       setError(
-        getStripeConfirmErrorMessage(submitError, tUI, {
-          paymentAtBarEnabled,
-        })
+        recovery?.message ??
+          getStripeConfirmErrorMessage(submitError, tUI, {
+            paymentAtBarEnabled,
+          })
       );
       setProcessing(false);
       return;
@@ -142,7 +165,11 @@ function StripePayForm({
   return (
     <form onSubmit={handlePay} className="mt-4 space-y-4">
       <PaymentElement options={{ layout: "tabs" }} />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" aria-live="assertive" className="text-sm text-red-400">
+          {error}
+        </p>
+      )}
       <Button
         type="submit"
         disabled={!stripe || processing}
@@ -173,6 +200,7 @@ export function OrderBillPanel({
   onPaid,
   slug,
   orderId,
+  smartTipOffer = null,
 }: {
   token: string;
   sessionToken: string;
@@ -186,8 +214,10 @@ export function OrderBillPanel({
   onPaid: () => void;
   slug?: string;
   orderId?: string;
+  smartTipOffer?: SmartTipOffer | null;
 }) {
-  const { tUI } = useAppLocale();
+  const { tUI, menuLocale, isEnglish } = useAppLocale();
+  const language = isEnglish ? "en" : menuLocale;
   const [bill, setBill] = useState<SessionBill | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<SelectablePaymentMethod | null>(
     null
@@ -200,6 +230,7 @@ export function OrderBillPanel({
   const [chargeTotal, setChargeTotal] = useState<number | null>(null);
   const [selectedTip, setSelectedTip] = useState(0);
   const [splitProgress, setSplitProgress] = useState<SplitProgress | null>(null);
+  const [tipOfferDismissed, setTipOfferDismissed] = useState(false);
 
   const availableMethods = useMemo(
     () =>
@@ -216,6 +247,23 @@ export function OrderBillPanel({
       paymentAtBarEnabled,
       paymentCardAtTableEnabled,
     ]
+  );
+
+  const paymentSuggestion = useMemo(
+    () =>
+      bill && bill.amountDue > 0
+        ? resolvePaymentSuggestion({
+            amountDue: bill.amountDue,
+            language,
+            availableMethods,
+          })
+        : null,
+    [bill, language, availableMethods]
+  );
+
+  const receiptOptions = useMemo(
+    () => resolveReceiptOptions({ language, fiscalEnabled: true }),
+    [language]
   );
 
   const unpaidOrders = useMemo(
@@ -274,6 +322,17 @@ export function OrderBillPanel({
       void loadSplitProgress();
     }
   }, [isPaid, loadBill, loadSplitProgress]);
+
+  useEffect(() => {
+    if (bill && bill.amountDue > 0 && paymentMethod == null) {
+      setPaymentMethod(
+        resolveDefaultPaymentMethod({
+          amountDue: bill.amountDue,
+          availableMethods,
+        })
+      );
+    }
+  }, [bill, paymentMethod, availableMethods]);
 
   useEffect(() => {
     setChargeTotal(null);
@@ -365,14 +424,40 @@ export function OrderBillPanel({
 
   if (isPaid) {
     return (
-      <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-5">
-        <div className="flex items-center gap-3">
-          <Receipt className="size-5 text-green-400" />
-          <div>
-            <p className="font-semibold text-green-300">{tUI("bill.paid")}</p>
-            <p className="text-sm text-green-200/70">{tUI("bill.thankYou")}</p>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-5">
+          <div className="flex items-center gap-3">
+            <Receipt className="size-5 text-green-400" />
+            <div>
+              <p className="font-semibold text-green-300">{tUI("bill.paid")}</p>
+              <p className="text-sm text-green-200/70">{tUI("bill.thankYou")}</p>
+            </div>
           </div>
         </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <p className="text-sm font-medium text-zinc-200">{receiptOptions.prompt}</p>
+          <ul className="mt-3 space-y-2">
+            {receiptOptions.options.map((option) => (
+              <li
+                key={option.kind}
+                className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300"
+              >
+                {option.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {smartTipOffer && !tipOfferDismissed ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900">
+            <SmartTipSheet
+              offer={smartTipOffer}
+              currency={currency}
+              sessionToken={sessionToken}
+              onSubmitted={() => setTipOfferDismissed(true)}
+              onDismiss={() => setTipOfferDismissed(true)}
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -381,7 +466,9 @@ export function OrderBillPanel({
     if (billLoadError) {
       return (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-center">
-          <p className="text-sm text-red-200">{billLoadError}</p>
+          <p role="alert" aria-live="assertive" className="text-sm text-red-200">
+            {billLoadError}
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -434,6 +521,12 @@ export function OrderBillPanel({
             total: splitProgress!.total,
           })}
         </p>
+      )}
+      {paymentSuggestion && !clientSecret && (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm leading-snug text-orange-200/90">{paymentSuggestion.message}</p>
+          <PaymentSurfaceBar availableMethods={availableMethods} />
+        </div>
       )}
       {bill.unpaidCount > 1 && (
         <p className="mt-1 text-xs text-zinc-500">
@@ -534,7 +627,16 @@ export function OrderBillPanel({
               />
             </div>
           )}
-          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+          {paymentMethod === "card_at_table" && paymentCardAtTableEnabled && (
+            <p className="mt-3 text-sm text-zinc-400">
+              {resolveGuestTerminalPrompt(language)}
+            </p>
+          )}
+          {error && (
+            <p role="alert" aria-live="assertive" className="mt-3 text-sm text-red-400">
+              {error}
+            </p>
+          )}
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             {canSplit && (
               <Button
@@ -585,7 +687,9 @@ export function OrderBillPanel({
             total={payTotal}
             currency={currency}
             tUI={tUI}
+            language={language}
             paymentAtBarEnabled={paymentAtBarEnabled}
+            availableMethods={availableMethods}
             onSuccess={() => {
               setClientSecret(null);
               setChargeTotal(null);

@@ -7,6 +7,10 @@ import {
   formatAverageRating,
   type FeedbackWithOrder,
 } from "@/lib/feedback/feedback";
+import {
+  analyzeFeedbackTrends,
+  formatFeedbackDigestLines,
+} from "@/lib/denis/platform/feedback-intelligence";
 import { cn } from "@/lib/utils";
 
 const PERIOD_OPTIONS = [
@@ -68,6 +72,24 @@ export function FeedbackPanel({
 
   const avg = averageRating(filtered);
 
+  const trendInsight = useMemo(() => {
+    const rows = filtered.map((row) => ({
+      rating: row.rating,
+      sentiment:
+        row.rating >= 4
+          ? ("positive" as const)
+          : row.rating <= 2
+            ? ("negative" as const)
+            : ("neutral" as const),
+      category: null,
+      createdAt: row.created_at,
+      comment: row.comment,
+    }));
+    return analyzeFeedbackTrends(rows, period === "all" ? 90 : Number(period));
+  }, [feedback, period, ratingFilter]);
+
+  const trendLines = formatFeedbackDigestLines(trendInsight);
+
   return (
     <div className="space-y-6">
       <div>
@@ -88,6 +110,13 @@ export function FeedbackPanel({
         <p className="mt-1 text-xs text-muted-foreground">
           {filtered.length} ratings in selected period
         </p>
+        {trendLines.length > 0 && (
+          <ul className="mt-4 space-y-1 border-t border-border pt-4 text-sm text-muted-foreground">
+            {trendLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">

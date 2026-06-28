@@ -29,6 +29,9 @@ export type DenisTurnObservabilityPayload = {
   llmUsed?: boolean;
   planKind?: string;
   tier?: string;
+  modelTier?: string;
+  model?: string | null;
+  complexityScore?: number;
   evidencePointers?: string[];
   timings: TurnPhaseTimings;
 };
@@ -55,6 +58,9 @@ export function logDenisTurnObservability(
     llmUsed: payload.llmUsed,
     planKind: payload.planKind,
     tier: payload.tier,
+    modelTier: payload.modelTier,
+    model: payload.model,
+    complexityScore: payload.complexityScore,
     evidencePointers: payload.evidencePointers,
     latencyMs: payload.timings,
   });

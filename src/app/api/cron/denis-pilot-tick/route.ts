@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyCronSecret } from "@/lib/cron/verify-cron-secret";
 import { runDenisPilotTick } from "@/lib/denis/runtime/run-denis-pilot-tick";
@@ -8,6 +9,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const maxDuration = 60;
 
 export const GET = withErrorHandler("cron-denis-pilot-tick-get", async (req, _ctx) => {
+  const limited = await withCronRateLimit(req);
+  if (limited) return limited;
+
   if (!verifyCronSecret(req, process.env.CRON_SECRET)) {
     return apiError("Unauthorized", 401);
   }
