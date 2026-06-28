@@ -106,7 +106,7 @@ function applyGuestContinuityFromText(
   state: GuestContinuityState
 ): GuestContinuityState {
   const interp = interpretationForGuestText(guestText, interpretation);
-  let next = { ...state };
+  const next = { ...state };
 
   if (isGuestBrowsingDeferMessage(guestText)) {
     next.deferCount += 1;
