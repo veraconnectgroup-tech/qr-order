@@ -51,6 +51,7 @@ import {
   type ProvisionalKdsOrder,
 } from "@/lib/pos/provisional-display";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
 import { KdsConnectionBadge, kdsSecondsSinceUpdate } from "@/components/dashboard/kds-connection-badge";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
 import {
@@ -596,6 +597,10 @@ export function KdsBoard() {
           Sync failed — provisional ticket timed out ({provisionalSyncFailedCount})
         </div>
       )}
+
+      <div className="empty:hidden px-4 pt-3">
+        <DenisQuestionStrip locationId={locationId} station="kitchen" />
+      </div>
 
       {prepBatches.length > 0 && (
         <div className="border-b border-zinc-800 bg-zinc-950 px-4 py-3">

@@ -83,6 +83,9 @@
 | [ADR-040](./ADR-040-unified-proactive-decision-spine.md) | **UPDS** — one loop/decider/emitter; Kad in offer fold; audit gate | Approved | **Before any proactive refactor PR** |
 | [ADR-041](./ADR-041-intervention-journal-spine.md) | **IJS** — Intervention Journal; trajectory fold; actor wake; commerce spine | **P0–P5 ✅** (default off) | Shadow pilot: `intervention.mode=shadow` + actor |
 | [ADR-042](./ADR-042-venue-rhythm-priors.md) | **VRP** — Venue rhythm priors; session.completed rollup; admin heatmap | **P0–P4 ✅** (default off) | Shadow: `rhythm.mode=shadow` |
+| [ADR-043](./ADR-043-denis-coworker-completion.md) | **Restaurant Co-worker completion** — Faza 1: station truth + Ops Center · Faza 2: tempo, 86, desert, stalni gost, recovery, obrt, brifing | Approved (S0 ✅, S1–S14 ⬜) | Operator: [ADR-043-operator](./ADR-043-operator.md) · [session-prompts](./ADR-043-session-prompts.md) |
+| [ADR-044](./ADR-044-denis-loss-prevention.md) | **Owner Control & Loss Prevention** — journal osetljivih akcija, void/transfer/payment/keš/popust guardrails, owner suspicious report | Approved (posle ADR-043 S7) | [session-prompts](./ADR-044-session-prompts.md) — S1–S8 |
+| [ADR-045](./ADR-045-denis-memory-model.md) | **Multi-Memory Model** — Live/Shift/Restaurant/Audit nivoi, memory registar, Day Close, retencija, granice čitanja | Approved (posle ADR-043/044) | [session-prompts](./ADR-045-session-prompts.md) — S1–S5 |
 | [ADR-021](./ADR-021-denis-concierge-tuning.md) | **ConciergeConfig tuning** — profiles, LLM tiers, pilot runbook | Accepted | Ops pilot, multilingual |
 | [ADR-022](./ADR-022-denis-elite-enterprise.md) | ~~Elite tier sketch~~ → superseded by ADR-023 | Superseded | Historical |
 | [ADR-009](./ADR-009-atomic-turn-commercial-spine.md) | Metering, credits, timeline debit | Accepted F1–F7 | Commercial/billing |

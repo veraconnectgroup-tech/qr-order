@@ -25,6 +25,8 @@ export type AiGuestOrderQueryRow = {
   created_at: string;
   delivered_at: string | null;
   preparing_at?: string | null;
+  ready_at?: string | null;
+  order_number?: number | null;
   estimated_prep_minutes?: number | null;
   prep_estimate_confidence?: "none" | "low" | "medium" | "high" | null;
   order_items: Array<{

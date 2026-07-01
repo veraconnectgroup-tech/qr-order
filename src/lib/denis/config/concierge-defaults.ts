@@ -133,6 +133,16 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     floorGraphEnabled: false,
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
+    stationQuestions: {
+      enabled: false,
+      foodSlaMinutes: 12,
+      drinkSlaMinutes: 4,
+      pendingAcceptMinutes: 2,
+      readyPickupMinutes: 2,
+      cooldownMinutes: 4,
+      maxOpenPerStation: 3,
+      expirySeconds: 90,
+    },
   },
   learning: {
     learnedEdgesEnabled: false,

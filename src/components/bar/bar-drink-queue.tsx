@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useBarOrders } from "@/hooks/use-bar-orders";
 import { BarOrderRow } from "@/components/bar/bar-order-row";
+import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,8 @@ export function BarDrinkQueue() {
   return (
     <div className="space-y-4">
       <SoundEnableBanner />
+
+      <DenisQuestionStrip locationId={locationId} station="bar" />
 
       <div className="flex items-center justify-between gap-2">
         <div>

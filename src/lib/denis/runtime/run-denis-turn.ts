@@ -631,6 +631,46 @@ async function runTdePerceive(input: {
         templateMessage = statusMessage;
       }
     }
+
+    // Denis never invents ETAs — ask the station (or reuse its fresh answer).
+    if (
+      turnPlan.reason === "commerce.status.open_order" &&
+      input.ctx.config.ops.stationQuestions.enabled
+    ) {
+      try {
+        const { handleGuestStatusQuery } = await import(
+          "@/lib/denis/stations/station-questions"
+        );
+        const state = input.ctx.tableSessionState;
+        const stationLine = await handleGuestStatusQuery(createAdminClient(), {
+          locationId: input.body.locationId,
+          tableId: input.body.tableId,
+          tableName: state.table.name || null,
+          orders: state.commerce.orders.map((order) => ({
+            id: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+            createdAt: order.createdAt,
+            items: order.items,
+          })),
+          config: input.ctx.config,
+          language: input.body.language,
+        });
+        if (stationLine) {
+          templateMessage = statusMessage
+            ? `${statusMessage}\n\n${stationLine}`
+            : stationLine;
+        }
+      } catch (stationError) {
+        logger.warn("guest station question failed", {
+          locationId: input.body.locationId,
+          error:
+            stationError instanceof Error
+              ? stationError.message
+              : String(stationError),
+        });
+      }
+    }
   }
 
   const transcriptForTurn = input.ctx.tableSessionState?.timeline

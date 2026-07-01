@@ -194,6 +194,29 @@ const ConciergePartySchema = z.object({
   mode: z.enum(["shared_cart", "per_device"]),
 });
 
+/** Denis ↔ Kitchen/Bar Question Card — truthful ETA loop (P0). */
+const ConciergeStationQuestionsSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    foodSlaMinutes: z.number().int().min(5).max(60).default(12),
+    drinkSlaMinutes: z.number().int().min(2).max(30).default(4),
+    pendingAcceptMinutes: z.number().int().min(1).max(15).default(2),
+    readyPickupMinutes: z.number().int().min(1).max(15).default(2),
+    cooldownMinutes: z.number().int().min(1).max(30).default(4),
+    maxOpenPerStation: z.number().int().min(1).max(10).default(3),
+    expirySeconds: z.number().int().min(30).max(600).default(90),
+  })
+  .default({
+    enabled: false,
+    foodSlaMinutes: 12,
+    drinkSlaMinutes: 4,
+    pendingAcceptMinutes: 2,
+    readyPickupMinutes: 2,
+    cooldownMinutes: 4,
+    maxOpenPerStation: 3,
+    expirySeconds: 90,
+  });
+
 const ConciergeOpsSchema = z.object({
   staffHintsEnabled: z.boolean(),
   rushSkipUpsell: z.boolean(),
@@ -201,6 +224,7 @@ const ConciergeOpsSchema = z.object({
   floorGraphEnabled: z.boolean(),
   autoRushEnabled: z.boolean(),
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
+  stationQuestions: ConciergeStationQuestionsSchema,
 });
 
 const ConciergeLearningSchema = z.object({
@@ -339,6 +363,9 @@ export type ConciergeContext = z.infer<typeof ConciergeContextSchema>;
 export type ConciergeOrdering = z.infer<typeof ConciergeOrderingSchema>;
 export type ConciergeUpsell = z.infer<typeof ConciergeUpsellSchema>;
 export type ConciergeProactive = z.infer<typeof ConciergeProactiveSchema>;
+export type ConciergeStationQuestions = z.infer<
+  typeof ConciergeStationQuestionsSchema
+>;
 
 export const PartialConciergePersonaSchema = ConciergePersonaSchema.partial();
 export const PartialConciergeLanguageSchema = ConciergeLanguageSchema.partial();

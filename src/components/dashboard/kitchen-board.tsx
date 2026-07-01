@@ -24,6 +24,7 @@ import {
 import { isProvisionalKdsOrder } from "@/lib/pos/provisional-display";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
 import { KitchenHeader } from "@/components/dashboard/kitchen-header";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
@@ -354,6 +355,10 @@ export function KitchenBoard() {
   return (
     <div className="flex min-h-screen flex-col">
       <KitchenHeader orders={orders} realtimeMode={realtimeMode} />
+
+      <div className="empty:hidden px-4 pt-3">
+        <DenisQuestionStrip locationId={locationId} station="kitchen" />
+      </div>
 
       {provisionalSyncFailedCount > 0 && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-300">

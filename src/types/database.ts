@@ -811,6 +811,31 @@ type Tables = {
     context_hash: string | null;
     created_at: string;
   };
+  station_questions: {
+    id: string;
+    location_id: string;
+    order_id: string | null;
+    table_id: string | null;
+    station: "kitchen" | "bar";
+    question_type: "eta" | "pending_accept" | "ready_pickup" | "mixed_conflict";
+    message: string;
+    status: "open" | "answered" | "expired" | "cancelled";
+    answer:
+      | "eta"
+      | "ready"
+      | "problem"
+      | "accepted"
+      | "picked_up"
+      | "still_waiting"
+      | null;
+    answer_eta_minutes: number | null;
+    answered_by: string | null;
+    asked_by: "denis" | "manager" | "guest_trigger";
+    source_event: string | null;
+    asked_at: string;
+    answered_at: string | null;
+    expires_at: string;
+  };
   denis_turn_traces: {
     id: string;
     trace_id: string;

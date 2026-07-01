@@ -278,6 +278,24 @@ const de: TranslationMap = {
   "ai.recovery.noOpenOrders":
     "Aktuell keine offene Bestellung. Sagen Sie, was Sie möchten — ich kann sofort hinzufügen.",
   "ai.recovery.statusLive": "Bestellung #{number} — {items}.",
+  "ai.station.checking.kitchen":
+    "Ich frage gerade in der Küche nach — ich melde mich, sobald sie antworten.",
+  "ai.station.checking.bar":
+    "Ich frage gerade an der Bar nach — ich melde mich, sobald sie antworten.",
+  "ai.station.etaAnswer.kitchen":
+    "Ich habe in der Küche nachgefragt — noch ca. {minutes} Min.",
+  "ai.station.etaAnswer.bar":
+    "Ich habe an der Bar nachgefragt — noch ca. {minutes} Min.",
+  "ai.station.etaAnswerAgo.kitchen":
+    "Die Küche hat vor {ago} Min gemeldet: noch ca. {minutes} Min.",
+  "ai.station.etaAnswerAgo.bar":
+    "Die Bar hat vor {ago} Min gemeldet: noch ca. {minutes} Min.",
+  "ai.station.readyAnswer.kitchen":
+    "Die Küche meldet: Ihr Essen ist fertig — es kommt gleich an den Tisch.",
+  "ai.station.readyAnswer.bar":
+    "Die Bar meldet: Ihre Getränke sind fertig — sie kommen gleich.",
+  "ai.station.problem":
+    "Wir klären das gerade — jemand vom Team kommt gleich zu Ihnen.",
   "ai.chat.welcome": "Hallo! Ich bin Denis. Allergien?",
   "ai.chat.greeting":
     "Guten Tag! Möchten Sie etwas zu trinken oder etwas zu essen? Wie kann ich Ihnen helfen?",
@@ -741,6 +759,24 @@ const en: TranslationMap = {
   "ai.recovery.noOpenOrders":
     "No active order right now. Tell me what you'd like — I can add it straight away.",
   "ai.recovery.statusLive": "Order #{number} — {items}.",
+  "ai.station.checking.kitchen":
+    "I'm checking with the kitchen — I'll let you know as soon as they answer.",
+  "ai.station.checking.bar":
+    "I'm checking with the bar — I'll let you know as soon as they answer.",
+  "ai.station.etaAnswer.kitchen":
+    "I checked with the kitchen — about {minutes} more minutes.",
+  "ai.station.etaAnswer.bar":
+    "I checked with the bar — about {minutes} more minutes.",
+  "ai.station.etaAnswerAgo.kitchen":
+    "The kitchen said {ago} min ago: about {minutes} more minutes.",
+  "ai.station.etaAnswerAgo.bar":
+    "The bar said {ago} min ago: about {minutes} more minutes.",
+  "ai.station.readyAnswer.kitchen":
+    "The kitchen says your food is ready — it's on its way to your table.",
+  "ai.station.readyAnswer.bar":
+    "The bar says your drinks are ready — they're on their way.",
+  "ai.station.problem":
+    "We're looking into it — someone from the team is coming to your table.",
   "ai.chat.welcome": "Hi! I'm Denis. Any allergies?",
   "ai.chat.greeting":
     "Good day! Would you like something to drink or something to eat? How can I help?",
@@ -1228,6 +1264,24 @@ const sr: TranslationMap = {
   "ai.recovery.noOpenOrders":
     "Trenutno nemate aktivnu porudžbinu. Recite šta želite — mogu odmah dodati.",
   "ai.recovery.statusLive": "Porudžbina #{number} — {items}.",
+  "ai.station.checking.kitchen":
+    "Proveravam sa kuhinjom — javljam čim odgovore.",
+  "ai.station.checking.bar":
+    "Proveravam sa barom — javljam čim odgovore.",
+  "ai.station.etaAnswer.kitchen":
+    "Proverio sam sa kuhinjom — još oko {minutes} min.",
+  "ai.station.etaAnswer.bar":
+    "Proverio sam sa barom — još oko {minutes} min.",
+  "ai.station.etaAnswerAgo.kitchen":
+    "Kuhinja je pre {ago} min javila: još oko {minutes} min.",
+  "ai.station.etaAnswerAgo.bar":
+    "Bar je pre {ago} min javio: još oko {minutes} min.",
+  "ai.station.readyAnswer.kitchen":
+    "Kuhinja javlja: vaše jelo je spremno — stiže na sto.",
+  "ai.station.readyAnswer.bar":
+    "Bar javlja: vaše piće je spremno — stiže.",
+  "ai.station.problem":
+    "Proveravamo šta se dešava — neko iz tima dolazi kod vas.",
 
   "error.generic": "Nešto nije u redu.",
   "error.rate_limited": "Previše zahteva. Sačekajte trenutak.",

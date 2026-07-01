@@ -16,6 +16,10 @@ import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime
 import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
 import { enqueueOrRunProactiveSessionTick } from "@/lib/denis/runtime/enqueue-or-run-proactive-tick";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
+import {
+  expireStationQuestions,
+  runStationQuestionTriggersForSession,
+} from "@/lib/denis/stations/station-questions";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -111,6 +115,7 @@ export async function runSessionWatcherTick(
   let skipped = 0;
   const kitchenWaitsByLocation = new Map<string, KitchenTableWait[]>();
   const kitchenEscalationEmitted = new Set<string>();
+  const stationQuestionLocations = new Set<string>();
 
   for (const row of rows) {
     try {
@@ -148,6 +153,17 @@ export async function runSessionWatcherTick(
         sessionOpenedAt: row.opened_at,
         venueDefaultLanguage: config.language.venueDefault ?? "sr",
       });
+
+      if (config.ops.stationQuestions.enabled) {
+        stationQuestionLocations.add(row.location_id);
+        await runStationQuestionTriggersForSession(admin, {
+          locationId: row.location_id,
+          tableId: row.table_id,
+          tableName,
+          orders,
+          config,
+        });
+      }
 
       const tableWaitMinutes = Math.floor(maxKitchenWaitMinutesForTable(orders));
       if (tableWaitMinutes > 0) {
@@ -292,6 +308,20 @@ export async function runSessionWatcherTick(
         tableSessionId: row.id,
         error:
           watchError instanceof Error ? watchError.message : String(watchError),
+      });
+    }
+  }
+
+  for (const locationId of stationQuestionLocations) {
+    try {
+      await expireStationQuestions(admin, { locationId });
+    } catch (expireError) {
+      logger.warn("station question expiry failed", {
+        locationId,
+        error:
+          expireError instanceof Error
+            ? expireError.message
+            : String(expireError),
       });
     }
   }
