@@ -7,6 +7,14 @@ export {
 export type {
   ConciergeConfig,
   PartialConciergeConfig,
+  ConciergePersona,
+  ConciergeLanguage,
+  ConciergeContext,
+  ConciergeOrdering,
+  ConciergeUpsell,
+  ConciergeProactive,
+  ConciergeTone,
+  ConciergeGreetingStyle,
 } from "@/lib/denis/config/concierge-config.schema";
 export {
   CONCIERGE_CONFIG_CACHE_KEY_PREFIX,
@@ -41,6 +49,24 @@ export {
 } from "@/lib/denis/config/load-concierge-config";
 export type { LoadConciergeConfigOptions } from "@/lib/denis/config/load-concierge-config";
 export {
+  AB_EXPERIMENT_CONSTANTS,
+  assignAbVariant,
+  evaluateAbExperiment,
+  hashSessionExperimentBucket,
+} from "@/lib/denis/config/ab-experiment";
+export type {
+  AbExperiment,
+  AbExperimentMetric,
+  AbExperimentResult,
+  AbSessionMetrics,
+} from "@/lib/denis/config/ab-experiment";
+export {
+  mergeAbVariantIntoConfig,
+  applyEventModeConfigOverlay,
+  resolveEffectiveConciergeConfig,
+} from "@/lib/denis/config/resolve-effective-config";
+export type { EffectiveConciergeConfigResult } from "@/lib/denis/config/resolve-effective-config";
+export {
   canaryCohortBucket,
   guestSeesLegacyPath,
   isInCanaryCohort,
@@ -53,4 +79,16 @@ export {
 } from "@/lib/denis/config/rollout";
 export type { GuestLegacyPathOptions } from "@/lib/denis/config/rollout";
 export type { ConciergeRollout, ConciergeRolloutMode } from "@/lib/denis/config/rollout";
-export const DENIS_CONFIG_LAYER = "config" as const;
+export {
+  buildConciergeConfigPreview,
+} from "@/lib/denis/config/concierge-config-preview";
+export type {
+  ConciergeConfigPreview,
+  ConciergePreviewLine,
+} from "@/lib/denis/config/concierge-config-preview";
+export {
+  exportConciergeConfig,
+  exportPlatformDefaultsJson,
+  importConciergeConfig,
+} from "@/lib/denis/config/concierge-config-io";
+export type { ConciergeConfigExport } from "@/lib/denis/config/concierge-config-io";

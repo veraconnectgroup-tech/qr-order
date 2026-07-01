@@ -1,4 +1,14 @@
 import type { VenueOperatingMode } from "@/lib/denis/venue/ops/types";
+import type { MenuSection } from "@/lib/menu-section";
+
+export type StationQueue = {
+  station: MenuSection | "bar" | "kitchen" | "dessert";
+  activeOrderCount: number;
+  avgWaitMinutes: number | null;
+  oldestOrderMinutes: number | null;
+  openOrderCount?: number;
+  backlogMinutes?: number | null;
+};
 
 export type FloorTableHint =
   | "needs_attention"
@@ -21,6 +31,8 @@ export type FloorGraphHouse = {
   kdsBacklogMinutes: number | null;
   activeOrderCount: number;
   staffOnFloor: number | null;
+  stationQueues?: StationQueue[];
+  houseHint?: string | null;
 };
 
 export type FloorGraph = {

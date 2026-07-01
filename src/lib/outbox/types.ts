@@ -1,3 +1,15 @@
+/** Handler fails this many times → dead letter queue (Prompt 60). */
+export const OUTBOX_MAX_ATTEMPTS = 3;
+
+export type OutboxHandlerMetric = {
+  eventType: string;
+  throughput: number;
+  failed: number;
+  deadLetter: number;
+  failureRate: number;
+  avgLatencyMs: number;
+};
+
 export type OutboxDomain =
   | "fulfillment"
   | "fiscal"
@@ -17,10 +29,17 @@ export type OutboxEventType =
   | "integration.webhook"
   | "billing.low_balance"
   | "billing.staff_hint"
+  | "billing.trial_ending"
+  | "billing.usage_exceeded"
+  | "billing.actionable_insights"
   | "commerce.projection.refresh"
   | "commerce.alert.staff"
   | "commerce.denis.world"
-  | "session.scene.refresh";
+  | "commerce.preorder.release"
+  | "session.scene.refresh"
+  | "session.eval"
+  | "notification.sms.send"
+  | "notification.whatsapp.send";
 
 export type OutboxInsert = {
   aggregate_type?: "order" | "session";

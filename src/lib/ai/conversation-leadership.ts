@@ -54,28 +54,58 @@ export function isCasualSocialGuestMessage(message: string): boolean {
   return true;
 }
 
+const ORDERING_INTENTS = new Set<AiConciergeIntent>(["order", "clarify", "confirm"]);
+
 const LEADERSHIP_FALLBACK: Partial<
   Record<AiLang, (guestMessage: string) => string>
 > & {
   en: (guestMessage: string) => string;
 } = {
   sr: () =>
-    "Dobar dan i dobrodošli! Tu sam — kako vam mogu pomoći? Da li ste već odlučili šta biste želeli — piće ili nešto za jelo?",
+    "Tu sam — kako vam mogu pomoći? Da li ste već odlučili šta biste želeli — piće ili nešto za jelo?",
   hr: () =>
-    "Dobar dan i dobrodošli! Tu sam — kako vam mogu pomoći? Jeste li već odlučili što biste željeli — piće ili nešto za jelo?",
+    "Tu sam — kako vam mogu pomoći? Jeste li već odlučili što biste željeli — piće ili nešto za jelo?",
   de: () =>
-    "Guten Tag und willkommen! Ich bin für Sie da — wie darf ich Ihnen helfen? Haben Sie schon entschieden, was Sie trinken oder essen möchten?",
+    "Ich bin für Sie da — wie darf ich Ihnen helfen? Haben Sie schon entschieden, was Sie trinken oder essen möchten?",
   en: () =>
-    "Good day and welcome! I'm here for you — how may I help? Have you already decided on a drink or something to eat?",
+    "I'm here for you — how may I help? Have you already decided on a drink or something to eat?",
   tr: () =>
-    "İyi günler, hoş geldiniz! Size nasıl yardımcı olabilirim? İçecek veya yemek konusunda karar verdiniz mi?",
+    "Buradayım — size nasıl yardımcı olabilirim? İçecek veya yemek konusunda ne istersiniz?",
   fr: () =>
-    "Bonjour et bienvenue ! Comment puis-je vous aider ? Avez-vous déjà choisi une boisson ou un plat ?",
+    "Je suis là — comment puis-je vous aider ? Avez-vous déjà choisi une boisson ou un plat ?",
   es: () =>
-    "¡Buen día y bienvenido! ¿Cómo puedo ayudarle? ¿Ya ha decidido qué le gustaría tomar o comer?",
+    "Estoy aquí — ¿cómo puedo ayudarle? ¿Ya ha decidido qué le gustaría tomar o comer?",
   it: () =>
-    "Buongiorno e benvenuto! Come posso aiutarla? Ha già deciso cosa desidera bere o mangiare?",
+    "Sono qui — come posso aiutarla? Ha già deciso cosa desidera bere o mangiare?",
 };
+
+function isOrderingStructuredIntent(intent: AiConciergeIntent): boolean {
+  return ORDERING_INTENTS.has(intent);
+}
+
+/** Commerce-pressure refusal recovery — never reset to welcome. */
+export function orderingContinueReply(language: string): string {
+  const lang = resolveAiPromptLanguage(language);
+  if (lang === "sr" || lang === "hr") {
+    return "Hajde da nastavimo — šta želite da naručite?";
+  }
+  if (lang === "de") {
+    return "Lassen Sie uns weitermachen — was möchten Sie bestellen?";
+  }
+  return "Let's continue — what would you like to order?";
+}
+
+/** First-turn / banter refusal — polite re-engage without welcome reset. */
+export function politeReengageReply(language: string): string {
+  const lang = resolveAiPromptLanguage(language);
+  if (lang === "sr" || lang === "hr") {
+    return "Tu sam — kako vam mogu pomoći? Recite mi šta biste želeli — piće ili nešto za jelo?";
+  }
+  if (lang === "de") {
+    return "Ich bin für Sie da — wie darf ich Ihnen helfen? Was möchten Sie trinken oder essen?";
+  }
+  return "I'm here — how may I help? What would you like to drink or eat?";
+}
 
 function threadContinuationFallbackReply(
   language: string,
@@ -173,15 +203,33 @@ export type ConversationLeadershipContext = {
   transactionalTurn?: boolean;
   /** Transcript already has guest/denis lines — never reset to welcome fallback. */
   hasPriorMessages?: boolean;
+  /** ADR-025/030 — never rewrite refusal/clarify to banter welcome during commerce. */
+  conversationMode?: "banter" | "ordering" | "settling";
+  /** Explicit commerce pressure from beliefs — open cart or recap confirm. */
+  commercePressure?: "none" | "open" | "confirm";
 };
 
-function shouldPreserveClarify(input: ApplyConversationLeadershipInput): boolean {
-  const ctx = input.context;
+function hasCommercePressureOrAwaiting(
+  ctx: ConversationLeadershipContext | undefined
+): boolean {
   if (!ctx) return false;
   return (
     ctx.inOrderingFlow === true ||
     ctx.awaitingAnswer === true ||
-    ctx.transactionalTurn === true
+    ctx.commercePressure === "open" ||
+    ctx.commercePressure === "confirm"
+  );
+}
+
+function isCommerceConversationContext(
+  ctx: ConversationLeadershipContext | undefined
+): boolean {
+  if (!ctx) return false;
+  return (
+    hasCommercePressureOrAwaiting(ctx) ||
+    ctx.transactionalTurn === true ||
+    ctx.conversationMode === "ordering" ||
+    ctx.conversationMode === "settling"
   );
 }
 
@@ -189,36 +237,58 @@ function isOrderComplaintMessage(message: string): boolean {
   return MISSING_ORDER_COMPLAINT_PATTERN.test(message.trim());
 }
 
+function resolveRefusalRecoveryMessage(
+  structured: AiStructuredResponse,
+  input: ApplyConversationLeadershipInput
+): string {
+  const ctx = input.context;
+  const orderingIntent = isOrderingStructuredIntent(structured.intent);
+
+  if (hasCommercePressureOrAwaiting(ctx) || isCommerceConversationContext(ctx)) {
+    return orderingContinueReply(input.language);
+  }
+
+  if (
+    isOrderComplaintMessage(input.guestMessage) ||
+    isGuestOrderingOrContinuationMessage(input.guestMessage) ||
+    ctx?.hasPriorMessages
+  ) {
+    return orderingFlowRecoveryReply(input.language, input.guestMessage);
+  }
+
+  if (orderingIntent) {
+    return politeReengageReply(input.language);
+  }
+
+  return politeReengageReply(input.language);
+}
+
 /**
  * Denis leads — never passive "I don't understand".
- * Rewrites refusal replies; preserves LLM clarify during ordering (ADR-030).
+ * Rewrites refusal replies; preserves ordering/clarify/confirm during commerce (ADR-030).
  */
 export function applyConversationLeadership(
   structured: AiStructuredResponse,
   input: ApplyConversationLeadershipInput
 ): AiStructuredResponse {
-  const refusal = isDenisRefusalReply(structured.message);
-  const preserveClarify = shouldPreserveClarify(input);
-  const preserveTransactional =
-    preserveClarify ||
-    isOrderComplaintMessage(input.guestMessage) ||
-    isGuestOrderingOrContinuationMessage(input.guestMessage);
-  const misclassifiedClarify =
-    !preserveTransactional &&
-    structured.intent === "clarify" &&
-    isCasualSocialGuestMessage(input.guestMessage) &&
-    structured.proposedItems.length === 0 &&
-    structured.recommendations.length === 0;
-
-  if (!refusal && !misclassifiedClarify) {
+  if (!isDenisRefusalReply(structured.message)) {
     return structured;
   }
 
-  if (refusal && preserveTransactional) {
+  const ctx = input.context;
+  const orderingIntent = isOrderingStructuredIntent(structured.intent);
+  const inCommerceContext =
+    hasCommercePressureOrAwaiting(ctx) ||
+    isCommerceConversationContext(ctx) ||
+    isOrderComplaintMessage(input.guestMessage) ||
+    isGuestOrderingOrContinuationMessage(input.guestMessage) ||
+    Boolean(ctx?.hasPriorMessages);
+
+  if (!inCommerceContext) {
     return {
       ...structured,
-      intent: "clarify",
-      message: orderingFlowRecoveryReply(input.language, input.guestMessage),
+      intent: "chat",
+      message: politeReengageReply(input.language),
       recommendations: [],
       proposedItems: [],
       quickReplies: [],
@@ -226,15 +296,12 @@ export function applyConversationLeadership(
     };
   }
 
-  const intent: AiConciergeIntent =
-    refusal || misclassifiedClarify ? "chat" : structured.intent;
+  const intent = orderingIntent ? structured.intent : "clarify";
 
   return {
     ...structured,
     intent,
-    message: leadershipFallbackReply(input.language, input.guestMessage, {
-      hasPriorMessages: input.context?.hasPriorMessages,
-    }),
+    message: resolveRefusalRecoveryMessage(structured, input),
     recommendations: [],
     proposedItems: [],
     quickReplies: [],

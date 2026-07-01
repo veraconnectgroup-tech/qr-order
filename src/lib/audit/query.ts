@@ -1,18 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 
-export type AuditLogRow = {
-  id: number;
-  org_id: string;
-  user_id: string | null;
-  action: string;
-  entity_type: string;
-  entity_id: string | null;
-  old_value: unknown;
-  new_value: unknown;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-};
+export type AuditLogRow = Database["public"]["Tables"]["audit_log"]["Row"];
 
 export type AuditLogRowView = AuditLogRow & {
   userLabel: string;
@@ -37,7 +26,7 @@ export async function loadAuditLog(
 
   const supabase = await createServerClient();
   let query = supabase
-    .from("audit_log" as never)
+    .from("audit_log")
     .select("*", { count: "exact" })
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
@@ -65,7 +54,7 @@ export async function loadAuditLog(
     };
   }
 
-  const rows = (data ?? []) as unknown as AuditLogRow[];
+  const rows = data ?? [];
   const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
 
   const usersById = new Map<string, { name: string; email: string | null }>();
@@ -77,8 +66,7 @@ export async function loadAuditLog(
       .in("user_id", userIds);
 
     for (const row of staffRows ?? []) {
-      const s = row as { user_id: string; name: string; email: string | null };
-      usersById.set(s.user_id, { name: s.name, email: s.email });
+      usersById.set(row.user_id, { name: row.name, email: row.email });
     }
   }
 

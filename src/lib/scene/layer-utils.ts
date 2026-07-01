@@ -15,6 +15,26 @@ export function viewBannerLayers(view: TableSessionView | null): SceneBannerLaye
   return view.layers.filter((layer): layer is SceneBannerLayer => layer.kind === "banner");
 }
 
+export function viewCapacityAmbientLayer(
+  view: TableSessionView | null
+): { capacityLevel: "green" | "yellow" | "red"; capacityMessage: string | null } | null {
+  const capacityBanner = viewBannerLayers(view).find((layer) =>
+    layer.id.includes("capacity")
+  );
+  if (!capacityBanner?.message) return null;
+
+  const level = capacityBanner.message.includes("🔴")
+    ? "red"
+    : capacityBanner.message.includes("🟡")
+      ? "yellow"
+      : "green";
+
+  return {
+    capacityLevel: level,
+    capacityMessage: capacityBanner.message,
+  };
+}
+
 export function sceneSheetLayer(scene: Scene): SceneSheetLayer | null {
   return scene.layers.find((layer): layer is SceneSheetLayer => layer.kind === "sheet") ?? null;
 }

@@ -5,6 +5,7 @@ import {
   type PartialConciergeConfig,
 } from "@/lib/denis/config/concierge-config.schema";
 import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
+import { asRecord } from "@/lib/supabase/json";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -57,13 +58,13 @@ export function mergeConciergeConfig(
   location: PartialConciergeConfig | null | undefined
 ): ConciergeConfig {
   const merged = mergeConciergeLayer(
-    structuredClone(platform) as unknown as Record<string, unknown>,
-    (org ?? {}) as Record<string, unknown>
+    asRecord(structuredClone(platform)),
+    asRecord(org ?? {})
   );
 
   const withLocation = mergeConciergeLayer(
     merged,
-    (location ?? {}) as Record<string, unknown>
+    asRecord(location ?? {})
   );
 
   return ConciergeConfigSchema.parse(withLocation);

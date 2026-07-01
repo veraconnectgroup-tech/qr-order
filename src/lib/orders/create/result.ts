@@ -12,6 +12,7 @@ export type OrderCreateErrorCode =
   | "ordering_paused"
   | "payment_method_unavailable"
   | "session_closing"
+  | "rate_limited"
   | "internal";
 
 export type OrderCreateError = {

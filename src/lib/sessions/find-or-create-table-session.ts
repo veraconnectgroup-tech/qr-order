@@ -1,4 +1,5 @@
 import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
+import { assertIpSessionBudget } from "@/lib/security/session-guards";
 import { closeTableSession } from "@/lib/sessions/session-devices";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { emitDenisSessionCompleted } from "@/lib/webhooks/emit-denis-session-events";
@@ -81,7 +82,8 @@ async function dedupeActiveSessions(
 export async function findOrCreateTableSession(
   admin: AdminClient,
   tableId: string,
-  locationId: string
+  locationId: string,
+  options?: { clientIp?: string | null }
 ): Promise<
   | { sessionId: string; sessionToken: string }
   | { error: string; status: number }
@@ -91,6 +93,11 @@ export async function findOrCreateTableSession(
 
   const existing = await resolveActiveSession(admin, tableId, cutoff);
   if (existing) return existing;
+
+  const ipBudget = await assertIpSessionBudget(options?.clientIp);
+  if (!ipBudget.ok) {
+    return { error: ipBudget.error, status: 429 };
+  }
 
   const { data: staleActive } = await admin
     .from("table_sessions")

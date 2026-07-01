@@ -18,6 +18,20 @@ export function isDrinksMenuSection(
   return section === "drinks";
 }
 
+export const isBarMenuSection = isDrinksMenuSection;
+
+export function isFoodMenuSection(
+  section: string | null | undefined
+): section is "food" {
+  return section === "food";
+}
+
+export function isDessertMenuSection(
+  section: string | null | undefined
+): section is "desserts" {
+  return section === "desserts";
+}
+
 export function getKitchenOrderItems(
   order: Pick<OrderWithDetails, "order_items">
 ): OrderWithDetails["order_items"] {

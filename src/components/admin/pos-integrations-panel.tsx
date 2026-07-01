@@ -37,6 +37,7 @@ const PROVIDER_LABELS: Record<PosProvider, string> = {
   orderbird: "Orderbird",
   lightspeed: "Lightspeed",
   ready2order: "ready2order",
+  sumup: "SumUp",
   custom: "Custom",
 };
 

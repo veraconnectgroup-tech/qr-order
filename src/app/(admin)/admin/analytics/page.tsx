@@ -1,5 +1,8 @@
 import { Suspense } from "react";
+import { AdminIntelligenceDashboard } from "@/components/admin/analytics/admin-intelligence-dashboard";
 import { AnalyticsDateRangePicker } from "@/components/admin/analytics/date-range-picker";
+import { AnalyticsTabNav } from "@/components/admin/analytics/analytics-tab-nav";
+import { DenisMenuEngineeringPanel } from "@/components/admin/denis-menu-engineering-panel";
 import { AvgTicketKpiCard } from "@/components/admin/analytics/avg-ticket-kpi-card";
 import {
   OrderSourceChart,
@@ -19,6 +22,8 @@ import {
   type AnalyticsSearchParams,
 } from "@/lib/analytics/date-range";
 import { loadAdminAnalyticsSnapshot } from "@/lib/analytics/admin-analytics";
+import { loadAdminIntelligenceSnapshot } from "@/lib/analytics/admin-intelligence/load-intelligence";
+import { loadMenuEngineeringSnapshot } from "@/lib/admin/load-menu-engineering";
 import { requireAdmin } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -44,10 +49,29 @@ export default async function AdminAnalyticsPage({
 
   const params = await searchParams;
   const range = resolveAnalyticsDateRange(params);
+  const tab =
+    params.tab === "menu-engineering"
+      ? "menu-engineering"
+      : params.tab === "intelligence"
+        ? "intelligence"
+        : "overview";
   const snapshot = await loadAdminAnalyticsSnapshot(
     range,
     getPreviousAnalyticsRange(range)
   );
+
+  const intelligence =
+    tab === "intelligence" && staff.location_id
+      ? await loadAdminIntelligenceSnapshot(range)
+      : null;
+
+  const menuEngineering =
+    tab === "menu-engineering" && staff.location_id
+      ? await loadMenuEngineeringSnapshot(admin, {
+          locationId: staff.location_id,
+          periodDays: 30,
+        })
+      : null;
 
   return (
     <div className="p-6">
@@ -55,7 +79,7 @@ export default async function AdminAnalyticsPage({
         <div>
           <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Revenue, orders, and guest feedback for your location.
+            Revenue, conversion funnel, menu performance, and Denis intelligence.
           </p>
         </div>
         <Suspense fallback={<DateRangePickerFallback />}>
@@ -63,7 +87,36 @@ export default async function AdminAnalyticsPage({
         </Suspense>
       </div>
 
-      {!snapshot ? (
+      <Suspense fallback={null}>
+        <AnalyticsTabNav />
+      </Suspense>
+
+      {tab === "menu-engineering" ? (
+        !staff.location_id ? (
+          <div className="mt-6 rounded-lg border border-border bg-card p-8 text-center text-muted-foreground shadow-sm">
+            No location assigned.
+          </div>
+        ) : (
+          <div className="mt-6">
+            <DenisMenuEngineeringPanel snapshot={menuEngineering} />
+          </div>
+        )
+      ) : tab === "intelligence" ? (
+        !staff.location_id ? (
+          <div className="mt-6 rounded-lg border border-border bg-card p-8 text-center text-muted-foreground shadow-sm">
+            No location assigned.
+          </div>
+        ) : !intelligence ? (
+          <div className="mt-6 rounded-lg border border-border bg-card p-8 text-center text-muted-foreground shadow-sm">
+            Unable to load intelligence data.
+          </div>
+        ) : (
+          <AdminIntelligenceDashboard
+            snapshot={intelligence}
+            currency={currency}
+          />
+        )
+      ) : !snapshot ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground shadow-sm">
           No location assigned. Analytics require at least one location.
         </div>

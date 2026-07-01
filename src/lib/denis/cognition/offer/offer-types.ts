@@ -1,4 +1,7 @@
-import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import type {
+  BrowseAction,
+  GuestBrowseProfile,
+} from "@/lib/denis/cognition/browse/browse-types";
 import type {
   GuestIntent,
   GuestMentalModel,
@@ -20,12 +23,14 @@ import type {
 } from "@/lib/denis/cognition/offer/nudge-outcome-types";
 import type { AttributedNudgeRevenue } from "@/lib/denis/cognition/offer/fold-nudge-revenue";
 import type { OrderFact } from "@/lib/denis/loop/types";
+import type { SmartRecoveryPlan } from "@/lib/denis/cognition/offer/smart-cart-recovery";
+import type { VenueKnowledgeGraph } from "@/lib/denis/kernel/vkg/types";
 
 export const GUEST_OFFER_CONTEXT_VERSION = 1 as const;
 
 export type BrowseSequenceEntry = {
   at: string;
-  action: "view_category" | "view_product" | "add_to_cart" | "remove_from_cart" | "scroll_menu";
+  action: BrowseAction;
   productId?: string;
   categoryId?: string;
   menuSection?: "food" | "drinks" | "desserts" | null;
@@ -131,6 +136,8 @@ export type GuestOfferContext = {
   primary: ResolvedOffer | null;
   alternative: ResolvedOffer | null;
   cartRecovery: ResolvedOffer | null;
+  /** N2 smart recovery plan — reason, delay, personalized copy. */
+  smartRecovery: SmartRecoveryPlan | null;
   sequencePattern: BrowseSequencePattern;
   scoredProducts: ScoredBrowseProduct[];
   trace: OfferResolutionTrace;
@@ -147,4 +154,9 @@ export type FoldGuestOfferContextInput = {
   config: ConciergeConfig;
   now?: number;
   orders?: OrderFact[];
+  productPricesCents?: Record<string, number>;
+  sessionAllergieLabels?: string[];
+  productAllergens?: Record<string, string[]>;
+  vkgGraph?: VenueKnowledgeGraph | null;
+  language?: string | null;
 };

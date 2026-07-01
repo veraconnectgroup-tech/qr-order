@@ -1,6 +1,8 @@
+import { OFFLINE_QUEUE_TTL_MS } from "@/lib/offline/service-worker";
+
 const QUEUE_KEY = "qr-order-queue";
 
-type QueuedOrder = {
+export type QueuedOrder = {
   id: string;
   sessionToken: string;
   tableToken: string;
@@ -8,10 +10,17 @@ type QueuedOrder = {
   createdAt: number;
 };
 
+export type FlushOfflineOrderQueueResult = {
+  sent: number;
+  failed: number;
+  flushedIds: string[];
+};
+
 function readQueue(): QueuedOrder[] {
   if (typeof localStorage === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as QueuedOrder[];
+    const parsed = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as QueuedOrder[];
+    return pruneExpiredQueuedOrders(parsed);
   } catch {
     return [];
   }
@@ -19,7 +28,22 @@ function readQueue(): QueuedOrder[] {
 
 function writeQueue(queue: QueuedOrder[]) {
   if (typeof localStorage === "undefined") return;
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(pruneExpiredQueuedOrders(queue)));
+}
+
+export function pruneExpiredQueuedOrders(
+  queue: QueuedOrder[],
+  now = Date.now()
+): QueuedOrder[] {
+  return queue.filter((item) => now - item.createdAt < OFFLINE_QUEUE_TTL_MS);
+}
+
+export function getPendingOfflineOrderCount(): number {
+  return readQueue().length;
+}
+
+export function listPendingOfflineOrders(): QueuedOrder[] {
+  return readQueue();
 }
 
 export function enqueueOfflineOrder(input: {
@@ -38,11 +62,12 @@ export function enqueueOfflineOrder(input: {
   writeQueue(queue);
 }
 
-export async function flushOfflineOrderQueue() {
+export async function flushOfflineOrderQueue(): Promise<FlushOfflineOrderQueueResult> {
   const queue = readQueue();
-  if (!queue.length) return { sent: 0, failed: 0 };
+  if (!queue.length) return { sent: 0, failed: 0, flushedIds: [] };
 
   const remaining: QueuedOrder[] = [];
+  const flushedIds: string[] = [];
   let sent = 0;
 
   for (const item of queue) {
@@ -51,9 +76,11 @@ export async function flushOfflineOrderQueue() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(item.payload),
+        cache: "no-store",
       });
       if (res.ok) {
         sent += 1;
+        flushedIds.push(item.id);
       } else {
         remaining.push(item);
       }
@@ -63,7 +90,7 @@ export async function flushOfflineOrderQueue() {
   }
 
   writeQueue(remaining);
-  return { sent, failed: remaining.length };
+  return { sent, failed: remaining.length, flushedIds };
 }
 
 export async function registerOrderSync() {

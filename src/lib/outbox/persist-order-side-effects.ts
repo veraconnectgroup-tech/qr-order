@@ -5,7 +5,7 @@ import {
 } from "@/lib/outbox/build-outbox-events";
 import { loadOrderOutboxContext } from "@/lib/outbox/load-outbox-context";
 import { scheduleOutboxProcess } from "@/lib/outbox/schedule-process";
-import type { OrderSideEffectPhase } from "@/lib/outbox/types";
+import { OUTBOX_MAX_ATTEMPTS, type OrderSideEffectPhase } from "@/lib/outbox/types";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -94,6 +94,7 @@ export async function persistOrderSideEffects(
       domain: row.domain,
       event_type: row.event_type,
       payload: row.payload,
+      max_attempts: OUTBOX_MAX_ATTEMPTS,
     })) as never
   );
 

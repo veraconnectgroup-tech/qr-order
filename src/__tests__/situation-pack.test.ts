@@ -137,6 +137,94 @@ describe("ADR-031 Situation Pack", () => {
     expect(pack).toContain("Orders in kitchen");
   });
 
+  it("includes KITCHEN section with wait and eta", () => {
+    const pack = buildSituationPack({
+      state: baseState({
+        commerce: {
+          orders: [
+            {
+              id: "o1",
+              orderNumber: 42,
+              status: "preparing",
+              paymentStatus: "paid",
+              estimatedPrepMinutes: 8,
+              createdAt: "2026-05-29T11:40:00.000Z",
+              items: [{ productName: "Burger", quantity: 1, menuSection: "food" }],
+            },
+          ],
+          cart: {
+            ai: emptyCartState(),
+            visibleLines: [],
+          },
+        },
+        venue: {
+          ops: {
+            operatingMode: "rush",
+            kdsStress: "high",
+            acceptingOrders: true,
+            unavailableProductIds: [],
+            staffHint: null,
+            stationStress: [
+              {
+                station: "kitchen",
+                stress: "high",
+                activeCount: 10,
+                avgWaitMinutes: 18,
+              },
+            ],
+          },
+          opsEffects: {
+            skipUpsell: false,
+            shortenReplies: false,
+            empathyNote: null,
+            guestSafeStaffHint: null,
+            capacityBanner: {
+              level: "yellow",
+              estimatedWaitMinutes: 18,
+              message: "🟡 Kuhinja malo zauzeta",
+              showBanner: true,
+            },
+          },
+        },
+      }),
+      beliefs: beliefGraph([]),
+      sessionPhase: "waiting",
+      venueOps: {
+        operatingMode: "rush",
+        kdsStress: "high",
+        acceptingOrders: true,
+        unavailableProductIds: [],
+        staffHint: null,
+        stationStress: [
+          {
+            station: "kitchen",
+            stress: "high",
+            activeCount: 10,
+            avgWaitMinutes: 18,
+          },
+        ],
+      },
+      opsEffects: {
+        skipUpsell: false,
+        shortenReplies: false,
+        empathyNote: null,
+        guestSafeStaffHint: null,
+        capacityBanner: {
+          level: "yellow",
+          estimatedWaitMinutes: 18,
+          message: "🟡 Kuhinja malo zauzeta",
+          showBanner: true,
+        },
+      },
+    });
+
+    expect(pack).toContain("KITCHEN:");
+    expect(pack).toContain("table_orders:");
+    expect(pack).toContain("guest_wait:");
+    expect(pack).toContain("eta_remaining:");
+    expect(pack).toContain("backlog_level:");
+  });
+
   it("includes order draft pending block", () => {
     const draftContext = [
       "PENDING ORDER ITEM (needs guest choice):",

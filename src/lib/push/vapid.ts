@@ -4,6 +4,12 @@ export type PushPayload = {
   title: string;
   body: string;
   url?: string;
+  tag?: string;
+  sound?: boolean;
+  urgent?: boolean;
+  type?: string;
+  soundProfile?: "ding" | "ring" | "alarm" | "default";
+  vibrate?: number[];
 };
 
 export type PushSubscriptionInput = {

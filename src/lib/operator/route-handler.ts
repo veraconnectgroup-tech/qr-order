@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { withErrorHandler, type RouteHandler } from "@/lib/api/with-error-handler";
 import { apiSuccess } from "@/lib/api-response";
 import { noCache } from "@/lib/cache/headers";
-import { withRateLimit } from "@/lib/rate-limit";
+import { withOperatorOrgRateLimit } from "@/lib/rate-limit";
 import {
   authenticateOperatorApiKey,
   requireOperatorScope,
@@ -28,12 +28,21 @@ export function withOperatorReadRoute(
 ): RouteHandler {
   return withErrorHandler(name, async (req, ctx) => {
     const startedAt = Date.now();
-    const limited = await withRateLimit(req, "operator");
-    if (limited) return limited;
 
     const auth = await authenticateOperatorApiKey(req);
     if (auth instanceof Response) {
       return auth;
+    }
+
+    const limited = await withOperatorOrgRateLimit(auth.orgId);
+    if (limited) {
+      void logOperatorApiRequest({
+        ctx: auth,
+        req,
+        statusCode: 429,
+        startedAt,
+      });
+      return limited;
     }
 
     const scopeErr = requireOperatorScope(auth, "operator:read");
@@ -90,12 +99,21 @@ export function withOperatorProposeRoute(
 ): RouteHandler {
   return withErrorHandler(name, async (req, ctx) => {
     const startedAt = Date.now();
-    const limited = await withRateLimit(req, "operator");
-    if (limited) return limited;
 
     const auth = await authenticateOperatorApiKey(req);
     if (auth instanceof Response) {
       return auth;
+    }
+
+    const limited = await withOperatorOrgRateLimit(auth.orgId);
+    if (limited) {
+      void logOperatorApiRequest({
+        ctx: auth,
+        req,
+        statusCode: 429,
+        startedAt,
+      });
+      return limited;
     }
 
     const scopeErr = requireOperatorScope(auth, "operator:propose");

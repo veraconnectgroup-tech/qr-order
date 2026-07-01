@@ -1,3 +1,4 @@
+import type { ClientAccessibilitySignals } from "@/lib/denis/cognition/mental-model/accessibility-types";
 import type { GuestManualCartSnapshot } from "@/lib/guest/manual-cart-snapshot";
 import type { DenisSignalRequest } from "@/lib/denis/ingress/signal-types";
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
@@ -43,6 +44,7 @@ export type PostDenisMessageTurnInput = {
   handoffPaymentMethod?: SelectablePaymentMethod;
   surface?: "chat" | "voice";
   includeOrderContext?: boolean;
+  accessibilitySignals?: ClientAccessibilitySignals;
 };
 
 export async function postDenisSignal(
@@ -145,6 +147,7 @@ export async function postDenisMessageTurn(
       handoffPaymentMethod: input.handoffPaymentMethod,
       surface: input.surface,
       includeOrderContext: input.includeOrderContext,
+      accessibilitySignals: input.accessibilitySignals,
     } satisfies DenisSignalRequest),
   });
 }

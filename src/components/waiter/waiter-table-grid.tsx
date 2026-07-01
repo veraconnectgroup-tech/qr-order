@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
+import { useWaiterCopilotTableMap } from "@/components/waiter/waiter-denis-copilot-panel";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
 
@@ -79,8 +80,9 @@ export function WaiterTableGrid({
   detailBasePath = "/waiter/tables",
   className,
 }: Props) {
-  const { locationId, currency } = useDashboard();
+  const { locationId, currency, aiConciergeEnabled } = useDashboard();
   const { t, menuLocale } = useWaiterI18n();
+  const copilotByTable = useWaiterCopilotTableMap();
   const waiterCallsResult = useRealtimeWaiterCalls(locationId);
   const [tables, setTables] = useState<WaiterTableRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,6 +169,9 @@ export function WaiterTableGrid({
           const visualStatus = getWaiterTableVisualStatus(table);
           const orderCount = table.activeOrders.length;
           const lastOrderAt = getLastOrderAt(table);
+          const copilotRow = aiConciergeEnabled
+            ? copilotByTable.get(table.id)
+            : undefined;
 
           return (
             <Link
@@ -175,7 +180,13 @@ export function WaiterTableGrid({
               onClick={() => hapticLight()}
               className={cn(
                 "flex min-h-[8.5rem] flex-col rounded-xl border bg-dash-surface p-4 active:scale-[0.98]",
-                tableStatusBorder(visualStatus)
+                copilotRow
+                  ? copilotRow.urgency === "red"
+                    ? "border-red-500/50 ring-1 ring-red-500/20"
+                    : copilotRow.urgency === "yellow"
+                      ? "border-yellow-500/50 ring-1 ring-yellow-500/20"
+                      : tableStatusBorder(visualStatus)
+                  : tableStatusBorder(visualStatus)
               )}
             >
               <div className="flex items-start justify-between gap-2">
@@ -222,6 +233,11 @@ export function WaiterTableGrid({
                     {t("status.paymentRequested")}
                   </p>
                 )}
+                {copilotRow?.summary ? (
+                  <p className="line-clamp-2 text-[11px] leading-snug text-dash-text-muted">
+                    {copilotRow.summary}
+                  </p>
+                ) : null}
               </div>
             </Link>
           );

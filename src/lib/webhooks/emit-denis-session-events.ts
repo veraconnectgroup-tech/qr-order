@@ -5,9 +5,10 @@ import {
   extractIntentsFromTimeline,
   resolveSessionOutcome,
 } from "@/lib/operator/projections/helpers";
+import { enqueueSessionEval } from "@/lib/outbox/enqueue-session-eval";
 import { enqueueDenisOperatorWebhooks } from "@/lib/webhooks/enqueue-denis-operator-webhook";
 import { orgIdForLocation } from "@/lib/webhooks/org-context";
-import { getCurrentTraceId } from "@/lib/resilience/trace-context";
+import { getCurrentTraceId } from "@/lib/resilience/trace.server";
 import { logger } from "@/lib/logger";
 
 export async function emitDenisSessionUpdated(
@@ -179,6 +180,20 @@ export async function emitDenisSessionCompleted(
     });
   } catch (error) {
     logger.warn("denis.session.completed enqueue failed", {
+      sessionId: session.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
+    await enqueueSessionEval(admin, {
+      tableSessionId: session.id,
+      locationId: session.location_id,
+      aiSessionId: session.denis_shared_ai_session_id,
+      ordersCount: ordersCount ?? 0,
+    });
+  } catch (error) {
+    logger.warn("session.eval enqueue failed", {
       sessionId: session.id,
       error: error instanceof Error ? error.message : String(error),
     });

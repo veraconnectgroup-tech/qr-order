@@ -1,4 +1,6 @@
 import type { MenuSection } from "@/lib/menu-section";
+import { matchUpsellRules } from "@/lib/upsell/rule-engine";
+import { normalizeUpsellRule } from "@/lib/upsell/rule-types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const MAX_UPSELL_SUGGESTIONS = 3;
@@ -6,6 +8,7 @@ export const MAX_UPSELL_SUGGESTIONS = 3;
 export type UpsellSuggestion = {
   ruleId: string;
   message: string | null;
+  abVariantId: string | null;
   product: {
     id: string;
     name: string;
@@ -19,63 +22,54 @@ export type UpsellSuggestion = {
   };
 };
 
-type UpsellRuleRow = {
-  id: string;
-  trigger_product_id: string | null;
-  trigger_category_id: string | null;
-  suggest_product_id: string;
-  message: string | null;
-  sort_order: number;
-};
-
 export async function getSuggestions(
   locationId: string,
   cartProductIds: string[],
-  cartCategoryIds: string[]
+  cartCategoryIds: string[],
+  options?: {
+    cartTotalEuros?: number;
+    dismissedNudgeKeys?: string[];
+    respectDecline?: boolean;
+    guestTags?: string[];
+    localHour?: number;
+  }
 ): Promise<UpsellSuggestion[]> {
   if (cartProductIds.length === 0) return [];
 
   const admin = createAdminClient();
-  const cartProductSet = new Set(cartProductIds);
-  const cartCategorySet = new Set(cartCategoryIds);
 
   const { data: rules } = await admin
     .from("upsell_rules")
     .select(
-      "id, trigger_product_id, trigger_category_id, suggest_product_id, message, sort_order"
+      "id, location_id, rule_type, trigger_product_id, trigger_category_id, suggest_product_id, message, conditions, ab_variants, sort_order, is_active, impressions_count, conversions_count, declines_count"
     )
     .eq("location_id", locationId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  const ruleRows = (rules as UpsellRuleRow[]) ?? [];
+  const ruleRows = ((rules ?? []) as Array<Parameters<typeof normalizeUpsellRule>[0]>).map(
+    normalizeUpsellRule
+  );
   if (ruleRows.length === 0) return [];
 
-  const matchedRules: UpsellRuleRow[] = [];
-  const seenSuggestIds = new Set<string>();
+  const matched = matchUpsellRules(
+    ruleRows,
+    {
+      cartProductIds,
+      cartCategoryIds,
+      cartTotalEuros: options?.cartTotalEuros ?? 0,
+      localHour: options?.localHour ?? new Date().getHours(),
+      guestTags: options?.guestTags ?? [],
+      dismissedNudgeKeys: options?.dismissedNudgeKeys ?? [],
+      respectDecline: options?.respectDecline ?? true,
+    },
+    MAX_UPSELL_SUGGESTIONS
+  );
 
-  for (const rule of ruleRows) {
-    if (cartProductSet.has(rule.suggest_product_id)) continue;
-    if (seenSuggestIds.has(rule.suggest_product_id)) continue;
+  if (matched.length === 0) return [];
 
-    const productTrigger =
-      rule.trigger_product_id != null &&
-      cartProductSet.has(rule.trigger_product_id);
-    const categoryTrigger =
-      rule.trigger_category_id != null &&
-      cartCategorySet.has(rule.trigger_category_id);
-
-    if (!productTrigger && !categoryTrigger) continue;
-
-    matchedRules.push(rule);
-    seenSuggestIds.add(rule.suggest_product_id);
-    if (matchedRules.length >= MAX_UPSELL_SUGGESTIONS) break;
-  }
-
-  if (matchedRules.length === 0) return [];
-
-  const suggestIds = matchedRules.map((r) => r.suggest_product_id);
+  const suggestIds = matched.map((row) => row.rule.suggest_product_id);
 
   const { data: products } = await admin
     .from("products")
@@ -135,13 +129,14 @@ export async function getSuggestions(
 
   const suggestions: UpsellSuggestion[] = [];
 
-  for (const rule of matchedRules) {
-    const product = productMap.get(rule.suggest_product_id);
+  for (const row of matched) {
+    const product = productMap.get(row.rule.suggest_product_id);
     if (!product) continue;
 
     suggestions.push({
-      ruleId: rule.id,
-      message: rule.message,
+      ruleId: row.rule.id,
+      message: row.message || null,
+      abVariantId: row.abVariantId,
       product: {
         id: product.id,
         name: product.name,

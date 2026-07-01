@@ -21,13 +21,15 @@ export default async function manifest({
   return {
     name,
     short_name: name.length > 12 ? name.slice(0, 12) : name,
-    description: `Order at ${name}`,
+    description: `Poručite kod ${name} — Denis concierge na vašem telefonu.`,
     start_url: `/${slug}`,
     scope: `/${slug}/`,
     display: "standalone",
     orientation: "any",
     background_color: "#09090b",
     theme_color: "#f97316",
+    lang: "sr",
+    id: `/${slug}`,
     icons: [
       {
         src: iconSrc,

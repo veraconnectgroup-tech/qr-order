@@ -11,7 +11,7 @@ import type { NudgeOutcomeKind } from "@/lib/denis/cognition/offer/nudge-outcome
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 
 const UPSERT_NUDGE_KIND =
-  /^(guest_welcome|browse_nudge|cart_recovery|popularity_pair|dessert_nudge|bill_prompt|browse_follow_up)$/;
+  /^(guest_welcome|browse_nudge|cart_recovery|cart_abandonment_prevention|popularity_pair|dessert_nudge|bill_prompt|browse_follow_up|scroll_search|scroll_category|scroll_bottom|timed_nudge|category_nudge|cart_nudge|exit_intent)$/;
 
 export function deriveNudgeBudget(input: {
   spine: GuestSignalSpine;

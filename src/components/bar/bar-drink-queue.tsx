@@ -5,12 +5,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useBarOrders } from "@/hooks/use-bar-orders";
 import { BarOrderRow } from "@/components/bar/bar-order-row";
+import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { cn } from "@/lib/utils";
 
 export function BarDrinkQueue() {
   const { locationId, currency } = useDashboard();
-  const { orders, loading, error, refetch, optimisticUpdateStatus } =
-    useBarOrders(locationId);
+  const {
+    queue,
+    rounds,
+    refillHints,
+    stats,
+    loading,
+    error,
+    refetch,
+    optimisticUpdateStatus,
+  } = useBarOrders(locationId);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
   if (loading) {
@@ -34,18 +44,19 @@ export function BarDrinkQueue() {
     );
   }
 
-  if (orders.length === 0) {
-    return (
-      <p className="rounded-xl border border-dashed border-dash-border-subtle px-4 py-12 text-center text-sm text-dash-text-muted">
-        No drink orders in queue
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-4">
+      <SoundEnableBanner />
+
+      <DenisQuestionStrip locationId={locationId} station="bar" />
+
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-lg font-semibold text-dash-text">Drink queue</h1>
+        <div>
+          <h1 className="text-lg font-semibold text-dash-text">Drink queue</h1>
+          <p className="text-xs text-dash-text-muted">
+            Denis prioritizuje pića po hitnosti
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => void refetch()}
@@ -54,19 +65,89 @@ export function BarDrinkQueue() {
           Refresh
         </button>
       </div>
-      <div className={cn("space-y-3")}>
-        {orders.map((order) => (
-          <BarOrderRow
-            key={order.id}
-            order={order}
-            currency={currency}
-            busy={busyOrderId === order.id}
-            onBusyChange={(busy) => setBusyOrderId(busy ? order.id : null)}
-            onUpdated={() => void refetch()}
-            onOptimisticStatus={optimisticUpdateStatus}
-          />
-        ))}
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <StatCard label="Pića / sat" value={String(stats.drinksLastHour)} />
+        <StatCard
+          label="Top koktel"
+          value={stats.topCocktail ?? "—"}
+        />
+        <StatCard
+          label="Avg prep"
+          value={
+            stats.avgPrepMinutes != null ? `${stats.avgPrepMinutes} min` : "—"
+          }
+        />
       </div>
+
+      {refillHints.length > 0 ? (
+        <section className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4">
+          <h2 className="text-sm font-semibold text-amber-200">
+            Refill intelligence
+          </h2>
+          <ul className="mt-2 space-y-1.5 text-sm text-amber-100/90">
+            {refillHints.map((hint) => (
+              <li key={`${hint.tableId}-${hint.drinkName}`}>{hint.message}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {rounds.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-dash-text-secondary">
+            Round detection
+          </h2>
+          {rounds.map((round) => (
+            <div
+              key={`${round.tableId}-${round.drinkKey}`}
+              className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3"
+            >
+              <p className="text-base font-semibold text-orange-100">
+                {round.summary}
+              </p>
+              <p className="mt-1 text-xs text-orange-200/80">
+                Pripremi zajedno · {round.orderIds.length} order(s)
+              </p>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {queue.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-dash-border-subtle px-4 py-12 text-center text-sm text-dash-text-muted">
+          No drink orders in queue
+        </p>
+      ) : (
+        <div className={cn("space-y-3")}>
+          {queue.map((entry) => (
+            <BarOrderRow
+              key={entry.order.id}
+              entry={entry}
+              currency={currency}
+              busy={busyOrderId === entry.order.id}
+              onBusyChange={(busy) =>
+                setBusyOrderId(busy ? entry.order.id : null)
+              }
+              onUpdated={() => void refetch()}
+              onOptimisticStatus={optimisticUpdateStatus}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-dash-border-subtle bg-dash-surface px-3 py-2.5">
+      <p className="text-[11px] uppercase tracking-wide text-dash-text-muted">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold text-dash-text">
+        {value}
+      </p>
     </div>
   );
 }

@@ -1,17 +1,26 @@
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import {
+  isDessertProduct,
+  isDrinkProduct,
+  type ProductSemanticMeta,
+} from "@/lib/denis/catalog/product-semantics";
 import type { GuestMealStage } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { OrderFact, SessionPhase } from "@/lib/denis/loop/types";
 
-const DESSERT_PATTERN = /\b(tiramisu|dessert|cake|ice cream|kolač|palačinke|cheesecake)\b/i;
-const DRINK_PATTERN =
-  /\b(cola|pils|beer|pivo|wine|vino|water|espresso|latte|cocktail|sok|juice|kafa|coffee)\b/i;
+function itemMeta(item: OrderFact["items"][number]): ProductSemanticMeta {
+  return {
+    menuSection: item.menuSection ?? null,
+    foodTags: item.foodTags ?? [],
+    drinkFamily: item.drinkFamily ?? null,
+  };
+}
 
 function orderLooksLikeDessert(order: OrderFact): boolean {
-  return order.items.some((item) => DESSERT_PATTERN.test(item.productName));
+  return order.items.some((item) => isDessertProduct(itemMeta(item)));
 }
 
 function orderLooksLikeDrink(order: OrderFact): boolean {
-  return order.items.every((item) => DRINK_PATTERN.test(item.productName));
+  return order.items.every((item) => isDrinkProduct(itemMeta(item)));
 }
 
 export function deriveMealStage(input: {

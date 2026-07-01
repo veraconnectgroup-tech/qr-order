@@ -1,3 +1,5 @@
+import { DENIS_EXTENDED_WEBHOOK_EVENTS } from "@/lib/webhooks/extended-webhook-types";
+
 export const COMMERCE_WEBHOOK_EVENTS = [
   "order.created",
   "order.paid",
@@ -22,6 +24,7 @@ export const DENIS_OPERATOR_WEBHOOK_EVENTS = [
 export const WEBHOOK_EVENTS = [
   ...COMMERCE_WEBHOOK_EVENTS,
   ...DENIS_OPERATOR_WEBHOOK_EVENTS,
+  ...DENIS_EXTENDED_WEBHOOK_EVENTS,
 ] as const;
 
 export type CommerceWebhookEvent = (typeof COMMERCE_WEBHOOK_EVENTS)[number];
@@ -45,6 +48,18 @@ export const WEBHOOK_EVENT_LABELS: Record<WebhookEvent, string> = {
   "denis.alert.credit_low": "Denis credit low alert",
   "denis.alert.circuit_open": "Denis circuit open alert",
   "denis.config.proposal.created": "Denis config proposal created",
+  "denis.order.submitted": "Denis order submitted",
+  "denis.order.delivered": "Denis order delivered",
+  "denis.guest.arrived": "Denis guest arrived",
+  "denis.guest.left": "Denis guest left",
+  "denis.guest.feedback": "Denis guest feedback",
+  "denis.upsell.converted": "Denis upsell converted",
+  "denis.allergy.detected": "Denis allergy detected",
+  "denis.rush.started": "Denis rush started",
+  "denis.rush.ended": "Denis rush ended",
+  "denis.stock.depleted": "Denis stock depleted",
+  "denis.revenue.milestone": "Denis revenue milestone",
+  "denis.staff.alert": "Denis staff alert",
 };
 
 export function isDenisOperatorWebhookEvent(

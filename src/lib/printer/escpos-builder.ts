@@ -75,6 +75,31 @@ export class EscPosBuilder {
     return this;
   }
 
+  /** ESC/POS QR Code (model 2) — TSE verification on receipt printers. */
+  qrCode(data: string, moduleSize = 6) {
+    const payload = new TextEncoder().encode(data);
+    const size = Math.min(16, Math.max(1, moduleSize));
+
+    this.pushBytes(GS, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00);
+    this.pushBytes(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, size);
+
+    const storeLen = payload.length + 3;
+    this.pushBytes(
+      GS,
+      0x28,
+      0x6b,
+      storeLen % 256,
+      Math.floor(storeLen / 256),
+      0x31,
+      0x50,
+      0x30
+    );
+    this.chunks.push(payload);
+    this.pushBytes(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30);
+    this.newline();
+    return this;
+  }
+
   openCashDrawer() {
     this.pushBytes(ESC, 0x70, 0x00, 0x19, 0xfa);
     return this;

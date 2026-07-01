@@ -357,10 +357,7 @@ export function appendBelegTseEscPos(
   }
 
   if (qrPayload) {
-    builder.newline().align("center");
-    for (const line of wrapText(qrPayload, paperWidth)) {
-      builder.text(line).newline();
-    }
+    builder.newline().align("center").qrCode(qrPayload, paperWidth === 58 ? 4 : 6);
     builder.align("left");
   }
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { computeKdsBacklogMinutes } from "@/lib/denis/venue/floor/compute-kds-backlog";
+import { composeFloorGraphHouse } from "@/lib/denis/venue/floor/compose-floor-graph-house";
+import { countActiveStaffOnFloor } from "@/lib/denis/venue/floor/count-active-staff-on-floor";
 import { deriveTableOperatingHint } from "@/lib/denis/venue/floor/derive-table-hint";
 import type {
   FloorGraph,
@@ -25,6 +26,7 @@ type OrderRow = {
   created_at: string;
   accepted_at: string | null;
   preparing_at: string | null;
+  delivered_at: string | null;
   order_items: Array<{ menu_section: string | null }>;
 };
 
@@ -53,6 +55,7 @@ export async function loadFloorGraph(
     { data: sessionRows },
     { data: orderRows },
     { data: partyRows },
+    staffOnFloor,
   ] = await Promise.all([
     admin
       .from("locations")
@@ -72,7 +75,7 @@ export async function loadFloorGraph(
     admin
       .from("orders")
       .select(
-        "id, table_id, session_id, status, created_at, accepted_at, preparing_at, order_items(menu_section)"
+        "id, table_id, session_id, status, created_at, accepted_at, preparing_at, delivered_at, order_items(menu_section)"
       )
       .eq("location_id", locationId)
       .in("status", [
@@ -86,6 +89,7 @@ export async function loadFloorGraph(
       .from("denis_party_devices")
       .select("table_session_id, last_active_at")
       .eq("location_id", locationId),
+    countActiveStaffOnFloor(admin, locationId),
   ]);
 
   const location = locationRow as LocationRow | null;
@@ -135,6 +139,7 @@ export async function loadFloorGraph(
     const orderSnapshots = tableOrders.map((order) => ({
       status: order.status,
       created_at: order.created_at,
+      delivered_at: order.delivered_at,
       hasKitchenItems: (order.order_items ?? []).some((item) =>
         isKitchenMenuSection(item.menu_section)
       ),
@@ -162,21 +167,18 @@ export async function loadFloorGraph(
     };
   });
 
-  const kdsBacklogMinutes = computeKdsBacklogMinutes(orders, nowMs);
-  const activeOrderCount = orders.filter((order) =>
-    ["pending", "accepted", "preparing"].includes(order.status)
-  ).length;
+  const house = composeFloorGraphHouse({
+    operatingMode: location?.denis_operating_mode ?? "normal",
+    orders,
+    staffOnFloor,
+    nowMs,
+  });
 
   return {
     locationId,
     at: now,
     tables: floorTables,
-    house: {
-      operatingMode: location?.denis_operating_mode ?? "normal",
-      kdsBacklogMinutes,
-      activeOrderCount,
-      staffOnFloor: null,
-    },
+    house,
   };
 }
 

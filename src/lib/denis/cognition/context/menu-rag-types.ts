@@ -15,6 +15,7 @@ export type MenuRagRetrieveOptions = {
   embeddings?: MenuRagEmbeddingIndex;
   /** Query vector in the same space as `embeddings`. */
   queryVector?: number[];
+  sessionExcludedAllergens?: string[];
 };
 
 /** Product id → embedding vector for semantic menu RAG (E2). */

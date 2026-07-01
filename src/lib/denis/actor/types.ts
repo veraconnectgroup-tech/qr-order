@@ -1,4 +1,12 @@
-export type TableSessionSignalKind = "guest" | "world" | "experience";
+export type TableSessionSignalKind = "guest" | "world" | "experience" | "proactive";
+
+export type QueuedProactiveTickPayload = {
+  tableSessionId: string;
+  source: "session.watcher" | "scheduler.wakeup" | "sense.proactive_brain";
+  traceId: string;
+  /** Watcher cron already ran mental-model / offer preamble before enqueue. */
+  preambleDone?: boolean;
+};
 
 export type QueuedExperienceSignal = {
   triggerKind: "payment_settled" | "order_delivered";
@@ -15,6 +23,8 @@ export type QueuedTableSessionSignal = {
   /** commerce.denis.world payload — validated in runtime layer. */
   worldPayload?: Record<string, unknown>;
   experiencePayload?: QueuedExperienceSignal;
+  /** ADR-041 P1 — system.proactive_tick via table session actor. */
+  proactivePayload?: QueuedProactiveTickPayload;
 };
 
 export type StoredSignalHttpResult = {

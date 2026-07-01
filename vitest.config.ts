@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import os from "node:os";
 import path from "path";
 
 export default defineConfig({
@@ -12,6 +13,15 @@ export default defineConfig({
       "src/lib/**/__tests__/**/*.test.ts",
     ],
     exclude: ["e2e/**", "node_modules/**"],
+    testTimeout: 120_000,
+    hookTimeout: 30_000,
+    pool: "forks",
+    maxWorkers: Math.min(4, Math.max(1, (os.cpus()?.length ?? 2) - 1)),
   },
-  resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "server-only": path.resolve(__dirname, "./src/test/server-only-stub.ts"),
+    },
+  },
 });

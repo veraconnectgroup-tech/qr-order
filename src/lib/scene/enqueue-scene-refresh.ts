@@ -1,4 +1,5 @@
 import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
+import { asRecord } from "@/lib/supabase/json";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SceneRefreshOverrides } from "./map-turn-to-scene-overrides";
@@ -16,7 +17,7 @@ export async function enqueueGuestSceneRefresh(
       aggregate_id: overrides.sessionId,
       domain: "session",
       event_type: "session.scene.refresh",
-      payload: overrides as unknown as Record<string, unknown>,
+      payload: asRecord(overrides),
     },
   ]);
 }

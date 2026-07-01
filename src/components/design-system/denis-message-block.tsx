@@ -68,9 +68,14 @@ export function DenisMessageThinking({ label }: { label?: string | null }) {
         {text ? (
           <p
             key={text}
-            className="text-[15px] leading-[1.5] text-[var(--qr-muted)] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
+            className="flex items-center gap-1 text-[15px] leading-[1.5] text-[var(--qr-muted)] motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
           >
-            {text}
+            <span>{text}</span>
+            <span className="denis-thinking-dots inline-flex w-5" aria-hidden>
+              <span className="denis-thinking-dot" />
+              <span className="denis-thinking-dot" />
+              <span className="denis-thinking-dot" />
+            </span>
           </p>
         ) : (
           <span

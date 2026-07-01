@@ -1,6 +1,7 @@
 export type GuestCommerceCommand =
   | { type: "SubmitFeedback"; payload: Record<string, unknown> }
   | { type: "RecordGoogleReviewClick"; payload: Record<string, unknown> }
+  | { type: "RecordTipSelection"; payload: Record<string, unknown> }
   | { type: "InitiateReorder"; payload: Record<string, unknown> };
 
 export type CommerceTrigger =

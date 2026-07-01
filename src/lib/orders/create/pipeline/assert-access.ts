@@ -20,6 +20,7 @@ import {
   trustSessionDevice,
 } from "@/lib/sessions/session-devices";
 import { isSessionOrderBlocked } from "@/lib/sessions/session-lifecycle";
+import { assertIpSessionBudget } from "@/lib/security/session-guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -27,7 +28,8 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 export async function assertOrderAccess(
   admin: AdminClient,
   input: CreateOrderInput,
-  ctx: ResolvedContext
+  ctx: ResolvedContext,
+  clientIp?: string | null
 ): Promise<Result<OrderCreateMode, OrderCreateError>> {
   const blockCheck = await assertDeviceNotBlocked(
     admin,
@@ -62,6 +64,11 @@ export async function assertOrderAccess(
     }
 
     if (!ctx.location.require_first_table_approval) {
+      const ipBudget = await assertIpSessionBudget(clientIp);
+      if (!ipBudget.ok) {
+        return err(orderError("rate_limited", ipBudget.error, 429));
+      }
+
       const opened = await createActiveSessionWithPin(admin, {
         tableId: ctx.table.id,
         locationId: ctx.table.location_id,

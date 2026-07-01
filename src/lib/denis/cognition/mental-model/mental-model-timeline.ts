@@ -1,3 +1,4 @@
+import type { InterventionDecision } from "@/lib/denis/cognition/intervention/intervention-types";
 import type { GmmGateReason } from "@/lib/denis/cognition/proactive/proactive-policy-types";
 import type { ProactivePolicyEvaluation } from "@/lib/denis/cognition/proactive/proactive-policy-types";
 import type { OfferTimingKind } from "@/lib/denis/cognition/offer/offer-types";
@@ -51,6 +52,25 @@ export type MentalModelGateEvaluation = {
   reason: GmmGateReason | null;
 };
 
+export type MentalModelGateIjsBlock = {
+  manifestVersion: string;
+  decision: InterventionDecision;
+  ijsDecision: InterventionDecision;
+  ruleId: string | null;
+  shouldBlockSpeak: boolean;
+  enforced: boolean;
+};
+
+export type MentalModelGateRhythmBlock = {
+  mode: "off" | "shadow" | "enforce";
+  slotKey: string | null;
+  confidence: number;
+  applied: boolean;
+  defaultDessertDelayMin: number;
+  wouldOverrideDessertDelayMin: number | null;
+  servicePeriod: string | null;
+};
+
 export type MentalModelGatePayload = {
   type: "mental_model.gate";
   mode: MentalModelMode;
@@ -66,6 +86,10 @@ export type MentalModelGatePayload = {
   selectedKind?: GuestProactiveNudgeKind | null;
   source?: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
   policyVersion?: string;
+  /** ADR-041 P3 — IJS audit block on proactive gate rows. */
+  ijs?: MentalModelGateIjsBlock;
+  /** ADR-042 VRP-P0 — rhythm prior audit (shadow/enforce). */
+  rhythm?: MentalModelGateRhythmBlock;
 };
 
 export function summarizeMentalModelForTimeline(
@@ -255,6 +279,8 @@ export function buildMentalModelGatePayload(input: {
   selectedKind?: GuestProactiveNudgeKind | null;
   source?: "session.watcher" | "sense.proactive_brain" | "scheduler.wakeup";
   policyVersion?: string;
+  ijs?: MentalModelGateIjsBlock;
+  rhythm?: MentalModelGateRhythmBlock;
 }): MentalModelGatePayload {
   return {
     type: "mental_model.gate",
@@ -275,5 +301,7 @@ export function buildMentalModelGatePayload(input: {
     selectedKind: input.selectedKind ?? null,
     source: input.source,
     policyVersion: input.policyVersion,
+    ijs: input.ijs,
+    rhythm: input.rhythm,
   };
 }

@@ -28,6 +28,7 @@ import type {
   OperatorTranscript,
 } from "@/lib/operator/types";
 import { requireOperatorScope } from "@/lib/operator/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 describe("operator API keys", () => {
   it("generates dns_op_live prefix keys", () => {
@@ -39,6 +40,16 @@ describe("operator API keys", () => {
 
   it("rejects qr_live keys as operator format", () => {
     expect(isOperatorApiKeyFormat("qr_live_abc123")).toBe(false);
+  });
+});
+
+describe("operator org rate limit", () => {
+  it("uses operator scope with 100 req/min window", () => {
+    const key = `operator:org-rate-test-${Date.now()}`;
+    for (let i = 0; i < 100; i++) {
+      expect(checkRateLimit(key, 100, 60_000)).toBe(true);
+    }
+    expect(checkRateLimit(key, 100, 60_000)).toBe(false);
   });
 });
 

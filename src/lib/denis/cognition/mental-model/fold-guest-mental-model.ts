@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 
 import { deriveAffect } from "@/lib/denis/cognition/mental-model/derive-affect";
 import { deriveDeclineState } from "@/lib/denis/cognition/mental-model/decline-state";
+import { deriveAnomalies } from "@/lib/denis/cognition/mental-model/derive-anomalies";
+import { deriveConversationFlow } from "@/lib/denis/cognition/mental-model/derive-conversation-flow";
+import { deriveGuestReadiness } from "@/lib/denis/cognition/mental-model/derive-guest-readiness";
 import { deriveEngagement } from "@/lib/denis/cognition/mental-model/derive-engagement";
 import { deriveGroupDynamics } from "@/lib/denis/cognition/mental-model/derive-group-dynamics";
 import { deriveIntent } from "@/lib/denis/cognition/mental-model/derive-intent";
@@ -13,13 +16,22 @@ import { derivePriceAffinity } from "@/lib/denis/cognition/mental-model/derive-p
 import { deriveReceptiveness } from "@/lib/denis/cognition/mental-model/derive-receptiveness";
 import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
 import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
-import { synthesizePredictedNeed } from "@/lib/denis/cognition/mental-model/synthesize-predicted-need";
+import { predictNextAction } from "@/lib/denis/cognition/mental-model/predict-next-action";
+import { predictMealTrajectory } from "@/lib/denis/cognition/mental-model/predict-trajectory";
+import { predictGuestSpend } from "@/lib/denis/cognition/mental-model/predict-spend";
+import { predictGuestSessionDuration } from "@/lib/denis/intelligence/load-table-turnover-priors";
+import {
+  deriveFusionStyle,
+  synthesizeFusionHint,
+  synthesizePredictedNeed,
+} from "@/lib/denis/cognition/mental-model/synthesize-predicted-need";
 import type {
   FoldGuestMentalModelInput,
   GuestMentalModel,
   GuestPosture,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import { GUEST_MENTAL_MODEL_VERSION } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import { extractTurnInterpretationFromTimeline } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 function stableSerialize(value: unknown): string {
   return JSON.stringify(value, (_key, v) => {
@@ -84,7 +96,7 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     now,
   });
 
-  const pace = derivePace({ spine, browse: input.browse });
+  let pace = derivePace({ spine, browse: input.browse });
   const receptiveness = deriveReceptiveness({
     spine,
     decline,
@@ -113,17 +125,138 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     browse: input.browse,
     billSettled: input.session.billSettled,
   });
-  const priceAffinity = derivePriceAffinity(input.browse);
-  const affect = deriveAffect(spine);
+  let priceAffinity = derivePriceAffinity(input.browse);
+  const interpretation = extractTurnInterpretationFromTimeline(input.timeline);
+  const affect = deriveAffect(spine, interpretation);
   const groupDynamics = deriveGroupDynamics(input.party);
-  const predictedNeed = synthesizePredictedNeed({
+
+  const localHour =
+    input.localHour ?? new Date(now).getHours();
+  const dayOfWeek = input.dayOfWeek ?? new Date(now).getDay();
+  const partySize = Math.max(
+    1,
+    interpretation?.partySize ??
+      input.party?.activeDeviceCount ??
+      1
+  );
+  const sessionStartedMs = input.browse.sessionStartedAt
+    ? Date.parse(input.browse.sessionStartedAt)
+    : now;
+  const sessionDurationMinutes = Math.max(
+    0,
+    (now - (Number.isFinite(sessionStartedMs) ? sessionStartedMs : now)) /
+      60_000
+  );
+
+  const durationPrediction = predictGuestSessionDuration({
+    partySize,
+    localHour,
+    dayOfWeek,
+    tablePriorMinutes: input.tableTurnoverPriorMinutes ?? null,
+  });
+
+  // L2 — high-confidence duration priors shape pace from first fold (invisible to guest).
+  if (durationPrediction.confidence >= 0.65) {
+    if (durationPrediction.mode === "efficient" && pace !== "indecisive") {
+      pace = "rushed";
+    } else if (durationPrediction.mode === "relaxed" && pace !== "indecisive") {
+      pace = "relaxed";
+    }
+  } else if (
+    input.commerce.orders.length > 0 ||
+    sessionDurationMinutes >= 10 ||
+    spine.guestMessages.length > 0
+  ) {
+    if (durationPrediction.mode === "efficient" && pace === "normal") {
+      pace = "rushed";
+    } else if (
+      durationPrediction.mode === "relaxed" &&
+      pace !== "indecisive"
+    ) {
+      pace = "relaxed";
+    }
+  }
+
+  const spendPredictionBundle = predictGuestSpend({
+    browse: input.browse,
+    partySize,
+    localHour,
+    sessionDurationMinutes,
+    priceAffinity,
+  });
+  priceAffinity = spendPredictionBundle.refinedPriceAffinity;
+
+  const nextAction = predictNextAction({
+    browse: input.browse,
+    cartLineCount,
+    intent,
+    productCatalog: input.productCatalog,
+    basketPairs: input.basketPairs,
+  });
+
+  const trajectory = predictMealTrajectory({
+    browse: input.browse,
+    partySize,
+    mealStage,
+    intent,
+  });
+
+  const flow = deriveConversationFlow({ intent, intentTransitions });
+  const readiness = deriveGuestReadiness({
+    intent,
+    engagement,
+    pace,
+    receptiveness,
+    cartLineCount,
+  });
+  const anomalies = deriveAnomalies({
+    spine,
+    browse: input.browse,
+    conversation: input.conversation,
+    intent,
+    cartLineCount,
+    now,
+  });
+  const fusionStyle = deriveFusionStyle({
+    pace,
+    receptiveness,
+    intent,
+    affect,
+    readiness,
+    abnormalTransition: flow.abnormalTransition,
+  });
+  const fusionHint =
+    flow.hint ?? synthesizeFusionHint({ style: fusionStyle, intent, affect });
+  let predictedNeed = synthesizePredictedNeed({
     intent,
     mealStage,
     receptiveness,
     pace,
     affect,
     frustrationEscalateThreshold: input.config.mentalModel.frustrationEscalateThreshold,
+    anomalies,
   });
+
+  if (
+    nextAction.triggerProactiveHelp &&
+    nextAction.probability >= 0.65 &&
+    predictedNeed === "none"
+  ) {
+    predictedNeed = "needs_help_choosing";
+  }
+
+  const predictions = {
+    nextAction,
+    trajectory,
+    spend: {
+      tier: spendPredictionBundle.tier,
+      predictedTotalCents: spendPredictionBundle.predictedTotalCents,
+      perGuestCents: spendPredictionBundle.perGuestCents,
+      confidence: spendPredictionBundle.confidence,
+      upsellTier: spendPredictionBundle.upsellTier,
+    },
+    duration: durationPrediction,
+  };
 
   const withoutHash = {
     version: GUEST_MENTAL_MODEL_VERSION,
@@ -140,6 +273,17 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     predictedNeed,
     affect,
     groupDynamics,
+    predictions,
+    fusion: {
+      readiness,
+      guidance: {
+        style: fusionStyle,
+        nextLogicalStep: flow.nextLogicalStep,
+        abnormalTransition: flow.abnormalTransition,
+        hint: fusionHint,
+      },
+      anomalies,
+    },
   };
 
   return {

@@ -58,17 +58,45 @@ export function DenisDebugGraphView({
             <ul className="space-y-2 text-sm">
               {graph.beliefs.map((row) => (
                 <li key={row.key} className="border-b border-border pb-2 last:border-0">
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {row.key}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: row.confidenceColor }}
+                      title={`confidence ${row.confidence}`}
+                    />
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {row.key}
+                    </span>
+                    {row.propagatedFrom ? (
+                      <span className="text-xs text-muted-foreground/70">
+                        ← {row.propagatedFrom}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="text-foreground">{row.value}</div>
                   <div className="text-xs text-muted-foreground/80">
-                    {row.source} · conf {row.confidence} · seq {row.evidenceSeq}
+                    {row.source} · conf {row.confidence.toFixed(2)} · seq{" "}
+                    {row.evidenceSeq}
                   </div>
                 </li>
               ))}
             </ul>
           )}
+          {graph.beliefConflicts.length > 0 ? (
+            <div className="mt-3 border-t border-border pt-3">
+              <p className="mb-2 text-xs font-medium text-amber-300">
+                Conflicts resolved ({graph.beliefConflicts.length})
+              </p>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {graph.beliefConflicts.map((row) => (
+                  <li key={row.key}>
+                    <span className="font-mono">{row.key}</span>: {row.winnerValue} (
+                    {row.winnerSource}, {row.winnerConfidence.toFixed(2)})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </DebugSection>
 
         <DebugSection icon={GitBranch} title="Flow">
@@ -116,6 +144,38 @@ export function DenisDebugGraphView({
           </ol>
         </DebugSection>
       </div>
+
+      {graph.beliefHistory.length > 0 ? (
+        <QrCard className="p-4">
+          <QrCardTitle className="mb-3 text-base">Belief timeline</QrCardTitle>
+          <div className="max-h-64 overflow-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-card text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-2">At</th>
+                  <th className="px-2 py-2">Event</th>
+                  <th className="px-2 py-2">Key</th>
+                  <th className="px-2 py-2">Value</th>
+                  <th className="px-2 py-2">Conf</th>
+                </tr>
+              </thead>
+              <tbody>
+                {graph.beliefHistory.map((row, index) => (
+                  <tr key={`${row.atMs}-${row.key}-${index}`} className="border-t border-border">
+                    <td className="px-2 py-2 font-mono text-muted-foreground">
+                      {new Date(row.atMs).toISOString().slice(11, 19)}
+                    </td>
+                    <td className="px-2 py-2 text-foreground">{row.event}</td>
+                    <td className="px-2 py-2 font-mono">{row.key}</td>
+                    <td className="max-w-[12rem] truncate px-2 py-2">{row.value}</td>
+                    <td className="px-2 py-2">{row.confidence.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </QrCard>
+      ) : null}
 
       <QrCard className="p-4">
         <QrCardTitle className="mb-3 text-base">Turns by trace</QrCardTitle>

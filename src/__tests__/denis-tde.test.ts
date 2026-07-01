@@ -11,6 +11,7 @@ import {
   tryTemplateUtterance,
   turnPlanAllowsUpsell,
   utteranceIncludesUpsellNudge,
+  type TurnPlanKind,
 } from "@/lib/denis/cognition/tde";
 import { matchesT0SlotAnswer } from "@/lib/denis/cognition/tde/slot-response-match";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
@@ -33,6 +34,139 @@ function reflexFor(
     skipUpsell: false,
   });
 }
+
+type ComprehensionScenarioContext = {
+  awaitingConfirm?: boolean;
+  ordering?: boolean;
+  settling?: boolean;
+};
+
+type ComprehensionScenario = {
+  msg: string;
+  expect: TurnPlanKind;
+  templateKey?: string;
+  ctx?: ComprehensionScenarioContext;
+};
+
+function beliefsForScenario(ctx?: ComprehensionScenarioContext) {
+  if (ctx?.awaitingConfirm) {
+    return beliefGraph([
+      belief("commerce.pressure", "confirm"),
+      belief("conversation.awaiting", "confirm"),
+      belief("waiter.can_confirm", true),
+      belief("waiter.gap_count", 0),
+    ]);
+  }
+  if (ctx?.ordering) {
+    return beliefGraph([
+      belief("conversation.mode", "ordering"),
+      belief("commerce.pressure", "none"),
+    ]);
+  }
+  if (ctx?.settling) {
+    return beliefGraph([
+      belief("conversation.mode", "settling"),
+      belief("commerce.pressure", "none"),
+    ]);
+  }
+  return beliefGraph([
+    belief("conversation.mode", "banter"),
+    belief("commerce.pressure", "none"),
+  ]);
+}
+
+function planForComprehensionScenario(scenario: ComprehensionScenario) {
+  const flowNodeId = scenario.ctx?.awaitingConfirm ? "recap" : "browse";
+  return decideTurnPlan({
+    beliefs: beliefsForScenario(scenario.ctx),
+    reflex: reflexFor(scenario.msg, flowNodeId),
+    message: scenario.msg,
+  });
+}
+
+function expectedRequiresLlm(kind: TurnPlanKind): boolean {
+  return (
+    kind === "relational_perceive" ||
+    kind === "transactional_perceive" ||
+    kind === "narrate_paraphrase"
+  );
+}
+
+describe("decideTurnPlan — guest comprehension eval (regression guard)", () => {
+  const llmScenarios: ComprehensionScenario[] = [
+    { msg: "šta imate?", expect: "relational_perceive" },
+    { msg: "daj mi sok", ctx: { ordering: true }, expect: "transactional_perceive" },
+    { msg: "kako se zove ovo jelo?", expect: "relational_perceive" },
+    { msg: "Može", ctx: { awaitingConfirm: false }, expect: "relational_perceive" },
+    { msg: "Merhaba", expect: "relational_perceive" },
+    { msg: "Que tal", expect: "relational_perceive" },
+    { msg: "gde si legendo", expect: "relational_perceive" },
+    { msg: "šta preporučuješ?", expect: "relational_perceive" },
+    { msg: "imam alergiju na kikiriki", expect: "relational_perceive" },
+    { msg: "koliko košta burger?", expect: "relational_perceive" },
+    { msg: "jel ima nešto veganski?", expect: "relational_perceive" },
+    { msg: "a šta je Weizen?", expect: "relational_perceive" },
+    { msg: "daj nešto hladno", expect: "relational_perceive" },
+    { msg: "povo", ctx: { ordering: true }, expect: "transactional_perceive" },
+  ];
+
+  const reflexScenarios: ComprehensionScenario[] = [
+    { msg: "da", ctx: { awaitingConfirm: true }, expect: "reflex_only" },
+    { msg: "Može", ctx: { awaitingConfirm: true }, expect: "reflex_only" },
+    { msg: "pošalji", ctx: { awaitingConfirm: true }, expect: "reflex_only" },
+  ];
+
+  const templateScenarios: ComprehensionScenario[] = [
+    {
+      msg: "hvala, to je sve",
+      expect: "template_tell",
+      templateKey: "settle.thanks",
+    },
+    {
+      msg: "danke schön",
+      expect: "template_tell",
+      templateKey: "settle.thanks",
+    },
+  ];
+
+  it.each(llmScenarios)(
+    "comprehends guest message via LLM: $msg → $expect",
+    (scenario) => {
+      const plan = planForComprehensionScenario(scenario);
+      expect(plan.kind).toBe(scenario.expect);
+      expect(plan.requiresLlm).toBe(expectedRequiresLlm(scenario.expect));
+      expect(plan.templateKey).not.toBe("banter.welcome");
+    }
+  );
+
+  it.each(reflexScenarios)(
+    "T0 reflex at recap: $msg → $expect",
+    (scenario) => {
+      const plan = planForComprehensionScenario(scenario);
+      expect(plan.kind).toBe(scenario.expect);
+      expect(plan.requiresLlm).toBe(false);
+      expect(plan.templateKey).not.toBe("banter.welcome");
+    }
+  );
+
+  it.each(templateScenarios)(
+    "system fact template: $msg → $templateKey",
+    (scenario) => {
+      const plan = planForComprehensionScenario(scenario);
+      expect(plan.kind).toBe(scenario.expect);
+      expect(plan.requiresLlm).toBe(false);
+      expect(plan.templateKey).toBe(scenario.templateKey);
+    }
+  );
+
+  it("never returns banter.welcome for any guest comprehension scenario", () => {
+    const all = [...llmScenarios, ...reflexScenarios, ...templateScenarios];
+    for (const scenario of all) {
+      const plan = planForComprehensionScenario(scenario);
+      expect(plan.templateKey).not.toBe("banter.welcome");
+    }
+  });
+});
 
 describe("decideTurnPlan — ADR-025 state-driven routing", () => {
   it("routes banter thread to relational (cheaper social tier)", () => {
@@ -93,7 +227,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.requiresLlm).toBe(true);
   });
 
-  it("ordering belief + hello uses transactional_perceive, not banter", () => {
+  it("ordering belief + hello stays relational (social thread, not cart pressure)", () => {
     const beliefs = beliefGraph([
       belief("conversation.mode", "ordering"),
       belief("conversation.language", "sr"),
@@ -103,7 +237,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("hello"),
       message: "hello",
     });
-    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.kind).toBe("relational_perceive");
   });
 
   it("pure social greeting stays relational", () => {
@@ -181,6 +315,93 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     });
     expect(plan.kind).toBe("transactional_perceive");
     expect(plan.requiresLlm).toBe(true);
+  });
+
+  it("hvala with settling mode uses settle.thanks template", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "settling"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("hvala"),
+      message: "hvala",
+    });
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.templateKey).toBe("settle.thanks");
+    expect(plan.requiresLlm).toBe(false);
+  });
+
+  it("Može without confirm context → relational_perceive (not banter.welcome)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "banter"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("Može", "browse"),
+      message: "Može",
+    });
+    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.templateKey).toBeUndefined();
+  });
+
+  it("Daj mi sok without commerce pressure → relational_perceive (not template)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "banter"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("Daj mi sok"),
+      message: "Daj mi sok",
+    });
+    expect(["relational_perceive", "transactional_perceive"]).toContain(plan.kind);
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.templateKey).toBeUndefined();
+  });
+
+  it("šta imate? → relational_perceive (not template)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "banter"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("šta imate?", "browse"),
+      message: "šta imate?",
+    });
+    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.templateKey).toBeUndefined();
+  });
+
+  it("Zdravo Denise → relational_perceive (not banter.welcome)", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "banter"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("Zdravo Denise", "browse"),
+      message: "Zdravo Denise",
+    });
+    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.templateKey).toBeUndefined();
+  });
+
+  it("da at recap with confirm-ready waiter → reflex_only", () => {
+    const reflex = reflexFor("da", "recap");
+    expect(reflex.usedT0).toBe(true);
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("commerce.pressure", "confirm"),
+        belief("conversation.awaiting", "confirm"),
+        belief("waiter.can_confirm", true),
+        belief("waiter.gap_count", 0),
+      ]),
+      reflex,
+      message: "da",
+    });
+    expect(plan.kind).toBe("reflex_only");
+    expect(plan.requiresLlm).toBe(false);
   });
 });
 

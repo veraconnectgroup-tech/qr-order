@@ -8,6 +8,8 @@ import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
 import {
   BarChart3,
   Bell,
+  BookOpen,
+  Building2,
   ChefHat,
   CreditCard,
   Grid3X3,
@@ -15,14 +17,18 @@ import {
   LayoutGrid,
   Plus,
   Settings,
+  TrendingUp,
   Users,
   UtensilsCrossed,
+  Clock,
+  Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LocationSwitcher } from "@/components/dashboard/location-switcher";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
+import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { useStaffAccess } from "@/lib/auth/staff-access-context";
 import { computeDashboardNavHrefs } from "@/lib/auth/staff-modules";
 import type { PermissionKey } from "@/lib/auth/permission-catalog";
@@ -33,7 +39,7 @@ type NavItem = {
   label: string;
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   exact?: boolean;
-  alertKey?: "orders" | "calls" | "payments";
+  alertKey?: "orders" | "calls" | "payments" | "denis";
   roles?: StaffRole[];
   requiresDenis?: boolean;
 };
@@ -74,9 +80,15 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
         alertKey: "calls",
       },
       {
+        href: "/dashboard/waitlist",
+        label: "Waitlist",
+        icon: Clock,
+      },
+      {
         href: "/dashboard/denis",
         label: "Denis",
         icon: DenisNavIcon,
+        alertKey: "denis",
         requiresDenis: true,
       },
     ],
@@ -84,10 +96,43 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "Management",
     items: [
+      {
+        href: "/dashboard/denis-roi",
+        label: "Denis ROI",
+        icon: TrendingUp,
+        roles: ["owner", "manager"],
+        requiresDenis: true,
+      },
+      {
+        href: "/dashboard/optimization",
+        label: "Timing",
+        icon: Gauge,
+        roles: ["owner", "manager"],
+        requiresDenis: true,
+      },
+      {
+        href: "/dashboard/org",
+        label: "Org Hub",
+        icon: Building2,
+        roles: ["owner"],
+      },
+      {
+        href: "/dashboard/org-analytics",
+        label: "Org Analytics",
+        icon: BarChart3,
+        roles: ["owner"],
+        requiresDenis: true,
+      },
       { href: "/dashboard/history", label: "History", icon: BarChart3 },
       { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
       { href: "/dashboard/staff", label: "Staff", icon: Users },
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
+      {
+        href: "/dashboard/help",
+        label: "Help",
+        icon: BookOpen,
+        roles: ["owner", "manager"],
+      },
     ],
   },
 ];
@@ -105,6 +150,7 @@ export function DashboardSidebar() {
   } = useDashboard();
   const { pendingOrders, pendingWaiterCalls, pendingPaymentRequests } =
     useDashboardAlerts();
+  const { unreadCount: denisStaffAlerts } = useStaffNotifications();
   const clientAccess = useStaffAccess();
 
   const allowedDashboardHrefs = useMemo(() => {
@@ -144,7 +190,9 @@ export function DashboardSidebar() {
           ? pendingWaiterCalls
           : alertKey === "payments"
             ? pendingPaymentRequests
-            : 0;
+            : alertKey === "denis"
+              ? denisStaffAlerts
+              : 0;
 
     return (
       <Link

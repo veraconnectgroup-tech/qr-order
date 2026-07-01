@@ -16,6 +16,7 @@ export type AnalyticsSearchParams = {
   preset?: string;
   from?: string;
   to?: string;
+  tab?: string;
 };
 
 function startOfDay(d: Date) {

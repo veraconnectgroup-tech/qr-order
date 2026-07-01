@@ -17,6 +17,9 @@ export type InterpretationEvidenceBudget = {
   includeCatalogRag: boolean;
   includePlaybook: boolean;
   omitFullMenuWhenNoRag: boolean;
+  /** Per-turn adaptive context token budget (priority-layer assembly). */
+  contextTokenBudget: number;
+  turnComplexity: "simple" | "moderate" | "complex";
 };
 
 export type InterpretationTask = {

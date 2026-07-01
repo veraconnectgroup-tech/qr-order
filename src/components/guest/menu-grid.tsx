@@ -2,6 +2,8 @@
 
 import { MenuListItem } from "@/components/guest/menu-list-item";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
+import { MenuPersonalizationBadge } from "@/components/guest/personalized-menu-highlights";
+import type { PersonalizedMenuBoost } from "@/lib/denis/intelligence/menu-personalization";
 import { inferMenuSection } from "@/lib/menu-section";
 import type { ProductWithModifiers } from "@/types";
 
@@ -25,13 +27,24 @@ export function MenuGrid({
   currency,
   onOpenDetail,
   orderingDisabled = false,
+  simplifiedMenu = false,
+  personalizationByProductId,
 }: {
   categories: MenuCategory[];
   unavailableCategories?: MenuCategory[];
   currency: string;
   onOpenDetail: (product: ProductWithModifiers) => void;
   orderingDisabled?: boolean;
+  simplifiedMenu?: boolean;
   aiReasonByProductId?: Map<string, string>;
+  personalizationByProductId?: Map<
+    string,
+    {
+      boost: PersonalizedMenuBoost;
+      allergenWarning: string | null;
+      recommendedLabel: string | null;
+    }
+  >;
 }) {
   const { tName, tUI } = useAppLocale();
   if (!categories.length && !unavailableCategories.length) {
@@ -62,16 +75,25 @@ export function MenuGrid({
             </span>
           </h2>
           <div className="divide-y divide-[var(--qr-elevated)]/80">
-            {category.products.map((product) => (
-              <MenuListItem
-                key={product.id}
-                product={product}
-                currency={currency}
-                menuSection={inferMenuSection(category)}
-                orderingDisabled={orderingDisabled}
-                onOpenDetail={() => onOpenDetail(product)}
-              />
-            ))}
+            {category.products.map((product) => {
+              const personalization = personalizationByProductId?.get(product.id);
+              return (
+                <MenuListItem
+                  key={product.id}
+                  product={product}
+                  currency={currency}
+                  menuSection={inferMenuSection(category)}
+                  orderingDisabled={orderingDisabled}
+                  simplifiedMenu={simplifiedMenu}
+                  onOpenDetail={() => onOpenDetail(product)}
+                  personalizationBoost={personalization?.boost ?? null}
+                  personalizationRecommendedLabel={
+                    personalization?.recommendedLabel ?? null
+                  }
+                  allergenWarning={personalization?.allergenWarning ?? null}
+                />
+              );
+            })}
           </div>
         </section>
       ))}

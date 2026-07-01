@@ -57,3 +57,30 @@ export function classifyBrowseDomain(
 
   return null;
 }
+
+/** Human label from category path — last segment, title case. */
+export function resolveCategoryLabel(
+  categoryPath: string[] | undefined,
+  fallback = "meni"
+): string {
+  const raw = categoryPath?.[categoryPath.length - 1]?.trim();
+  if (!raw) return fallback;
+  return raw.replace(/_/g, " ");
+}
+
+/** Popular-item hint for category browse nudge copy. */
+export function categoryPopularPick(
+  categoryLabel: string,
+  menuSection: BrowseMenuSection | null
+): string {
+  const label = categoryLabel.toLowerCase();
+  if (label.includes("salad") || label.includes("salat")) {
+    return "Caesar salata";
+  }
+  if (menuSection === "desserts" || label.includes("desert")) {
+    return "Tiramisu";
+  }
+  if (label.includes("burger")) return "Classic Burger";
+  if (label.includes("pizza")) return "Margherita";
+  return categoryLabel;
+}

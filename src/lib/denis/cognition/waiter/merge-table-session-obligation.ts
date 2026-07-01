@@ -6,6 +6,7 @@ import type { WaiterObligation } from "@/lib/denis/cognition/waiter/waiter-oblig
 import type { DenisCartLine } from "@/lib/denis/kernel/cart-projection";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { TableSessionState } from "@/lib/denis/loop/types";
+import type { AllergyGuardResult } from "@/lib/denis/cognition/safety/allergy-guard";
 
 /** Signal ingress that feeds the same obligation contract (ADR-020 §Kad / ARCH-6). */
 export type ObligationSignalSource = "fold" | "turn" | "watcher" | "world";
@@ -20,6 +21,8 @@ export type MergeTableSessionObligationInput = {
   pendingSlot?: PendingSlotKind | null;
   atRecap?: boolean;
   language?: string | null;
+  allergyGuard?: AllergyGuardResult | null;
+  allergyAcknowledged?: boolean;
 };
 
 function resolveAtRecap(state: TableSessionState, override?: boolean): boolean {
@@ -50,6 +53,8 @@ export function mergeTableSessionObligation(
     pendingSlot: input.pendingSlot ?? state.conversation.pendingSlot,
     language,
     atRecap: resolveAtRecap(state, input.atRecap),
+    allergyGuard: input.allergyGuard,
+    allergyAcknowledged: input.allergyAcknowledged,
   });
 }
 

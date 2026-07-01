@@ -14,12 +14,14 @@ import {
   Megaphone,
   MessageSquare,
   Monitor,
+  PartyPopper,
   ScrollText,
   Settings,
   ShieldCheck,
   ShoppingBag,
   Tags,
   Ticket,
+  Star,
   Users,
 } from "lucide-react";
 import { DenisNavIcon } from "@/components/design-system/denis-mark-badge";
@@ -27,6 +29,7 @@ import { AdminBrandMark } from "@/components/admin/admin-brand-mark";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
+import { LocationSwitcher } from "@/components/dashboard/location-switcher";
 
 const navItems = [
   { href: "/admin", label: "Overview", icon: BarChart3, exact: true },
@@ -48,7 +51,12 @@ const navItems = [
 const marketingItems = [
   { href: "/admin/promos", label: "Promo codes", icon: Ticket },
   { href: "/admin/upsells", label: "Upsell rules", icon: Megaphone },
+  { href: "/admin/loyalty", label: "Loyalty", icon: Star },
+  { href: "/admin/retention", label: "Retention", icon: Users },
   { href: "/admin/denis-insights", label: "Denis Insights", icon: DenisNavIcon },
+  { href: "/admin/denis", label: "Denis Config", icon: DenisNavIcon },
+  { href: "/admin/ab-experiments", label: "A/B Experiments", icon: DenisNavIcon },
+  { href: "/admin/events", label: "Events", icon: PartyPopper },
   { href: "/admin/denis-debug", label: "Denis Debugger", icon: Activity },
   { href: "/admin/denis-sim", label: "Venue Sim", icon: FlaskConical },
 ];
@@ -88,13 +96,25 @@ function NavLink({
   );
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  locations = [],
+  currentLocationId = "",
+}: {
+  locations?: Array<{ id: string; name: string }>;
+  currentLocationId?: string;
+}) {
   const pathname = usePathname();
 
   return (
     <aside className="flex w-[260px] shrink-0 flex-col border-r border-dash-border-subtle bg-sidebar">
       <div className="border-b border-dash-border-subtle px-5 pb-4 pt-5">
         <AdminBrandMark />
+        {locations.length > 1 && currentLocationId && (
+          <LocationSwitcher
+            locations={locations}
+            currentLocationId={currentLocationId}
+          />
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">

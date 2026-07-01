@@ -4,6 +4,8 @@ import { requireSurface } from "@/lib/auth/require-surface";
 import { StaffAccessProvider } from "@/lib/auth/staff-access-context";
 import { getStaffLocationContext } from "@/lib/auth/session";
 import { parseMenuLocaleFromDb } from "@/lib/i18n/detect-locale";
+import { loadThemeForLocation } from "@/lib/theme/load-theme-for-location";
+import { resolveTheme } from "@/lib/theme/theme-resolver";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function BarLayout({
@@ -64,6 +66,13 @@ export default async function BarLayout({
     locationRow?.default_locale
   );
 
+  const venueTheme = await loadThemeForLocation(locationId).catch(() =>
+    resolveTheme({
+      orgName: orgRow?.name ?? "Restaurant",
+      logoUrl: orgRow?.logo_url ?? null,
+    })
+  );
+
   return (
     <StaffAccessProvider access={access}>
     <OnboardingGuard onboardingCompleted={orgRow?.onboarding_completed ?? true}>
@@ -94,6 +103,7 @@ export default async function BarLayout({
           menuLocale,
           fiscalTssEnabled: Boolean(orgRow?.fiskaly_tss_id),
           aiConciergeEnabled: locationRow?.ai_concierge_enabled ?? false,
+          venueTheme,
         }}
       >
         {children}

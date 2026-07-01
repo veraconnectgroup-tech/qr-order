@@ -11,8 +11,12 @@ export function getStripe(): Stripe {
   }
 
   if (!stripeInstance) {
+    // Cast needed: @stripe/terminal-js's nested stripe@8 types can win module
+    // resolution for this import, and its apiVersion literal type differs
+    // from the runtime stripe@22 package. `as never` satisfies both without
+    // referencing version-specific type members like LatestApiVersion.
     stripeInstance = new Stripe(key, {
-      apiVersion: "2026-04-22.dahlia",
+      apiVersion: "2026-04-22.dahlia" as never,
     });
   }
   return stripeInstance;

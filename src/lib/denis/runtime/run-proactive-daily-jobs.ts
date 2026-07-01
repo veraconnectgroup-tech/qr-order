@@ -1,4 +1,5 @@
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { loadRhythmPrepTopProducts } from "@/lib/denis/config/load-rhythm-prep-products";
 import { notifyLocationPush } from "@/lib/push/notify-location";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -45,44 +46,16 @@ function weekdayInTimezone(timezone: string | null, now = new Date()): number {
 async function loadTopItemsForWeekday(
   admin: SupabaseClient,
   locationId: string,
-  weekday: number
+  weekday: number,
+  timezone: string | null,
+  config: Awaited<ReturnType<typeof loadConciergeConfigForLocation>>
 ): Promise<Array<{ name: string; count: number }>> {
-  const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
-
-  const { data: orders, error } = await admin
-    .from("orders")
-    .select(
-      `
-      created_at,
-      order_items (product_name)
-    `
-    )
-    .eq("location_id", locationId)
-    .gte("created_at", since)
-    .limit(500);
-
-  if (error || !orders?.length) return [];
-
-  const counts = new Map<string, number>();
-
-  for (const order of orders as Array<{
-    created_at: string;
-    order_items: Array<{ product_name: string }> | null;
-  }>) {
-    const orderWeekday = new Date(order.created_at).getUTCDay();
-    if (orderWeekday !== weekday) continue;
-
-    for (const item of order.order_items ?? []) {
-      const name = item.product_name?.trim();
-      if (!name) continue;
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    }
-  }
-
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3);
+  return loadRhythmPrepTopProducts(admin, {
+    locationId,
+    config,
+    timezone,
+    weekday,
+  });
 }
 
 const DAY_NAMES = [
@@ -129,7 +102,9 @@ export async function runProactiveDailyJobs(
         const topItems = await loadTopItemsForWeekday(
           admin,
           location.id,
-          weekday
+          weekday,
+          location.timezone,
+          config
         );
 
         if (topItems.length) {

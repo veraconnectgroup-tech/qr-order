@@ -1,4 +1,6 @@
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { dispatchTransferSuggestions } from "@/lib/denis/notifications/dispatch-transfer-suggestions";
+import { buildTransferSuggestionsForCopilot } from "@/lib/denis/venue/copilot/build-transfer-suggestions";
 import { applyAutoRushFromFloor } from "@/lib/denis/venue/floor/apply-auto-rush";
 import {
   readFloorGraphCache,
@@ -12,6 +14,7 @@ export type FloorTickResult = {
   scanned: number;
   refreshed: number;
   autoRushApplied: number;
+  transferAlerts: number;
   skipped: number;
 };
 
@@ -32,12 +35,13 @@ export async function processDenisFloorTick(
     logger.warn("Denis floor tick: location load failed", {
       error: error.message,
     });
-    return { scanned: 0, refreshed: 0, autoRushApplied: 0, skipped: 0 };
+    return { scanned: 0, refreshed: 0, autoRushApplied: 0, transferAlerts: 0, skipped: 0 };
   }
 
   const locations = (locationRows ?? []) as Array<{ id: string }>;
   let refreshed = 0;
   let autoRushApplied = 0;
+  let transferAlerts = 0;
   let skipped = 0;
 
   for (const location of locations) {
@@ -61,6 +65,41 @@ export async function processDenisFloorTick(
         config
       );
       if (applied) autoRushApplied++;
+
+      const { data: tableRows } = await admin
+        .from("tables")
+        .select("id, name, seats")
+        .eq("location_id", location.id)
+        .eq("is_active", true)
+        .is("deleted_at", null);
+
+      const { data: locationRow } = await admin
+        .from("locations")
+        .select("org_id")
+        .eq("id", location.id)
+        .maybeSingle();
+
+      const orgId = (locationRow as { org_id?: string } | null)?.org_id;
+      if (orgId && (tableRows ?? []).length > 0) {
+        const suggestions = await buildTransferSuggestionsForCopilot(admin, {
+          locationId: location.id,
+          floor,
+          tableRows: (tableRows ?? []) as Array<{
+            id: string;
+            name: string;
+            seats: number | null;
+          }>,
+          partyMode: config.party.mode,
+        });
+
+        if (suggestions.length > 0) {
+          transferAlerts += await dispatchTransferSuggestions({
+            orgId,
+            locationId: location.id,
+            suggestions,
+          });
+        }
+      }
     } catch (tickError) {
       logger.warn("Denis floor tick: location failed", {
         locationId: location.id,
@@ -75,6 +114,7 @@ export async function processDenisFloorTick(
     scanned: locations.length,
     refreshed,
     autoRushApplied,
+    transferAlerts,
     skipped,
   };
 }

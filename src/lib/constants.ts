@@ -50,12 +50,23 @@ export const REALTIME_FALLBACK_POLL_MS = 5_000;
 /** KDS poll interval when Realtime is disconnected. */
 export const KDS_REALTIME_FALLBACK_POLL_MS = 10_000;
 
-/** Safety poll while Realtime is connected (missed events). */
 /** Backup poll while Realtime is connected (catches missed events). */
 export const REALTIME_BACKUP_POLL_MS = 10_000;
 
+/** Reconnect when live channel has no events for this long. */
+export const REALTIME_STALE_LIVE_MS = 90_000;
+
+/** Watchdog interval for stale live detection. */
+export const REALTIME_WATCHDOG_MS = 30_000;
+
+/** Guest Denis view SSE reconnect delay. */
+export const REALTIME_SSE_RECONNECT_MS = 1_000;
+
 /** Guest Denis view poll — fallback only when SSE disconnected (ADR-019-E / F6). */
 export const GUEST_VIEW_FALLBACK_POLL_MS = 30_000;
+
+/** Party shared-cart sync when Realtime/SSE unavailable. */
+export const PARTY_CART_SYNC_POLL_MS = REALTIME_FALLBACK_POLL_MS;
 
 /** @deprecated Use REALTIME_FALLBACK_POLL_MS */
 export const DASHBOARD_POLL_INTERVAL_MS = REALTIME_FALLBACK_POLL_MS;
@@ -64,6 +75,8 @@ export const DASHBOARD_POLL_INTERVAL_MS = REALTIME_FALLBACK_POLL_MS;
 export const PLATFORM_FEE_FIXED_EUR = 0.4;
 export const PLATFORM_FEE_SMALL_ORDER_EUR = 0.2;
 export const PLATFORM_FEE_SMALL_ORDER_THRESHOLD_EUR = 10;
+/** Guest payment intelligence — recommend card for larger bills (Prompt 47). */
+export const PAYMENT_LARGE_ORDER_THRESHOLD_EUR = 50;
 
 function platformFeeParts(currency = "EUR") {
   const sym = currency === "EUR" ? "€" : currency + " ";

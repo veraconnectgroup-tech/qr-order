@@ -5,6 +5,7 @@ import type {
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import { CORE_BELIEF_KEYS } from "@/lib/denis/cognition/beliefs/belief-types";
+import { isGuestMisunderstandingDecline } from "@/lib/denis/cognition/conversation/guest-continuity";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 
 type TranscriptMessage = {
@@ -50,7 +51,7 @@ export function buildDialogueFrameEvidence(input: {
   );
   const lastDenis =
     lastTranscriptLine(input.transcript, "assistant") ??
-    input.state?.conversation.lastAssistantMessage?.trim() ??
+    input.state?.conversation?.lastAssistantMessage?.trim() ??
     null;
   const lastGuest = lastTranscriptLine(input.transcript, "user");
 
@@ -92,6 +93,22 @@ export function buildDialogueFrameEvidence(input: {
   if (awaiting === "browse_decision") {
     lines.push(
       "- instruction: Guest is answering whether they have decided — acknowledge patiently; if they need time, say you will check back. No menu dump."
+    );
+  }
+
+  if (awaiting === "recommendation_pick" || awaiting === "product") {
+    lines.push(
+      "- instruction: Guest is picking from options Denis offered — map short reply to one product; do not restart welcome."
+    );
+  }
+
+  if (
+    lastGuest &&
+    isGuestMisunderstandingDecline(lastGuest) &&
+    awaiting != null
+  ) {
+    lines.push(
+      "- instruction: Guest said no — Denis misunderstood. Apologize, restate options, ask again."
     );
   }
 

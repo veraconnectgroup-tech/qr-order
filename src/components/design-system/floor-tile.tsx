@@ -124,6 +124,7 @@ export function FloorTile({
   onClick,
   disabled = false,
   className,
+  style,
   children,
 }: FloorTileProps) {
   const classes = floorTileClasses({
@@ -151,6 +152,7 @@ export function FloorTile({
         href={href}
         onClick={onClick}
         className={cn("cursor-pointer", classes)}
+        style={style}
         aria-label={label}
       >
         {content}
@@ -168,6 +170,7 @@ export function FloorTile({
           "cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
           classes
         )}
+        style={style}
         aria-label={label}
       >
         {content}
@@ -175,5 +178,5 @@ export function FloorTile({
     );
   }
 
-  return <div className={classes}>{content}</div>;
+  return <div className={classes} style={style}>{content}</div>;
 }

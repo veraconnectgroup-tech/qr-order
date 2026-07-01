@@ -22,8 +22,12 @@ import { PrinterSettingsPanel } from "@/components/admin/printer-settings-panel"
 import { ApiKeysPanel } from "@/components/admin/api-keys-panel";
 import { OperatorApiKeysPanel } from "@/components/admin/operator-api-keys-panel";
 import { OperatorConfigProposalsPanel } from "@/components/admin/operator-config-proposals-panel";
+import { DenisConfigVersioningPanel } from "@/components/admin/denis-config-versioning-panel";
 import { WebhooksPanel } from "@/components/admin/webhooks-panel";
 import { listPendingOperatorProposals } from "@/lib/operator/config-proposals";
+import { loadOperatorProposalPreviews } from "@/lib/admin/load-operator-proposal-previews";
+import { loadConfigChangeHistory } from "@/lib/admin/load-config-change-history";
+import { getConfigShadow } from "@/lib/denis/config/config-shadow";
 import type { AiCreditPackage } from "@/types";
 import { QrCard, QrCardDescription, QrCardTitle } from "@/components/design-system/qr-card";
 
@@ -100,6 +104,10 @@ export default async function AdminSettingsPage() {
     staff.org_id
   );
 
+  const operatorProposalPreviews = pendingOperatorProposals.length
+    ? await loadOperatorProposalPreviews(admin, pendingOperatorProposals)
+    : [];
+
   const orgRow = org as {
     stripe_account_id: string | null;
     stripe_onboarded: boolean;
@@ -123,6 +131,20 @@ export default async function AdminSettingsPage() {
     ai_concierge_enabled: boolean;
     ai_playbook: string | null;
   } | null;
+
+  const configChangeHistory =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await loadConfigChangeHistory(admin, {
+          orgId: staff.org_id,
+          locationId,
+          limit: 12,
+        })
+      : [];
+
+  const configShadow =
+    locationId && locationRow?.ai_concierge_enabled
+      ? await getConfigShadow(locationId)
+      : null;
 
   const creditsRow = credits as {
     balance: number;
@@ -266,6 +288,14 @@ export default async function AdminSettingsPage() {
               />
             )}
 
+            {locationRow.ai_concierge_enabled && (
+              <DenisConfigVersioningPanel
+                history={configChangeHistory}
+                shadow={configShadow}
+                canEdit
+              />
+            )}
+
             <PrinterSettingsPanel />
           </>
         )}
@@ -294,6 +324,7 @@ export default async function AdminSettingsPage() {
         <OperatorApiKeysPanel keys={(operatorApiKeys ?? []) as never} canEdit />
         <OperatorConfigProposalsPanel
           proposals={pendingOperatorProposals}
+          previews={operatorProposalPreviews}
           canEdit
         />
         <WebhooksPanel webhooks={(webhooks ?? []) as never} canEdit />

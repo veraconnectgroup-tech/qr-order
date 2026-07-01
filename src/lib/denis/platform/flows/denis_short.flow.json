@@ -6,6 +6,7 @@
     "welcome": {
       "on": {
         "ORDER": "collect",
+        "PREORDER": "preorder",
         "BROWSE": "browse",
         "SMALLTALK": "welcome",
         "HANDOFF_WAITER": "handoff_waiter",
@@ -19,6 +20,7 @@
       "on": {
         "DRAFT_DRINKS_ONLY": "upsell_food",
         "DRAFT_HAS_FOOD": "collect",
+        "PREORDER": "preorder",
         "DONE": "recap",
         "HANDOFF_WAITER": "handoff_waiter",
         "HANDOFF_PAY": "handoff_pay"
@@ -30,6 +32,7 @@
       "on": {
         "DECLINE": "recap",
         "ORDER": "collect",
+        "PREORDER": "preorder",
         "DONE": "recap",
         "HANDOFF_WAITER": "handoff_waiter",
         "HANDOFF_PAY": "handoff_pay"
@@ -39,10 +42,30 @@
       "skills": ["cart.recap"],
       "on": {
         "CONFIRM": "submit",
+        "PREORDER": "preorder",
         "ORDER": "collect",
         "HANDOFF_WAITER": "handoff_waiter",
         "HANDOFF_PAY": "handoff_pay"
       }
+    },
+    "preorder": {
+      "skills": ["preorder.schedule"],
+      "on": {
+        "SUCCESS": "preorder_confirmed",
+        "FAIL": "collect",
+        "ORDER": "preorder",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
+      }
+    },
+    "preorder_confirmed": {
+      "on": {
+        "ORDER": "collect",
+        "STATUS": "status",
+        "HANDOFF_WAITER": "handoff_waiter",
+        "HANDOFF_PAY": "handoff_pay"
+      },
+      "narrate": "template:preorder.confirmation"
     },
     "submit": {
       "skills": ["order.submit"],
@@ -63,6 +86,7 @@
     "browse": {
       "skills": ["browse.search"],
       "on": {
+        "PREORDER": "preorder",
         "HANDOFF_WAITER": "handoff_waiter",
         "HANDOFF_PAY": "handoff_pay"
       }

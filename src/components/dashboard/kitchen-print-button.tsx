@@ -5,6 +5,7 @@ import { Printer } from "lucide-react";
 import { loadPrinterSetup } from "@/lib/printer/load-printer-setup";
 import {
   printKitchenOrder,
+  reprintKitchenOrder,
   type KitchenPrintResult,
 } from "@/lib/printer/print-kitchen-order";
 import { printKitchenTicket } from "@/lib/kitchen/print-ticket";
@@ -16,6 +17,7 @@ export function KitchenPrintButton({
   orgName,
   className,
   label = "Print",
+  reprint = false,
   showAutoBadge = false,
   onResult,
 }: {
@@ -23,6 +25,7 @@ export function KitchenPrintButton({
   orgName: string;
   className?: string;
   label?: string;
+  reprint?: boolean;
   showAutoBadge?: boolean;
   onResult?: (result: KitchenPrintResult) => void;
 }) {
@@ -33,7 +36,9 @@ export function KitchenPrintButton({
     setBusy(true);
     try {
       const setup = await loadPrinterSetup();
-      const result = await printKitchenOrder(order, orgName, setup);
+      const result = reprint
+        ? await reprintKitchenOrder(order, orgName, setup)
+        : await printKitchenOrder(order, orgName, setup);
       onResult?.(result);
     } catch {
       printKitchenTicket(order, orgName);

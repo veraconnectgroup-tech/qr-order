@@ -3,6 +3,9 @@ import {
   parseBrowseEventFromPayload,
 } from "@/lib/denis/cognition/browse";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { loadRhythmRuntimeContext } from "@/lib/denis/config/load-rhythm-prep-products";
+import { resolveEffectiveDessertDelayMinutes } from "@/lib/denis/config/resolve-rhythm-priors";
+import { isInterventionJournalActive } from "@/lib/denis/config/resolve-intervention-mode";
 import { compileBeliefs } from "@/lib/denis/cognition/beliefs/compile-beliefs";
 import { appendMindBeliefsCompiled } from "@/lib/denis/cognition/beliefs/append-mind-beliefs-compiled";
 import type { ProactiveTurnMessages } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
@@ -12,6 +15,9 @@ import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-off
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
 import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { isTableSessionActorInfrastructureReady } from "@/lib/denis/actor/table-session-actor";
+import { resolveInterventionActorIngress } from "@/lib/denis/config/resolve-intervention-actor-ingress";
+import { enqueueOrRunProactiveSessionTick } from "@/lib/denis/runtime/enqueue-or-run-proactive-tick";
 import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
 import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { manualSnapshotToDenisDraft } from "@/lib/denis/loop/adapters/map-cart-snapshot";
@@ -345,13 +351,29 @@ export async function runDenisSense(
     }
   }
 
+  let rhythmRuntime: Awaited<
+    ReturnType<typeof loadRhythmRuntimeContext>
+  > | null = null;
+
   if (
     aiSessionId &&
     (input.channel === "realtime.order_status" ||
       input.channel === "system.proactive_tick")
   ) {
     const orders = mapGuestOrdersToSchedulerSnapshot(guestOrders);
-    const drafts = buildScheduleDrafts({ orders, config });
+    rhythmRuntime = await loadRhythmRuntimeContext(admin, {
+      locationId: input.locationId,
+      config,
+    });
+    const drafts = buildScheduleDrafts({
+      orders,
+      config,
+      interventionJournalActive: isInterventionJournalActive(config),
+      effectiveDessertDelayMinutes: resolveEffectiveDessertDelayMinutes(
+        config,
+        rhythmRuntime
+      ),
+    });
     schedulesUpserted = await upsertDenisSchedules(
       admin,
       aiSessionId,
@@ -377,46 +399,67 @@ export async function runDenisSense(
     }
 
     if (aiSessionId && tableSessionId) {
-      proactiveNudge = await emitProactiveNudge(admin, {
-        aiSessionId,
-        tableSessionId,
-        tableId: input.tableId,
-        locationId: input.locationId,
-        sessionToken: input.sessionToken,
-        venueName: guestContext.data.orgName,
-        config,
-        state,
-        orders: guestOrders,
-        sessionPhase: deriveFoldSessionPhase({
-          sessionStatus: state.session.status,
-          accessState: state.session.accessState,
-          orders: state.commerce.orders,
-          hasCartActivity: state.commerce.cart.visibleLines.length > 0,
-          billSettled: state.session.billSettled,
-        }),
-        source: "sense.proactive_brain",
-        traceId,
-        payload: {
-          ...payload,
-          dismissedNudgeKeys:
-            payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
-        },
-        messages: {
-          browse: payload.browseMessage ?? "Treba vam pomoć pri biranju?",
-          dessert: payload.dessertMessage ?? "Spremni za desert?",
-          slowKitchen:
-            payload.slowKitchenMessage ??
-            "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
-          guestWelcome:
-            "Dobro došli! Hoćete da pogledate meni?",
-          billPrompt:
-            "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
-          orderDelay:
-            "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
-          popularityPair:
-            "Gosti često uzmu i nešto uz to — hoćete da dodam?",
-        },
-      });
+      if (
+        resolveInterventionActorIngress(
+          config,
+          isTableSessionActorInfrastructureReady()
+        )
+      ) {
+        await enqueueOrRunProactiveSessionTick(admin, {
+          tableSessionId,
+          source: "sense.proactive_brain",
+          traceId,
+          config,
+        });
+      } else {
+        proactiveNudge = await emitProactiveNudge(admin, {
+          aiSessionId,
+          tableSessionId,
+          tableId: input.tableId,
+          locationId: input.locationId,
+          sessionToken: input.sessionToken,
+          venueName: guestContext.data.orgName,
+          config,
+          state,
+          orders: guestOrders,
+          sessionPhase: deriveFoldSessionPhase({
+            sessionStatus: state.session.status,
+            accessState: state.session.accessState,
+            orders: state.commerce.orders,
+            hasCartActivity: state.commerce.cart.visibleLines.length > 0,
+            billSettled: state.session.billSettled,
+          }),
+          source: "sense.proactive_brain",
+          traceId,
+          payload: {
+            ...payload,
+            dismissedNudgeKeys:
+              payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
+            effectiveDessertDelayMinutes: rhythmRuntime
+              ? resolveEffectiveDessertDelayMinutes(config, rhythmRuntime)
+              : config.upsell.dessertDelayMinutes,
+            rhythmTopProductName:
+              rhythmRuntime?.applied && rhythmRuntime.topProducts[0]?.name
+                ? rhythmRuntime.topProducts[0].name
+                : null,
+          },
+          messages: {
+            browse: payload.browseMessage ?? "Treba vam pomoć pri biranju?",
+            dessert: payload.dessertMessage ?? "Spremni za desert?",
+            slowKitchen:
+              payload.slowKitchenMessage ??
+              "Kuhinja radi intenzivno — želite nešto da popijete dok čekate?",
+            guestWelcome:
+              "Dobro došli! Hoćete da pogledate meni?",
+            billPrompt:
+              "Hoćete da zatvorimo račun? Možete platiti ovde ili pozvati konobara.",
+            orderDelay:
+              "Vaša narudžbina se priprema, stiže uskoro. Hvala na strpljenju!",
+            popularityPair:
+              "Gosti često uzmu i nešto uz to — hoćete da dodam?",
+          },
+        });
+      }
     }
   }
 

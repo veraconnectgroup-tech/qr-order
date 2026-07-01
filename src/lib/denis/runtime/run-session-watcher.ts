@@ -1,22 +1,28 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
 import { detectStaffProactiveAlerts } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
-import { loadProactiveMenuHints } from "@/lib/denis/cognition/proactive/load-proactive-menu-hints";
+import {
+  maxKitchenWaitMinutesForTable,
+  type KitchenTableWait,
+} from "@/lib/denis/cognition/proactive/triggers";
 import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/session-watcher-context";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
-import { deriveFoldSessionPhase } from "@/lib/denis/loop/derive-fold-phase";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
+import { buildSessionExperienceScore } from "@/lib/denis/commerce/session-experience-score";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { maybeAppendOfferResolved } from "@/lib/denis/cognition/offer/append-offer-event";
 import { maybeAppendOfferConverted } from "@/lib/denis/cognition/offer/append-offer-converted";
 import { maybeAppendNudgeOutcomes } from "@/lib/denis/cognition/offer/append-nudge-outcome";
 import { scheduleDenisAnticipationCommerceProjection } from "@/lib/denis/runtime/schedule-denis-anticipation-commerce";
 import { scheduleNudgeOutcomeCommerceProjection } from "@/lib/denis/runtime/schedule-nudge-outcome-commerce";
-import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
-import { emitProactiveNudge } from "@/lib/denis/runtime/emit-proactive-nudge";
+import { enqueueOrRunProactiveSessionTick } from "@/lib/denis/runtime/enqueue-or-run-proactive-tick";
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
+import {
+  expireStationQuestions,
+  runStationQuestionTriggersForSession,
+} from "@/lib/denis/stations/station-questions";
+import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
-import { notifyLocationPush } from "@/lib/push/notify-location";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -28,8 +34,23 @@ type ActiveSessionRow = {
   opened_at: string;
   denis_shared_ai_session_id: string;
   table: { name: string } | { name: string }[] | null;
-  location: { name: string } | { name: string }[] | null;
+  location:
+    | { name: string; org_id: string }
+    | { name: string; org_id: string }[]
+    | null;
 };
+
+function relationOrgId(
+  relation:
+    | { name: string; org_id: string }
+    | { name: string; org_id: string }[]
+    | null
+    | undefined
+): string | null {
+  if (!relation) return null;
+  if (Array.isArray(relation)) return relation[0]?.org_id ?? null;
+  return relation.org_id ?? null;
+}
 
 function relationName(
   relation: { name: string } | { name: string }[] | null | undefined
@@ -69,7 +90,7 @@ export async function runSessionWatcherTick(
       opened_at,
       denis_shared_ai_session_id,
       table:tables(name),
-      location:locations(name)
+      location:locations(name, org_id)
     `
     )
     .eq("status", "active")
@@ -84,10 +105,6 @@ export async function runSessionWatcherTick(
   }
 
   const rows = (sessions ?? []) as ActiveSessionRow[];
-  const hintsByLocation = new Map<
-    string,
-    Awaited<ReturnType<typeof loadProactiveMenuHints>>
-  >();
   const configByLocation = new Map<
     string,
     Awaited<ReturnType<typeof loadConciergeConfigForLocation>>
@@ -96,6 +113,9 @@ export async function runSessionWatcherTick(
   let guestNudges = 0;
   let staffAlerts = 0;
   let skipped = 0;
+  const kitchenWaitsByLocation = new Map<string, KitchenTableWait[]>();
+  const kitchenEscalationEmitted = new Set<string>();
+  const stationQuestionLocations = new Set<string>();
 
   for (const row of rows) {
     try {
@@ -110,15 +130,9 @@ export async function runSessionWatcherTick(
         continue;
       }
 
-      let hints = hintsByLocation.get(row.location_id);
-      if (!hints) {
-        hints = await loadProactiveMenuHints(admin, row.location_id);
-        hintsByLocation.set(row.location_id, hints);
-      }
-
       const aiSessionId = row.denis_shared_ai_session_id;
       const tableName = relationName(row.table)?.trim() || "—";
-      const venueName = relationName(row.location)?.trim() || "Venue";
+      const orgId = relationOrgId(row.location);
 
       const [timeline, orders, fold] = await Promise.all([
         loadDenisTimeline(admin, aiSessionId),
@@ -139,6 +153,28 @@ export async function runSessionWatcherTick(
         sessionOpenedAt: row.opened_at,
         venueDefaultLanguage: config.language.venueDefault ?? "sr",
       });
+
+      if (config.ops.stationQuestions.enabled) {
+        stationQuestionLocations.add(row.location_id);
+        await runStationQuestionTriggersForSession(admin, {
+          locationId: row.location_id,
+          tableId: row.table_id,
+          tableName,
+          orders,
+          config,
+        });
+      }
+
+      const tableWaitMinutes = Math.floor(maxKitchenWaitMinutesForTable(orders));
+      if (tableWaitMinutes > 0) {
+        const bucket = kitchenWaitsByLocation.get(row.location_id) ?? [];
+        bucket.push({
+          tableId: row.table_id,
+          tableName,
+          waitMinutes: tableWaitMinutes,
+        });
+        kitchenWaitsByLocation.set(row.location_id, bucket);
+      }
 
       const emitted = new Set([
         ...watcherContext.emittedKeys,
@@ -190,68 +226,29 @@ export async function runSessionWatcherTick(
         });
       }
 
-      const mentalMode = resolveMentalModelMode(config);
-      const legacyMinutePayload =
-        mentalMode === "off"
-          ? {
-              idleMinutes: watcherContext.idleMinutes,
-              browseMinutes: watcherContext.idleMinutes,
-            }
-          : {};
-
-      const nudge = await emitProactiveNudge(admin, {
-        aiSessionId,
+      const nudge = await enqueueOrRunProactiveSessionTick(admin, {
         tableSessionId: row.id,
-        tableId: row.table_id,
-        locationId: row.location_id,
-        sessionToken: row.session_token,
-        venueName,
-        config,
-        state: fold.state,
-        orders,
-        sessionPhase: deriveFoldSessionPhase({
-          sessionStatus: fold.state.session.status,
-          accessState: fold.state.session.accessState,
-          orders: fold.state.commerce.orders,
-          hasCartActivity: fold.state.commerce.cart.visibleLines.length > 0,
-          billSettled: fold.state.session.billSettled,
-        }),
         source: "session.watcher",
         traceId: watcherTraceId,
-        payload: {
-          dismissedNudgeKeys: watcherContext.dismissedNudgeKeys,
-          hasSessionOrders: fold.state.commerce.orders.length > 0,
-          cartItemCount: fold.state.commerce.cart.visibleLines.length,
-          sessionAgeSeconds: watcherContext.sessionAgeSeconds,
-          guestMessageCount: watcherContext.guestMessageCount,
-          guestAskedRecommendation: watcherContext.guestAskedRecommendation,
-          popularityPair: hints.popularityPair,
-          todaySpecial: hints.todaySpecial,
-          dessertProductName: hints.dessertProductName,
-          ...legacyMinutePayload,
-          venueName,
-          language:
-            watcherContext.guestMessageCount > 0
-              ? watcherContext.guestLanguage ??
-                config.language.venueDefault ??
-                "sr"
-              : config.language.venueDefault ?? "sr",
-          browsingDeferredAt: watcherContext.browsingDeferredAt,
-          browsingDeferCount: watcherContext.browsingDeferCount,
-          browseFollowUpEmitted: watcherContext.browseFollowUpEmitted,
-          followUpRequestedAt: watcherContext.followUpRequestedAt,
-          followUpDelaySeconds: watcherContext.followUpDelaySeconds,
-        },
+        preambleDone: true,
+        config,
       });
 
       if (nudge) {
         guestNudges += 1;
 
-        if (nudge.kind === "order_delay" && nudge.orderId) {
-          await notifyLocationPush(row.location_id, {
-            title: "Narudžbina kasni",
-            body: `Sto ${tableName} — porudžbina u pripremi duže od ${config.proactive.orderDelayMinutes} min.`,
-            url: "/dashboard/kitchen",
+        if (
+          (nudge.kind === "order_delay" || nudge.kind === "order_eta_update") &&
+          nudge.orderId
+        ) {
+          await dispatchStaffNotification({
+            orgId: orgId ?? undefined,
+            locationId: row.location_id,
+            type: "long_wait",
+            tableId: row.table_id,
+            tableName,
+            message: `Porudžbina u pripremi duže od ${config.proactive.orderDelayMinutes} min.`,
+            actionUrl: "/kitchen",
           });
         }
       }
@@ -260,16 +257,44 @@ export async function runSessionWatcherTick(
         config,
         tableName,
         idleMinutes: watcherContext.idleMinutes,
+        hasSessionOrders: orders.some((order) => order.status !== "cancelled"),
+        guestMessageCount: watcherContext.guestMessageCount,
+        hasKitchenResponse: orders.some((order) =>
+          ["pending", "pending_approval", "accepted", "preparing", "ready", "delivered"].includes(
+            order.status
+          )
+        ),
         emittedKeys: [...emitted],
         recentGuestMessages: watcherContext.recentGuestMessages,
         waiterEscalated: watcherContext.waiterEscalated,
-        mentalPredictedNeed: fold.state.mental?.predictedNeed ?? null,
+        guestAffect: fold.state.mental?.affect ?? null,
+        kitchenTableWaits: kitchenWaitsByLocation.get(row.location_id),
+        experienceScore: buildSessionExperienceScore(fold.state).overallScore,
+        language: fold.state.guest?.preferredLanguage ?? null,
       });
 
       for (const alert of staffAlertsForSession) {
-        if (emitted.has(alert.kind)) continue;
+        if (alert.kind === "staff_multi_table_delay" || alert.kind === "staff_kitchen_delay") {
+          if (kitchenEscalationEmitted.has(row.location_id)) continue;
+          kitchenEscalationEmitted.add(row.location_id);
+        } else if (emitted.has(alert.kind)) {
+          continue;
+        }
+        if (alert.kind === "staff_multi_table_delay" || alert.kind === "staff_kitchen_delay") {
+          await dispatchStaffNotification({
+            orgId: orgId ?? undefined,
+            locationId: row.location_id,
+            type: "kitchen_backup",
+            tableId: row.table_id,
+            tableName,
+            message: alert.message,
+            actionUrl: "/kitchen",
+          });
+        }
+
         await emitStaffProactiveAlert(admin, {
           locationId: row.location_id,
+          orgId: orgId ?? undefined,
           aiSessionId,
           tableId: row.table_id,
           alert,
@@ -283,6 +308,20 @@ export async function runSessionWatcherTick(
         tableSessionId: row.id,
         error:
           watchError instanceof Error ? watchError.message : String(watchError),
+      });
+    }
+  }
+
+  for (const locationId of stationQuestionLocations) {
+    try {
+      await expireStationQuestions(admin, { locationId });
+    } catch (expireError) {
+      logger.warn("station question expiry failed", {
+        locationId,
+        error:
+          expireError instanceof Error
+            ? expireError.message
+            : String(expireError),
       });
     }
   }

@@ -3,6 +3,7 @@
 export type WaiterGapKind =
   | "drink_unspecified"
   | "substitution_note"
+  | "allergy_warning"
   | "serve_size"
   | "modifier"
   | "confirm_blocked";
@@ -27,6 +28,8 @@ export type WaiterObligation = {
   /** False while gaps exist or cart is empty at recap. */
   canConfirm: boolean;
   primaryGap: WaiterGapKind | null;
+  /** Per-item prep ETA copy for guest communication (Kitchen Mind Link). */
+  prepTimeCommunication?: string | null;
 };
 
 export function emptyWaiterObligation(): WaiterObligation {
@@ -37,5 +40,6 @@ export function emptyWaiterObligation(): WaiterObligation {
     nextAction: "continue_browse",
     canConfirm: false,
     primaryGap: null,
+    prepTimeCommunication: null,
   };
 }

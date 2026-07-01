@@ -101,6 +101,7 @@ export async function projectOfferConvertedToCommerce(
       emittedAt: input.conversion.emittedAt,
       convertedAt: input.conversion.convertedAt,
       lagSeconds: input.conversion.lagSeconds,
+      revenue: input.conversion.revenue ?? null,
       dedupeKey: input.dedupeKey,
     },
     idempotencyKey,

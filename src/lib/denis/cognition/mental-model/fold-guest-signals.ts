@@ -1,11 +1,9 @@
 import type { BrowseEvent } from "@/lib/denis/cognition/browse/browse-types";
 import { guestTextFromTimeline } from "@/lib/denis/cognition/conversation/guest-continuity";
 import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-signal-types";
+import { isGuestDeclineMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import { guestAskedForRecommendation } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
-
-const EXPLICIT_DECLINE_PATTERN =
-  /\b(ne\s+hvala|ne\s+mora|ne\s+treba|no\s+thanks|not\s+interested|nicht\s+danke)\b/i;
 
 function asRecord(payload: DenisTimelineRow["payload"]): Record<string, unknown> {
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
@@ -67,7 +65,7 @@ export function foldGuestSignals(input: {
         guestInitiatedBeforeDenis = true;
       }
 
-      if (EXPLICIT_DECLINE_PATTERN.test(guestText)) {
+      if (isGuestDeclineMessage(guestText)) {
         declineSignals.push({ kind: "explicit", at });
       }
 

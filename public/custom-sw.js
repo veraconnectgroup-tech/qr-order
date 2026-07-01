@@ -1,3 +1,5 @@
+importScripts("/guest-offline-sw.js");
+
 const GUEST_RESERVED_SEGMENTS = new Set([
   "admin",
   "dashboard",
@@ -45,13 +47,14 @@ function resolveNotificationUrl(rawUrl) {
 
 self.addEventListener("push", (e) => {
   const d = e.data?.json() ?? { title: "Vera", body: "New notification" };
-  e.waitUntil(
-    self.registration.showNotification(d.title, {
-      body: d.body,
-      icon: "/icon-192.png",
-      data: { url: d.url || "/waiter" },
-    })
-  );
+  const options = {
+    body: d.body,
+    icon: "/icon-192.png",
+    data: { url: d.url || "/waiter", soundProfile: d.soundProfile ?? "default" },
+    vibrate: Array.isArray(d.vibrate) ? d.vibrate : undefined,
+    requireInteraction: Boolean(d.urgent),
+  };
+  e.waitUntil(self.registration.showNotification(d.title, options));
 });
 
 self.addEventListener("notificationclick", (e) => {

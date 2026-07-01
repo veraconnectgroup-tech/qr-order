@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatPrice } from "@/lib/format";
 import type { MenuSection } from "@/lib/menu-section";
+import { parseAiGuestOrderRows } from "@/lib/supabase/parse-order-rows";
 
 export type AiGuestOrderItem = {
   product_id: string | null;
@@ -8,6 +9,8 @@ export type AiGuestOrderItem = {
   unit_price: number;
   quantity: number;
   menu_section: MenuSection;
+  /** From products.food_tags at order time — sommelier pairing without regex. */
+  food_tags?: string[];
 };
 
 export type AiGuestOrder = {
@@ -15,23 +18,12 @@ export type AiGuestOrder = {
   status: string;
   created_at: string;
   delivered_at: string | null;
+  preparing_at?: string | null;
+  ready_at?: string | null;
+  order_number?: number | null;
+  estimated_prep_minutes?: number | null;
+  prep_estimate_confidence?: "none" | "low" | "medium" | "high" | null;
   order_items: AiGuestOrderItem[];
-};
-
-type RawOrderItem = {
-  product_id: string | null;
-  product_name: string;
-  unit_price: number;
-  quantity: number;
-  menu_section: MenuSection;
-};
-
-type RawOrder = {
-  id: string;
-  status: string;
-  created_at: string;
-  delivered_at: string | null;
-  order_items: RawOrderItem[] | null;
 };
 
 export async function loadGuestOrdersForAi(
@@ -72,6 +64,11 @@ export async function loadGuestOrdersForAi(
       status,
       created_at,
       delivered_at,
+      preparing_at,
+      ready_at,
+      order_number,
+      estimated_prep_minutes,
+      prep_estimate_confidence,
       order_items (
         product_id,
         product_name,
@@ -90,11 +87,16 @@ export async function loadGuestOrdersForAi(
     throw new Error(error.message);
   }
 
-  return ((orders ?? []) as unknown as RawOrder[]).map((order) => ({
+  return parseAiGuestOrderRows(orders).map((order) => ({
     id: order.id,
     status: order.status,
     created_at: order.created_at,
     delivered_at: order.delivered_at,
+    preparing_at: order.preparing_at ?? null,
+    ready_at: order.ready_at ?? null,
+    order_number: order.order_number ?? null,
+    estimated_prep_minutes: order.estimated_prep_minutes ?? null,
+    prep_estimate_confidence: order.prep_estimate_confidence ?? null,
     order_items: (order.order_items ?? []).map((item) => ({
       product_id: item.product_id,
       product_name: item.product_name,

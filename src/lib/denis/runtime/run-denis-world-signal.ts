@@ -5,7 +5,7 @@ import {
 import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-shared-ai-session";
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
 import { persistWorldTell } from "@/lib/denis/loop/persist-world-tell";
-import { projectNotifyGuest } from "@/lib/denis/loop/project-notify";
+import { notifyGuestSessionPush } from "@/lib/push/notify-guest-session";
 import { loadAiSessionLocale } from "@/lib/denis/loop/resolve-ai-session-locale";
 import { resolveWorldOrderTell } from "@/lib/denis/loop/tell-world-order";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import type { MenuLocale } from "@/lib/i18n/translations";
 import { MENU_LOCALES } from "@/lib/i18n/translations";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseDenisWorldLocationRow } from "@/lib/supabase/parse-location-rows";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 async function loadWorldContext(
@@ -29,12 +30,7 @@ async function loadWorldContext(
 
   if (!locationRow) return null;
 
-  const location = locationRow as unknown as {
-    ai_concierge_enabled: boolean;
-    menu_locale: string | null;
-    default_locale: string | null;
-    organization: { id: string; slug: string; name: string };
-  };
+  const location = parseDenisWorldLocationRow(locationRow);
 
   if (!location.ai_concierge_enabled) return null;
 
@@ -125,11 +121,15 @@ export async function runDenisWorldSignal(
 
   const guestUrl = `/${ctx.orgSlug}/${payload.tableToken}`;
 
-  await projectNotifyGuest(admin, {
-    sessionId: payload.sessionId,
-    message: tell.message,
-    push: tell.push,
-    title: ctx.venueName,
-    url: guestUrl,
-  });
+  if (tell.push) {
+    await notifyGuestSessionPush(admin, {
+      sessionId: payload.sessionId,
+      pushType: "guest-order-ready",
+      message: tell.message,
+      title: ctx.venueName,
+      url: guestUrl,
+      orderNumber: payload.orderNumber,
+      language: sessionLocale.menuLocale,
+    });
+  }
 }

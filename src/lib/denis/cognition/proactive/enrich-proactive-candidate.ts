@@ -2,6 +2,7 @@ import {
   narrateCartRecoveryOffer,
   narrateOffer,
 } from "@/lib/denis/cognition/offer/narrate-offer";
+import { isCartRecoveryOfferStrategy } from "@/lib/denis/cognition/offer/smart-cart-recovery";
 import type { GuestOfferContext } from "@/lib/denis/cognition/offer/offer-types";
 import type {
   GuestProactiveNudge,
@@ -15,13 +16,15 @@ function enrichBrowseKindWithOffer(input: {
   language?: string | null;
 }): { kind: GuestProactiveNudgeKind; message: string } | null {
   if (
-    input.offer.trace.strategy === "cart_recovery_first" &&
+    isCartRecoveryOfferStrategy(input.offer.trace.strategy) &&
     input.offer.cartRecovery
   ) {
-    const message = narrateCartRecoveryOffer({
-      offer: input.offer,
-      language: input.language,
-    });
+    const message =
+      input.offer.smartRecovery?.message?.trim() ||
+      narrateCartRecoveryOffer({
+        offer: input.offer,
+        language: input.language,
+      });
     if (!message) return null;
     return { kind: "cart_recovery", message };
   }
@@ -53,6 +56,11 @@ export function enrichProactiveCandidates(input: {
   const enriched: RankedProactiveCandidate[] = [];
 
   for (const row of input.ranked) {
+    if (row.nudge.kind === "cart_recovery") {
+      enriched.push(row);
+      continue;
+    }
+
     if (row.nudge.kind !== "browse_nudge") {
       enriched.push(row);
       continue;

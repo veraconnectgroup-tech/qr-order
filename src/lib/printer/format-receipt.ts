@@ -9,6 +9,15 @@ import {
 } from "@/lib/printer/escpos-builder";
 import type { Location, OrderWithDetails, Organization } from "@/types";
 
+export const DENIS_RECEIPT_FOOTER = "Hvala što ste bili kod nas! ❤️";
+
+export type ReceiptPrintOptions = {
+  logoUrl?: string | null;
+  footerMessage?: string;
+  poweredByLabel?: string;
+  hidePoweredBy?: boolean;
+};
+
 function formatReceiptTime(iso: string) {
   return new Date(iso).toLocaleTimeString("de-DE", {
     hour: "2-digit",
@@ -18,13 +27,14 @@ function formatReceiptTime(iso: string) {
 
 export function buildReceiptEscPos(
   order: OrderWithDetails,
-  org: Pick<Organization, "name">,
+  org: Pick<Organization, "name"> & { logo_url?: string | null },
   location: Pick<
     Location,
     "address" | "city" | "in_person_payment_location"
   >,
   paperWidth: PaperWidth = 80,
-  currency = "EUR"
+  currency = "EUR",
+  options: ReceiptPrintOptions = {}
 ): Uint8Array {
   const tableName = order.tables?.name ?? "—";
   const addressLine = [location.address, location.city]
@@ -35,15 +45,34 @@ export function buildReceiptEscPos(
     location.in_person_payment_location as "table" | "counter" | "bar"
   );
   const paidSuffix = order.payment_status === "paid" ? " ✓" : "";
+  const footer = options.footerMessage ?? DENIS_RECEIPT_FOOTER;
+  const logoUrl = options.logoUrl ?? org.logo_url ?? null;
+  const poweredBy =
+    !options.hidePoweredBy && options.poweredByLabel
+      ? options.poweredByLabel
+      : null;
 
   const builder = new EscPosBuilder().initialize();
 
+  builder.align("center");
+
+  if (logoUrl) {
+    builder
+      .bold(true)
+      .textSize(2, 2)
+      .text("★")
+      .newline()
+      .textSize(1, 1)
+      .bold(false);
+  }
+
   builder
-    .align("center")
     .bold(true)
+    .textSize(logoUrl ? 1 : 2, logoUrl ? 1 : 2)
     .text(org.name)
     .newline()
-    .bold(false);
+    .bold(false)
+    .textSize(1, 1);
 
   if (addressLine) {
     builder.text(addressLine).newline();
@@ -117,9 +146,14 @@ export function buildReceiptEscPos(
     .text(separatorLine(paperWidth))
     .newline()
     .align("center")
-    .text("Danke / Hvala!")
-    .newline(2)
-    .cut();
+    .text(footer)
+    .newline();
+
+  if (poweredBy) {
+    builder.text(poweredBy).newline();
+  }
+
+  builder.newline().cut();
 
   return builder.build();
 }

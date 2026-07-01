@@ -6,6 +6,12 @@ import type { EvalSuiteReport, ScenarioRunResult } from "@/lib/denis/eval/types"
 import { runQualityContractEval } from "@/lib/denis/eval/quality-contract-eval";
 import { runAnticipationEval } from "@/lib/denis/eval/run-anticipation-eval";
 import type { AnticipationReport } from "@/lib/denis/eval/anticipation-types";
+import { runOmniscientEval } from "@/lib/denis/eval/run-omniscient-eval";
+import type { OmniscientReport } from "@/lib/denis/eval/omniscient-types";
+import {
+  runVenueSimDeployGate,
+  type VenueSimDeployReport,
+} from "@/lib/denis/eval/run-venue-sim-batch";
 import {
   runWaiterParitySuite,
   type WaiterParityReport,
@@ -22,6 +28,10 @@ import {
   runWorldTellUnificationFixture,
   type WorldTellUnificationResult,
 } from "@/lib/denis/eval/run-world-tell-fixture";
+import {
+  runInterventionManifestPromoteFixture,
+  type InterventionManifestPromoteFixtureReport,
+} from "@/lib/denis/eval/run-intervention-manifest-promote-fixture";
 import {
   runManifestPromoteGateFixture,
   type ManifestPromoteGateFixtureReport,
@@ -125,8 +135,11 @@ export type PilotGateReport = {
   waiterParity: WaiterParityReport;
   worldTell: WorldTellUnificationResult;
   manifestPromoteGate: ManifestPromoteGateFixtureReport;
+  interventionManifestPromoteGate: InterventionManifestPromoteFixtureReport;
   qualityContract: ReturnType<typeof runQualityContractEval>;
   anticipation: AnticipationReport;
+  omniscient: OmniscientReport;
+  venueSim: VenueSimDeployReport;
   narration: PilotNarrationGateResult;
   presetReady: boolean;
   presetChecks: ReturnType<typeof evaluateGaGate>["checks"];
@@ -141,8 +154,11 @@ export function runPilotGate(): PilotGateReport {
   const waiterParity = runWaiterParitySuite();
   const worldTell = runWorldTellUnificationFixture();
   const manifestPromoteGate = runManifestPromoteGateFixture();
+  const interventionManifestPromoteGate = runInterventionManifestPromoteFixture();
   const qualityContract = runQualityContractEval();
   const anticipation = runAnticipationEval();
+  const omniscient = runOmniscientEval();
+  const venueSim = runVenueSimDeployGate();
   const narration = runPilotNarrationGate();
 
   const form = denisRolloutFormFromPreset("table_os_pilot");
@@ -156,8 +172,11 @@ export function runPilotGate(): PilotGateReport {
           waiterParity.ok &&
           worldTell.passed &&
           manifestPromoteGate.ok &&
+          interventionManifestPromoteGate.ok &&
           qualityContract.ok &&
           anticipation.ok &&
+          omniscient.ok &&
+          venueSim.ok &&
           narration.passed,
         pilotEvalPass:
           pilotSr.ok &&
@@ -165,8 +184,11 @@ export function runPilotGate(): PilotGateReport {
           waiterParity.ok &&
           worldTell.passed &&
           manifestPromoteGate.ok &&
+          interventionManifestPromoteGate.ok &&
           qualityContract.ok &&
           anticipation.ok &&
+          omniscient.ok &&
+          venueSim.ok &&
           narration.passed,
       })
     : { ready: false, checks: [] };
@@ -180,8 +202,11 @@ export function runPilotGate(): PilotGateReport {
       waiterParity.ok &&
       worldTell.passed &&
       manifestPromoteGate.ok &&
+      interventionManifestPromoteGate.ok &&
       qualityContract.ok &&
       anticipation.ok &&
+      omniscient.ok &&
+      venueSim.ok &&
       narration.passed,
     core,
     pilotSr,
@@ -190,8 +215,11 @@ export function runPilotGate(): PilotGateReport {
     waiterParity,
     worldTell,
     manifestPromoteGate,
+    interventionManifestPromoteGate,
     qualityContract,
     anticipation,
+    omniscient,
+    venueSim,
     narration,
     presetReady: ga.ready,
     presetChecks: ga.checks,

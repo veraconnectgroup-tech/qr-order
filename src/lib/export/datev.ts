@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { escapeCsvField } from "@/lib/security/escape";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
+import {
+  parseDatevOrderRows,
+  type DatevOrderRow,
+} from "@/lib/export/parse-export-order-rows";
 import { grossToNet, roundMoney } from "@/lib/tax/vat";
 
 /** SKR03 accounts used for DATEV export */
@@ -19,19 +23,6 @@ export type DatevRow = {
   belegdatum: string;
   buchungstext: string;
   ustSatz: number;
-};
-
-type OrderRow = {
-  id: string;
-  order_number: number;
-  subtotal: number;
-  total: number;
-  tax_amount: number;
-  tax_percent: number;
-  payment_method: string;
-  created_at: string;
-  status: string;
-  order_items: Array<{ total: number; tax_rate: number }>;
 };
 
 function formatDatevAmount(value: number): string {
@@ -60,7 +51,7 @@ function revenueAccountForRate(rate: number): { konto: string; ustSatz: number }
   return { konto: DATEV_ACCOUNTS.revenue19, ustSatz: rate === 0 ? 0 : 19 };
 }
 
-export function orderToDatevRows(order: OrderRow): DatevRow[] {
+export function orderToDatevRows(order: DatevOrderRow): DatevRow[] {
   const items = order.order_items ?? [];
   const gegenkonto = paymentGegenkonto(order.payment_method);
   const orderNumber = String(Math.max(0, Math.floor(Number(order.order_number))));
@@ -166,7 +157,7 @@ export async function generateDatevExport(
     throw new Error("Orders could not be loaded.");
   }
 
-  const rows = ((orders ?? []) as unknown as OrderRow[])
+  const rows = parseDatevOrderRows(orders)
     .filter((order) => countsTowardRevenue(order.status))
     .flatMap(orderToDatevRows);
 
@@ -199,4 +190,29 @@ export function datevExportFilename(from: Date, to: Date): string {
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   return `DATEV_Export_${fmt(from)}_${fmt(to)}.csv`;
+}
+
+/** Previous calendar month bounds (DATEVconnect online monthly export). */
+export function previousCalendarMonthBounds(
+  referenceDate: Date = new Date()
+): { from: Date; to: Date; label: string } {
+  const year = referenceDate.getFullYear();
+  const month = referenceDate.getMonth();
+  const from = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const to = new Date(year, month, 0, 23, 59, 59, 999);
+  const label = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
+  return { from, to, label };
+}
+
+export async function generatePreviousMonthDatevExport(
+  organizationId: string,
+  referenceDate: Date = new Date()
+): Promise<{ csv: string; filename: string; label: string }> {
+  const { from, to, label } = previousCalendarMonthBounds(referenceDate);
+  const csv = await generateDatevExport(organizationId, from, to);
+  return {
+    csv,
+    filename: datevExportFilename(from, to),
+    label,
+  };
 }

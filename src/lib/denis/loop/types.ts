@@ -1,3 +1,4 @@
+import type { ClientAccessibilitySignals } from "@/lib/denis/cognition/mental-model/accessibility-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type {
   DenisCartDraft,
@@ -30,13 +31,21 @@ export type OrderFact = {
   status: string;
   paymentStatus: string;
   estimatedPrepMinutes: number | null;
+  prepEstimateConfidence?: "none" | "low" | "medium" | "high" | null;
   createdAt: string;
+  deliveredAt?: string | null;
+  deviceFingerprint?: string | null;
+  orderSource?: string | null;
+  tipAmount?: number | null;
   items: Array<{
     orderItemId?: string;
     productId?: string | null;
     productName: string;
     quantity: number;
     lineTotalCents?: number;
+    menuSection?: string | null;
+    foodTags?: string[];
+    drinkFamily?: string | null;
   }>;
 };
 
@@ -60,8 +69,12 @@ export type TableSessionState = {
     accessState: string | null;
     billSettled: boolean;
     feedbackSubmitted: boolean;
+    feedbackSubmittedAt?: string | null;
+    feedbackRating?: number | null;
+    feedbackSentiment?: string | null;
     denisEnabled: boolean;
     denisActive: boolean;
+    posStaffEditActive?: boolean;
   };
   commerce: {
     orders: OrderFact[];
@@ -106,6 +119,8 @@ export type FoldInput = {
   config?: ConciergeConfig;
   tableSessionId?: string | null;
   party?: TablePartyModel | null;
+  clientAccessibilitySignals?: ClientAccessibilitySignals | null;
+  guestMessage?: string | null;
 };
 
 export type FoldMeta = {

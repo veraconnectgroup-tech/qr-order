@@ -11,7 +11,10 @@ import type { OverviewStatsSnapshot } from "@/lib/dashboard/overview-types";
 import { DashboardMobileMenu } from "@/components/dashboard/dashboard-mobile-menu";
 import { SoundToggle } from "@/components/dashboard/sound-toggle";
 import { PushOptIn } from "@/components/dashboard/push-opt-in";
+import { StaffNotificationsBell } from "@/components/dashboard/staff-notifications-bell";
 import { NavNotificationBadge } from "@/components/dashboard/nav-notification-badge";
+import { DegradationIndicator } from "@/components/dashboard/degradation-indicator";
+import { useDegradationLevel } from "@/hooks/use-degradation-level";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
 
 export function DashboardTopBar() {
@@ -36,6 +39,11 @@ export function DashboardTopBar() {
   const displayRevenue = todayRevenue;
   const { pendingOrders, pendingPaymentRequests, totalPendingAlerts } =
     useDashboardAlerts();
+  const { aiConciergeEnabled, locationId } = useDashboard();
+  const { denisLevel, denisStaffMessage, circuits } = useDegradationLevel({
+    denisEnabled: aiConciergeEnabled,
+    locationId,
+  });
   const isOrdersPage = pathname.startsWith("/dashboard/orders");
   const isTablesPage = pathname.startsWith("/dashboard/tables");
   const headerAlertCount = isOrdersPage
@@ -78,7 +86,16 @@ export function DashboardTopBar() {
           <span className="text-[11px] font-medium text-emerald-400">Live</span>
         </div>
 
+        {aiConciergeEnabled ? (
+          <DegradationIndicator
+            level={denisLevel}
+            staffMessage={denisStaffMessage}
+            circuits={circuits}
+          />
+        ) : null}
+
         <SoundToggle />
+        {aiConciergeEnabled ? <StaffNotificationsBell /> : null}
         <PushOptIn />
       </div>
     </header>

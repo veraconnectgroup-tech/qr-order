@@ -4,10 +4,14 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { logger } from "@/lib/logger";
 import { getStripe } from "@/lib/stripe/client";
 import { handleStripeWebhookEvent } from "@/lib/stripe/webhook";
+import { withRateLimit } from "@/lib/rate-limit";
 
 export const POST = withErrorHandler(
   "stripe-webhook-post",
   async (req, _ctx) => {
+  const limited = await withRateLimit(req, "default");
+  if (limited) return limited;
+
     const body = await req.text();
     const signature = (await headers()).get("stripe-signature");
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

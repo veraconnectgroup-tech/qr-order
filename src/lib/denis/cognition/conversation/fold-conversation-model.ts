@@ -1,6 +1,7 @@
 import { inferAwaitingFromDialogue } from "@/lib/denis/cognition/conversation/infer-awaiting";
 import { buildSessionSummary } from "@/lib/denis/cognition/conversation/build-session-summary";
 import { extractGuestContinuityState } from "@/lib/denis/cognition/conversation/guest-continuity";
+import { foldConversationGraph } from "@/lib/denis/cognition/conversation/topic-tracker";
 import type { ConversationModel } from "@/lib/denis/cognition/conversation/conversation-types";
 import { foldTranscriptFromTimeline } from "@/lib/denis/loop/fold-transcript";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
@@ -39,7 +40,16 @@ export function foldConversationModel(input: {
     flowNodeId: input.flowNodeId,
     pendingSlot: input.pendingSlot,
     commerceConfirm: input.commerceConfirm,
+    timeline: input.timeline,
   });
+
+  const dialogueMessages = transcript
+    .filter((entry) => entry.role === "guest" || entry.role === "denis")
+    .map((entry) => ({
+      role: entry.role as "guest" | "denis",
+      text: entry.text,
+    }));
+  const graph = foldConversationGraph(dialogueMessages, input.timeline);
 
   const model: ConversationModel = {
     transcript,
@@ -61,6 +71,7 @@ export function foldConversationModel(input: {
       followUpDelaySeconds: continuity.followUpDelaySeconds,
       followUpEmitted: continuity.followUpEmitted,
     },
+    graph,
   };
 
   model.summary = buildSessionSummary(model);

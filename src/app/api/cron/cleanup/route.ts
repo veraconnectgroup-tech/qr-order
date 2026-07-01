@@ -1,5 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { DATA_RETENTION, retentionCutoffIso } from "@/lib/data-retention";
 import { logger } from "@/lib/logger";
 import { closeTableSession } from "@/lib/sessions/session-devices";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,6 +12,9 @@ const WEBHOOK_RETENTION_DAYS = 30;
 /** GoBD: never purge fiscal journal tables here — see docs/compliance/gobd-retention.md */
 
 export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {
+  const limited = await withCronRateLimit(req);
+  if (limited) return limited;
+
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
 
@@ -72,13 +77,28 @@ export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {
     return apiError("Webhook cleanup failed", 500);
   }
 
+  const traceCutoff = retentionCutoffIso(DATA_RETENTION.turnTraces.days, now);
+  const { error: traceError } = await admin
+    .from("denis_turn_traces")
+    .delete()
+    .lt("created_at", traceCutoff);
+
+  if (traceError) {
+    logger.error("Cron turn trace cleanup failed", {
+      error: traceError.message,
+    });
+    return apiError("Turn trace cleanup failed", 500);
+  }
+
   logger.info("Cron cleanup completed", {
     sessionsClosed,
     webhookCutoff,
+    traceCutoff,
   });
 
   return apiSuccess({
     sessionsClosed,
     webhookEventsPurgedBefore: webhookCutoff,
+    turnTracesPurgedBefore: traceCutoff,
   });
 });

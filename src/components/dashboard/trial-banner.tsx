@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
-
-function trialDaysLeft(trialEndsAt: string | null): number | null {
-  if (!trialEndsAt) return null;
-  const diff = new Date(trialEndsAt).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
+import {
+  buildTrialEndingGuestMessage,
+  isTrialing,
+  trialDaysLeft,
+} from "@/lib/billing/trial";
 
 export function TrialBanner() {
   const {
@@ -22,10 +21,12 @@ export function TrialBanner() {
   if (subscriptionStatus === "active") return null;
 
   const daysLeft = trialDaysLeft(trialEndsAt);
-  const trialing = subscriptionStatus === "trialing";
+  const trialing = isTrialing(subscriptionStatus);
   const trialExpired = daysLeft !== null && daysLeft <= 0;
   const trialEndingSoon =
     trialing && daysLeft !== null && daysLeft > 0 && daysLeft <= 7;
+  const trialCritical =
+    trialing && daysLeft !== null && daysLeft > 0 && daysLeft <= 3;
   const needsPlan =
     trialExpired ||
     subscriptionStatus === "past_due" ||
@@ -38,15 +39,15 @@ export function TrialBanner() {
     return (
       <div
         role="region"
-        aria-label="Testphase abgelaufen"
+        aria-label="Trial expired"
         className="border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-center text-sm text-red-200"
       >
-        Ihre Testphase ist abgelaufen. Bitte wählen Sie einen Plan.{" "}
+        Your trial has expired. Choose a plan to continue.{" "}
         <Link
           href="/dashboard/billing"
           className="font-semibold underline underline-offset-2"
         >
-          Pläne ansehen
+          View plans
         </Link>
       </div>
     );
@@ -55,16 +56,17 @@ export function TrialBanner() {
   return (
     <div
       role="region"
-      aria-label="Testphase endet bald"
+      aria-label="Trial ending soon"
       className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-100"
     >
-      Ihre Testphase endet in {daysLeft} Tag{daysLeft === 1 ? "" : "en"}. Wählen
-      Sie einen Plan.{" "}
+      {trialCritical && daysLeft != null
+        ? buildTrialEndingGuestMessage(daysLeft)
+        : `Your trial ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`}{" "}
       <Link
         href="/dashboard/billing"
         className="font-semibold underline underline-offset-2"
       >
-        Pläne ansehen
+        Upgrade
       </Link>
     </div>
   );

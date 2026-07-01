@@ -8,6 +8,7 @@ import {
   setLocationActive,
   updateLocation,
 } from "@/lib/admin/location-actions";
+import { VenueTemplatePicker } from "@/components/admin/venue-template-picker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,11 +41,15 @@ function LocationDialog({
   onSaved: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const isEdit = !!location;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    if (templateId) {
+      formData.set("template_id", templateId);
+    }
     startTransition(async () => {
       const result = isEdit
         ? await updateLocation(location!.id, formData)
@@ -55,6 +60,17 @@ function LocationDialog({
         return;
       }
 
+      if (!isEdit && "data" in result && result.data?.id) {
+        toast.success(
+          result.data.templateApplied
+            ? "Location created — Denis template applied"
+            : "Location created"
+        );
+        onSaved();
+        onClose();
+        return;
+      }
+
       toast.success(isEdit ? "Location updated" : "Location created");
       onSaved();
       onClose();
@@ -62,7 +78,15 @@ function LocationDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) {
+          setTemplateId(null);
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -70,6 +94,9 @@ function LocationDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isEdit ? (
+            <VenueTemplatePicker value={templateId} onChange={setTemplateId} />
+          ) : null}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground/90">
               Name

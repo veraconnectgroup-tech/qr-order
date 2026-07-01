@@ -9,8 +9,8 @@ describe("validateOrderItems", () => {
     expect(validateOrderItems([])).toBe("Order is empty");
   });
 
-  it("returns error when there are 51 items", () => {
-    const items = Array.from({ length: 51 }, (_, i) => ({
+  it("returns error when there are 101 items", () => {
+    const items = Array.from({ length: 101 }, (_, i) => ({
       productId: `product-${i}`,
       quantity: 1,
     }));
@@ -24,10 +24,16 @@ describe("validateOrderItems", () => {
     ).not.toBeNull();
   });
 
-  it("returns error when quantity is 21", () => {
+  it("returns error when quantity is 100", () => {
     expect(
-      validateOrderItems([{ productId: "product-1", quantity: 21 }])
+      validateOrderItems([{ productId: "product-1", quantity: 100 }])
     ).not.toBeNull();
+  });
+
+  it("allows quantity up to 99", () => {
+    expect(
+      validateOrderItems([{ productId: "product-1", quantity: 99 }])
+    ).toBeNull();
   });
 
   it("returns null for a valid order", () => {

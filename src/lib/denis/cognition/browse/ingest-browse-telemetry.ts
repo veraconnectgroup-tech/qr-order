@@ -2,6 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BrowseEvent } from "@/lib/denis/cognition/browse/browse-types";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import type { TurnEnvelope } from "@/lib/denis/platform/timeline-types";
+import { buildScrollBrowseEvent } from "@/lib/guest/scroll-intelligence";
+import type { ScrollSignal } from "@/lib/guest/scroll-intelligence";
+
+export { buildScrollBrowseEvent };
 
 /**
  * Record browse telemetry in timeline — no DECIDE/ACT/TELL cycle.
@@ -34,4 +38,21 @@ export async function ingestBrowseTelemetry(
       browseEvent: event,
     },
   });
+}
+
+/** Scroll intelligence → browse telemetry for Denis situation pack. */
+export async function ingestScrollTelemetry(
+  admin: Parameters<typeof ingestBrowseTelemetry>[0],
+  aiSessionId: string,
+  signal: ScrollSignal,
+  traceId: string,
+  envelope: TurnEnvelope
+): Promise<void> {
+  await ingestBrowseTelemetry(
+    admin,
+    aiSessionId,
+    buildScrollBrowseEvent({ signal }),
+    traceId,
+    envelope
+  );
 }

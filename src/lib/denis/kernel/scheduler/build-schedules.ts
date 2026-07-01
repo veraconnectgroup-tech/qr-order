@@ -14,11 +14,18 @@ function addMinutes(iso: string, minutes: number): string {
 export function buildScheduleDrafts(input: {
   orders: SchedulerOrderSnapshot[];
   config: Pick<ConciergeConfig, "proactive" | "upsell">;
+  /** ADR-041 P3 — IJS replaces minute dessert eval with defer wake only. */
+  interventionJournalActive?: boolean;
+  /** ADR-042 VRP-P1 — learned dessert delay when rhythm enforce applied. */
+  effectiveDessertDelayMinutes?: number;
   now?: Date;
 }): ScheduledIntentDraft[] {
   const now = input.now ?? new Date();
   const drafts: ScheduledIntentDraft[] = [];
   const proactive = input.config.proactive;
+  const ijsActive = input.interventionJournalActive === true;
+  const dessertDelayMinutes =
+    input.effectiveDessertDelayMinutes ?? input.config.upsell.dessertDelayMinutes;
 
   if (!proactive.enabled) {
     return drafts;
@@ -58,12 +65,23 @@ export function buildScheduleDrafts(input: {
       order.status === "delivered"
     ) {
       const reference = order.delivered_at ?? order.created_at;
-      drafts.push({
-        intentType: "DESSERT_UPSELL",
-        runAt: addMinutes(reference, input.config.upsell.dessertDelayMinutes),
-        dedupeKey: `dessert:${order.id}`,
-        payload: { afterOrderId: order.id },
-      });
+      const runAt = addMinutes(reference, dessertDelayMinutes);
+
+      if (ijsActive) {
+        drafts.push({
+          intentType: "INTERVENTION_WAKE",
+          runAt,
+          dedupeKey: `intervention_wake:${order.id}`,
+          payload: { afterOrderId: order.id, wakeKind: "post_delivery" },
+        });
+      } else {
+        drafts.push({
+          intentType: "DESSERT_UPSELL",
+          runAt,
+          dedupeKey: `dessert:${order.id}`,
+          payload: { afterOrderId: order.id },
+        });
+      }
     }
 
     if (proactive.reviewPrompt && order.status === "delivered") {

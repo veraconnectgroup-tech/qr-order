@@ -18,6 +18,7 @@ export async function loadTableSessionView(
     locationId: string;
     tableToken: string;
     venueName: string;
+    language?: string;
   }
 ): Promise<LoadedTableSessionView | null> {
   const fold = await foldTableSessionState(admin, {
@@ -32,10 +33,11 @@ export async function loadTableSessionView(
   const view = projectTableSessionView(fold.state, fold.meta, null, {
     sessionId: input.sessionId,
     venueName: input.venueName,
+    language: input.language,
   });
 
   return {
     view,
-    scene: tableSessionViewToScene(view),
+    scene: tableSessionViewToScene(view, fold.state.mental.accessibility ?? null),
   };
 }

@@ -58,6 +58,40 @@ export function playNewOrderSound() {
   }
 }
 
+function playKitchenCriticalSound() {
+  try {
+    const ctx = new AudioContext();
+    const playTone = (frequency: number, start: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      osc.type = "square";
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.45, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+    const t = ctx.currentTime;
+    playTone(440, t, 0.2);
+    playTone(440, t + 0.25, 0.2);
+    playTone(660, t + 0.5, 0.25);
+    setTimeout(() => ctx.close(), 900);
+  } catch {
+    const audio = getBeepAudio();
+    if (!audio) return;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
+  }
+}
+
+export function playKdsCriticalAlarm() {
+  if (!isKdsSoundEnabled()) return;
+  playKitchenCriticalSound();
+}
+
 export function playKdsTestSound() {
   const prev = isKdsSoundEnabled();
   if (!prev) setKdsSoundEnabled(true);

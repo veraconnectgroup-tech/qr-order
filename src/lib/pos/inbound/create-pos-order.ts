@@ -7,6 +7,8 @@ import { sanitizeOrderNotes } from "@/lib/security/sanitize";
 import { persistOrderSideEffects } from "@/lib/outbox/persist-order-side-effects";
 import { resolvePosTable } from "@/lib/pos/inbound/resolve-table";
 import { touchPosIntegrationSync } from "@/lib/pos/inbound/audit";
+import { syncPosInboundToDenis } from "@/lib/pos/inbound/sync-pos-inbound-to-denis";
+import { isPosBridgeEnabled } from "@/lib/pos/feature-flags";
 import type {
   CreatePosOrderResult,
   PosInboundOrderDraft,
@@ -205,6 +207,16 @@ export async function createPosOrder(
       actorType: "pos",
       actorId: row.id,
     });
+
+    if (isPosBridgeEnabled(row.location_id)) {
+      await syncPosInboundToDenis(admin, {
+        tableSessionId: result.session_id,
+        tableName: tableResult.table.tableName,
+        orderId: result.order_id,
+        orderNumber: result.order_number,
+        draft,
+      });
+    }
   }
 
   await touchPosIntegrationSync(admin, row.id);

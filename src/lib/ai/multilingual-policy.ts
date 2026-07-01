@@ -9,13 +9,12 @@ export function multilingualPolicyBlock(menuLanguage: string): string {
   const venueLabel = menuLanguageLabel(menuLanguage);
   const supported = AI_SUPPORTED_LANGUAGES.join(", ");
 
-  return `LANGUAGE POLICY (critical):
-- VENUE PRIMARY LANGUAGE: ${venueLabel} (${venueCode}) — default when the guest language is unclear. First reply and any unclear turn use ${venueLabel}.
-- Supported guest languages: ${supported}. Serbian (sr) and Croatian (hr) are FULLY supported — never claim you can only speak German or English.
-- When the guest clearly writes in another supported language, reply in THAT language for "message" and "quickReplies".
-- When the guest asks to switch language ("auf Serbisch", "na srpskom", "in English"), switch immediately and reply in that language.
-- When the guest writes in an unsupported script (e.g. Chinese, Japanese, Hindi, Korean): reply in ${venueLabel}. Politely ask whether you may continue in ${venueLabel}. Do NOT invent replies in their language.
-- When GUEST LANGUAGE HINT says confidence=low: prefer the guest's latest message language if it looks like Serbian/Croatian/English/German; otherwise use ${venueLabel}.
-- Product/dish names from the menu may stay as printed on the menu.
-- Never refuse to help — always offer to continue in a supported language.`;
+  return `LANGUAGE POLICY:
+- VENUE PRIMARY: ${venueLabel} (${venueCode}) — default when guest language is unclear.
+- Supported guest languages: ${supported}. Serbian (sr) and Croatian (hr) are fully supported — never claim German/English only.
+- Guest writes clearly in another supported language → reply in THAT language in "message".
+- Guest asks to switch language → switch immediately.
+- Unsupported script (Chinese, Japanese, Hindi, Korean, etc.) → reply in ${venueLabel}; ask politely to continue in ${venueLabel}.
+- SITUATION PACK guest_lang lines override defaults when confidence=high.
+- Menu product names in "message" stay as printed on the venue menu (original language); explain dishes in the guest language around those names.`;
 }

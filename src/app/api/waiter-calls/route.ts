@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
+import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import { resolveWaiterCallContext } from "@/lib/sessions/resolve-waiter-call-context";
 import { checkRateLimit, getClientIp, withRateLimit } from "@/lib/rate-limit";
 import {
@@ -62,7 +63,28 @@ export const POST = withErrorHandler("waiter-calls-post", async (req, _ctx) => {
     return apiError("Waiter call could not be created.", 500);
   }
 
+  const { data: locationRow } = await admin
+    .from("locations")
+    .select("org_id")
+    .eq("id", locationId)
+    .maybeSingle();
+
+  const orgId = (locationRow as { org_id?: string } | null)?.org_id;
+
   scheduleWaiterCallPush(locationId, tableName);
+
+  void dispatchStaffNotification({
+    orgId,
+    locationId,
+    type: "waiter_call",
+    message: `Sto ${tableName} — Pozovi konobara`,
+    tableId,
+    tableName,
+    actionUrl: "/waiter/calls",
+    playSound: true,
+  }).catch(() => {
+    // Push + realtime on waiter_calls is the primary path.
+  });
 
   return apiSuccess({ ok: true });
 });

@@ -106,6 +106,8 @@ export async function buildDenisTurnContext(
     config,
     tableSessionId,
     party,
+    clientAccessibilitySignals: input.accessibilitySignals ?? null,
+    guestMessage: input.message,
   });
 
   return mapFoldToTurnContext(fold, {

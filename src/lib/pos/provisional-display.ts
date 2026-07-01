@@ -16,13 +16,17 @@ export function isProvisionalKdsOrder(
   );
 }
 
+function parseProvisionalKdsOrder(data: unknown): ProvisionalKdsOrder {
+  return data as ProvisionalKdsOrder;
+}
+
 export function provisionalEntryToKdsOrder(
   entry: ProvisionalEntry
 ): ProvisionalKdsOrder {
   const { payload } = entry;
   const createdAt = payload.createdAt;
 
-  return {
+  return parseProvisionalKdsOrder({
     id: `provisional:${payload.clientOrderId}`,
     isProvisional: true,
     clientOrderId: payload.clientOrderId,
@@ -57,7 +61,7 @@ export function provisionalEntryToKdsOrder(
       tax_amount: 0,
       order_item_modifiers: [],
     })),
-  } as unknown as ProvisionalKdsOrder;
+  });
 }
 
 export function mergeKdsOrdersWithProvisionals(

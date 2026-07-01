@@ -337,6 +337,11 @@ export function buildAdminAnalyticsSnapshot(
   };
 }
 
+function parseAdminAnalyticsOrderRows(data: unknown): AdminAnalyticsOrder[] {
+  if (!Array.isArray(data)) return [];
+  return data as AdminAnalyticsOrder[];
+}
+
 export async function loadAdminAnalyticsOrders(
   locationId: string,
   from: Date,
@@ -362,7 +367,7 @@ export async function loadAdminAnalyticsOrders(
     .lte("created_at", to.toISOString())
     .not("status", "in", '("cancelled","rejected")');
 
-  return (data ?? []) as unknown as AdminAnalyticsOrder[];
+  return parseAdminAnalyticsOrderRows(data);
 }
 
 export async function loadAdminAnalyticsSnapshot(

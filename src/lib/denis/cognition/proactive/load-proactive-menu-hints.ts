@@ -1,19 +1,45 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  pickMenuEngineeringDessert,
+  pickStarPopularityPair,
+  type MenuEngineeringCategory,
+} from "@/lib/denis/platform/menu-engineering";
+import { loadMenuEngineeringCategoryMap } from "@/lib/denis/platform/load-menu-engineering-categories";
 
 export type ProactiveMenuHints = {
   todaySpecial: string | null;
   dessertProductName: string | null;
   popularityPair: { from: string; to: string } | null;
+  menuEngineeringCategories: Record<string, MenuEngineeringCategory>;
+  puzzleProductName: string | null;
 };
 
-const POPULARITY_MIN_PAIR_COUNT = 8;
+type ProductRow = {
+  id: string;
+  name: string;
+  category:
+    | { menu_section: string | null }
+    | Array<{ menu_section: string | null }>
+    | null;
+};
 
-/** Lightweight menu hints for proactive templates (per location, cached per tick). */
+function parseProductRows(data: unknown): ProductRow[] {
+  if (!Array.isArray(data)) return [];
+  return data as ProductRow[];
+}
+
+function menuSection(row: ProductRow): string | null {
+  const category = Array.isArray(row.category) ? row.category[0] : row.category;
+  return category?.menu_section ?? null;
+}
+
+/** Lightweight menu hints for proactive templates — menu engineering aware (K2). */
 export async function loadProactiveMenuHints(
   admin: SupabaseClient,
-  locationId: string
+  locationId: string,
+  options?: { cartProductIds?: string[] }
 ): Promise<ProactiveMenuHints> {
-  const [specialResult, dessertResult, pair] = await Promise.all([
+  const [specialResult, productResult, categoryMap] = await Promise.all([
     admin
       .from("products")
       .select("name")
@@ -25,84 +51,41 @@ export async function loadProactiveMenuHints(
       .maybeSingle(),
     admin
       .from("products")
-      .select("name, category:categories(menu_section)")
+      .select("id, name, category:categories(menu_section)")
       .eq("location_id", locationId)
       .eq("is_available", true)
       .order("name", { ascending: true })
-      .limit(40),
-    loadPopularityPair(admin, locationId),
+      .limit(80),
+    loadMenuEngineeringCategoryMap(admin, locationId),
   ]);
 
   const specialRow = specialResult.data as { name: string } | null;
-  const dessertRows = (dessertResult.data ?? []) as unknown as Array<{
-    name: string;
-    category: { menu_section: string | null } | Array<{ menu_section: string | null }> | null;
-  }>;
+  const products = parseProductRows(productResult.data);
 
-  const dessert = dessertRows.find((row) => {
-    const category = Array.isArray(row.category) ? row.category[0] : row.category;
-    return category?.menu_section === "desserts";
+  const desserts = products
+    .filter((row) => menuSection(row) === "desserts")
+    .map((row) => ({ id: row.id, name: row.name }));
+
+  const engineeringDessert = pickMenuEngineeringDessert({
+    desserts,
+    categories: categoryMap,
+  });
+
+  const puzzleProduct = products.find(
+    (row) => categoryMap[row.id] === "puzzle"
+  );
+
+  const popularityPair = pickStarPopularityPair({
+    products: products.map((row) => ({ id: row.id, name: row.name })),
+    categories: categoryMap,
+    cartProductIds: options?.cartProductIds,
   });
 
   return {
     todaySpecial: specialRow?.name?.trim() ?? null,
-    dessertProductName: dessert?.name?.trim() ?? null,
-    popularityPair: pair,
+    dessertProductName: engineeringDessert,
+    popularityPair,
+    menuEngineeringCategories: categoryMap,
+    puzzleProductName: puzzleProduct?.name?.trim() ?? null,
   };
-}
-
-async function loadPopularityPair(
-  admin: SupabaseClient,
-  locationId: string
-): Promise<{ from: string; to: string } | null> {
-  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
-
-  const { data: orders, error } = await admin
-    .from("orders")
-    .select(
-      `
-      id,
-      order_items (product_name)
-    `
-    )
-    .eq("location_id", locationId)
-    .gte("created_at", since)
-    .in("status", ["delivered", "accepted", "preparing", "pending"])
-    .limit(200);
-
-  if (error || !orders?.length) return null;
-
-  const pairCounts = new Map<string, number>();
-
-  for (const order of orders as Array<{
-    order_items: Array<{ product_name: string }> | null;
-  }>) {
-    const names = [
-      ...new Set(
-        (order.order_items ?? [])
-          .map((item) => item.product_name?.trim())
-          .filter((name): name is string => Boolean(name))
-      ),
-    ];
-    if (names.length < 2) continue;
-
-    for (let i = 0; i < names.length; i += 1) {
-      for (let j = i + 1; j < names.length; j += 1) {
-        const key = `${names[i]}::${names[j]}`;
-        pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
-      }
-    }
-  }
-
-  let best: { from: string; to: string; count: number } | null = null;
-  for (const [key, count] of pairCounts) {
-    if (count < POPULARITY_MIN_PAIR_COUNT) continue;
-    if (!best || count > best.count) {
-      const [from, to] = key.split("::");
-      if (!from || !to) continue;
-      best = { from, to, count };
-    }
-  }
-
-  return best ? { from: best.from, to: best.to } : null;
 }

@@ -3,6 +3,11 @@ import type {
   OpsPlannerEffects,
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
+import {
+  parseEventConfig,
+  resolveEventEffects,
+  resolveEventPhase,
+} from "@/lib/denis/venue/ops/event-mode";
 
 /** Map venue ops → kernel planner + narration effects (M13). */
 export function deriveOpsPlannerEffects(
@@ -16,6 +21,8 @@ export function deriveOpsPlannerEffects(
     config.ops.kdsStressSkipUpsell && ops.kdsStress === "high";
 
   const skipUpsell = rushSkip || kdsSkip;
+  const suppressProactiveNudges =
+    ops.operatingMode === "rush" || ops.kdsStress === "high";
 
   let empathyNote: string | null = null;
   if (ops.operatingMode === "rush") {
@@ -30,12 +37,33 @@ export function deriveOpsPlannerEffects(
       ? ops.staffHint.text
       : null;
 
-  return {
+  const base: OpsPlannerEffects = {
     skipUpsell,
     shortenReplies: skipUpsell,
     empathyNote,
     guestSafeStaffHint,
+    suppressProactiveNudges: suppressProactiveNudges || undefined,
   };
+
+  const event = parseEventConfig(ops.eventConfig);
+  if (ops.operatingMode === "event" && event) {
+    const eventPhase = resolveEventPhase(event);
+    const eventEffects = resolveEventEffects(event, eventPhase);
+    return {
+      ...base,
+      skipUpsell: base.skipUpsell || eventEffects.skipUpsell,
+      shortenReplies: base.shortenReplies || eventEffects.shortenReplies,
+      presetMenuOnly: eventEffects.presetMenuOnly,
+      presetProductIds: event.presetProductIds ?? [],
+      suppressProactiveNudges: eventEffects.suppressProactiveNudges,
+      drinkPromptOnly: eventEffects.drinkPromptOnly,
+      groupBillEnabled: eventEffects.groupBillEnabled,
+      batchOrderEnabled: eventEffects.batchOrderEnabled,
+      eventPhase,
+    };
+  }
+
+  return base;
 }
 
 export function unavailableProductNamesInDraft(

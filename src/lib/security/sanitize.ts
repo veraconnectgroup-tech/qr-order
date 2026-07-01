@@ -1,11 +1,19 @@
 const TAG_RE = /<[^>]*>/g;
+const SCRIPT_TAG_RE = /<\s*script\b[^>]*>([\s\S]*?)<\s*\/\s*script\s*>/gi;
+const EVENT_HANDLER_RE = /\son[a-z]+\s*=\s*(['"]).*?\1/gi;
+const JAVASCRIPT_URL_RE = /javascript\s*:/gi;
 const ORDER_NOTES_ALLOWED_RE = /[^a-zA-Z0-9\s.,!?'\-"():;/]/g;
 const SLUG_INVALID_RE = /[^a-z0-9-]/g;
 const EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 /** Strip HTML tags (server-safe, no DOM). Inner text is preserved. */
 export function sanitizeHtml(input: string): string {
-  return input.replace(TAG_RE, "").trim();
+  return input
+    .replace(SCRIPT_TAG_RE, "$1")
+    .replace(EVENT_HANDLER_RE, "")
+    .replace(JAVASCRIPT_URL_RE, "")
+    .replace(TAG_RE, "")
+    .trim();
 }
 
 export function sanitizeText(input: string, maxLength = 1000): string {

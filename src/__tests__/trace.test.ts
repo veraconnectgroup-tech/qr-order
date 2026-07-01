@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   TRACE_HEADER,
   getTraceId,
+} from "@/lib/resilience/trace";
+import {
   runWithTraceId,
   traceMetadata,
-} from "@/lib/resilience/trace";
+} from "@/lib/resilience/trace.server";
 
 describe("trace", () => {
   it("reuses incoming x-trace-id header", () => {

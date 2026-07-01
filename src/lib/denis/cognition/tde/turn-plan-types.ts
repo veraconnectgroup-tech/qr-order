@@ -1,3 +1,4 @@
+import type { ConversationGraph } from "@/lib/denis/cognition/conversation/conversation-graph";
 import type { DenisGoal } from "@/lib/denis/kernel/goal-types";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
 
@@ -29,6 +30,7 @@ export const CORE_BELIEF_KEYS = {
   commercePressure: "commerce.pressure",
   commerceAwaitingConfirm: "commerce.awaiting_confirm",
   commerceHasOpenOrders: "commerce.has_open_orders",
+  commerceHasDeliveredOrders: "commerce.has_delivered_orders",
   venueRush: "venue.rush",
   venueSkipUpsell: "venue.skip_upsell",
   guestReturnVisit: "guest.return_visit",
@@ -62,6 +64,9 @@ export type { PendingSlotKind };
 export type ConversationAwaiting =
   | PendingSlotKind
   | "confirm"
+  | "browse_decision"
+  | "recommendation_pick"
+  | "clarify_intent"
   | null;
 
 export type TurnPlanKind =
@@ -113,6 +118,8 @@ export type DecideTurnPlanInput = {
   >;
   message: string;
   committedFacts?: CommittedFact[];
+  conversationGraph?: ConversationGraph | null;
+  interpretation?: import("@/lib/denis/cognition/tde/turn-interpretation-types").TurnInterpretation | null;
 };
 
 export type PlanUtteranceInput = {

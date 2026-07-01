@@ -116,6 +116,40 @@ export async function createFiscalRegistration(
   return { id: (data as { id: string }).id };
 }
 
+/** Auto-register Kassenmeldung when a fiscal register is provisioned (Finanzamt). */
+export async function ensureKassenmeldungForRegister(
+  admin: SupabaseClient,
+  input: {
+    orgId: string;
+    locationId: string;
+    registerId: string;
+    kassenId: string;
+    tssSerial?: string | null;
+    inbetriebnahmeAt?: string;
+  }
+): Promise<{ created: boolean; id?: string }> {
+  const { data: existing } = await admin
+    .from("fiscal_registrations")
+    .select("id")
+    .eq("register_id", input.registerId)
+    .maybeSingle();
+
+  if (existing) {
+    return { created: false, id: (existing as { id: string }).id };
+  }
+
+  const { id } = await createFiscalRegistration(admin, {
+    orgId: input.orgId,
+    locationId: input.locationId,
+    registerId: input.registerId,
+    kassenId: input.kassenId,
+    inbetriebnahmeAt: input.inbetriebnahmeAt ?? new Date().toISOString(),
+    tssSerial: input.tssSerial ?? null,
+  });
+
+  return { created: true, id };
+}
+
 export async function decommissionFiscalRegistration(
   admin: SupabaseClient,
   registrationId: string,

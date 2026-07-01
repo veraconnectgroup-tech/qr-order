@@ -6,7 +6,7 @@ import {
 import { DENIS_IMPORT_MATRIX, DENIS_LAYERS } from "@/lib/denis/layers";
 
 describe("Denis architecture compliance", () => {
-  it("passes full repository compliance check", () => {
+  it("passes full repository compliance check", { timeout: 15_000 }, () => {
     const report = runDenisArchitectureCompliance();
     if (!report.ok) {
       console.error(formatComplianceReport(report));

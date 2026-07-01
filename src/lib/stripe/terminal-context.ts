@@ -6,6 +6,15 @@ import {
   withStripeCircuit,
 } from "@/lib/stripe/with-stripe-circuit";
 
+export type {
+  TerminalPaymentPhase,
+} from "@/lib/stripe/terminal-guest-copy";
+export {
+  isTerminalPaymentEligible,
+  mapTerminalPaymentStatus,
+  resolveGuestTerminalPrompt,
+} from "@/lib/stripe/terminal-guest-copy";
+
 export type TerminalOrgContext = {
   orgId: string;
   stripeAccountId: string;

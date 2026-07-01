@@ -1,6 +1,7 @@
 import { buildBelegHtml, loadBelegOrHandoffData } from "@/lib/fiscal/beleg";
 import { buildOrderReceiptHtml } from "@/lib/email/order-receipt-html";
 import { sendEmail } from "@/lib/email/resend";
+import { loadThemeForLocation } from "@/lib/theme/load-theme-for-location";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type SendReceiptResult = { sent: boolean; error?: string };
@@ -175,6 +176,10 @@ export async function sendOrderReceipt(
 
     orgName = org?.name ?? "Your venue";
 
+    const venueTheme = await loadThemeForLocation(row.location_id).catch(
+      () => null
+    );
+
     const { data: table } = row.table_id
       ? await admin
           .from("tables")
@@ -211,6 +216,11 @@ export async function sendOrderReceipt(
         modifiers: modifiersByItem.get(item.id) ?? [],
       })),
       orderUrl,
+      logoUrl: venueTheme?.logoUrl ?? null,
+      accentColor: venueTheme?.primaryColor,
+      footerMessage: venueTheme?.receiptFooter,
+      poweredByLabel: venueTheme?.poweredByLabel,
+      hidePoweredBy: venueTheme?.hidePoweredBy,
     });
     subjectPrefix = "Receipt";
   }

@@ -27,8 +27,8 @@ import { TypewriterText } from "@/components/guest/typewriter-text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { InPersonPaymentLocation } from "@/lib/constants";
-import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { getOrCreateDeviceFingerprint } from "@/lib/guest/device-storage";
+import { useGuestOrderRealtime } from "@/hooks/use-guest-order-realtime";
 import { useGuestMemory } from "@/hooks/use-guest-memory";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { TseReceiptBadge } from "@/components/guest/tse-receipt-badge";
@@ -143,8 +143,6 @@ export function OrderStatusTracker({
   const router = useRouter();
   const searchParams = useSearchParams();
   const addItem = useCart((s) => s.addItem);
-  const [order, setOrder] = useState<OrderData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [reordering, setReordering] = useState(false);
@@ -198,38 +196,14 @@ export function OrderStatusTracker({
     [orderId, sessionToken]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    let pollId: ReturnType<typeof setInterval> | null = null;
-
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setLoading(true);
-        setOrder(null);
-      }
-    });
-
-    async function refresh(initial = false) {
-      const data = await refreshOrder(initial);
-      if (cancelled) return;
-      if (data) {
-        setOrder(data);
-        if (shouldStopPolling(data) && pollId) {
-          clearInterval(pollId);
-          pollId = null;
-        }
-      }
-      if (initial) setLoading(false);
-    }
-
-    void refresh(true);
-    pollId = setInterval(() => void refresh(false), REALTIME_FALLBACK_POLL_MS);
-
-    return () => {
-      cancelled = true;
-      if (pollId) clearInterval(pollId);
-    };
-  }, [refreshOrder, orderId, sessionToken]);
+  const { order, loading, refresh } = useGuestOrderRealtime<OrderData>({
+    orderId,
+    sessionToken,
+    enabled: Boolean(orderId && sessionToken),
+    parseOrder: (payload) => payload as OrderData,
+    fetchOrder: () => refreshOrder(false),
+    shouldStop: shouldStopPolling,
+  });
 
   useEffect(() => {
     if (!order) return;
@@ -441,7 +415,7 @@ export function OrderStatusTracker({
           <h2 className="text-caption mb-3 uppercase tracking-wide text-zinc-500">
             {tUI("order.liveStatus")}
           </h2>
-          <div className="space-y-0">
+          <ol className="space-y-0" aria-label={tUI("order.liveStatus")}>
             {STEP_KEYS.map((step, idx) => {
               const done = stepIdx > idx;
               const current = order.status === step.key;
@@ -453,7 +427,11 @@ export function OrderStatusTracker({
                   : statusLabel;
 
               return (
-                <div key={step.key} className="relative flex gap-3">
+                <li
+                  key={step.key}
+                  className="relative flex gap-3"
+                  aria-current={current ? "step" : undefined}
+                >
                   {current && statusPulse && !reduceMotion && (
                     <motion.div
                       initial={{ opacity: 0.4, scale: 0.8 }}
@@ -501,10 +479,10 @@ export function OrderStatusTracker({
                       <p className="text-micro text-zinc-500">{time}</p>
                     )}
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </section>
       )}
 
@@ -514,6 +492,8 @@ export function OrderStatusTracker({
           type="button"
           onClick={() => setItemsOpen((v) => !v)}
           className="flex w-full items-center justify-between px-4 py-3 text-start"
+          aria-expanded={itemsOpen}
+          aria-controls="order-items-panel"
         >
           <div>
             <p className="text-sm font-medium text-zinc-200">{tUI("order.thisOrder")}</p>
@@ -529,7 +509,7 @@ export function OrderStatusTracker({
           />
         </button>
         {itemsOpen && (
-          <div className="border-t border-zinc-800 px-4 pb-4 pt-2">
+          <div id="order-items-panel" className="border-t border-zinc-800 px-4 pb-4 pt-2">
             {order.order_items.map((item, i) => (
               <div
                 key={i}
@@ -594,9 +574,7 @@ export function OrderStatusTracker({
             slug={slug}
             orderId={orderId}
             onPaid={() => {
-              refreshOrder().then((data) => {
-                if (data) setOrder(data);
-              });
+              void refresh();
             }}
           />
         </section>

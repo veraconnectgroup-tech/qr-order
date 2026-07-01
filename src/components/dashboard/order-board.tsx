@@ -18,6 +18,7 @@ import { AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { orderWithDetailsRows } from "@/lib/supabase/query-rows";
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useReceiptAutoPrint } from "@/hooks/use-receipt-auto-print";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
@@ -44,6 +45,7 @@ import { orderApprovedToastMessage } from "@/lib/kitchen/menu-section";
 import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import {
   buildTransferSourceMap,
+  parseTableTransferRows,
   type TableTransferRow,
 } from "@/lib/tables/transfer-source-map";
 import type { OrderStatus, OrderWithDetails } from "@/types";
@@ -258,10 +260,10 @@ export function OrderBoard() {
     }
 
     const transferMap = buildTransferSourceMap(
-      (transfers ?? []) as unknown as TableTransferRow[]
+      parseTableTransferRows(transfers)
     );
 
-    const enriched = ((data ?? []) as OrderWithDetails[]).map((order) => ({
+    const enriched = orderWithDetailsRows(data).map((order) => ({
       ...order,
       transferred_from_table_name: transferMap.get(order.id) ?? null,
     }));

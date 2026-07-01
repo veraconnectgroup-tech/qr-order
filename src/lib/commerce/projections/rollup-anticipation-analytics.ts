@@ -118,6 +118,100 @@ export function anticipationRollupDelta(input: AnticipationRollupInput): {
     };
   }
 
+  if (input.eventType === COMMERCE_EVENT_TYPES.interventionCommitted) {
+    const kind =
+      typeof input.payload.nudgeKind === "string"
+        ? input.payload.nudgeKind
+        : "unknown";
+    return {
+      metricDate,
+      nudgeImpressions: 0,
+      offerConversions: 0,
+      conversionLagSeconds: 0,
+      nudgeDeclined: 0,
+      nudgeIgnored: 0,
+      nudgeExpired: 0,
+      byNudgeKind: bumpMap({}, kind, 1),
+      byOfferResolution: {},
+      byOutcome: bumpMap({}, "ijs:committed", 1),
+      byTimingKind: {},
+    };
+  }
+
+  if (input.eventType === COMMERCE_EVENT_TYPES.interventionDeclined) {
+    const reason =
+      typeof input.payload.reason === "string" ? input.payload.reason : "unknown";
+    return {
+      metricDate,
+      nudgeImpressions: 0,
+      offerConversions: 0,
+      conversionLagSeconds: 0,
+      nudgeDeclined: 1,
+      nudgeIgnored: 0,
+      nudgeExpired: 0,
+      byNudgeKind: {},
+      byOfferResolution: {},
+      byOutcome: bumpMap({}, `ijs:declined:${reason}`, 1),
+      byTimingKind: {},
+    };
+  }
+
+  if (input.eventType === COMMERCE_EVENT_TYPES.interventionExpired) {
+    return {
+      metricDate,
+      nudgeImpressions: 0,
+      offerConversions: 0,
+      conversionLagSeconds: 0,
+      nudgeDeclined: 0,
+      nudgeIgnored: 0,
+      nudgeExpired: 1,
+      byNudgeKind: {},
+      byOfferResolution: {},
+      byOutcome: bumpMap({}, "ijs:expired", 1),
+      byTimingKind: {},
+    };
+  }
+
+  if (input.eventType === COMMERCE_EVENT_TYPES.interventionSuperseded) {
+    return {
+      metricDate,
+      nudgeImpressions: 0,
+      offerConversions: 0,
+      conversionLagSeconds: 0,
+      nudgeDeclined: 0,
+      nudgeIgnored: 0,
+      nudgeExpired: 0,
+      byNudgeKind: {},
+      byOfferResolution: {},
+      byOutcome: bumpMap({}, "ijs:superseded", 1),
+      byTimingKind: {},
+    };
+  }
+
+  if (input.eventType === COMMERCE_EVENT_TYPES.interventionEvaluated) {
+    const decision =
+      typeof input.payload.decision === "string"
+        ? input.payload.decision
+        : "unknown";
+    const manifestVersion =
+      typeof input.payload.manifestVersion === "string"
+        ? input.payload.manifestVersion
+        : "unknown";
+    return {
+      metricDate,
+      nudgeImpressions: 0,
+      offerConversions: 0,
+      conversionLagSeconds: 0,
+      nudgeDeclined: 0,
+      nudgeIgnored: 0,
+      nudgeExpired: 0,
+      byNudgeKind: {},
+      byOfferResolution: {},
+      byOutcome: bumpMap({}, `ijs:evaluated:${decision}`, 1),
+      byTimingKind: bumpMap({}, manifestVersion, 1),
+    };
+  }
+
   return {
     metricDate,
     nudgeImpressions: 0,
@@ -147,7 +241,9 @@ function hasRollupActivity(delta: ReturnType<typeof anticipationRollupDelta>): b
     delta.offerConversions > 0 ||
     delta.nudgeDeclined > 0 ||
     delta.nudgeIgnored > 0 ||
-    delta.nudgeExpired > 0
+    delta.nudgeExpired > 0 ||
+    Object.keys(delta.byOutcome).length > 0 ||
+    Object.keys(delta.byTimingKind).length > 0
   );
 }
 

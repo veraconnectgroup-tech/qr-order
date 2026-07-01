@@ -37,7 +37,10 @@ export async function persistTableSessionView(
     }
   );
 
-  const scene = tableSessionViewToScene(view);
+  const scene = tableSessionViewToScene(
+    view,
+    fold.state.mental.accessibility ?? null
+  );
 
   const { data: sessionMeta } = await admin
     .from("table_sessions")

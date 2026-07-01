@@ -13,6 +13,7 @@ export type PosProvider =
   | "deliverect"
   | "orderbird"
   | "lightspeed"
+  | "sumup"
   | "ready2order"
   | "custom";
 
@@ -33,6 +34,7 @@ const providerSchema = z.enum([
   "deliverect",
   "orderbird",
   "lightspeed",
+  "sumup",
   "ready2order",
   "custom",
 ]);

@@ -3,11 +3,11 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { submitSessionFeedback } from "@/lib/commerce/capabilities/feedback-v2/submit-session-feedback";
 import {
-  ratingToSentiment,
   type FeedbackCategory,
 } from "@/lib/commerce/experience/resolve-experience-moment";
+import { analyzeFeedbackComment, resolveFeedbackPostSubmit } from "@/lib/denis/platform/feedback-intelligence";
 import { verifyOrderSessionAccess } from "@/lib/orders/validate-table-session";
-import { getCurrentTraceId } from "@/lib/resilience/trace";
+import { getCurrentTraceId } from "@/lib/resilience/trace.server";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { logger } from "@/lib/logger";
@@ -123,13 +123,19 @@ export const POST = withErrorHandler(
       ? sanitizeText(comment.trim(), 500)
       : null;
 
+    const analysis = analyzeFeedbackComment({
+      rating,
+      comment: sanitizedComment,
+      sentiment: sentiment ?? undefined,
+    });
+
     const result = await submitSessionFeedback(admin, {
       orderId,
       sessionId,
       rating,
       comment: sanitizedComment,
-      sentiment: sentiment ?? ratingToSentiment(rating),
-      category: (category ?? null) as FeedbackCategory | null,
+      sentiment: analysis.sentiment,
+      category: category ?? analysis.category,
       traceId: getCurrentTraceId() ?? undefined,
     });
 
@@ -157,6 +163,22 @@ export const POST = withErrorHandler(
       .eq("session_id", sessionId)
       .maybeSingle();
 
-    return apiSuccess({ feedback, eventId: result.eventId });
+    return apiSuccess({
+      feedback,
+      eventId: result.eventId,
+      analysis: analyzeFeedbackComment({
+        rating,
+        comment: sanitizedComment,
+        sentiment: feedback?.sentiment as
+          | "positive"
+          | "neutral"
+          | "negative"
+          | undefined,
+      }),
+      postSubmit: resolveFeedbackPostSubmit({
+        rating,
+        sentiment: analysis.sentiment,
+      }),
+    });
   }
 );

@@ -26,6 +26,9 @@ import type { PermissionOverride } from "@/lib/auth/staff-access";
 import { STAFF_ROLES } from "@/lib/constants";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { DenisStaffTrainingPanel } from "@/components/admin/denis-staff-training-panel";
+import { StaffLocationsEditor } from "@/components/dashboard/staff-locations-editor";
+import type { StaffTrainingSnapshot } from "@/lib/admin/load-staff-training-insight";
 
 type StaffRow = {
   id: string;
@@ -77,6 +80,9 @@ export function StaffBoard({
   canManage,
   overridesByStaffId,
   actorGrantable,
+  trainingSnapshot,
+  locationsByStaffId,
+  allLocations,
 }: {
   staff: StaffRow[];
   invites: InviteRow[];
@@ -85,6 +91,9 @@ export function StaffBoard({
   overridesByStaffId: Record<string, PermissionOverride[]>;
   /** null = owner (all grantable). */
   actorGrantable: Set<PermissionKey> | null;
+  trainingSnapshot?: StaffTrainingSnapshot | null;
+  locationsByStaffId?: Record<string, string[]>;
+  allLocations?: Array<{ id: string; name: string }>;
 }) {
   const [pending, startTransition] = useTransition();
   const [lastLink, setLastLink] = useState<string | null>(null);
@@ -117,6 +126,12 @@ export function StaffBoard({
 
   return (
     <div className="space-y-8">
+      {canManage && trainingSnapshot !== undefined ? (
+        <section className="rounded-xl border border-dash-border bg-dash-surface p-5 sm:p-6">
+          <DenisStaffTrainingPanel snapshot={trainingSnapshot} />
+        </section>
+      ) : null}
+
       {canManage && (
         <section className="rounded-xl border border-dash-border bg-dash-surface p-5 sm:p-6">
           <div className="mb-4 flex items-center gap-2">
@@ -263,6 +278,9 @@ export function StaffBoard({
                     Email
                   </th>
                   <th className="px-4 py-3 font-medium">Role</th>
+                  {canManage && allLocations && allLocations.length > 1 && (
+                    <th className="px-4 py-3 font-medium">Locations</th>
+                  )}
                   {canManage && (
                     <>
                       <th className="px-4 py-3 font-medium">Permissions</th>
@@ -294,6 +312,19 @@ export function StaffBoard({
                     <td className="px-4 py-3 capitalize text-dash-text-muted">
                       {member.role}
                     </td>
+                    {canManage && allLocations && allLocations.length > 1 && (
+                      <td className="px-4 py-3">
+                        <StaffLocationsEditor
+                          staffId={member.id}
+                          staffName={member.name}
+                          currentLocationIds={
+                            locationsByStaffId?.[member.id] ?? []
+                          }
+                          allLocations={allLocations}
+                          disabled={member.id === currentStaffId}
+                        />
+                      </td>
+                    )}
                     {canManage && (
                       <>
                         <td className="px-4 py-3">

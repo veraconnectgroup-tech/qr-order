@@ -88,7 +88,7 @@ export function computeOfferTiming(input: {
       agoSec >= CART_HESITATION_MIN_SEC && agoSec <= CART_HESITATION_MAX_SEC
     );
   });
-  if (recentAbandon && input.mental.pace === "indecisive") {
+  if (recentAbandon) {
     return openTiming("cart_hesitation", "cart_hesitation", idleSinceBrowseSec);
   }
 

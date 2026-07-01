@@ -28,5 +28,9 @@ export function retrieveVenueOpsEvidence(
     lines.push(`Table hint: ${ops.staffHint.text}`);
   }
 
+  if (ops.staffOnFloor != null) {
+    lines.push(`Staff on floor: ${ops.staffOnFloor}`);
+  }
+
   return `VENUE OPS:\n${lines.join("\n")}`;
 }

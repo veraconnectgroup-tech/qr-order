@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { GUEST_VIEW_FALLBACK_POLL_MS } from "@/lib/constants";
+import { GUEST_VIEW_FALLBACK_POLL_MS, REALTIME_SSE_RECONNECT_MS } from "@/lib/constants";
 import { fetchDenisView } from "@/lib/guest/denis-view-client";
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
 import { tableSessionViewToScene } from "@/lib/denis/loop/view-to-scene";
 import type { Scene } from "@/lib/scene/types";
 
-const SSE_RECONNECT_MS = 1_000;
+const SSE_RECONNECT_MS = REALTIME_SSE_RECONNECT_MS;
 
 export function useDenisView({
   tableToken,
@@ -39,7 +39,11 @@ export function useDenisView({
       const next = await fetchDenisView(tableToken, sessionToken);
       const nextView = next?.view ?? null;
       setView(nextView);
-      setScene(nextView ? tableSessionViewToScene(nextView) : null);
+      setScene(
+        nextView
+          ? tableSessionViewToScene(nextView, nextView.accessibility)
+          : null
+      );
       if (next?.view?.version != null) {
         lastVersionRef.current = next.view.version;
       }
@@ -126,5 +130,13 @@ export function useDenisView({
     return () => window.clearInterval(id);
   }, [enabled, sessionToken, refresh, sseConnected]);
 
-  return { view, scene, loading, error, refresh };
+  return {
+    view,
+    scene,
+    loading,
+    error,
+    refresh,
+    connectionMode: sseConnected ? ("live" as const) : ("polling" as const),
+    sseConnected,
+  };
 }

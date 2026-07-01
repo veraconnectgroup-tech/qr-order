@@ -9,6 +9,7 @@ export type DenisCartLine = {
   lineTotal: number;
   menuSection?: string | null;
   productTaxRate?: number | null;
+  foodTags?: string[];
 };
 
 export type DenisCartDraft = {

@@ -26,24 +26,26 @@ import type { OrderFact, TableSessionState } from "@/lib/denis/loop/types";
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 
 function buildConfig(setup: AnticipationSetup): ConciergeConfig {
+  const base = structuredClone(CONCIERGE_PLATFORM_DEFAULTS);
   return {
-    ...CONCIERGE_PLATFORM_DEFAULTS,
+    ...base,
     proactive: {
-      ...CONCIERGE_PLATFORM_DEFAULTS.proactive,
+      ...base.proactive,
       enabled: setup.proactiveEnabled ?? true,
       pairing: setup.pairingEnabled ?? true,
       dessert: setup.dessertEnabled ?? true,
       slowKitchen: setup.slowKitchenEnabled ?? true,
+      orderDelay: setup.orderDelayEnabled ?? true,
       offerEnrich: setup.offerEnrich ?? false,
     },
     mentalModel: {
-      ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
+      ...base.mentalModel,
       mode: setup.mentalModelMode ?? "off",
     },
   };
 }
 
-function buildState(setup: AnticipationSetup): TableSessionState {
+export function buildAnticipationEvalState(setup: AnticipationSetup): TableSessionState {
   const items = setup.aiCartItems ?? [];
   const config = buildConfig(setup);
   const timeline = setup.timeline ?? [];
@@ -161,7 +163,9 @@ function orderFactsToGuestOrders(orders: OrderFact[]): AiGuestOrder[] {
     id: order.id,
     status: order.status,
     created_at: order.createdAt,
-    delivered_at: order.status === "delivered" ? order.createdAt : null,
+    delivered_at: order.deliveredAt ?? (order.status === "delivered" ? order.createdAt : null),
+    estimated_prep_minutes: order.estimatedPrepMinutes,
+    prep_estimate_confidence: order.prepEstimateConfidence ?? "none",
     order_items: order.items.map((item) => ({
       product_id: null,
       product_name: item.productName,
@@ -181,11 +185,11 @@ function inferMenuSection(name: string): "food" | "drinks" | "desserts" {
   return "food";
 }
 
-function runAnticipationScenario(
+export function runAnticipationScenario(
   scenario: AnticipationScenario
 ): AnticipationScenarioResult {
   const errors: string[] = [];
-  const state = buildState(scenario.setup);
+  const state = buildAnticipationEvalState(scenario.setup);
   const orders = orderFactsToGuestOrders(state.commerce.orders);
 
   const result = planProactiveTurn({
@@ -195,6 +199,9 @@ function runAnticipationScenario(
     sessionPhase: scenario.setup.sessionPhase,
     payload: {
       ...scenario.payload,
+      cartItemCount:
+        scenario.payload.cartItemCount ??
+        state.commerce.cart.visibleLines.length,
       dismissedNudgeKeys:
         scenario.payload.dismissedNudgeKeys ?? state.conversation.dismissedNudges,
     },

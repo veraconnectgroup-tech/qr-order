@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import {
   computeDailyClosing,
@@ -15,6 +16,9 @@ export const maxDuration = 60;
 export const GET = withErrorHandler(
   "cron-daily-closing-get",
   async (req, _ctx) => {
+  const limited = await withCronRateLimit(req);
+  if (limited) return limited;
+
     const secret = process.env.CRON_SECRET;
     const auth = req.headers.get("authorization");
 

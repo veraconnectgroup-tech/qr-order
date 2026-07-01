@@ -1,6 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { GET as getLocations } from "@/app/api/operator/v1/locations/route";
+import { GET as getSessions } from "@/app/api/operator/v1/sessions/route";
+import { POST as postConfigProposal } from "@/app/api/operator/v1/config/proposals/route";
 import { GET as getCommerceInsights } from "@/app/api/operator/v1/locations/[locationId]/commerce/insights/route";
 import { GET as getFiscalDailyClosing } from "@/app/api/operator/v1/locations/[locationId]/fiscal/daily-closing/route";
 import { GET as getOrders } from "@/app/api/operator/v1/locations/[locationId]/orders/route";
@@ -10,10 +12,12 @@ import { GET as getTranscript } from "@/app/api/operator/v1/sessions/[sessionId]
 import { GET as getSessionSummary } from "@/app/api/operator/v1/sessions/[sessionId]/summary/route";
 import * as operatorAuth from "@/lib/operator/auth";
 import * as operatorAudit from "@/lib/operator/audit-log";
+import * as configProposals from "@/lib/operator/config-proposals";
 import * as commerceInsights from "@/lib/operator/projections/commerce-insights";
 import * as denisMetrics from "@/lib/operator/projections/denis-metrics";
 import * as fiscalDailyClosing from "@/lib/operator/projections/fiscal-daily-closing";
 import * as locationOrders from "@/lib/operator/projections/list-location-orders";
+import * as listSessions from "@/lib/operator/projections/list-sessions";
 import * as orderDetail from "@/lib/operator/projections/order-detail";
 import * as sessionSummary from "@/lib/operator/projections/session-summary";
 import * as sessionTranscript from "@/lib/operator/projections/session-transcript";
@@ -26,7 +30,7 @@ function makeNextRequest(url: string, headers: Record<string, string> = {}) {
 
 describe("operator API contract smoke", () => {
   beforeEach(() => {
-    vi.spyOn(rateLimit, "withRateLimit").mockResolvedValue(null);
+    vi.spyOn(rateLimit, "withOperatorOrgRateLimit").mockResolvedValue(null);
     vi.spyOn(operatorAudit, "logOperatorApiRequest").mockResolvedValue();
     vi.spyOn(supabaseAdmin, "createAdminClient").mockReturnValue({
       from: () => ({
@@ -50,6 +54,117 @@ describe("operator API contract smoke", () => {
       params: Promise.resolve({}),
     });
     expect(res.status).toBe(401);
+  });
+
+  it("returns sessions list for Viktor session feed", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(listSessions, "projectOperatorSessionList").mockResolvedValue([
+      {
+        id: "sess-1",
+        locationId: "loc-1",
+        status: "closed",
+        openedAt: "2026-06-06T20:00:00.000Z",
+        closedAt: "2026-06-06T21:00:00.000Z",
+        messageCount: 8,
+        language: "de",
+        converted: true,
+      },
+    ]);
+
+    const res = await getSessions(
+      makeNextRequest(
+        "http://localhost/api/operator/v1/sessions?locationId=loc-1",
+        { Authorization: "Bearer dns_op_live_test" }
+      ),
+      { params: Promise.resolve({}) }
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data?: { sessions?: Array<{ id: string }> };
+    };
+    expect(json.data?.sessions?.[0]?.id).toBe("sess-1");
+  });
+
+  it("creates config proposal with operator:propose scope", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:propose"],
+    });
+    vi.spyOn(configProposals, "createOperatorConfigProposal").mockResolvedValue({
+      id: "prop-1",
+      orgId: "org-1",
+      locationId: "550e8400-e29b-41d4-a716-446655440000",
+      kind: "config",
+      patch: { persona: { tone: "warm_short" } },
+      reason: "Improve greeting conversion",
+      status: "pending",
+      createdByKeyId: "key-1",
+      createdAt: "2026-06-06T20:00:00.000Z",
+      reviewedAt: null,
+    });
+
+    const req = new NextRequest(
+      "http://localhost/api/operator/v1/config/proposals",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer dns_op_live_test",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          locationId: "550e8400-e29b-41d4-a716-446655440000",
+          patch: { persona: { tone: "warm_short" } },
+          reason: "Improve greeting conversion",
+        }),
+      }
+    );
+
+    const res = await postConfigProposal(req, { params: Promise.resolve({}) });
+
+    expect(res.status).toBe(201);
+    const json = (await res.json()) as {
+      data?: { proposal?: { id: string; status: string } };
+    };
+    expect(json.data?.proposal?.id).toBe("prop-1");
+    expect(json.data?.proposal?.status).toBe("pending");
+  });
+
+  it("returns 429 when org rate limit is exceeded", async () => {
+    vi.spyOn(operatorAuth, "authenticateOperatorApiKey").mockResolvedValue({
+      keyId: "key-1",
+      orgId: "org-1",
+      scopes: ["operator:read"],
+    });
+    vi.spyOn(rateLimit, "withOperatorOrgRateLimit").mockResolvedValue(
+      NextResponse.json(
+        {
+          ok: false,
+          data: null,
+          error: {
+            code: "rate_limited",
+            message: "Too many requests. Please wait a moment.",
+            retryable: true,
+          },
+        },
+        { status: 429, headers: { "Retry-After": "60" } }
+      )
+    );
+
+    const res = await getLocations(
+      makeNextRequest("http://localhost/api/operator/v1/locations", {
+        Authorization: "Bearer dns_op_live_test",
+      }),
+      { params: Promise.resolve({}) }
+    );
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("60");
   });
 
   it("returns locations JSON with version header when auth passes", async () => {

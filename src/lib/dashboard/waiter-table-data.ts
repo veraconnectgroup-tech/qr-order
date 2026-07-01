@@ -1,4 +1,11 @@
-import type { Order, Table, TableSession, Zone } from "@/types";
+import type {
+  Order,
+  OrderItem,
+  OrderItemModifier,
+  Table,
+  TableSession,
+  Zone,
+} from "@/types";
 import {
   isActiveTableOrder,
   orderHasPaymentRequest,
@@ -15,6 +22,34 @@ export type WaiterTableOrder = Pick<
   | "payment_status"
   | "payment_method"
 >;
+
+export type WaiterSummaryOrderRow = WaiterTableOrder & {
+  table_id: string | null;
+  session_id: string | null;
+};
+
+export type WaiterDetailOrderRow = {
+  id: string;
+  order_number: number;
+  status: string;
+  total: number;
+  created_at: string;
+  table_id?: string;
+  tables?: { name: string } | null;
+  order_items: Array<
+    OrderItem & { order_item_modifiers: OrderItemModifier[] }
+  >;
+};
+
+export function parseWaiterSummaryOrders(data: unknown): WaiterSummaryOrderRow[] {
+  if (!Array.isArray(data)) return [];
+  return data as WaiterSummaryOrderRow[];
+}
+
+export function parseWaiterDetailOrders(data: unknown): WaiterDetailOrderRow[] {
+  if (!Array.isArray(data)) return [];
+  return data as WaiterDetailOrderRow[];
+}
 
 export type WaiterTableRow = Table & {
   zone: Zone | null;
@@ -97,12 +132,7 @@ export function getLastOrderAt(table: WaiterTableRow): string | null {
 export function buildWaiterTableRows(
   tablesData: Array<Table & { zone: Zone | null }>,
   sessions: Array<Pick<TableSession, "id" | "table_id" | "opened_at">>,
-  orders: Array<
-    WaiterTableOrder & {
-      table_id: string | null;
-      session_id: string | null;
-    }
-  >,
+  orders: WaiterSummaryOrderRow[],
   pendingCallTableIds: Set<string>
 ): WaiterTableRow[] {
   const sessionMap = new Map(

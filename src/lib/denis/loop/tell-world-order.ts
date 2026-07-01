@@ -13,6 +13,7 @@ export type WorldOrderTellResult = {
   message: string;
   markState: SceneMarkState;
   push: boolean;
+  persistTell: boolean;
 };
 
 function resolveStatusForSignal(
@@ -37,6 +38,7 @@ export function resolveWorldOrderTell(input: {
   orderNumber: number;
   menuLocale: MenuLocale;
   isEnglish?: boolean;
+  orders?: unknown[];
 }): WorldOrderTellResult | null {
   const effectiveStatus = resolveStatusForSignal(input.signal, input.status);
 
@@ -61,5 +63,6 @@ export function resolveWorldOrderTell(input: {
     message,
     markState: markStateForStatus(effectiveStatus),
     push: effectiveStatus === "ready",
+    persistTell: effectiveStatus === "ready",
   };
 }

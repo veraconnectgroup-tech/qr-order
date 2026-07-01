@@ -1,5 +1,6 @@
 import { FloorTile } from "./floor-tile";
 import { cn } from "@/lib/utils";
+import type { CSSProperties } from "react";
 
 export type DenisChipProps = {
   label: string;
@@ -7,6 +8,7 @@ export type DenisChipProps = {
   disabled?: boolean;
   selected?: boolean;
   className?: string;
+  style?: CSSProperties;
 };
 
 export function DenisChip({
@@ -15,6 +17,7 @@ export function DenisChip({
   disabled = false,
   selected = false,
   className,
+  style,
 }: DenisChipProps) {
   return (
     <FloorTile
@@ -24,7 +27,8 @@ export function DenisChip({
       onClick={onClick}
       disabled={disabled}
       status={selected ? "selected" : "available"}
-      className={cn("shrink-0", className)}
+      className={cn("shrink-0 touch-target", className)}
+      style={style}
     />
   );
 }

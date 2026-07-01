@@ -65,6 +65,7 @@ function stateWithOffer(): TableSessionState {
           totalDwellMs: 18_000,
           addedToCart: false,
           removedFromCart: false,
+          disposition: "viewed",
         },
       ],
     },

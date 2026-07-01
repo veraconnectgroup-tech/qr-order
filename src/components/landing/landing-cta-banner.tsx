@@ -2,45 +2,45 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { Button } from "@/components/ui/button";
 
 export function LandingCtaBanner() {
+  const { copy } = useLandingCopy();
+  const { ctaBanner } = copy;
+
   return (
     <section className="landing-cta-banner relative w-full overflow-hidden border-y border-[#1e1e2e] py-16 text-center sm:py-20">
       <div className="landing-cta-banner-grid pointer-events-none absolute inset-0" aria-hidden />
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        aria-hidden
+      >
         {[0, 1, 2].map((ring) => (
           <div
             key={ring}
-            className="landing-cta-ripple absolute size-64 rounded-full border border-indigo-500/20"
+            className="landing-cta-ripple absolute size-64 rounded-full border border-[var(--qr-ember)]/20"
             style={{ animationDelay: `${ring * 1.2}s` }}
           />
         ))}
       </div>
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-2/3 bg-[radial-gradient(ellipse_70%_55%_at_50%_0%,rgba(99,102,241,0.12),transparent_70%)]"
-        aria-hidden
-      />
 
       <div className="relative z-10 px-6">
-        <h2 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-semibold leading-tight tracking-[-0.03em]">
-          <span className="landing-gradient-text">
-            Ihre Gäste sind bereit. Sind Sie es auch?
-          </span>
+        <h2 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-semibold leading-tight tracking-[-0.03em] text-white">
+          {ctaBanner.title}
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-zinc-400">
-          Starten Sie unser Pilotprogramm — keine Kreditkarte nötig. In unter 30
-          Minuten live.
+          {ctaBanner.lead}
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button
             size="lg"
             asChild
-            className="landing-btn-accent h-12 min-w-[200px] rounded-full px-8 text-[15px] font-semibold"
+            className="h-12 min-w-[200px] rounded-full bg-[var(--qr-ember)] px-8 text-[15px] font-semibold text-white hover:bg-[var(--qr-ember-hover)]"
           >
             <Link href="/signup">
-              Kostenlos starten
+              {ctaBanner.primary}
               <ArrowRight className="ml-1.5 size-4" />
             </Link>
           </Button>
@@ -50,11 +50,11 @@ export function LandingCtaBanner() {
             asChild
             className="h-12 min-w-[200px] rounded-full border-[#2a2a3e] bg-transparent px-8 text-[15px] font-medium text-zinc-200 hover:bg-[#12121a] hover:text-white"
           >
-            <Link href="/skyline-lounge/demo-table-8">Live-Demo ansehen</Link>
+            <Link href="/skyline-lounge/demo-table-8">{ctaBanner.secondary}</Link>
           </Button>
         </div>
 
-        <p className="mt-5 text-xs text-zinc-500">🇩🇪 Entwickelt in Hamburg</p>
+        <p className="mt-5 text-xs text-zinc-500">{ctaBanner.footnote}</p>
       </div>
     </section>
   );

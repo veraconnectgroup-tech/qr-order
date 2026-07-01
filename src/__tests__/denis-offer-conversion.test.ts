@@ -186,6 +186,7 @@ describe("scoreBrowseProducts M16 boost", () => {
         totalDwellMs: 18_000,
         addedToCart: false,
         removedFromCart: false,
+        disposition: "viewed" as const,
       },
       {
         productId: PASTA,
@@ -195,6 +196,7 @@ describe("scoreBrowseProducts M16 boost", () => {
         totalDwellMs: 18_000,
         addedToCart: false,
         removedFromCart: false,
+        disposition: "viewed" as const,
       },
     ],
   };

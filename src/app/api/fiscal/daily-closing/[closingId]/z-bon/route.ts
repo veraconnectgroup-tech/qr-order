@@ -5,12 +5,16 @@ import {
   buildZBonHtml,
   loadZBonDisplayData,
 } from "@/lib/fiscal/daily-closing";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const GET = withErrorHandler(
   "fiscal-daily-closing-zbon-get",
-  async (_req, ctx) => {
+  async (req, ctx) => {
+    const limited = await withStaffRateLimit(req);
+  if (limited) return limited;
+
     const staff = await requireStaffAnyPermission([
       "fiscal.shift.read",
       "fiscal.shift.close",

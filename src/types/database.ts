@@ -50,6 +50,7 @@ type Tables = {
       | null;
     feature_flags: Json;
     ai_concierge_config: Json | null;
+    venue_manifest: Json | null;
     created_at: string;
     updated_at: string;
   };
@@ -145,6 +146,7 @@ type Tables = {
     denis_operating_mode: "normal" | "rush" | "kitchen_closed" | "event";
     ai_playbook: string | null;
     ai_concierge_config: Json | null;
+    venue_manifest: Json | null;
     rejection_ban_threshold: number;
     rejection_ban_minutes: number;
     rejection_strike_window_minutes: number;
@@ -239,6 +241,7 @@ type Tables = {
       | "deliverect"
       | "orderbird"
       | "lightspeed"
+      | "sumup"
       | "ready2order"
       | "custom";
     status: "disconnected" | "connected" | "error";
@@ -263,6 +266,7 @@ type Tables = {
       | "deliverect"
       | "orderbird"
       | "lightspeed"
+      | "sumup"
       | "ready2order"
       | "custom";
     external_table_key: string;
@@ -329,6 +333,8 @@ type Tables = {
     price: number;
     image_url: string | null;
     is_available: boolean;
+    track_stock: boolean;
+    stock_quantity: number | null;
     sort_order: number;
     prep_time_minutes: number | null;
     allergens: string[] | null;
@@ -674,15 +680,32 @@ type Tables = {
     is_active: boolean;
     created_at: string;
   };
+  push_subscriptions: {
+    id: string;
+    user_id: string;
+    staff_id: string | null;
+    location_id: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    user_agent: string | null;
+    created_at: string;
+  };
   upsell_rules: {
     id: string;
     location_id: string;
+    rule_type: string;
     trigger_product_id: string | null;
     trigger_category_id: string | null;
     suggest_product_id: string;
     message: string | null;
+    conditions: import("@/types/database").Json;
+    ab_variants: import("@/types/database").Json;
     sort_order: number;
     is_active: boolean;
+    impressions_count: number;
+    conversions_count: number;
+    declines_count: number;
     created_at: string;
   };
   order_feedback: {
@@ -788,6 +811,56 @@ type Tables = {
     context_hash: string | null;
     created_at: string;
   };
+  station_questions: {
+    id: string;
+    location_id: string;
+    order_id: string | null;
+    table_id: string | null;
+    station: "kitchen" | "bar";
+    question_type: "eta" | "pending_accept" | "ready_pickup" | "mixed_conflict";
+    message: string;
+    status: "open" | "answered" | "expired" | "cancelled";
+    answer:
+      | "eta"
+      | "ready"
+      | "problem"
+      | "accepted"
+      | "picked_up"
+      | "still_waiting"
+      | null;
+    answer_eta_minutes: number | null;
+    answered_by: string | null;
+    asked_by: "denis" | "manager" | "guest_trigger";
+    source_event: string | null;
+    asked_at: string;
+    answered_at: string | null;
+    expires_at: string;
+  };
+  denis_turn_traces: {
+    id: string;
+    trace_id: string;
+    ai_session_id: string;
+    location_id: string;
+    created_at: string;
+    total_duration_ms: number | null;
+    tier: string | null;
+    llm_used: boolean | null;
+    total_tokens: number | null;
+    trace_data: Json;
+  };
+  denis_staff_notifications: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    type: string;
+    priority: string;
+    message: string;
+    table_id: string | null;
+    table_name: string | null;
+    action_url: string | null;
+    read_at: string | null;
+    created_at: string;
+  };
   ai_examples: {
     id: string;
     org_id: string;
@@ -859,6 +932,39 @@ type Tables = {
     idempotency_key: string;
     trace_id: string | null;
     created_at: string;
+  };
+  experience_analytics_daily: {
+    org_id: string;
+    location_id: string;
+    metric_date: string;
+    nudge_impressions: number;
+    offer_conversions: number;
+    conversion_lag_seconds: number;
+    by_nudge_kind: Json;
+    by_offer_resolution: Json;
+    updated_at: string;
+    nudge_declined: number;
+    nudge_ignored: number;
+    nudge_expired: number;
+    by_outcome: Json;
+    by_timing_kind: Json;
+    sessions_closed: number;
+    session_revenue_total: number;
+    converted_sessions: number;
+    upsell_revenue_total: number;
+    ai_cost_cents: number;
+    t0_turns: number;
+    llm_turns: number;
+    returning_guest_sessions: number;
+    order_time_seconds_total: number;
+    by_nudge_revenue: Json;
+    experience_score: number | null;
+    experience_score_components: Json;
+    abandoned_sessions: number;
+    cart_corrections: number;
+    repeated_questions: number;
+    total_turns: number;
+    by_roi_impact: Json;
   };
   guest_session_commerce_state: {
     session_id: string;
@@ -933,7 +1039,7 @@ export interface Database {
       };
       claim_outbox_events: {
         Args: { p_limit?: number };
-        Returns: Database["public"]["Tables"]["outbox_events"][];
+        Returns: Database["public"]["Tables"]["outbox_events"]["Row"][];
       };
       complete_outbox_event: {
         Args: {

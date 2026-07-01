@@ -7,6 +7,10 @@ export const deviceFingerprintSchema = z.string().trim().min(8).max(128);
 export const manualCartSnapshotSchema = z.object({
   revision: z.number().int().nonnegative(),
   updatedAt: z.string(),
+  itemCount: z.number().int().nonnegative().optional(),
+  subtotal: z.number().nonnegative().optional(),
+  hasFood: z.boolean().optional(),
+  hasDrinks: z.boolean().optional(),
   items: z.array(
     z.object({
       productId: z.string().uuid(),

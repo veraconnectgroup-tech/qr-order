@@ -3,6 +3,11 @@ export type TableTransferRow = {
   from_table: { name: string } | null;
 };
 
+export function parseTableTransferRows(data: unknown): TableTransferRow[] {
+  if (!Array.isArray(data)) return [];
+  return data as TableTransferRow[];
+}
+
 export function buildTransferSourceMap(
   transfers: TableTransferRow[]
 ): Map<string, string> {

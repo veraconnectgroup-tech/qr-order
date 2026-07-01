@@ -6,6 +6,7 @@ import { Clock } from "lucide-react";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
 import type { InPersonPaymentLocation } from "@/lib/constants";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
+import { AskStationButton } from "@/components/dashboard/ask-station-button";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
 import { OrderPaymentMethodSelect } from "@/components/dashboard/order-payment-method-select";
@@ -16,6 +17,7 @@ import {
   TseStatusBadge,
 } from "@/components/dashboard/delivery-status-badge";
 import { cn } from "@/lib/utils";
+import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { canStornoOrder } from "@/lib/orders/storno";
 import type { OrderWithDetails } from "@/types";
@@ -501,7 +503,13 @@ export function OrderCard({
 
       {orgName && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <KitchenPrintButton order={order} orgName={orgName} className="flex-1" />
+          <KitchenPrintButton
+            order={order}
+            orgName={orgName}
+            className="flex-1"
+            reprint
+            label="Reprint kitchen"
+          />
           {paid && (
             <ReceiptPrintButton
               order={order}
@@ -509,6 +517,8 @@ export function OrderCard({
               currency={currency}
               light={light}
               className="flex-1"
+              reprint
+              label="Reprint receipt"
             />
           )}
         </div>
@@ -576,6 +586,14 @@ export function OrderCard({
         >
           Mark Ready
         </button>
+      )}
+
+      {columnId === "preparing" && interactive && (
+        <AskStationButton
+          orderId={order.id}
+          station={orderHasKitchenItems(order) ? "kitchen" : "bar"}
+          disabled={busy}
+        />
       )}
 
       {columnId === "ready" && (

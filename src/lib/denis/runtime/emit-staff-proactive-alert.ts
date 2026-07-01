@@ -1,14 +1,34 @@
 import type { StaffProactiveAlert } from "@/lib/denis/cognition/proactive/proactive-types";
+import {
+  actionUrlForStaffProactiveAlert,
+  priorityForStaffProactiveAlert,
+  shouldPlayStaffAlertSound,
+} from "@/lib/denis/cognition/proactive/detect-staff-proactive";
+import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
+import { mapStaffProactiveAlertToNotificationType } from "@/lib/denis/notifications/staff-notifications";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
-import { notifyLocationPush } from "@/lib/push/notify-location";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+async function resolveLocationOrgId(
+  admin: SupabaseClient,
+  locationId: string
+): Promise<string | null> {
+  const { data } = await admin
+    .from("locations")
+    .select("org_id")
+    .eq("id", locationId)
+    .maybeSingle();
+
+  return (data as { org_id?: string } | null)?.org_id ?? null;
+}
 
 export async function emitStaffProactiveAlert(
   admin: SupabaseClient,
   input: {
     locationId: string;
+    orgId?: string;
     aiSessionId: string;
     tableId: string;
     alert: StaffProactiveAlert;
@@ -35,16 +55,26 @@ export async function emitStaffProactiveAlert(
     },
   });
 
-  const result = await notifyLocationPush(input.locationId, {
-    title: "Denis — sto zahteva pažnju",
-    body: input.alert.message,
-    url: "/dashboard/denis",
+  const orgId = input.orgId ?? (await resolveLocationOrgId(admin, input.locationId));
+  const result = await dispatchStaffNotification({
+    orgId: orgId ?? undefined,
+    locationId: input.locationId,
+    type: mapStaffProactiveAlertToNotificationType(input.alert.kind),
+    message: input.alert.message,
+    tableId: input.tableId,
+    tableName: input.alert.tableName,
+    actionUrl: actionUrlForStaffProactiveAlert({
+      kind: input.alert.kind,
+      tableId: input.tableId,
+    }),
+    priorityOverride: priorityForStaffProactiveAlert(input.alert.kind),
+    playSound: shouldPlayStaffAlertSound(input.alert.kind),
   });
 
   logger.info("Staff proactive alert delivered", {
     locationId: input.locationId,
     tableId: input.tableId,
     kind: input.alert.kind,
-    ...result,
+    delivered: result.delivered,
   });
 }

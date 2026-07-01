@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { countUnresolvedDlq, loadOrgDeadLetterQueue } from "@/lib/outbox/dead-letter-queue";
 import { loadActivePlans } from "@/lib/billing/plans";
+import { computePlatformMrr } from "@/lib/billing/invoicing";
+import { hasFeature } from "@/lib/platform/feature-flags";
 import type { RevenueSeriesPoint } from "@/lib/analytics/admin-analytics";
 
 export type OrgTrialStatus = "active" | "trial" | "expired" | "setup";
@@ -19,10 +21,17 @@ export type PlatformOrgRow = {
   created_at: string;
   fiskaly_tss_id: string | null;
   steuernummer: string | null;
+  plan_id: string | null;
+  plan_name: string;
+  subscription_status: string | null;
   location_count: number;
   order_count: number;
   revenue: number;
   trial_status: OrgTrialStatus;
+  denis_turns_24h: number;
+  credit_balance: number;
+  low_balance: boolean;
+  denis_enabled: boolean;
 };
 
 export function orgComplianceStatus(org: {
@@ -36,7 +45,7 @@ export function orgComplianceStatus(org: {
   return "partial";
 }
 
-function orgTrialStatus(org: {
+export function orgTrialStatus(org: {
   onboarding_completed: boolean;
   trial_ends_at: string | null;
 }): OrgTrialStatus {
@@ -128,19 +137,34 @@ export async function loadPlatformOverview() {
 export async function loadPlatformOrgs(filter?: OrgTrialStatus, search?: string) {
   const admin = createAdminClient();
 
-  const [{ data: orgs }, { data: locations }, { data: orders }] = await Promise.all([
-    admin
-      .from("organizations")
-      .select(
-        "id, name, slug, email, currency, stripe_onboarded, onboarding_completed, trial_ends_at, created_at, fiskaly_tss_id, steuernummer"
-      )
-      .order("created_at", { ascending: false }),
-    admin.from("locations").select("id, org_id").eq("is_active", true),
-    admin
-      .from("orders")
-      .select("id, total, payment_status, location_id")
-      .eq("payment_status", "paid"),
-  ]);
+  const [{ data: orgs }, { data: locations }, { data: orders }, { data: opsRows }, plans] =
+    await Promise.all([
+      admin
+        .from("organizations")
+        .select(
+          "id, name, slug, email, currency, stripe_onboarded, onboarding_completed, trial_ends_at, created_at, fiskaly_tss_id, steuernummer, plan_id, subscription_status, feature_flags"
+        )
+        .order("created_at", { ascending: false }),
+      admin.from("locations").select("id, org_id").eq("is_active", true),
+      admin
+        .from("orders")
+        .select("id, total, payment_status, location_id")
+        .eq("payment_status", "paid"),
+      admin
+        .from("org_ai_ops")
+        .select("org_id, turns_24h, credit_balance, low_balance"),
+      loadActivePlans(),
+    ]);
+
+  const planNames = new Map(plans.map((plan) => [plan.id, plan.name]));
+  const opsByOrg = new Map(
+    ((opsRows ?? []) as Array<{
+      org_id: string;
+      turns_24h: number;
+      credit_balance: number;
+      low_balance: boolean;
+    }>).map((row) => [row.org_id, row])
+  );
 
   const locByOrg = new Map<string, number>();
   for (const loc of locations ?? []) {
@@ -168,16 +192,29 @@ export async function loadPlatformOrgs(filter?: OrgTrialStatus, search?: string)
   }
 
   let rows: PlatformOrgRow[] = (orgs ?? []).map((org) => {
-    const o = org as PlatformOrgRow;
+    const o = org as PlatformOrgRow & {
+      plan_id: string | null;
+      subscription_status: string | null;
+      feature_flags: import("@/types/database").Json;
+    };
     const stats = statsByOrg.get(o.id) ?? { orders: 0, revenue: 0 };
+    const ops = opsByOrg.get(o.id);
+    const planId = o.plan_id ?? "starter";
     return {
       ...o,
       fiskaly_tss_id: o.fiskaly_tss_id ?? null,
       steuernummer: o.steuernummer ?? null,
+      plan_id: o.plan_id,
+      plan_name: planNames.get(planId) ?? planId,
+      subscription_status: o.subscription_status,
       location_count: locByOrg.get(o.id) ?? 0,
       order_count: stats.orders,
       revenue: stats.revenue,
       trial_status: orgTrialStatus(o),
+      denis_turns_24h: ops?.turns_24h ?? 0,
+      credit_balance: ops?.credit_balance ?? 0,
+      low_balance: ops?.low_balance ?? false,
+      denis_enabled: hasFeature(o, "ai_concierge"),
     };
   });
 
@@ -331,15 +368,26 @@ export async function loadPlatformAnalytics() {
   const admin = createAdminClient();
   const since30 = new Date();
   since30.setDate(since30.getDate() - 30);
+  const since30Date = since30.toISOString().slice(0, 10);
 
-  const [{ data: orders }, { data: orgs }] = await Promise.all([
-    admin
-      .from("orders")
-      .select("total, payment_status, created_at, location_id")
-      .eq("payment_status", "paid")
-      .gte("created_at", since30.toISOString()),
-    admin.from("organizations").select("id, created_at"),
-  ]);
+  const [{ data: orders }, { data: orgs }, { data: experienceRows }, plans] =
+    await Promise.all([
+      admin
+        .from("orders")
+        .select("total, payment_status, created_at, location_id")
+        .eq("payment_status", "paid")
+        .gte("created_at", since30.toISOString()),
+      admin
+        .from("organizations")
+        .select("id, created_at, plan_id, subscription_status"),
+      admin
+        .from("experience_analytics_daily")
+        .select(
+          "llm_turns, upsell_revenue_total, sessions_closed, experience_score, metric_date"
+        )
+        .gte("metric_date", since30Date),
+      loadActivePlans(),
+    ]);
 
   const revenueByDay = new Map<string, number>();
   const ordersByDay = new Map<string, number>();
@@ -380,12 +428,139 @@ export async function loadPlatformAnalytics() {
   const totalOrgs = orgs?.length ?? 0;
   const churned = totalOrgs - orgIdsWithOrders.size;
 
+  const orgRows = (orgs ?? []) as Array<{ created_at: string }>;
+  const newOrgs30 = orgRows.filter(
+    (org) => new Date(org.created_at).getTime() >= since30.getTime()
+  ).length;
+
+  const signupMap = new Map<string, number>();
+  for (const org of orgRows) {
+    const day = org.created_at.slice(0, 10);
+    signupMap.set(day, (signupMap.get(day) ?? 0) + 1);
+  }
+
+  const newOrgsSeries: RevenueSeriesPoint[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    newOrgsSeries.push({
+      label: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+      revenue: signupMap.get(key) ?? 0,
+    });
+  }
+
+  let denisInteractions = 0;
+  let upsellRevenue = 0;
+  let experienceScoreSum = 0;
+  let experienceScoreCount = 0;
+
+  for (const row of experienceRows ?? []) {
+    const r = row as {
+      llm_turns: number;
+      upsell_revenue_total: number;
+      experience_score: number | null;
+    };
+    denisInteractions += r.llm_turns;
+    upsellRevenue += Number(r.upsell_revenue_total);
+    if (r.experience_score != null) {
+      experienceScoreSum += r.experience_score;
+      experienceScoreCount += 1;
+    }
+  }
+
+  const avgSessionQuality =
+    experienceScoreCount > 0
+      ? Math.round((experienceScoreSum / experienceScoreCount) * 10) / 10
+      : null;
+
+  const mrrCents = computePlatformMrr(
+    (orgs ?? []) as Array<{ plan_id: string | null; subscription_status: string | null }>,
+    plans
+  );
+
   return {
     revenueSeries,
     ordersSeries,
+    newOrgsSeries,
     totalRevenue: revenueSeries.reduce((s, p) => s + p.revenue, 0),
+    totalGmv: revenueSeries.reduce((s, p) => s + p.revenue, 0),
     totalOrders: ordersSeries.reduce((s, p) => s + p.revenue, 0),
     churned,
     activeOrgs: orgIdsWithOrders.size,
+    newOrgs30,
+    mrrCents,
+    denisInteractions,
+    upsellRevenue,
+    avgSessionQuality,
+  };
+}
+
+export async function loadPlatformOrgPerformance(orgId: string) {
+  const admin = createAdminClient();
+  const since30Date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const [{ data: ops }, { data: analyticsRows }] = await Promise.all([
+    admin
+      .from("org_ai_ops")
+      .select("credit_balance, turns_24h, lifetime_used, low_balance, timeline_events_24h")
+      .eq("org_id", orgId)
+      .maybeSingle(),
+    admin
+      .from("experience_analytics_daily")
+      .select(
+        "sessions_closed, converted_sessions, upsell_revenue_total, experience_score, llm_turns"
+      )
+      .eq("org_id", orgId)
+      .gte("metric_date", since30Date),
+  ]);
+
+  let sessions = 0;
+  let converted = 0;
+  let upsellRevenue = 0;
+  let llmTurns = 0;
+  let scoreSum = 0;
+  let scoreCount = 0;
+
+  for (const row of analyticsRows ?? []) {
+    const r = row as {
+      sessions_closed: number;
+      converted_sessions: number;
+      upsell_revenue_total: number;
+      experience_score: number | null;
+      llm_turns: number;
+    };
+    sessions += r.sessions_closed;
+    converted += r.converted_sessions;
+    upsellRevenue += Number(r.upsell_revenue_total);
+    llmTurns += r.llm_turns;
+    if (r.experience_score != null) {
+      scoreSum += r.experience_score;
+      scoreCount += 1;
+    }
+  }
+
+  const opsRow = ops as {
+    credit_balance?: number;
+    turns_24h?: number;
+    lifetime_used?: number;
+    low_balance?: boolean;
+    timeline_events_24h?: number;
+  } | null;
+
+  return {
+    creditBalance: opsRow?.credit_balance ?? 0,
+    turns24h: opsRow?.turns_24h ?? 0,
+    lifetimeUsed: opsRow?.lifetime_used ?? 0,
+    lowBalance: opsRow?.low_balance ?? false,
+    timelineEvents24h: opsRow?.timeline_events_24h ?? 0,
+    sessions30d: sessions,
+    conversionRate: sessions > 0 ? Math.round((converted / sessions) * 1000) / 10 : 0,
+    upsellRevenue30d: upsellRevenue,
+    llmTurns30d: llmTurns,
+    avgExperienceScore:
+      scoreCount > 0 ? Math.round((scoreSum / scoreCount) * 10) / 10 : null,
   };
 }

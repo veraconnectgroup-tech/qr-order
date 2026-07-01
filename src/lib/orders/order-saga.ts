@@ -9,7 +9,7 @@ import { enqueueOutboxEvents } from "@/lib/outbox/enqueue-events";
 import { loadOrderOutboxContext } from "@/lib/outbox/load-outbox-context";
 import type { OutboxInsert } from "@/lib/outbox/types";
 import { logger } from "@/lib/logger";
-import { traceMetadata } from "@/lib/resilience/trace";
+import { traceMetadata } from "@/lib/resilience/trace.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/client";
 

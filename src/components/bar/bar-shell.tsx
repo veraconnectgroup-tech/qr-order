@@ -7,7 +7,9 @@ import {
   type DashboardContextValue,
 } from "@/components/dashboard/dashboard-provider";
 import { DashboardAlertsProvider } from "@/hooks/use-dashboard-alerts";
+import { StaffNotificationsProvider } from "@/hooks/use-staff-notifications";
 import { SoundAlertProvider } from "@/hooks/use-sound-alert";
+import { StaffNotificationsBell } from "@/components/dashboard/staff-notifications-bell";
 
 type Props = {
   context: DashboardContextValue;
@@ -44,9 +46,11 @@ function ConnectionDot({
 function BarStatusBar({
   locationName,
   staffName,
+  showDenisAlerts,
 }: {
   locationName: string;
   staffName: string;
+  showDenisAlerts?: boolean;
 }) {
   const { status } = useConnectionStatus();
 
@@ -57,6 +61,7 @@ function BarStatusBar({
         <p className="truncate text-[11px] text-dash-text-muted">{locationName}</p>
       </div>
       <div className="flex items-center gap-1.5 px-2">
+        {showDenisAlerts ? <StaffNotificationsBell compact /> : null}
         <ConnectionDot status={status} />
         <span className="text-[10px] capitalize text-dash-text-muted">
           {status}
@@ -72,20 +77,33 @@ function BarStatusBar({
   );
 }
 
+function BarFrame({ context, children }: Props) {
+  return (
+    <div className="dashboard-theme flex min-h-dvh flex-col overflow-x-hidden bg-background text-foreground">
+      <BarStatusBar
+        locationName={context.locationName}
+        staffName={context.staffName}
+        showDenisAlerts={context.aiConciergeEnabled}
+      />
+      <main className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+        {children}
+      </main>
+    </div>
+  );
+}
+
 export function BarShell({ context, children }: Props) {
+  const frame = <BarFrame context={context}>{children}</BarFrame>;
+
   return (
     <DashboardProvider value={context}>
       <SoundAlertProvider>
         <DashboardAlertsProvider variant="waiter">
-          <div className="dashboard-theme flex min-h-dvh flex-col overflow-x-hidden bg-background text-foreground">
-            <BarStatusBar
-              locationName={context.locationName}
-              staffName={context.staffName}
-            />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
-              {children}
-            </main>
-          </div>
+          {context.aiConciergeEnabled ? (
+            <StaffNotificationsProvider>{frame}</StaffNotificationsProvider>
+          ) : (
+            frame
+          )}
         </DashboardAlertsProvider>
       </SoundAlertProvider>
     </DashboardProvider>

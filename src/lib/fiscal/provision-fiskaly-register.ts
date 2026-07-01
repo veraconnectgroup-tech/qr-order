@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFiskalyClient, isFiskalyConfigured } from "@/lib/fiscal/fiskaly";
+import { ensureKassenmeldungForRegister } from "@/lib/fiscal/kassenmeldung";
 import { provisionFiskalyTss } from "@/lib/fiscal/provision-tss";
 
 function sanitizeClientSerialNumber(slug: string, locationId: string): string {
@@ -138,6 +139,14 @@ export async function provisionFiskalyRegisterForLocation(
     fiskaly_client_id: string;
     kassen_id: string;
   };
+
+  await ensureKassenmeldungForRegister(admin, {
+    orgId: organizationId,
+    locationId,
+    registerId: row.id,
+    kassenId: row.kassen_id,
+    inbetriebnahmeAt: new Date().toISOString(),
+  });
 
   return {
     registerId: row.id,

@@ -1,6 +1,7 @@
 import { getCircuitBreakerStatus } from "@/lib/resilience/circuit-breaker";
 import { getRedisClient } from "@/lib/redis/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { HealthSummary } from "@/lib/degradation/status";
 
 const DB_TIMEOUT_MS = 3000;
 
@@ -172,19 +173,12 @@ export async function checkDatabaseWrite(): Promise<WriteCheck> {
 
   try {
     const admin = createAdminClient();
-    type HealthAdmin = {
-      from: (table: string) => {
-        insert: (row: Record<string, never>) => {
-          select: (cols: string) => {
-            single: () => PromiseLike<{ data: { id: string } | null; error: unknown }>;
-          };
-        };
-        delete: () => { eq: (col: string, val: string) => PromiseLike<{ error: unknown }> };
-      };
-    };
-    const healthAdmin = admin as unknown as HealthAdmin;
     const { data, error: insertError } = await withTimeout(
-      healthAdmin.from("health_check").insert({}).select("id").single(),
+      admin
+        .from("health_check" as never)
+        .insert({} as never)
+        .select("id")
+        .single(),
       DB_TIMEOUT_MS
     );
 
@@ -193,8 +187,8 @@ export async function checkDatabaseWrite(): Promise<WriteCheck> {
     }
 
     const row = data as { id: string };
-    const { error: deleteError } = await healthAdmin
-      .from("health_check")
+    const { error: deleteError } = await admin
+      .from("health_check" as never)
       .delete()
       .eq("id", row.id);
 
@@ -225,8 +219,15 @@ export function resolveHealthStatus(
 
 export async function runHealthChecks(options?: {
   includeWriteTest?: boolean;
-}): Promise<HealthPayload> {
-  const [database, redis] = await Promise.all([checkDatabase(), checkRedis()]);
+}): Promise<HealthPayload & { circuits?: HealthSummary["circuits"] }> {
+  const [database, redis, stripeCircuit, fiskalyCircuit, openaiCircuit] =
+    await Promise.all([
+      checkDatabase(),
+      checkRedis(),
+      getCircuitBreakerStatus("stripe"),
+      getCircuitBreakerStatus("fiskaly"),
+      getCircuitBreakerStatus("openai"),
+    ]);
   const stripe = checkStripe();
 
   const checks: HealthChecks = { database, redis, stripe };
@@ -240,6 +241,11 @@ export async function runHealthChecks(options?: {
     timestamp: new Date().toISOString(),
     checks,
     uptime_seconds: process.uptime(),
+    circuits: {
+      stripe: stripeCircuit.circuit,
+      fiskaly: fiskalyCircuit.circuit,
+      openai: openaiCircuit.circuit,
+    },
     ...(write_test ? { write_test } : {}),
   };
 }

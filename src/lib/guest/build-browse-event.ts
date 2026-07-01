@@ -17,6 +17,8 @@ export function buildBrowseEvent(input: {
   categoryLabel?: string;
   menuSection?: MenuSection | null;
   dwellMs?: number;
+  unitPrice?: number;
+  lineTotal?: number;
   now?: Date;
 }): BrowseEvent {
   const menuSection = toBrowseMenuSection(input.menuSection);
@@ -33,6 +35,8 @@ export function buildBrowseEvent(input: {
     categoryPath,
     menuSection,
     dwellMs: input.dwellMs,
+    unitPrice: input.unitPrice,
+    lineTotal: input.lineTotal,
     timestamp: (input.now ?? new Date()).toISOString(),
   };
 }

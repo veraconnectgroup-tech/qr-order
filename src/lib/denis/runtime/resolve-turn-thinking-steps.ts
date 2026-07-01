@@ -2,6 +2,14 @@ import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
+export const MAX_TURN_THINKING_STEPS = 2;
+
+export function capTurnThinkingStepKeys(
+  keys: TranslationKey[]
+): TranslationKey[] {
+  return keys.slice(0, MAX_TURN_THINKING_STEPS);
+}
+
 const STATUS_REASONS = [
   "commerce.status.open_order",
   "commerce.status.no_open_order",
@@ -48,80 +56,117 @@ export function resolveTurnThinkingStepKeys(
   reflexTurn?: Pick<ReflexTurnResult, "handoffCommand"> | null
 ): TranslationKey[] {
   const handoffType = reflexTurn?.handoffCommand?.type;
-  if (handoffType === "WAITER.REQUEST") return ["ai.chat.thinking.waiter"];
+  if (handoffType === "WAITER.REQUEST") {
+    return capTurnThinkingStepKeys(["ai.chat.thinking.waiter"]);
+  }
   if (
     handoffType === "BILL.REQUEST" ||
     handoffType === "BILL.SET_METHOD"
   ) {
-    return ["ai.chat.thinking.payment"];
+    return capTurnThinkingStepKeys(["ai.chat.thinking.payment"]);
   }
 
   const reason = turnPlan.reason;
 
   if (reasonMatches(STATUS_REASONS, reason)) {
-    return ["ai.chat.thinking.status"];
+    return capTurnThinkingStepKeys(["ai.chat.thinking.status"]);
   }
 
   if (reasonMatches(SETTLING_REASONS, reason)) {
-    return ["ai.chat.thinking.settling"];
+    return capTurnThinkingStepKeys(["ai.chat.thinking.settling"]);
   }
 
   if (reasonMatches(CLARIFY_REASONS, reason)) {
-    return ["ai.chat.thinking.clarify", "ai.chat.thinking.order"];
+    return capTurnThinkingStepKeys([
+      "ai.chat.thinking.clarify",
+      "ai.chat.thinking.order",
+    ]);
   }
 
   if (reasonMatches(CART_REASONS, reason)) {
-    return turnPlan.requiresLlm
-      ? ["ai.chat.thinking.cart", "ai.chat.thinking.confirm", "ai.chat.thinking.llm"]
-      : ["ai.chat.thinking.cart", "ai.chat.thinking.confirm"];
+    return capTurnThinkingStepKeys(
+      turnPlan.requiresLlm
+        ? [
+            "ai.chat.thinking.cart",
+            "ai.chat.thinking.confirm",
+            "ai.chat.thinking.llm",
+          ]
+        : ["ai.chat.thinking.cart", "ai.chat.thinking.confirm"]
+    );
   }
 
   if (reason === "vague_recommend") {
-    return [
+    return capTurnThinkingStepKeys([
       "ai.chat.thinking.menu",
       "ai.chat.thinking.recommend",
       "ai.chat.thinking.llm",
-    ];
+    ]);
   }
 
   if (reason === "conversation.pure_social") {
-    return ["ai.chat.thinking.social", "ai.chat.thinking.llm"];
+    return capTurnThinkingStepKeys([
+      "ai.chat.thinking.social",
+      "ai.chat.thinking.llm",
+    ]);
   }
 
   if (reason === "conversation.continue_thread") {
-    return ["ai.chat.thinking.social", "ai.chat.thinking.llm"];
+    return capTurnThinkingStepKeys([
+      "ai.chat.thinking.social",
+      "ai.chat.thinking.llm",
+    ]);
   }
 
   if (reason === "conversation.guest_pause") {
-    return ["ai.chat.thinking.pause", "ai.chat.thinking.social"];
+    return capTurnThinkingStepKeys(["ai.chat.thinking.pause"]);
   }
 
   if (reason === "committed_facts") {
-    return ["ai.chat.thinking.facts", "ai.chat.thinking.llm"];
+    return capTurnThinkingStepKeys([
+      "ai.chat.thinking.facts",
+      "ai.chat.thinking.llm",
+    ]);
   }
 
   if (reasonMatches(T0_REASONS, reason)) {
-    return ["ai.chat.thinking.quick"];
+    return capTurnThinkingStepKeys(["ai.chat.thinking.quick"]);
   }
 
   switch (turnPlan.kind) {
     case "reflex_only":
-      return ["ai.chat.thinking.quick"];
+      return capTurnThinkingStepKeys(["ai.chat.thinking.quick"]);
     case "template_tell":
-      return ["ai.chat.thinking.answer"];
+      return capTurnThinkingStepKeys(["ai.chat.thinking.answer"]);
     case "slot_extract":
-      return ["ai.chat.thinking.menu", "ai.chat.thinking.order"];
+      return capTurnThinkingStepKeys([
+        "ai.chat.thinking.menu",
+        "ai.chat.thinking.order",
+      ]);
     case "transactional_perceive":
-      return turnPlan.requiresLlm
-        ? ["ai.chat.thinking.cart", "ai.chat.thinking.order", "ai.chat.thinking.llm"]
-        : ["ai.chat.thinking.cart", "ai.chat.thinking.order"];
+      return capTurnThinkingStepKeys(
+        turnPlan.requiresLlm
+          ? [
+              "ai.chat.thinking.cart",
+              "ai.chat.thinking.order",
+              "ai.chat.thinking.llm",
+            ]
+          : ["ai.chat.thinking.cart", "ai.chat.thinking.order"]
+      );
     case "relational_perceive":
-      return turnPlan.requiresLlm
-        ? ["ai.chat.thinking.social", "ai.chat.thinking.llm"]
-        : ["ai.chat.thinking.social"];
+      return capTurnThinkingStepKeys(
+        turnPlan.requiresLlm
+          ? ["ai.chat.thinking.social", "ai.chat.thinking.llm"]
+          : ["ai.chat.thinking.social"]
+      );
     case "narrate_paraphrase":
-      return ["ai.chat.thinking.facts", "ai.chat.thinking.llm"];
+      return capTurnThinkingStepKeys([
+        "ai.chat.thinking.facts",
+        "ai.chat.thinking.llm",
+      ]);
     default:
-      return ["ai.chat.thinking.menu", "ai.chat.thinking.recommend"];
+      return capTurnThinkingStepKeys([
+        "ai.chat.thinking.menu",
+        "ai.chat.thinking.recommend",
+      ]);
   }
 }

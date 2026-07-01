@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyPosBroadcastEvent,
   createProvisionalMap,
@@ -7,6 +7,10 @@ import {
 } from "@/lib/pos/provisional-merge";
 import { PROVISIONAL_KITCHEN_TIMEOUT_MS } from "@/lib/pos/provisional-types";
 import type { ProvisionalOrderPayload } from "@/lib/pos/provisional-types";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const basePayload = (
   overrides: Partial<ProvisionalOrderPayload> = {}

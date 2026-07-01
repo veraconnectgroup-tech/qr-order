@@ -2,19 +2,29 @@
 
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
+import {
+  LandingLocaleSwitcher,
+  useLandingCopy,
+} from "@/components/landing/landing-locale-provider";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
-  { href: "#features-guest", label: "Platform", sectionId: "features-guest" },
-  { href: "/enterprise", label: "Enterprise", sectionId: null },
-  { href: "#pricing", label: "Pricing", sectionId: "pricing" },
-];
-
 export function LandingNav() {
+  const { copy } = useLandingCopy();
+  const { nav } = copy;
+  const navLinks = useMemo(
+    () => [
+      { href: "#features-guest", label: nav.platform, sectionId: "features-guest" },
+      { href: "#enterprise", label: nav.enterprise, sectionId: "enterprise" },
+      { href: "#pricing", label: nav.pricing, sectionId: "pricing" },
+      { href: "#faq", label: nav.faq, sectionId: "faq" },
+    ],
+    [nav]
+  );
+
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -49,7 +59,7 @@ export function LandingNav() {
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [navLinks]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -68,12 +78,12 @@ export function LandingNav() {
             : "border-transparent bg-transparent"
         )}
       >
-        <LandingContainer wide className="flex h-14 items-center justify-between">
+        <LandingContainer wide className="flex h-14 items-center justify-between gap-4">
           <Link href="/" className="inline-flex shrink-0">
             <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
           </Link>
 
-          <nav className="hidden items-center gap-8 lg:flex">
+          <nav className="hidden items-center gap-6 lg:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -88,6 +98,7 @@ export function LandingNav() {
                 {link.label}
               </Link>
             ))}
+            <LandingLocaleSwitcher />
           </nav>
 
           <div className="flex items-center gap-2">
@@ -97,14 +108,14 @@ export function LandingNav() {
               asChild
               className="hidden h-8 px-3 text-[13px] font-medium text-zinc-400 hover:bg-white/5 hover:text-white sm:inline-flex"
             >
-              <Link href="/login">Sign in</Link>
+              <Link href="/login">{nav.signIn}</Link>
             </Button>
             <Button
               size="sm"
               asChild
               className="hidden h-8 rounded-full bg-[var(--qr-ember)] px-4 text-[13px] font-semibold text-white hover:bg-[var(--qr-ember-hover)] sm:inline-flex"
             >
-              <Link href="/signup">Get started</Link>
+              <Link href="/signup">{nav.cta}</Link>
             </Button>
             <button
               type="button"
@@ -127,7 +138,7 @@ export function LandingNav() {
             </button>
           </div>
           <nav className="flex flex-col gap-1 px-6 py-6">
-            {[...navLinks, { href: "/login", label: "Sign in", sectionId: null }].map(
+            {[...navLinks, { href: "/login", label: nav.signIn, sectionId: null }].map(
               (link) => (
                 <Link
                   key={link.href}
@@ -140,13 +151,16 @@ export function LandingNav() {
               )
             )}
           </nav>
+          <div className="px-6 pb-4">
+            <LandingLocaleSwitcher />
+          </div>
           <div className="px-6">
             <Button
               asChild
               className="h-11 w-full rounded-full bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
             >
               <Link href="/signup" onClick={() => setOpen(false)}>
-                Get started
+                {nav.cta}
               </Link>
             </Button>
           </div>

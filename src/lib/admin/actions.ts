@@ -281,14 +281,34 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function toggleProductAvailability(id: string, available: boolean) {
-  await requireAdmin();
+  const staff = await requireAdmin();
   const supabase = await createServerClient();
+
+  const { data: existing } = await supabase
+    .from("products")
+    .select("id, name, is_available, location_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("products")
     .update({ is_available: available })
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  if (existing) {
+    await auditLog({
+      orgId: staff.org_id,
+      userId: staff.user_id,
+      action: "update",
+      entityType: "product",
+      entityId: id,
+      oldValue: { is_available: (existing as { is_available: boolean }).is_available },
+      newValue: { is_available: available },
+    });
+  }
+
   revalidatePath("/admin/menu");
   return { success: true };
 }

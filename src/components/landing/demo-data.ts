@@ -54,6 +54,8 @@ function demoProduct(
     price,
     image_url: media?.imageUrl ?? null,
     is_available: true,
+    track_stock: false,
+    stock_quantity: null,
     sort_order: 0,
     prep_time_minutes: prepTime ?? null,
     allergens: media?.allergens ?? null,

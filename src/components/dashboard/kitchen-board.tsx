@@ -6,33 +6,32 @@ import { ChefHat } from "lucide-react";
 import { toast } from "sonner";
 import { formatOrderNumber } from "@/lib/format";
 import {
-  getKitchenOrderItems,
-} from "@/lib/kitchen/menu-section";
+  buildKdsFulfillmentLabel,
+  orderModeFromLegacy,
+} from "@/lib/denis/commerce/delivery-mode";
+import { getKitchenOrderItems } from "@/lib/kitchen/menu-section";
 import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { patchOrderStatus } from "@/lib/orders/patch-order-status";
 import { useKitchenOrders } from "@/hooks/use-kitchen-orders";
 import {
-  isProvisionalKdsOrder,
-  type ProvisionalKdsOrder,
-} from "@/lib/pos/provisional-display";
+  coursePacingHoldMinutesRemaining,
+  extractKitchenAllergyBanner,
+  isOrderHeldForCoursePacing,
+  kdsUrgencyBorderClass,
+  kdsUrgencyForOrder,
+  kdsUrgencyTimerClass,
+} from "@/lib/kitchen/kds-intelligence";
+import { isProvisionalKdsOrder } from "@/lib/pos/provisional-display";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
 import { KitchenHeader } from "@/components/dashboard/kitchen-header";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { OrderWithDetails } from "@/types";
-
-function kitchenTimerStyles(minutes: number, light = false) {
-  if (minutes >= 10) {
-    return light ? "text-red-600" : "text-red-400";
-  }
-  if (minutes >= 5) {
-    return light ? "text-amber-600" : "text-amber-400";
-  }
-  return light ? "text-emerald-600" : "text-emerald-400";
-}
+import type { ProvisionalKdsOrder } from "@/lib/pos/provisional-display";
 
 function formatKitchenTimer(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -55,6 +54,7 @@ export function KitchenCard({
   onReject,
   busy,
   appearance = "default",
+  sessionOrders = [],
 }: {
   order: OrderWithDetails | ProvisionalKdsOrder;
   onStartPreparing: () => void;
@@ -62,17 +62,37 @@ export function KitchenCard({
   onReject: () => void;
   busy: boolean;
   appearance?: "default" | "light";
+  sessionOrders?: OrderWithDetails[];
 }) {
   const light = appearance === "light";
   const isProvisional = isProvisionalKdsOrder(order);
   const [, tick] = useState(0);
   const tableName = order.tables?.name ?? "—";
-  const since = order.created_at;
-  const seconds = Math.floor(
-    (Date.now() - new Date(since).getTime()) / 1000
-  );
-  const minutes = Math.floor(seconds / 60);
-  const timerClass = kitchenTimerStyles(minutes, light);
+  const fulfillmentLabel = !isProvisional
+    ? buildKdsFulfillmentLabel(
+        orderModeFromLegacy(Boolean((order as { is_takeaway?: boolean }).is_takeaway))
+      )
+    : null;
+  const urgency = isProvisional ? "green" : kdsUrgencyForOrder(order as OrderWithDetails);
+  const elapsedSeconds = isProvisional
+    ? 0
+    : Math.floor(
+        (Date.now() - new Date(
+          (order as OrderWithDetails).preparing_at ??
+            (order as OrderWithDetails).accepted_at ??
+            order.created_at
+        ).getTime()) / 1000
+      );
+  const timerClass = kdsUrgencyTimerClass(urgency, light);
+  const allergyBanner = isProvisional
+    ? null
+    : extractKitchenAllergyBanner(order as OrderWithDetails);
+  const courseHeld = isProvisional
+    ? false
+    : isOrderHeldForCoursePacing(order as OrderWithDetails, sessionOrders);
+  const courseHoldMinutes = courseHeld
+    ? coursePacingHoldMinutesRemaining(order as OrderWithDetails, sessionOrders)
+    : null;
   const isAccepted = !isProvisional && order.status === "accepted";
   const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
 
@@ -96,11 +116,25 @@ export function KitchenCard({
           ? order.provisionalConflictReason
             ? "border-red-500"
             : "border-orange-500"
-          : isAccepted
-            ? "border-orange-500"
-            : "border-blue-500"
+          : courseHeld
+            ? "border-violet-500/80"
+            : kdsUrgencyBorderClass(urgency)
       )}
     >
+      {allergyBanner && (
+        <div
+          className="mb-3 rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-center text-sm font-bold uppercase tracking-wide text-white"
+        >
+          {allergyBanner.headline}
+          {allergyBanner.detail ? ` — ${allergyBanner.detail}` : ""}
+        </div>
+      )}
+
+      {courseHeld && courseHoldMinutes != null && (
+        <div className="mb-3 rounded-lg border border-violet-500/50 bg-violet-500/10 px-3 py-2 text-center text-sm font-semibold text-violet-300">
+          Course pacing — glavno jelo za ~{courseHoldMinutes} min
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         {isProvisional ? (
           <div>
@@ -132,6 +166,16 @@ export function KitchenCard({
           </p>
         )}
         <div className="flex flex-col items-end gap-1">
+          {fulfillmentLabel ? (
+            <span
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide",
+                light ? "bg-amber-100 text-amber-800" : "bg-amber-500/20 text-amber-300"
+              )}
+            >
+              {fulfillmentLabel}
+            </span>
+          ) : null}
           <span
             className={cn(
               "rounded-full px-3 py-1 text-sm",
@@ -146,7 +190,7 @@ export function KitchenCard({
               timerClass
             )}
           >
-            {formatKitchenTimer(seconds)}
+            {formatKitchenTimer(elapsedSeconds)}
           </span>
         </div>
       </div>
@@ -221,6 +265,8 @@ export function KitchenBoard() {
   const { locationId } = useDashboard();
   const {
     orders,
+    kitchenOrders,
+    prepBatches,
     loading,
     error,
     refetch,
@@ -231,6 +277,7 @@ export function KitchenBoard() {
   const seenIdsRef = useRef<Set<string>>(new Set());
   const seenProvisionalRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+  const criticalIdsRef = useRef<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<OrderWithDetails | null>(
     null
@@ -273,6 +320,17 @@ export function KitchenBoard() {
     );
   }, [orders, loading, play]);
 
+  useEffect(() => {
+    if (loading) return;
+    for (const order of kitchenOrders) {
+      const urgency = kdsUrgencyForOrder(order);
+      if (urgency === "red" && !criticalIdsRef.current.has(order.id)) {
+        criticalIdsRef.current.add(order.id);
+        play("kitchen-critical");
+      }
+    }
+  }, [kitchenOrders, loading, play]);
+
   const updateStatus = useCallback(
     async (
       order: OrderWithDetails | ProvisionalKdsOrder,
@@ -297,6 +355,10 @@ export function KitchenBoard() {
   return (
     <div className="flex min-h-screen flex-col">
       <KitchenHeader orders={orders} realtimeMode={realtimeMode} />
+
+      <div className="empty:hidden px-4 pt-3">
+        <DenisQuestionStrip locationId={locationId} station="kitchen" />
+      </div>
 
       {provisionalSyncFailedCount > 0 && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-300">
@@ -333,12 +395,30 @@ export function KitchenBoard() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4">
+          {prepBatches.length > 0 && (
+            <div className="mb-4 rounded-xl border border-zinc-700 bg-zinc-900/80 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Denis prep batch
+              </p>
+              <ul className="mt-2 space-y-1">
+                {prepBatches.map((batch) => (
+                  <li
+                    key={batch.productName}
+                    className="text-sm font-medium text-orange-300"
+                  >
+                    {batch.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence mode="popLayout">
               {orders.map((order) => (
                 <KitchenCard
                   key={order.id}
                   order={order}
+                  sessionOrders={kitchenOrders}
                   busy={busyId === order.id}
                   onStartPreparing={() => updateStatus(order, "preparing")}
                   onMarkReady={() => updateStatus(order, "ready")}

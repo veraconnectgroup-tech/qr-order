@@ -1,12 +1,13 @@
 import { formatOrderNumber } from "@/lib/format";
 import { logger } from "@/lib/logger";
-import { notifyLocationPush } from "@/lib/push/notify-location";
+import { scheduleNewOrderPush } from "@/lib/push/schedule-notify";
 
 export type NotifyStaffPayload = {
   orderId?: string;
   locationId?: string;
   orderNumber?: number;
   tableName?: string;
+  assignedStaffId?: string | null;
 };
 
 export async function handleFulfillNotifyStaff(
@@ -21,16 +22,16 @@ export async function handleFulfillNotifyStaff(
     throw new Error("fulfill.notify_staff missing locationId or orderNumber");
   }
 
-  const result = await notifyLocationPush(locationId, {
-    title: `New order ${formatOrderNumber(orderNumber)}`,
-    body: `Table ${tableName}`,
-    url: "/waiter/orders",
+  scheduleNewOrderPush({
+    locationId,
+    orderNumber,
+    tableName,
+    assignedStaffId: data.assignedStaffId,
   });
 
   logger.info("Outbox fulfill.notify_staff delivered", {
     orderId: data.orderId,
     locationId,
     orderNumber,
-    ...result,
   });
 }

@@ -4,6 +4,8 @@ import {
   isCasualSocialGuestMessage,
   isDenisRefusalReply,
   leadershipFallbackReply,
+  orderingContinueReply,
+  politeReengageReply,
 } from "@/lib/ai/conversation-leadership";
 
 describe("conversation leadership", () => {
@@ -47,7 +49,7 @@ describe("conversation leadership", () => {
     expect(isCasualSocialGuestMessage("Pilsner molim")).toBe(false);
   });
 
-  it("rewrites refusal to leadership reply in Serbian", () => {
+  it("rewrites refusal to polite re-engage in Serbian (no welcome reset)", () => {
     const out = applyConversationLeadership(
       {
         intent: "clarify",
@@ -64,11 +66,12 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("chat");
-    expect(out.message).toMatch(/Dobar dan|Tu sam|mogu pomoći|piće|jelo/i);
+    expect(out.message).toMatch(/Tu sam|mogu pomoći|želeli/i);
+    expect(out.message).not.toMatch(/dobrodošli|Dobar dan i/i);
     expect(isDenisRefusalReply(out.message)).toBe(false);
   });
 
-  it("rewrites Serbian ne razumem to leadership banter", () => {
+  it("rewrites Serbian ne razumem to polite re-engage without welcome", () => {
     const out = applyConversationLeadership(
       {
         intent: "clarify",
@@ -84,11 +87,12 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("chat");
-    expect(out.message).toMatch(/Dobar dan|Tu sam|mogu pomoći|piće|jelo/i);
+    expect(out.message).toBe(politeReengageReply("sr"));
+    expect(out.message).not.toMatch(/dobrodošli|Dobar dan i/i);
     expect(isDenisRefusalReply(out.message)).toBe(false);
   });
 
-  it("rewrites misclassified social clarify when not in ordering context", () => {
+  it("preserves LLM clarify for casual social messages (ADR-025)", () => {
     const out = applyConversationLeadership(
       {
         intent: "clarify",
@@ -103,11 +107,86 @@ describe("conversation leadership", () => {
         guestMessage: "Denis legendo gde si",
       }
     );
-    expect(out.intent).toBe("chat");
-    expect(out.message).toMatch(/Dobar dan|Tu sam|mogu pomoći|piće|jelo/i);
+    expect(out.intent).toBe("clarify");
+    expect(out.message).toBe("Could you repeat that?");
   });
 
-  it("preserves clarify during ordering flow (ADR-030)", () => {
+  it("preserves normal ordering LLM reply without leadership rewrite", () => {
+    const structured = {
+      intent: "order" as const,
+      message: "Odlično — dodajem Pilsner 0,5L u porudžbinu.",
+      recommendations: [],
+      proposedItems: [
+        {
+          productId: "p-pils",
+          quantity: 1,
+          modifierIds: [],
+          serveSize: "0.5L",
+          notes: "",
+        },
+      ],
+      quickReplies: [],
+      submitOrder: false,
+    };
+    const out = applyConversationLeadership(structured, {
+      language: "sr",
+      guestMessage: "Pilsner 0.5",
+      context: { inOrderingFlow: true, conversationMode: "ordering" },
+    });
+    expect(out).toEqual(structured);
+  });
+
+  it("uses ordering continue reply for refusal during commerce pressure", () => {
+    const out = applyConversationLeadership(
+      {
+        intent: "clarify",
+        message: "Izvinite, ne razumem šta želite.",
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+      },
+      {
+        language: "sr",
+        guestMessage: "Daj mi sok",
+        context: {
+          conversationMode: "ordering",
+          inOrderingFlow: true,
+          commercePressure: "open",
+        },
+      }
+    );
+    expect(out.intent).toBe("clarify");
+    expect(out.message).toBe(orderingContinueReply("sr"));
+    expect(out.message).toMatch(/nastavimo|šta želite/i);
+    expect(out.message).not.toMatch(/dobrodošli|Dobar dan i/i);
+  });
+
+  it("uses German ordering continue for refusal with awaiting context", () => {
+    const out = applyConversationLeadership(
+      {
+        intent: "confirm",
+        message: "Entschuldigung, ich verstehe nicht.",
+        recommendations: [],
+        proposedItems: [],
+        quickReplies: [],
+        submitOrder: false,
+      },
+      {
+        language: "de",
+        guestMessage: "ja",
+        context: {
+          awaitingAnswer: true,
+          commercePressure: "confirm",
+        },
+      }
+    );
+    expect(out.intent).toBe("confirm");
+    expect(out.message).toBe(orderingContinueReply("de"));
+    expect(out.message).toMatch(/weitermachen|bestellen/i);
+  });
+
+  it("preserves clarify during ordering flow when LLM did not refuse (ADR-030)", () => {
     const out = applyConversationLeadership(
       {
         intent: "clarify",
@@ -132,8 +211,9 @@ describe("conversation leadership", () => {
     expect(out.message).not.toMatch(/^Dobar dan/i);
   });
 
-  it("provides German leadership fallback", () => {
-    expect(leadershipFallbackReply("de")).toMatch(/Guten Tag|Ihnen helfen/i);
+  it("provides German leadership fallback without willkommen reset", () => {
+    expect(leadershipFallbackReply("de")).toMatch(/Ihnen helfen/i);
+    expect(leadershipFallbackReply("de")).not.toMatch(/willkommen/i);
   });
 
   it("does not reset to welcome on parse fallback for add-more order line", () => {
@@ -179,7 +259,7 @@ describe("conversation leadership", () => {
         },
       }
     );
-    expect(out.message).toMatch(/dodam|potvrdite/i);
+    expect(out.message).toMatch(/nastavimo|šta želite/i);
     expect(out.message).not.toMatch(/^Dobar dan i dobrodošli/i);
   });
 
@@ -203,8 +283,7 @@ describe("conversation leadership", () => {
       }
     );
     expect(out.intent).toBe("clarify");
-    expect(out.message).toMatch(/Weizen|Razumem|pomoći/i);
-    expect(out.message).not.toMatch(/nastavljam porudžbinu/i);
+    expect(out.message).toMatch(/nastavimo|šta želite/i);
     expect(out.message).not.toMatch(/^Dobar dan i dobrodošli/i);
   });
 });

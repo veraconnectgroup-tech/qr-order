@@ -11,6 +11,7 @@ import {
   backfillDraftFromOrderMessage,
   isOrderPlacementMessage,
 } from "@/lib/ai/ordering/order-message-backfill";
+import { applyGuestCartMutations, isMidOrderCartSwapMessage } from "@/lib/denis/cognition/conversation/apply-guest-cart-mutations";
 import type {
   AiOrderDraft,
   ValidatedCartAction,
@@ -137,13 +138,21 @@ export function processOrderingTurn(input: {
   if (
     cartActions.length === 0 &&
     !draft.pending &&
-    isOrderPlacementMessage(input.userMessage)
+    (isOrderPlacementMessage(input.userMessage) ||
+      isMidOrderCartSwapMessage(input.userMessage))
   ) {
+    const mutation = applyGuestCartMutations(
+      draft,
+      input.catalog,
+      input.userMessage
+    );
+    draft = mutation.draft;
+
     const backfill = backfillDraftFromOrderMessage(
       draft,
       input.catalog,
       input.userMessage,
-      { additive: draft.items.length > 0 }
+      { additive: draft.items.length > 0 && !mutation.swapped && !mutation.removed }
     );
     draft = backfill.draft;
     cartActions = backfill.cartActions;

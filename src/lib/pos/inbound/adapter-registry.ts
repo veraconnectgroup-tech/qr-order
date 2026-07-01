@@ -9,6 +9,7 @@ const adapters: Record<string, PosInboundAdapter> = {
   deliverect: deliverectAdapter,
   orderbird: genericAdapter,
   lightspeed: genericAdapter,
+  sumup: genericAdapter,
   ready2order: genericAdapter,
   custom: genericAdapter,
 };

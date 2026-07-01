@@ -2,6 +2,7 @@ import { apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { isOpenAiConfigured } from "@/lib/ai/config";
 import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
+import { withGuestRateLimits } from "@/lib/rate-limit";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
@@ -14,6 +15,9 @@ const statusSchema = z.object({
 
 /** Guest-facing AI availability check (configuration, flags, credits). */
 export const POST = withErrorHandler("ai-status-post", async (req, _ctx) => {
+  const limited = await withGuestRateLimits(req, "ai");
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const parsed = statusSchema.safeParse(body);
   if (!parsed.success) {

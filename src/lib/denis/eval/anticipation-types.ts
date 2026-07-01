@@ -23,6 +23,7 @@ export type AnticipationSetup = {
   pairingEnabled?: boolean;
   dessertEnabled?: boolean;
   slowKitchenEnabled?: boolean;
+  orderDelayEnabled?: boolean;
   offerEnrich?: boolean;
 };
 
@@ -45,6 +46,7 @@ export type AnticipationScenario = {
     cartItemCount?: number;
     hasDrinkInCart?: boolean;
     dismissedNudgeKeys?: string[];
+    popularityPair?: { from: string; to: string };
   };
   expect: AnticipationExpect;
 };

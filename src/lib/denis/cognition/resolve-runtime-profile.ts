@@ -18,6 +18,12 @@ import type {
   DenisRuntimeResolvedProfile,
   DenisServiceTier,
 } from "@/lib/denis/cognition/runtime-profile-types";
+import {
+  routeTurnModel,
+  type ModelEscalationRegistry,
+  type ModelRouteDecision,
+} from "@/lib/denis/cognition/tde/model-router";
+import type { BeliefGraph, TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 
 function envDefaultModel(): string {
   return AI_CONFIG.model;
@@ -107,6 +113,8 @@ export function resolveRuntimeProfile(
       effective.config.context.maxContextTokens,
       tierDefaults.maxContextTokens
     ),
+    adaptiveContext: effective.config.context.adaptiveContext,
+    minContextTokens: effective.config.context.minContextTokens,
   };
 
   return { profile, effective };
@@ -121,6 +129,30 @@ export function resolvePerceiveModel(
     return profile.models.commerce;
   }
   return mode === "social" ? profile.models.social : profile.models.commerce;
+}
+
+export type ResolveAdaptiveModelRouteInput = {
+  message: string;
+  turnPlan: TurnPlan;
+  profile: DenisRuntimeResolvedProfile;
+  perceiveMode: DenisPerceiveMode;
+  beliefs?: BeliefGraph;
+  escalation?: ModelEscalationRegistry;
+};
+
+/** Per-turn adaptive model selection (2→2). */
+export function resolveAdaptiveModelRoute(
+  input: ResolveAdaptiveModelRouteInput
+): ModelRouteDecision {
+  return routeTurnModel(input);
+}
+
+/** @deprecated Use resolveAdaptiveModelRoute — static profile fallback only. */
+export function resolvePerceiveModelLegacy(
+  profile: DenisRuntimeResolvedProfile,
+  mode: DenisPerceiveMode
+): string {
+  return resolvePerceiveModel(profile, mode);
 }
 
 /** @deprecated Use resolveRuntimeProfile */

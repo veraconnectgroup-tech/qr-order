@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Share, Smartphone } from "lucide-react";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,9 +15,12 @@ import {
   dismissGuestPrompt,
   isGuestPromptDismissed,
 } from "@/lib/pwa/dismiss";
-import { shouldShowGuestInstallPrompt } from "@/lib/pwa/install-timing";
+import {
+  GUEST_INSTALL_PROMPT_MESSAGE,
+  shouldShowGuestInstallPrompt,
+} from "@/lib/pwa/install-timing";
 import { isStandaloneMode } from "@/lib/pwa/device";
-import { useInstallPrompt } from "@/lib/pwa/use-install-prompt";
+import { useInstallPrompt } from "@/hooks/use-install-prompt";
 
 export function GuestPwaInstallSheet() {
   const { canInstall, promptInstall, isInstalled, isIos } = useInstallPrompt();
@@ -57,16 +61,13 @@ export function GuestPwaInstallSheet() {
         className="guest-theme rounded-t-2xl border-zinc-800 bg-zinc-900 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
       >
         <SheetHeader className="text-start">
-          <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-orange-500/15">
+          <div className="mb-2 flex items-center gap-2">
+            <DenisMarkBadge size="sm" />
             <Smartphone className="size-5 text-orange-400" />
           </div>
-          <SheetTitle className="text-zinc-50">
-            Add to Home Screen for easier access
-          </SheetTitle>
+          <SheetTitle className="text-zinc-50">Denis</SheetTitle>
           <SheetDescription className="text-zinc-400">
-            {isIos
-              ? "Tap Share, then Add to Home Screen for quicker menu access."
-              : "Install the app for faster ordering without the browser bar."}
+            {GUEST_INSTALL_PROMPT_MESSAGE}
           </SheetDescription>
         </SheetHeader>
 

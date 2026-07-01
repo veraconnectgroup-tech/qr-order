@@ -9,6 +9,10 @@ import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-ty
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import { productUnavailableMessage } from "@/lib/denis/runtime/act/guest-copy";
 import { buildReturnGuestWelcomeMessage } from "@/lib/guest/denis-guest-memory-messages";
+import {
+  formatPresetMenuDecline,
+  presetMenuBlockedProductNames,
+} from "@/lib/denis/venue/ops/event-mode";
 import { unavailableProductNamesInDraft } from "@/lib/denis/venue/ops/planner-effects";
 
 function uniqueNames(names: string[]): string[] {
@@ -126,8 +130,24 @@ export function buildNarrationFacts(
     }
   }
 
+  if (input.opsEffects?.presetMenuOnly && input.opsEffects.presetProductIds?.length) {
+    const offMenuNames = presetMenuBlockedProductNames({
+      draftItems: input.reflexTurn.cartState.draft.items,
+      presetMenuOnly: true,
+      presetProductIds: input.opsEffects.presetProductIds,
+    });
+    if (offMenuNames.length > 0) {
+      committed.blockedReason = formatPresetMenuDecline({
+        productName: offMenuNames[0] ?? "item",
+        language: input.language,
+      });
+      allowedMentions.push(...offMenuNames);
+    }
+  }
+
   if (
     input.guestMemory &&
+    input.guestMemory.hasMemoryConsent !== false &&
     input.flowNodeId === "welcome" &&
     topGoal === "GUEST_SEATED"
   ) {
@@ -135,6 +155,8 @@ export function buildNarrationFacts(
       language: input.language,
       lastVisitItems: input.guestMemory.lastVisitItemNames,
       visitCount: input.guestMemory.visitCount,
+      lastFeedbackSentiment: input.guestMemory.lastFeedbackSentiment,
+      memory: input.guestMemory,
     });
     if (welcome) {
       committed.returnGuestWelcome = welcome;

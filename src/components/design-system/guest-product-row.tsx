@@ -6,10 +6,14 @@ import { cn } from "@/lib/utils";
 
 export type GuestProductRowProps = {
   name: string;
+  /** Guest-language translation shown under the venue name. */
+  nameSecondary?: string | null;
   price: number;
   currency: string;
   /** Description, AI reason, or other secondary line. */
   subtitle?: string | null;
+  /** Guest-language description shown under the venue description. */
+  subtitleSecondary?: string | null;
   /** Menu list uses larger spacing; Denis recommendations use compact. */
   density?: "menu" | "default" | "compact";
   disabled?: boolean;
@@ -20,6 +24,9 @@ export type GuestProductRowProps = {
   /** Icon-only add control (Denis compact) vs text label. */
   addStyle?: "icon" | "text";
   onAdd?: () => void;
+  /** Opens product detail without nesting add control inside a second interactive. */
+  onOpenDetail?: () => void;
+  openDetailAriaLabel?: string;
   meta?: React.ReactNode;
   className?: string;
 };
@@ -30,9 +37,11 @@ export type GuestProductRowProps = {
  */
 export function GuestProductRow({
   name,
+  nameSecondary,
   price,
   currency,
   subtitle,
+  subtitleSecondary,
   density = "default",
   disabled = false,
   added = false,
@@ -41,6 +50,8 @@ export function GuestProductRow({
   addedLabel = "Added",
   addStyle = "text",
   onAdd,
+  onOpenDetail,
+  openDetailAriaLabel,
   meta,
   className,
 }: GuestProductRowProps) {
@@ -49,6 +60,64 @@ export function GuestProductRow({
     density === "menu"
       ? "text-[15px] font-medium"
       : "text-[15px] font-medium";
+
+  const nameBlock = (
+    <div className="min-w-0">
+      {density === "menu" && !onOpenDetail ? (
+        <h3 className={cn(nameClass, "text-[var(--qr-ivory)]")}>{name}</h3>
+      ) : (
+        <p className={cn(nameClass, "text-[var(--qr-ivory)]")}>{name}</p>
+      )}
+      {nameSecondary ? (
+        <p className="mt-0.5 text-sm text-[var(--qr-muted)]">{nameSecondary}</p>
+      ) : null}
+    </div>
+  );
+
+  const namePriceRow = (
+    <div className="flex items-baseline justify-between gap-4">
+      {nameBlock}
+      <span
+        className={cn(
+          "shrink-0 tabular-nums text-[var(--qr-ivory)]",
+          density === "menu" ? "text-[15px]" : "text-sm"
+        )}
+      >
+        {formatPrice(price, currency)}
+      </span>
+    </div>
+  );
+
+  const detailBody = (
+    <>
+      {namePriceRow}
+      {subtitle ? (
+        <p
+          className={cn(
+            "mt-1 text-[var(--qr-muted)]",
+            density === "menu"
+              ? "max-w-[32rem] text-sm leading-relaxed"
+              : "text-sm"
+          )}
+        >
+          {subtitle}
+        </p>
+      ) : null}
+      {subtitleSecondary ? (
+        <p
+          className={cn(
+            "mt-1 text-[var(--qr-muted)]/80",
+            density === "menu"
+              ? "max-w-[32rem] text-sm leading-relaxed italic"
+              : "text-sm italic"
+          )}
+        >
+          {subtitleSecondary}
+        </p>
+      ) : null}
+      {meta}
+    </>
+  );
 
   return (
     <div
@@ -60,36 +129,18 @@ export function GuestProductRow({
         className
       )}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-4">
-          {density === "menu" ? (
-            <h3 className={cn(nameClass, "text-[var(--qr-ivory)]")}>{name}</h3>
-          ) : (
-            <p className={cn(nameClass, "text-[var(--qr-ivory)]")}>{name}</p>
-          )}
-          <span
-            className={cn(
-              "shrink-0 tabular-nums text-[var(--qr-ivory)]",
-              density === "menu" ? "text-[15px]" : "text-sm"
-            )}
-          >
-            {formatPrice(price, currency)}
-          </span>
-        </div>
-        {subtitle ? (
-          <p
-            className={cn(
-              "mt-1 text-[var(--qr-muted)]",
-              density === "menu"
-                ? "max-w-[32rem] text-sm leading-relaxed"
-                : "text-sm"
-            )}
-          >
-            {subtitle}
-          </p>
-        ) : null}
-        {meta}
-      </div>
+      {onOpenDetail ? (
+        <button
+          type="button"
+          onClick={onOpenDetail}
+          aria-label={openDetailAriaLabel ?? `View ${name} details`}
+          className="min-w-0 flex-1 cursor-pointer text-left transition active:opacity-70"
+        >
+          {detailBody}
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1">{detailBody}</div>
+      )}
 
       {showAdd ? (
         <button

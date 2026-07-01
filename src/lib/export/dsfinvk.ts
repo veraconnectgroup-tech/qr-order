@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { formatInTimeZone } from "date-fns-tz";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { escapeCsvField } from "@/lib/security/escape";
+import { parseDsfinvkOrderRows } from "@/lib/export/parse-export-order-rows";
 import { countsTowardRevenue } from "@/lib/orders/revenue";
 import { parseDatevDateRange } from "@/lib/export/datev";
 import { lineVatBreakdown, roundMoney } from "@/lib/tax/vat";
@@ -873,7 +874,7 @@ export async function generateDsfinvkExport(
   }
 
   const timezone = locationRow.timezone || BERLIN_TZ;
-  const revenueOrders = ((orders ?? []) as unknown as DsfinvkOrderRow[]).filter(
+  const revenueOrders = parseDsfinvkOrderRows(orders).filter(
     (order) => {
       const businessDate = orderBusinessDate(order.created_at, timezone);
       if (!closingDates.has(businessDate)) return false;
@@ -926,7 +927,7 @@ export async function generateDsfinvkExport(
       throw new Error("Original storno orders could not be loaded.");
     }
 
-    for (const order of (originalOrdersRaw ?? []) as unknown as DsfinvkOrderRow[]) {
+    for (const order of parseDsfinvkOrderRows(originalOrdersRaw)) {
       originalOrdersById.set(order.id, order);
     }
   }

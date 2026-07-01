@@ -1,12 +1,14 @@
 import { buildKitchenTicketEscPos } from "@/lib/printer/format-kitchen-ticket";
 import { buildReceiptEscPos } from "@/lib/printer/format-receipt";
 import type { PaperWidth } from "@/lib/printer/escpos-builder";
+import { loadSessionAllergyLabels } from "@/lib/printer/load-session-allergies";
 import { buildProductTargetMap } from "@/lib/printer/product-targets";
 import { encodePrintPayload } from "@/lib/printer/print-jobs";
+import { resolveKitchenStationLabel } from "@/lib/printer/print-routing";
 import { splitOrderItemsByTarget } from "@/lib/printer/split-items";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
-import type { OrderWithDetails } from "@/types";
+import { parseOrderWithDetails } from "@/lib/supabase/query-rows";
 
 type CloudPrintPayload = {
   orderId?: string;
@@ -14,6 +16,7 @@ type CloudPrintPayload = {
   jobType?: string;
   locationId?: string;
   orgId?: string;
+  reprint?: boolean;
 };
 
 const ORDER_PRINT_SELECT =
@@ -33,13 +36,6 @@ function resolveJobType(
   return "kitchen";
 }
 
-function kitchenHeaderLabel(printFor: Array<"kitchen" | "bar" | "receipt">) {
-  const hasKitchen = printFor.includes("kitchen");
-  const hasBar = printFor.includes("bar");
-  if (hasBar && !hasKitchen) return "BAR";
-  return undefined;
-}
-
 async function loadOrderForPrint(
   admin: ReturnType<typeof createAdminClient>,
   orderId: string
@@ -54,7 +50,7 @@ async function loadOrderForPrint(
     throw new Error(`Order load failed: ${error?.message ?? "not found"}`);
   }
 
-  return data as unknown as OrderWithDetails;
+  return parseOrderWithDetails(data);
 }
 
 async function loadProductTargets(
@@ -126,6 +122,7 @@ export async function handleFulfillCloudPrint(
   const order = await loadOrderForPrint(admin, orderId);
   const jobType = resolveJobType(printerRow.print_for, data.jobType);
   const paperWidth = printerRow.paper_width as PaperWidth;
+  const allergyLabels = await loadSessionAllergyLabels(admin, order.session_id);
 
   let escpos: Uint8Array;
 
@@ -136,7 +133,7 @@ export async function handleFulfillCloudPrint(
     }
 
     const [{ data: org }, { data: location }] = await Promise.all([
-      admin.from("organizations").select("name, currency").eq("id", orgId).single(),
+      admin.from("organizations").select("name, currency, logo_url").eq("id", orgId).single(),
       admin
         .from("locations")
         .select("address, city, in_person_payment_location")
@@ -150,14 +147,15 @@ export async function handleFulfillCloudPrint(
 
     escpos = buildReceiptEscPos(
       order,
-      { name: (org as { name: string }).name },
+      org as { name: string; logo_url?: string | null },
       location as {
         address: string | null;
         city: string | null;
         in_person_payment_location: "bar" | "counter" | "table";
       },
       paperWidth,
-      (org as { currency: string }).currency
+      (org as { currency: string }).currency,
+      { logoUrl: (org as { logo_url?: string | null }).logo_url ?? null }
     );
   } else {
     const orgId = data.orgId;
@@ -187,11 +185,14 @@ export async function handleFulfillCloudPrint(
       return;
     }
 
+    const stationLabel = resolveKitchenStationLabel(printFor);
+
     escpos = buildKitchenTicketEscPos(
       { ...order, order_items: items },
       orgName,
       paperWidth,
-      kitchenHeaderLabel(printFor)
+      stationLabel,
+      { allergyLabels }
     );
   }
 
@@ -212,5 +213,6 @@ export async function handleFulfillCloudPrint(
     orderId,
     printerId,
     jobType,
+    reprint: data.reprint ?? false,
   });
 }

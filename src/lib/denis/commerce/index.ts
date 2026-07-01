@@ -1,0 +1,233 @@
+export {
+  buildSmartTipOffer,
+  resolveSmartTipEligibility,
+} from "@/lib/denis/commerce/build-smart-tip-offer";
+export {
+  cancelPreorderNoShow,
+  persistScheduledPreorder,
+  releasePreorderKitchen,
+} from "@/lib/denis/commerce/persist-preorder";
+export {
+  buildPreorderConfirmationMessage,
+  computeKitchenReleaseAt,
+  computeNoShowCancelAt,
+  estimatePreorderPrepMinutes,
+  formatPreorderItemsSummary,
+  PREORDER_MIN_ADVANCE_MINUTES,
+  PREORDER_NO_SHOW_GRACE_MINUTES,
+  isPreorderIntentMessage,
+  parsePreorderScheduledTime,
+  shouldCancelPreorderForNoShow,
+  validatePreorder,
+  type PreorderCartLine,
+  type PreorderRequest,
+  type PreorderStatus,
+} from "@/lib/denis/commerce/preorder-flow";
+export { schedulePreorderJobs } from "@/lib/denis/commerce/schedule-preorder-jobs";
+export { loadActivePromoCodesForLocation } from "@/lib/denis/commerce/load-active-promo-codes";
+export { loadPromoPerformanceSnapshot } from "@/lib/denis/commerce/load-promo-performance";
+export {
+  formatPromoDiscountDisplay,
+  formatPromoEvidenceBlock,
+  guestAskedAboutPromo,
+  isProactivePromoTrigger,
+  isPromoCurrentlyValid,
+  resolvePromoForGuest,
+  shouldOfferSlowPeriodPromo,
+  PROACTIVE_PROMO_TRIGGERS,
+  PROMO_INTELLIGENCE_CONSTANTS,
+} from "@/lib/denis/commerce/promo-intelligence";
+export type {
+  PromoEligibility,
+  PromoEvidenceInput,
+  PromoGuestMemorySlice,
+  PromoRhythmSlice,
+  PromoTrigger,
+  ResolvePromoInput,
+} from "@/lib/denis/commerce/promo-intelligence";
+export {
+  markPromoOfferedInSession,
+  wasPromoOfferedInSession,
+} from "@/lib/denis/commerce/promo-session-store";
+export {
+  buildGoogleReviewOffer,
+  buildReviewFunnelOffer,
+} from "@/lib/denis/commerce/build-google-review-offer";
+export {
+  aggregateReviewTriggerAnalytics,
+  buildReviewContentSuggestion,
+  buildSentimentGatedReviewContent,
+  resolveRecoveryReviewState,
+  type ReviewTriggerAnalyticsRow,
+  type SentimentGatedReviewContent,
+} from "@/lib/denis/commerce/experience/review-orchestration";
+export { resolveReviewSessionSignals } from "@/lib/denis/commerce/resolve-review-session-signals";
+export {
+  buildPostTipReviewSignal,
+  mergePostTipReviewMoment,
+} from "@/lib/commerce/capabilities/tips/post-tip-review";
+export { loadReviewFunnelInsight } from "@/lib/denis/commerce/load-review-funnel-stats";
+export {
+  buildReviewFunnelInsight,
+  formatGoogleReviewDigestLines,
+  formatReviewTriggerAnalyticsLines,
+  type ReviewFunnelInsight,
+} from "@/lib/denis/commerce/review-intelligence";
+export {
+  buildReviewPromptMessage,
+  buildInternalFeedbackMessage,
+  resolveReviewEligibility,
+  resolveReviewFunnelRoute,
+  resolveReviewPromptVariant,
+  reviewDelayOpen,
+  REVIEW_DISMISS_COOLDOWN_DAYS,
+  REVIEW_GOOGLE_MIN_SCORE,
+  REVIEW_INTERNAL_MAX_SCORE,
+  REVIEW_MIN_RATING,
+  REVIEW_PROMPT_COOLDOWN_DAYS,
+  REVIEW_PROMPT_DELAY_SECONDS,
+  REVIEW_PROMPT_COPY,
+  REVIEW_PROMPT_EXPERIMENT_ID,
+  type ReviewEligibility,
+  type ReviewPromptVariant,
+} from "@/lib/denis/commerce/review-funnel";
+export {
+  buildSessionExperienceScore,
+  frustrationFromMental,
+  resolvePaidAnchorAt,
+  type SessionExperienceScore,
+  type SessionExperienceScoreComponents,
+} from "@/lib/denis/commerce/session-experience-score";
+export {
+  aggregateTipAnalytics,
+  buildSettlingTipDenisMessage,
+  formatStaffTipCelebrationLine,
+  resolveTipMarketRegion,
+  resolveTipSplitMode,
+  resolveTipSuggestion,
+  tipAmountFromPercent,
+  type TipAnalyticsSnapshot,
+  type TipMarketRegion,
+  type TipSplitMode,
+  type TipSuggestion,
+} from "@/lib/denis/commerce/smart-tips";
+export {
+  aggregateLoyaltyStats,
+  buildOrderPointsEarnedMessage,
+  buildReturningGuestLoyaltyMessage,
+  calculateLoyalty,
+  DEFAULT_LOYALTY_CONFIG,
+  shouldOfferLoyaltyToGuest,
+  type GuestLoyalty,
+  type LoyaltyConfig,
+  type LoyaltyProgramStats,
+  type LoyaltyReward,
+  type LoyaltyTier,
+  type OrderRow,
+} from "@/lib/denis/commerce/loyalty-program";
+export {
+  GUEST_LEVELS,
+  aggregateLoyaltyDashboardStats,
+  buildDenisToneGuide,
+  buildLevelUpNudge,
+  buildLoyaltyContextBlock,
+  buildLoyaltyContextSnapshot,
+  buildNextLevelProgress,
+  buildReferralShareUrl,
+  buildReturningGuestGreeting,
+  buildStreakBreakMessage,
+  canRedeemPoints,
+  detectLevelUp,
+  detectStreak,
+  earnPointsFromOrder,
+  pointsMultiplierFromStreak,
+  redeemPoints,
+  registerReferral,
+  resolveGuestLevel,
+  resolveWaitlistPriorityBoost,
+  shouldTriggerLevelUpCelebration,
+  FIRST_VISIT_BONUS,
+  POINTS_PER_EURO,
+  REDEEM_EURO_VALUE,
+  REDEEM_POINTS_COST,
+  REFERRAL_BONUS,
+  REVIEW_BONUS,
+  type GuestLevelDefinition,
+  type GuestLevelId,
+  type LoyaltyContextInput,
+  type LoyaltyContextSnapshot,
+  type LoyaltyDashboardStats,
+  type LoyaltyGuestRow,
+  type LevelUpEvent,
+  type StreakResult,
+  type StreakTier,
+} from "@/lib/denis/commerce/loyalty";
+export {
+  assignWaitlistPosition,
+  buildDenisWaitlistGreeting,
+  buildTableReadyNotification,
+  buildWaitlistBrowseHint,
+  buildWaitlistJoinMessage,
+  buildWaitlistProactiveMessage,
+  canJoinWaitlist,
+  DEFAULT_WAITLIST_CONFIG,
+  estimateWaitTime,
+  estimateWaitTimeSmart,
+  formatEstimatedWaitLabel,
+  formatWaitlistStaffView,
+  guestCancelWaitlistEntry,
+  pickBestTableForParty,
+  pickNextWaitingEntry,
+  reorderWaitlistQueue,
+  resolveNoShowEntries,
+  resolveWaitlistPriority,
+  sortWaitlistQueue,
+  type WaitlistConfig,
+  type WaitlistEntry,
+  type WaitlistFloorSnapshot,
+  type WaitlistStaffRow,
+  type WaitlistStatus,
+} from "@/lib/denis/commerce/waitlist";
+export { loadWaitlistFloorSnapshot } from "@/lib/denis/commerce/load-waitlist-floor-snapshot";
+export {
+  notifyWaitlistGuestPush,
+  saveWaitlistPushSubscription,
+} from "@/lib/denis/commerce/waitlist-push-store";
+export {
+  appendWaitlistEntry,
+  loadWaitlistEntries,
+  saveWaitlistEntries,
+  updateWaitlistEntries,
+} from "@/lib/denis/commerce/waitlist-store";
+export {
+  buildDeliveryQuoteMessage,
+  buildDenisPickupPrompt,
+  buildKdsFulfillmentLabel,
+  buildPackagingSuggestions,
+  buildTakeawayConfirmationMessage,
+  buildTakeawayPickupSlots,
+  buildTakeawayReadyMessage,
+  buildTakeawayReadyNotification,
+  calculateDeliveryFee,
+  DEFAULT_DELIVERY_CONFIG,
+  estimatePrepMinutesFromCart,
+  formatPackagingBlock,
+  isOffPremiseMode,
+  isWithinDeliveryRadius,
+  kitchenOrderModeBadge,
+  legacyIsTakeaway,
+  orderModeFromLegacy,
+  resolveKitchenPrepPriority,
+  splitItemsByFulfillmentMode,
+  validateDeliveryOrder,
+  validateTakeawayPayment,
+  type DeliveryConfig,
+  type DeliveryPartner,
+  type FulfillmentCartLine,
+  type OrderMode,
+  type PackagingSuggestion,
+  type PickupSlot,
+  type TakeawayOrder,
+  type TakeawayReadyNotification,
+} from "@/lib/denis/commerce/delivery-mode";
+export { notifyTakeawayReady } from "@/lib/denis/commerce/notify-takeaway-ready";

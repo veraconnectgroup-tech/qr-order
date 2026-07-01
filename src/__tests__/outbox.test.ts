@@ -1,5 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { buildOutboxEvents } from "@/lib/outbox/build-outbox-events";
+import { retryDeadLetterQueueItem } from "@/lib/outbox/dead-letter-queue";
+import * as enqueueEvents from "@/lib/outbox/enqueue-events";
+import * as dlq from "@/lib/outbox/dead-letter-queue";
+import {
+  getOutboxHandler,
+} from "@/lib/outbox/handlers/registry";
+import * as registry from "@/lib/outbox/handlers/registry";
+import {
+  processClaimedOutboxEvent,
+  snapshotToHandlerMetrics,
+  type OutboxEventRow,
+} from "@/lib/outbox/processor";
 import type { OrderOutboxContext } from "@/lib/outbox/types";
 
 function baseContext(
@@ -106,6 +118,31 @@ describe("buildOutboxEvents", () => {
       events.filter((e) => e.event_type === "fulfill.cloud_print")
     ).toHaveLength(1);
   });
+
+  it("enqueues four side-effect handlers on order create with full venue config", () => {
+    const events = buildOutboxEvents(
+      baseContext({
+        posIntegration: {
+          id: "pos-1",
+          provider: "deliverect",
+          status: "connected",
+        },
+        cloudPrinters: [
+          { id: "cp-1", provider: "star_cloudprnt", autoPrint: true },
+        ],
+        activeWebhooks: [{ id: "wh-1", url: "https://example.com/hook" }],
+      }),
+      "created"
+    );
+
+    expect(events).toHaveLength(4);
+    expect(events.map((event) => event.event_type)).toEqual([
+      "fulfill.notify_staff",
+      "fulfill.push_pos",
+      "fulfill.cloud_print",
+      "integration.webhook",
+    ]);
+  });
 });
 
 describe("computeOutboxRetryDelaySeconds", () => {
@@ -121,19 +158,167 @@ describe("computeOutboxRetryDelaySeconds", () => {
 });
 
 describe("getOutboxHandler", () => {
-  it(
-    "resolves known event types",
-    async () => {
-      const { getOutboxHandler } = await import(
-        "@/lib/outbox/handlers/registry"
-      );
-      expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
-      expect(getOutboxHandler("fulfill.push_pos")).toBeDefined();
-      expect(getOutboxHandler("session.paid_online")).toBeDefined();
-      expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
-      expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
-      expect(getOutboxHandler("unknown.event")).toBeUndefined();
-    },
-    30_000
-  );
+  const prompt60Handlers = [
+    "fulfill.notify_staff",
+    "fulfill.push_pos",
+    "fulfill.cloud_print",
+    "fiscal.tse_sign",
+    "fiscal.beleg",
+    "fiscal.send_receipt",
+    "integration.webhook",
+    "billing.low_balance",
+    "commerce.denis.world",
+    "commerce.alert.staff",
+    "commerce.preorder.release",
+    "session.paid_online",
+  ] as const;
+
+  it("registers every Prompt 60 handler", () => {
+    for (const eventType of prompt60Handlers) {
+      const handler = getOutboxHandler(eventType);
+      expect(handler, eventType).toBeTypeOf("function");
+    }
+  });
+
+  it("resolves known event types", () => {
+    expect(getOutboxHandler("fulfill.notify_staff")).toBeDefined();
+    expect(getOutboxHandler("fulfill.push_pos")).toBeDefined();
+    expect(getOutboxHandler("session.paid_online")).toBeDefined();
+    expect(getOutboxHandler("fiscal.tse_sign")).toBeDefined();
+    expect(getOutboxHandler("fiscal.beleg")).toBeDefined();
+    expect(getOutboxHandler("commerce.preorder.release")).toBeDefined();
+    expect(getOutboxHandler("session.eval")).toBeDefined();
+    expect(getOutboxHandler("unknown.event")).toBeUndefined();
+  });
+});
+
+describe("outbox processor", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("aggregates handler metrics from batch snapshot", () => {
+    const metrics = snapshotToHandlerMetrics({
+      "fulfill.notify_staff": {
+        processed: 8,
+        failed: 1,
+        deadLetter: 1,
+        totalLatencyMs: 400,
+      },
+    });
+
+    expect(metrics).toEqual([
+      {
+        eventType: "fulfill.notify_staff",
+        throughput: 8,
+        failed: 1,
+        deadLetter: 1,
+        failureRate: 20,
+        avgLatencyMs: 50,
+      },
+    ]);
+  });
+
+  it("dead-letters after max attempts and retries on success", async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null });
+    const admin = { rpc } as never;
+    const metrics = {};
+    const failingHandler = vi.fn().mockRejectedValue(new Error("printer offline"));
+    const successHandler = vi.fn().mockResolvedValue(undefined);
+    const moveToDeadLetterQueue = vi
+      .spyOn(dlq, "moveToDeadLetterQueue")
+      .mockResolvedValue(undefined);
+
+    vi.spyOn(registry, "getOutboxHandler").mockReturnValue(failingHandler);
+
+    const baseEvent = {
+      id: "evt-1",
+      event_type: "fulfill.cloud_print",
+      domain: "fulfillment",
+      aggregate_id: "order-1",
+      aggregate_type: "order",
+      payload: { orderId: "order-1" },
+      max_attempts: 3,
+      attempts: 1,
+      status: "processing",
+      next_retry_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      processed_at: null,
+      last_error: null,
+    } satisfies OutboxEventRow;
+
+    const outcomeFail = await processClaimedOutboxEvent(
+      admin,
+      { ...baseEvent, attempts: 1 },
+      metrics
+    );
+    expect(outcomeFail).toBe("failed");
+    expect(moveToDeadLetterQueue).not.toHaveBeenCalled();
+
+    const outcomeDlq = await processClaimedOutboxEvent(
+      admin,
+      { ...baseEvent, attempts: 3 },
+      metrics
+    );
+    expect(outcomeDlq).toBe("deadLetter");
+    expect(moveToDeadLetterQueue).toHaveBeenCalledTimes(1);
+
+    vi.spyOn(registry, "getOutboxHandler").mockReturnValue(successHandler);
+    const successOutcome = await processClaimedOutboxEvent(
+      admin,
+      { ...baseEvent, attempts: 1 },
+      {}
+    );
+    expect(successOutcome).toBe("succeeded");
+    expect(successHandler).toHaveBeenCalled();
+  });
+
+  it("re-enqueues DLQ payload for manual retry", async () => {
+    const enqueueOutboxEvents = vi
+      .spyOn(enqueueEvents, "enqueueOutboxEvents")
+      .mockResolvedValue(1);
+
+    vi.spyOn(dlq, "moveToDeadLetterQueue").mockResolvedValue(undefined);
+
+    const adminModule = await import("@/lib/supabase/admin");
+    vi.spyOn(adminModule, "createAdminClient").mockReturnValue({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            is: () => ({
+              maybeSingle: async () => ({
+                data: {
+                  id: "dlq-1",
+                  org_id: "org-1",
+                  job_type: "fulfill.notify_staff",
+                  payload: {
+                    outboxPayload: { orderId: "order-1", locationId: "loc-1" },
+                    aggregateId: "order-1",
+                    domain: "fulfillment",
+                  },
+                },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+        update: () => ({
+          eq: async () => ({ error: null }),
+        }),
+      }),
+    } as never);
+
+    const result = await retryDeadLetterQueueItem("dlq-1", "user-1");
+    expect(result.error).toBeUndefined();
+    expect(enqueueOutboxEvents).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        expect.objectContaining({
+          aggregate_id: "order-1",
+          domain: "fulfillment",
+          event_type: "fulfill.notify_staff",
+        }),
+      ])
+    );
+  });
 });

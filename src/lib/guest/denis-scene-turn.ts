@@ -82,6 +82,7 @@ export async function runGuestDenisSceneTurn(input: {
   allowOrdering?: boolean;
   structuredIntent?: GuestIntent;
   handoffPaymentMethod?: SelectablePaymentMethod;
+  accessibilitySignals?: import("@/lib/denis/cognition/mental-model/accessibility-types").ClientAccessibilitySignals;
 }): Promise<GuestDenisTurnResult> {
   const sessionId =
     readAiSessionIdForGuest(
@@ -119,6 +120,7 @@ export async function runGuestDenisSceneTurn(input: {
     browsingContext: input.browsingContext,
     structuredIntent: input.structuredIntent,
     handoffPaymentMethod: input.handoffPaymentMethod,
+    accessibilitySignals: input.accessibilitySignals,
   });
 
   const json = (await res.json()) as {

@@ -6,6 +6,7 @@ import { buildProductTargetMap } from "@/lib/printer/product-targets";
 import { normalizePrinterMac } from "@/lib/printer/print-jobs";
 import { zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { withStaffRateLimit } from "@/lib/rate-limit";
 
 const printerTargetSchema = z.enum(["kitchen", "bar", "receipt"]);
 
@@ -59,6 +60,9 @@ async function requireLocationId(
 export const GET = withErrorHandler(
   "printer-configs-get",
   async (_req, _ctx) => {
+    const limited = await withStaffRateLimit(_req);
+    if (limited) return limited;
+
   const staff = await getCurrentStaff();
   if (!staff) {
     return apiError("Unauthorized.", 401);
@@ -122,6 +126,9 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   "printer-configs-post",
   async (req, _ctx) => {
+  const limited = await withStaffRateLimit(req);
+  if (limited) return limited;
+
   const staff = await getCurrentStaff();
   if (!staff) {
     return apiError("Unauthorized.", 401);

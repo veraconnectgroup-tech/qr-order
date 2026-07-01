@@ -13,27 +13,36 @@ import { REALTIME_FALLBACK_POLL_MS } from "@/lib/constants";
 import { formatPrice } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import {
+  TABLE_WITH_ZONE_SELECT,
+  WAITER_DETAIL_ORDER_SELECT,
+  WAITER_SUMMARY_ORDER_SELECT,
+  tableWithZoneRows,
+} from "@/lib/supabase/query-rows";
+import {
   buildWaiterTableRows,
   getWaiterTableVisualStatus,
+  parseWaiterDetailOrders,
+  parseWaiterSummaryOrders,
   startOfTodayIso,
   type WaiterTableRow,
   type WaiterTableVisualStatus,
 } from "@/lib/dashboard/waiter-table-data";
 import { WaiterOrderRow, type WaiterDetailOrder } from "@/components/waiter/waiter-order-row";
 import { WaiterTableBillSheet } from "@/components/waiter/waiter-table-bill-sheet";
+import { WaiterQuickActions } from "@/components/waiter/waiter-quick-actions";
+import { WaiterTableSessionDenis } from "@/components/waiter/waiter-table-session-denis";
 import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
-import type { Table, TableSession, Zone } from "@/types";
+import type { TableSession } from "@/types";
 
 type Props = {
   tableId: string;
 };
 
-const ORDER_SELECT =
-  "id, order_number, status, total, created_at, order_items(*, order_item_modifiers(*))";
+const ORDER_SELECT = WAITER_DETAIL_ORDER_SELECT;
 
 function tableStatusDot(status: WaiterTableVisualStatus) {
   switch (status) {
@@ -94,7 +103,7 @@ export function WaiterTableDetail({ tableId }: Props) {
 
     const { data: tableData } = await supabase
       .from("tables")
-      .select("*, zone:zones(*)")
+      .select(TABLE_WITH_ZONE_SELECT)
       .eq("id", tableId)
       .eq("location_id", locationId)
       .maybeSingle();
@@ -121,9 +130,7 @@ export function WaiterTableDetail({ tableId }: Props) {
       await Promise.all([
         supabase
           .from("orders")
-          .select(
-            "id, table_id, session_id, order_number, total, status, created_at, payment_requested_at, payment_status, payment_method"
-          )
+          .select(WAITER_SUMMARY_ORDER_SELECT)
           .eq("location_id", locationId)
           .eq("table_id", tableId)
           .gte("created_at", startOfTodayIso())
@@ -139,20 +146,16 @@ export function WaiterTableDetail({ tableId }: Props) {
           .order("created_at", { ascending: false }),
       ]);
 
+    const tableRows = tableWithZoneRows(tableData ? [tableData] : []);
     const [row] = buildWaiterTableRows(
-      [tableData as unknown as Table & { zone: Zone | null }],
+      tableRows,
       session ? [session] : [],
-      (summaryOrdersData ?? []) as unknown as Array<
-        WaiterTableRow["activeOrders"][number] & {
-          table_id: string | null;
-          session_id: string | null;
-        }
-      >,
+      parseWaiterSummaryOrders(summaryOrdersData),
       pendingCallTableIds
     );
 
     setTable(row ?? null);
-    setOrders((detailOrdersData ?? []) as unknown as WaiterDetailOrder[]);
+    setOrders(parseWaiterDetailOrders(detailOrdersData));
     setLoading(false);
   }, [locationId, pendingCallTableIds, tableId]);
 
@@ -280,6 +283,10 @@ export function WaiterTableDetail({ tableId }: Props) {
           {t("action.bill")}
         </Button>
       </div>
+
+      <WaiterQuickActions tableId={table.id} tableName={table.name} />
+
+      <WaiterTableSessionDenis tableId={table.id} />
 
       {table.session && (
         <div className="rounded-xl border border-dash-border-subtle bg-dash-surface p-4 text-sm text-dash-text-secondary">

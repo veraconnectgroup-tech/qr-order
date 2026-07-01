@@ -1,54 +1,66 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { QrTableCardPreview } from "@/components/design-system";
 import {
   OnboardingFiscalStep,
   OnboardingGoLiveStep,
 } from "@/components/dashboard/onboarding-fiscal-steps";
+import { OnboardingMenuImport } from "@/components/dashboard/onboarding-menu-import";
+import { QrPrintSheet } from "@/components/dashboard/qr-print-sheet";
 import { toast } from "sonner";
 import { DashboardStripeConnect } from "@/components/dashboard/dashboard-stripe-connect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { guestTableUrl } from "@/lib/app-url";
-import { generateTableQrDataUrl } from "@/lib/print/qr-table-card-print";
+import { generateBrandedQrDataUrl } from "@/lib/qr/branded-qr";
+import {
+  ONBOARDING_STEP_IDS,
+  ONBOARDING_STEP_LABELS,
+  SKIP_STEP_WARNINGS,
+  buildTableNames,
+  computeOnboardingCompletionPercent,
+  emptyOnboardingProgress,
+  formatElapsedSinceRegistration,
+  isWithinTargetTimeToOrder,
+  markStepCompleted,
+  markStepSkipped,
+  type OnboardingProgressState,
+  type TableNumberingScheme,
+} from "@/lib/dashboard/onboarding-progress";
 import {
   completeOnboarding,
+  saveOnboardingBranding,
+  saveOnboardingDenisConfig,
   saveOnboardingFiscal,
-  saveOnboardingProducts,
+  saveOnboardingProgress,
   saveOnboardingTables,
   saveOnboardingVenue,
   skipOnboardingPayment,
 } from "@/lib/dashboard/onboarding-actions";
+import { PLAYBOOK_PACK_REGISTRY } from "@/lib/denis/cognition/manifest/playbook-pack-registry";
+import type { VenuePlaybookTone } from "@/lib/admin/generate-venue-playbook";
 import { cn } from "@/lib/utils";
 
 type Category = { id: string; name: string; menu_section: string };
 type TableRow = { id: string; name: string; qr_token: string };
 
-type ProductDraft = { name: string; price: string; categoryId: string };
-
-const STEPS = [
-  "Venue info",
-  "Menu setup",
-  "Tables & QR",
-  "Payment",
-  "Steuerliche Angaben",
-  "Go live!",
-] as const;
+const STEP_COUNT = ONBOARDING_STEP_IDS.length;
 
 export function OnboardingWizard({
   orgName,
   orgSlug,
   logoUrl,
+  primaryColor,
   address,
   city,
   postalCode,
   timezone,
   currency,
   categories,
-  initialProducts,
   initialTables,
   stripeOnboarded,
   stripeAccountId,
@@ -61,17 +73,21 @@ export function OnboardingWizard({
   tableCount,
   appUrl,
   menuLocale,
+  playbookPackId,
+  denisTone,
+  orgCreatedAt,
+  initialProgress,
 }: {
   orgName: string;
   orgSlug: string;
   logoUrl: string | null;
+  primaryColor: string;
   address: string | null;
   city: string | null;
   postalCode: string | null;
   timezone: string;
   currency: string;
   categories: Category[];
-  initialProducts: Array<{ name: string; price: number; category_id: string | null }>;
   initialTables: TableRow[];
   stripeOnboarded: boolean;
   stripeAccountId: string | null;
@@ -84,51 +100,84 @@ export function OnboardingWizard({
   tableCount: number;
   appUrl: string;
   menuLocale?: string | null;
+  playbookPackId?: string | null;
+  denisTone?: VenuePlaybookTone | null;
+  orgCreatedAt: string | null;
+  initialProgress?: OnboardingProgressState | null;
 }) {
   const [step, setStep] = useState(0);
   const [pending, startTransition] = useTransition();
+  const [progress, setProgress] = useState<OnboardingProgressState>(
+    initialProgress ?? emptyOnboardingProgress()
+  );
+  const [savedProductCount, setSavedProductCount] = useState(productCount);
   const [venue, setVenue] = useState({
     orgName,
     address: address ?? "",
     city: city ?? "",
     postalCode: postalCode ?? "",
     timezone: timezone || "Europe/Berlin",
+    currency: currency || "EUR",
+  });
+  const [branding, setBranding] = useState({
     logoUrl: logoUrl ?? "",
+    primaryColor: primaryColor || "#f97316",
   });
-  const [products, setProducts] = useState<ProductDraft[]>(() => {
-    if (initialProducts.length) {
-      return initialProducts.slice(0, 5).map((p) => ({
-        name: p.name,
-        price: String(p.price),
-        categoryId: p.category_id ?? categories[0]?.id ?? "",
-      }));
-    }
-    return [
-      { name: "", price: "", categoryId: categories[0]?.id ?? "" },
-      { name: "", price: "", categoryId: categories[1]?.id ?? categories[0]?.id ?? "" },
-      { name: "", price: "", categoryId: categories[0]?.id ?? "" },
-    ];
-  });
+  const [tableCountInput, setTableCountInput] = useState(
+    Math.max(initialTables.length, tableCount, 3)
+  );
+  const [numberingScheme, setNumberingScheme] =
+    useState<TableNumberingScheme>("table_n");
   const [tableNames, setTableNames] = useState<string[]>(() =>
     initialTables.length
       ? initialTables.map((t) => t.name)
-      : ["Table 1", "Table 2", "Table 3"]
+      : buildTableNames(3, "table_n")
   );
+  const [savedTables, setSavedTables] = useState<TableRow[]>(initialTables);
   const [fiscal, setFiscal] = useState({
     steuernummer: steuernummer ?? "",
     ustIdNr: ustIdNr ?? "",
+  });
+  const [denis, setDenis] = useState({
+    playbookPackId: playbookPackId ?? "",
+    menuLocale: (menuLocale as "de" | "en" | "sr") ?? "de",
+    tone: (denisTone ?? "friendly") as VenuePlaybookTone,
   });
   const [previewTable, setPreviewTable] = useState<TableRow | null>(
     initialTables[0] ?? null
   );
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
-  const progress = ((step + 1) / STEPS.length) * 100;
+  const qrScanUrl = previewTable
+    ? guestTableUrl(orgSlug, previewTable.qr_token, appUrl)
+    : null;
+  const displayedQrDataUrl = qrScanUrl ? qrDataUrl : null;
+
+  const currentStepId = ONBOARDING_STEP_IDS[step]!;
+  const completionPercent = computeOnboardingCompletionPercent(progress);
+  const elapsedLabel = formatElapsedSinceRegistration(orgCreatedAt);
+  const onTarget = isWithinTargetTimeToOrder(orgCreatedAt);
+
+  const persistProgress = useCallback(
+    (next: OnboardingProgressState) => {
+      setProgress(next);
+      startTransition(async () => {
+        await saveOnboardingProgress({
+          completedSteps: next.completedSteps,
+          skippedSteps: next.skippedSteps,
+        });
+      });
+    },
+    []
+  );
 
   const autoSaveVenue = useCallback(
     (next: typeof venue) => {
       startTransition(async () => {
-        const result = await saveOnboardingVenue(next);
+        const result = await saveOnboardingVenue({
+          ...next,
+          currency: next.currency,
+        });
         if ("error" in result && result.error) {
           toast.error(result.error);
         }
@@ -143,88 +192,103 @@ export function OnboardingWizard({
     return () => window.clearTimeout(timer);
   }, [venue, step, autoSaveVenue]);
 
-  useEffect(() => {
-    if (!previewTable) {
-      setQrDataUrl(null);
-      return;
-    }
-    const url = guestTableUrl(orgSlug, previewTable.qr_token, appUrl);
-    generateTableQrDataUrl(url, 280).then(setQrDataUrl);
-  }, [previewTable, orgSlug, appUrl]);
+  function rebuildTableNames(count: number, scheme: TableNumberingScheme) {
+    setTableNames(buildTableNames(count, scheme));
+  }
 
-  const filledProducts = useMemo(
-    () =>
-      products.filter(
-        (p) => p.name.trim() && p.price.trim() && p.categoryId
-      ),
-    [products]
-  );
+  useEffect(() => {
+    if (!qrScanUrl) return;
+    let cancelled = false;
+    void generateBrandedQrDataUrl({
+      scanUrl: qrScanUrl,
+      brandColor: branding.primaryColor,
+      logoDataUrl: branding.logoUrl || null,
+      width: 280,
+    }).then((dataUrl) => {
+      if (!cancelled) setQrDataUrl(dataUrl);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [qrScanUrl, branding.primaryColor, branding.logoUrl]);
 
   const summaryCounts = useMemo(
     () => ({
-      products: Math.max(productCount, filledProducts.length),
-      categories: Math.max(
-        categoryCount,
-        new Set(filledProducts.map((p) => p.categoryId)).size
-      ),
-      tables: Math.max(tableCount, tableNames.filter(Boolean).length),
+      products: Math.max(savedProductCount, productCount),
+      categories: Math.max(categoryCount, categories.length),
+      tables: Math.max(tableCount, savedTables.length, tableNames.filter(Boolean).length),
     }),
-    [productCount, categoryCount, tableCount, filledProducts, tableNames]
+    [
+      savedProductCount,
+      productCount,
+      categoryCount,
+      categories.length,
+      tableCount,
+      savedTables.length,
+      tableNames,
+    ]
   );
 
-  function updateProduct(index: number, patch: Partial<ProductDraft>) {
-    setProducts((rows) =>
-      rows.map((row, i) => (i === index ? { ...row, ...patch } : row))
-    );
+  const demoGuestUrl = previewTable
+    ? guestTableUrl(orgSlug, previewTable.qr_token, appUrl)
+    : null;
+
+  function completeCurrentStep() {
+    persistProgress(markStepCompleted(progress, currentStepId));
   }
 
-  function addProductRow() {
-    if (products.length >= 5) return;
-    setProducts((rows) => [
-      ...rows,
-      { name: "", price: "", categoryId: categories[0]?.id ?? "" },
-    ]);
+  function skipCurrentStep() {
+    const warning = SKIP_STEP_WARNINGS[currentStepId];
+    if (warning) toast.warning(warning);
+    persistProgress(markStepSkipped(progress, currentStepId));
+    setStep((s) => Math.min(s + 1, STEP_COUNT - 1));
+  }
+
+  function goBack() {
+    setStep((s) => Math.max(s - 1, 0));
   }
 
   function goNext() {
     if (step === 1) {
-      if (filledProducts.length < 1) {
-        toast.error("Add at least one product.");
-        return;
-      }
       startTransition(async () => {
-        const result = await saveOnboardingProducts(
-          filledProducts.map((p) => ({
-            name: p.name.trim(),
-            price: Number(p.price),
-            categoryId: p.categoryId,
-          }))
-        );
+        const result = await saveOnboardingBranding({
+          logoUrl: branding.logoUrl,
+          primaryColor: branding.primaryColor,
+        });
         if ("error" in result && result.error) {
           toast.error(result.error);
           return;
         }
+        completeCurrentStep();
         setStep(2);
       });
       return;
     }
 
-    if (step === 2) {
+    if (step === 3) {
       startTransition(async () => {
         const result = await saveOnboardingTables(tableNames);
         if ("error" in result && result.error) {
           toast.error(result.error);
           return;
         }
-        if ("tables" in result) {
-          setPreviewTable(result.tables?.[0] ?? null);
+        if ("tables" in result && result.tables?.length) {
+          setSavedTables(result.tables);
+          setPreviewTable(result.tables[0] ?? null);
         }
-        setStep(3);
+        completeCurrentStep();
+        setStep(4);
       });
       return;
     }
 
-    if (step === 4) {
+    if (step === 4 && !stripeOnboarded) {
+      completeCurrentStep();
+      setStep(5);
+      return;
+    }
+
+    if (step === 5) {
       startTransition(async () => {
         const result = await saveOnboardingFiscal(
           fiscal.steuernummer,
@@ -234,56 +298,94 @@ export function OnboardingWizard({
           toast.error(result.error);
           return;
         }
-        setStep(5);
+        completeCurrentStep();
+        setStep(6);
       });
       return;
     }
 
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  }
+    if (step === 6) {
+      startTransition(async () => {
+        const result = await saveOnboardingDenisConfig({
+          playbookPackId: denis.playbookPackId || undefined,
+          menuLocale: denis.menuLocale,
+          tone: denis.tone,
+        });
+        if ("error" in result && result.error) {
+          toast.error(result.error);
+          return;
+        }
+        completeCurrentStep();
+        setStep(7);
+      });
+      return;
+    }
 
-  function goBack() {
-    setStep((s) => Math.max(s - 1, 0));
+    if (step === 0) {
+      completeCurrentStep();
+    }
+
+    if (step === 2 && savedProductCount < 1) {
+      toast.error("Import or save at least one menu item.");
+      return;
+    }
+
+    if (step === 2 || step === 7 || step === 8) {
+      completeCurrentStep();
+    }
+
+    setStep((s) => Math.min(s + 1, STEP_COUNT - 1));
   }
 
   function skipStep() {
-    if (step === 3) {
+    if (step === 4) {
       startTransition(async () => {
         const result = await skipOnboardingPayment();
         if ("error" in result && result.error) {
           toast.error(result.error);
           return;
         }
-        setStep(4);
+        skipCurrentStep();
       });
       return;
     }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    skipCurrentStep();
   }
 
   function finish() {
+    completeCurrentStep();
     startTransition(async () => {
       await completeOnboarding();
     });
   }
 
+  const playbookOptions = Object.keys(PLAYBOOK_PACK_REGISTRY);
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 py-6 md:py-10">
       <div className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-dash-accent">
-          Setup wizard
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-dash-text">
-          {STEPS[step]}
-        </h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-dash-accent">
+              Setup wizard · novi restoran za 15 min
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold text-dash-text">
+              {ONBOARDING_STEP_LABELS[currentStepId]}
+            </h1>
+          </div>
+          <div className="text-right text-xs text-dash-text-disabled">
+            <p>{completionPercent}% complete</p>
+            <p className={cn(!onTarget && "text-amber-400")}>{elapsedLabel}</p>
+          </div>
+        </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-dash-surface-raised">
           <div
             className="h-full rounded-full bg-dash-accent transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${((step + 1) / STEP_COUNT) * 100}%` }}
           />
         </div>
         <p className="mt-2 text-xs text-dash-text-disabled">
-          Step {step + 1} of {STEPS.length}
+          Step {step + 1} of {STEP_COUNT}
         </p>
       </div>
 
@@ -336,28 +438,35 @@ export function OnboardingWizard({
                 />
               </div>
             </div>
-            <div>
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input
-                id="timezone"
-                value={venue.timezone}
-                onChange={(e) =>
-                  setVenue((v) => ({ ...v, timezone: e.target.value }))
-                }
-                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
-              />
-            </div>
-            <div>
-              <Label htmlFor="logo">Logo URL (optional)</Label>
-              <Input
-                id="logo"
-                value={venue.logoUrl}
-                onChange={(e) =>
-                  setVenue((v) => ({ ...v, logoUrl: e.target.value }))
-                }
-                placeholder="https://…"
-                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="timezone">Timezone</Label>
+                <Input
+                  id="timezone"
+                  value={venue.timezone}
+                  onChange={(e) =>
+                    setVenue((v) => ({ ...v, timezone: e.target.value }))
+                  }
+                  className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
+                />
+              </div>
+              <div>
+                <Label htmlFor="currency">Currency</Label>
+                <select
+                  id="currency"
+                  value={venue.currency}
+                  onChange={(e) =>
+                    setVenue((v) => ({ ...v, currency: e.target.value }))
+                  }
+                  className="mt-1.5 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
+                >
+                  {["EUR", "USD", "GBP", "CHF"].map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <p className="text-xs text-dash-text-disabled">Changes save automatically.</p>
           </div>
@@ -365,74 +474,111 @@ export function OnboardingWizard({
 
         {step === 1 && (
           <div className="space-y-4">
-            <p className="text-sm text-dash-text-muted">
-              Add 3–5 products to get started. You can edit the full menu later.
-            </p>
-            {products.map((product, index) => (
-              <div
-                key={index}
-                className="grid gap-3 rounded-xl border border-dash-border bg-dash-surface/60 p-4 sm:grid-cols-[1fr_120px_140px]"
-              >
-                <div>
-                  <Label>Name</Label>
-                  <Input
-                    value={product.name}
-                    onChange={(e) =>
-                      updateProduct(index, { name: e.target.value })
-                    }
-                    className="mt-1 border-dash-surface-overlay bg-dash-surface"
-                  />
-                </div>
-                <div>
-                  <Label>Price ({currency})</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={product.price}
-                    onChange={(e) =>
-                      updateProduct(index, { price: e.target.value })
-                    }
-                    className="mt-1 border-dash-surface-overlay bg-dash-surface"
-                  />
-                </div>
-                <div>
-                  <Label>Category</Label>
-                  <select
-                    value={product.categoryId}
-                    onChange={(e) =>
-                      updateProduct(index, { categoryId: e.target.value })
-                    }
-                    className="mt-1 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div>
+              <Label htmlFor="logo">Logo URL</Label>
+              <Input
+                id="logo"
+                value={branding.logoUrl}
+                onChange={(e) =>
+                  setBranding((b) => ({ ...b, logoUrl: e.target.value }))
+                }
+                placeholder="https://…"
+                className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
+              />
+            </div>
+            <div>
+              <Label htmlFor="primaryColor">Primary brand color</Label>
+              <div className="mt-1.5 flex items-center gap-3">
+                <Input
+                  id="primaryColor"
+                  type="color"
+                  value={branding.primaryColor}
+                  onChange={(e) =>
+                    setBranding((b) => ({
+                      ...b,
+                      primaryColor: e.target.value,
+                    }))
+                  }
+                  className="h-10 w-16 border-dash-surface-overlay bg-dash-surface p-1"
+                />
+                <Input
+                  value={branding.primaryColor}
+                  onChange={(e) =>
+                    setBranding((b) => ({
+                      ...b,
+                      primaryColor: e.target.value,
+                    }))
+                  }
+                  className="border-dash-surface-overlay bg-dash-surface"
+                />
               </div>
-            ))}
-            {products.length < 5 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addProductRow}
-                className="border-dash-surface-overlay"
-              >
-                + Add product
-              </Button>
+            </div>
+            {previewTable && displayedQrDataUrl && (
+              <div className="max-w-xs">
+                <p className="mb-3 text-sm font-medium text-dash-text-secondary">
+                  Branded QR preview
+                </p>
+                <QrTableCardPreview
+                  venueName={venue.orgName}
+                  tableName={previewTable.name}
+                  qrDataUrl={displayedQrDataUrl}
+                  locale={menuLocale}
+                />
+              </div>
             )}
           </div>
         )}
 
         {step === 2 && (
+          <OnboardingMenuImport
+            categories={categories}
+            currency={venue.currency}
+            initialItems={[]}
+            onSaved={(count) => setSavedProductCount(count)}
+          />
+        )}
+
+        {step === 3 && (
           <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="tableCount">Number of tables</Label>
+                <Input
+                  id="tableCount"
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={tableCountInput}
+                  onChange={(e) => {
+                    const count = Number(e.target.value) || 1;
+                    setTableCountInput(count);
+                    rebuildTableNames(count, numberingScheme);
+                  }}
+                  className="mt-1.5 border-dash-surface-overlay bg-dash-surface"
+                />
+              </div>
+              <div>
+                <Label htmlFor="numbering">Numbering scheme</Label>
+                <select
+                  id="numbering"
+                  value={numberingScheme}
+                  onChange={(e) => {
+                    const scheme = e.target.value as TableNumberingScheme;
+                    setNumberingScheme(scheme);
+                    rebuildTableNames(tableCountInput, scheme);
+                  }}
+                  className="mt-1.5 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
+                >
+                  <option value="table_n">Table 1, Table 2…</option>
+                  <option value="t_n">T1, T2…</option>
+                  <option value="numeric">1, 2, 3…</option>
+                </select>
+              </div>
+            </div>
             <p className="text-sm text-dash-text-muted">
-              Name your tables. QR codes are generated automatically.
+              QR codes are generated automatically when you continue.
             </p>
-            {tableNames.map((name, index) => (
+            {tableNames.slice(0, 6).map((name, index) => (
               <div key={index}>
                 <Label>Table {index + 1}</Label>
                 <Input
@@ -446,33 +592,15 @@ export function OnboardingWizard({
                 />
               </div>
             ))}
-            {tableNames.length < 8 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setTableNames((rows) => [...rows, `Table ${rows.length + 1}`])}
-                className="border-dash-surface-overlay"
-              >
-                + Add table
-              </Button>
-            )}
-            {previewTable && (
-              <div className="mt-6 max-w-xs">
-                <p className="mb-3 text-sm font-medium text-dash-text-secondary">
-                  QR preview
-                </p>
-                <QrTableCardPreview
-                  venueName={venue.orgName}
-                  tableName={previewTable.name}
-                  qrDataUrl={qrDataUrl}
-                  locale={menuLocale}
-                />
-              </div>
+            {tableNames.length > 6 && (
+              <p className="text-xs text-dash-text-disabled">
+                +{tableNames.length - 6} more tables
+              </p>
             )}
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-4">
             <p className="text-sm text-dash-text-muted">
               Connect Stripe for card payments, or skip to accept pay-at-bar only.
@@ -481,12 +609,12 @@ export function OnboardingWizard({
               connected={stripeOnboarded}
               accountId={stripeAccountId}
               platformReady={stripePlatformReady}
-              currency={currency}
+              currency={venue.currency}
             />
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <OnboardingFiscalStep
             tssId={tssId}
             steuernummer={fiscal.steuernummer}
@@ -495,18 +623,133 @@ export function OnboardingWizard({
           />
         )}
 
-        {step === 5 && (
-          <OnboardingGoLiveStep
-            venueName={venue.orgName}
-            venueAddress={venue.address}
-            venueCity={venue.city}
-            productCount={summaryCounts.products}
-            categoryCount={summaryCounts.categories}
-            tableCount={summaryCounts.tables}
-            stripeOnboarded={stripeOnboarded}
-            tssId={tssId}
-            steuernummer={fiscal.steuernummer}
-          />
+        {step === 6 && (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="playbook">Playbook pack</Label>
+              <select
+                id="playbook"
+                value={denis.playbookPackId}
+                onChange={(e) =>
+                  setDenis((d) => ({ ...d, playbookPackId: e.target.value }))
+                }
+                className="mt-1.5 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
+              >
+                <option value="">Auto-generate for venue</option>
+                {playbookOptions.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="menuLocale">Guest language</Label>
+                <select
+                  id="menuLocale"
+                  value={denis.menuLocale}
+                  onChange={(e) =>
+                    setDenis((d) => ({
+                      ...d,
+                      menuLocale: e.target.value as "de" | "en" | "sr",
+                    }))
+                  }
+                  className="mt-1.5 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
+                >
+                  <option value="de">Deutsch</option>
+                  <option value="en">English</option>
+                  <option value="sr">Srpski</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="tone">Denis tone</Label>
+                <select
+                  id="tone"
+                  value={denis.tone}
+                  onChange={(e) =>
+                    setDenis((d) => ({
+                      ...d,
+                      tone: e.target.value as VenuePlaybookTone,
+                    }))
+                  }
+                  className="mt-1.5 h-9 w-full rounded-md border border-dash-surface-overlay bg-dash-surface px-3 text-sm text-dash-text"
+                >
+                  <option value="friendly">Friendly</option>
+                  <option value="formal">Formal</option>
+                  <option value="efficient">Efficient</option>
+                  <option value="playful_luxury">Playful luxury</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 7 && (
+          <div className="space-y-4">
+            <QrPrintSheet
+              orgSlug={orgSlug}
+              venueName={venue.orgName}
+              brandColor={branding.primaryColor}
+              tables={savedTables}
+              appUrl={appUrl}
+            />
+            {previewTable && displayedQrDataUrl && (
+              <div className="max-w-xs">
+                <QrTableCardPreview
+                  venueName={venue.orgName}
+                  tableName={previewTable.name}
+                  qrDataUrl={displayedQrDataUrl}
+                  locale={menuLocale}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 8 && (
+          <div className="space-y-5">
+            <OnboardingGoLiveStep
+              venueName={venue.orgName}
+              venueAddress={venue.address}
+              venueCity={venue.city}
+              productCount={summaryCounts.products}
+              categoryCount={summaryCounts.categories}
+              tableCount={summaryCounts.tables}
+              stripeOnboarded={stripeOnboarded}
+              tssId={tssId}
+              steuernummer={fiscal.steuernummer}
+            />
+            {demoGuestUrl && (
+              <div className="rounded-xl border border-dash-border bg-dash-surface/60 p-4">
+                <p className="text-sm font-medium text-dash-text-secondary">
+                  Denis demo — test order with owner
+                </p>
+                <p className="mt-1 text-sm text-dash-text-muted">
+                  Open the guest menu on your phone and place a test order before
+                  go-live.
+                </p>
+                <Button
+                  asChild
+                  className="mt-3 bg-dash-accent hover:bg-dash-accent-hover"
+                >
+                  <Link href={demoGuestUrl} target="_blank" rel="noreferrer">
+                    Open guest demo
+                    <ExternalLink className="ms-2 size-4" />
+                  </Link>
+                </Button>
+              </div>
+            )}
+            {!onTarget && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  Target is under 15 minutes to first order — you can still finish
+                  setup now.
+                </p>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -522,7 +765,7 @@ export function OnboardingWizard({
           Back
         </Button>
         <div className="flex-1" />
-        {step < 5 && step !== 0 && (
+        {step < STEP_COUNT - 1 && step !== 0 && (
           <Button
             type="button"
             variant="ghost"
@@ -533,7 +776,7 @@ export function OnboardingWizard({
             Skip
           </Button>
         )}
-        {step < 5 ? (
+        {step < STEP_COUNT - 1 ? (
           <Button
             type="button"
             onClick={goNext}

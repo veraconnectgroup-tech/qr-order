@@ -12,6 +12,7 @@ export type ProactivePolicyReason =
   | "gmm.pace_indecisive"
   | "gmm.engagement_welcome_skip"
   | "gmm.frustration_high"
+  | "gmm.frustration_mild"
   | "gmm.group_address_follower"
   | "gmm.needs_attention_blocks_upsell"
   | "gmm.price_affinity_mismatch"

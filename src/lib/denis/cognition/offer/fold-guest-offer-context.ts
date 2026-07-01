@@ -16,6 +16,12 @@ import {
   type GuestOfferContext,
 } from "@/lib/denis/cognition/offer/offer-types";
 import { resolveOfferForPosture } from "@/lib/denis/cognition/offer/resolve-offer-for-posture";
+import {
+  buildProductAllergensFromVkg,
+  buildProductPricesFromTimeline,
+  countCartRecoveryEmits,
+  resolveSmartCartRecoveryOffer,
+} from "@/lib/denis/cognition/offer/smart-cart-recovery";
 import { scoreBrowseProducts } from "@/lib/denis/cognition/offer/score-browse-products";
 
 function stableSerialize(value: unknown): string {
@@ -96,18 +102,53 @@ export function foldGuestOfferContext(
     venueOps: input.venueOps,
   });
 
+  const cartRecoveryEmitCount = countCartRecoveryEmits({
+    outcomes: nudgeLifecycle.outcomes,
+    pending: nudgeLifecycle.pending,
+  });
+
+  const smartRecoveryResult =
+    input.browse.cartAbandoned.length > 0
+      ? resolveSmartCartRecoveryOffer({
+          browse: input.browse,
+          mental: input.mental,
+          sequence,
+          sequencePattern,
+          readiness,
+          cartRecoveryEmitCount,
+          productPricesCents:
+            input.productPricesCents ??
+            buildProductPricesFromTimeline(input.timeline),
+          sessionAllergieLabels: input.sessionAllergieLabels,
+          productAllergens:
+            input.productAllergens ?? buildProductAllergensFromVkg(input.vkgGraph),
+          vkgGraph: input.vkgGraph,
+          language: input.language ?? input.config.language?.venueDefault ?? null,
+          nowMs: now,
+          isKitchenBlocked: input.venueOps.kdsStress === "high",
+        })
+      : null;
+
+  const finalPrimary = smartRecoveryResult?.primary ?? resolved.primary;
+  const finalAlternative = smartRecoveryResult?.alternative ?? resolved.alternative;
+  const finalCartRecovery = smartRecoveryResult?.cartRecovery ?? resolved.cartRecovery;
+  const finalStrategy = smartRecoveryResult?.strategy ?? resolved.strategy;
+  const finalReadiness = smartRecoveryResult?.readiness ?? readiness;
+  const smartRecovery = smartRecoveryResult?.plan ?? null;
+
   const topDwellMs = input.browse.viewedProducts[0]?.totalDwellMs ?? 0;
 
   const withoutHash = {
     version: GUEST_OFFER_CONTEXT_VERSION,
-    readiness,
-    primary: resolved.primary,
-    alternative: resolved.alternative,
-    cartRecovery: resolved.cartRecovery,
+    readiness: finalReadiness,
+    primary: finalPrimary,
+    alternative: finalAlternative,
+    cartRecovery: finalCartRecovery,
+    smartRecovery,
     sequencePattern,
     scoredProducts,
     trace: {
-      strategy: resolved.strategy,
+      strategy: finalStrategy,
       posture: {
         predictedNeed: input.mental.predictedNeed,
         intent: input.mental.intent,
@@ -124,7 +165,7 @@ export function foldGuestOfferContext(
         kdsStress: input.venueOps.kdsStress,
         operatingMode: input.venueOps.operatingMode,
       },
-      readiness,
+      readiness: finalReadiness,
       timing,
       conversions,
       nudgeStats: nudgeStatsRecord,

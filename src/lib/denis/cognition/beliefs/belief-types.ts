@@ -13,6 +13,10 @@ export type Belief<T = unknown> = {
   confidence: number;
   source: BeliefSource;
   expiresAt?: string;
+  /** Epoch ms when belief was last observed or reinforced. */
+  observedAtMs?: number;
+  /** Parent belief key when set via propagation rules. */
+  propagatedFrom?: string;
 };
 
 export type BeliefGraph = {
@@ -30,6 +34,11 @@ export const CORE_BELIEF_KEYS = {
   venueSkipUpsell: "venue.skip_upsell",
   guestReturnVisit: "guest.return_visit",
   commerceHasOpenOrders: "commerce.has_open_orders",
+  commerceHasDeliveredOrders: "commerce.has_delivered_orders",
+  commerceAnyLate: "commerce.any_late",
+  commerceOldestWaitMinutes: "commerce.oldest_wait_minutes",
+  commerceKitchenEta: "commerce.kitchen_eta",
+  commerceBarEta: "commerce.bar_eta",
   policyRequireConfirm: "policy.require_confirm",
   waiterGapCount: "waiter.gap_count",
   waiterCanConfirm: "waiter.can_confirm",
@@ -47,6 +56,14 @@ export const CORE_BELIEF_KEYS = {
   offerReadinessReady: "offer.readiness_ready",
   offerPrimaryKitchenBlocked: "offer.primary_kitchen_blocked",
   mentalBrowseFocusProduct: "mental.browse_focus_product",
+  venueCurrentSlotStress: "venue.current_slot_stress",
+  venueTypicalSessionMinutes: "venue.typical_session_minutes",
+  venueTopProducts: "venue.top_products",
+  partySize: "party.size",
+  partyMode: "party.mode",
+  guestAllergies: "guest.allergies",
+  menuFilter: "menu.filter",
+  conversationTon: "conversation.ton",
 } as const;
 
 export type ConversationMode = "banter" | "ordering" | "settling";
@@ -66,13 +83,28 @@ export type ConversationAwaiting =
   | "clarify_intent"
   | null;
 
+export type BeliefOptions = {
+  observedAtMs?: number;
+  propagatedFrom?: string;
+  expiresAt?: string;
+};
+
 export function belief<T>(
   key: string,
   value: T,
   source: BeliefSource = "inferred",
-  confidence = 0.85
+  confidence = 0.85,
+  options?: BeliefOptions
 ): Belief<T> {
-  return { key, value, confidence, source };
+  return {
+    key,
+    value,
+    confidence,
+    source,
+    observedAtMs: options?.observedAtMs,
+    propagatedFrom: options?.propagatedFrom,
+    expiresAt: options?.expiresAt,
+  };
 }
 
 export function beliefGraph(entries: Belief[]): BeliefGraph {

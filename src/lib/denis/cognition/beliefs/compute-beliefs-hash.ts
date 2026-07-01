@@ -21,8 +21,10 @@ export function computeBeliefsHash(graph: BeliefGraph): string {
     .map((entry) => ({
       key: entry.key,
       value: entry.value,
-      confidence: entry.confidence,
+      confidence: Number(entry.confidence.toFixed(4)),
       source: entry.source,
+      observedAtMs: entry.observedAtMs ?? null,
+      propagatedFrom: entry.propagatedFrom ?? null,
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 

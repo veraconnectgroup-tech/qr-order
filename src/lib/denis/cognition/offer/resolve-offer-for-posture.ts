@@ -55,31 +55,15 @@ export function resolveOfferForPosture(input: {
   const kitchenBlocked = input.venueOps.kdsStress === "high";
 
   if (
-    input.mental.pace === "indecisive" &&
     input.browse.cartAbandoned.length > 0 &&
     (input.readiness.reason === "cart_hesitation" ||
       input.mental.predictedNeed === "needs_help_choosing")
   ) {
-    const abandoned = input.browse.cartAbandoned[0]!;
-    const cartRecovery = toResolvedOffer({
-      product: {
-        productId: abandoned.productId,
-        productName: abandoned.productName,
-        categoryPath: [],
-        viewCount: 1,
-        totalDwellMs: 0,
-        addedToCart: true,
-        removedFromCart: true,
-      },
-      resolution: "cart_recovery",
-      score: 0.85,
-      isKitchenBlocked: kitchenBlocked,
-    });
     return {
-      primary: cartRecovery,
+      primary: null,
       alternative: null,
-      cartRecovery,
-      strategy: "cart_recovery_first",
+      cartRecovery: null,
+      strategy: "cart_recovery_pending",
     };
   }
 

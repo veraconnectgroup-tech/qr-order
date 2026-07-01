@@ -1,16 +1,17 @@
-import { deriveSessionPhase } from "@/lib/scene/compose-scene";
-import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
+import {
+  inferSessionPhaseFromCommerce,
+  type SessionPhaseOrder,
+} from "@/lib/denis/loop/infer-session-phase";
 import type { OrderFact, SessionPhase } from "@/lib/denis/loop/types";
+import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 
-const KITCHEN_OPEN_STATUSES = [
-  "pending",
-  "confirmed",
-  "preparing",
-  "ready",
-] as const;
-
-function isKitchenOpenStatus(status: string): boolean {
-  return (KITCHEN_OPEN_STATUSES as readonly string[]).includes(status);
+function ordersForPhaseInference(orders: OrderFact[]): SessionPhaseOrder[] {
+  return orders.map((order) => ({
+    status: order.status,
+    createdAt: order.createdAt,
+    deliveredAt: order.deliveredAt,
+    items: order.items.map((item) => ({ menuSection: item.menuSection })),
+  }));
 }
 
 export function deriveFoldSessionPhase(input: {
@@ -19,23 +20,17 @@ export function deriveFoldSessionPhase(input: {
   orders: OrderFact[];
   hasCartActivity: boolean;
   billSettled: boolean;
+  nowMs?: number;
 }): SessionPhase {
-  const hasOpenKitchenOrders = input.orders.some((order) =>
-    isKitchenOpenStatus(order.status)
-  );
-  const allOrdersDelivered =
-    input.orders.length > 0 &&
-    input.orders.every((order) => order.status === "delivered");
-
-  return deriveSessionPhase({
+  return inferSessionPhaseFromCommerce({
     sessionClosed:
       input.sessionStatus !== "active" ||
       input.accessState === "closed" ||
       input.accessState === "closing",
-    hasOpenKitchenOrders,
-    hasCartActivity: input.hasCartActivity,
     billSettled: input.billSettled,
-    allOrdersDelivered,
+    hasCartActivity: input.hasCartActivity,
+    orders: ordersForPhaseInference(input.orders),
+    nowMs: input.nowMs,
   });
 }
 

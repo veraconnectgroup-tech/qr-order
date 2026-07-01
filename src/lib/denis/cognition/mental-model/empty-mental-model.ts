@@ -1,5 +1,21 @@
-import type { GuestMentalModel, GuestPosture } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import { emptyGuestPredictiveModel } from "@/lib/denis/cognition/mental-model/empty-predictive-model";
+import type {
+  GuestMentalModel,
+  GuestPosture,
+  GuestMentalModelFusion,
+} from "@/lib/denis/cognition/mental-model/mental-model-types";
 import { GUEST_MENTAL_MODEL_VERSION } from "@/lib/denis/cognition/mental-model/mental-model-types";
+
+const EMPTY_FUSION: GuestMentalModelFusion = {
+  readiness: { score: 0, band: "low", offerSubmit: false },
+  guidance: {
+    style: "default",
+    nextLogicalStep: "exploring",
+    abnormalTransition: null,
+    hint: null,
+  },
+  anomalies: [],
+};
 
 /** Eval / test fixture — neutral baseline before fold. */
 export function emptyGuestMentalModel(now = 0): GuestMentalModel {
@@ -42,6 +58,8 @@ export function emptyGuestMentalModel(now = 0): GuestMentalModel {
       followerDevices: [],
       addressLeader: true,
     },
+    fusion: EMPTY_FUSION,
+    predictions: emptyGuestPredictiveModel(),
   };
 }
 

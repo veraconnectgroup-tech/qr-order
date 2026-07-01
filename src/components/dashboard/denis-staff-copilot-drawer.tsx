@@ -102,6 +102,19 @@ export function DenisStaffCopilotDrawer({
                     </p>
                   </div>
                 </div>
+                {data.rushModeSuggestion ? (
+                  <p className="mt-3 text-sm text-amber-200">{data.rushModeSuggestion}</p>
+                ) : null}
+                {data.eventBlock ? (
+                  <div className="mt-3 rounded-lg border border-dash-accent/30 bg-dash-accent/5 px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-dash-accent">
+                      {data.eventBlock.title}
+                    </p>
+                    <pre className="mt-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-dash-text-secondary">
+                      {data.eventBlock.lines.join("\n")}
+                    </pre>
+                  </div>
+                ) : null}
               </div>
 
               <div>

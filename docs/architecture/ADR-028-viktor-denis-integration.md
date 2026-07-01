@@ -106,7 +106,7 @@ Scope: operator:read | operator:propose (future)
 
 - Keys issued in Denis admin → Integrations → Viktor  
 - Every request → `operator_api_audit` table  
-- Rate limit: 100 req/min/org (adjust per contract)
+- Rate limit: **100 req/min per org** (`withOperatorOrgRateLimit` — keyed on authenticated `orgId`)
 
 ### 4.2 Read endpoints (P0)
 
@@ -116,6 +116,10 @@ Scope: operator:read | operator:propose (future)
 | GET | `/api/operator/v1/locations/:id/summary` | Today KPI rollup |
 | GET | `/api/operator/v1/locations/:id/denis/metrics` | Conversion, credits, LLM rate |
 | GET | `/api/operator/v1/locations/:id/orders` | Open + recent orders |
+| GET | `/api/operator/v1/locations/:id/orders/:orderId` | Single order + line items |
+| GET | `/api/operator/v1/locations/:id/commerce/insights` | Revenue, menu mix, payments |
+| GET | `/api/operator/v1/locations/:id/fiscal/daily-closing` | Z-Bon / daily closing for accounting |
+| GET | `/api/operator/v1/locations/:id/learnings` | Denis accumulated venue knowledge |
 | GET | `/api/operator/v1/sessions` | Filter: date, status, location |
 | GET | `/api/operator/v1/sessions/:id/summary` | Transcript summary (redacted) |
 | GET | `/api/operator/v1/sessions/:id/transcript` | Full turn list (optional PII flag) |

@@ -94,6 +94,12 @@ export function foldOfferConversions(
     if (queue.length === 0) pendingByProduct.delete(browseEvent.productId);
 
     const lagSeconds = Math.max(0, Math.round((atMs - emit.emittedMs) / 1000));
+    const lineTotal =
+      typeof browseEvent.lineTotal === "number" &&
+      Number.isFinite(browseEvent.lineTotal) &&
+      browseEvent.lineTotal > 0
+        ? browseEvent.lineTotal
+        : undefined;
     conversions.push({
       productId: emit.productId,
       productName:
@@ -103,6 +109,7 @@ export function foldOfferConversions(
       emittedAt: emit.emittedAt,
       convertedAt: browseEvent.timestamp || row.created_at,
       lagSeconds,
+      revenue: lineTotal,
     });
   }
 

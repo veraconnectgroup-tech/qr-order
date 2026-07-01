@@ -8,10 +8,11 @@ import { noCache } from "@/lib/cache/headers";
 import { logger } from "@/lib/logger";
 import { executeOrderSaga } from "@/lib/orders/order-saga";
 import { withRateLimit, withStaffRateLimit } from "@/lib/rate-limit";
-import { getCurrentTraceId } from "@/lib/resilience/trace";
+import { getCurrentTraceId } from "@/lib/resilience/trace.server";
 import { isUuid } from "@/lib/security/sanitize";
 import { zOrderNotesOptional, zSessionToken } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseGuestOrderDetailRow } from "@/lib/supabase/parse-order-rows";
 import { createServerClient } from "@/lib/supabase/server";
 import { processRefund } from "@/lib/stripe/refund";
 import { performStorno } from "@/lib/fiscal/storno";
@@ -59,33 +60,7 @@ export const GET = withErrorHandler(
       return apiError("Not found.", 404, undefined, cacheHeaders);
     }
 
-    const orderBase = order as unknown as {
-      session_id: string | null;
-      id: string;
-      order_number: number;
-      status: string;
-      payment_status: string;
-      subtotal: number;
-      tax_amount: number;
-      tax_percent: number;
-      total: number;
-      rejection_reason: string | null;
-      estimated_prep_minutes: number | null;
-      created_at: string;
-      accepted_at: string | null;
-      preparing_at: string | null;
-      ready_at: string | null;
-      delivered_at: string | null;
-      beleg_token: string | null;
-      order_items: Array<{
-        product_name: string;
-        quantity: number;
-        total: number;
-        notes: string | null;
-        order_item_modifiers: Array<{ modifier_name: string; price: number }>;
-      }>;
-      tables: { name: string } | null;
-    };
+    const orderBase = parseGuestOrderDetailRow(order);
 
     if (!orderBase.session_id) {
       return apiError("Unauthorized.", 401, undefined, cacheHeaders);

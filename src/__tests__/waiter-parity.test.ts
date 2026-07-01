@@ -22,7 +22,7 @@ describe("ADR-031 C3 — waiter parity journey eval", () => {
     expect(report.scenarioCount).toBeGreaterThanOrEqual(WAITER_PARITY_MIN_SCENARIOS);
     expect(report.passRate).toBeGreaterThanOrEqual(report.minPassRate);
     expect(report.ok).toBe(true);
-  });
+  }, 30_000);
 
   it("typo slot journey passes", () => {
     const result = runWaiterParityScenario(

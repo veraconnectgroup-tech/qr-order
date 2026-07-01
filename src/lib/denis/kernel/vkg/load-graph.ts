@@ -1,5 +1,9 @@
 import { buildVenueKnowledgeGraph } from "@/lib/denis/kernel/vkg/build-graph";
 import type { VenueKnowledgeGraph } from "@/lib/denis/kernel/vkg/types";
+import {
+  learnedEdgeRowToPairing,
+  meetsLearnedPairingSuggestionThreshold,
+} from "@/lib/denis/intelligence/dynamic-vkg";
 import { getAiRedis } from "@/lib/ai/redis";
 import { logRedisDegradation } from "@/lib/redis/client";
 import { logger } from "@/lib/logger";
@@ -71,7 +75,7 @@ export async function loadVenueKnowledgeGraph(
   const { data: rules, error: rulesError } = await admin
     .from("upsell_rules")
     .select(
-      "id, trigger_product_id, trigger_category_id, suggest_product_id, message, sort_order"
+      "id, rule_type, trigger_product_id, trigger_category_id, suggest_product_id, message, conditions, sort_order"
     )
     .eq("location_id", locationId)
     .eq("is_active", true)
@@ -130,6 +134,46 @@ export async function loadVenueKnowledgeGraph(
       }>) ?? []
     ),
   });
+
+  const { data: learnedRows } = await admin
+    .from("denis_learned_edges" as never)
+    .select(
+      "from_product_id, to_product_id, impressions, accepts, accept_rate, suggested_weight, status"
+    )
+    .eq("location_id", locationId)
+    .in("status", ["pending", "approved"])
+    .gte("accept_rate", 0.3)
+    .gte("impressions", 5)
+    .order("accept_rate", { ascending: false })
+    .limit(40);
+
+  const adminEdgeKeys = new Set(
+    graph.edges.map((edge) => `${edge.fromId}|${edge.toProductId}`)
+  );
+
+  graph.learnedPairings = ((learnedRows ?? []) as Array<{
+    from_product_id: string;
+    to_product_id: string;
+    impressions: number;
+    accepts: number;
+    accept_rate: number;
+    suggested_weight: number;
+    status: string;
+  }>)
+    .map((row) =>
+      learnedEdgeRowToPairing({
+        from_product_id: row.from_product_id,
+        to_product_id: row.to_product_id,
+        impressions: row.impressions,
+        accepts: row.accepts,
+        accept_rate: Number(row.accept_rate),
+        suggested_weight: Number(row.suggested_weight),
+      })
+    )
+    .filter((pairing) => meetsLearnedPairingSuggestionThreshold(pairing))
+    .filter(
+      (pairing) => !adminEdgeKeys.has(`${pairing.productA}|${pairing.productB}`)
+    );
 
   if (redis) {
     try {

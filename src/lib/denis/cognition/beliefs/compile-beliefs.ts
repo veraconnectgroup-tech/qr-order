@@ -1,4 +1,5 @@
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import type { ResolvedRhythmContext } from "@/lib/denis/config/rhythm-prior-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import {
@@ -11,10 +12,25 @@ import {
   type ConversationMode,
   type PendingSlotKind,
 } from "@/lib/denis/cognition/beliefs/belief-types";
+import {
+  applyBeliefConfidencePipeline,
+  type BeliefConflictLog,
+} from "@/lib/denis/cognition/beliefs/belief-confidence";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import { obligationToBeliefs } from "@/lib/denis/cognition/waiter/assess-waiter-obligation";
 import { mergeTableSessionObligation } from "@/lib/denis/cognition/waiter/merge-table-session-obligation";
 import type { WaiterGapKind, WaiterNextAction } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
+import { deriveCommerceLifecycleFacts } from "@/lib/denis/cognition/beliefs/compile-commerce-lifecycle";
+import { isOrderPlacementMessage } from "@/lib/ai/ordering/order-message-backfill";
+import { detectGuestScript } from "@/lib/denis/cognition/conversation/script-detector";
+import { parseCodeSwitchedMessage } from "@/lib/denis/cognition/conversation/code-switch-parser";
+import {
+  isGuestMenuInquiryMessage,
+  isGuestSettlingMessage,
+  isPureSocialBanterMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
+
+export { isPureSocialBanterMessage };
 
 export type CompileBeliefsInput = {
   state: TableSessionState;
@@ -25,6 +41,8 @@ export type CompileBeliefsInput = {
   config?: ConciergeConfig;
   /** Override memory when testing (defaults to state.guest). */
   guestMemory?: GuestMemoryProjection | null;
+  nowMs?: number;
+  rhythm?: ResolvedRhythmContext | null;
 };
 
 const SUPPORTED_LANGUAGES = [
@@ -64,21 +82,6 @@ const EXPLICIT_LANGUAGE_PREFERENCE: Array<{
     lang: "en",
   },
 ];
-
-const LATIN_BALKAN_PATTERN =
-  /\b(jedn[auo]|molim|hvala|naru[čc]|poru[čc]|potvrd|donesi|donij|imam|alergij|pivo|cola|kola|jo[sš]|sve|nema|mo[žz]e|moze|želim|zelim|ho[ćc]u|hocu|imate|zdravo|dobar|gde|gdje|sta|šta|kako|si|ste|sam|smo|brate|bre|legendo|legend|ćao|cao|jel|jesi|nisi|reci|recite|ajde|idem|idemo|super|odlično|odlicno|samo|sad|sada|kasnije|hajde|izvini|izvinite|naravno|važi|vazi|može|moze)\b/i;
-
-const LATIN_GERMAN_PATTERN =
-  /\b(bitte|danke|ein|eine|einen|einem|gross|groß|klein|bier|wasser|wein|cola|kaffee|tee|ich|möchte|mochte|hätte|hatte|bestellen|rechnung|kellner|hallo|guten|morgen|tag|abend|gerne|wollen|würde|wurde|noch|alles|spritz|pilsner|lager|weizen|radler)\b/i;
-
-const LATIN_ENGLISH_PATTERN =
-  /\b(please|thanks|thank you|could i|can i|i want|i'd like|allergies|order|hello|hi)\b/i;
-
-const ORDERING_GUEST_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte)\b/i;
-
-const SETTLING_GUEST_PATTERN =
-  /\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat|pay|rechnung bitte|that's it|done ordering)\b/i;
 
 const NEUTRAL_LANGUAGE_MESSAGE =
   /^(0[,.]3|0[,.]5|0[,.]33|1|2)(\s*(l|liter|litre|litr))?$/i;
@@ -142,16 +145,30 @@ function detectMessageLanguage(
     return { lang: "es", confidence: 0.95, source: "inferred" };
   }
 
-  const lower = text.toLowerCase();
-  if (LATIN_BALKAN_PATTERN.test(lower)) {
-    if (venue === "hr") return { lang: "hr", confidence: 0.9, source: "inferred" };
-    return { lang: "sr", confidence: 0.9, source: "inferred" };
+  const script = detectGuestScript(text);
+  if (script.inputScript === "cyrillic") {
+    return {
+      lang: venue === "hr" ? "hr" : "sr",
+      confidence: 0.9,
+      source: "inferred",
+    };
   }
-  if (LATIN_GERMAN_PATTERN.test(lower)) {
-    return { lang: "de", confidence: 0.85, source: "inferred" };
-  }
-  if (LATIN_ENGLISH_PATTERN.test(lower)) {
-    return { lang: "en", confidence: 0.85, source: "inferred" };
+
+  if (script.inputScript === "latin") {
+    const codeSwitch = parseCodeSwitchedMessage(text, {
+      venueLanguage: venue,
+    });
+    const dominant = codeSwitch.dominantLanguage;
+    if (
+      dominant &&
+      (SUPPORTED_LANGUAGES as readonly string[]).includes(dominant)
+    ) {
+      return {
+        lang: dominant as SupportedLanguage,
+        confidence: codeSwitch.codeSwitched ? 0.88 : 0.85,
+        source: "inferred",
+      };
+    }
   }
 
   return { lang: venue, confidence: 0.55, source: "inferred" };
@@ -226,22 +243,6 @@ function resolveConversationLanguage(
   );
 }
 
-function isCasualSocialMessage(message: string): boolean {
-  const text = message.trim();
-  if (!text || text.length > 280) return false;
-  return !ORDERING_GUEST_PATTERN.test(text);
-}
-
-/** Narrow pure-social greeting — relational tier only (ADR-030). */
-const PURE_SOCIAL_BANTER_PATTERN =
-  /^(zdravo|ćao|cao|hello|hi|hey|guten tag|guten abend|merhaba|que tal|ciao|hola)[\s,!.-]*((kako si|how are|sta si|sta ima|legendo|legend).*)?$/i;
-
-export function isPureSocialBanterMessage(message: string): boolean {
-  const text = message.trim();
-  if (!text || text.length > 120) return false;
-  return PURE_SOCIAL_BANTER_PATTERN.test(text);
-}
-
 function resolveCommercePressure(
   state: TableSessionState
 ): ReturnType<typeof belief<CommercePressure>> {
@@ -309,12 +310,29 @@ function resolveConversationAwaiting(
   return belief(CORE_BELIEF_KEYS.conversationAwaiting, null, "default", 0.9);
 }
 
+function hasStickyCommerceSession(
+  state: TableSessionState,
+  pressure: CommercePressure,
+  awaiting: ConversationAwaiting
+): boolean {
+  return (
+    pressure !== "none" ||
+    awaiting != null ||
+    state.commerce.cart.visibleLines.length > 0 ||
+    state.commerce.orders.some(
+      (order) => order.status !== "delivered" && order.status !== "cancelled"
+    ) ||
+    state.conversation.pendingSlot != null
+  );
+}
+
 function resolveConversationMode(
   input: CompileBeliefsInput,
   pressure: CommercePressure,
   awaiting: ConversationAwaiting
 ): ReturnType<typeof belief<ConversationMode>> {
   const { state, guestMessage } = input;
+  const stickyCommerce = hasStickyCommerceSession(state, pressure, awaiting);
 
   if (state.session.billSettled) {
     return belief(
@@ -325,7 +343,7 @@ function resolveConversationMode(
     );
   }
 
-  if (SETTLING_GUEST_PATTERN.test(guestMessage)) {
+  if (isGuestSettlingMessage(guestMessage)) {
     const hasUnsentCart =
       state.commerce.cart.visibleLines.length > 0 ||
       state.conversation.pendingSlot != null;
@@ -347,11 +365,7 @@ function resolveConversationMode(
     );
   }
 
-  if (
-    pressure !== "none" ||
-    awaiting != null ||
-    state.commerce.cart.visibleLines.length > 0
-  ) {
+  if (stickyCommerce) {
     return belief(
       CORE_BELIEF_KEYS.conversationMode,
       "ordering",
@@ -373,13 +387,26 @@ function resolveConversationMode(
     );
   }
 
-  if (ORDERING_GUEST_PATTERN.test(guestMessage.trim())) {
+  if (isOrderPlacementMessage(guestMessage.trim())) {
     return belief(
       CORE_BELIEF_KEYS.conversationMode,
       "ordering",
       "inferred",
       0.88
     );
+  }
+
+  if (isGuestMenuInquiryMessage(guestMessage.trim())) {
+    return belief(
+      CORE_BELIEF_KEYS.conversationMode,
+      "ordering",
+      "inferred",
+      0.85
+    );
+  }
+
+  if (isPureSocialBanterMessage(guestMessage.trim())) {
+    return belief(CORE_BELIEF_KEYS.conversationMode, "banter", "inferred", 0.85);
   }
 
   return belief(CORE_BELIEF_KEYS.conversationMode, "banter", "inferred", 0.75);
@@ -404,10 +431,7 @@ function resolvePendingSlot(
 
   const missingDrinkServeSize = state.commerce.cart.ai.draft.items.some(
     (line) =>
-      (line.menuSection === "drinks" ||
-        /\b(pivo|beer|bier|cola|kola|weizen|pilsner|sprite)\b/i.test(
-          line.productName
-        )) &&
+      line.menuSection === "drinks" &&
       !line.serveSize?.trim()
   );
 
@@ -437,6 +461,97 @@ function resolveHasOpenOrders(
   );
 }
 
+function resolveHasDeliveredOrders(
+  state: TableSessionState
+): ReturnType<typeof belief<boolean>> {
+  const delivered = state.commerce.orders.some(
+    (order) => order.status === "delivered"
+  );
+  return belief(
+    CORE_BELIEF_KEYS.commerceHasDeliveredOrders,
+    delivered,
+    "inferred",
+    delivered ? 0.95 : 0.9
+  );
+}
+
+function resolveCommerceLifecycleBeliefs(
+  state: TableSessionState,
+  nowMs = Date.now()
+) {
+  const facts = deriveCommerceLifecycleFacts(
+    state.commerce.orders,
+    state.venue.ops,
+    nowMs
+  );
+  const openCount = state.commerce.orders.filter(
+    (order) => order.status !== "delivered" && order.status !== "cancelled"
+  ).length;
+
+  return [
+    belief(CORE_BELIEF_KEYS.commerceAnyLate, facts.anyLate, "inferred", 0.85),
+    belief(
+      CORE_BELIEF_KEYS.commerceOldestWaitMinutes,
+      facts.oldestWaitMinutes,
+      "inferred",
+      openCount ? 0.85 : 0.6
+    ),
+    belief(
+      CORE_BELIEF_KEYS.commerceKitchenEta,
+      facts.kitchenEtaMinutes,
+      "ops",
+      0.75
+    ),
+    belief(CORE_BELIEF_KEYS.commerceBarEta, facts.barEtaMinutes, "ops", 0.75),
+  ];
+}
+
+function resolveRhythmBeliefs(rhythm: ResolvedRhythmContext | null | undefined) {
+  const topProducts = rhythm?.topProductSummaries?.length
+    ? rhythm.topProductSummaries
+        .map((product) => `${product.name} (${product.sharePct}%)`)
+        .join(", ")
+    : null;
+
+  return [
+    belief(
+      CORE_BELIEF_KEYS.venueCurrentSlotStress,
+      rhythm?.currentSlotStress ?? null,
+      rhythm?.active ? "ops" : "default",
+      rhythm?.confidence ?? 0.5
+    ),
+    belief(
+      CORE_BELIEF_KEYS.venueTypicalSessionMinutes,
+      rhythm?.typicalSessionMinutes ?? null,
+      rhythm?.active ? "ops" : "default",
+      rhythm?.confidence ?? 0.5
+    ),
+    belief(
+      CORE_BELIEF_KEYS.venueTopProducts,
+      topProducts,
+      rhythm?.active ? "ops" : "default",
+      rhythm?.confidence ?? 0.5
+    ),
+  ];
+}
+
+function resolvePartyBeliefs(state: TableSessionState) {
+  return [
+    belief(
+      CORE_BELIEF_KEYS.partySize,
+      state.party?.activeDeviceCount ?? 1,
+      state.party ? "inferred" : "default",
+      state.party ? 0.85 : 0.6
+    ),
+    belief(
+      CORE_BELIEF_KEYS.partyMode,
+      state.party?.partyMode ?? null,
+      state.party ? "inferred" : "default",
+      state.party ? 0.85 : 0.6
+    ),
+  ];
+}
+
 function resolveVenueRush(
   state: TableSessionState
 ): ReturnType<typeof belief<boolean>> {
@@ -451,14 +566,22 @@ function resolveVenueRush(
 
 function resolveSkipUpsell(
   state: TableSessionState,
-  config: ConciergeConfig
+  config: ConciergeConfig,
+  rhythm?: ResolvedRhythmContext | null
 ): ReturnType<typeof belief<boolean>> {
   const rush = state.venue.ops.operatingMode === "rush";
   const kdsStress = state.venue.ops.kdsStress === "high";
+  const rhythmSkip =
+    rhythm?.mode === "enforce" &&
+    rhythm?.behaviorDirectives?.skipUpsell === true &&
+    (rhythm.currentSlotStress === "rush" ||
+      rhythm.currentSlotStress === "high" ||
+      rhythm.currentSlotStress === "busy");
   const skip =
     state.venue.opsEffects.skipUpsell ||
     (rush && config.ops.rushSkipUpsell) ||
-    (kdsStress && config.ops.kdsStressSkipUpsell);
+    (kdsStress && config.ops.kdsStressSkipUpsell) ||
+    rhythmSkip;
 
   return belief(
     CORE_BELIEF_KEYS.venueSkipUpsell,
@@ -640,9 +763,56 @@ function resolveWaiterObligationBeliefs(input: CompileBeliefsInput) {
   };
 }
 
+function resolveGuestAllergies(
+  memory: GuestMemoryProjection | null | undefined
+): ReturnType<typeof belief<string[]>> | null {
+  const labels = memory?.allergyLabels ?? [];
+  if (labels.length === 0) return null;
+  return belief(
+    CORE_BELIEF_KEYS.guestAllergies,
+    labels,
+    memory ? "memory" : "default",
+    1,
+    { observedAtMs: memory?.lastVisitAt ? Date.parse(memory.lastVisitAt) : undefined }
+  );
+}
+
+function buildObservedAtMap(
+  input: CompileBeliefsInput,
+  explicitLanguage: boolean
+): Record<string, number> {
+  const now = input.nowMs ?? Date.now();
+  const mentalAt = input.state.mental.computedAt || now;
+  const map: Record<string, number> = {
+    [CORE_BELIEF_KEYS.mentalIntent]: mentalAt,
+    [CORE_BELIEF_KEYS.mentalReceptiveness]: mentalAt,
+    [CORE_BELIEF_KEYS.mentalFrustration]: mentalAt,
+    [CORE_BELIEF_KEYS.mentalPredictedNeed]: mentalAt,
+    [CORE_BELIEF_KEYS.mentalPriceAffinity]: mentalAt,
+    [CORE_BELIEF_KEYS.conversationMode]: now,
+    [CORE_BELIEF_KEYS.commercePressure]: now,
+  };
+
+  if (!explicitLanguage) {
+    map[CORE_BELIEF_KEYS.conversationLanguage] = mentalAt;
+  } else {
+    map[CORE_BELIEF_KEYS.conversationLanguage] = now;
+  }
+
+  const browseFocus = input.state.browse.viewedProducts[0]?.lastViewedAt;
+  if (browseFocus) {
+    map[CORE_BELIEF_KEYS.mentalBrowseFocusProduct] = Date.parse(browseFocus);
+  }
+
+  return map;
+}
+
 export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
   const config = input.config ?? input.state.config;
   const memory = input.guestMemory ?? input.state.guest;
+  const explicitLanguage = Boolean(
+    detectExplicitLanguagePreference(input.guestMessage)
+  );
 
   const pressureBelief = resolveCommercePressure(input.state);
   const pendingBelief = resolvePendingSlot(input.state, config);
@@ -652,8 +822,9 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
     pressureBelief.value
   );
   const waiterBeliefs = resolveWaiterObligationBeliefs(input);
+  const guestAllergies = resolveGuestAllergies(memory);
 
-  return beliefGraph([
+  const rawGraph = beliefGraph([
     resolveConversationLanguage(input, config, memory),
     resolveConversationMode(input, pressureBelief.value, awaitingBelief.value),
     awaitingBelief,
@@ -663,15 +834,29 @@ export function compileBeliefs(input: CompileBeliefsInput): BeliefGraph {
       CORE_BELIEF_KEYS.commerceAwaitingConfirm,
       pressureBelief.value === "confirm",
       "inferred",
-      pressureBelief.value === "confirm" ? 0.95 : 0.9
+      pressureBelief.value === "confirm" ? 0.95 : 0.9,
+      { observedAtMs: input.nowMs ?? Date.now() }
     ),
     resolveVenueRush(input.state),
-    resolveSkipUpsell(input.state, config),
+    resolveSkipUpsell(input.state, config, input.rhythm),
     resolveReturnVisit(memory, config),
     resolveRequireConfirm(config),
     resolveHasOpenOrders(input.state),
+    resolveHasDeliveredOrders(input.state),
+    ...(guestAllergies ? [guestAllergies] : []),
+    ...resolveCommerceLifecycleBeliefs(input.state, input.nowMs),
+    ...resolveRhythmBeliefs(input.rhythm),
+    ...resolvePartyBeliefs(input.state),
     ...resolveMentalBeliefs(input.state),
     ...resolveOfferBeliefs(input.state),
     ...waiterBeliefs.beliefs,
   ]);
+
+  const conflictLog: BeliefConflictLog[] = [];
+  return applyBeliefConfidencePipeline({
+    graph: rawGraph,
+    nowMs: input.nowMs,
+    observedAtMap: buildObservedAtMap(input, explicitLanguage),
+    conflictLog,
+  });
 }

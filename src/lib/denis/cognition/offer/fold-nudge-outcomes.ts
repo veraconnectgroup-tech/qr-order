@@ -1,5 +1,6 @@
 import type { BrowseEvent } from "@/lib/denis/cognition/browse/browse-types";
 import { guestTextFromTimeline } from "@/lib/denis/cognition/conversation/guest-continuity";
+import { isGuestDeclineMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import {
   buildNudgeId,
   NUDGE_ACCEPT_WINDOW_SEC,
@@ -11,9 +12,6 @@ import {
 } from "@/lib/denis/cognition/offer/nudge-outcome-types";
 import type { OfferResolutionKind } from "@/lib/denis/cognition/offer/offer-types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
-
-const EXPLICIT_DECLINE_PATTERN =
-  /\b(ne\s+hvala|ne\s+mora|ne\s+treba|no\s+thanks|not\s+interested|nicht\s+danke)\b/i;
 
 function asRecord(payload: DenisTimelineRow["payload"]): Record<string, unknown> {
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
@@ -81,10 +79,9 @@ function collectTimelineEvents(rows: DenisTimelineRow[]): TimelineEvent[] {
       events.push({ atMs, at, kind: "decline_dismiss", dismissKey });
     }
 
-    const guestText =
-      row.event_type === "signal.message" ? guestTextFromTimeline(row) : null;
+    const guestText = guestTextFromTimeline(row);
     if (guestText) {
-      if (EXPLICIT_DECLINE_PATTERN.test(guestText)) {
+      if (isGuestDeclineMessage(guestText)) {
         events.push({ atMs, at, kind: "decline_explicit" });
       } else {
         events.push({ atMs, at, kind: "ignored_message" });

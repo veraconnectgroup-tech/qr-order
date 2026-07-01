@@ -47,3 +47,27 @@ export function resolveCanonicalChatAiSessionId(
   }
   return clientSessionId ?? draftAiSessionId;
 }
+
+/** First registered device — may confirm/cancel shared table orders (G3). */
+export function resolvePrimaryAiSessionId(
+  devices: import("@/lib/denis/venue/party/types").PartyDeviceRow[]
+): string | null {
+  const primary = devices.find((device) => device.isPrimary) ?? devices[0];
+  return primary?.aiSessionId ?? null;
+}
+
+export function resolvePrimaryDeviceFingerprint(
+  devices: import("@/lib/denis/venue/party/types").PartyDeviceRow[]
+): string | null {
+  const primary = devices.find((device) => device.isPrimary) ?? devices[0];
+  return primary?.deviceFingerprint ?? null;
+}
+
+/** shared_cart: only primary confirms; per_device: each device owns its order. */
+export function canCurrentDeviceConfirmOrder(input: {
+  partyMode: PartyMode;
+  isCurrentDevicePrimary: boolean;
+}): boolean {
+  if (input.partyMode === "per_device") return true;
+  return input.isCurrentDevicePrimary;
+}

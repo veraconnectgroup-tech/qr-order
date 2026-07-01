@@ -20,7 +20,7 @@ const withPWA = require("next-pwa")({
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/(products|categories)(\/|\?).*/i,
-      handler: "CacheFirst",
+      handler: "StaleWhileRevalidate",
       options: {
         cacheName: "menu-data",
         expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
@@ -45,6 +45,14 @@ const withPWA = require("next-pwa")({
         cacheName: "dashboard-pages",
         networkTimeoutSeconds: 10,
         expiration: { maxEntries: 10, maxAgeSeconds: 300 },
+      },
+    },
+    {
+      urlPattern: /\/api\/orders(\/|\?|$)/i,
+      handler: "NetworkOnly",
+      method: "POST",
+      options: {
+        cacheName: "order-submit",
       },
     },
     {
@@ -76,6 +84,11 @@ const withPWA = require("next-pwa")({
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // CI runs `pnpm type-check` + `pnpm lint` before deploy; on Vercel's 2-core/8GB
+  // box TypeScript after webpack+PWA+Sentry can thrash until the 45min build limit.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   turbopack: {
     root: projectRoot,
   },

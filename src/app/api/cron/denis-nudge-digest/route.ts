@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
+import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { runWeeklyNudgeDigestTick } from "@/lib/admin/run-weekly-nudge-digest";
 import { logger } from "@/lib/logger";
@@ -6,6 +7,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Weekly Denis nudge performance digest — Monday 07:00 UTC (ADR-039 L4). */
 export const GET = withErrorHandler("cron-denis-nudge-digest-get", async (req, _ctx) => {
+  const limited = await withCronRateLimit(req);
+  if (limited) return limited;
+
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
 

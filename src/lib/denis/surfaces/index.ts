@@ -5,6 +5,25 @@ export { inferDenisChannelFromBody } from "@/lib/denis/surfaces/voice/infer-deni
 export { normalizeVoiceTranscript } from "@/lib/denis/surfaces/voice/normalize-transcript";
 export { parseDenisVoiceBody } from "@/lib/denis/surfaces/voice/parse-voice-turn";
 export {
+  detectVoiceLanguage,
+} from "@/lib/denis/surfaces/voice/detect-voice-language";
+export {
+  isVoiceTranscriptConfident,
+  shouldRetryVoiceCapture,
+  VOICE_STT_MIN_CONFIDENCE,
+} from "@/lib/denis/surfaces/voice/voice-confidence";
+export {
+  resolveVoiceTtsProfile,
+  type VoiceTtsProfile,
+} from "@/lib/denis/surfaces/voice/voice-tts-profile";
+export {
+  isSignalAboveNoiseGate,
+  openVoiceAudioPipeline,
+  VOICE_HIGHPASS_HZ,
+  VOICE_LOWPASS_HZ,
+  VOICE_NOISE_GATE_THRESHOLD,
+} from "@/lib/denis/surfaces/voice/voice-audio-config";
+export {
   formatVoiceTurnApiResponse,
   type VoiceTurnApiExtras,
 } from "@/lib/denis/surfaces/voice/format-voice-response";

@@ -2,6 +2,7 @@ import { emptyCartDraft } from "@/lib/denis/kernel/cart-projection";
 import { resolveCartConflict } from "@/lib/denis/kernel/conflict";
 import { foldTranscriptFromTimeline } from "@/lib/denis/loop/fold-transcript";
 import type { FoldMeta, TableSessionState } from "@/lib/denis/loop/types";
+import { toSceneAccessibility } from "@/lib/denis/cognition/mental-model/accessibility-types";
 import {
   buildViewHeadline,
   buildViewLayers,
@@ -18,6 +19,9 @@ import type {
   TellResult,
 } from "@/lib/denis/loop/view-types";
 import { sessionHasUnpaidOrders } from "@/lib/denis/loop/derive-fold-phase";
+import { buildDenisDock } from "@/lib/denis/loop/build-denis-dock";
+import { buildSmartTipOffer } from "@/lib/denis/commerce/build-smart-tip-offer";
+import { DEFAULT_COMMERCE_POLICY } from "@/lib/commerce/policy/defaults";
 import {
   resolveTableActionChips,
   TABLE_ACTION_CHIP_IDS,
@@ -112,17 +116,35 @@ export function projectTableSessionView(
 ): TableSessionView {
   const orders = mapOrders(state.commerce.orders);
   const situation = buildViewSituation(state);
-  const headline = buildViewHeadline(
+  const dock = buildDenisDock({
+    state,
+    meta,
     situation,
-    meta.phase,
-    tellResult?.headline
+    language: input.language,
+  });
+  const headline = buildViewHeadline(
+    state,
+    tellResult?.headline ?? dock.headline,
+    meta.phase
   );
   const markState = buildViewMarkState(
     state,
     situation,
     tellResult?.markState
   );
-  const layers = buildViewLayers(state, meta, situation);
+  const smartTipOffer = buildSmartTipOffer({
+    state,
+    phase: meta.phase,
+    language: input.language,
+    policy: input.commercePolicy ?? DEFAULT_COMMERCE_POLICY,
+  });
+  const layers = buildViewLayers(
+    state,
+    meta,
+    situation,
+    input.language,
+    smartTipOffer
+  );
   const transcript = foldTranscriptFromTimeline(state.timeline);
 
   return {
@@ -141,5 +163,13 @@ export function projectTableSessionView(
     cart: buildCartView(state),
     orders,
     actions: buildActions(meta, orders),
+    dock,
+    smartTipOffer,
+    accessibility: toSceneAccessibility(state.mental.accessibility ?? {
+      preferredMode: "default",
+      fontScale: 1,
+      highContrast: false,
+      reducedMotion: false,
+    }),
   };
 }

@@ -1,3 +1,4 @@
+import { isPreorderIntentMessage } from "@/lib/denis/commerce/preorder-flow";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import {
   perceiveTableGuestCommand,
@@ -51,9 +52,15 @@ export type ReflexTurnResult = {
   conflict: ConflictResolution | null;
   plan: PlanTurnResult;
   cartState: DenisCartState;
+  /** T0/handoff fired — enriches skill pipeline, does not skip LLM for comprehend turns. */
   usedT0: boolean;
   handoffCommand: TableGuestCommand | null;
   handoffPaymentMethod: SelectablePaymentMethod | null;
+  pipelineHints: {
+    reflexIntent: GuestIntent | null;
+    handoffIntent: string | null;
+    feedsPipeline: true;
+  };
 };
 
 function injectHandoffSkills(
@@ -140,8 +147,9 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
     }
   }
 
-  const intent =
-    handoffPerception?.intent ?? reflex?.intent ?? "UNKNOWN";
+  const intent = isPreorderIntentMessage(input.message)
+    ? "PREORDER"
+    : handoffPerception?.intent ?? reflex?.intent ?? "UNKNOWN";
   const handoffPaymentMethod =
     handoffPerception?.paymentMethod ?? input.handoffPaymentMethod ?? null;
 
@@ -199,5 +207,10 @@ export function planTurnWithReflex(input: ReflexTurnInput): ReflexTurnResult {
     usedT0: reflex !== null || handoffPerception !== null,
     handoffCommand: handoffPerception?.command ?? null,
     handoffPaymentMethod,
+    pipelineHints: {
+      reflexIntent: reflex?.intent ?? null,
+      handoffIntent: handoffPerception?.intent ?? null,
+      feedsPipeline: true,
+    },
   };
 }

@@ -1,5 +1,6 @@
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { buildSituationPack } from "@/lib/denis/cognition/context/build-situation-pack";
+import { resolveAdaptiveContextBudget } from "@/lib/denis/cognition/context/context-budget";
 import { retrieveCommerceEvidence } from "@/lib/denis/cognition/context/retrievers/commerce-evidence";
 import { retrieveGuestIntelEvidence } from "@/lib/denis/cognition/context/retrievers/guest-intel-evidence";
 import {
@@ -14,14 +15,21 @@ import type { VenueManifestCapabilities } from "@/lib/denis/cognition/manifest/v
 import type { DenisRuntimeResolvedProfile } from "@/lib/denis/cognition/runtime-profile-types";
 import type { InterpretationTask } from "@/lib/denis/cognition/tde/interpretation-task-types";
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
+import {
+  CORE_BELIEF_KEYS,
+  getBeliefValue,
+} from "@/lib/denis/cognition/tde/turn-plan-types";
+import { classifyGuestIntent } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import type { ResolvedRhythmContext } from "@/lib/denis/config/rhythm-prior-types";
 import type { SessionPhase } from "@/lib/scene/types";
 import type {
   OpsPlannerEffects,
   VenueOpsBeliefs,
 } from "@/lib/denis/venue/ops/types";
+import type { ContextAwarenessSnapshot } from "@/lib/denis/intelligence/event-context";
 
 export type EvidencePointer =
   | "commerce.*"
@@ -69,26 +77,59 @@ export type PlanEvidenceInput = {
   menuRagQueryVector?: number[] | null;
   playbookBlock?: string | null;
   vkgPairingBlock?: string | null;
+  frustrationRecoveryBlock?: string | null;
+  rhythm?: ResolvedRhythmContext | null;
+  revenueInsight?: unknown;
+  accessibilityBlock?: string | null;
+  promoBlock?: string | null;
+  crossDeviceBlock?: string | null;
+  contextAwareness?: ContextAwarenessSnapshot | null;
 };
+
+function guestTurnNeedsMenuContext(
+  turnPlan: TurnPlan,
+  message: string,
+  interpretationTask?: InterpretationTask | null,
+  beliefs?: BeliefGraph
+): boolean {
+  if (interpretationTask?.evidenceBudget.includeCatalogRag) return true;
+  if (turnPlan.kind === "transactional_perceive") return true;
+  if (turnPlan.reason?.startsWith("vague_recommend")) return true;
+  if (turnPlan.reason === "mental.attention_empathy") return true;
+
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+
+  const routed = classifyGuestIntent(trimmed);
+  if (routed.intent === "browse" || routed.intent === "order") return true;
+
+  if (beliefs) {
+    const need = getBeliefValue<string>(
+      beliefs,
+      CORE_BELIEF_KEYS.mentalPredictedNeed
+    );
+    if (need === "wants_drink" || need === "needs_help_choosing") {
+      return true;
+    }
+  }
+
+  return /\b(sta\s+je|šta\s+je|kakv[oa]\s+je|what\s+is|what\s+kind|objasni|explain)\b/i.test(
+    trimmed
+  );
+}
 
 function wantsCatalogRag(
   turnPlan: TurnPlan,
   message: string,
-  interpretationTask?: InterpretationTask | null
+  interpretationTask?: InterpretationTask | null,
+  beliefs?: BeliefGraph
 ): boolean {
-  if (interpretationTask) {
-    return interpretationTask.evidenceBudget.includeCatalogRag;
-  }
-  if (turnPlan.kind === "transactional_perceive") return true;
-  if (/\b(sta\s+je|šta\s+je|kakv[oa]\s+je|what\s+is|what\s+kind|objasni|explain)\b/i.test(message)) {
-    return true;
-  }
-  if (turnPlan.kind === "relational_perceive") {
-    return /\b(preporu[čc]|empfehl|recommend|suggest|meni|menu|bez|gluten)\b/i.test(
-      message
-    );
-  }
-  return false;
+  return guestTurnNeedsMenuContext(
+    turnPlan,
+    message,
+    interpretationTask,
+    beliefs
+  );
 }
 
 /**
@@ -126,6 +167,18 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
           includePlaybookInFsp && input.playbookBlock?.trim()
             ? input.playbookBlock
             : null,
+        contextTokenBudget: input.profile.adaptiveContext
+          ? (input.interpretationTask?.evidenceBudget.contextTokenBudget ??
+            resolveAdaptiveContextBudget({
+              guestMessage: input.guestMessage,
+              maxContextTokens: input.profile.maxContextTokens,
+              minContextTokens: input.profile.minContextTokens,
+              adaptiveEnabled: input.profile.adaptiveContext,
+              beliefs: input.beliefs,
+            }).tokenBudget)
+          : undefined,
+        guestMessage: input.guestMessage,
+        contextAwareness: input.contextAwareness,
       })
     );
 
@@ -135,6 +188,19 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
         input.catalog
       );
       if (comprehendHint) blocks.push(comprehendHint);
+    }
+
+    if (
+      guestTurnNeedsMenuContext(
+        input.turnPlan,
+        input.guestMessage,
+        input.interpretationTask,
+        input.beliefs
+      )
+    ) {
+      blocks.push(
+        "MENU DISCOVERY: Guest asks what is available — answer from MENU/CATALOG with concrete items and prices. Do not notify the waiter unless they explicitly request staff."
+      );
     }
   } else {
     const commerce = retrieveCommerceEvidence(
@@ -159,6 +225,22 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     if (guestIntel) blocks.push(guestIntel);
   }
 
+  if (input.frustrationRecoveryBlock?.trim()) {
+    blocks.push(input.frustrationRecoveryBlock.trim());
+  }
+
+  if (input.promoBlock?.trim()) {
+    blocks.push(input.promoBlock.trim());
+  }
+
+  if (input.crossDeviceBlock?.trim()) {
+    blocks.push(input.crossDeviceBlock.trim());
+  }
+
+  if (input.accessibilityBlock?.trim()) {
+    blocks.push(input.accessibilityBlock.trim());
+  }
+
   if (
     !input.turnPlan.requiresLlm &&
     (input.capabilities.anticipation >= 1 ||
@@ -174,7 +256,8 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     wantsCatalogRag(
       input.turnPlan,
       input.guestMessage,
-      input.interpretationTask
+      input.interpretationTask,
+      input.beliefs
     ) &&
     isMenuRagEnabled({
       catalogRagLevel: input.capabilities.catalogRag,
@@ -224,7 +307,13 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
   } else if (
     input.turnPlan.kind === "relational_perceive" &&
     !ragEligible &&
-    !input.interpretationTask
+    !input.interpretationTask &&
+    !guestTurnNeedsMenuContext(
+      input.turnPlan,
+      input.guestMessage,
+      input.interpretationTask,
+      input.beliefs
+    )
   ) {
     omitFullMenu = true;
   }

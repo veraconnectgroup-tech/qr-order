@@ -51,6 +51,33 @@ export const VenueQualityContractSchema = z.object({
 
 export type VenueQualityContract = z.infer<typeof VenueQualityContractSchema>;
 
+export const PlaybookUpsellStyleSchema = z.enum([
+  "gentle",
+  "confident",
+  "enthusiastic",
+]);
+
+export type PlaybookUpsellStyle = z.infer<typeof PlaybookUpsellStyleSchema>;
+
+export const PlaybookPackToneSchema = z.enum(["formal", "casual", "fun"]);
+
+export type PlaybookPackTone = z.infer<typeof PlaybookPackToneSchema>;
+
+export const CustomPlaybookPackSchema = z.object({
+  tone: PlaybookPackToneSchema,
+  upsellStyle: PlaybookUpsellStyleSchema,
+  languagePreferences: z.object({
+    primary: z.string().trim().min(2).max(10),
+    secondary: z.string().trim().min(2).max(10).optional(),
+  }),
+  signaturePhrases: z.array(z.string().trim().min(1).max(120)).max(10),
+  menuHighlights: z.array(z.string().trim().min(1).max(200)).max(10),
+  forbiddenTopics: z.array(z.string().trim().min(1).max(80)).max(20),
+  welcomeTemplate: z.string().trim().min(1).max(300),
+});
+
+export type CustomPlaybookPack = z.infer<typeof CustomPlaybookPackSchema>;
+
 export const VenueManifestSchema = z.object({
   manifestVersion: z.literal(1),
   identity: VenueManifestIdentitySchema.optional(),
@@ -60,6 +87,8 @@ export const VenueManifestSchema = z.object({
   qualityContract: VenueQualityContractSchema.optional(),
   /** MR-9 — org/chain playbook example pack (ADR-023 §10). */
   playbookPackId: z.string().trim().min(1).max(80).optional(),
+  /** Prompt 36 — custom pack fields when playbookPackId is `custom`. */
+  customPlaybookPack: CustomPlaybookPackSchema.optional(),
 });
 
 export type VenueManifest = z.infer<typeof VenueManifestSchema>;
@@ -87,6 +116,13 @@ const MANIFEST_KEY_ALIASES: Record<string, string> = {
   shadow_parity_min: "shadowParityMin",
   llm_invocation_max: "llmInvocationMax",
   playbook_pack_id: "playbookPackId",
+  custom_playbook_pack: "customPlaybookPack",
+  upsell_style: "upsellStyle",
+  language_preferences: "languagePreferences",
+  signature_phrases: "signaturePhrases",
+  menu_highlights: "menuHighlights",
+  forbidden_topics: "forbiddenTopics",
+  welcome_template: "welcomeTemplate",
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

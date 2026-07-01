@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   runSessionWatcherTick,
   runProactiveDailyJobs,
+  runRhythmOpsJobs,
   processDenisFloorTick,
   processDenisSchedulerTick,
   runDenisLearnedEdgesAggregateTick,
 } = vi.hoisted(() => ({
   runSessionWatcherTick: vi.fn(),
   runProactiveDailyJobs: vi.fn(),
+  runRhythmOpsJobs: vi.fn(),
   processDenisFloorTick: vi.fn(),
   processDenisSchedulerTick: vi.fn(),
   runDenisLearnedEdgesAggregateTick: vi.fn(),
@@ -19,6 +21,9 @@ vi.mock("@/lib/denis/runtime/run-session-watcher", () => ({
 }));
 vi.mock("@/lib/denis/runtime/run-proactive-daily-jobs", () => ({
   runProactiveDailyJobs,
+}));
+vi.mock("@/lib/denis/runtime/run-rhythm-ops-jobs", () => ({
+  runRhythmOpsJobs,
 }));
 vi.mock("@/lib/denis/venue/floor/process-floor-tick", () => ({
   processDenisFloorTick,
@@ -41,7 +46,12 @@ describe("runDenisPilotTick", () => {
       staffAlerts: 0,
       skipped: 0,
     });
-    runProactiveDailyJobs.mockResolvedValue({ ran: 0 });
+    runProactiveDailyJobs.mockResolvedValue({ prepAlerts: 0, reportAlerts: 0 });
+    runRhythmOpsJobs.mockResolvedValue({
+      rushAlerts: 0,
+      staffingAlerts: 0,
+      skipped: 0,
+    });
     processDenisFloorTick.mockResolvedValue({
       scanned: 1,
       refreshed: 1,
@@ -69,6 +79,7 @@ describe("runDenisPilotTick", () => {
 
     expect(runSessionWatcherTick).toHaveBeenCalledWith(admin, { limit: 10 });
     expect(runProactiveDailyJobs).toHaveBeenCalledWith(admin);
+    expect(runRhythmOpsJobs).toHaveBeenCalledWith(admin);
     expect(processDenisFloorTick).toHaveBeenCalledWith(admin, { limit: 5 });
     expect(processDenisSchedulerTick).toHaveBeenCalled();
     expect(runDenisLearnedEdgesAggregateTick).toHaveBeenCalled();

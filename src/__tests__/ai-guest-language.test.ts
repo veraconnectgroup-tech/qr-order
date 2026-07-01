@@ -10,10 +10,12 @@ import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 
 describe("sticky guest language", () => {
   it("detects German without umlauts", () => {
-    expect(detectGuestMessageLanguage("Ein Grosses bier bitte", "en")).toEqual({
-      detected: "de",
-      confidence: "high",
-    });
+    expect(detectGuestMessageLanguage("Ein Grosses bier bitte", "en")).toEqual(
+      expect.objectContaining({
+        detected: "de",
+        confidence: "high",
+      })
+    );
     expect(
       resolveStickyGuestLanguage("Ein Grosses bier bitte", "en", "en")
     ).toBe("de");
@@ -45,10 +47,12 @@ describe("sticky guest language", () => {
     expect(
       resolveStickyGuestLanguage("Denis legendo gde si sta si", "de", "en")
     ).toBe("sr");
-    expect(detectGuestMessageLanguage("Denis legendo gde si sta si", "de")).toEqual({
-      detected: "sr",
-      confidence: "high",
-    });
+    expect(detectGuestMessageLanguage("Denis legendo gde si sta si", "de")).toEqual(
+      expect.objectContaining({
+        detected: "sr",
+        confidence: "high",
+      })
+    );
   });
 
   it("honors explicit request to continue in Serbian", () => {

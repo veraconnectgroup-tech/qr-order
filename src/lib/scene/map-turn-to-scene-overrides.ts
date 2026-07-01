@@ -8,6 +8,8 @@ export type SceneRefreshOverrides = {
   sheetOpen?: boolean;
   chips?: ComposeSceneInput["chips"];
   inlineRecommendations?: ComposeSceneInput["inlineRecommendations"];
+  phase?: ComposeSceneInput["phase"];
+  cartProductIds?: string[];
   proactiveBanner?: {
     id: string;
     message: string;
@@ -78,16 +80,27 @@ export function mapTurnToSceneOverrides(input: {
   markState?: ComposeSceneInput["markState"];
   thinking?: boolean;
   sheetOpen?: boolean;
+  phase?: ComposeSceneInput["phase"];
+  cartProductIds?: string[];
 }): SceneRefreshOverrides {
+  const inlineFromTurn = mapTurnRecommendationsToInline(
+    input.recommendations,
+    input.productNames
+  );
+
+  const chips =
+    input.quickReplies?.length
+      ? mapTurnQuickRepliesToChips(input.quickReplies)
+      : undefined;
+
   return {
     sessionId: input.tableSessionId,
     markState: input.markState ?? "idle",
     thinking: input.thinking ?? false,
     sheetOpen: input.sheetOpen ?? false,
-    chips: mapTurnQuickRepliesToChips(input.quickReplies ?? []),
-    inlineRecommendations: mapTurnRecommendationsToInline(
-      input.recommendations,
-      input.productNames
-    ),
+    chips,
+    inlineRecommendations: inlineFromTurn.length ? inlineFromTurn : undefined,
+    phase: input.phase,
+    cartProductIds: input.cartProductIds,
   };
 }

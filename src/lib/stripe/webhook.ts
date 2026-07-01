@@ -8,8 +8,9 @@ import {
   syncStornoForExternalRefund,
 } from "@/lib/fiscal/storno";
 import { roundMoney } from "@/lib/tax/vat";
-import { getCurrentTraceId } from "@/lib/resilience/trace";
+import { getCurrentTraceId } from "@/lib/resilience/trace.server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toJson } from "@/lib/supabase/json";
 import type { Json } from "@/types/database";
 
 const PROCESSING_STALE_MS = 30_000;
@@ -99,7 +100,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const { error: insertError } = await admin.from("webhook_events").insert({
         id: event.id,
         event_type: event.type,
-        payload: event as unknown as Json,
+        payload: toJson(event),
         status: "processing",
       });
 

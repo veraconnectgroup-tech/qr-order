@@ -1,6 +1,19 @@
-import { buildSessionDebugGraph } from "@/lib/denis/kernel/session-debug-graph";
 import type { DenisSessionDebugGraph } from "@/lib/denis/kernel/session-debug-graph";
+import { buildSessionDebugGraph } from "@/lib/denis/kernel/session-debug-graph";
+import {
+  buildDenisSessionReplay,
+  type DenisSessionReplay,
+} from "@/lib/admin/denis-session-replay";
+import {
+  buildDenisInsightsAggregate,
+  collectUnknownIntentEdgeCases,
+  type DenisInsightsAggregate,
+} from "@/lib/admin/denis-insights-aggregate";
+import {
+  computeSessionConversationQuality,
+} from "@/lib/admin/denis-session-replay";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
+import type { TurnTrace } from "@/lib/denis/runtime/turn-trace";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type DenisDebugSessionRow = {
@@ -12,6 +25,28 @@ export type DenisDebugSessionRow = {
   createdAt: string;
   timelineEventCount: number;
 };
+
+type DenisDebugSessionQueryRow = {
+  id: string;
+  table_id: string;
+  status: string;
+  language: string;
+  created_at: string;
+  tables: { name: string } | { name: string }[] | null;
+};
+
+function parseDenisDebugSessionRows(data: unknown): DenisDebugSessionQueryRow[] {
+  if (!Array.isArray(data)) return [];
+  return data as DenisDebugSessionQueryRow[];
+}
+
+function tableNameFromRelation(
+  tables: { name: string } | { name: string }[] | null
+): string | null {
+  if (!tables) return null;
+  if (Array.isArray(tables)) return tables[0]?.name ?? null;
+  return tables.name;
+}
 
 export async function listDenisDebugSessions(
   admin: SupabaseClient,
@@ -29,23 +64,7 @@ export async function listDenisDebugSessions(
     return [];
   }
 
-  const rows = sessions as unknown as Array<{
-    id: string;
-    table_id: string;
-    status: string;
-    language: string;
-    created_at: string;
-    tables: { name: string } | { name: string }[] | null;
-  }>;
-
-  function tableNameFromRelation(
-    tables: { name: string } | { name: string }[] | null
-  ): string | null {
-    if (!tables) return null;
-    if (Array.isArray(tables)) return tables[0]?.name ?? null;
-    return tables.name;
-  }
-
+  const rows = parseDenisDebugSessionRows(sessions);
   const sessionIds = rows.map((row) => row.id);
   const countBySession = new Map<string, number>();
 
@@ -89,4 +108,115 @@ export async function loadDenisSessionDebugGraph(
 
   const events = await loadDenisTimeline(admin, input.sessionId);
   return buildSessionDebugGraph(events);
+}
+
+async function loadSessionTurnTraces(
+  admin: SupabaseClient,
+  sessionId: string
+): Promise<TurnTrace[]> {
+  const { data } = await admin
+    .from("denis_turn_traces")
+    .select("trace_data")
+    .eq("ai_session_id", sessionId)
+    .order("created_at", { ascending: true });
+
+  return ((data ?? []) as Array<{ trace_data: TurnTrace }>).map(
+    (row) => row.trace_data
+  );
+}
+
+export async function loadDenisSessionReplay(
+  admin: SupabaseClient,
+  input: { sessionId: string; locationId: string }
+): Promise<(DenisSessionReplay & { graph: DenisSessionDebugGraph }) | null> {
+  const { data: session, error } = await admin
+    .from("ai_sessions")
+    .select("id, location_id")
+    .eq("id", input.sessionId)
+    .eq("location_id", input.locationId)
+    .maybeSingle();
+
+  if (error || !session) {
+    return null;
+  }
+
+  const [events, traces] = await Promise.all([
+    loadDenisTimeline(admin, input.sessionId),
+    loadSessionTurnTraces(admin, input.sessionId),
+  ]);
+
+  return {
+    graph: buildSessionDebugGraph(events),
+    ...buildDenisSessionReplay({ events, traces }),
+  };
+}
+
+export async function loadDenisInsightsAggregate(
+  admin: SupabaseClient,
+  locationId: string,
+  periodDays = 14
+): Promise<DenisInsightsAggregate | null> {
+  const since = new Date(Date.now() - periodDays * 86_400_000).toISOString();
+
+  const { data: sessions } = await admin
+    .from("ai_sessions")
+    .select("id, created_at")
+    .eq("location_id", locationId)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  const sessionRows = (sessions ?? []) as Array<{ id: string; created_at: string }>;
+  if (!sessionRows.length) {
+    return buildDenisInsightsAggregate({
+      events: [],
+      sessionCount: 0,
+      sessionQualities: [],
+      edgeCases: [],
+    });
+  }
+
+  const sessionIds = sessionRows.map((row) => row.id);
+  const { data: timelineRows } = await admin
+    .from("denis_timeline")
+    .select(
+      "id, ai_session_id, seq, event_type, payload, trace_id, context_hash, created_at"
+    )
+    .in("ai_session_id", sessionIds)
+    .order("seq", { ascending: true });
+
+  const events = (timelineRows ?? []) as Awaited<
+    ReturnType<typeof loadDenisTimeline>
+  >;
+
+  const sessionQualities: Array<{
+    createdAt: string;
+    quality: ReturnType<typeof computeSessionConversationQuality>;
+  }> = [];
+  const edgeCases = [];
+
+  for (const session of sessionRows.slice(0, 30)) {
+    const sessionEvents = events.filter(
+      (event) => event.ai_session_id === session.id
+    );
+    const traces = await loadSessionTurnTraces(admin, session.id);
+    const quality = computeSessionConversationQuality({
+      events: sessionEvents,
+      traces,
+    });
+    sessionQualities.push({ createdAt: session.created_at, quality });
+    edgeCases.push(
+      ...collectUnknownIntentEdgeCases({
+        sessionId: session.id,
+        events: sessionEvents,
+      })
+    );
+  }
+
+  return buildDenisInsightsAggregate({
+    events,
+    sessionCount: sessionRows.length,
+    sessionQualities,
+    edgeCases: edgeCases.slice(0, 50),
+  });
 }

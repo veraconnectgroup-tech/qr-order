@@ -20,6 +20,10 @@ export type AiCatalogProduct = AiProductSummary & {
   menuSection: MenuSection;
   taxRate: number | null;
   allergens: string[];
+  tags?: string[];
+  drinkFamily?: string | null;
+  foodTags?: string[];
+  prepStation?: string | null;
   modifierGroups: AiCatalogModifierGroup[];
   requiresServeSize: boolean;
   serveSizePresets: string[];

@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseReorderOrderRow } from "@/lib/supabase/parse-order-rows";
 import { validateTableSession } from "@/lib/orders/validate-table-session";
 import { withRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -45,24 +46,7 @@ export const POST = withErrorHandler(
       return apiError("Order not found.", 404);
     }
 
-    const items = (
-      order as unknown as {
-        order_items: Array<{
-          product_id: string | null;
-          product_name: string;
-          quantity: number;
-          unit_price: number;
-          notes: string | null;
-          tax_rate: number;
-          menu_section: "drinks" | "food" | "desserts";
-          order_item_modifiers: Array<{
-            modifier_id: string | null;
-            modifier_name: string;
-            price: number;
-          }>;
-        }>;
-      }
-    ).order_items;
+    const items = parseReorderOrderRow(order).order_items;
 
     const productIds = [
       ...new Set(items.map((item) => item.product_id).filter(Boolean)),

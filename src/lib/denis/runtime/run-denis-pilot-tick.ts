@@ -1,6 +1,7 @@
 import { runDenisLearnedEdgesAggregateTick } from "@/lib/admin/denis-learned-edges";
 import { processDenisSchedulerTick } from "@/lib/denis/runtime/process-scheduler-tick";
 import { runProactiveDailyJobs } from "@/lib/denis/runtime/run-proactive-daily-jobs";
+import { runRhythmOpsJobs } from "@/lib/denis/runtime/run-rhythm-ops-jobs";
 import { runSessionWatcherTick } from "@/lib/denis/runtime/run-session-watcher";
 import { processDenisFloorTick } from "@/lib/denis/venue/floor/process-floor-tick";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -8,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type DenisPilotTickResult = {
   sessionWatcher: Awaited<ReturnType<typeof runSessionWatcherTick>>;
   proactiveDaily: Awaited<ReturnType<typeof runProactiveDailyJobs>>;
+  rhythmOps: Awaited<ReturnType<typeof runRhythmOpsJobs>>;
   floor: Awaited<ReturnType<typeof processDenisFloorTick>>;
   scheduler: Awaited<ReturnType<typeof processDenisSchedulerTick>>;
   learnedEdges: Awaited<ReturnType<typeof runDenisLearnedEdgesAggregateTick>>;
@@ -28,10 +30,11 @@ export async function runDenisPilotTick(
   const schedulerLimit = options?.schedulerLimit ?? 50;
   const learnedLimit = options?.learnedLimit ?? 50;
 
-  const [sessionWatcher, proactiveDaily, floor, scheduler, learnedEdges] =
+  const [sessionWatcher, proactiveDaily, rhythmOps, floor, scheduler, learnedEdges] =
     await Promise.all([
       runSessionWatcherTick(admin, { limit: sessionLimit }),
       runProactiveDailyJobs(admin),
+      runRhythmOpsJobs(admin),
       processDenisFloorTick(admin, { limit: floorLimit }),
       processDenisSchedulerTick(admin, { limit: schedulerLimit }),
       runDenisLearnedEdgesAggregateTick(admin, { limit: learnedLimit }),
@@ -40,6 +43,7 @@ export async function runDenisPilotTick(
   return {
     sessionWatcher,
     proactiveDaily,
+    rhythmOps,
     floor,
     scheduler,
     learnedEdges,

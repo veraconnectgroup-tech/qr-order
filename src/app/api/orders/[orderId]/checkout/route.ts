@@ -14,6 +14,7 @@ import {
   type SelectablePaymentMethod,
 } from "@/lib/payment-methods";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseCheckoutOrderRow } from "@/lib/supabase/parse-order-rows";
 import { getStripe } from "@/lib/stripe/client";
 import { calcPlatformFee } from "@/lib/stripe/connect";
 import { buildPaymentIdempotencyKey } from "@/lib/resilience/idempotency";
@@ -105,17 +106,7 @@ export const POST = withErrorHandler(
       return apiError("Order not found.", 404);
     }
 
-    const orderRow = order as unknown as {
-      id: string;
-      total: number;
-      payment_status: string;
-      payment_method: string;
-      stripe_payment_intent_id: string | null;
-      location_id: string;
-      status: string;
-      table_id: string | null;
-      tables: { name: string } | null;
-    };
+    const orderRow = parseCheckoutOrderRow(order);
 
     if (orderRow.payment_status === "paid") {
       return apiError("Already paid.", 400);

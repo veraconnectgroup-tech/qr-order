@@ -30,6 +30,8 @@ const CONTENT_SECURITY_POLICY = [
   "frame-src https://js.stripe.com https://hooks.stripe.com",
   "object-src 'none'",
   "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
 ].join("; ");
 
 const SECURITY_HEADERS: Record<string, string> = {

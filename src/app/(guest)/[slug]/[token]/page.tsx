@@ -2,50 +2,21 @@ import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { MenuView } from "@/components/guest/menu-view";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { loadTrendingMenuProducts } from "@/lib/denis/intelligence/load-trending-menu-products";
 import {
   getDemoGuestMenuProps,
   isDemoGuestRoute,
 } from "@/lib/demo-guest";
-import { getDemoAiRecommendations } from "@/lib/demo-ai";
-import type { Modifier, ModifierGroup, ProductWithModifiers } from "@/types";
+import {
+  parseGuestMenuCategories,
+  parseGuestMenuTable,
+} from "@/lib/guest/parse-guest-table-rows";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { ProductWithModifiers } from "@/types";
 import { resolveProductImageUrl } from "@/lib/product-stock-images";
+import { computeMenuVersion } from "@/lib/offline/menu-cache";
 
 export const revalidate = 60;
-
-type RawProduct = {
-  id: string;
-  name: string;
-  name_en: string | null;
-  description: string | null;
-  description_en: string | null;
-  price: number;
-  image_url: string | null;
-  is_available: boolean;
-  sort_order: number;
-  prep_time_minutes: number | null;
-  allergens: string[] | null;
-  tags: string[] | null;
-  requires_serve_size?: boolean;
-  serve_size_presets?: string[] | null;
-  allow_custom_serve_size?: boolean;
-  tax_rate?: number | null;
-  ai_description?: string | null;
-  deleted_at?: string | null;
-  modifier_groups?: (ModifierGroup & { modifiers: Modifier[] })[];
-};
-
-type RawCategory = {
-  id: string;
-  name: string;
-  name_en: string | null;
-  menu_section?: string | null;
-  sort_order: number;
-  schedule_enabled?: boolean;
-  schedule_start?: string | null;
-  schedule_end?: string | null;
-  schedule_days?: number[] | null;
-  products?: RawProduct[];
-};
 
 export default async function GuestMenuPage({
   params,
@@ -103,33 +74,8 @@ export default async function GuestMenuPage({
 
   if (!tableData) notFound();
 
-  const table = tableData as unknown as {
-    id: string;
-    name: string;
-    location_id: string;
-    zone: { name: string } | null;
-      location: {
-      id: string;
-      name: string;
-      accepting_orders: boolean;
-      ordering_enabled: boolean;
-      ai_concierge_enabled: boolean;
-      google_review_url: string | null;
-      payment_online_enabled: boolean;
-      payment_at_bar_enabled: boolean;
-      payment_card_at_table_enabled: boolean;
-      timezone: string;
-      organization: {
-        id: string;
-        name: string;
-        slug: string;
-        logo_url: string | null;
-        default_tax_percent: number;
-        currency: string;
-        stripe_onboarded: boolean;
-      };
-    };
-  };
+  const table = parseGuestMenuTable(tableData);
+  if (!table) notFound();
 
   const org = table.location.organization;
   if (org.slug !== slug) notFound();
@@ -142,7 +88,7 @@ export default async function GuestMenuPage({
     .is("deleted_at", null)
     .order("sort_order");
 
-  const categories = ((categoriesData ?? []) as unknown as RawCategory[])
+  const categories = parseGuestMenuCategories(categoriesData)
     .map((cat) => ({
       id: cat.id,
       name: cat.name,
@@ -157,14 +103,23 @@ export default async function GuestMenuPage({
         .sort((a, b) => a.sort_order - b.sort_order)
         .map(
           (p): ProductWithModifiers => ({
-            ...p,
+            id: p.id,
+            location_id: table.location_id,
+            category_id: cat.id,
+            name: p.name,
+            name_en: p.name_en,
+            description: p.description,
+            description_en: p.description_en,
+            price: p.price,
             image_url: resolveProductImageUrl({
               id: p.id,
               name: p.name,
               image_url: p.image_url,
             }),
-            location_id: table.location_id,
-            category_id: cat.id,
+            is_available: p.is_available,
+            track_stock: false,
+            stock_quantity: null,
+            sort_order: p.sort_order,
             prep_time_minutes: p.prep_time_minutes,
             allergens: p.allergens,
             tags: p.tags,
@@ -173,9 +128,9 @@ export default async function GuestMenuPage({
             allow_custom_serve_size: p.allow_custom_serve_size ?? true,
             tax_rate: p.tax_rate ?? null,
             ai_description: p.ai_description ?? null,
+            created_at: p.created_at ?? new Date().toISOString(),
+            updated_at: p.updated_at ?? new Date().toISOString(),
             deleted_at: p.deleted_at ?? null,
-            created_at: "",
-            updated_at: "",
             modifier_groups: (p.modifier_groups ?? [])
               .sort((a, b) => a.sort_order - b.sort_order)
               .map((g) => ({
@@ -189,7 +144,19 @@ export default async function GuestMenuPage({
     }))
     .filter((c) => c.products.length > 0);
 
+  const menuVersion = computeMenuVersion(
+    categories.flatMap((category) => category.products)
+  );
+
   const conciergeConfig = await loadConciergeConfigForLocation(table.location_id);
+
+  const trendingMenuProducts =
+    table.location.ai_concierge_enabled && conciergeConfig.enabled
+      ? await loadTrendingMenuProducts(createAdminClient(), {
+          locationId: table.location_id,
+          timezone: table.location.timezone ?? "Europe/Berlin",
+        })
+      : null;
 
   return (
     <MenuView
@@ -201,6 +168,7 @@ export default async function GuestMenuPage({
       tableName={table.name}
       zoneName={table.zone?.name ?? null}
       categories={categories}
+      menuVersion={menuVersion}
       taxPercent={Number(org.default_tax_percent)}
       currency={org.currency}
       locationId={table.location_id}
@@ -218,6 +186,7 @@ export default async function GuestMenuPage({
       paymentOnlineEnabled={table.location.payment_online_enabled}
       paymentAtBarEnabled={table.location.payment_at_bar_enabled}
       paymentCardAtTableEnabled={table.location.payment_card_at_table_enabled}
+      trendingMenuProducts={trendingMenuProducts}
     />
   );
 }

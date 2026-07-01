@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { AnimateInView } from "@/components/landing/animate-in-view";
+import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import {
   LandingContainer,
   LandingHeadline,
@@ -9,38 +10,10 @@ import {
 } from "@/components/landing/landing-primitives";
 import { cn } from "@/lib/utils";
 
-const faqs = [
-  {
-    q: "Is Denis KassenSichV compliant?",
-    a: "Yes. Every transaction is signed via a certified TSE. DATEV export is included.",
-  },
-  {
-    q: "Do guests need an app?",
-    a: "No. Guests scan a QR code and order in the mobile browser. No download required.",
-  },
-  {
-    q: "How does split bill work?",
-    a: "Guests can split by items or evenly. Each person pays their share separately.",
-  },
-  {
-    q: "What does Denis cost?",
-    a: "€0 per month for the platform. Card payments use a small per-order fee via Stripe. Denis AI is optional — buy credit packs in Admin when you enable the concierge.",
-  },
-  {
-    q: "How do Denis AI credits work?",
-    a: "One credit per AI-assisted guest message. Browsing the menu without AI is free. Credit packs start at 500 credits from €19. Staff get a notification when your balance runs low.",
-  },
-  {
-    q: "How fast can I go live?",
-    a: "Under 30 minutes. Create an account, upload your menu, print QR codes — done.",
-  },
-  {
-    q: "Can I connect Denis to my POS?",
-    a: "Yes. Denis supports POS integrations via Deliverect, Orderbird, Lightspeed, and ready2order. Contact us for your setup.",
-  },
-];
-
 export function LandingFaq() {
+  const { copy } = useLandingCopy();
+  const { faq } = copy;
+
   return (
     <section
       id="faq"
@@ -48,15 +21,15 @@ export function LandingFaq() {
     >
       <LandingContainer wide>
         <AnimateInView className="max-w-[480px]">
-          <LandingHeadline inverted>FAQ</LandingHeadline>
+          <LandingHeadline inverted>{faq.title}</LandingHeadline>
           <LandingLead inverted className="mt-4">
-            Common questions from restaurant operators in DACH.
+            {faq.lead}
           </LandingLead>
         </AnimateInView>
 
         <div className="mt-12 divide-y divide-white/[0.06] border-y border-white/[0.06]">
-          {faqs.map((faq) => (
-            <AnimateInView key={faq.q}>
+          {faq.items.map((item) => (
+            <AnimateInView key={item.q}>
               <details className="group py-5 md:py-6">
                 <summary
                   className={cn(
@@ -64,11 +37,11 @@ export function LandingFaq() {
                     "[&::-webkit-details-marker]:hidden"
                   )}
                 >
-                  {faq.q}
+                  {item.q}
                   <ChevronDown className="size-4 shrink-0 text-zinc-500 transition group-open:rotate-180" />
                 </summary>
                 <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
-                  {faq.a}
+                  {item.a}
                 </p>
               </details>
             </AnimateInView>

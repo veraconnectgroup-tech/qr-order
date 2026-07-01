@@ -36,6 +36,10 @@ type RawProduct = {
   sort_order: number;
   ai_description: string | null;
   allergens: string[] | null;
+  tags?: string[] | null;
+  drink_family?: string | null;
+  food_tags?: string[] | null;
+  prep_station?: string | null;
   requires_serve_size?: boolean;
   serve_size_presets?: string[] | null;
   allow_custom_serve_size?: boolean;
@@ -52,6 +56,11 @@ type RawCategory = {
   sort_order: number;
   products: RawProduct[] | null;
 };
+
+export function parseAiCatalogCategories(data: unknown): RawCategory[] {
+  if (!Array.isArray(data)) return [];
+  return data as RawCategory[];
+}
 
 function pickName(row: { name: string; name_en: string | null }, useEnglish: boolean) {
   if (useEnglish && row.name_en?.trim()) return row.name_en.trim();
@@ -167,6 +176,10 @@ export function buildAiCatalog(
         menuSection,
         taxRate: product.tax_rate != null ? Number(product.tax_rate) : null,
         allergens: product.allergens ?? [],
+        tags: product.tags ?? [],
+        drinkFamily: product.drink_family ?? null,
+        foodTags: product.food_tags ?? [],
+        prepStation: product.prep_station ?? null,
         modifierGroups,
         requiresServeSize,
         serveSizePresets,

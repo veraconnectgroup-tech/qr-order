@@ -1,6 +1,12 @@
-import { AI_BLOCKED_PATTERNS, AI_CONFIG } from "@/lib/ai/config";
+import { AI_CONFIG } from "@/lib/ai/config";
+import {
+  isBenignFoodExclusion,
+  shieldGuestInput,
+} from "@/lib/ai/prompt-shield";
 import type { ModerationResult } from "@/lib/ai/types";
 import { sanitizeHtml } from "@/lib/security/sanitize";
+
+export { shieldGracefulGuestMessage } from "@/lib/ai/prompt-shield";
 
 export function moderateGuestInput(raw: string): ModerationResult {
   const input = sanitizeHtml(raw).trim();
@@ -13,9 +19,13 @@ export function moderateGuestInput(raw: string): ModerationResult {
     return { safe: false, reason: "message_too_long" };
   }
 
-  for (const pattern of AI_BLOCKED_PATTERNS) {
-    if (pattern.test(input)) {
-      return { safe: false, reason: "blocked_pattern" };
+  if (!isBenignFoodExclusion(input)) {
+    const shield = shieldGuestInput(input);
+    if (shield && !shield.safe) {
+      return {
+        safe: false,
+        reason: shield.reason ?? "blocked_pattern",
+      };
     }
   }
 

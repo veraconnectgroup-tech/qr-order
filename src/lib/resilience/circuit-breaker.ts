@@ -20,7 +20,7 @@ const DEFAULT_CONFIG: CircuitBreakerConfig = {
 };
 
 const SERVICE_CONFIG: Record<string, Partial<CircuitBreakerConfig>> = {
-  openai: { failureThreshold: 5, resetTimeoutMs: 30_000 },
+  openai: { failureThreshold: 3, resetTimeoutMs: 30_000 },
   fiskaly: { failureThreshold: 3, resetTimeoutMs: 30_000 },
   stripe: { failureThreshold: 3, resetTimeoutMs: 30_000 },
 };

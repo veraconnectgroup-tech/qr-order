@@ -10,6 +10,14 @@ export type PartyDeviceRow = {
   lastActiveAt: string;
 };
 
+export type PartyOrderRow = {
+  id: string;
+  status?: string;
+  createdAt: string;
+  deviceFingerprint?: string | null;
+  items: Array<{ productName: string; quantity: number }>;
+};
+
 export type TablePartyModel = {
   tableSessionId: string;
   partyMode: PartyMode;

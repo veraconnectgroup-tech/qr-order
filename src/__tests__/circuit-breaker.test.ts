@@ -9,6 +9,7 @@ import {
 describe("circuit-breaker", () => {
   afterEach(() => {
     resetCircuitBreakerForTests("test-service");
+    resetCircuitBreakerForTests("openai");
     vi.restoreAllMocks();
   });
 
@@ -19,7 +20,7 @@ describe("circuit-breaker", () => {
 
   it("opens after threshold failures", async () => {
     const failing = () =>
-      withCircuitBreaker("test-service", async () => {
+      withCircuitBreaker("openai", async () => {
         throw new Error("boom");
       });
 
@@ -28,7 +29,7 @@ describe("circuit-breaker", () => {
     await expect(failing()).rejects.toThrow("boom");
 
     await expect(
-      withCircuitBreaker("test-service", async () => "late")
+      withCircuitBreaker("openai", async () => "late")
     ).rejects.toBeInstanceOf(CircuitOpenError);
   });
 

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { printKitchenTicket } from "@/lib/kitchen/print-ticket";
 import { buildKitchenTicketEscPos } from "@/lib/printer/format-kitchen-ticket";
 import { printTicket } from "@/lib/printer/print-service";
+import { resolveKitchenStationLabel } from "@/lib/printer/print-routing";
 import { splitOrderItemsByTarget } from "@/lib/printer/split-items";
 import type { PaperWidth } from "@/lib/printer/escpos-builder";
 import type {
@@ -45,18 +46,15 @@ function itemsForPrinter(
   return items;
 }
 
-function ticketHeaderLabel(printFor: PrinterTarget[]) {
-  const hasKitchen = printFor.includes("kitchen");
-  const hasBar = printFor.includes("bar");
-  if (hasBar && !hasKitchen) return "BAR";
-  return undefined;
-}
-
 export async function printKitchenOrder(
   order: OrderWithDetails,
   orgName: string,
   setup: PrinterSetup,
-  options?: { silent?: boolean; autoOnly?: boolean }
+  options?: {
+    silent?: boolean;
+    autoOnly?: boolean;
+    allergyLabels?: string[];
+  }
 ): Promise<KitchenPrintResult> {
   const printers = setup.configs.filter((config) => {
     if (!isKitchenPrinter(config)) return false;
@@ -82,7 +80,8 @@ export async function printKitchenOrder(
       { ...order, order_items: items },
       orgName,
       printer.paper_width as PaperWidth,
-      ticketHeaderLabel(printFor)
+      resolveKitchenStationLabel(printFor),
+      { allergyLabels: options?.allergyLabels }
     );
 
     const result = await printTicket(data, printer);
@@ -107,6 +106,19 @@ export async function printKitchenOrder(
   }
 
   return { ok: true, usedFallback: false, printedCount };
+}
+
+/** Waiter reprint — all kitchen/bar printers, not just auto_print. */
+export async function reprintKitchenOrder(
+  order: OrderWithDetails,
+  orgName: string,
+  setup: PrinterSetup,
+  options?: { allergyLabels?: string[] }
+): Promise<KitchenPrintResult> {
+  return printKitchenOrder(order, orgName, setup, {
+    autoOnly: false,
+    allergyLabels: options?.allergyLabels,
+  });
 }
 
 export async function printTestTicket(

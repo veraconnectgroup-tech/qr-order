@@ -2,6 +2,12 @@ import { emptyBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
 import { emptyGuestOfferContext } from "@/lib/denis/cognition/offer/empty-guest-offer-context";
 import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import { emptyConversationModel } from "@/lib/denis/cognition/conversation/empty-conversation-model";
+import { CONVERSATION_TOPIC_IDS } from "@/lib/denis/cognition/conversation/conversation-graph";
+import {
+  foldConversationGraph,
+  formatConversationGraphBlock,
+  resolveGuestReference,
+} from "@/lib/denis/cognition/conversation/topic-tracker";
 import {
   compileBeliefs,
   CORE_BELIEF_KEYS,
@@ -251,9 +257,101 @@ function runContinuousMindScenario(
   };
 }
 
+/** Prompt 93 — non-linear conversation graph: active topic, references, completion. */
+export function runConversationGraphFixture(): ContinuousMindScenarioResult[] {
+  const results: ContinuousMindScenarioResult[] = [];
+
+  {
+    const errors: string[] = [];
+    const graph = foldConversationGraph([
+      { role: "guest", text: "Burger bez luka" },
+      { role: "denis", text: "Jedan burger bez luka — 12€" },
+      { role: "guest", text: "medium rare" },
+      { role: "denis", text: "Upisao sam medium rare." },
+    ]);
+    const price = resolveGuestReference(graph, "a koliko kosta?");
+    if (price.kind !== "active_topic_price" || price.topicId !== "burger") {
+      errors.push(
+        `price follow-up: expected active_topic_price/burger, got ${price.kind}/${price.topicId}`
+      );
+    }
+    if (!price.detail?.includes("12€")) {
+      errors.push(`price follow-up: expected 12€ in detail, got ${price.detail}`);
+    }
+    results.push({ id: "conv_graph_burger_price", passed: errors.length === 0, errors });
+  }
+
+  {
+    const errors: string[] = [];
+    const graph = foldConversationGraph([
+      { role: "guest", text: "Burger bez luka" },
+      { role: "denis", text: "Jedan burger bez luka — 12€" },
+      { role: "guest", text: "a ono pivo?" },
+    ]);
+    if (graph.activeTopicId !== CONVERSATION_TOPIC_IDS.drinks) {
+      errors.push(
+        `topic switch: expected drinks active, got ${graph.activeTopicId}`
+      );
+    }
+    const resolution = resolveGuestReference(graph, "a ono pivo?");
+    if (resolution.kind !== "topic_switch") {
+      errors.push(`topic switch: expected topic_switch, got ${resolution.kind}`);
+    }
+    results.push({ id: "conv_graph_drink_switch", passed: errors.length === 0, errors });
+  }
+
+  {
+    const errors: string[] = [];
+    const graph = foldConversationGraph([
+      { role: "guest", text: "1x burger bez luka" },
+      { role: "denis", text: "Dodao sam burger." },
+      { role: "guest", text: "i za drugara isto" },
+    ]);
+    const resolution = resolveGuestReference(graph, "i za drugara isto");
+    if (resolution.kind !== "clone_for_friend") {
+      errors.push(`clone: expected clone_for_friend, got ${resolution.kind}`);
+    }
+    if (!resolution.detail?.toLowerCase().includes("burger")) {
+      errors.push(`clone: expected burger in detail, got ${resolution.detail}`);
+    }
+    results.push({ id: "conv_graph_clone_friend", passed: errors.length === 0, errors });
+  }
+
+  {
+    const errors: string[] = [];
+    const graph = foldConversationGraph([
+      { role: "guest", text: "Burger bez luka" },
+      { role: "denis", text: "Recap: burger bez luka?" },
+      { role: "guest", text: "Da" },
+      { role: "guest", text: "Pilsner molim" },
+    ]);
+    const burger = graph.topics.find((topic) => topic.id === "burger");
+    if (burger?.status !== "ordered") {
+      errors.push(`completed topic: expected burger ordered, got ${burger?.status}`);
+    }
+    const block = formatConversationGraphBlock(graph);
+    if (!block.includes("Piće") && !block.includes("Pilsner")) {
+      errors.push("completed topic: expected drinks prompt in graph block");
+    }
+    if (block.includes("Burger") && block.match(/Burger.*naručeno/i) === null) {
+      // Burger should be summarized as ordered, not re-asked as active
+      const active = graph.activeTopicId;
+      if (active === "burger") {
+        errors.push("completed topic: burger still active after order confirm");
+      }
+    }
+    results.push({ id: "conv_graph_topic_completion", passed: errors.length === 0, errors });
+  }
+
+  return results;
+}
+
 /** ARCH-6 — continuous mind obligation merge across fold / watcher / turn / world. */
 export function runContinuousMindSuite(): ContinuousMindReport {
-  const results = CONTINUOUS_MIND_SCENARIOS.map(runContinuousMindScenario);
+  const results = [
+    ...CONTINUOUS_MIND_SCENARIOS.map(runContinuousMindScenario),
+    ...runConversationGraphFixture(),
+  ];
 
   return {
     ok: results.every((row) => row.passed),

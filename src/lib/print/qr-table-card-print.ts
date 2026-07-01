@@ -1,4 +1,7 @@
 import QRCode from "qrcode";
+import { generateBrandedQrDataUrl } from "@/lib/qr/branded-qr";
+import { DEFAULT_THEME } from "@/lib/theme/types";
+import { normalizeHexColor } from "@/lib/theme/color-utils";
 
 export type QrTableCardLocale = "de" | "en";
 
@@ -9,20 +12,34 @@ export type QrTableCardItem = {
   qrDataUrl: string;
 };
 
+export type QrBrandingOptions = {
+  brandColor?: string;
+  logoUrl?: string | null;
+  displayName?: string;
+  productSubline?: string;
+};
+
 const COPY = {
   de: {
     sheetTitle: (venue: string) => `${venue} — Tischbestellung`,
     action: "Scannen zum Bestellen & Bezahlen",
     zoneFallback: "Ohne Bereich",
-    subline: "Denis · Part of Vera Group",
+    subline: `${DEFAULT_THEME.displayName} · ${DEFAULT_THEME.productSubline}`,
   },
   en: {
     sheetTitle: (venue: string) => `${venue} — Table ordering`,
     action: "Scan to order & pay",
     zoneFallback: "Unassigned",
-    subline: "Denis · Part of Vera Group",
+    subline: `${DEFAULT_THEME.displayName} · ${DEFAULT_THEME.productSubline}`,
   },
 } as const;
+
+export function formatBrandSubline(
+  displayName = DEFAULT_THEME.displayName,
+  productSubline = DEFAULT_THEME.productSubline
+): string {
+  return `${displayName} · ${productSubline}`;
+}
 
 export function resolveQrTableCardLocale(
   menuLocale?: string | null
@@ -34,8 +51,13 @@ export function getQrTableCardCopy(locale: QrTableCardLocale = "de") {
   return COPY[locale];
 }
 
-export const DENIS_TABLE_MARK_PRINT_SVG =
-  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><line x1="6" y1="4" x2="6" y2="20" stroke="#f97316" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="4" x2="16" y2="4" stroke="#f97316" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="4" x2="16" y2="13" stroke="#f97316" stroke-width="2" stroke-linecap="round"/></svg>';
+export function denisTableMarkPrintSvg(brandColor = DEFAULT_THEME.primaryColor): string {
+  const stroke = escapeHtml(normalizeHexColor(brandColor));
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><line x1="6" y1="4" x2="6" y2="20" stroke="${stroke}" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="4" x2="16" y2="4" stroke="${stroke}" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="4" x2="16" y2="13" stroke="${stroke}" stroke-width="2" stroke-linecap="round"/></svg>`;
+}
+
+/** @deprecated Use denisTableMarkPrintSvg(brandColor) */
+export const DENIS_TABLE_MARK_PRINT_SVG = denisTableMarkPrintSvg();
 
 export function escapeHtml(value: string): string {
   return value
@@ -57,12 +79,26 @@ export function formatTableLabel(
 
 export async function generateTableQrDataUrl(
   scanUrl: string,
-  width = 200
+  width = 200,
+  branding?: Pick<QrBrandingOptions, "brandColor" | "logoUrl">
 ): Promise<string> {
+  const brandColor = branding?.brandColor
+    ? normalizeHexColor(branding.brandColor)
+    : undefined;
+
+  if (typeof document !== "undefined" && (brandColor || branding?.logoUrl)) {
+    return generateBrandedQrDataUrl({
+      scanUrl,
+      brandColor,
+      logoDataUrl: branding?.logoUrl ?? null,
+      width,
+    });
+  }
+
   return QRCode.toDataURL(scanUrl, {
     width,
     margin: 2,
-    color: { dark: "#000000", light: "#ffffff" },
+    color: { dark: brandColor ?? "#000000", light: "#ffffff" },
     errorCorrectionLevel: "H",
   });
 }
@@ -73,19 +109,26 @@ export async function prepareQrTableCardItems(
     zoneName?: string | null;
     scanUrl: string;
   }>,
-  qrWidth = 200
+  qrWidth = 200,
+  branding?: Pick<QrBrandingOptions, "brandColor" | "logoUrl">
 ): Promise<QrTableCardItem[]> {
   return Promise.all(
     entries.map(async (entry) => ({
       tableName: entry.tableName,
       zoneName: entry.zoneName,
       scanUrl: entry.scanUrl,
-      qrDataUrl: await generateTableQrDataUrl(entry.scanUrl, qrWidth),
+      qrDataUrl: await generateTableQrDataUrl(entry.scanUrl, qrWidth, branding),
     }))
   );
 }
 
-function renderQrTableCard(item: QrTableCardItem, venueName: string, locale: QrTableCardLocale) {
+function renderQrTableCard(
+  item: QrTableCardItem,
+  venueName: string,
+  locale: QrTableCardLocale,
+  subline: string,
+  brandColor: string
+) {
   const copy = COPY[locale];
   const venue = escapeHtml(venueName);
   const tableLabel = escapeHtml(
@@ -98,7 +141,7 @@ function renderQrTableCard(item: QrTableCardItem, venueName: string, locale: QrT
   <p class="table-label">${tableLabel}</p>
   <img src="${item.qrDataUrl}" alt="QR code for ${tableName}" width="160" height="160" />
   <p class="action">${escapeHtml(copy.action)}</p>
-  <p class="subline">${DENIS_TABLE_MARK_PRINT_SVG}<span>${escapeHtml(copy.subline)}</span></p>
+  <p class="subline">${denisTableMarkPrintSvg(brandColor)}<span>${escapeHtml(subline)}</span></p>
 </article>`;
 }
 
@@ -107,12 +150,21 @@ export function buildQrTableCardPrintHtml(options: {
   items: QrTableCardItem[];
   locale?: QrTableCardLocale;
   autoPrint?: boolean;
+  brandColor?: string;
+  brandSubline?: string;
 }): string {
   const locale = options.locale ?? "de";
   const copy = COPY[locale];
+  const brandColor = normalizeHexColor(
+    options.brandColor,
+    DEFAULT_THEME.primaryColor
+  );
+  const subline = options.brandSubline ?? copy.subline;
   const title = escapeHtml(copy.sheetTitle(options.venueName));
   const cards = options.items
-    .map((item) => renderQrTableCard(item, options.venueName, locale))
+    .map((item) =>
+      renderQrTableCard(item, options.venueName, locale, subline, brandColor)
+    )
     .join("\n");
 
   return `<!DOCTYPE html>
@@ -155,7 +207,7 @@ export function buildQrTableCardPrintHtml(options: {
     position: absolute;
     inset: 0 0 auto 0;
     height: 3px;
-    background: #f97316;
+    background: ${brandColor};
   }
   .venue {
     margin: 0 0 4px;

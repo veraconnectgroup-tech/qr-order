@@ -1,6 +1,7 @@
+import { withApiGuard } from "@/lib/api-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function GET() {
+export const GET = withApiGuard("default", async () => {
   const admin = createAdminClient();
   const { data: integrations } = await admin
     .from("pos_integrations")
@@ -26,4 +27,4 @@ export async function GET() {
     integrations: rows,
     inboundEventsLast24h: recentInbound ?? 0,
   });
-}
+});

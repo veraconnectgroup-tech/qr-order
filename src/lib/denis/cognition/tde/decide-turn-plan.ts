@@ -11,7 +11,9 @@ import type {
   CommercePressure,
   ConversationAwaiting,
 } from "@/lib/denis/cognition/tde/turn-plan-types";
-import { isGuestPauseMessage } from "@/lib/denis/cognition/conversation/guest-continuity";
+import {
+  isPreorderIntentMessage,
+} from "@/lib/denis/commerce/preorder-flow";
 import {
   isOrderCancelMessage,
   isOrderModifyMessage,
@@ -20,7 +22,22 @@ import {
   buildInterpretationTask,
   turnPlanFromInterpretationTask,
 } from "@/lib/denis/cognition/tde/build-interpretation-task";
+import { synthesizeTurnInterpretationFromRouter } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import { hasGuestPostureCommercePressure } from "@/lib/denis/cognition/tde/resolve-guest-posture";
+import {
+  isGuestOrderComplaintMessage,
+  isGuestSettlingMessage,
+  isGuestStatusQueryMessage,
+  isGuestVagueBrowseMessage,
+  isVagueRecommendMessage,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
 import { isGenericBeerSegment } from "@/lib/denis/cognition/conversation/guest-substitution";
+import { isGuestMisunderstandingDecline } from "@/lib/denis/cognition/conversation/guest-continuity";
+import { isMidOrderCartSwapMessage } from "@/lib/denis/cognition/conversation/apply-guest-cart-mutations";
+import {
+  isGroupRoundRequestMessage,
+  isReorderRequestMessage,
+} from "@/lib/denis/cognition/reorder/reorder-intelligence";
 import { isOrderPlacementMessage } from "@/lib/ai/ordering/order-message-backfill";
 import {
   waiterGapTemplateKey,
@@ -36,36 +53,11 @@ const MULTI_ITEM_ORDER_SPLIT = /\s+(?:i|und|and)\s+|,\s*/i;
 const FOOD_ORDER_HINT =
   /\b(burger|pizza|steak|salat|sendvič|sendvic|pomfrit|fries|schnitzel|krompir)\b/i;
 
-const VAGUE_RECOMMEND_PATTERN =
-  /\b(preporu[čc]|empfehl|recommend|suggest|šta da|sta da|was (soll|empfehl)|what should|surprise me|izaberi|odaberi)\b/i;
-
-const SETTLING_GUEST_PATTERN =
-  /\b(hvala|danke|thanks|that's all|to je sve|fertig|zaplat|pay|rechnung bitte|that's it|done ordering)\b/i;
-
-const ORDER_STATUS_QUERY_PATTERN =
-  /\b(kad sti[žz]e|kada sti[žz]e|gde je|gdje je|where.*order|wo ist|when.*(arriv|ready|coming)|order status|status.*order|moje pivo|my beer|jesi\s+(poslao|poslala|poslali)|da\s+li\s+(ste|si)\s+posl|poslao\s+porud[žz]bin|poslata|poslat[aoe]?|nisam\s+dobio|nisi\s+dobio|nije\s+stiglo|not\s+(sent|received|arrived)|keine\s+bestellung|da\s+li\s+ste\s+saznal)\b/i;
-
-const MISSING_ORDER_COMPLAINT_PATTERN =
-  /\b(nisi poslao|nije poslat|not sent|keine bestellung|order.*not.*(sent|received)|waiter says|konobar ka[žz]e|nisam dobio|nisi dobio|nije stiglo|gde je pivo|gdje je pivo)\b/i;
-
-const ALREADY_ORDERED_PATTERN =
-  /\b(poručio|porucio|naručio|narucio|poslao|poslata|već\s+naruč|vec\s+naruc|already ordered|bereits bestellt)\b/i;
-
-/** @deprecated Routing hint only — not an LLM gate (ADR-025). */
-const ORDERING_GUEST_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|beer|bier|weizen|pilsner|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|0[,.][35]|liter|l|schnitzel|pils|espresso|latte|molim|bitte|please|ho[ćc]u|želim|zelim|jedno|jedna|malo|veliko)\b/i;
-
-/** Social / banter — not an order line (eval helpers only; ADR-025). */
-export function isCasualSocialGuestMessage(message: string): boolean {
-  const text = message.trim();
-  if (!text || text.length > 280) return false;
-  if (ORDERING_GUEST_PATTERN.test(text)) return false;
-  return true;
-}
-
-export function looksLikeOrderLine(message: string): boolean {
-  return ORDERING_GUEST_PATTERN.test(message.trim());
-}
+export {
+  isCasualSocialGuestMessage,
+  isVagueRecommendMessage,
+  looksLikeOrderLine,
+} from "@/lib/denis/cognition/tde/semantic-intent-router";
 
 function resolveConversationMode(
   input: DecideTurnPlanInput
@@ -75,7 +67,7 @@ function resolveConversationMode(
     CORE_BELIEF_KEYS.conversationMode
   );
   if (fromBelief) return fromBelief;
-  if (SETTLING_GUEST_PATTERN.test(input.message)) return "settling";
+  if (isGuestSettlingMessage(input.message)) return "settling";
   return "banter";
 }
 
@@ -123,7 +115,7 @@ function offerAnchoredRecommendTurn(
   input: DecideTurnPlanInput,
   suppressUpsell: boolean
 ): TurnPlan | null {
-  if (!VAGUE_RECOMMEND_PATTERN.test(input.message.trim())) return null;
+  if (!isGuestVagueBrowseMessage(input.message.trim())) return null;
   if (hasCommercePressure(input)) return null;
 
   const ready =
@@ -219,58 +211,17 @@ function buildPlan(
   return { kind, ...partial };
 }
 
-const PURE_SOCIAL_BANTER_PATTERN =
-  /^(zdravo|ćao|cao|hello|hi|hey|guten tag|guten abend|merhaba|que tal|ciao|hola)[\s,!.-]*((kako si|how are|sta si|sta ima|legendo|legend).*)?$/i;
-
-function isPureSocialBanter(message: string): boolean {
-  const text = message.trim();
-  if (!text || text.length > 120) return false;
-  return PURE_SOCIAL_BANTER_PATTERN.test(text);
-}
-
-const ORDERING_HINT_PATTERN =
-  /\b(\d+\s*x|cola|kola|pivo|piva|beer|bier|burger|pizza|order|bestell|naru[čc]|poru[čc]|menu|meni|rechnung|bill|kellner|waiter|ho[ćc]u|želim|zelim|jedno|jedna|preporu[čc]|recommend|šta imate|sta imate|dodaj|cevap|ćevap|pile[cć]i|kisela|nastavimo|nastavljamo)\b/i;
-
-const MENU_BROWSE_PATTERN =
-  /(šta imate|sta imate|what do you have|was habt ihr|šta nudite|imate li)/i;
-
-/** Short guest reply in banter — not an order line; LLM should continue the thread. */
-function isShortBanterReply(message: string): boolean {
-  const text = message.trim();
-  if (!text || text.length > 120) return false;
-  if (ORDERING_HINT_PATTERN.test(text)) return false;
-  if (/\?/.test(text) && text.length > 40) return false;
-  return true;
-}
-
 function hasCommercePressure(input: DecideTurnPlanInput): boolean {
-  const pressure = getBeliefValue<CommercePressure>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.commercePressure
-  );
-  const awaiting = getBeliefValue<ConversationAwaiting>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.conversationAwaiting
-  );
-  const mode = getBeliefValue<ConversationMode>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.conversationMode
-  );
-  const pendingSlot = getBeliefValue<string>(
-    input.beliefs,
-    CORE_BELIEF_KEYS.commercePendingSlot
-  );
-
-  return (
-    pressure === "open" ||
-    pressure === "confirm" ||
-    awaiting != null ||
-    Boolean(pendingSlot) ||
-    mode === "ordering"
-  );
+  return hasGuestPostureCommercePressure({
+    beliefs: input.beliefs,
+    guestMessage: input.message,
+    interpretation:
+      input.interpretation ??
+      synthesizeTurnInterpretationFromRouter(input.message),
+  });
 }
 
-/** ADR-030 — comprehend-first perceive after deterministic exits. */
+/** ADR-030 + ADR-025 — comprehend-first perceive after deterministic exits. */
 function resolvePerceivePlan(
   input: DecideTurnPlanInput,
   suppressUpsell: boolean
@@ -324,15 +275,7 @@ function resolvePerceivePlan(
     });
   }
 
-  if (MENU_BROWSE_PATTERN.test(message)) {
-    return buildPlan("transactional_perceive", {
-      requiresLlm: true,
-      suppressUpsell,
-      reason: "commerce.menu_inquiry",
-    });
-  }
-
-  if (VAGUE_RECOMMEND_PATTERN.test(message)) {
+  if (isVagueRecommendMessage(message)) {
     return buildPlan("relational_perceive", {
       requiresLlm: true,
       suppressUpsell,
@@ -340,40 +283,58 @@ function resolvePerceivePlan(
     });
   }
 
-  if (!commerceActive && isPureSocialBanter(message)) {
-    return buildPlan("relational_perceive", {
+  if (commerceActive || mode === "ordering") {
+    return buildPlan("transactional_perceive", {
       requiresLlm: true,
       suppressUpsell,
-      reason: "conversation.pure_social",
+      reason: "commerce.pressure.comprehend",
     });
   }
 
-  if (!commerceActive && mode === "banter" && isGuestPauseMessage(message)) {
-    return buildPlan("relational_perceive", {
-      requiresLlm: true,
-      suppressUpsell,
-      reason: "conversation.guest_pause",
-    });
-  }
-
-  if (
-    !commerceActive &&
-    mode === "banter" &&
-    isShortBanterReply(message)
-  ) {
-    return buildPlan("relational_perceive", {
-      requiresLlm: true,
-      suppressUpsell,
-      reason: "conversation.continue_thread",
-    });
-  }
-
-  return buildPlan("transactional_perceive", {
+  return buildPlan("relational_perceive", {
     requiresLlm: true,
     suppressUpsell,
-    reason: commerceActive
-      ? "commerce.pressure.comprehend"
-      : "comprehend_first.default",
+    reason: "comprehend_first.default",
+  });
+}
+
+function hasDeliveredCommerceOrders(
+  beliefs: DecideTurnPlanInput["beliefs"]
+): boolean {
+  return (
+    getBeliefValue<boolean>(
+      beliefs,
+      CORE_BELIEF_KEYS.commerceHasDeliveredOrders
+    ) === true
+  );
+}
+
+/** P1 — guest says "još jedno" / "same again" → direct reorder ACT (no dock confirm). */
+function commerceReorderGuestRequestReflex(
+  input: DecideTurnPlanInput
+): TurnPlan | null {
+  const message = input.message.trim();
+  if (!message || !isReorderRequestMessage(message)) return null;
+  if (isGroupRoundRequestMessage(message)) return null;
+
+  const pressure = getBeliefValue<CommercePressure>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePressure
+  );
+  if (pressure === "open" || pressure === "confirm") return null;
+
+  const pendingSlot = getBeliefValue<string>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePendingSlot
+  );
+  if (pendingSlot) return null;
+
+  if (!hasDeliveredCommerceOrders(input.beliefs)) return null;
+
+  return buildPlan("reflex_only", {
+    requiresLlm: false,
+    suppressUpsell: resolveSuppressUpsell(input.beliefs),
+    reason: "commerce.reorder.guest_request",
   });
 }
 
@@ -398,6 +359,57 @@ function shouldUseReflexOnly(input: DecideTurnPlanInput): boolean {
   }
 
   return true;
+}
+
+const VAGUE_COMPREHEND_PATTERN =
+  /\b(ne[šs]to|nesto|something|anything|hladno|toplo|vegans?|gluten\s*free)\b/i;
+
+function looksLikeMenuQuestion(message: string): boolean {
+  const text = message.trim();
+  if (!text) return false;
+  return (
+    /\?/.test(text) ||
+    /\b(koliko|ko[sš]ta|kosta|šta je|sta je|what is|how much|ima li|jel ima|je li|was ist|was kostet)\b/i.test(
+      text
+    )
+  );
+}
+
+function shouldComprehendOrderLineOverride(
+  message: string,
+  topGoalType: DenisGoal["type"] | undefined
+): boolean {
+  if (topGoalType !== "GUEST_SEATED" && topGoalType !== "COMPLETE_ROUND") {
+    return false;
+  }
+  const text = message.trim();
+  if (!text || !isOrderPlacementMessage(text)) return false;
+  if (looksLikeMenuQuestion(text)) return false;
+  if (VAGUE_COMPREHEND_PATTERN.test(text)) return false;
+  return true;
+}
+
+/** Settling guest line — template thanks beats T0 DONE reflex (comprehension eval / ADR-025). */
+function shouldSettleTemplateTurn(input: DecideTurnPlanInput): boolean {
+  const trimmed = input.message.trim();
+  if (!isGuestSettlingMessage(trimmed)) return false;
+
+  const pressure = getBeliefValue<CommercePressure>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePressure
+  );
+  const pendingSlot = getBeliefValue<string>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.commercePendingSlot
+  );
+  if (pressure === "open" || pressure === "confirm" || pendingSlot) {
+    return false;
+  }
+
+  const mode = resolveConversationMode(input);
+  if (mode === "ordering") return false;
+
+  return mode === "settling" || isGuestSettlingMessage(trimmed);
 }
 
 /** ADR-030 — LLM confirm at recap; T0 cart edits (add/remove) stay reflex_only. */
@@ -434,6 +446,52 @@ function shouldComprehendConfirmTurn(input: DecideTurnPlanInput): boolean {
   return true;
 }
 
+function comprehendConfirmReason(input: DecideTurnPlanInput): string {
+  const awaiting = getBeliefValue<ConversationAwaiting>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.conversationAwaiting
+  );
+  const intent = input.reflex.reflex?.intent;
+  const trimmed = input.message.trim();
+
+  if (
+    intent === "DECLINE" &&
+    isGuestMisunderstandingDecline(trimmed) &&
+    awaiting != null &&
+    awaiting !== "confirm"
+  ) {
+    return "conversation.decline_recovery.comprehend";
+  }
+
+  return "commerce.awaiting_confirm.comprehend";
+}
+
+/** Short product pick when Denis offered options — not a fresh order line. */
+function shouldComprehendConversationPickTurn(
+  input: DecideTurnPlanInput
+): boolean {
+  const awaiting = getBeliefValue<ConversationAwaiting>(
+    input.beliefs,
+    CORE_BELIEF_KEYS.conversationAwaiting
+  );
+  if (
+    awaiting !== "recommendation_pick" &&
+    awaiting !== "product" &&
+    awaiting !== "modifier" &&
+    awaiting !== "serve_size"
+  ) {
+    return false;
+  }
+
+  const trimmed = input.message.trim();
+  if (!trimmed || trimmed.length > 48) return false;
+  if (input.reflex.reflex?.intent === "CONFIRM") return false;
+  if (input.reflex.reflex?.intent === "DECLINE") return false;
+  if (isOrderPlacementMessage(trimmed)) return false;
+
+  return true;
+}
+
 function guestResolvesActiveGap(input: DecideTurnPlanInput): boolean {
   const primaryGap =
     getBeliefValue<WaiterGapKind | null>(
@@ -459,8 +517,8 @@ function guestResolvesActiveGap(input: DecideTurnPlanInput): boolean {
 function shouldTemplateWaiterGapClarify(input: DecideTurnPlanInput): boolean {
   const msg = input.message.trim();
   if (!msg) return false;
-  if (ORDER_STATUS_QUERY_PATTERN.test(msg)) return false;
-  if (MISSING_ORDER_COMPLAINT_PATTERN.test(msg)) return false;
+  if (isGuestStatusQueryMessage(msg)) return false;
+  if (isGuestOrderComplaintMessage(msg)) return false;
 
   const primaryGap =
     getBeliefValue<WaiterGapKind | null>(
@@ -671,8 +729,10 @@ function mentalAttentionEscalationTurn(
   const msg = input.message.trim();
   if (!msg) return null;
 
-  const statusQuery = ORDER_STATUS_QUERY_PATTERN.test(msg);
-  const missingComplaint = MISSING_ORDER_COMPLAINT_PATTERN.test(msg);
+  if (isGuestVagueBrowseMessage(msg)) return null;
+
+  const statusQuery = isGuestStatusQueryMessage(msg);
+  const missingComplaint = isGuestOrderComplaintMessage(msg);
   const frustration =
     getBeliefValue<string>(input.beliefs, CORE_BELIEF_KEYS.mentalFrustration) ??
     "none";
@@ -685,16 +745,23 @@ function mentalAttentionEscalationTurn(
     return null;
   }
 
-  return buildPlan("template_tell", {
-    requiresLlm: false,
+  return buildPlan("relational_perceive", {
+    requiresLlm: true,
     suppressUpsell: true,
-    reason: "mental.attention_handoff",
-    templateKey: "mental.attention_handoff",
+    reason: "mental.attention_empathy",
   });
 }
 
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
+
+  if (isPreorderIntentMessage(input.message.trim())) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell: true,
+      reason: "commerce.preorder.scheduled",
+    });
+  }
 
   const gapBlockPlan = waiterGapsBlockConfirm(input);
   if (gapBlockPlan) return gapBlockPlan;
@@ -711,12 +778,40 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   const reflexConfirmPlan = commerceReflexConfirmSubmit(input);
   if (reflexConfirmPlan) return reflexConfirmPlan;
 
+  const reorderGuestPlan = commerceReorderGuestRequestReflex(input);
+  if (reorderGuestPlan) return reorderGuestPlan;
+
   // ADR-030 — at recap, LLM comprehends confirm in any language; T0 is optional fast-path only.
   if (shouldComprehendConfirmTurn(input)) {
     return buildPlan("transactional_perceive", {
       requiresLlm: true,
       suppressUpsell,
-      reason: "commerce.awaiting_confirm.comprehend",
+      reason: comprehendConfirmReason(input),
+    });
+  }
+
+  if (shouldComprehendConversationPickTurn(input)) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "conversation.awaiting_pick.comprehend",
+    });
+  }
+
+  if (hasCommercePressure(input) && isMidOrderCartSwapMessage(input.message)) {
+    return buildPlan("transactional_perceive", {
+      requiresLlm: true,
+      suppressUpsell,
+      reason: "commerce.cart_mutation.comprehend",
+    });
+  }
+
+  if (shouldSettleTemplateTurn(input)) {
+    return buildPlan("template_tell", {
+      requiresLlm: false,
+      suppressUpsell,
+      reason: "conversation.mode.settling",
+      templateKey: "settle.thanks",
     });
   }
 
@@ -736,10 +831,7 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
     return planForPendingSlot(pendingSlot, input.message, suppressUpsell);
   }
 
-  const goalPlan = planForTopGoal(input.reflex.plan.topGoal, suppressUpsell);
-  if (goalPlan) return goalPlan;
-
-  if (ORDER_STATUS_QUERY_PATTERN.test(input.message.trim())) {
+  if (isGuestStatusQueryMessage(input.message.trim())) {
     if (!hasOpenCommerceOrders(input.beliefs)) {
       return buildPlan("template_tell", {
         requiresLlm: false,
@@ -756,7 +848,7 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
     });
   }
 
-  if (MISSING_ORDER_COMPLAINT_PATTERN.test(input.message.trim())) {
+  if (isGuestOrderComplaintMessage(input.message.trim())) {
     if (!hasOpenCommerceOrders(input.beliefs)) {
       return buildPlan("template_tell", {
         requiresLlm: false,
@@ -771,6 +863,9 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
       reason: "commerce.order_not_sent.complaint_with_open_order",
     });
   }
+
+  const goalPlan = planForTopGoal(input.reflex.plan.topGoal, suppressUpsell);
+  if (goalPlan) return goalPlan;
 
   const trimmedMessage = input.message.trim();
   if (
@@ -792,25 +887,40 @@ export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
   );
   if (narratePlan) return narratePlan;
 
-  if (MENU_BROWSE_PATTERN.test(input.message.trim())) {
-    return buildPlan("transactional_perceive", {
-      requiresLlm: true,
-      suppressUpsell,
-      reason: "commerce.menu_inquiry",
-    });
-  }
-
   const offerRecommendPlan = offerAnchoredRecommendTurn(input, suppressUpsell);
   if (offerRecommendPlan) return offerRecommendPlan;
 
+  if (resolveConversationMode(input) === "settling") {
+    return resolvePerceivePlan(input, suppressUpsell);
+  }
+
   const interpretationTask = buildInterpretationTask(
     input.reflex.plan.topGoal,
-    input.beliefs
+    input.beliefs,
+    {
+      guestMessage: input.message,
+      conversationGraph: input.conversationGraph,
+      interpretation:
+        input.interpretation ??
+        synthesizeTurnInterpretationFromRouter(input.message),
+    }
   );
   if (interpretationTask) {
+    const topGoalType = input.reflex.plan.topGoal?.type;
+    let planKind = interpretationTask.planKind;
+    let reason = interpretationTask.reason;
+
+    if (shouldComprehendOrderLineOverride(input.message.trim(), topGoalType)) {
+      planKind = "transactional_perceive";
+      reason = "comprehend_first.order_line";
+    }
+
     return buildPlan(
-      interpretationTask.planKind,
-      turnPlanFromInterpretationTask(interpretationTask, suppressUpsell)
+      planKind,
+      turnPlanFromInterpretationTask(
+        { ...interpretationTask, planKind, reason },
+        suppressUpsell
+      )
     );
   }
 

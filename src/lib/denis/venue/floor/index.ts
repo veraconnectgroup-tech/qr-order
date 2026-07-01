@@ -5,7 +5,15 @@ export type {
   FloorTableHint,
 } from "@/lib/denis/venue/floor/types";
 export { computeKdsBacklogMinutes } from "@/lib/denis/venue/floor/compute-kds-backlog";
-export { deriveTableOperatingHint } from "@/lib/denis/venue/floor/derive-table-hint";
+export { composeFloorGraphHouse } from "@/lib/denis/venue/floor/compose-floor-graph-house";
+export { computeStationQueues } from "@/lib/denis/venue/floor/compute-station-queues";
+export { deriveStationStressFromQueues } from "@/lib/denis/venue/floor/derive-station-stress";
+export {
+  countTablesWithHint,
+  deriveTableOperatingHint,
+  FLOOR_HINT_THRESHOLDS,
+} from "@/lib/denis/venue/floor/derive-table-hint";
+export { shouldAutoRushFromFloor } from "@/lib/denis/venue/floor/should-auto-rush-from-floor";
 export {
   floorTableForId,
   loadFloorGraph,

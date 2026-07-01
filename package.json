@@ -11,6 +11,19 @@
     "test": "vitest",
     "test:run": "vitest run",
     "verify:denis": "vitest run src/__tests__/denis-architecture-compliance.test.ts",
+    "verify:layer12": "vitest run src/__tests__/openapi-spec.test.ts src/__tests__/eval-gate.test.ts src/__tests__/i18n-coverage.test.ts src/__tests__/i18n-native-keys.test.ts src/__tests__/guest-a11y-patterns.test.ts",
+    "eval:gate": "tsx scripts/ci-eval-gate.ts",
+    "eval:update-baseline": "tsx scripts/ci-eval-gate.ts --update-baseline",
+    "perf:check": "tsx scripts/perf-check.ts",
+    "monitor:synthetic": "tsx scripts/synthetic-monitor.ts",
+    "load:normal": "tsx scripts/load-test/denis-load.ts normal",
+    "load:rush": "tsx scripts/load-test/denis-load.ts rush",
+    "load:stress": "tsx scripts/load-test/denis-load.ts stress",
+    "test:e2e:a11y": "playwright test e2e/guest-a11y.spec.ts",
+    "verify:layer10": "vitest run src/__tests__/prompt-shield.test.ts src/__tests__/layer10-ops.test.ts src/__tests__/api-error-contract.test.ts src/__tests__/api-response.test.ts src/__tests__/rls-coverage.test.ts src/__tests__/denis-traces.test.ts",
+    "verify:layer11": "vitest run src/__tests__/layer11-production-polish.test.ts src/__tests__/denis-roi.test.ts src/__tests__/experience-score.test.ts src/__tests__/commerce/denis-roi-daily-rollup.test.ts",
+    "dev:setup": "tsx scripts/dev-seed.ts",
+    "db:seed": "tsx scripts/dev-seed.ts",
     "eval:denis": "vitest run src/__tests__/denis-eval.test.ts",
     "eval:denis:record": "tsx scripts/record-denis-eval-run.ts",
     "pilot:iota": "tsx scripts/iota-obligation-pilot.ts",
@@ -26,7 +39,8 @@
     "db:push": "supabase db push",
     "db:types:remote": "supabase gen types typescript --linked > src/types/database.ts",
     "ai:grant-credits": "node scripts/grant-ai-credits.mjs",
-    "push:generate-keys": "node scripts/generate-vapid-keys.mjs"
+    "push:generate-keys": "node scripts/generate-vapid-keys.mjs",
+    "audit:landing": "lighthouse http://localhost:3000 --only-categories=performance,accessibility,best-practices,seo --chrome-flags=\"--headless=new\" --quiet"
   },
   "dependencies": {
     "@babel/core": "^7.29.0",
@@ -70,6 +84,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -83,6 +98,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "jsdom": "^29.1.1",
+    "lighthouse": "^12.8.2",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",

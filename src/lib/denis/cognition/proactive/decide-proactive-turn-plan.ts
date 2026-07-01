@@ -6,8 +6,18 @@ import {
 } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import { resolveMentalModelMode } from "@/lib/denis/config/resolve-mental-model-mode";
+import {
+  deriveCheckTier,
+  shouldSkipDessertForRevenueStrategy,
+  shouldSuppressUpsellForHighCheck,
+  type RevenueStrategy,
+} from "@/lib/denis/config/revenue-intelligence";
 import type { GuestProactiveNudge } from "@/lib/denis/cognition/proactive/proactive-types";
 import type { SessionPhase } from "@/lib/scene/types";
+import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import { mentalModelBlocksProactiveKind } from "@/lib/denis/cognition/mental-model/mental-model-intelligence";
+
+const EATING_DESSERT_MIN_MINUTES = 15;
 
 export type DecideProactiveTurnPlanInput = {
   beliefs: BeliefGraph;
@@ -16,6 +26,14 @@ export type DecideProactiveTurnPlanInput = {
   config: ConciergeConfig;
   /** Open cart draft lines block proactive; submitted kitchen orders do not. */
   cartLineCount?: number;
+  /** H2 — venue-wide revenue strategy from rhythm priors. */
+  revenueStrategy?: RevenueStrategy | null;
+  /** H2 — session check total in EUR for per-table posture. */
+  sessionCheckEuros?: number;
+  /** Minutes since last food delivery — eating-phase dessert gate. */
+  minutesSinceLastFoodDelivery?: number | null;
+  /** ADR-038 — folded guest mental model for pace/budget gates. */
+  mental?: GuestMentalModel | null;
 };
 
 export type ProactiveTurnPlanResult =
@@ -23,7 +41,14 @@ export type ProactiveTurnPlanResult =
   | { ok: false; reason: string };
 
 const UPSELL_NUDGE_KINDS: GuestProactiveNudge["kind"][] = [
+  "browse_nudge",
   "drink_pairing",
+  "drink_with_food",
+  "sommelier_pairing",
+  "sommelier_refill",
+  "drink_refill",
+  "round_two",
+  "happy_hour_upsell",
   "dessert_nudge",
   "popularity_pair",
 ];
@@ -40,6 +65,18 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.cart_recovery";
     case "drink_pairing":
       return "proactive.drink_pairing";
+    case "sommelier_pairing":
+      return "proactive.sommelier_pairing";
+    case "sommelier_refill":
+      return "proactive.sommelier_refill";
+    case "drink_with_food":
+      return "proactive.drink_with_food";
+    case "drink_refill":
+      return "proactive.drink_refill";
+    case "round_two":
+      return "proactive.round_two";
+    case "happy_hour_upsell":
+      return "proactive.happy_hour_upsell";
     case "dessert_nudge":
       return "proactive.dessert";
     case "slow_kitchen":
@@ -52,12 +89,36 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.bill_prompt";
     case "order_delay":
       return "proactive.order_delay";
+    case "order_eta_update":
+      return "proactive.order_eta_update";
+    case "order_ready":
+      return "proactive.order_ready";
+    case "order_ready_notify":
+      return "proactive.order_ready_notify";
+    case "kitchen_busy":
+      return "proactive.kitchen_busy";
+    case "kitchen_busy_preorder":
+      return "proactive.kitchen_busy_preorder";
     case "popularity_pair":
       return "proactive.popularity_pair";
+    case "party_incomplete":
+      return "proactive.party_incomplete";
+    case "google_review":
+      return "proactive.google_review";
+    case "internal_feedback":
+      return "proactive.internal_feedback";
+    case "scroll_search":
+      return "proactive.scroll_search";
+    case "scroll_category":
+      return "proactive.scroll_category";
+    case "scroll_bottom":
+      return "proactive.scroll_bottom";
+    default:
+      return "proactive.browse";
   }
 }
 
-function commerceBlocksProactive(
+export function commerceBlocksProactive(
   beliefs: BeliefGraph,
   cartLineCount: number
 ): boolean {
@@ -142,6 +203,21 @@ export function decideProactiveTurnPlan(
   }
 
   if (
+    sessionPhase === "eating" &&
+    candidate.kind !== "waiter_gap" &&
+    candidate.kind !== "attention_handoff"
+  ) {
+    if (candidate.kind === "dessert_nudge") {
+      const minutes = input.minutesSinceLastFoodDelivery;
+      if (minutes == null || minutes < EATING_DESSERT_MIN_MINUTES) {
+        return { ok: false, reason: "phase.eating_dessert_early" };
+      }
+    } else {
+      return { ok: false, reason: "phase.eating_do_not_disturb" };
+    }
+  }
+
+  if (
     (mode === "settling" || sessionPhase === "settling") &&
     candidate.kind !== "dessert_nudge" &&
     candidate.kind !== "bill_prompt"
@@ -150,14 +226,47 @@ export function decideProactiveTurnPlan(
   }
 
   const enforceMode = resolveMentalModelMode(config) === "enforce";
+  const receptiveness = getBeliefValue<string>(
+    beliefs,
+    CORE_BELIEF_KEYS.mentalReceptiveness
+  );
+
+  const mentalGate = mentalModelBlocksProactiveKind({
+    mental: input.mental,
+    kind: candidate.kind,
+    enforce: enforceMode,
+  });
+  if (mentalGate.blocked) {
+    return { ok: false, reason: mentalGate.reason ?? "gmm.blocked" };
+  }
 
   if (UPSELL_NUDGE_KINDS.includes(candidate.kind)) {
-    const suppressed = enforceMode
-      ? venueOpsSuppressUpsell(beliefs)
-      : upsellSuppressedLegacy(beliefs);
-    if (suppressed) {
-      return { ok: false, reason: "venue.upsell_suppressed" };
+    const settlingDessertAllowed =
+      candidate.kind === "dessert_nudge" &&
+      (sessionPhase === "settling" ||
+        sessionPhase === "eating" ||
+        mode === "settling");
+
+    if (!settlingDessertAllowed) {
+      const suppressed = enforceMode
+        ? venueOpsSuppressUpsell(beliefs)
+        : upsellSuppressedLegacy(beliefs);
+      if (suppressed) {
+        return { ok: false, reason: "venue.upsell_suppressed" };
+      }
+
+      const checkTier = deriveCheckTier(input.sessionCheckEuros ?? 0);
+      if (shouldSuppressUpsellForHighCheck(checkTier, receptiveness)) {
+        return { ok: false, reason: "revenue.high_check_suppress" };
+      }
     }
+  }
+
+  if (
+    candidate.kind === "dessert_nudge" &&
+    shouldSkipDessertForRevenueStrategy(input.revenueStrategy)
+  ) {
+    return { ok: false, reason: "revenue.turnover_skip_dessert" };
   }
 
   // D-NUDGE — no dessert while kitchen still has open mains (waiting/rush).
@@ -174,10 +283,42 @@ export function decideProactiveTurnPlan(
   }
 
   if (
-    candidate.kind === "drink_pairing" &&
+    (candidate.kind === "drink_pairing" ||
+      candidate.kind === "drink_with_food" ||
+      candidate.kind === "sommelier_pairing" ||
+      candidate.kind === "sommelier_refill") &&
     !config.proactive.pairing
   ) {
     return { ok: false, reason: "proactive.pairing_disabled" };
+  }
+
+  if (
+    candidate.kind === "drink_refill" &&
+    sessionPhase !== "browsing" &&
+    sessionPhase !== "ordering" &&
+    sessionPhase !== "waiting" &&
+    sessionPhase !== "latent"
+  ) {
+    return { ok: false, reason: "phase.drink_refill_blocked" };
+  }
+
+  if (
+    candidate.kind === "round_two" &&
+    sessionPhase !== "waiting" &&
+    sessionPhase !== "latent" &&
+    sessionPhase !== "ordering"
+  ) {
+    return { ok: false, reason: "phase.round_two_blocked" };
+  }
+
+  if (
+    candidate.kind === "happy_hour_upsell" &&
+    sessionPhase !== "browsing" &&
+    sessionPhase !== "ordering" &&
+    sessionPhase !== "waiting" &&
+    sessionPhase !== "latent"
+  ) {
+    return { ok: false, reason: "phase.happy_hour_blocked" };
   }
 
   if (
@@ -216,10 +357,41 @@ export function decideProactiveTurnPlan(
   }
 
   if (
-    candidate.kind === "order_delay" &&
+    (candidate.kind === "order_delay" || candidate.kind === "order_eta_update") &&
     !config.proactive.orderDelay
   ) {
     return { ok: false, reason: "proactive.order_delay_disabled" };
+  }
+
+  if (
+    (candidate.kind === "order_ready" || candidate.kind === "order_ready_notify") &&
+    sessionPhase !== "waiting"
+  ) {
+    return { ok: false, reason: "phase.order_ready_blocked" };
+  }
+
+  if (
+    (candidate.kind === "kitchen_busy" || candidate.kind === "kitchen_busy_preorder") &&
+    sessionPhase !== "browsing" &&
+    sessionPhase !== "latent" &&
+    sessionPhase !== "ordering"
+  ) {
+    return { ok: false, reason: "phase.kitchen_busy_blocked" };
+  }
+
+  if (
+    candidate.kind === "kitchen_busy_preorder" &&
+    sessionPhase !== "ordering"
+  ) {
+    return { ok: false, reason: "phase.kitchen_busy_preorder_blocked" };
+  }
+
+  if (
+    candidate.kind === "kitchen_busy" &&
+    sessionPhase !== "browsing" &&
+    sessionPhase !== "latent"
+  ) {
+    return { ok: false, reason: "phase.kitchen_busy_blocked" };
   }
 
   if (
@@ -229,13 +401,23 @@ export function decideProactiveTurnPlan(
     return { ok: false, reason: "proactive.popularity_disabled" };
   }
 
+  if (
+    (candidate.kind === "google_review" ||
+      candidate.kind === "internal_feedback") &&
+    sessionPhase !== "settling"
+  ) {
+    return { ok: false, reason: "phase.review_blocked" };
+  }
+
   const templateKey =
     candidate.kind === "waiter_gap" && candidate.prompt
       ? "waiter.gap_clarify.generic"
       : templateKeyForKind(candidate.kind);
-  const suppressUpsell = enforceMode
-    ? venueOpsSuppressUpsell(beliefs)
-    : upsellSuppressedLegacy(beliefs);
+  const suppressUpsell = UPSELL_NUDGE_KINDS.includes(candidate.kind)
+    ? enforceMode
+      ? venueOpsSuppressUpsell(beliefs)
+      : upsellSuppressedLegacy(beliefs)
+    : false;
 
   return {
     ok: true,

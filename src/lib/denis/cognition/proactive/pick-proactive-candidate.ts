@@ -52,8 +52,9 @@ export function pickProactiveCandidate(
     language?: string | null;
   }
 ): PickProactiveCandidateResult {
+  const rawRanked = rankProactiveCandidates(input);
   const ranked = enrichProactiveCandidates({
-    ranked: rankProactiveCandidates(input),
+    ranked: rawRanked,
     offer: input.offer,
     language: input.language,
     config: input.config as ConciergeConfig,
@@ -61,16 +62,64 @@ export function pickProactiveCandidate(
   const config = input.config as ConciergeConfig;
   const mode = resolveMentalModelMode(config);
   const confidenceFallback = config.mentalModel.confidenceFallbackThreshold;
-  const topRankedKind = ranked[0]?.nudge.kind ?? null;
-
-  if (ranked.length === 0) {
-    return { candidate: null, rankedCount: 0, policyTrace: null, ...emptyPickMeta() };
-  }
-
   const lowConfidence =
     input.mental != null &&
     mode !== "off" &&
     input.mental.confidence < confidenceFallback;
+  const topRankedKind = ranked[0]?.nudge.kind ?? rawRanked[0]?.nudge.kind ?? null;
+
+  if (ranked.length === 0) {
+    if (lowConfidence && mode === "enforce") {
+      return {
+        candidate: null,
+        rankedCount: 0,
+        policyTrace: {
+          mode,
+          candidateKind: rawRanked[0]?.nudge.kind ?? "bill_prompt",
+          allow: false,
+          reason: "gmm.confidence_insufficient",
+          wouldBlock: true,
+          enforced: true,
+        },
+        evaluationChain: [],
+        topRankedKind: null,
+        selectedKind: null,
+      };
+    }
+
+    if (rawRanked.length > 0 && mode !== "off" && input.mental) {
+      const policy = applyProactivePolicy({
+        mental: input.mental,
+        ranked: rawRanked,
+        config,
+        offer: input.offer,
+        payload: input.payload,
+        now: input.now,
+      });
+      const topKind = rawRanked[0]!.nudge.kind;
+      const verdict = policy.evaluations.find((row) => row.kind === topKind);
+      return {
+        candidate: null,
+        rankedCount: 0,
+        policyTrace: {
+          mode,
+          candidateKind: topKind,
+          allow: false,
+          reason:
+            verdict?.reason ??
+            policy.evaluations.find((row) => !row.allow)?.reason ??
+            null,
+          wouldBlock: true,
+          enforced: mode === "enforce",
+        },
+        evaluationChain: policy.evaluations,
+        topRankedKind: topKind,
+        selectedKind: policy.selectedKind,
+      };
+    }
+
+    return { candidate: null, rankedCount: 0, policyTrace: null, ...emptyPickMeta() };
+  }
 
   if (mode === "off" || !input.mental) {
     return {

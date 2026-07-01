@@ -1,5 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseDashboardTableStatusRows } from "@/lib/supabase/query-rows";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
+import { buildFloorTableRows } from "@/lib/dashboard/floor-status";
+import { computePeakHoursHeatmap } from "@/lib/dashboard/peak-hours";
+import { computeStaffPerformance } from "@/lib/dashboard/staff-performance";
+import { loadStaffNotifications } from "@/lib/denis/notifications/persist-staff-notification";
 import {
   computeOverviewDayStats,
   computeSparklinePoints,
@@ -18,7 +23,8 @@ const FEED_STATUSES = [
 ] as const;
 
 export async function fetchDashboardOverviewInitialData(
-  locationId: string
+  locationId: string,
+  orgId?: string
 ): Promise<DashboardOverviewInitialData> {
   const admin = createAdminClient();
   const todayStart = startOfTodayIso();
@@ -36,6 +42,12 @@ export async function fetchDashboardOverviewInitialData(
     { data: sessionRows },
     { data: sessionOrders },
     { data: tablesRows },
+    { data: floorOrderRows },
+    { data: callRows },
+    { data: aiSessionRows },
+    { data: staffOrderRows },
+    { data: staffCallRows },
+    { data: staffRows },
   ] = await Promise.all([
     admin
       .from("orders")
@@ -100,6 +112,43 @@ export async function fetchDashboardOverviewInitialData(
       .select("id, name, zone_id, zone:zones(id, name)")
       .eq("location_id", locationId)
       .is("deleted_at", null),
+    admin
+      .from("orders")
+      .select(
+        "id, table_id, session_id, total, status, payment_requested_at, payment_status, payment_method, created_at"
+      )
+      .eq("location_id", locationId)
+      .gte("created_at", todayStart)
+      .neq("status", "cancelled"),
+    admin
+      .from("waiter_calls")
+      .select("table_id")
+      .eq("location_id", locationId)
+      .eq("status", "pending"),
+    admin
+      .from("ai_sessions")
+      .select("id, table_id")
+      .eq("location_id", locationId)
+      .eq("status", "active"),
+    admin
+      .from("orders")
+      .select("created_by_staff_id, total, status, created_at")
+      .eq("location_id", locationId)
+      .gte("created_at", todayStart)
+      .neq("status", "rejected")
+      .neq("status", "cancelled"),
+    admin
+      .from("waiter_calls")
+      .select("acknowledged_at, created_at")
+      .eq("location_id", locationId)
+      .gte("created_at", todayStart),
+    orgId
+      ? admin
+          .from("staff")
+          .select("id, name")
+          .eq("org_id", orgId)
+          .is("deleted_at", null)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const today = computeOverviewDayStats(
@@ -162,12 +211,66 @@ export async function fetchDashboardOverviewInitialData(
     }
   }
 
-  const allTables = (tablesRows ?? []) as unknown as Array<{
+  const allTables = parseDashboardTableStatusRows(tablesRows);
+
+  const waiterCallTableIds = new Set(
+    ((callRows ?? []) as Array<{ table_id: string }>).map((row) => row.table_id)
+  );
+  const aiSessionsByTable = new Map<string, string>();
+  for (const row of (aiSessionRows ?? []) as Array<{
     id: string;
-    name: string;
-    zone_id: string | null;
-    zone: { id: string; name: string } | null;
-  }>;
+    table_id: string;
+  }>) {
+    aiSessionsByTable.set(row.table_id, row.id);
+  }
+
+  const floorTables = buildFloorTableRows({
+    tables: allTables,
+    sessions: (sessionRows ?? []) as Array<{
+      id: string;
+      table_id: string;
+      opened_at: string;
+    }>,
+    orders: (floorOrderRows ?? []) as Parameters<
+      typeof buildFloorTableRows
+    >[0]["orders"],
+    waiterCallTableIds,
+    aiSessionsByTable,
+  });
+
+  const staffNames = new Map<string, string>();
+  for (const row of (staffRows ?? []) as Array<{ id: string; name: string }>) {
+    staffNames.set(row.id, row.name);
+  }
+
+  const peakHours = computePeakHoursHeatmap(
+    (staffOrderRows ?? []) as Array<{
+      total: number;
+      status: string;
+      created_at: string;
+    }>
+  );
+
+  const staffPerformance = computeStaffPerformance({
+    orders: (staffOrderRows ?? []) as Array<{
+      created_by_staff_id: string | null;
+      total: number;
+      status: string;
+    }>,
+    staffNames,
+    waiterCalls: (staffCallRows ?? []) as Array<{
+      acknowledged_at: string | null;
+      created_at: string;
+    }>,
+  });
+
+  const denisActivity = orgId
+    ? await loadStaffNotifications(admin, {
+        orgId,
+        locationId,
+        limit: 12,
+      })
+    : [];
 
   return {
     stats: {
@@ -224,5 +327,9 @@ export async function fetchDashboardOverviewInitialData(
         sessionTotal: session.sessionTotal,
       };
     }),
+    floorTables,
+    peakHours,
+    staffPerformance,
+    denisActivity,
   };
 }

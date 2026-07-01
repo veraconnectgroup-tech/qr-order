@@ -14,6 +14,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       "digital waiter",
       "ne mogu da pozovem",
       "cannot call",
+      "as an ai",
+      "language model",
     ],
     emoji: false,
     maxWordsPerReply: 45,
@@ -31,6 +33,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     orderHistory: true,
     includePairingHistory: true,
     maxContextTokens: 2000,
+    adaptiveContext: true,
+    minContextTokens: 500,
   },
   ordering: {
     flow: "denis_short",
@@ -129,11 +133,28 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     floorGraphEnabled: false,
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
+    stationQuestions: {
+      enabled: false,
+      foodSlaMinutes: 12,
+      drinkSlaMinutes: 4,
+      pendingAcceptMinutes: 2,
+      readyPickupMinutes: 2,
+      cooldownMinutes: 4,
+      maxOpenPerStation: 3,
+      expirySeconds: 90,
+    },
   },
   learning: {
     learnedEdgesEnabled: false,
     minAcceptRateForSuggestion: 0.15,
     minImpressionsForSuggestion: 3,
+    crossVenue: {
+      enabled: true,
+      venueType: "casual",
+    },
+  },
+  thresholdOptimizer: {
+    autoApply: false,
   },
   memory: {
     returnGuestEnabled: false,
@@ -153,7 +174,51 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     frustrationEscalateThreshold: "mild",
     confidenceFallbackThreshold: 0.4,
   },
+  intervention: {
+    enabled: false,
+    mode: "off",
+  },
+  rhythm: {
+    enabled: false,
+    mode: "off",
+    minSampleSessions: 8,
+    minConfidence: 0.4,
+    ops: {
+      rushAlerts: false,
+      staffingHints: false,
+      rushThreshold: 1.8,
+      targetSessionsPerWaiter: 4,
+      staffingOccupancyThreshold: 0.55,
+    },
+  },
+  intelligence: {
+    contextAwareness: true,
+    timezone: "Europe/Belgrade",
+    dailyMenuLabel: null,
+    localSportsTeam: null,
+    weather: {
+      enabled: true,
+      openWeatherMapApiKey: null,
+      latitude: null,
+      longitude: null,
+    },
+  },
+  pipeline: {
+    enabled: true,
+    preSkills: ["pre.allergy_guard", "pre.cart_state", "pre.menu_filter"],
+    postSkills: [
+      "post.order_validator",
+      "post.price_check",
+      "post.tone_guard",
+      "post.safety_guard",
+    ],
+  },
 };
+
+/** Deep clone for tests/runtime paths that must not mutate platform defaults. */
+export function cloneConciergePlatformDefaults(): ConciergeConfig {
+  return structuredClone(CONCIERGE_PLATFORM_DEFAULTS);
+}
 
 export const CONCIERGE_CONFIG_CACHE_TTL_SECONDS = 300;
 export const CONCIERGE_CONFIG_CACHE_KEY_PREFIX = "ai:config:";

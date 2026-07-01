@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import { applyEventModeConfigOverlay } from "@/lib/denis/config/resolve-effective-config";
 import type { FloorGraph } from "@/lib/denis/venue/floor/types";
 import {
   loadCachedFloorGraphForLocation,
@@ -24,6 +25,7 @@ export async function loadEffectiveVenueOps(
   venueOps: VenueOpsBeliefs;
   opsEffects: OpsPlannerEffects;
   floor: FloorGraph | null;
+  effectiveConfig: ConciergeConfig;
 }> {
   const dbOps = await loadVenueOpsBeliefs(admin, {
     locationId: input.locationId,
@@ -36,6 +38,7 @@ export async function loadEffectiveVenueOps(
 
   const venueOps = resolveEffectiveVenueOps(dbOps, floor, input.config);
   const opsEffects = deriveOpsPlannerEffects(venueOps, input.config);
+  const effectiveConfig = applyEventModeConfigOverlay(input.config, venueOps);
 
-  return { venueOps, opsEffects, floor };
+  return { venueOps, opsEffects, floor, effectiveConfig };
 }
