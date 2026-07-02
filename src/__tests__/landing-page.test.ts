@@ -21,7 +21,7 @@ describe("landing page (Prompt 80)", () => {
       expect(copy.faq.items.length).toBeGreaterThanOrEqual(6);
     }
 
-    expect(landingCopy("sr").hero.titleAccent).toMatch(/nikad ne spava/i);
+    expect(landingCopy("sr").hero.titleAccent).toMatch(/od QR-a do plaćanja/i);
   });
 
   it("resolveLandingLocale maps browser codes", () => {
