@@ -768,3 +768,60 @@ Dobar vlasnik u 16h okupi smenu: "Večeras je rezervisana proslava u 20h, juče 
 
 **Status tabela ažurirana:** ✓
 
+---
+
+## Session report — S13
+
+**Status:** ✅ gotovo
+
+**Mapa postojećeg payment signala (pre koda):**
+
+| Signal | Gde | Ponašanje |
+|--------|-----|-----------|
+| `payment_settled` | `order-saga.ts` → `runCommerceExperience` | Commerce event + actor enqueue |
+| Session bill settle | `sessions/[sessionId]/bill/route.ts` | Marks orders paid, closes session |
+| `last_payment_settled_at` | `guest_session_commerce_state` projection | Anchor timestamp |
+| ADR-032 gaps | `assessWaiterObligation` | Guest ordering holes (in-memory fold) — **ne floor bus** |
+
+**S13 implementacija:**
+
+| Komponenta | Fajl | Šta radi |
+|------------|------|----------|
+| Tip katalog | `waiter-obligation-types.ts` | `bus_table` u `WaiterGapKind` (ADR-032 spine) |
+| Persistencija | `00153_table_bus_obligations.sql` | `paid_at`, `bussed_at`, open/bussed, RLS + realtime |
+| Domain | `bus-table-obligation.ts` | create/complete/escalate, `BUS_TABLE_GAP_KIND` |
+| Payment hook | `run-commerce-experience.ts` | `maybeCreateBusTableObligationOnPaymentSettled` posle `payment_settled` |
+| Watcher | `run-session-watcher.ts` | `escalateAllOverdueBusTableObligations` (1× reminder, 2× ops) |
+| Waiter UI | `waiter-bus-table-banner.tsx` + `waiter-table-detail.tsx` | Tap **Raspremljeno** |
+| API | `table-bus-obligations/[id]/complete/route.ts` | Staff-auth complete |
+| Ops Center | `filterBusTableEscalationNotifications` + sekcija 🔄 Obrt stola |
+| Daily report | `aggregateTableTurnaroundStats` | prosečan `paid_at→bussed_at`, najsporiji sto |
+| Config | `ops.tableTurnaround` | `enabled` default **off**, pilot **on**, `busSlaMinutes: 8` |
+
+**Fajlovi:**
+- **Novi:** `00153_table_bus_obligations.sql`, `bus-table-obligation.ts`, `table-bus-obligations/[id]/complete/route.ts`, `use-table-bus-obligations.ts`, `waiter-bus-table-banner.tsx`, `table-turnaround.test.ts`
+- **Izmenjeni (S13 scope):** `waiter-obligation-types.ts`, `cognition/waiter/index.ts`, `concierge-config.schema.ts`, `concierge-defaults.ts`, `pilot-wiring.ts`, `run-commerce-experience.ts`, `run-session-watcher.ts`, `operations-triage.ts`, `operations-center.tsx`, `denis-shift-report.ts`, `load-daily-report-context.ts`, `build-daily-report.ts`, `postgres-realtime-engine.ts`, `waiter-table-detail.tsx`, `waiter-app-ui.ts`, `database.ts`, `ADR-043-session-prompts.md`
+
+**Testovi:** 7 novih u `table-turnaround.test.ts`, svi zeleni
+
+**Verifikacija:** type-check ✓ · lint ✓ · `verify:denis` ✓ · `eval:denis` **5 failed** (isti baseline) · `test:run` **27 failed / 2121 passed** (+7 novih testova; +1 fail vs 26 baseline: `waiter-obligation` substitution — `assess-waiter-obligation` netaknut u S13)
+
+**Integracioni check:**
+
+| Stavka | Dokaz |
+|--------|--------|
+| `bus_table` kroz ADR-032 spine | `WaiterGapKind` + modul u `cognition/waiter/` + `grep bus_table src/lib/denis/cognition/waiter` |
+| Payment → obligation | `run-commerce-experience.ts` hook + `maybeCreateBusTableObligationOnPaymentSettled` |
+| 1× SLA reminder / 2× ops | `resolveBusTableEscalationState` test + `Obrt —` prefix u ops triage |
+| Daily report obrt | `aggregateTableTurnaroundStats` + digest `Obrt stolova` |
+| Flag default off / pilot on | `table-turnaround.test.ts` |
+| `eval:denis` bez novih failova | 5 failed — identično S8–S12 |
+| Nula novih test failova vs baseline | 27 failed (+1 ambient van S13 diff-a) |
+
+**Gapovi/rizici:**
+- `orders.paid_at` ne postoji — anchor pri create: `delivered_at ?? updated_at`
+- Migracija `00153` mora na remote pre live pilota
+- QR blokada stola namerno van scope-a
+
+**Status tabela ažurirana:** ✓
+
