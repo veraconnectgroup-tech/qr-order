@@ -543,18 +543,20 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
    ═══════════════════════════════════════════════════ */
 
 .landing-page {
-  /* Warm charcoal canvas (Cursor-like #14120b family), not pure black */
-  --lp-bg: #131110;
-  --lp-surface: #1a1815;
-  --lp-elevated: #221f1b;
-  --lp-ink: #edecec;
-  --lp-muted: #a29b92;
-  --lp-subtle: #6b645c;
-  --lp-border: rgba(255, 255, 255, 0.07);
-  --lp-border-subtle: rgba(255, 255, 255, 0.05);
+  /* Light editorial canvas (nimt.ai family): warm off-white, near-black ink */
+  --lp-bg: #fafaf7;
+  --lp-surface: #ffffff;
+  --lp-elevated: #ffffff;
+  --lp-tint: #f4f2ec;
+  --lp-shadow-lg: 0 24px 64px rgba(22, 20, 14, 0.12);
+  --lp-ink: #16140e;
+  --lp-muted: #5f5a50;
+  --lp-subtle: #8e887d;
+  --lp-border: rgba(22, 20, 14, 0.1);
+  --lp-border-subtle: rgba(22, 20, 14, 0.07);
   --lp-ember: #e85d04;
   --lp-ember-hover: #d14d04;
-  --lp-ember-muted: rgba(232, 93, 4, 0.1);
+  --lp-ember-muted: rgba(232, 93, 4, 0.08);
   --lp-accent: var(--lp-ember);
   background: var(--lp-bg);
   color: var(--lp-ink);
@@ -812,26 +814,26 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   .landing-hero-stagger-item { opacity: 1; transform: none; transition: none; }
 }
 
-/* Pill buttons — Cursor/Nimt style: monochrome primary, subtle surface secondary */
+/* Pill buttons — Nimt style: black pill primary, quiet bordered secondary */
 .landing-btn-primary {
-  background: #edecec !important;
-  color: #14120b !important;
+  background: #16140e !important;
+  color: #fafaf7 !important;
   border-radius: 9999px !important;
   border: none !important;
 }
 .landing-btn-primary:hover {
-  background: #ffffff !important;
+  background: #2c2920 !important;
 }
 
 .landing-btn-secondary {
-  background: #26241e !important;
-  color: #edecec !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: #ffffff !important;
+  color: #16140e !important;
+  border: 1px solid rgba(22, 20, 14, 0.14) !important;
   border-radius: 9999px !important;
 }
 .landing-btn-secondary:hover {
-  background: #2e2b25 !important;
-  color: #ffffff !important;
+  background: #f1efe9 !important;
+  color: #16140e !important;
 }
 
 .landing-btn-accent {

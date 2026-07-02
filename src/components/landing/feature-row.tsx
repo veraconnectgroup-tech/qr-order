@@ -50,7 +50,7 @@ export function FeatureRow({
               {bullets.map((bullet) => (
                 <li
                   key={bullet}
-                  className="flex gap-3 text-[15px] leading-relaxed text-zinc-400"
+                  className="flex gap-3 text-[15px] leading-relaxed text-[var(--lp-muted)]"
                 >
                   <span
                     className="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--qr-ember)]"

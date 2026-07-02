@@ -13,7 +13,7 @@ export function LandingTrustStrip() {
       className="border-y border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-6"
     >
       <LandingContainer wide>
-        <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+        <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--lp-subtle)]">
           {copy.trust}
         </p>
 

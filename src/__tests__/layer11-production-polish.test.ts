@@ -21,6 +21,27 @@ import {
   rollbackTargetVersion,
 } from "@/lib/denis/config/config-versioning";
 
+import {
+  resolveAiGuestRetryMessage,
+  resolveAiGuestUnavailableMessage,
+} from "@/lib/ai/guest-error-messages";
+
+describe("AI guest error messages", () => {
+  it("returns English retry copy for en guests", () => {
+    expect(resolveAiGuestRetryMessage("en")).toContain("Sorry");
+    expect(resolveAiGuestUnavailableMessage("en")).toContain("unavailable");
+  });
+
+  it("returns German copy for de guests", () => {
+    expect(resolveAiGuestRetryMessage("de")).toContain("Entschuldigung");
+    expect(resolveAiGuestUnavailableMessage("de")).toContain("KI-Assistent");
+  });
+
+  it("returns Serbian copy for sr guests", () => {
+    expect(resolveAiGuestRetryMessage("sr")).toContain("Izvinite");
+  });
+});
+
 describe("Layer 11 database types", () => {
   it("includes experience_analytics_daily with ROI + score columns", () => {
     const typesPath = path.join(process.cwd(), "src/types/database.ts");

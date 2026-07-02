@@ -62,7 +62,7 @@ describe("model-router", () => {
     expect(route.relativeCost).toBe(0);
   });
 
-  it("group order → gpt-4o full tier", () => {
+  it("group order → gpt-4.1 full tier", () => {
     const route = routeTurnModel({
       message: "Za mene i zenu i decu, razlicito",
       turnPlan: plan(true),
@@ -70,7 +70,7 @@ describe("model-router", () => {
       perceiveMode: "commerce",
     });
     expect(route.modelTier).toBe("full");
-    expect(route.model).toBe("gpt-4o");
+    expect(route.model).toBe("gpt-4.1");
     expect(route.skipLlm).toBe(false);
   });
 

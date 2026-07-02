@@ -26,7 +26,7 @@ const LandingFeatures = dynamic(
         className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 md:py-28"
         aria-hidden
       >
-        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-white/[0.03]" />
+        <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-black/[0.03]" />
       </div>
     ),
   }

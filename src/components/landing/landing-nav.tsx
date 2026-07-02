@@ -80,7 +80,7 @@ export function LandingNav() {
       >
         <LandingContainer wide className="flex h-14 items-center justify-between gap-4">
           <Link href="/" className="inline-flex shrink-0">
-            <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
+            <DenisBrandMark className="[&_.text-dash-text-muted]:text-[var(--lp-subtle)] [&_.text-dash-text]:text-[var(--lp-ink)]" />
           </Link>
 
           <nav className="hidden items-center gap-6 lg:flex">
@@ -89,10 +89,10 @@ export function LandingNav() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-[13px] font-medium transition hover:text-white",
+                  "text-[13px] font-medium transition hover:text-[var(--lp-ink)]",
                   link.sectionId && activeSection === link.sectionId
-                    ? "text-white"
-                    : "text-zinc-500"
+                    ? "text-[var(--lp-ink)]"
+                    : "text-[var(--lp-muted)]"
                 )}
               >
                 {link.label}
@@ -106,7 +106,7 @@ export function LandingNav() {
               variant="ghost"
               size="sm"
               asChild
-              className="hidden h-8 px-3 text-[13px] font-medium text-zinc-400 hover:bg-white/5 hover:text-white sm:inline-flex"
+              className="hidden h-8 px-3 text-[13px] font-medium text-[var(--lp-muted)] hover:bg-black/5 hover:text-[var(--lp-ink)] sm:inline-flex"
             >
               <Link href="/login">{nav.signIn}</Link>
             </Button>
@@ -121,7 +121,7 @@ export function LandingNav() {
               type="button"
               aria-label={open ? "Close menu" : "Open menu"}
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex size-8 items-center justify-center text-white lg:hidden"
+              className="inline-flex size-8 items-center justify-center text-[var(--lp-ink)] lg:hidden"
             >
               {open ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
@@ -131,10 +131,10 @@ export function LandingNav() {
 
       {open && (
         <div className="fixed inset-0 z-40 bg-[var(--lp-bg)] lg:hidden">
-          <div className="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
-            <span className="text-[14px] font-semibold text-white">Menu</span>
+          <div className="flex h-14 items-center justify-between border-b border-[var(--lp-border-subtle)] px-6">
+            <span className="text-[14px] font-semibold text-[var(--lp-ink)]">Menu</span>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close">
-              <X className="size-5 text-white" />
+              <X className="size-5 text-[var(--lp-ink)]" />
             </button>
           </div>
           <nav className="flex flex-col gap-1 px-6 py-6">
@@ -144,7 +144,7 @@ export function LandingNav() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-lg py-3 text-[16px] font-medium text-white"
+                  className="rounded-lg py-3 text-[16px] font-medium text-[var(--lp-ink)]"
                 >
                   {link.label}
                 </Link>

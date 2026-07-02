@@ -27,20 +27,20 @@ export function LandingFaq() {
           </LandingLead>
         </AnimateInView>
 
-        <div className="mt-12 divide-y divide-white/[0.06] border-y border-white/[0.06]">
+        <div className="mt-12 divide-y divide-[var(--lp-border-subtle)] border-y border-[var(--lp-border-subtle)]">
           {faq.items.map((item) => (
             <AnimateInView key={item.q}>
               <details className="group py-5 md:py-6">
                 <summary
                   className={cn(
-                    "flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-zinc-100",
+                    "flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-[var(--lp-ink)]",
                     "[&::-webkit-details-marker]:hidden"
                   )}
                 >
                   {item.q}
-                  <ChevronDown className="size-4 shrink-0 text-zinc-500 transition group-open:rotate-180" />
+                  <ChevronDown className="size-4 shrink-0 text-[var(--lp-subtle)] transition group-open:rotate-180" />
                 </summary>
-                <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
+                <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--lp-muted)]">
                   {item.a}
                 </p>
               </details>

@@ -35,7 +35,7 @@ export function LandingEyebrow({
     <p
       className={cn(
         "text-[11px] font-medium uppercase tracking-[0.16em]",
-        inverted ? "text-zinc-500" : "text-[var(--lp-accent)]",
+        inverted ? "text-[var(--lp-subtle)]" : "text-[var(--lp-accent)]",
         className
       )}
     >
@@ -55,14 +55,14 @@ export function LandingSectionLabel({
   return (
     <div className={cn("flex items-center justify-center gap-4 sm:gap-5", className)}>
       <span
-        className="h-px w-10 bg-gradient-to-r from-transparent via-zinc-700 to-zinc-600 sm:w-14"
+        className="h-px w-10 bg-gradient-to-r from-transparent via-[var(--lp-border)] to-[var(--lp-border)] sm:w-14"
         aria-hidden
       />
-      <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500">
+      <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--lp-subtle)]">
         {children}
       </span>
       <span
-        className="h-px w-10 bg-gradient-to-l from-transparent via-zinc-700 to-zinc-600 sm:w-14"
+        className="h-px w-10 bg-gradient-to-l from-transparent via-[var(--lp-border)] to-[var(--lp-border)] sm:w-14"
         aria-hidden
       />
     </div>
@@ -72,17 +72,16 @@ export function LandingSectionLabel({
 export function LandingHeadline({
   children,
   className,
-  inverted,
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Legacy prop from the dark theme — headlines now always use ink. */
   inverted?: boolean;
 }) {
   return (
     <h2
       className={cn(
-        "font-display text-[clamp(1.875rem,3.8vw,2.75rem)] font-medium leading-[1.08] tracking-[-0.035em]",
-        inverted ? "text-white" : "text-[var(--lp-ink)]",
+        "font-display text-[clamp(1.875rem,3.8vw,2.75rem)] font-medium leading-[1.08] tracking-[-0.035em] text-[var(--lp-ink)]",
         className
       )}
     >
@@ -94,17 +93,16 @@ export function LandingHeadline({
 export function LandingLead({
   children,
   className,
-  inverted,
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Legacy prop from the dark theme — leads now always use muted ink. */
   inverted?: boolean;
 }) {
   return (
     <p
       className={cn(
-        "text-[16px] leading-[1.75] tracking-[-0.01em]",
-        inverted ? "text-zinc-400" : "text-[var(--lp-muted)]",
+        "text-[16px] leading-[1.75] tracking-[-0.01em] text-[var(--lp-muted)]",
         className
       )}
     >

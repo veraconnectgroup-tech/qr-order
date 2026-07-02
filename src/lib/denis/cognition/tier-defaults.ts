@@ -11,8 +11,8 @@ export type DenisTierDefaults = {
   maxContextTokens: number;
 };
 
-const MINI = "gpt-4o-mini";
-const FOUR_O = "gpt-4o";
+const MINI = "gpt-4.1-nano";
+const FOUR_O = "gpt-4.1";
 
 export const DENIS_TIER_DEFAULTS: Record<DenisServiceTier, DenisTierDefaults> = {
   standard: {

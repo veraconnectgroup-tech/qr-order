@@ -35,11 +35,11 @@ export function LandingEnterprisePreview() {
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {enterprise.pillars.map((pillar) => (
             <AnimateInView key={pillar.title}>
-              <div className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-bg)] p-8">
-                <h3 className="text-[15px] font-medium text-white">
+              <div className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+                <h3 className="text-[15px] font-medium text-[var(--lp-ink)]">
                   {pillar.title}
                 </h3>
-                <p className="mt-3 text-[14px] leading-relaxed text-zinc-400">
+                <p className="mt-3 text-[14px] leading-relaxed text-[var(--lp-muted)]">
                   {pillar.description}
                 </p>
               </div>
@@ -50,14 +50,14 @@ export function LandingEnterprisePreview() {
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {enterprise.caseStudies.map((study) => (
             <AnimateInView key={study.venue}>
-              <article className="rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-bg)] p-8">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--qr-ember)]">
+              <article className="rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--lp-ember)]">
                   {study.result}
                 </p>
-                <h3 className="mt-3 font-display text-xl font-medium text-white">
+                <h3 className="mt-3 font-display text-xl font-medium text-[var(--lp-ink)]">
                   {study.venue}
                 </h3>
-                <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
+                <p className="mt-4 text-[15px] leading-relaxed text-[var(--lp-muted)]">
                   &ldquo;{study.quote}&rdquo;
                 </p>
               </article>

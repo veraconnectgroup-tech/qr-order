@@ -81,8 +81,43 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
       staffingOccupancyThreshold: 0.55,
     },
   },
+  intelligence: {
+    contextAwareness: true,
+    timezone: "Europe/Berlin",
+    dailyMenuLabel: null,
+    localSportsTeam: null,
+    weather: {
+      enabled: true,
+      openWeatherMapApiKey: null,
+      latitude: 53.5511,
+      longitude: 9.9937,
+    },
+  },
 };
 
 /** Demo Skyline location id (seed 00033). */
 export const SKYLINE_PILOT_LOCATION_ID =
   "b0000000-0000-4000-8000-000000000001";
+
+/** MR-9 — runtime fallback when DB `venue_manifest` is unset (Skyline pilot). */
+export const SKYLINE_PILOT_VENUE_MANIFEST = {
+  manifest_version: 1,
+  playbook_pack_id: "skyline",
+  identity: {
+    default_language: "de",
+    languages: ["de", "en", "sr"],
+    persona: "warm_short",
+  },
+  capabilities: {
+    relational: 3,
+    transactional: 3,
+    catalog_rag: 2,
+    guest_memory: 2,
+    anticipation: 2,
+  },
+  policy: {
+    require_explicit_confirm: true,
+    rush_skip_upsell: true,
+    max_upsells_per_session: 2,
+  },
+} as const;

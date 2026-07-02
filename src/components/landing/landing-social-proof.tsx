@@ -47,13 +47,13 @@ export function LandingSocialProof() {
         <div className="mt-16 grid gap-6 md:grid-cols-2">
           {social.testimonials.map((item) => (
             <AnimateInView key={item.name}>
-              <blockquote className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)]/60 p-8">
-                <p className="text-[16px] leading-relaxed text-zinc-300">
+              <blockquote className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+                <p className="text-[16px] leading-relaxed text-[var(--lp-ink)]/80">
                   &ldquo;{item.quote}&rdquo;
                 </p>
-                <footer className="mt-6 border-t border-white/[0.06] pt-4">
-                  <p className="text-[14px] font-medium text-white">{item.name}</p>
-                  <p className="mt-1 text-[13px] text-zinc-500">{item.role}</p>
+                <footer className="mt-6 border-t border-[var(--lp-border-subtle)] pt-4">
+                  <p className="text-[14px] font-medium text-[var(--lp-ink)]">{item.name}</p>
+                  <p className="mt-1 text-[13px] text-[var(--lp-subtle)]">{item.role}</p>
                 </footer>
               </blockquote>
             </AnimateInView>

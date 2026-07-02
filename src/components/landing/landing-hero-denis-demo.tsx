@@ -257,63 +257,114 @@ const SHIFT_STEPS: Record<LandingLocale, ShiftStep[]> = {
   ],
 };
 
+/** Soft tinted status colors for the light product window */
 const TONE_CLASSES: Record<Tone, string> = {
-  green: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
-  amber: "border-amber-400/30 bg-amber-400/10 text-amber-200",
-  blue: "border-sky-400/30 bg-sky-400/10 text-sky-200",
-  red: "border-red-400/30 bg-red-400/10 text-red-200",
-  zinc: "border-white/[0.1] bg-white/[0.04] text-zinc-300",
+  green: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  amber: "border-amber-200 bg-amber-50 text-amber-700",
+  blue: "border-sky-200 bg-sky-50 text-sky-700",
+  red: "border-red-200 bg-red-50 text-red-700",
+  zinc: "border-zinc-200 bg-zinc-50 text-zinc-600",
+};
+
+const SHIFT_METRICS: Record<
+  LandingLocale,
+  { value: string; label: string }[]
+> = {
+  en: [
+    { value: "3.1 min", label: "Avg pickup" },
+    { value: "+18%", label: "Avg check" },
+    { value: "12/18", label: "Tables calm" },
+  ],
+  de: [
+    { value: "3,1 min", label: "Ø Abholung" },
+    { value: "+18%", label: "Ø Bon" },
+    { value: "12/18", label: "Tische ruhig" },
+  ],
+  sr: [
+    { value: "3,1 min", label: "Prosek preuzimanja" },
+    { value: "+18%", label: "Prosečan račun" },
+    { value: "12/18", label: "Stolovi mirni" },
+  ],
+};
+
+const TONE_DOT: Record<Tone, string> = {
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  blue: "bg-sky-500",
+  red: "bg-red-500",
+  zinc: "bg-zinc-400",
 };
 
 function StationRow({ line }: { line: StationLine }) {
   const Icon = line.icon;
 
   return (
-    <div className="flex items-center gap-3 border-t border-white/[0.06] px-4 py-3 first:border-t-0">
-      <div className={cn("flex size-9 items-center justify-center rounded-md border", TONE_CLASSES[line.tone])}>
-        <Icon className="size-4" />
+    <div className="flex items-center gap-3 border-t border-zinc-100 px-4 py-3 first:border-t-0">
+      <div
+        className={cn(
+          "flex size-9 items-center justify-center rounded-lg border",
+          TONE_CLASSES[line.tone]
+        )}
+      >
+        <Icon className="size-4" strokeWidth={1.75} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] text-zinc-500">{line.label}</p>
-        <p className="truncate text-[14px] font-semibold text-white">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+          {line.label}
+        </p>
+        <p className="mt-0.5 flex items-center gap-1.5 truncate text-[14px] font-semibold text-zinc-900">
+          <span
+            className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT[line.tone])}
+            aria-hidden
+          />
           {line.value}
         </p>
       </div>
-      <p className="shrink-0 text-right text-[12px] text-zinc-500">
+      <p className="shrink-0 text-right text-[12px] text-zinc-400">
         {line.detail}
       </p>
     </div>
   );
 }
 
+/**
+ * Guest phone stays dark on purpose — the guest app ships with the dark
+ * luxury theme (ADR-007), and the contrast reads well inside the light window.
+ * Colors are explicit because --qr-* tokens are not defined on .landing-page.
+ */
 function GuestPhone({ step }: { step: ShiftStep }) {
   return (
-    <ShowcasePhone hideLabel className="mx-auto max-w-[210px] shadow-2xl shadow-black/50">
-      <ScaledPhonePreview designWidth={240} designHeight={420}>
-        <div className="flex min-h-[420px] flex-col bg-[var(--qr-void)] text-[var(--qr-ivory)]">
-          <div className="flex items-center gap-2 border-b border-[var(--qr-elevated)] px-3 py-3">
+    <ShowcasePhone hideLabel className="mx-auto max-w-[210px]">
+      <ScaledPhonePreview designWidth={240} designHeight={400}>
+        <div className="flex min-h-[400px] flex-col bg-[#0a0908] text-[#f5f0eb]">
+          <div className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-3">
             <DenisTableMark size={24} state="listen" />
             <span className="text-[11px] font-semibold">Denis</span>
-            <span className="ms-auto rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[9px] text-emerald-200">
+            <span className="ms-auto inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[9px] font-medium text-emerald-300">
+              <span className="size-1 rounded-full bg-emerald-400" aria-hidden />
               Live
             </span>
           </div>
           <div className="flex-1 space-y-3 px-3 py-4">
-            <div className="rounded-lg border border-[var(--qr-elevated)] bg-[var(--qr-surface)] p-3">
-              <p className="text-[10px] text-[var(--qr-muted)]">Guest</p>
-              <p className="mt-1 text-[12px] leading-relaxed">
+            <div className="ml-4 rounded-xl rounded-br-sm bg-[#211e1b] p-3">
+              <p className="text-[9px] font-medium uppercase tracking-wide text-[#9c958c]">
+                Guest
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[#f5f0eb]">
                 {step.guestLine}
               </p>
             </div>
-            <div className="rounded-lg border border-[var(--qr-ember)]/30 bg-[var(--qr-ember-muted)] p-3">
-              <p className="text-[10px] text-[var(--qr-muted)]">Denis</p>
-              <p className="mt-1 text-[12px] leading-relaxed">
+            <div className="mr-4 rounded-xl rounded-bl-sm border border-[#e85d04]/25 bg-[#e85d04]/10 p-3">
+              <p className="text-[9px] font-medium uppercase tracking-wide text-[#e88a4d]">
+                Denis
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[#f5f0eb]">
                 {step.answer}
               </p>
             </div>
           </div>
-          <div className="border-t border-[var(--qr-elevated)] px-3 py-3">
-            <div className="rounded-md border border-[var(--qr-elevated)] px-3 py-2 text-[10px] text-[var(--qr-muted)]">
+          <div className="border-t border-white/[0.08] px-3 py-3">
+            <div className="rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-2 text-[10px] text-[#9c958c]">
               Ask Denis...
             </div>
           </div>
@@ -326,6 +377,7 @@ function GuestPhone({ step }: { step: ShiftStep }) {
 export function LandingHeroDenisDemo({ frameless }: { frameless?: boolean }) {
   const { locale, copy } = useLandingCopy();
   const steps = SHIFT_STEPS[locale] ?? SHIFT_STEPS.en;
+  const metrics = SHIFT_METRICS[locale] ?? SHIFT_METRICS.en;
   const [stepIndex, setStepIndex] = useState(0);
   const step = steps[Math.min(stepIndex, steps.length - 1)]!;
 
@@ -348,40 +400,53 @@ export function LandingHeroDenisDemo({ frameless }: { frameless?: boolean }) {
 
       <div
         className={cn(
-          "border border-white/[0.08] bg-[#0d0c0b]",
+          "border border-zinc-200/80 bg-white",
           frameless
             ? "overflow-hidden rounded-lg sm:rounded-xl"
-            : "rounded-lg shadow-2xl shadow-black/50"
+            : "rounded-lg shadow-[0_24px_80px_-24px_rgba(22,20,14,0.25)]"
         )}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-4 py-3">
+        {/* Window chrome */}
+        <div className="flex items-center gap-2.5 border-b border-zinc-200 bg-zinc-50 px-4 py-2.5">
+          <div className="flex shrink-0 gap-1.5">
+            <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+            <span className="size-2.5 rounded-full bg-[#febc2e]" />
+            <span className="size-2.5 rounded-full bg-[#28c840]" />
+          </div>
+          <div className="min-w-0 flex-1 truncate rounded-md bg-white px-2.5 py-0.5 text-center text-[10px] text-zinc-400 ring-1 ring-zinc-200">
+            denis.app/dashboard/floor
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 border-b border-zinc-100 px-4 py-3 sm:px-5">
           <div className="flex items-center gap-3">
             <DenisTableMark size={24} state="think" />
             <div>
-              <p className="text-[13px] font-semibold text-white">
+              <p className="text-[13px] font-semibold text-zinc-900">
                 Skyline Lounge
               </p>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 Live service · Denis watching
               </p>
             </div>
           </div>
-          <span className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[11px] font-medium text-emerald-200">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700">
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
             18 open
           </span>
         </div>
 
-        <div className="grid gap-px bg-white/[0.06] lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="bg-[#0d0c0b] p-4 sm:p-5">
+        <div className="grid gap-px bg-zinc-100 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="flex flex-col bg-white p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-semibold text-white">
+                  <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-zinc-900">
                     {step.table}
                   </h2>
                   <span
                     className={cn(
-                      "rounded-md border px-2 py-1 text-[11px] font-medium",
+                      "rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
                       step.risk.toLowerCase().includes("high") ||
                         step.risk.toLowerCase().includes("visok") ||
                         step.risk.toLowerCase().includes("hoch")
@@ -396,30 +461,32 @@ export function LandingHeroDenisDemo({ frameless }: { frameless?: boolean }) {
                   {step.tableDetail}
                 </p>
               </div>
-              <div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-right">
-                <p className="text-[11px] text-zinc-500">Payment</p>
-                <p className="text-[12px] font-medium text-zinc-200">
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-right">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+                  Payment
+                </p>
+                <p className="text-[12px] font-medium text-zinc-700">
                   {step.payment}
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 overflow-hidden rounded-lg border border-white/[0.08] bg-black/20">
+            <div className="mt-5 overflow-hidden rounded-xl border border-zinc-200 bg-white">
               {step.stations.map((line) => (
                 <StationRow key={`${line.label}-${line.value}`} line={line} />
               ))}
             </div>
 
-            <div className="mt-5 rounded-lg border border-[var(--qr-ember)]/25 bg-[var(--qr-ember-muted)] p-4">
+            <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50/70 p-4">
               <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[var(--qr-ember)] text-white">
-                  <Activity className="size-4" />
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--lp-ember,#e85d04)] text-white">
+                  <Activity className="size-4" strokeWidth={1.75} />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-normal text-zinc-500">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-orange-600/80">
                     Next best action
                   </p>
-                  <p className="mt-1 text-[15px] font-semibold leading-snug text-white">
+                  <p className="mt-1 text-[15px] font-semibold leading-snug text-zinc-900">
                     {step.nextAction}
                   </p>
                 </div>
@@ -432,31 +499,48 @@ export function LandingHeroDenisDemo({ frameless }: { frameless?: boolean }) {
                   key={chip}
                   type="button"
                   onClick={advance}
-                  className="min-h-9 rounded-md border border-white/[0.1] bg-white/[0.03] px-3 text-[12px] font-medium text-zinc-300 transition hover:border-[var(--qr-ember)]/50 hover:bg-[var(--qr-ember-muted)] hover:text-white"
+                  className="min-h-9 rounded-full border border-zinc-200 bg-white px-3.5 text-[12px] font-medium text-zinc-600 transition hover:border-orange-300 hover:bg-orange-50 hover:text-zinc-900"
                 >
                   {chip}
                 </button>
               ))}
             </div>
+
+            <div className="min-h-4 flex-1" aria-hidden />
+            <div className="grid grid-cols-3 divide-x divide-zinc-100 border-t border-zinc-100 pt-4">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="px-3 first:pl-0 last:pr-0">
+                  <p className="text-[16px] font-semibold tracking-[-0.02em] text-zinc-900">
+                    {metric.value}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-zinc-400">
+                    {metric.label}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-1">
-            <div className="bg-[#0d0c0b] p-4 sm:p-5">
-              <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4">
-                <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-white">
-                  <MessageSquareText className="size-4 text-[var(--qr-ember)]" />
+          <div className="grid gap-px bg-zinc-100 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="bg-white p-4 sm:p-5">
+              <div className="flex h-full flex-col rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+                <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-zinc-900">
+                  <MessageSquareText
+                    className="size-4 text-[var(--lp-ember,#e85d04)]"
+                    strokeWidth={1.75}
+                  />
                   Staff Ask Denis
                 </div>
-                <p className="rounded-md border border-white/[0.08] bg-black/25 p-3 text-[13px] leading-relaxed text-zinc-300">
+                <p className="rounded-lg rounded-br-sm border border-zinc-200 bg-white p-3 text-[13px] leading-relaxed text-zinc-600">
                   {step.ask}
                 </p>
-                <p className="mt-3 rounded-md border border-emerald-400/20 bg-emerald-400/10 p-3 text-[13px] leading-relaxed text-emerald-100">
+                <p className="mt-3 rounded-lg rounded-bl-sm border border-emerald-200 bg-emerald-50 p-3 text-[13px] leading-relaxed text-emerald-900">
                   {step.answer}
                 </p>
               </div>
             </div>
 
-            <div className="bg-[#0d0c0b] p-4 sm:p-5">
+            <div className="bg-white p-4 sm:p-5">
               <GuestPhone step={step} />
             </div>
           </div>

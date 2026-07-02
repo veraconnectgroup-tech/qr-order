@@ -99,8 +99,8 @@ export function LandingLocaleSwitcher({ className }: { className?: string }) {
           onClick={() => setLocale(code)}
           className={
             locale === code
-              ? "rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase text-white"
-              : "rounded-full px-2.5 py-1 text-[11px] font-medium uppercase text-zinc-500 hover:text-zinc-300"
+              ? "rounded-full bg-black/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase text-[var(--lp-ink)]"
+              : "rounded-full px-2.5 py-1 text-[11px] font-medium uppercase text-[var(--lp-subtle)] hover:text-[var(--lp-ink)]"
           }
         >
           {code}

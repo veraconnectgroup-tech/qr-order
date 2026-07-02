@@ -76,7 +76,7 @@ export function LandingHero() {
             aria-hidden
           />
           <div className="relative p-4 sm:p-10 md:p-16 lg:px-24 lg:py-20">
-            <div className="mx-auto max-w-[920px] overflow-hidden rounded-lg shadow-[0_32px_90px_rgba(20,18,11,0.4)] sm:rounded-xl">
+            <div className="mx-auto max-w-[920px] overflow-hidden rounded-lg shadow-[0_32px_90px_rgba(20,18,11,0.28)] sm:rounded-xl">
               <LandingHeroDenisDemo frameless />
             </div>
           </div>

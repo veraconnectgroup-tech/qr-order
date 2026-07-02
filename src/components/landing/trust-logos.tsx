@@ -53,7 +53,7 @@ export function ApplePayLogo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-white",
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[var(--lp-ink,#16140e)]",
         className
       )}
     >
@@ -99,7 +99,7 @@ export function GooglePayLogo({ className }: { className?: string }) {
       )}
     >
       <GoogleGMark />
-      <span className="text-sm font-semibold text-white">Pay</span>
+      <span className="text-sm font-semibold text-[var(--lp-ink,#16140e)]">Pay</span>
     </span>
   );
 }
@@ -113,7 +113,7 @@ export function KassenSichVSeal() {
       >
         ✓
       </span>
-      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-zinc-300">
+      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-[var(--lp-muted,#5f5a50)]">
         KassenSichV
       </span>
     </>
@@ -129,7 +129,7 @@ export function DsgvoBadge() {
       >
         EU
       </span>
-      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-zinc-300">
+      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-[var(--lp-muted,#5f5a50)]">
         DSGVO
       </span>
     </>

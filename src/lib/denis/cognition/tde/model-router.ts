@@ -9,9 +9,9 @@ import type { BeliefGraph } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 
 export const MODEL_TIER_MODELS = {
-  mini: "gpt-4o-mini",
-  full: "gpt-4o",
-  extended: process.env.OPENAI_EXTENDED_MODEL?.trim() || "gpt-4o",
+  mini: "gpt-4.1-nano",
+  full: "gpt-4.1",
+  extended: process.env.OPENAI_EXTENDED_MODEL?.trim() || "gpt-4.1",
 } as const;
 
 export type { DenisModelTier };

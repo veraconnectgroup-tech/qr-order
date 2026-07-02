@@ -1,6 +1,8 @@
 import {
   AI_CONFIG,
   isOpenAiConfigured,
+  resolveAiGuestRetryMessage,
+  resolveAiGuestUnavailableMessage,
   resolveAiPromptLanguage,
 } from "@/lib/ai/config";
 import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
@@ -531,19 +533,22 @@ export async function perceiveGuestChatTurn(
       });
     } catch (error) {
       if (error instanceof AiCircuitOpenError) {
-        return apiError(AI_CONFIG.circuitBreakerMessage, 503);
+        return apiError(resolveAiGuestUnavailableMessage(language), 503);
       }
       if (error instanceof AiOpenAiError) {
         logger.error("AI OpenAI call failed", {
           status: error.status,
           error: error.message,
         });
-        return apiError("AI request failed.", error.status === 429 ? 429 : 502);
+        return apiError(
+          resolveAiGuestRetryMessage(language),
+          error.status === 429 ? 429 : 502
+        );
       }
       logger.error("AI OpenAI unexpected error", {
         error: error instanceof Error ? error.message : String(error),
       });
-      return apiError("AI request failed.", 502);
+      return apiError(resolveAiGuestRetryMessage(language), 502);
     }
 
     resolved = await resolveStructuredResponse(

@@ -1,3 +1,7 @@
+import {
+  SKYLINE_PILOT_LOCATION_ID,
+  SKYLINE_PILOT_VENUE_MANIFEST,
+} from "@/lib/denis/config/pilot-wiring";
 import { parseVenueManifest } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,13 +29,29 @@ export async function loadVenueManifestsForLocation(
       locationId,
       error: error?.message ?? "not found",
     });
+    if (locationId === SKYLINE_PILOT_LOCATION_ID) {
+      return {
+        locationRaw: SKYLINE_PILOT_VENUE_MANIFEST,
+        orgRaw: null,
+      };
+    }
     return { locationRaw: null, orgRaw: null };
   }
 
   const row = parseLocationVenueManifestRow(data);
+  let locationRaw = row.venue_manifest ?? null;
+  let orgRaw = row.organization?.venue_manifest ?? null;
+
+  if (
+    locationId === SKYLINE_PILOT_LOCATION_ID &&
+    !parseVenueManifest(locationRaw)
+  ) {
+    locationRaw = SKYLINE_PILOT_VENUE_MANIFEST;
+  }
+
   return {
-    locationRaw: row.venue_manifest ?? null,
-    orgRaw: row.organization?.venue_manifest ?? null,
+    locationRaw,
+    orgRaw,
   };
 }
 

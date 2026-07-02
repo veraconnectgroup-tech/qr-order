@@ -45,12 +45,12 @@ export function CountUpStat({
 
   return (
     <div ref={ref} className="text-center">
-      <p className="text-4xl font-bold text-[var(--qr-ember)]">
+      <p className="font-display text-4xl font-medium tracking-[-0.03em] text-[var(--lp-ink,#16140e)]">
         {prefix}
         {formatted}
         {suffix}
       </p>
-      <p className="mt-1 text-sm text-zinc-400">{label}</p>
+      <p className="mt-1 text-sm text-[var(--lp-subtle,#8e887d)]">{label}</p>
     </div>
   );
 }
@@ -76,11 +76,11 @@ export function StatText({
         initial={{ opacity: 0, y: 10 }}
         animate={shown ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="text-4xl font-bold text-[var(--qr-ember)]"
+        className="font-display text-4xl font-medium tracking-[-0.03em] text-[var(--lp-ink,#16140e)]"
       >
         {display}
       </motion.p>
-      <p className="mt-1 text-sm text-zinc-400">{label}</p>
+      <p className="mt-1 text-sm text-[var(--lp-subtle,#8e887d)]">{label}</p>
     </div>
   );
 }

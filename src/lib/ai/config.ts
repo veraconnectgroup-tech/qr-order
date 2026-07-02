@@ -6,14 +6,18 @@ import {
   resolvePersistentResponseLanguage,
   type LanguagePersistenceState,
 } from "@/lib/denis/cognition/conversation/code-switch-parser";
+import {
+  resolveAiGuestRetryMessage,
+  resolveAiGuestUnavailableMessage,
+} from "@/lib/ai/guest-error-messages";
 import { detectGuestScript } from "@/lib/denis/cognition/conversation/script-detector";
 
 export const AI_CONFIG = {
   /** Primary chat model */
-  model: process.env.OPENAI_MODEL?.trim() || "gpt-4o",
+  model: process.env.OPENAI_MODEL?.trim() || "gpt-4.1",
   /** Fallback when primary fails or is unavailable */
-  fallbackModel: process.env.OPENAI_FALLBACK_MODEL?.trim() || "gpt-4o-mini",
-  maxTokens: 800,
+  fallbackModel: process.env.OPENAI_FALLBACK_MODEL?.trim() || "gpt-4.1-nano",
+  maxTokens: 500,
   temperature: 0.4,
   /** Credits debited per concierge turn (API layer) */
   creditsPerMessage: 1,
@@ -33,10 +37,11 @@ export const AI_CONFIG = {
   maxMessagesPerSession: 30,
   /** One extra OpenAI call when JSON parse fails */
   parseRetryAttempts: 1,
-  fallbackMessage:
-    "Entschuldigung, bitte versuchen Sie es erneut.",
+  /** @deprecated Use resolveAiGuestRetryMessage(language) — kept for tests/legacy. */
+  fallbackMessage: "Sorry, please try again.",
+  /** @deprecated Use resolveAiGuestUnavailableMessage(language). */
   circuitBreakerMessage:
-    "KI-Assistent ist gerade nicht verfügbar. Sie können normal bestellen.",
+    "The AI assistant is temporarily unavailable. You can still order normally.",
   /** Embedding model for menu RAG (Vercel AI Gateway / OpenAI compatible). */
   embeddingModel:
     process.env.OPENAI_EMBEDDING_MODEL?.trim() || "text-embedding-3-small",
@@ -407,3 +412,5 @@ export function resolveGuestMessageLanguage(
 export function isOpenAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
+
+export { resolveAiGuestRetryMessage, resolveAiGuestUnavailableMessage };

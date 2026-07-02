@@ -141,18 +141,18 @@ export function LandingFooter() {
   const labels = footerLabels[locale];
 
   return (
-    <footer className="relative z-[2] border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-zinc-400 sm:py-20">
+    <footer className="relative z-[2] border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-[var(--lp-muted)] sm:py-20">
       <LandingContainer wide>
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            <DenisBrandMark className="[&_.text-dash-text-muted]:text-zinc-500 [&_.text-dash-text]:text-white" />
+            <DenisBrandMark className="[&_.text-dash-text-muted]:text-[var(--lp-subtle)] [&_.text-dash-text]:text-[var(--lp-ink)]" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
               {copy.footer.tagline}
             </p>
           </div>
           {columns.map((col) => (
             <div key={col.titleKey}>
-              <h4 className="text-[12px] font-medium uppercase tracking-wider text-zinc-500">
+              <h4 className="text-[12px] font-medium uppercase tracking-wider text-[var(--lp-subtle)]">
                 {labels[col.titleKey]}
               </h4>
               <ul className="mt-4 space-y-2">
@@ -160,7 +160,7 @@ export function LandingFooter() {
                   <li key={link.labelKey}>
                     <Link
                       href={link.href}
-                      className="text-[13px] transition-colors hover:text-white"
+                      className="text-[13px] transition-colors hover:text-[var(--lp-ink)]"
                     >
                       {labels[link.labelKey]}
                     </Link>
@@ -171,12 +171,12 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-zinc-600">
+        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-[var(--lp-subtle)]">
           <span>{labels.builtWith}</span>
           {builtWith.map(({ name, Logo }) => (
             <span
               key={name}
-              className="inline-flex items-center gap-1.5 text-zinc-500"
+              className="inline-flex items-center gap-1.5 text-[var(--lp-subtle)]"
               title={name}
             >
               <Logo />
@@ -187,7 +187,7 @@ export function LandingFooter() {
 
         <div className="mt-6 flex flex-col gap-2 border-t border-[var(--lp-border-subtle)] pt-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px]">{copy.footer.copyright}</p>
-          <p className="text-[12px] text-zinc-500">{labels.payments}</p>
+          <p className="text-[12px] text-[var(--lp-subtle)]">{labels.payments}</p>
         </div>
       </LandingContainer>
     </footer>
