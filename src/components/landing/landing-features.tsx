@@ -18,6 +18,7 @@ export function LandingFeatures() {
     <>
       <FeatureRow
         id={guest.id}
+        index={1}
         eyebrow={guest.eyebrow}
         title={guest.title}
         lead={guest.lead}
@@ -31,6 +32,7 @@ export function LandingFeatures() {
 
       <FeatureRow
         id={kitchen.id}
+        index={2}
         eyebrow={kitchen.eyebrow}
         title={kitchen.title}
         lead={kitchen.lead}
@@ -47,6 +49,7 @@ export function LandingFeatures() {
 
       <FeatureRow
         id={staff.id}
+        index={3}
         eyebrow={staff.eyebrow}
         title={staff.title}
         lead={staff.lead}
@@ -70,6 +73,7 @@ export function LandingFeatures() {
 
       <FeatureRow
         id={denis.id}
+        index={4}
         eyebrow={denis.eyebrow}
         title={denis.title}
         lead={denis.lead}

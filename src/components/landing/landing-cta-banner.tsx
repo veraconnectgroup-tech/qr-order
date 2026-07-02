@@ -27,7 +27,7 @@ export function LandingCtaBanner() {
       />
 
       <div className="relative z-10 px-6">
-        <h2 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-medium leading-tight tracking-[-0.02em] text-[var(--lp-ink)]">
+        <h2 className="font-display text-[clamp(1.875rem,4.4vw,2.875rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-[var(--lp-ink)]">
           {ctaBanner.title}
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-[var(--lp-muted)]">

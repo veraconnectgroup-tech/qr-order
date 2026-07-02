@@ -25,7 +25,18 @@ export type LandingCopy = {
     meta: string;
     demoLabel: string;
   };
-  trust: string;
+  trust: {
+    eyebrow: string;
+    headline: string;
+    headlineAccent: string;
+    lead: string;
+    groups: {
+      payments: string;
+      fiscal: string;
+      privacy: string;
+      finance: string;
+    };
+  };
   features: Array<{
     id: string;
     eyebrow: string;
@@ -128,7 +139,19 @@ const copyDe: LandingCopy = {
     meta: "QR Ordering · Stripe Zahlung · Station Truth · KassenSichV",
     demoLabel: "Live — Denis Shift Brain",
   },
-  trust: "Vertraut in Gastronomie · Integrationen & Compliance",
+  trust: {
+    eyebrow: "Vertraut in Gastronomie",
+    headline: "Für die ganze Schicht gebaut —",
+    headlineAccent: "keine Logo-Mauer.",
+    lead:
+      "Gastzahlungen, TSE-Signatur, DSGVO und DATEV-Export hängen an einer operativen Spine. Denis liefert, was deutsche Gastronomie wirklich braucht.",
+    groups: {
+      payments: "Einzug",
+      fiscal: "Signieren",
+      privacy: "Schützen",
+      finance: "Export",
+    },
+  },
   features: [
     {
       id: "features-guest",
@@ -384,7 +407,19 @@ const copyEn: LandingCopy = {
     meta: "QR ordering · Stripe payments · Station truth · KassenSichV",
     demoLabel: "Live — Denis shift brain",
   },
-  trust: "Trusted in hospitality · Integrations & compliance",
+  trust: {
+    eyebrow: "Trusted in hospitality",
+    headline: "Built for the full shift —",
+    headlineAccent: "not a logo wall.",
+    lead:
+      "Guest payments, TSE signing, GDPR, and DATEV export connect as one operational spine. Denis ships with what German hospitality actually needs.",
+    groups: {
+      payments: "Collect",
+      fiscal: "Certify",
+      privacy: "Protect",
+      finance: "Export",
+    },
+  },
   features: [
     {
       id: "features-guest",
@@ -582,7 +617,19 @@ const copySr: LandingCopy = {
     meta: "QR naručivanje · Stripe plaćanje · Station truth · KassenSichV",
     demoLabel: "Uživo — Denis shift brain",
   },
-  trust: "Pouzdano u ugostiteljstvu · Integracije i compliance",
+  trust: {
+    eyebrow: "Pouzdano u ugostiteljstvu",
+    headline: "Za celu smenu —",
+    headlineAccent: "ne zid logotipa.",
+    lead:
+      "Plaćanja gostiju, TSE potpis, GDPR i DATEV izvoz povezani su u jednu operativnu spine. Denis donosi ono što nemačko ugostiteljstvo zaista treba.",
+    groups: {
+      payments: "Naplata",
+      fiscal: "Potpis",
+      privacy: "Zaštita",
+      finance: "Izvoz",
+    },
+  },
   features: [
     {
       id: "features-guest",

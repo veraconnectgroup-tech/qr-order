@@ -1,6 +1,30 @@
 import { cn } from "@/lib/utils";
 
-function LogoTile({
+export type TrustItemId =
+  | "stripe"
+  | "apple"
+  | "google"
+  | "kassen"
+  | "dsgvo"
+  | "datev";
+
+export type TrustGroupId = "payments" | "fiscal" | "privacy" | "finance";
+
+export const TRUST_GROUP_ORDER: TrustGroupId[] = [
+  "payments",
+  "fiscal",
+  "privacy",
+  "finance",
+];
+
+export const TRUST_GROUP_ITEMS: Record<TrustGroupId, TrustItemId[]> = {
+  payments: ["stripe", "apple", "google"],
+  fiscal: ["kassen"],
+  privacy: ["dsgvo"],
+  finance: ["datev"],
+};
+
+function TrustBadge({
   children,
   label,
   className,
@@ -12,7 +36,7 @@ function LogoTile({
   return (
     <li
       className={cn(
-        "flex shrink-0 items-center justify-center gap-2.5 px-2 py-2 opacity-80 transition hover:opacity-100",
+        "inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--lp-border)] bg-white px-3 py-1.5 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition hover:border-[var(--lp-ember)]/25 hover:shadow-[0_4px_14px_rgba(232,93,4,0.08)]",
         className
       )}
       aria-label={label}
@@ -27,7 +51,7 @@ export function StripeLogo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "whitespace-nowrap text-[17px] font-bold tracking-tight text-[#635BFF]",
+        "whitespace-nowrap text-[15px] font-bold tracking-tight text-[#635BFF]",
         className
       )}
     >
@@ -40,7 +64,7 @@ function AppleMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={cn("size-5 shrink-0", className)}
+      className={cn("size-4 shrink-0", className)}
       fill="currentColor"
       aria-hidden
     >
@@ -53,12 +77,12 @@ export function ApplePayLogo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[var(--lp-ink,#16140e)]",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[var(--lp-ink,#16140e)]",
         className
       )}
     >
       <AppleMark />
-      <span className="text-sm font-semibold">Pay</span>
+      <span className="text-[13px] font-semibold">Pay</span>
     </span>
   );
 }
@@ -67,7 +91,7 @@ function GoogleGMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={cn("size-5 shrink-0", className)}
+      className={cn("size-4 shrink-0", className)}
       aria-hidden
     >
       <path
@@ -94,12 +118,14 @@ export function GooglePayLogo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
         className
       )}
     >
       <GoogleGMark />
-      <span className="text-sm font-semibold text-[var(--lp-ink,#16140e)]">Pay</span>
+      <span className="text-[13px] font-semibold text-[var(--lp-ink,#16140e)]">
+        Pay
+      </span>
     </span>
   );
 }
@@ -109,11 +135,11 @@ export function KassenSichVSeal() {
     <>
       <span
         aria-hidden
-        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-green-500 text-sm font-bold leading-none text-white"
+        className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold leading-none text-white"
       >
         ✓
       </span>
-      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-[var(--lp-muted,#5f5a50)]">
+      <span className="whitespace-nowrap text-[13px] font-semibold tracking-wide text-[var(--lp-muted,#5f5a50)]">
         KassenSichV
       </span>
     </>
@@ -125,11 +151,11 @@ export function DsgvoBadge() {
     <>
       <span
         aria-hidden
-        className="flex size-6 shrink-0 items-center justify-center rounded bg-blue-600 text-[10px] font-bold text-white"
+        className="flex size-5 shrink-0 items-center justify-center rounded bg-blue-700 text-[9px] font-bold text-white"
       >
         EU
       </span>
-      <span className="whitespace-nowrap text-sm font-semibold tracking-wide text-[var(--lp-muted,#5f5a50)]">
+      <span className="whitespace-nowrap text-[13px] font-semibold tracking-wide text-[var(--lp-muted,#5f5a50)]">
         DSGVO
       </span>
     </>
@@ -138,29 +164,29 @@ export function DsgvoBadge() {
 
 export function DatevLogo() {
   return (
-    <span className="whitespace-nowrap font-bold tracking-tight text-green-500">
+    <span className="whitespace-nowrap text-[14px] font-bold tracking-tight text-emerald-600">
       DATEV
     </span>
   );
 }
 
-const TRUST_ITEMS = [
-  { id: "stripe", label: "Stripe", node: <StripeLogo /> },
-  { id: "apple", label: "Apple Pay", node: <ApplePayLogo /> },
-  { id: "google", label: "Google Pay", node: <GooglePayLogo /> },
-  { id: "kassen", label: "KassenSichV", node: <KassenSichVSeal /> },
-  { id: "dsgvo", label: "DSGVO", node: <DsgvoBadge /> },
-  { id: "datev", label: "DATEV", node: <DatevLogo /> },
-] as const;
+const TRUST_ITEMS: Record<
+  TrustItemId,
+  { label: string; node: React.ReactNode }
+> = {
+  stripe: { label: "Stripe", node: <StripeLogo /> },
+  apple: { label: "Apple Pay", node: <ApplePayLogo /> },
+  google: { label: "Google Pay", node: <GooglePayLogo /> },
+  kassen: { label: "KassenSichV", node: <KassenSichVSeal /> },
+  dsgvo: { label: "DSGVO", node: <DsgvoBadge /> },
+  datev: { label: "DATEV", node: <DatevLogo /> },
+};
 
-export function TrustLogoList() {
+export function TrustItemBadge({ id }: { id: TrustItemId }) {
+  const item = TRUST_ITEMS[id];
   return (
-    <>
-      {TRUST_ITEMS.map(({ id, label, node }) => (
-        <LogoTile key={id} label={label}>
-          {node}
-        </LogoTile>
-      ))}
-    </>
+    <TrustBadge label={item.label}>
+      {item.node}
+    </TrustBadge>
   );
 }

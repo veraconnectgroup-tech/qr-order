@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, IBM_Plex_Sans } from "next/font/google";
+import {
+  Inter,
+  IBM_Plex_Sans,
+  Bricolage_Grotesque,
+  Instrument_Serif,
+} from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -13,6 +18,20 @@ const display = IBM_Plex_Sans({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+});
+
+/* Landing-only display faces — premium grotesque + serif italic accent */
+const landingDisplay = Bricolage_Grotesque({
+  variable: "--font-landing-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const landingSerif = Instrument_Serif({
+  variable: "--font-landing-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -69,7 +88,7 @@ export default function RootLayout({
   return (
     <html
       lang="de"
-      className={`${inter.variable} ${display.variable} h-full antialiased`}
+      className={`${inter.variable} ${display.variable} ${landingDisplay.variable} ${landingSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <PwaRegister />

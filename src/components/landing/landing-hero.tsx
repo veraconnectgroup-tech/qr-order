@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight, Play, Sparkles } from "lucide-react";
 import { HeroItem, HeroStagger } from "@/components/landing/animate-in-view";
 import { LandingHeroDenisDemo } from "@/components/landing/landing-hero-denis-demo";
 import { useLandingCopy } from "@/components/landing/landing-locale-provider";
@@ -14,31 +14,43 @@ export function LandingHero() {
   const { hero } = copy;
 
   return (
-    <section className="relative overflow-hidden bg-[var(--lp-bg)] pt-28 pb-16 md:pt-36 md:pb-20">
-      <LandingContainer wide>
-        <HeroStagger className="w-full max-w-[640px]">
+    <section className="relative overflow-hidden bg-[var(--lp-bg)] pt-16 md:pt-20">
+      {/* Soft radial wash behind the headline */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(232,93,4,0.06),transparent_70%)]"
+        aria-hidden
+      />
+
+      <LandingContainer wide className="relative">
+        <HeroStagger className="mx-auto flex w-full max-w-[760px] flex-col items-center text-center">
           <HeroItem>
-            <p className="text-[13px] font-medium text-[var(--lp-muted)]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--lp-border)] bg-[var(--lp-surface)] px-3.5 py-1.5 text-[12.5px] font-medium text-[var(--lp-muted)] shadow-[0_1px_2px_rgba(22,20,14,0.05)]">
+              <Sparkles className="size-3.5 text-[var(--lp-ember)]" aria-hidden />
               {hero.eyebrow}
-            </p>
+            </span>
           </HeroItem>
+
           <HeroItem>
-            <h1 className="mt-4 font-display text-4xl font-medium leading-[1.15] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-5xl">
+            <h1 className="mt-4 font-display text-[clamp(2.25rem,5vw,3.375rem)] font-bold leading-[1.04] tracking-[-0.035em] text-[var(--lp-ink)]">
               {hero.title}
-              <span className="text-[var(--lp-muted)]">{hero.titleAccent}</span>
+              <span className="landing-serif-accent block pt-1 font-normal text-[var(--lp-ember)] [font-size:1.04em]">
+                {hero.titleAccent}
+              </span>
             </h1>
           </HeroItem>
+
           <HeroItem>
-            <p className="mt-5 max-w-[540px] text-[16px] leading-[1.7] text-[var(--lp-muted)]">
+            <p className="mx-auto mt-4 max-w-[560px] text-[15px] leading-[1.65] text-[var(--lp-muted)] sm:text-[16px]">
               {hero.lead}
             </p>
           </HeroItem>
+
           <HeroItem>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
               <Button
                 size="lg"
                 asChild
-                className="landing-btn-primary h-11 px-6 text-[14px] font-medium"
+                className="landing-btn-primary h-12 px-7 text-[14.5px] font-medium shadow-[0_10px_30px_rgba(22,20,14,0.18)] transition-transform hover:-translate-y-0.5"
               >
                 <Link href="/signup">
                   {hero.cta}
@@ -48,7 +60,7 @@ export function LandingHero() {
               <Button
                 size="lg"
                 asChild
-                className="landing-btn-secondary h-11 px-6 text-[14px] font-medium"
+                className="landing-btn-secondary h-12 px-7 text-[14.5px] font-medium transition-transform hover:-translate-y-0.5"
               >
                 <Link href="/skyline-lounge/demo-table-8">
                   <Play className="me-1.5 size-4" />
@@ -57,31 +69,38 @@ export function LandingHero() {
               </Button>
             </div>
           </HeroItem>
+
           <HeroItem>
-            <p className="mt-5 text-[13px] text-[var(--lp-subtle)]">{hero.meta}</p>
+            <p className="mt-4 text-[13px] text-[var(--lp-subtle)]">{hero.meta}</p>
           </HeroItem>
         </HeroStagger>
       </LandingContainer>
 
-      <LandingContainer wide className="mt-12 md:mt-16">
-        {/* Cursor-style stage: watercolor painting as backdrop, product window on top */}
-        <div className="relative overflow-hidden rounded-xl border border-[var(--lp-border)] sm:rounded-2xl">
+      {/* Full-bleed watercolor stage — product window floats over our painting */}
+      <div className="relative mt-5 md:mt-6">
+        <div className="absolute inset-0 overflow-hidden">
           <Image
-            src="/landing/hero-watercolor.png"
+            src="/landing/hero-terrace.jpg"
             alt=""
             fill
             priority
-            sizes="(min-width: 1280px) 1232px, 100vw"
-            className="object-cover"
+            sizes="100vw"
+            className="object-cover object-bottom"
             aria-hidden
           />
-          <div className="relative p-4 sm:p-10 md:p-16 lg:px-24 lg:py-20">
-            <div className="mx-auto max-w-[920px] overflow-hidden rounded-lg shadow-[0_32px_90px_rgba(20,18,11,0.28)] sm:rounded-xl">
-              <LandingHeroDenisDemo frameless />
-            </div>
-          </div>
+          {/* Blend the painting into the page top edge */}
+          <div
+            className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[var(--lp-bg)] to-transparent"
+            aria-hidden
+          />
         </div>
-      </LandingContainer>
+
+        <LandingContainer wide className="relative pt-4 pb-12 sm:pt-5 md:pt-6 md:pb-14">
+          <div className="mx-auto max-w-[1140px] overflow-hidden rounded-xl ring-1 ring-black/10 shadow-[0_40px_110px_rgba(20,18,11,0.32)] sm:rounded-2xl">
+            <LandingHeroDenisDemo frameless />
+          </div>
+        </LandingContainer>
+      </div>
     </section>
   );
 }

@@ -45,7 +45,7 @@ export function CountUpStat({
 
   return (
     <div ref={ref} className="text-center">
-      <p className="font-display text-4xl font-medium tracking-[-0.03em] text-[var(--lp-ink,#16140e)]">
+      <p className="font-display text-4xl font-semibold tracking-[-0.03em] text-[var(--lp-ink,#16140e)]">
         {prefix}
         {formatted}
         {suffix}
@@ -76,7 +76,7 @@ export function StatText({
         initial={{ opacity: 0, y: 10 }}
         animate={shown ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="font-display text-4xl font-medium tracking-[-0.03em] text-[var(--lp-ink,#16140e)]"
+        className="font-display text-4xl font-semibold tracking-[-0.03em] text-[var(--lp-ink,#16140e)]"
       >
         {display}
       </motion.p>

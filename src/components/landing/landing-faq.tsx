@@ -30,7 +30,7 @@ export function LandingFaq() {
         <div className="mx-auto mt-14 max-w-[720px] space-y-3">
           {faq.items.map((item) => (
             <AnimateInView key={item.q}>
-              <details className="group rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] px-6 shadow-[0_1px_2px_rgba(22,20,14,0.04)] open:shadow-[0_8px_24px_rgba(22,20,14,0.06)]">
+              <details className="group rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] px-6 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition-all duration-300 open:border-[var(--lp-ember)]/25 open:shadow-[0_8px_24px_rgba(22,20,14,0.06)] hover:border-[var(--lp-ink)]/20">
                 <summary
                   className={cn(
                     "flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-[15px] font-medium text-[var(--lp-ink)]",

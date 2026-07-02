@@ -18,6 +18,7 @@ export function FeatureRow({
   visual,
   reverse = false,
   tone = "default",
+  index,
 }: {
   id: string;
   eyebrow: string;
@@ -27,17 +28,25 @@ export function FeatureRow({
   visual: React.ReactNode;
   reverse?: boolean;
   tone?: "default" | "surface" | "tint";
+  /** Optional 1-based chapter number rendered as a premium chip. */
+  index?: number;
 }) {
   return (
     <section
       id={id}
       className={cn(
-        "scroll-mt-24 border-t border-[var(--lp-border-subtle)] py-20 text-[var(--lp-ink)] md:py-28",
+        "relative scroll-mt-24 border-t border-[var(--lp-border-subtle)] py-20 text-[var(--lp-ink)] md:py-28",
         tone === "surface" && "bg-[var(--lp-surface)]",
         tone === "tint" && "bg-[var(--lp-tint)]",
         tone === "default" && "bg-[var(--lp-bg)]"
       )}
     >
+      {/* Ember hairline at the section seam */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-px max-w-[240px] bg-gradient-to-r from-transparent via-[var(--lp-ember)]/35 to-transparent"
+        aria-hidden
+      />
+
       <LandingContainer wide>
         <div
           className={cn(
@@ -46,8 +55,15 @@ export function FeatureRow({
           )}
         >
           <AnimateInView className="max-w-md">
-            <LandingEyebrow inverted>{eyebrow}</LandingEyebrow>
-            <LandingHeadline inverted className="mt-3">
+            <div className="flex items-center gap-3">
+              {index != null && (
+                <span className="flex size-7 items-center justify-center rounded-full border border-[var(--lp-ember)]/25 bg-[var(--lp-ember-muted)] text-[12px] font-semibold tabular-nums text-[var(--lp-ember)]">
+                  {String(index).padStart(2, "0")}
+                </span>
+              )}
+              <LandingEyebrow inverted>{eyebrow}</LandingEyebrow>
+            </div>
+            <LandingHeadline inverted className="mt-4">
               {title}
             </LandingHeadline>
             <LandingLead inverted className="mt-4">
@@ -57,10 +73,10 @@ export function FeatureRow({
               {bullets.map((bullet) => (
                 <li
                   key={bullet}
-                  className="flex gap-3 text-[15px] leading-relaxed text-[var(--lp-muted)]"
+                  className="group flex gap-3 text-[15px] leading-relaxed text-[var(--lp-muted)] transition-colors hover:text-[var(--lp-ink)]"
                 >
                   <span
-                    className="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--lp-ember)]"
+                    className="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--lp-ember)] transition-transform group-hover:scale-125"
                     aria-hidden
                   />
                   {bullet}
@@ -69,8 +85,13 @@ export function FeatureRow({
             </ul>
           </AnimateInView>
 
-          <AnimateInView delay={0.08} className="min-w-0">
-            {visual}
+          <AnimateInView delay={0.08} className="relative min-w-0">
+            {/* Soft glow pedestal behind the visual */}
+            <div
+              className="pointer-events-none absolute -inset-8 rounded-[2rem] bg-[radial-gradient(ellipse_65%_55%_at_50%_50%,rgba(232,93,4,0.055),transparent_70%)]"
+              aria-hidden
+            />
+            <div className="relative">{visual}</div>
           </AnimateInView>
         </div>
       </LandingContainer>

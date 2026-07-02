@@ -35,8 +35,8 @@ export function LandingEnterprisePreview() {
         <div className="mt-14 grid gap-5 md:grid-cols-3">
           {enterprise.pillars.map((pillar, index) => (
             <AnimateInView key={pillar.title}>
-              <div className="flex h-full flex-col rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[var(--lp-ember-muted)] text-[13px] font-semibold tabular-nums text-[var(--lp-ember)]">
+              <div className="group flex h-full flex-col rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--lp-ember)]/25 hover:shadow-[0_16px_44px_rgba(22,20,14,0.1)]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-[var(--lp-ember-muted)] text-[13px] font-semibold tabular-nums text-[var(--lp-ember)] transition-transform duration-300 group-hover:scale-110">
                   {index + 1}
                 </span>
                 <h3 className="mt-5 text-[15px] font-medium text-[var(--lp-ink)]">
@@ -53,7 +53,11 @@ export function LandingEnterprisePreview() {
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {enterprise.caseStudies.map((study) => (
             <AnimateInView key={study.venue}>
-              <article className="rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+              <article className="relative h-full overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_44px_rgba(22,20,14,0.1)]">
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--lp-ember)]/40 to-transparent"
+                  aria-hidden
+                />
                 <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--lp-ember)]">
                   {study.result}
                 </p>

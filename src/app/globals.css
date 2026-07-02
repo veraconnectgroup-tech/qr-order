@@ -571,6 +571,21 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   display: none;
 }
 
+/* Landing display face — Bricolage Grotesque, tighter and heavier than app-wide IBM Plex */
+.landing-page .font-display {
+  font-family: var(--font-landing-display), var(--font-display), var(--font-sans),
+    system-ui, sans-serif;
+  font-feature-settings: normal;
+}
+
+/* Serif italic accent for headline highlights (nimt-style flair) */
+.landing-serif-accent {
+  font-family: var(--font-landing-serif), Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
 /* Editorial operational typography */
 .landing-display {
   font-size: clamp(1.875rem, 3.2vw, 2.875rem);

@@ -58,12 +58,18 @@ export function LandingPricing() {
             <AnimateInView key={plan.name}>
               <div
                 className={cn(
-                  "relative flex h-full flex-col rounded-2xl border p-8",
+                  "relative flex h-full flex-col rounded-2xl border p-8 transition-all duration-300 hover:-translate-y-1",
                   plan.primary
-                    ? "border-[var(--lp-ink)]/20 bg-[var(--lp-surface)] shadow-[0_12px_40px_rgba(22,20,14,0.08)]"
-                    : "border-[var(--lp-border)] bg-[var(--lp-surface)] shadow-[0_1px_2px_rgba(22,20,14,0.04)]"
+                    ? "border-[var(--lp-ink)]/20 bg-[var(--lp-surface)] shadow-[0_12px_40px_rgba(22,20,14,0.08)] ring-1 ring-[var(--lp-ember)]/15 hover:shadow-[0_24px_60px_rgba(22,20,14,0.14)]"
+                    : "border-[var(--lp-border)] bg-[var(--lp-surface)] shadow-[0_1px_2px_rgba(22,20,14,0.04)] hover:shadow-[0_16px_44px_rgba(22,20,14,0.1)]"
                 )}
               >
+                {plan.primary && (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-[var(--lp-ember)]/50 to-transparent"
+                    aria-hidden
+                  />
+                )}
                 {plan.primary && (
                   <span className="absolute -top-3 left-8 rounded-full bg-[#16140e] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#fafaf7]">
                     {pricing.popular}
@@ -73,7 +79,7 @@ export function LandingPricing() {
                   {plan.name}
                 </p>
                 <div className="mt-4 flex items-baseline gap-1">
-                  <span className="font-display text-4xl font-medium tracking-[-0.03em] text-[var(--lp-ink)]">
+                  <span className="font-display text-4xl font-semibold tracking-[-0.03em] text-[var(--lp-ink)]">
                     {plan.price}
                   </span>
                   {plan.period && (

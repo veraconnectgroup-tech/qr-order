@@ -30,11 +30,16 @@ export function LandingSocialProof() {
           </LandingLead>
         </AnimateInView>
 
-        <StaggerInView className="mt-14 overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+        <StaggerInView className="relative mt-14 overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+          {/* Ember top hairline on the stat band */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--lp-ember)]/40 to-transparent"
+            aria-hidden
+          />
           <div className="grid grid-cols-2 divide-x-0 divide-y divide-[var(--lp-border-subtle)] md:grid-cols-4 md:divide-x md:divide-y-0">
             {social.stats.map((stat) => (
               <StaggerItem key={stat.label}>
-                <div className="px-6 py-8 md:py-10">
+                <div className="px-6 py-8 transition-colors hover:bg-[var(--lp-tint)]/60 md:py-10">
                   <CountUpStat
                     value={stat.value}
                     suffix={stat.suffix}
@@ -51,7 +56,7 @@ export function LandingSocialProof() {
         <div className="mt-16 grid gap-6 md:grid-cols-2">
           {social.testimonials.map((item) => (
             <AnimateInView key={item.name}>
-              <blockquote className="relative h-full overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+              <blockquote className="relative h-full overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--lp-ember)]/25 hover:shadow-[0_16px_44px_rgba(22,20,14,0.1)]">
                 <span
                   className="pointer-events-none absolute -left-1 -top-3 font-display text-[5rem] leading-none text-[var(--lp-ember)]/15"
                   aria-hidden
