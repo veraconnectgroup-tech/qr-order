@@ -94,7 +94,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
+    /** Lower peak RSS during webpack on Vercel 2-core/8GB builders. */
+    webpackMemoryOptimizations: true,
   },
+  productionBrowserSourceMaps: false,
   images: {
     minimumCacheTTL: 2592000,
     remotePatterns: [
@@ -151,7 +154,8 @@ const configWithPwa = withPWA(nextConfig);
 export default process.env.NEXT_PUBLIC_SENTRY_DSN
   ? withSentryConfig(configWithPwa, {
       silent: true,
-      widenClientFileUpload: true,
+      // widenClientFileUpload spikes memory during webpack — CI/Vercel already OOM-prone.
+      widenClientFileUpload: false,
       // Avoid failing Vercel builds when SENTRY_AUTH_TOKEN is not set.
       sourcemaps: {
         disable: !process.env.SENTRY_AUTH_TOKEN,
