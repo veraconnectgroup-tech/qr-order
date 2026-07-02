@@ -1,8 +1,6 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
-import {
-  detectTableTempoPhase,
-  findDrinksTempoNudgeEmittedAt,
-} from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import { detectTableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import { orchestrateTableLifecycle } from "@/lib/denis/cognition/lifecycle/orchestrate-table-lifecycle";
 import { hasActiveDrinkOrder } from "@/lib/denis/cognition/proactive/triggers";
 import { loadProactiveMenuHints } from "@/lib/denis/cognition/proactive/load-proactive-menu-hints";
 import { loadAdminUpsellMatches } from "@/lib/upsell/load-admin-matches";
@@ -209,6 +207,12 @@ export async function runProactiveSessionTick(
         config: config.ops.tableTempo,
       })
     : "none";
+  const tableLifecycle = orchestrateTableLifecycle({
+    mental: fold.state.mental,
+    tableTempoPhase,
+    orders: fold.state.commerce.orders,
+    cartLineCount: fold.state.commerce.cart.visibleLines.length,
+  });
   const adminUpsellMatches =
     cartProductIds.length > 0
       ? await loadAdminUpsellMatches(admin, {
@@ -271,6 +275,7 @@ export async function runProactiveSessionTick(
       followUpDelaySeconds: watcherContext.followUpDelaySeconds,
       adminUpsellMatches,
       tableTempoPhase,
+      tableLifecycle,
     },
   });
 }

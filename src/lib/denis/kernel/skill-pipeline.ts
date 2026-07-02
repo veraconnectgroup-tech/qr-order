@@ -206,7 +206,6 @@ export function runPostSkillPipeline(
         language: input.language,
         guestMessage: input.guestMessage,
         forbiddenPhrases: input.config.persona.forbiddenPhrases,
-        context: input.leadershipContext,
       });
       if (tone.corrected) {
         structured = tone.structured;

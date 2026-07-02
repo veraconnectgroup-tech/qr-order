@@ -1,5 +1,5 @@
 import { getAiRedis } from "@/lib/ai/redis";
-import { logRedisDegradation } from "@/lib/redis/client";
+import { logRedisDegradation, parseRedisJson } from "@/lib/redis/client";
 import { claimSignalId } from "@/lib/denis/actor/signal-dedupe";
 import {
   actorLockKey,
@@ -54,9 +54,8 @@ async function readSignalResult(
   if (!redis) return null;
 
   try {
-    const raw = await redis.get<string>(actorResultKey(signalId));
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredSignalHttpResult;
+    const raw = await redis.get(actorResultKey(signalId));
+    return parseRedisJson<StoredSignalHttpResult>(raw);
   } catch (error) {
     logRedisDegradation(`actor:result:read:${signalId}`, error);
     return null;
@@ -160,15 +159,13 @@ async function drainQueue(
     const queueKey = actorQueueKey(tableSessionId);
 
     while (true) {
-      const raw = await redis.lpop<string>(queueKey);
+      const raw = await redis.lpop(queueKey);
       if (!raw) break;
 
       let item: QueuedTableSessionSignal;
       try {
-        item =
-          typeof raw === "string"
-            ? (JSON.parse(raw) as QueuedTableSessionSignal)
-            : (raw as QueuedTableSessionSignal);
+        item = parseRedisJson<QueuedTableSessionSignal>(raw) ?? (raw as QueuedTableSessionSignal);
+        if (!item?.signalId) throw new Error("invalid_queue_item");
       } catch {
         logger.warn("TableSessionActor invalid queue item", { tableSessionId });
         continue;

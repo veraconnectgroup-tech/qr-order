@@ -6,6 +6,8 @@ import {
   shouldRecordInterventionSuperseded,
 } from "@/lib/denis/cognition/intervention/run-intervention-pipeline";
 import type { InterventionDecision } from "@/lib/denis/cognition/intervention/intervention-types";
+import type { TableLifecycleOrchestration } from "@/lib/denis/cognition/lifecycle/table-lifecycle-types";
+import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
 import type { ProactiveTurnResult } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import {
   isInterventionJournalActive,
@@ -43,6 +45,8 @@ export async function recordInterventionEvaluation(
     previousDecision?: InterventionDecision | null;
     previousInterventionId?: string | null;
     deferExpired?: boolean;
+    tableTempoPhase?: TableTempoPhase;
+    lifecycle?: TableLifecycleOrchestration | null;
   }
 ): Promise<InterventionJournalContext | null> {
   if (!isInterventionJournalActive(input.config)) {
@@ -56,6 +60,8 @@ export async function recordInterventionEvaluation(
     proactiveResult: input.proactiveResult,
     manifest,
     enforceBlock: mode === "enforce",
+    tableTempoPhase: input.tableTempoPhase,
+    lifecycle: input.lifecycle,
   });
 
   const traceId = input.traceId ?? createTurnTraceId();

@@ -147,8 +147,9 @@ describe("waiter obligation (ADR-032)", () => {
     });
 
     expect(plan.kind).toBe("template_tell");
-    expect(plan.reason).toBe("waiter.gap_blocks_confirm");
+    expect(plan.reason).toBe("waiter.gap_blocks_confirm.llm_reply");
     expect(plan.templateKey).toBe("waiter.gap_clarify.drink");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("generic pivo in cart keeps drink_unspecified gap (eval/live parity)", () => {
@@ -228,10 +229,11 @@ describe("waiter obligation (ADR-032)", () => {
     });
 
     expect(plan.kind).toBe("template_tell");
-    expect(plan.reason).toBe("waiter.gap_blocks_confirm");
+    expect(plan.reason).toBe("waiter.gap_blocks_confirm.llm_reply");
+    expect(plan.requiresLlm).toBe(true);
   });
 
-  it("template clarify plan when beliefs carry open drink gap on order line", () => {
+  it("LLM clarify plan when beliefs carry open drink gap on order line", () => {
     const state = baseState();
     state.conversation.flowNodeId = "collect";
     state.commerce.cart.ai.draft.items.push({
@@ -267,8 +269,8 @@ describe("waiter obligation (ADR-032)", () => {
     });
 
     expect(plan.kind).toBe("template_tell");
-    expect(plan.reason).toBe("waiter.gap_clarify");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.reason).toBe("waiter.gap_clarify.llm_reply");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("reflex drink reply when guest names typed drink with open gap", () => {
@@ -410,7 +412,7 @@ describe("waiter obligation (ADR-032)", () => {
     ).toBe(true);
   });
 
-  it("substitution gap surfaces in enforceWaiterTell", () => {
+  it("enforceWaiterTell does not append hardcoded clarify copy", () => {
     const obligation = assessWaiterObligation({
       guestMessage: "beef burger sa salatom umesto pomfrita",
       cartLines: [
@@ -430,21 +432,19 @@ describe("waiter obligation (ADR-032)", () => {
       atRecap: true,
     });
 
-    expect(obligation.gaps.some((g) => g.kind === "substitution_note")).toBe(
-      true
-    );
-
+    const base = "Beef Burger — da li je to sve?";
     const message = enforceWaiterTell({
-      message: "Beef Burger — da li je to sve?",
+      message: base,
       obligation,
       language: "sr",
       draft: emptyOrderDraft(),
     });
 
-    expect(message).toMatch(/pomfrit|kuhinj|Napomena/i);
+    expect(message).toBe(base);
+    expect(message).not.toMatch(/Pilsner|Weizen/i);
   });
 
-  it("enforceWaiterTell appends drink question to recap", () => {
+  it("enforceWaiterTell keeps LLM message without drink template append", () => {
     const obligation = assessWaiterObligation({
       orderContextMessage: "moze jedno pivo beef burger",
       cartLines: [
@@ -464,14 +464,16 @@ describe("waiter obligation (ADR-032)", () => {
       atRecap: true,
     });
 
+    const base = "Da li je to sve?\nBeef Burger";
     const message = enforceWaiterTell({
-      message: "Da li je to sve?\nBeef Burger",
+      message: base,
       obligation,
       language: "sr",
       draft: emptyOrderDraft(),
     });
 
-    expect(message).toMatch(/Pilsner|Weizen/i);
+    expect(message).toBe(base);
+    expect(message).not.toMatch(/Pilsner|Weizen/i);
   });
 });
 

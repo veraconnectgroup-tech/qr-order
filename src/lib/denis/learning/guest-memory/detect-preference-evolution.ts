@@ -75,3 +75,27 @@ export function formatPreferenceEvolutionHint(
   }
   return `Primijetio sam prelazak sa ${previous} na ${current} — predloži novo (npr. Quinoa Bowl), ne guraj stari favorit.`;
 }
+
+/** Guest-facing welcome line when taste evolved across visits. */
+export function formatPreferenceEvolutionWelcome(input: {
+  phases: GuestPreferencePhase[];
+  currentItems: string[];
+  language?: string;
+}): string | null {
+  if (!preferenceEvolutionChanged(input.phases)) return null;
+
+  const previous = input.phases[input.phases.length - 2]?.dominantItems[0];
+  const current =
+    input.currentItems[0] ??
+    input.phases[input.phases.length - 1]?.dominantItems[0];
+  if (!previous || !current) return null;
+
+  const lang = (input.language ?? "sr").slice(0, 2);
+  if (lang === "de") {
+    return `Früher ${previous}, zuletzt eher ${current} — probieren Sie heute etwas Neues?`;
+  }
+  if (lang === "en") {
+    return `You used to order ${previous}, lately ${current} — want to try something new today?`;
+  }
+  return `Ranije ste birali ${previous}, poslednja 3 puta ${current} — da probamo nešto novo danas?`;
+}

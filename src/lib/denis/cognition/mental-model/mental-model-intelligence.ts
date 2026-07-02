@@ -19,6 +19,18 @@ const PACE_RUSHED_BLOCKED_KINDS: readonly GuestProactiveNudgeKind[] = [
   "happy_hour_upsell",
 ];
 
+const SCROLL_DEFER_BLOCKED_KINDS: readonly GuestProactiveNudgeKind[] = [
+  "browse_nudge",
+  "browse_follow_up",
+  "popularity_pair",
+  "dessert_nudge",
+  "happy_hour_upsell",
+  "round_two",
+  "drink_pairing",
+  "cart_recovery",
+  "cart_abandonment_prevention",
+];
+
 const BUDGET_AFFINITY_BLOCKED_KINDS: readonly GuestProactiveNudgeKind[] = [
   "popularity_pair",
   "dessert_nudge",
@@ -52,6 +64,16 @@ export function formatGuestMentalModelBlock(
     `- meal_stage: ${mental.mealStage}`,
   ];
 
+  if (mental.scrollPosture.latestIntent) {
+    lines.push(`- scroll_intent: ${mental.scrollPosture.latestIntent}`);
+    if (mental.scrollPosture.focusedCategory) {
+      lines.push(`- scroll_category: ${mental.scrollPosture.focusedCategory}`);
+    }
+  }
+  if (mental.priceCeilingEur != null) {
+    lines.push(`- price_ceiling_eur: ${mental.priceCeilingEur}`);
+  }
+
   if (isReceptivenessClosed(mental)) {
     lines.push(
       "- instruction: closed → no proactive upsell; kitchen delay updates only"
@@ -65,6 +87,26 @@ export function formatGuestMentalModelBlock(
   if (mental.priceAffinity === "budget") {
     lines.push(
       "- instruction: budget → prefer value options; never lead with most expensive items"
+    );
+  }
+  if (mental.priceCeilingEur != null) {
+    lines.push(
+      `- instruction: price ceiling €${mental.priceCeilingEur} — never recommend items above this`
+    );
+  }
+  if (mental.scrollPosture.searching) {
+    lines.push(
+      "- instruction: fast scroll → guest is searching; offer concise help, no upsell spam"
+    );
+  }
+  if (mental.scrollPosture.deferUpsell) {
+    lines.push(
+      "- instruction: slow category browse → let guest explore; no generic upsell interrupts"
+    );
+  }
+  if (mental.scrollPosture.readyForRecommendation) {
+    lines.push(
+      "- instruction: reached menu bottom → one strong chef recommendation ok"
     );
   }
   if (mental.nudgeBudget.remaining <= 0) {
@@ -144,6 +186,12 @@ export function filterProactiveCandidatesByMentalModel<
     );
   }
 
+  if (mental.scrollPosture.deferUpsell) {
+    filtered = filtered.filter(
+      (row) => !SCROLL_DEFER_BLOCKED_KINDS.includes(row.nudge.kind)
+    );
+  }
+
   return filtered;
 }
 
@@ -181,6 +229,10 @@ export function mentalModelBlocksProactiveKind(input: {
 
   if (mental.pace === "rushed" && PACE_RUSHED_BLOCKED_KINDS.includes(kind)) {
     return { blocked: true, reason: "gmm.pace_rushed" };
+  }
+
+  if (mental.scrollPosture.deferUpsell && SCROLL_DEFER_BLOCKED_KINDS.includes(kind)) {
+    return { blocked: true, reason: "gmm.scroll_defer_upsell" };
   }
 
   return { blocked: false, reason: null };

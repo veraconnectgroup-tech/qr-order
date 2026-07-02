@@ -1,5 +1,6 @@
 import {
   AI_CONFIG,
+  buildDenisPromptCacheKey,
   isOpenAiConfigured,
   resolveAiGuestRetryMessage,
   resolveAiGuestUnavailableMessage,
@@ -7,7 +8,6 @@ import {
 } from "@/lib/ai/config";
 import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
 import { defaultGuestChatFallback } from "@/lib/denis/cognition/tde/template-utterance";
-import { applyConversationLeadership } from "@/lib/ai/conversation-leadership";
 import {
   runPostSkillPipeline,
   runPreSkillPipeline,
@@ -492,21 +492,14 @@ export async function perceiveGuestChatTurn(
     const templateMessage =
       opts.templateMessage?.trim() || defaultGuestChatFallback(language);
     const templateIntent = opts.templateIntent ?? "chat";
-    structured = applyConversationLeadership(
-      {
-        message: templateMessage,
-        recommendations: [],
-        proposedItems: [],
-        quickReplies: [],
-        submitOrder: false,
-        intent: templateIntent,
-      },
-      {
-        language,
-        guestMessage: input.message,
-        context: opts.leadershipContext,
-      }
-    );
+    structured = {
+      message: templateMessage,
+      recommendations: [],
+      proposedItems: [],
+      quickReplies: [],
+      submitOrder: false,
+      intent: templateIntent,
+    };
     openAiResult = {
       content: structured.message,
       tokensUsed: 0,
@@ -530,6 +523,10 @@ export async function perceiveGuestChatTurn(
       openAiResult = await callOpenAiChat(openAiMessages, {
         model: opts.model,
         extendedThinking: opts.extendedThinking,
+        promptCacheKey: buildDenisPromptCacheKey(
+          "perceive",
+          `${input.locationId}:${menuPayload.cachedAt.slice(0, 10)}`
+        ),
       });
     } catch (error) {
       if (error instanceof AiCircuitOpenError) {

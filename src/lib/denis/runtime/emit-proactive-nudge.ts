@@ -145,6 +145,8 @@ export async function emitProactiveNudge(
     previousDecision: lifecycle.previousDecision,
     previousInterventionId: lifecycle.previousInterventionId,
     deferExpired: lifecycle.deferExpired,
+    tableTempoPhase: input.payload.tableTempoPhase,
+    lifecycle: input.payload.tableLifecycle,
   });
 
   const ijsGateBlock = journal

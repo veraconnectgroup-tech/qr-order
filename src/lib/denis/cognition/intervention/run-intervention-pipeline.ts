@@ -9,7 +9,11 @@ import type {
   InterventionEvaluation,
   InterventionJournalPayload,
   InterventionManifest,
+  MatchedInterventionRule,
 } from "@/lib/denis/cognition/intervention/intervention-types";
+import type { TableLifecycleOrchestration } from "@/lib/denis/cognition/lifecycle/table-lifecycle-types";
+import type { GuestProactiveNudgeKind } from "@/lib/denis/cognition/proactive/proactive-types";
+import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
 import type { ProactiveTurnResult } from "@/lib/denis/cognition/proactive/plan-proactive-turn";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 
@@ -17,8 +21,20 @@ export type RunInterventionPipelineInput = {
   state: TableSessionState;
   proactiveResult: ProactiveTurnResult;
   manifest?: InterventionManifest;
+  tableTempoPhase?: TableTempoPhase;
+  lifecycle?: TableLifecycleOrchestration | null;
   nowMs?: number;
 };
+
+function updsKindAllowedByManifest(input: {
+  matchedRules: MatchedInterventionRule[];
+  updsKind: GuestProactiveNudgeKind | null;
+}): boolean {
+  if (!input.updsKind || input.matchedRules.length === 0) return true;
+  return input.matchedRules.some((row) =>
+    row.allowKinds.includes(input.updsKind!)
+  );
+}
 
 function reconcileDecision(input: {
   ijsDecision: InterventionEvaluation["ijsDecision"];
@@ -51,6 +67,8 @@ export function evaluateInterventionPipeline(
     orders: input.state.commerce.orders,
     cartLineCount: input.state.commerce.cart.visibleLines.length,
     timing,
+    tableTempoPhase: input.tableTempoPhase,
+    lifecycle: input.lifecycle,
     nowMs,
   });
 
@@ -62,34 +80,50 @@ export function evaluateInterventionPipeline(
     proactiveResult: input.proactiveResult,
   });
 
+  const updsKind =
+    input.proactiveResult.nudge?.kind ?? input.proactiveResult.candidateKind;
   const updsWouldSpeak =
     !input.proactiveResult.skipped &&
     input.proactiveResult.nudge != null &&
     Boolean(input.proactiveResult.message);
 
   const enforceBlock = input.enforceBlock === true;
+  const kindBlocked =
+    enforceBlock &&
+    updsWouldSpeak &&
+    !updsKindAllowedByManifest({
+      matchedRules: manifestEval.matchedRules,
+      updsKind,
+    });
+
   const shouldBlockSpeak =
-    enforceBlock && updsWouldSpeak && manifestEval.ijsDecision === "silence";
+    (enforceBlock && updsWouldSpeak && manifestEval.ijsDecision === "silence") ||
+    kindBlocked;
 
   const decision = reconcileDecision({
     ijsDecision: manifestEval.ijsDecision,
-    updsWouldSpeak,
+    updsWouldSpeak: updsWouldSpeak && !kindBlocked,
     enforceBlock,
   });
+
+  let silenceReason = updsWouldSpeak ? null : manifestEval.silenceReason;
+  if (kindBlocked) {
+    silenceReason = "ijs.kind_not_allowed";
+  }
 
   return {
     manifestVersion: manifest.version ?? INTERVENTION_MANIFEST_VERSION,
     trajectory,
     matchedRules: manifestEval.matchedRules,
-    decision,
+    decision: kindBlocked ? "silence" : decision,
     ijsDecision: manifestEval.ijsDecision,
     updsWouldSpeak,
     shouldBlockSpeak,
-    silenceReason: updsWouldSpeak ? null : manifestEval.silenceReason,
+    silenceReason,
     ruleId: manifestEval.ruleId,
     evidenceSignature: manifestEval.evidenceSignature,
     updsSkipReason: input.proactiveResult.skipReason,
-    updsKind: input.proactiveResult.nudge?.kind ?? input.proactiveResult.candidateKind,
+    updsKind,
   };
 }
 

@@ -175,7 +175,7 @@ function pickProductForSegment(
     }
   }
 
-  return best?.product ?? candidates[0] ?? null;
+  return best?.product ?? null;
 }
 
 function inferServeSizeFromSegment(

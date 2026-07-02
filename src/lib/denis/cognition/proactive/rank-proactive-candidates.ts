@@ -25,6 +25,7 @@ import {
 } from "@/lib/denis/cognition/browse/detect-browse-triggers";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import { filterProactiveCandidatesByMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-intelligence";
+import { applyTableLifecycleToCandidates } from "@/lib/denis/cognition/lifecycle/orchestrate-table-lifecycle";
 import { isCartRecoveryCandidateReady } from "@/lib/denis/cognition/offer/smart-cart-recovery";
 import type { GuestOfferContext } from "@/lib/denis/cognition/offer/offer-types";
 import { resolveFollowUpDueAt } from "@/lib/denis/cognition/conversation/guest-continuity";
@@ -112,6 +113,8 @@ import {
   menuEngineeringScoreMultiplier,
   type MenuEngineeringCategory,
 } from "@/lib/denis/platform/menu-engineering";
+import { buildOccasionAwareWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-occasion-aware-welcome";
+import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 
 export type RankedProactiveCandidate = {
   nudge: GuestProactiveNudge;
@@ -148,6 +151,10 @@ export type RankProactiveCandidatesInput = {
   revenueStrategy?: RevenueStrategy | null;
   /** H2 — session check total in EUR for per-table posture. */
   sessionCheckEuros?: number;
+  /** L2 — consented return-guest memory for personalized welcome. */
+  guestMemory?: GuestMemoryProjection | null;
+  /** Current table party size (devices or seats) for occasion detection. */
+  currentPartySize?: number | null;
   /** K2 — BCG category map for proactive priority / dog filter. */
   menuEngineeringCategories?: Record<
     string,
@@ -622,18 +629,33 @@ export function rankProactiveCandidates(
     }) &&
     (payload.sessionAgeSeconds ?? 0) >= config.proactive.guestWelcomeSeconds
   ) {
+    const personalizedWelcome =
+      input.guestMemory && input.guestMemory.visitCount >= 2
+        ? buildOccasionAwareWelcomeMessage({
+            language: payload.language ?? "sr",
+            visitCount: input.guestMemory.visitCount,
+            memory: input.guestMemory,
+            lastVisitItems: input.guestMemory.lastVisitItemNames,
+            lastFeedbackSentiment: input.guestMemory.lastFeedbackSentiment,
+            todaySpecial: payload.todaySpecial,
+            currentPartySize: input.currentPartySize ?? null,
+          })
+        : null;
+
     pushCandidate(
       candidates,
       {
         kind: "guest_welcome",
-        message: buildWelcomeMessage(
-          payload.venueName,
-          payload.language,
-          payload.todaySpecial,
-          messages.guestWelcome,
-          payload.rhythmTopProductName,
-          payload.servicePeriod
-        ),
+        message:
+          personalizedWelcome ??
+          buildWelcomeMessage(
+            payload.venueName,
+            payload.language,
+            payload.todaySpecial,
+            messages.guestWelcome,
+            payload.rhythmTopProductName,
+            payload.servicePeriod
+          ),
       },
       "welcome",
       mentalFirst,
@@ -1657,16 +1679,21 @@ export function rankProactiveCandidates(
     enforce: isEnforceMode(config),
   });
 
+  const lifecycleFiltered = applyTableLifecycleToCandidates({
+    candidates: mentalFiltered,
+    lifecycle: payload.tableLifecycle,
+  });
+
   const slowKitchenOrderIds = new Set(
-    mentalFiltered
+    lifecycleFiltered
       .filter((row) => row.nudge.kind === "slow_kitchen" && row.nudge.orderId)
       .map((row) => row.nudge.orderId as string)
   );
 
   const deduped =
     slowKitchenOrderIds.size === 0
-      ? mentalFiltered
-      : mentalFiltered.filter(
+      ? lifecycleFiltered
+      : lifecycleFiltered.filter(
           (row) =>
             row.nudge.kind !== "order_eta_update" ||
             !row.nudge.orderId ||

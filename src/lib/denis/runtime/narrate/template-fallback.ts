@@ -6,13 +6,13 @@ import {
   cartAddedMessage,
   cartSummaryMessage,
   clarifyPaymentMessage,
-  denisIntroMessage,
   handoffWaitMessage,
   orderSentTemplateMessage,
   pairingSuggestionMessage,
   reconcileCartMessage,
 } from "@/lib/denis/runtime/act/guest-copy";
 import { lintNarrationMessage } from "@/lib/denis/runtime/narrate/lint-narration";
+import { hasCommittedNarrationFacts } from "@/lib/denis/runtime/narrate/has-committed-narration-facts";
 
 function truncateWords(message: string, maxWords: number): string {
   const words = message.trim().split(/\s+/).filter(Boolean);
@@ -73,7 +73,7 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
     return clarifyPaymentMessage(language);
   }
 
-  return denisIntroMessage(language, persona.name);
+  return "";
 }
 
 export function sanitizeNarrationOutput(
@@ -105,8 +105,30 @@ export function sanitizeNarrationOutput(
     };
   }
 
+  const committedFallback = templateNarrationFallback(facts);
+  if (hasCommittedNarrationFacts(facts)) {
+    return {
+      message: committedFallback,
+      tier: "template",
+      lintPassed: false,
+      issues: lint.issues,
+      usedFallback: true,
+    };
+  }
+
+  const trimmed = message.trim();
+  if (trimmed) {
+    return {
+      message: truncateWords(trimmed, facts.persona.maxWords),
+      tier: "T3",
+      lintPassed: false,
+      issues: lint.issues,
+      usedFallback: false,
+    };
+  }
+
   return {
-    message: templateNarrationFallback(facts),
+    message: committedFallback,
     tier: "template",
     lintPassed: false,
     issues: lint.issues,

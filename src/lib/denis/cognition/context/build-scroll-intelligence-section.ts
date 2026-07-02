@@ -20,10 +20,17 @@ export function buildScrollIntelligenceSection(
 
   if (latest.intent === "fast_search") {
     lines.push("- guest posture: actively searching menu");
+    lines.push("- gmm_hint: pace=rushed, predicted_need=needs_help_choosing");
   } else if (latest.intent === "slow_category") {
     lines.push("- guest posture: interested in category");
+    lines.push("- gmm_hint: defer generic upsell; let guest explore category");
   } else if (latest.intent === "reached_bottom") {
     lines.push("- guest posture: viewed full menu");
+    lines.push("- gmm_hint: one strong chef recommendation ok");
+  }
+
+  if (browse.priceBrowseStats.maxViewedPrice != null) {
+    lines.push(`- max_viewed_price_eur: ${browse.priceBrowseStats.maxViewedPrice}`);
   }
 
   return lines.join("\n");

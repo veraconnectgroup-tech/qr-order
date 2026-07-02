@@ -56,7 +56,10 @@ export type GuestBehavioralPatterns = {
 export type GuestOccasionHint =
   | "celebration_larger_party"
   | "weekday_surprise"
-  | "visit_milestone";
+  | "visit_milestone"
+  | "date_night"
+  | "family_dining"
+  | "business_meal";
 
 export type GuestRelationshipSnapshot = {
   version: 1;

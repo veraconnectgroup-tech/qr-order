@@ -1,5 +1,6 @@
 import type { SessionPhase } from "@/lib/scene/types";
 import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import type { TableLifecycleOrchestration } from "@/lib/denis/cognition/lifecycle/table-lifecycle-types";
 
 export type ProactiveTickPayload = {
   sessionPhase?: SessionPhase;
@@ -95,6 +96,8 @@ export type ProactiveTickPayload = {
   postRecoveryEligible?: boolean;
   /** ADR-043 S8 — current table tempo phase from watcher/fold. */
   tableTempoPhase?: TableTempoPhase;
+  /** Phase 2 — unified tempo + browse + sommelier lane. */
+  tableLifecycle?: TableLifecycleOrchestration;
   /** ADR-043 S10 — dessert window accept rate for learning gate (0–1). */
   dessertWindowAcceptRate?: number | null;
   /** ADR-043 S10 — impressions for dessert nudge learning gate. */

@@ -1,10 +1,3 @@
-import {
-  isDenisRefusalReply,
-  orderingContinueReply,
-  orderingFlowRecoveryReply,
-  politeReengageReply,
-  type ConversationLeadershipContext,
-} from "@/lib/ai/conversation-leadership";
 import type { AiStructuredResponse } from "@/lib/ai/types";
 
 export type ToneGuardInput = {
@@ -12,7 +5,6 @@ export type ToneGuardInput = {
   language: string;
   guestMessage: string;
   forbiddenPhrases: string[];
-  context?: ConversationLeadershipContext;
 };
 
 export type ToneGuardResult = {
@@ -21,20 +13,8 @@ export type ToneGuardResult = {
   reason?: string;
 };
 
-function hasCommercePressure(ctx: ConversationLeadershipContext | undefined): boolean {
-  if (!ctx) return false;
-  return (
-    ctx.inOrderingFlow === true ||
-    ctx.awaitingAnswer === true ||
-    ctx.commercePressure === "open" ||
-    ctx.commercePressure === "confirm" ||
-    ctx.transactionalTurn === true ||
-    ctx.conversationMode === "ordering" ||
-    ctx.conversationMode === "settling"
-  );
-}
 
-/** Post-skill: strip forbidden phrases + soft refusal recovery (no wholesale LLM discard). */
+/** Post-skill: strip forbidden phrases only — never replace LLM text with canned copy. */
 export function applyToneGuard(input: ToneGuardInput): ToneGuardResult {
   let message = input.structured.message;
   let corrected = false;
@@ -49,17 +29,6 @@ export function applyToneGuard(input: ToneGuardInput): ToneGuardResult {
       corrected = true;
       reason = "forbidden_phrase_removed";
     }
-  }
-
-  if (isDenisRefusalReply(message)) {
-    const inCommerce = hasCommercePressure(input.context);
-    message = inCommerce
-      ? orderingContinueReply(input.language)
-      : input.context?.hasPriorMessages || inCommerce
-        ? orderingFlowRecoveryReply(input.language, input.guestMessage)
-        : politeReengageReply(input.language);
-    corrected = true;
-    reason = reason ?? "refusal_recovery";
   }
 
   if (!corrected) {

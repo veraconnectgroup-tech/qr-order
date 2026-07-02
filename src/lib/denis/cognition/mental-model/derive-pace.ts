@@ -1,5 +1,8 @@
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
-import type { GuestPace } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import type {
+  GuestPace,
+  GuestScrollPosture,
+} from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { GuestSignalSpine } from "@/lib/denis/cognition/mental-model/guest-signal-types";
 
 function rapidActionBurst(actionTimestamps: number[]): boolean {
@@ -22,7 +25,12 @@ function rapidActionBurst(actionTimestamps: number[]): boolean {
 export function derivePace(input: {
   spine: GuestSignalSpine;
   browse: GuestBrowseProfile;
+  scrollPosture?: GuestScrollPosture;
 }): GuestPace {
+  if (input.scrollPosture?.searching) {
+    return "rushed";
+  }
+
   if (input.spine.maxProductCartChurn >= 4 || input.browse.cartAbandoned.length >= 2) {
     return "indecisive";
   }
@@ -31,6 +39,9 @@ export function derivePace(input: {
     input.browse.eventCount > 0
       ? input.browse.totalBrowseMs / input.browse.eventCount
       : 0;
+  if (input.scrollPosture?.deferUpsell && avgDwell >= 4000) {
+    return "relaxed";
+  }
   if (avgDwell >= 6000 && input.browse.eventCount >= 2) return "relaxed";
 
   const lengths = input.spine.guestMessages.map((message) => message.text.length);

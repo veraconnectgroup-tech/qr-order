@@ -752,7 +752,38 @@ function mentalAttentionEscalationTurn(
   });
 }
 
+/** Pure ACT — narrate uses committed facts (order #, cart), not template chat. */
+const ACT_ONLY_TURN_REASONS = [
+  "commerce.confirm.reflex_submit",
+  "commerce.reorder.guest_request",
+  "waiter.gap_resolved.drink_reply",
+  "act.reorder.guest_request",
+  "act.pending_slot.resolved",
+] as const;
+
+/** Guest-facing replies always go through LLM — no template/regex copy (ADR-030). */
+function ensureGuestReplyUsesLlm(plan: TurnPlan): TurnPlan {
+  if (plan.requiresLlm) return plan;
+  if (
+    plan.kind === "reflex_only" &&
+    ACT_ONLY_TURN_REASONS.includes(
+      plan.reason as (typeof ACT_ONLY_TURN_REASONS)[number]
+    )
+  ) {
+    return plan;
+  }
+  return {
+    ...plan,
+    requiresLlm: true,
+    reason: `${plan.reason ?? plan.kind}.llm_reply`,
+  };
+}
+
 export function decideTurnPlan(input: DecideTurnPlanInput): TurnPlan {
+  return ensureGuestReplyUsesLlm(decideTurnPlanInner(input));
+}
+
+function decideTurnPlanInner(input: DecideTurnPlanInput): TurnPlan {
   const suppressUpsell = resolveSuppressUpsell(input.beliefs);
 
   if (isPreorderIntentMessage(input.message.trim())) {

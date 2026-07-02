@@ -218,7 +218,7 @@ describe("order message backfill", () => {
     const result = backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
-      "Daj mi kiselu malu, veliko pivo i beef burger sa pomfritom"
+      "Daj mi kiselu malu, Pilsner 0.5 i beef burger sa pomfritom"
     );
     expect(result.cartActions.length).toBeGreaterThanOrEqual(2);
     expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
@@ -233,7 +233,7 @@ describe("order message backfill", () => {
       [
         {
           role: "user",
-          content: "Daj mi kiselu malu, veliko pivo i beef burger sa pomfritom",
+          content: "Daj mi kiselu malu, Pilsner 0.5 i beef burger sa pomfritom",
           timestamp: new Date().toISOString(),
         },
       ]

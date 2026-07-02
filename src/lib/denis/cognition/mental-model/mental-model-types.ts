@@ -62,6 +62,19 @@ export type GuestMealStage =
 
 export type GuestPriceAffinity = "budget" | "mid" | "premium" | "unknown";
 
+export type GuestScrollIntent = "fast_search" | "slow_category" | "reached_bottom";
+
+/** Folded scroll posture — drives pace, predicted need, and upsell gating. */
+export type GuestScrollPosture = {
+  latestIntent: GuestScrollIntent | null;
+  focusedCategory: string | null;
+  searching: boolean;
+  /** Guest is lingering on a category — defer generic upsell. */
+  deferUpsell: boolean;
+  /** Guest reached menu bottom — chef recommendation moment. */
+  readyForRecommendation: boolean;
+};
+
 export type GuestPredictedNeed =
   | "ready_to_order"
   | "needs_help_choosing"
@@ -99,7 +112,8 @@ export type GuestFusionGuidance = {
 export type GuestAnomalyKind =
   | "menu_silence"
   | "browse_no_cart"
-  | "cart_churn_indecisive";
+  | "cart_churn_indecisive"
+  | "scroll_fast_search";
 
 export type GuestAnomalySuggestedAction =
   | "gentle_nudge"
@@ -238,6 +252,9 @@ export type GuestMentalModel = {
   nudgeBudget: GuestNudgeBudget;
   mealStage: GuestMealStage;
   priceAffinity: GuestPriceAffinity;
+  /** Max recommendable unit price (EUR) from browse signals; null = no ceiling. */
+  priceCeilingEur: number | null;
+  scrollPosture: GuestScrollPosture;
   predictedNeed: GuestPredictedNeed;
   affect: GuestAffect;
   groupDynamics: GuestGroupDynamics;

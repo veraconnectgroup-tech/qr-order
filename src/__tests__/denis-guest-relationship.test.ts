@@ -6,8 +6,10 @@ import { retrieveGuestIntelEvidence } from "@/lib/denis/cognition/context/retrie
 import {
   appendRelationshipVisit,
   computeBehavioralPatterns,
+  emptyGuestRelationshipSnapshot,
   refreshRelationshipSnapshot,
 } from "@/lib/denis/learning/guest-memory/build-relationship-timeline";
+import { buildOccasionAwareWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-occasion-aware-welcome";
 import { buildRelationshipWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-relationship-welcome";
 import { buildReturnGuestWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-welcome-message";
 import {
@@ -54,7 +56,7 @@ describe("guest relationship engine", () => {
       visitCount: 3,
       memory: consentedGuest({ visitCount: 3 }),
     });
-    expect(welcome).toContain("Dobro došli ponovo");
+    expect(welcome).toMatch(/Drago nam je|Dobro došli ponovo/i);
   });
 
   it("never offers starter when guest pattern excludes appetizers", () => {
@@ -188,5 +190,46 @@ describe("guest relationship engine", () => {
       visitCount: 10,
     });
     expect(occasions).toContain("visit_milestone");
+  });
+
+  it("builds occasion-aware welcome for celebration party", () => {
+    const relationship = refreshRelationshipSnapshot(
+      emptyGuestRelationshipSnapshot(),
+      { preferredMealPattern: "main_dessert" }
+    );
+    relationship.typicalPartySize = 2;
+    const welcome = buildOccasionAwareWelcomeMessage({
+      language: "sr",
+      visitCount: 4,
+      lastVisitItems: ["Schnitzel"],
+      currentPartySize: 6,
+      memory: consentedGuest({
+        visitCount: 4,
+        lastVisitItemNames: ["Schnitzel"],
+        relationship,
+      }),
+    });
+    expect(welcome).toMatch(/Slavite|Schnitzel/i);
+  });
+
+  it("builds recovery welcome after negative feedback", () => {
+    const welcome = buildOccasionAwareWelcomeMessage({
+      language: "sr",
+      visitCount: 3,
+      lastVisitItems: ["Burger"],
+      lastFeedbackSentiment: "negative",
+      memory: consentedGuest({ visitCount: 3, lastFeedbackSentiment: "negative" }),
+    });
+    expect(welcome).toContain("Prošli put nije bilo idealno");
+  });
+
+  it("detects date night for party of two in evening", () => {
+    const occasions = detectGuestOccasions({
+      relationship: null,
+      visitCount: 2,
+      currentPartySize: 2,
+      now: new Date("2026-07-04T20:00:00.000Z"),
+    });
+    expect(occasions).toContain("date_night");
   });
 });

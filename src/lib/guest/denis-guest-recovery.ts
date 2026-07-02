@@ -592,10 +592,9 @@ export function resolveGuestRecoveryMessage(input: {
 }
 
 /**
- * Instant answer from dock/scene — no API, no credits.
- * Denis "knows" the table from the situation projection.
+ * Instant answer from dock/scene — disabled; all guest replies go through Denis LLM.
  */
-export function tryLocalGuestAnswer(input: {
+export function tryLocalGuestAnswer(_input: {
   guestMessage: string;
   language: string;
   situation?: SceneSituation | null;
@@ -603,126 +602,6 @@ export function tryLocalGuestAnswer(input: {
   cartTotal?: number;
   currency?: string;
 }): GuestRecoveryResult | null {
-  const chipReply = parseRecoveryChipReply(input);
-  if (chipReply) return chipReply;
-
-  if (ADD_MORE_CHIP_PATTERN.test(input.guestMessage.trim())) {
-    return {
-      tier: 0,
-      answeredLocally: true,
-      message: addMoreReplyMessage(input.language),
-    };
-  }
-
-  const paymentMethod = resolvePaymentMethodAnswer(
-    input.guestMessage,
-    input.language
-  );
-  if (paymentMethod) {
-    return {
-      tier: 0,
-      answeredLocally: true,
-      ...paymentMethod,
-    };
-  }
-
-  const open = openSituationOrders(input.situation);
-
-  if (input.situation && open.length > 0) {
-    if (SETTLING_PATTERN.test(input.guestMessage.trim())) {
-      return {
-        tier: 0,
-        answeredLocally: true,
-        message: postOrderSettleMessage(input.situation, input.language),
-        quickReplies: statusFollowUpChips(input.language, input.situation),
-      };
-    }
-
-    if (ALREADY_ORDERED_PATTERN.test(input.guestMessage.trim())) {
-      const status = knownStatusMessage(input.situation, input.language);
-      if (status) {
-        return {
-          tier: 0,
-          answeredLocally: true,
-          message: status,
-          quickReplies: statusFollowUpChips(input.language, input.situation),
-        };
-      }
-    }
-  }
-
-  const intent = classifyGuestRecoveryIntent(input.guestMessage);
-  if (intent === "general" || intent === "order") return null;
-
-  if (intent === "bill_amount") {
-    return {
-      tier: 0,
-      answeredLocally: true,
-      ...billAmountReply({
-        language: input.language,
-        situation: input.situation,
-        cartTotal: input.cartTotal ?? 0,
-        currency: input.currency ?? "EUR",
-      }),
-    };
-  }
-
-  if (intent === "status") {
-    if (!input.situation) return null;
-    if (!open.length) {
-      return {
-        tier: 0,
-        answeredLocally: true,
-        message: tForAiGuestLanguage("ai.recovery.noOpenOrders", input.language),
-      };
-    }
-    const message = knownStatusMessage(input.situation, input.language);
-    if (!message) return null;
-    return {
-      tier: 0,
-      answeredLocally: true,
-      message,
-      quickReplies: statusFollowUpChips(input.language, input.situation),
-    };
-  }
-
-  if (intent === "payment") {
-    if (!hasPayableContext(input)) {
-      return {
-        tier: 0,
-        answeredLocally: true,
-        message: handoffNarrationMessage("nothing_to_pay", input.language),
-      };
-    }
-    return {
-      tier: 0,
-      answeredLocally: true,
-      message: handoffNarrationMessage("payment_online", input.language),
-      quickReplies: paymentRecoveryQuickReplies(input.language),
-      action: { openPaymentSheet: true },
-    };
-  }
-
-  if (intent === "waiter") {
-    const autoCall =
-      isWaiterConfirmMessage(input.guestMessage) ||
-      /ne\s+mogu\s+da\s+pozov/i.test(input.guestMessage);
-    if (autoCall) {
-      return {
-        tier: 0,
-        answeredLocally: true,
-        message: handoffNarrationMessage("waiter_on_way", input.language),
-        action: { tryWaiterCall: true },
-      };
-    }
-    return {
-      tier: 0,
-      answeredLocally: true,
-      message: tForAiGuestLanguage("ai.recovery.retryWaiter", input.language),
-      quickReplies: [waiterConfirmQuickReply(input.language)],
-    };
-  }
-
   return null;
 }
 

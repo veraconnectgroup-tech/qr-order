@@ -8,6 +8,7 @@ import type {
   GuestPredictedNeed,
   GuestReadiness,
   GuestReceptiveness,
+  GuestScrollPosture,
 } from "@/lib/denis/cognition/mental-model/mental-model-types";
 
 function receptivenessAtLeastOpen(receptiveness: GuestReceptiveness): boolean {
@@ -32,6 +33,7 @@ export function deriveFusionStyle(input: {
   affect?: GuestAffect;
   readiness: GuestReadiness;
   abnormalTransition: GuestIntentTransition | null;
+  scrollPosture?: GuestScrollPosture;
 }): GuestFusionStyle {
   if (
     input.abnormalTransition &&
@@ -40,6 +42,10 @@ export function deriveFusionStyle(input: {
     input.abnormalTransition.to === "ordering"
   ) {
     return "reorder_during_meal";
+  }
+
+  if (input.scrollPosture?.deferUpsell) {
+    return "wait";
   }
 
   if (input.pace === "rushed" && receptivenessAtLeastOpen(input.receptiveness)) {
@@ -72,7 +78,14 @@ export function synthesizeFusionHint(input: {
   style: GuestFusionStyle;
   intent: GuestIntent;
   affect?: GuestAffect;
+  scrollPosture?: GuestScrollPosture;
 }): string | null {
+  if (input.scrollPosture?.readyForRecommendation) {
+    return "Gost je pregledao ceo meni — ponudi jednu jaku preporuku.";
+  }
+  if (input.scrollPosture?.deferUpsell && input.scrollPosture.focusedCategory) {
+    return `Gost istrazuje ${input.scrollPosture.focusedCategory} — ne prekidaj generic upsellom.`;
+  }
   if (input.style === "helpful_discovery") {
     return "Mozda da vam pomognem? Sta inace volite?";
   }
@@ -103,10 +116,33 @@ export function synthesizePredictedNeed(input: {
   affect?: GuestAffect;
   frustrationEscalateThreshold?: "mild" | "high";
   anomalies?: Array<{ suggestedAction: string }>;
+  scrollPosture?: GuestScrollPosture;
 }): GuestPredictedNeed {
+  if (
+    input.scrollPosture?.deferUpsell &&
+    input.intent === "exploring" &&
+    input.mealStage === "pre_order"
+  ) {
+    return "none";
+  }
+
   if (
     input.intent === "exploring" &&
     input.affect?.frustration.level === "mild"
+  ) {
+    return "needs_help_choosing";
+  }
+
+  if (
+    input.scrollPosture?.searching &&
+    (input.intent === "comparing" || input.intent === "exploring")
+  ) {
+    return "needs_help_choosing";
+  }
+
+  if (
+    input.scrollPosture?.readyForRecommendation &&
+    receptivenessAtLeastOpen(input.receptiveness)
   ) {
     return "needs_help_choosing";
   }

@@ -1,4 +1,4 @@
-import { isOpenAiConfigured } from "@/lib/ai/config";
+import { isOpenAiConfigured, buildDenisPromptCacheKey } from "@/lib/ai/config";
 import { callOpenAiChat } from "@/lib/ai/openai-client";
 import type { OpenAiChatMessage } from "@/lib/ai/types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
@@ -84,6 +84,7 @@ export async function narrateFromFacts(
   try {
     const result = await callOpenAiChat(buildNarrateLlmMessages(facts), {
       model,
+      promptCacheKey: buildDenisPromptCacheKey("narrate"),
     });
     return parseNarrateResponse(result.content);
   } catch (error) {

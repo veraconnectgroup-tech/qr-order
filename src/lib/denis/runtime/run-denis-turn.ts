@@ -1455,10 +1455,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const narrateStarted = performance.now();
   const templateObligationTell =
     !perceiveResult.llmUsed &&
-    (perceiveResult.turnPlan.reason === "waiter.gap_clarify" ||
-      perceiveResult.turnPlan.reason === "waiter.gap_blocks_confirm" ||
-      perceiveResult.turnPlan.reason === "waiter.gap_resolved.drink_reply" ||
-      perceiveResult.turnPlan.reason === "commerce.confirm.reflex_submit");
+    perceiveResult.turnPlan.reason === "commerce.confirm.reflex_submit";
 
   const resolvedNarration = await resolveTurnNarrationMessage({
     legacyMessage: data.message ?? "",

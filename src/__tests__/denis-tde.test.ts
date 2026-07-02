@@ -85,16 +85,13 @@ function planForComprehensionScenario(scenario: ComprehensionScenario) {
 }
 
 function expectedRequiresLlm(kind: TurnPlanKind): boolean {
-  return (
-    kind === "relational_perceive" ||
-    kind === "transactional_perceive" ||
-    kind === "narrate_paraphrase"
-  );
+  if (kind === "reflex_only") return false;
+  return true;
 }
 
 describe("decideTurnPlan — guest comprehension eval (regression guard)", () => {
   const llmScenarios: ComprehensionScenario[] = [
-    { msg: "šta imate?", expect: "relational_perceive" },
+    { msg: "šta imate?", expect: "transactional_perceive" },
     { msg: "daj mi sok", ctx: { ordering: true }, expect: "transactional_perceive" },
     { msg: "kako se zove ovo jelo?", expect: "relational_perceive" },
     { msg: "Može", ctx: { awaitingConfirm: false }, expect: "relational_perceive" },
@@ -154,7 +151,7 @@ describe("decideTurnPlan — guest comprehension eval (regression guard)", () =>
     (scenario) => {
       const plan = planForComprehensionScenario(scenario);
       expect(plan.kind).toBe(scenario.expect);
-      expect(plan.requiresLlm).toBe(false);
+      expect(plan.requiresLlm).toBe(true);
       expect(plan.templateKey).toBe(scenario.templateKey);
     }
   );
@@ -273,10 +270,10 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     });
     expect(plan.kind).toBe("template_tell");
     expect(plan.templateKey).toBe("status.no_order");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.requiresLlm).toBe(true);
   });
 
-  it("status query with open orders uses live status template (0 LLM)", () => {
+  it("status query with open orders uses live status template (LLM narrates facts)", () => {
     const plan = decideTurnPlan({
       beliefs: beliefGraph([
         belief("conversation.language", "sr"),
@@ -286,8 +283,8 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       message: "Kad stiže moj burger",
     });
     expect(plan.kind).toBe("template_tell");
-    expect(plan.reason).toBe("commerce.status.open_order");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.reason).toBe("commerce.status.open_order.llm_reply");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("order-not-sent complaint without open orders uses status.no_order template", () => {
@@ -301,7 +298,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     });
     expect(plan.kind).toBe("template_tell");
     expect(plan.templateKey).toBe("status.no_order");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("hvala with open cart pressure stays transactional, not settle template", () => {
@@ -328,7 +325,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     });
     expect(plan.kind).toBe("template_tell");
     expect(plan.templateKey).toBe("settle.thanks");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("Može without confirm context → relational_perceive (not banter.welcome)", () => {
@@ -359,7 +356,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.templateKey).toBeUndefined();
   });
 
-  it("šta imate? → relational_perceive (not template)", () => {
+  it("šta imate? → LLM perceive (not template)", () => {
     const plan = decideTurnPlan({
       beliefs: beliefGraph([
         belief("conversation.mode", "banter"),
@@ -368,7 +365,7 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
       reflex: reflexFor("šta imate?", "browse"),
       message: "šta imate?",
     });
-    expect(plan.kind).toBe("relational_perceive");
+    expect(plan.kind).toBe("transactional_perceive");
     expect(plan.requiresLlm).toBe(true);
     expect(plan.templateKey).toBeUndefined();
   });
@@ -533,7 +530,7 @@ describe("decideTurnPlan — slots and reflex", () => {
     expect(plan.requiresLlm).toBe(true);
   });
 
-  it("ORDER_MODIFY without open order → template (no LLM credits)", () => {
+  it("ORDER_MODIFY without open order → status template routed through LLM", () => {
     const reflex = reflexPlan({
       config,
       message: "promeni porudžbinu",
@@ -548,10 +545,10 @@ describe("decideTurnPlan — slots and reflex", () => {
     });
     expect(plan.kind).toBe("template_tell");
     expect(plan.templateKey).toBe("status.no_order");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.requiresLlm).toBe(true);
   });
 
-  it("ORDER_MODIFY with open order → reflex_only", () => {
+  it("ORDER_MODIFY with open order → reflex_only (handoff act)", () => {
     const reflex = reflexPlan({
       config,
       message: "promeni porudžbinu",
@@ -565,10 +562,10 @@ describe("decideTurnPlan — slots and reflex", () => {
       message: "promeni porudžbinu",
     });
     expect(plan.kind).toBe("reflex_only");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.requiresLlm).toBe(true);
   });
 
-  it("waiter handoff stays reflex_only", () => {
+  it("waiter handoff uses LLM for guest-facing copy", () => {
     const reflex = reflexPlan({
       config,
       message: "pozovi konobara",
@@ -581,7 +578,7 @@ describe("decideTurnPlan — slots and reflex", () => {
       message: "pozovi konobara",
     });
     expect(plan.kind).toBe("reflex_only");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.requiresLlm).toBe(true);
   });
 });
 

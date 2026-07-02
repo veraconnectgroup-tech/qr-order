@@ -38,6 +38,7 @@ type ChatCompletionResponse = {
     total_tokens?: number;
     prompt_tokens?: number;
     completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
   };
   error?: { message?: string };
 };
@@ -46,11 +47,30 @@ async function callOpenAiOnce(
   model: string,
   messages: OpenAiChatMessage[],
   signal: AbortSignal,
-  callOptions?: { temperature?: number; maxTokens?: number }
+  callOptions?: {
+    temperature?: number;
+    maxTokens?: number;
+    promptCacheKey?: string;
+  }
 ): Promise<OpenAiCallResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     throw new AiOpenAiError("OpenAI API key is not configured.");
+  }
+
+  const bodyPayload: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
+    max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
+    response_format: { type: "json_object" },
+  };
+
+  if (
+    AI_CONFIG.promptCachingEnabled &&
+    callOptions?.promptCacheKey?.trim()
+  ) {
+    bodyPayload.prompt_cache_key = callOptions.promptCacheKey.trim();
   }
 
   const res = await fetch(OPENAI_CHAT_URL, {
@@ -59,13 +79,7 @@ async function callOpenAiOnce(
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
-      max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
-      response_format: { type: "json_object" },
-    }),
+    body: JSON.stringify(bodyPayload),
     signal,
   });
 
@@ -92,6 +106,7 @@ async function callOpenAiOnce(
     tokensUsed,
     promptTokens: body.usage?.prompt_tokens ?? 0,
     completionTokens: body.usage?.completion_tokens ?? 0,
+    cachedPromptTokens: body.usage?.prompt_tokens_details?.cached_tokens,
     model: body.model ?? model,
   };
 }
@@ -102,6 +117,7 @@ async function callOpenAiWithRetries(
     model?: string;
     temperature?: number;
     maxTokens?: number;
+    promptCacheKey?: string;
   }
 ): Promise<OpenAiCallResult> {
   const primaryModel = options?.model ?? AI_CONFIG.model;
@@ -124,12 +140,14 @@ async function callOpenAiWithRetries(
           {
             temperature: options?.temperature,
             maxTokens: options?.maxTokens,
+            promptCacheKey: options?.promptCacheKey,
           }
         );
 
         logger.info("OpenAI chat completion", {
           model: result.model,
           tokensUsed: result.tokensUsed,
+          cachedPromptTokens: result.cachedPromptTokens ?? 0,
           latencyMs: Date.now() - started,
           status: "ok",
           attempt,
@@ -174,6 +192,7 @@ export async function callOpenAiChat(
     temperature?: number;
     maxTokens?: number;
     extendedThinking?: boolean;
+    promptCacheKey?: string;
   }
 ): Promise<OpenAiCallResult> {
   if (!isOpenAiConfigured()) {

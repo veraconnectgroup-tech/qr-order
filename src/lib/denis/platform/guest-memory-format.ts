@@ -87,6 +87,18 @@ function formatOccasionHintLine(
       if (lang === "de") return "Besuchs-Meilenstein — kurze Wertschätzung.";
       if (lang === "en") return "Visit milestone — brief warm recognition.";
       return "Milestone poseta — kratka topla prepoznatljivost.";
+    case "date_night":
+      if (lang === "de") return "Date night — quieter, elegant; wine over push.";
+      if (lang === "en") return "Date night — quieter tone; wine over hard upsell.";
+      return "Dejt — tiši ton, elegantnije, vino umesto agresivnog upsell-a.";
+    case "family_dining":
+      if (lang === "de") return "Family table — fast options, minimal upsell.";
+      if (lang === "en") return "Family table — kid-friendly, keep it quick.";
+      return "Porodica — brza hrana, dečji meni, bez gnjavisanja.";
+    case "business_meal":
+      if (lang === "de") return "Business lunch — efficient, no upsell loop.";
+      if (lang === "en") return "Business meal — efficient, no upsell loop.";
+      return "Poslovni ručak — efikasno, bez upsell petlje.";
     default:
       return "";
   }

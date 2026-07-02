@@ -3,6 +3,7 @@ import type { GuestLevelId } from "@/lib/denis/commerce/loyalty/guest-level";
 import { buildDenisToneGuide, resolveGuestLevel } from "@/lib/denis/commerce/loyalty/guest-level";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import { formatOccasionHintLine } from "@/lib/denis/learning/guest-memory/detect-guest-occasions";
 import {
   buildCulturalSensitivityBlock,
   resolveCulturalProfile,
@@ -200,6 +201,22 @@ export function buildSessionMemoryBlock(input: {
   return lines.length > 1 ? lines.join("\n") : null;
 }
 
+/** Occasion-aware tone adaptation for date / family / business tables. */
+export function buildOccasionAdaptationBlock(input: {
+  guestMemory?: GuestMemoryProjection | null;
+  language: string;
+}): string | null {
+  const occasions = input.guestMemory?.occasions ?? [];
+  if (occasions.length === 0) return null;
+
+  const lines = occasions
+    .map((occasion) => formatOccasionHintLine(occasion, input.language))
+    .filter(Boolean);
+
+  if (lines.length === 0) return null;
+  return ["OCCASION ADAPTATION:", ...lines.map((line) => `- ${line}`)].join("\n");
+}
+
 export function buildPersonaIdentityBlock(input: {
   persona: ConciergePersona;
   orgName: string;
@@ -244,6 +261,10 @@ export function buildPersonalityBlock(input: PersonalityEngineInput): string {
       guestMemory: input.guestMemory,
       language: input.language,
       featuredProductName: input.featuredProductName,
+    }),
+    buildOccasionAdaptationBlock({
+      guestMemory: input.guestMemory,
+      language: input.language,
     }),
     isHumorAllowed(input.persona.tone, input.mentalModel)
       ? buildHumorGuidanceBlock({

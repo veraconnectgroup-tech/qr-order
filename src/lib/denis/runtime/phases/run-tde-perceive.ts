@@ -192,7 +192,6 @@ export async function runTdePerceive(input: {
   if (input.forceT0Only && turnPlan.requiresLlm) {
     turnPlan = {
       ...turnPlan,
-      requiresLlm: false,
       reason: "health.t0_fallback",
     };
   }
@@ -396,6 +395,8 @@ export async function runTdePerceive(input: {
     const recoveryAttempts = await getLoopRecoveryAttempts(loopSessionId);
 
     if (shouldSkipLlmForLoop(loopDetection, recoveryAttempts)) {
+      await incrementLoopRecoveryAttempts(loopSessionId);
+
       const recovery = resolveLoopRecoveryAfterAttempts(
         loopDetection,
         recoveryAttempts
@@ -404,40 +405,35 @@ export async function runTdePerceive(input: {
         recovery,
         language: input.body.language,
       });
-      await incrementLoopRecoveryAttempts(loopSessionId);
+      const loopHint =
+        loopContent.contextInjection ??
+        loopContent.message ??
+        "Guest conversation is looping — rephrase and offer concrete menu choices.";
 
-      const loopTurnPlan: TurnPlan = {
-        ...turnPlan,
-        requiresLlm: false,
-        reason: `loop.${loopDetection.type ?? "unknown"}`,
-      };
-
-      const { profile: loopProfile } = resolveRuntimeProfile(
-        input.ctx.config,
-        null,
-        null
-      );
-
-      return {
-        response: apiSuccess({
-          message: loopContent.message,
-          recommendations: [],
-          cartActions: [],
-          quickReplies: loopContent.quickReplies,
-          intent: mapTemplateIntent(loopTurnPlan),
-          submitOrder: false,
-          sessionId: input.body.sessionId,
-        }),
-        turnPlan: loopTurnPlan,
-        llmUsed: false,
-        planKind: loopTurnPlan.kind,
-        tier: loopProfile.tier,
-        evidencePointers: ["transcript.window"],
-        frustrationRecovery: input.frustrationRecovery,
-      };
-    }
-
-    if (
+      if (interpretationTask) {
+        interpretationTask = {
+          ...interpretationTask,
+          directiveBlock: `${interpretationTask.directiveBlock}\n${loopHint}`,
+        };
+      } else {
+        interpretationTask = {
+          schema: "relational_social",
+          evidenceBudget: {
+            perceiveMode: "social",
+            pointers: ["situation.pack"],
+            includeCatalogRag: false,
+            includePlaybook: false,
+            omitFullMenuWhenNoRag: true,
+            contextTokenBudget: 1500,
+            turnComplexity: "moderate",
+          },
+          planKind: turnPlan.kind,
+          goalType: input.reflexTurn.plan.topGoal?.type ?? "GUEST_SEATED",
+          reason: `loop.${loopDetection.type ?? "unknown"}`,
+          directiveBlock: loopHint,
+        };
+      }
+    } else if (
       loopDetection.recovery.action === "rephrase" &&
       loopDetection.recovery.hint
     ) {

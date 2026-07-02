@@ -5,7 +5,11 @@ import {
   resolveDegradationLevel,
 } from "@/lib/denis/config/degradation-ladder";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
-import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
+import {
+  getRedisClient,
+  logRedisDegradation,
+  parseRedisJson,
+} from "@/lib/redis/client";
 
 export type StoredDegradationState = {
   level: DegradationLevel;
@@ -27,9 +31,8 @@ export async function loadStoredDegradationState(
   if (!redis) return null;
 
   try {
-    const raw = await redis.get<string>(stateKey(locationId));
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredDegradationState;
+    const raw = await redis.get(stateKey(locationId));
+    return parseRedisJson<StoredDegradationState>(raw);
   } catch (error) {
     logRedisDegradation("denis.degradation.state.read", error);
     return null;

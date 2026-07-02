@@ -1,7 +1,9 @@
 import { guestTextFromTimeline } from "@/lib/denis/cognition/conversation/guest-continuity";
 import type { GuestBrowseProfile } from "@/lib/denis/cognition/browse/browse-types";
+import type { TableLifecycleOrchestration } from "@/lib/denis/cognition/lifecycle/table-lifecycle-types";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { OfferTiming } from "@/lib/denis/cognition/offer/offer-types";
+import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
 import type { OrderFact } from "@/lib/denis/loop/types";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
@@ -173,6 +175,8 @@ export function foldSessionTrajectory(input: {
   orders: OrderFact[];
   cartLineCount: number;
   timing: OfferTiming | null | undefined;
+  tableTempoPhase?: TableTempoPhase;
+  lifecycle?: TableLifecycleOrchestration | null;
   nowMs?: number;
 }): SessionTrajectory {
   const nowMs = input.nowMs ?? Date.now();
@@ -210,6 +214,24 @@ export function foldSessionTrajectory(input: {
     evidence.push("commerce.all_delivered_idle");
   }
 
+  if (input.mental.scrollPosture.searching) {
+    evidence.push("scroll.fast_search");
+  }
+  if (input.mental.scrollPosture.deferUpsell) {
+    evidence.push("scroll.slow_category");
+  }
+  if (input.mental.scrollPosture.readyForRecommendation) {
+    evidence.push("scroll.reached_bottom");
+  }
+
+  if (input.tableTempoPhase && input.tableTempoPhase !== "none") {
+    evidence.push(`tempo.${input.tableTempoPhase}`);
+  }
+
+  for (const atom of input.lifecycle?.evidence ?? []) {
+    if (!evidence.includes(atom)) evidence.push(atom);
+  }
+
   const ordering = deriveOrdering({
     timing: input.timing,
     mental: input.mental,
@@ -241,6 +263,14 @@ export function foldSessionTrajectory(input: {
   if (happyEvidence) opportunity += 0.3;
   if (meal === "post") opportunity += 0.2;
   if (input.mental.predictedNeed === "needs_help_choosing") opportunity += 0.15;
+  if (input.mental.scrollPosture.searching) opportunity += 0.12;
+  if (input.mental.scrollPosture.readyForRecommendation) opportunity += 0.1;
+  if (input.mental.scrollPosture.deferUpsell) {
+    interruptionRisk += 0.15;
+    opportunity -= 0.1;
+  }
+  if (input.tableTempoPhase === "browsing_stalled") opportunity += 0.1;
+  if (input.tableTempoPhase === "post_meal_idle") opportunity += 0.15;
   if (lullEvidence && happyEvidence) opportunity += 0.15;
   opportunity = Math.min(1, opportunity * (1 - interruptionRisk * 0.5));
 

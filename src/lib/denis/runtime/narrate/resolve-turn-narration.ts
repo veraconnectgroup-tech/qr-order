@@ -61,6 +61,14 @@ export async function resolveTurnNarrationMessage(input: {
     };
   }
 
+  if (input.legacyMessage.trim()) {
+    return {
+      draftMessage: input.legacyMessage,
+      usedDenisNarrator: false,
+      usedTemplateFallback: false,
+    };
+  }
+
   return {
     draftMessage: templateNarrationFallback(input.facts),
     usedDenisNarrator: true,

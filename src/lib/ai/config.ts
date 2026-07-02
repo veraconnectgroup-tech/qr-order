@@ -27,6 +27,10 @@ export const AI_CONFIG = {
   maxBrowseRecommendations: 12,
   /** OpenAI request timeout */
   requestTimeoutMs: 10_000,
+  /** OpenAI prompt prefix caching (gpt-4.1+). Disable with OPENAI_PROMPT_CACHING=false. */
+  promptCachingEnabled: process.env.OPENAI_PROMPT_CACHING?.trim() !== "false",
+  /** Default cache bucket for Denis perceive/narrate system prompts. */
+  promptCacheKeyPrefix: "denis-v1",
   /** Initial attempt + retries (3 attempts = 2 retries) */
   maxRetryAttempts: 3,
   /** Base delay for exponential backoff (ms): 500ms, 1000ms */
@@ -411,6 +415,15 @@ export function resolveGuestMessageLanguage(
 
 export function isOpenAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
+export function buildDenisPromptCacheKey(
+  surface: "perceive" | "narrate" | "slot-extract",
+  scope?: string | null
+): string {
+  const prefix = AI_CONFIG.promptCacheKeyPrefix;
+  const scoped = scope?.trim();
+  return scoped ? `${prefix}:${surface}:${scoped}` : `${prefix}:${surface}`;
 }
 
 export { resolveAiGuestRetryMessage, resolveAiGuestUnavailableMessage };

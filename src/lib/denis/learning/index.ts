@@ -72,6 +72,7 @@ export type {
   GuestMemorySyncPayload,
 } from "@/lib/denis/platform/guest-memory-types";
 export { buildReturnGuestWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-welcome-message";
+export { buildOccasionAwareWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-occasion-aware-welcome";
 export { buildRelationshipWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-relationship-welcome";
 export {
   appendRelationshipVisit,
@@ -83,10 +84,12 @@ export {
 export {
   detectGuestOccasions,
   formatOccasionHintLine,
+  formatOccasionWelcomeOpener,
 } from "@/lib/denis/learning/guest-memory/detect-guest-occasions";
 export {
   detectPreferenceEvolution,
   formatPreferenceEvolutionHint,
+  formatPreferenceEvolutionWelcome,
   preferenceEvolutionChanged,
 } from "@/lib/denis/learning/guest-memory/detect-preference-evolution";
 export {

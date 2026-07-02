@@ -57,6 +57,8 @@ import {
 import { classifyDrinkKnowledge } from "@/lib/denis/kernel/vkg/drink-knowledge-graph";
 import { formatGuestMentalModelBlock } from "@/lib/denis/cognition/mental-model/mental-model-intelligence";
 import { buildScrollIntelligenceSection } from "@/lib/denis/cognition/context/build-scroll-intelligence-section";
+import { buildTableLifecycleSection } from "@/lib/denis/cognition/context/build-table-lifecycle-section";
+import { orchestrateTableLifecycle } from "@/lib/denis/cognition/lifecycle/orchestrate-table-lifecycle";
 import { buildBrowseContextSection } from "@/lib/denis/cognition/context/build-browse-context-section";
 import {
   assembleContextLayers,
@@ -846,6 +848,20 @@ function collectSituationLayers(input: SituationPackInput): ContextLayer[] {
   push("P2", "kitchen", buildKitchenSection(input));
   push("P2", "bar", buildBarSection(input));
   push("P2", "scroll", buildScrollIntelligenceSection(input.state?.browse));
+  if (input.state?.mental) {
+    push(
+      "P2",
+      "table_lifecycle",
+      buildTableLifecycleSection(
+        orchestrateTableLifecycle({
+          mental: input.state.mental,
+          tableTempoPhase: "none",
+          orders: input.state.commerce.orders,
+          cartLineCount: input.state.commerce.cart.visibleLines.length,
+        })
+      )
+    );
+  }
   push("P1", "browse_context", buildBrowseContextSection(input.state?.browse));
 
   const externalContext = buildExternalContextSituationBlock(

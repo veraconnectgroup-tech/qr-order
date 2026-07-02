@@ -57,6 +57,25 @@ function matchesMental(
   if (predicate.mealStage && mental.mealStage !== predicate.mealStage) {
     return false;
   }
+  if (
+    predicate.scrollSearching != null &&
+    mental.scrollPosture.searching !== predicate.scrollSearching
+  ) {
+    return false;
+  }
+  if (
+    predicate.scrollDeferUpsell != null &&
+    mental.scrollPosture.deferUpsell !== predicate.scrollDeferUpsell
+  ) {
+    return false;
+  }
+  if (
+    predicate.scrollReadyForRecommendation != null &&
+    mental.scrollPosture.readyForRecommendation !==
+      predicate.scrollReadyForRecommendation
+  ) {
+    return false;
+  }
   return true;
 }
 

@@ -1,6 +1,6 @@
 import type { ConciergePersona } from "@/lib/denis/config/concierge-config.schema";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
-import { emptyGuestPredictiveModel } from "@/lib/denis/cognition/mental-model/empty-predictive-model";
+import { emptyGuestMentalModel } from "@/lib/denis/cognition/mental-model/empty-mental-model";
 import {
   buildPersonalityBlock,
   buildEmotionalIntelligenceBlock,
@@ -25,19 +25,10 @@ export type PersonalityScenario = {
 };
 
 const BASE_MENTAL: GuestMentalModel = {
-  version: 1,
-  computedAt: Date.now(),
+  ...emptyGuestMentalModel(),
   confidence: 0.8,
   hash: "eval",
-  decline: {
-    dismissedCount: 0,
-    explicitCount: 0,
-    hardClosed: false,
-    lastDeclineAt: null,
-  },
   intent: "exploring",
-  intentTransitions: [],
-  pace: "normal",
   receptiveness: "open",
   engagement: {
     guestTurns: 2,
@@ -46,30 +37,11 @@ const BASE_MENTAL: GuestMentalModel = {
     nudgeResponseRate: 0.5,
   },
   nudgeBudget: { remaining: 2, max: 3, cooldownUntil: null },
-  mealStage: "pre_order",
   priceAffinity: "mid",
-  predictedNeed: "none",
   affect: {
     frustration: { level: "none", signals: [] },
     sentiment: { score: 0.5, lastSignals: [] },
   },
-  groupDynamics: {
-    mode: "solo",
-    leaderDevice: null,
-    followerDevices: [],
-    addressLeader: true,
-  },
-  fusion: {
-    readiness: { score: 0.5, band: "medium", offerSubmit: false },
-    guidance: {
-      style: "default",
-      nextLogicalStep: null,
-      abnormalTransition: null,
-      hint: null,
-    },
-    anomalies: [],
-  },
-  predictions: emptyGuestPredictiveModel(),
 };
 
 export const PERSONALITY_SCENARIOS: PersonalityScenario[] = [

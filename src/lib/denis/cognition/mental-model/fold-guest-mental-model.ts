@@ -13,7 +13,9 @@ import { deriveMealStage } from "@/lib/denis/cognition/mental-model/derive-meal-
 import { deriveNudgeBudget } from "@/lib/denis/cognition/mental-model/derive-nudge-budget";
 import { derivePace } from "@/lib/denis/cognition/mental-model/derive-pace";
 import { derivePriceAffinity } from "@/lib/denis/cognition/mental-model/derive-price-affinity";
+import { derivePriceCeilingEur } from "@/lib/denis/cognition/mental-model/derive-price-ceiling";
 import { deriveReceptiveness } from "@/lib/denis/cognition/mental-model/derive-receptiveness";
+import { deriveScrollPosture } from "@/lib/denis/cognition/mental-model/derive-scroll-posture";
 import { foldGuestSignals } from "@/lib/denis/cognition/mental-model/fold-guest-signals";
 import { foldNudgeOutcomes } from "@/lib/denis/cognition/offer/fold-nudge-outcomes";
 import { predictNextAction } from "@/lib/denis/cognition/mental-model/predict-next-action";
@@ -81,6 +83,8 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     dismissedNudgeKeys: input.conversationMeta.dismissedNudges,
   });
 
+  const scrollPosture = deriveScrollPosture(input.browse);
+
   const intent = deriveIntent({
     phase: input.phase,
     flowNodeId: input.conversationMeta.flowNodeId,
@@ -89,6 +93,7 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     browse: input.browse,
     conversation: input.conversation,
     billSettled: input.session.billSettled,
+    scrollPosture,
   });
   const intentTransitions = deriveIntentTransitions({
     intent,
@@ -96,7 +101,7 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     now,
   });
 
-  let pace = derivePace({ spine, browse: input.browse });
+  let pace = derivePace({ spine, browse: input.browse, scrollPosture });
   const receptiveness = deriveReceptiveness({
     spine,
     decline,
@@ -126,6 +131,10 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     billSettled: input.session.billSettled,
   });
   let priceAffinity = derivePriceAffinity(input.browse);
+  const priceCeilingEur = derivePriceCeilingEur({
+    browse: input.browse,
+    priceAffinity,
+  });
   const interpretation = extractTurnInterpretationFromTimeline(input.timeline);
   const affect = deriveAffect(spine, interpretation);
   const groupDynamics = deriveGroupDynamics(input.party);
@@ -185,6 +194,11 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     priceAffinity,
   });
   priceAffinity = spendPredictionBundle.refinedPriceAffinity;
+  const resolvedPriceCeilingEur =
+    derivePriceCeilingEur({
+      browse: input.browse,
+      priceAffinity,
+    }) ?? priceCeilingEur;
 
   const nextAction = predictNextAction({
     browse: input.browse,
@@ -224,9 +238,11 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     affect,
     readiness,
     abnormalTransition: flow.abnormalTransition,
+    scrollPosture,
   });
   const fusionHint =
-    flow.hint ?? synthesizeFusionHint({ style: fusionStyle, intent, affect });
+    flow.hint ??
+    synthesizeFusionHint({ style: fusionStyle, intent, affect, scrollPosture });
   let predictedNeed = synthesizePredictedNeed({
     intent,
     mealStage,
@@ -235,6 +251,7 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     affect,
     frustrationEscalateThreshold: input.config.mentalModel.frustrationEscalateThreshold,
     anomalies,
+    scrollPosture,
   });
 
   if (
@@ -270,6 +287,8 @@ export function foldGuestMentalModel(input: FoldGuestMentalModelInput): GuestMen
     nudgeBudget,
     mealStage,
     priceAffinity,
+    priceCeilingEur: resolvedPriceCeilingEur,
+    scrollPosture,
     predictedNeed,
     affect,
     groupDynamics,

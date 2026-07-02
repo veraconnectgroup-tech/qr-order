@@ -81,6 +81,21 @@ export function deriveAnomalies(input: {
     });
   }
 
+  const latestScroll = input.browse.scrollIntents.at(-1);
+  if (
+    latestScroll?.intent === "fast_search" &&
+    input.cartLineCount === 0 &&
+    input.intent !== "ordering" &&
+    input.intent !== "decided"
+  ) {
+    anomalies.push({
+      kind: "scroll_fast_search",
+      severity: "low",
+      suggestedAction: "offer_help",
+      detail: "Fast menu scroll without cart adds",
+    });
+  }
+
   void input.conversation;
 
   return anomalies;

@@ -29,6 +29,9 @@ export type MentalPredicate = Partial<{
   intent: GuestMentalModel["intent"];
   receptiveness: GuestMentalModel["receptiveness"];
   mealStage: GuestMentalModel["mealStage"];
+  scrollSearching: boolean;
+  scrollDeferUpsell: boolean;
+  scrollReadyForRecommendation: boolean;
 }>;
 
 export type OfferPredicate = Partial<{

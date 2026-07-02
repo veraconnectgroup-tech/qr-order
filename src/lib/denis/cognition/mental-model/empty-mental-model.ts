@@ -1,4 +1,5 @@
 import { emptyGuestPredictiveModel } from "@/lib/denis/cognition/mental-model/empty-predictive-model";
+import { emptyGuestScrollPosture } from "@/lib/denis/cognition/mental-model/derive-scroll-posture";
 import type {
   GuestMentalModel,
   GuestPosture,
@@ -47,6 +48,8 @@ export function emptyGuestMentalModel(now = 0): GuestMentalModel {
     },
     mealStage: "pre_order",
     priceAffinity: "unknown",
+    priceCeilingEur: null,
+    scrollPosture: emptyGuestScrollPosture(),
     predictedNeed: "none",
     affect: {
       frustration: { level: "none", signals: [] },

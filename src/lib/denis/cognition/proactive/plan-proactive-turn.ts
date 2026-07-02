@@ -287,6 +287,8 @@ export function planProactiveTurn(input: {
     now: input.now,
     revenueStrategy,
     sessionCheckEuros,
+    guestMemory: input.state.guest ?? null,
+    currentPartySize: partyFacts?.partySize ?? null,
     menuEngineeringCategories: input.payload.menuEngineeringCategories,
   });
 

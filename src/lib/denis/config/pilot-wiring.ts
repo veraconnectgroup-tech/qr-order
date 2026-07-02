@@ -5,7 +5,13 @@ import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaul
 export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
   version: 1,
   rollout: { mode: "denis_only", tableSessionActorEnabled: true },
-  llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+  llm: {
+    model: "gpt-4.1",
+    fallbackModel: "gpt-4.1-nano",
+    narrateWithLlm: true,
+    slotExtractWithLlm: false,
+    skipLlmWhenPossible: true,
+  },
   ordering: {
     slotExtractEnabled: true,
     actLayerEnabled: true,
@@ -51,6 +57,7 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
   },
   proactive: {
     enabled: true,
+    offerEnrich: true,
     guestWelcome: true,
     guestWelcomeSeconds: 30,
     browseFollowUp: true,
@@ -68,7 +75,7 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
   intervention: {
     enabled: true,
     mode: "shadow",
-    manifestVersion: "ijs-v1",
+    manifestVersion: "ijs-v2",
   },
   rhythm: {
     enabled: true,
@@ -92,6 +99,11 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
       latitude: 53.5511,
       longitude: 9.9937,
     },
+  },
+  mentalModel: {
+    ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
+    enabled: true,
+    mode: "shadow",
   },
 };
 

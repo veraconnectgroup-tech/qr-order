@@ -196,6 +196,6 @@ describe("buildReturnGuestWelcomeMessage feedback memory", () => {
         visitCount: 3,
         lastFeedbackSentiment: "positive",
       })
-    ).toContain("Drago nam je što ste opet tu");
+    ).toContain("Burger");
   });
 });

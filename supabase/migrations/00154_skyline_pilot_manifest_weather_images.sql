@@ -46,8 +46,12 @@ SET ai_concierge_config = COALESCE(ai_concierge_config, '{}'::jsonb) || jsonb_bu
       'longitude', 9.9937
     )
   ),
-  'rollout', jsonb_build_object('mode', 'denis_only'),
-  'llm', jsonb_build_object('narrateWithLlm', true),
+  'rollout', jsonb_build_object('mode', 'denis_only', 'tableSessionActorEnabled', true),
+  'llm', jsonb_build_object(
+    'narrateWithLlm', true,
+    'model', 'gpt-4.1',
+    'fallbackModel', 'gpt-4.1-nano'
+  ),
   'memory', jsonb_build_object('returnGuestEnabled', true)
 )
 WHERE id = 'b0000000-0000-4000-8000-000000000001';

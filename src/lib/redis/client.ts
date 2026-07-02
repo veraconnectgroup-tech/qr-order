@@ -19,6 +19,19 @@ export function getRedisClient(): Redis | null {
   return client;
 }
 
+/** Upstash auto-deserializes JSON strings — avoid double JSON.parse. */
+export function parseRedisJson<T>(raw: unknown): T | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+  return raw as T;
+}
+
 /** Log Redis degradation and allow callers to fail open. */
 export function logRedisDegradation(context: string, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);

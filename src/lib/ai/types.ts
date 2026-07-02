@@ -130,6 +130,8 @@ export type OpenAiCallResult = {
   tokensUsed: number;
   promptTokens: number;
   completionTokens: number;
+  /** OpenAI prompt cache hits (when prompt caching enabled). */
+  cachedPromptTokens?: number;
   model: string;
 };
 
