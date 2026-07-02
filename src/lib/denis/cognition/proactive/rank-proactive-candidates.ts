@@ -218,6 +218,7 @@ const LEGACY_KIND_PRIORITY: Record<GuestProactiveNudgeKind, number> = {
   kitchen_busy: 920,
   station_bottleneck_avoid: 830,
   order_eta_update: 860,
+  order_preparing_notify: 855,
   slow_kitchen: 900,
   order_delay: 840,
   dessert_nudge: 700,

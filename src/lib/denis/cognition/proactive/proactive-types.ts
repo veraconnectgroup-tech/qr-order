@@ -118,6 +118,7 @@ export type GuestProactiveNudgeKind =
   | "bill_prompt"
   | "order_delay"
   | "order_eta_update"
+  | "order_preparing_notify"
   | "order_ready"
   | "order_ready_notify"
   | "kitchen_busy"

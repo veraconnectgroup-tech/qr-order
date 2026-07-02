@@ -33,7 +33,8 @@ export type ContextLayerId =
   | "experience"
   | "external_context"
   | "loyalty"
-  | "scroll";
+  | "scroll"
+  | "table_lifecycle";
 
 export type TurnIntent =
   | "price_inquiry"

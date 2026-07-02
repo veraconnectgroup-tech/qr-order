@@ -21,6 +21,18 @@ import type { TableSessionState } from "@/lib/denis/loop/types";
 
 const NOW = Date.parse("2026-06-07T20:00:00.000Z");
 
+function sampleOrder(status: string): import("@/lib/denis/loop/types").OrderFact {
+  return {
+    id: "o1",
+    orderNumber: 42,
+    status,
+    paymentStatus: "paid",
+    estimatedPrepMinutes: 12,
+    createdAt: "2026-06-07T19:00:00.000Z",
+    items: [{ productName: "Burger", quantity: 1, menuSection: "food" }],
+  };
+}
+
 function browseWithScroll(
   intent: "fast_search" | "slow_category" | "reached_bottom",
   categoryLabel?: string
@@ -249,14 +261,7 @@ describe("table lifecycle stages (Phase 3)", () => {
     const lifecycle = orchestrateTableLifecycle({
       mental,
       tableTempoPhase: "none",
-      orders: [
-        {
-          id: "o1",
-          status: "delivered",
-          createdAt: "2026-06-07T19:00:00.000Z",
-          items: [{ menuSection: "food", productName: "Burger", quantity: 1 }],
-        },
-      ],
+      orders: [sampleOrder("delivered")],
       cartLineCount: 0,
     });
 
@@ -284,14 +289,7 @@ describe("table lifecycle stages (Phase 3)", () => {
     const lifecycle = orchestrateTableLifecycle({
       mental,
       tableTempoPhase: "none",
-      orders: [
-        {
-          id: "o1",
-          status: "preparing",
-          createdAt: "2026-06-07T19:00:00.000Z",
-          items: [{ menuSection: "food", productName: "Burger", quantity: 1 }],
-        },
-      ],
+      orders: [sampleOrder("preparing")],
       cartLineCount: 0,
     });
 

@@ -586,6 +586,20 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   letter-spacing: -0.01em;
 }
 
+/* Hero mockup scales to remaining viewport below the copy block */
+.landing-page .landing-hero-mockup-scale {
+  --hero-scale: clamp(0.72, calc((100dvh - 16rem) / 34rem), 1);
+  transform: scale(var(--hero-scale));
+  transform-origin: bottom center;
+  margin-bottom: calc((var(--hero-scale) - 1) * 34rem);
+}
+
+@media (min-width: 1280px) {
+  .landing-page .landing-hero-mockup-scale {
+    --hero-scale: clamp(0.82, calc((100dvh - 16.5rem) / 34rem), 1);
+  }
+}
+
 /* Editorial operational typography */
 .landing-display {
   font-size: clamp(1.875rem, 3.2vw, 2.875rem);
