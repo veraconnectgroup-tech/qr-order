@@ -40,7 +40,7 @@ export async function loadVenueManifestsForLocation(
 
   const row = parseLocationVenueManifestRow(data);
   let locationRaw = row.venue_manifest ?? null;
-  let orgRaw = row.organization?.venue_manifest ?? null;
+  const orgRaw = row.organization?.venue_manifest ?? null;
 
   if (
     locationId === SKYLINE_PILOT_LOCATION_ID &&
