@@ -9,9 +9,7 @@ import {
 import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import type { TableBusObligationRow } from "@/lib/denis/cognition/waiter/bus-table-obligation";
 
-export type TableBusObligationClientRow = TableBusObligationRow & {
-  tables?: { name: string | null } | null;
-};
+export type TableBusObligationClientRow = TableBusObligationRow;
 
 export function useTableBusObligation(tableId: string | null) {
   const [obligation, setObligation] = useState<TableBusObligationClientRow | null>(
@@ -29,7 +27,7 @@ export function useTableBusObligation(tableId: string | null) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("table_bus_obligations")
-      .select("*, tables(name)")
+      .select("*")
       .eq("table_id", tableId)
       .eq("status", "open")
       .maybeSingle();
@@ -75,7 +73,7 @@ export function useLocationBusObligations(locationId: string | null) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("table_bus_obligations")
-      .select("*, tables(name)")
+      .select("*")
       .eq("location_id", locationId)
       .eq("status", "open")
       .order("paid_at", { ascending: true });

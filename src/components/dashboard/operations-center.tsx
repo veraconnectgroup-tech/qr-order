@@ -20,6 +20,7 @@ import { remindWaiterForReadyStationAction } from "@/lib/dashboard/operations-ac
 import {
   DEFAULT_READY_STUCK_MINUTES,
   filterBurningNotifications,
+  filterBusTableEscalationNotifications,
   filterOpenServiceRecoveryNotifications,
   filterReadyStuckRows,
   filterRiskPriorityTables,
@@ -151,6 +152,10 @@ export function OperationsCenter() {
     () => filterOpenServiceRecoveryNotifications(notifications),
     [notifications]
   );
+  const busEscalations = useMemo(
+    () => filterBusTableEscalationNotifications(notifications),
+    [notifications]
+  );
   const riskTables = useMemo(
     () => filterRiskPriorityTables(copilot?.priorityTables ?? []),
     [copilot?.priorityTables]
@@ -174,6 +179,7 @@ export function OperationsCenter() {
   const hasWork =
     burning.length > 0 ||
     openRecovery.length > 0 ||
+    busEscalations.length > 0 ||
     questions.length > 0 ||
     readyStuck.length > 0 ||
     riskTables.length > 0 ||
@@ -306,6 +312,34 @@ export function OperationsCenter() {
           count={openRecovery.length}
         >
           {openRecovery.map((notification) => (
+            <article
+              key={notification.id}
+              className="rounded-lg border border-red-500/25 bg-red-500/5 p-4"
+            >
+              <p className="text-sm font-medium text-dash-text">
+                {notification.tableName
+                  ? `${notification.tableName} — ${notification.message}`
+                  : notification.message}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <ActionButton
+                  disabled={pending}
+                  onClick={() => markNotificationResolved(notification.id)}
+                >
+                  Označi rešeno
+                </ActionButton>
+                {notification.actionUrl && (
+                  <ActionLink href={notification.actionUrl}>Otvori sto</ActionLink>
+                )}
+              </div>
+            </article>
+          ))}
+        </SectionShell>
+      )}
+
+      {busEscalations.length > 0 && (
+        <SectionShell tone="red" title="🔄 Obrt stola" count={busEscalations.length}>
+          {busEscalations.map((notification) => (
             <article
               key={notification.id}
               className="rounded-lg border border-red-500/25 bg-red-500/5 p-4"

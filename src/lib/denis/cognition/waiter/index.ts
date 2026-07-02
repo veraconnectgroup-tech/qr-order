@@ -37,6 +37,7 @@ export {
   loadOpenBusObligationForTable,
   maybeCreateBusTableObligationOnPaymentSettled,
   minutesSincePaid,
+  resolveBusTableEscalationState,
   turnaroundMinutesBetween,
   type TableBusObligationRow,
 } from "@/lib/denis/cognition/waiter/bus-table-obligation";

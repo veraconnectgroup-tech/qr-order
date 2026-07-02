@@ -75,13 +75,13 @@ async function loadSessionPaymentContext(
 
   const { data: orders } = await admin
     .from("orders")
-    .select("payment_status, paid_at, updated_at")
+    .select("payment_status, updated_at, delivered_at")
     .eq("session_id", sessionId);
 
   const orderRows = (orders ?? []) as Array<{
     payment_status: string;
-    paid_at: string | null;
     updated_at: string;
+    delivered_at: string | null;
   }>;
 
   if (!orderRows.length) return null;
@@ -92,7 +92,7 @@ async function loadSessionPaymentContext(
   if (!allPaid) return null;
 
   const paidTimestamps = orderRows
-    .map((order) => order.paid_at ?? order.updated_at)
+    .map((order) => order.delivered_at ?? order.updated_at)
     .map((value) => Date.parse(value))
     .filter(Number.isFinite);
   const paidAt =
@@ -102,7 +102,7 @@ async function loadSessionPaymentContext(
 
   const { data: table } = await admin
     .from("tables")
-    .select("name, assigned_staff_id, location:locations!inner(org_id)")
+    .select("name, assigned_staff_id, location_id")
     .eq("id", sessionRow.table_id)
     .maybeSingle();
 
@@ -111,15 +111,23 @@ async function loadSessionPaymentContext(
   const tableRow = table as {
     name: string;
     assigned_staff_id: string | null;
-    location: { org_id: string };
+    location_id: string;
   };
+
+  const { data: location } = await admin
+    .from("locations")
+    .select("org_id")
+    .eq("id", tableRow.location_id)
+    .maybeSingle();
+
+  if (!location) return null;
 
   return {
     locationId: sessionRow.location_id,
     tableId: sessionRow.table_id,
     tableName: tableRow.name,
     assignedStaffId: tableRow.assigned_staff_id,
-    orgId: tableRow.location.org_id,
+    orgId: (location as { org_id: string }).org_id,
     aiSessionId: sessionRow.denis_shared_ai_session_id,
     allPaid,
     paidAt,
@@ -335,7 +343,6 @@ export async function escalateOverdueBusTableObligations(
   }
 
   const nowMs = input.nowMs ?? Date.now();
-  const slaMs = input.config.busSlaMinutes * 60_000;
 
   const { data: openRows } = await admin
     .from("table_bus_obligations")
@@ -369,8 +376,15 @@ export async function escalateOverdueBusTableObligations(
   for (const row of rows) {
     const paidAtMs = Date.parse(row.paid_at);
     if (!Number.isFinite(paidAtMs)) continue;
-    const ageMs = nowMs - paidAtMs;
-    const waitMinutes = Math.floor(ageMs / 60_000);
+
+    const gates = resolveBusTableEscalationState({
+      paidAt: row.paid_at,
+      reminderSentAt: row.reminder_sent_at,
+      escalatedAt: row.escalated_at,
+      busSlaMinutes: input.config.busSlaMinutes,
+      nowMs,
+    });
+    const waitMinutes = Math.floor((nowMs - paidAtMs) / 60_000);
 
     const { data: table } = await admin
       .from("tables")
@@ -385,7 +399,7 @@ export async function escalateOverdueBusTableObligations(
       (table as { assigned_staff_id: string | null } | null)?.assigned_staff_id ??
       null;
 
-    if (ageMs >= slaMs && !row.reminder_sent_at) {
+    if (gates.sendReminder) {
       await dispatchStaffNotification({
         orgId: orgId ?? undefined,
         locationId: input.locationId,
@@ -405,7 +419,7 @@ export async function escalateOverdueBusTableObligations(
       reminders += 1;
     }
 
-    if (ageMs >= slaMs * 2 && !row.escalated_at) {
+    if (gates.sendEscalation) {
       await dispatchStaffNotification({
         orgId: orgId ?? undefined,
         locationId: input.locationId,
@@ -499,4 +513,24 @@ export function turnaroundMinutesBetween(paidAt: string, bussedAt: string): numb
     return null;
   }
   return Math.round((end - start) / 60_000);
+}
+
+/** Pure SLA gates for watcher escalation (testable). */
+export function resolveBusTableEscalationState(input: {
+  paidAt: string;
+  reminderSentAt: string | null;
+  escalatedAt: string | null;
+  busSlaMinutes: number;
+  nowMs: number;
+}): { sendReminder: boolean; sendEscalation: boolean } {
+  const paidAtMs = Date.parse(input.paidAt);
+  if (!Number.isFinite(paidAtMs)) {
+    return { sendReminder: false, sendEscalation: false };
+  }
+  const ageMs = input.nowMs - paidAtMs;
+  const slaMs = input.busSlaMinutes * 60_000;
+  return {
+    sendReminder: ageMs >= slaMs && !input.reminderSentAt,
+    sendEscalation: ageMs >= slaMs * 2 && !input.escalatedAt,
+  };
 }

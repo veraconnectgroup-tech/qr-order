@@ -13,6 +13,7 @@ import type {
   DenisShiftQuestionRow,
   DenisShiftStationStateRow,
   DenisShiftWaiterCallRow,
+  DenisShiftBusObligationRow,
 } from "@/lib/admin/denis-shift-report";
 import {
   aggregateDessertWindowStats,
@@ -400,6 +401,22 @@ async function loadDessertWindowStatsForDay(
   });
 }
 
+async function loadBusObligationsForRange(
+  admin: SupabaseClient,
+  locationId: string,
+  from: string,
+  to: string
+): Promise<DenisShiftBusObligationRow[]> {
+  const { data } = await admin
+    .from("table_bus_obligations")
+    .select("table_id, paid_at, bussed_at, status")
+    .eq("location_id", locationId)
+    .gte("paid_at", from)
+    .lt("paid_at", to);
+
+  return (data ?? []) as DenisShiftBusObligationRow[];
+}
+
 async function loadDenisShiftInput(
   admin: SupabaseClient,
   input: {
@@ -422,6 +439,7 @@ async function loadDenisShiftInput(
     tableNames,
     eightySixEvents,
     dessertWindow,
+    busObligations,
   ] = await Promise.all([
     loadStationQuestionsForRange(
       admin,
@@ -445,6 +463,12 @@ async function loadDenisShiftInput(
       to: input.to,
     }),
     loadDessertWindowStatsForDay(admin, input.locationId, input.date),
+    loadBusObligationsForRange(
+      admin,
+      input.locationId,
+      input.from,
+      input.to
+    ),
   ]);
 
   return {
@@ -465,6 +489,7 @@ async function loadDenisShiftInput(
       visitCountByToken: input.visitCountByToken,
     }),
     serviceRecovery: aggregateServiceRecoveryStats(staffNotifications),
+    busObligations,
   };
 }
 

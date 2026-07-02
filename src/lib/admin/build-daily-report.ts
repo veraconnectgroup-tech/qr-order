@@ -386,6 +386,26 @@ function formatServiceRecoveryDigestLines(
   ];
 }
 
+function formatTableTurnaroundDigestLines(
+  stats: DenisShiftRecap["tableTurnaround"]
+): string[] {
+  if (stats.bussedCount === 0 && stats.openAtClose === 0) {
+    return ["Obrt stolova: nema bus obaveza danas"];
+  }
+  const avg =
+    stats.avgTurnaroundMinutes != null
+      ? `${stats.avgTurnaroundMinutes} min prosečno`
+      : "—";
+  const worst =
+    stats.worstTableName && stats.worstTurnaroundMinutes != null
+      ? `${stats.worstTableName} (${stats.worstTurnaroundMinutes} min)`
+      : "—";
+  return [
+    `Obrt stolova: ${stats.bussedCount} raspremljeno · ${avg}`,
+    `  Najsporiji: ${worst}${stats.openAtClose > 0 ? ` · otvoreno na kraju dana: ${stats.openAtClose}` : ""}`,
+  ];
+}
+
 function formatDenisShiftDigestText(
   shift: DenisShiftRecap,
   currencyLabel: string
@@ -411,6 +431,7 @@ function formatDenisShiftDigestText(
     ...formatDessertWindowDigestLines(shift.dessertWindow, currencyLabel),
     ...formatReturningGuestDigestLines(shift.returningGuests, currencyLabel),
     ...formatServiceRecoveryDigestLines(shift.serviceRecovery),
+    ...formatTableTurnaroundDigestLines(shift.tableTurnaround),
   ];
   return lines;
 }
@@ -472,6 +493,12 @@ function formatDenisShiftDigestHtml(
       <p style="margin:0 0 8px;font-weight:600;">🩹 Service recovery</p>
       <ul style="margin:0 0 16px;padding-left:18px;">
         ${formatServiceRecoveryDigestLines(shift.serviceRecovery)
+          .map((line) => `<li>${line}</li>`)
+          .join("")}
+      </ul>
+      <p style="margin:0 0 8px;font-weight:600;">🔄 Obrt stolova</p>
+      <ul style="margin:0 0 16px;padding-left:18px;">
+        ${formatTableTurnaroundDigestLines(shift.tableTurnaround)
           .map((line) => `<li>${line}</li>`)
           .join("")}
       </ul>`;

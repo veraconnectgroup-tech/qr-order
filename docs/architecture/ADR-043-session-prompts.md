@@ -40,7 +40,7 @@
 | **S10 — Desert i kafa u pravom trenutku** | ✅ | `detect-dessert-window.ts`, `dessert-window.test.ts`, `rank-proactive-candidates.ts`, `decide-proactive-turn-plan.ts`, `emit-proactive-nudge.ts`, `concierge-config.schema.ts` (`ops.dessertWindow`), `pilot-wiring.ts`, `denis-shift-report.ts`, `build-daily-report.ts`, `load-daily-report-context.ts` |
 | **S11 — Stalni gost** | ✅ | `platform/returning-guest.ts`, `returning-guest.test.ts`, `build-narration-facts.ts`, `derive-contextual-chips.ts`, `same-again-chips.ts`, `denis-shift-report.ts` (`aggregateReturningGuestStats`), `build-daily-report.ts`, `load-daily-report-context.ts`, `denis-guest-memory-store.ts` (postojeći), `api/guest/denis-memory` DELETE (forget me) |
 | **S12 — Nezadovoljan gost (service recovery)** | ✅ | `cognition/recovery/detect-service-recovery.ts`, `build-service-recovery-alert.ts`, `service-recovery-timeline.ts`, `resolve-turn-recovery.ts`, `apply-frustration-recovery.ts`, `detect-review-moment.ts`, `decide-proactive-turn-plan.ts`, `operations-triage.ts`, `operations-center.tsx`, `denis-shift-report.ts` (`aggregateServiceRecoveryStats`), `service-recovery.test.ts` |
-| **S13 — Sto posle plaćanja (obrt stola)** | ⬜ | |
+| **S13 — Sto posle plaćanja (obrt stola)** | ✅ | `00153_table_bus_obligations.sql`, `bus-table-obligation.ts`, `waiter-obligation-types.ts` (`bus_table`), `run-commerce-experience.ts`, `run-session-watcher.ts`, `table-bus-obligations/[id]/complete/route.ts`, `waiter-bus-table-banner.tsx`, `operations-triage.ts`, `denis-shift-report.ts`, `table-turnaround.test.ts` |
 | **S14 — Brifing pre smene + nedeljni izveštaj vlasniku** | ⬜ | |
 
 > **Faza 1 = S1–S7** (station truth + operations proof). **Faza 2 = S8–S14** (host + revenue). Faza 2 kreće tek kad S7 da "go" — jer skoro sve u Fazi 2 čita station istinu iz Faze 1.
@@ -527,12 +527,12 @@ Plaćanje završeno → Denis otvara "raspremi sto" obavezu konobaru → sto ras
 
 ### Integracioni check
 
-- [ ] `bus_table` obligation ide kroz ADR-032 spine (grep dokaz — nije paralelni sistem)
-- [ ] Test: payment completed ⇒ obligation kreiran za konobara stola
-- [ ] Test: prag pređen ⇒ podsetnik; 2× prag ⇒ ops center
-- [ ] Daily report: prosečan obrt + najgori sto
-- [ ] Flag default off, pilot uključuje
-- [ ] Nula novih test failova vs baseline
+- [x] `bus_table` obligation ide kroz ADR-032 spine (grep dokaz — nije paralelni sistem)
+- [x] Test: payment completed ⇒ obligation kreiran za konobara stola
+- [x] Test: prag pređen ⇒ podsetnik; 2× prag ⇒ ops center
+- [x] Daily report: prosečan obrt + najgori sto
+- [x] Flag default off, pilot uključuje
+- [x] Nula novih test failova vs baseline
 
 ---
 
