@@ -1,6 +1,12 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
 import { detectStaffProactiveAlerts } from "@/lib/denis/cognition/proactive/detect-staff-proactive";
 import {
+  detectTableTempoPhase,
+  findDrinksTempoNudgeEmittedAt,
+  tableTempoDedupeKey,
+} from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import { hasActiveDrinkOrder } from "@/lib/denis/cognition/proactive/triggers";
+import {
   maxKitchenWaitMinutesForTable,
   type KitchenTableWait,
 } from "@/lib/denis/cognition/proactive/triggers";
@@ -20,8 +26,12 @@ import {
   expireStationQuestions,
   runStationQuestionTriggersForSession,
 } from "@/lib/denis/stations/station-questions";
+import { escalateAllOverdueBusTableObligations } from "@/lib/denis/cognition/waiter/bus-table-obligation";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
-import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
+import {
+  appendDenisTimelineEvent,
+  loadDenisTimeline,
+} from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { logger } from "@/lib/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -160,7 +170,7 @@ export async function runSessionWatcherTick(
           locationId: row.location_id,
           tableId: row.table_id,
           tableName,
-          orders,
+          orders: fold.state.commerce.orders,
           config,
         });
       }
@@ -226,6 +236,34 @@ export async function runSessionWatcherTick(
         });
       }
 
+      const tableTempoPhase = config.ops.tableTempo.enabled
+        ? detectTableTempoPhase({
+            sessionOpenedAt: row.opened_at,
+            orders: fold.state.commerce.orders,
+            guestMessageCount: watcherContext.guestMessageCount,
+            idleMinutes: watcherContext.idleMinutes,
+            config: config.ops.tableTempo,
+          })
+        : "none";
+
+      if (
+        tableTempoPhase === "post_meal_idle" &&
+        !watcherContext.emittedKeys.includes(
+          tableTempoDedupeKey("post_meal_idle")
+        )
+      ) {
+        await appendDenisTimelineEvent(admin, {
+          aiSessionId,
+          eventType: "table.tempo.phase",
+          traceId: watcherTraceId,
+          payload: {
+            type: "table.tempo.phase",
+            phase: "post_meal_idle",
+            source: "session.watcher",
+          },
+        });
+      }
+
       const nudge = await enqueueOrRunProactiveSessionTick(admin, {
         tableSessionId: row.id,
         source: "session.watcher",
@@ -271,6 +309,11 @@ export async function runSessionWatcherTick(
         kitchenTableWaits: kitchenWaitsByLocation.get(row.location_id),
         experienceScore: buildSessionExperienceScore(fold.state).overallScore,
         language: fold.state.guest?.preferredLanguage ?? null,
+        tableTempoPhase,
+        dismissedNudgeKeys: watcherContext.dismissedNudgeKeys,
+        hasActiveDrinkOrder: hasActiveDrinkOrder(orders),
+        drinksNudgeEmittedAtMs: findDrinksTempoNudgeEmittedAt(timeline),
+        nowMs: Date.now(),
       });
 
       for (const alert of staffAlertsForSession) {
@@ -324,6 +367,14 @@ export async function runSessionWatcherTick(
             : String(expireError),
       });
     }
+  }
+
+  try {
+    await escalateAllOverdueBusTableObligations(admin);
+  } catch (busError) {
+    logger.warn("bus table escalation failed", {
+      error: busError instanceof Error ? busError.message : String(busError),
+    });
   }
 
   return {

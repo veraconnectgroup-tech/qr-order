@@ -40,8 +40,15 @@ describe("guest memory M17", () => {
   });
 
   it("adds return-guest welcome to narration facts on welcome node", () => {
+    const config = {
+      ...CONCIERGE_PLATFORM_DEFAULTS,
+      memory: {
+        ...CONCIERGE_PLATFORM_DEFAULTS.memory,
+        returnGuestEnabled: true,
+      },
+    };
     const reflexTurn = planTurnWithReflex({
-      config: CONCIERGE_PLATFORM_DEFAULTS,
+      config,
       message: "",
       flowNodeId: "welcome",
       cartState: emptyCartState(),
@@ -49,7 +56,7 @@ describe("guest memory M17", () => {
     });
 
     const facts = buildNarrationFacts({
-      config: CONCIERGE_PLATFORM_DEFAULTS,
+      config,
       language: "en",
       reflexTurn,
       flowNodeId: "welcome",
@@ -69,7 +76,7 @@ describe("guest memory M17", () => {
   });
 
   it("offers same-again T0 chips for return-guest welcome", () => {
-    const labels = sameAgainQuickReplyLabels("en");
+    const labels = sameAgainQuickReplyLabels("en", "Burger");
     const chips = resolveTurnQuickReplies({
       reflexTurn: planTurnWithReflex({
         config: CONCIERGE_PLATFORM_DEFAULTS,

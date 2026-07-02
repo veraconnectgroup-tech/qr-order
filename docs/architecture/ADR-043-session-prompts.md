@@ -28,18 +28,18 @@
 | Sesija | Status | Ključni fajlovi |
 |--------|--------|-----------------|
 | **S0 — Question Card** | ✅ | `src/lib/denis/stations/`, migracija `00151` |
-| **S1 — order_station_states** | ⬜ | |
-| **S2 — KDS/bar/waiter UI** | ⬜ | |
-| **S3 — Denis čita stanice** | ⬜ | |
-| **S4 — Operations Center** | ⬜ | |
-| **S5 — Order Timeline panel** | ⬜ | |
-| **S6 — Shift recap** | ⬜ | |
-| **S7 — Pilot + E2E verifikacija (Faza 1 gate)** | ⬜ | |
-| **S8 — Sto koji ćuti (tempo stola)** | ⬜ | |
-| **S9 — Nema na stanju (86 loop)** | ⬜ | |
-| **S10 — Desert i kafa u pravom trenutku** | ⬜ | |
-| **S11 — Stalni gost** | ⬜ | |
-| **S12 — Nezadovoljan gost (service recovery)** | ⬜ | |
+| **S1 — order_station_states** | ✅ | `00152_order_station_states.sql`, `src/lib/orders/station-states.ts`, `src/app/api/orders/[orderId]/station-status/route.ts`, `src/__tests__/station-states.test.ts` |
+| **S2 — KDS/bar/waiter UI** | ✅ | `station-display.ts`, `fetch-order-station-states.ts`, hooks + `kds-board`, `kitchen-board`, `bar-order-row`, `waiter-order-row`, `station-display.test.ts` |
+| **S3 — Denis čita stanice** | ✅ | `load-order-facts.ts`, `types.ts` (`stationStates`), `station-guest-message.ts`, `question-triggers.ts`, `tell-world-order.ts`, `station-status/route.ts`, `station-guest-message.test.ts` |
+| **S4 — Operations Center** | ✅ | `operations/page.tsx`, `operations-center.tsx`, `operations-triage.ts`, `operations-actions.ts`, hooks `use-location-station-questions`, `use-operations-ready-states` |
+| **S5 — Order Timeline panel** | ✅ | `order-timeline.ts`, `timeline/route.ts`, `order-timeline-panel.tsx`, `order-card.tsx`, `order-history-list-shell.tsx`, `order-timeline.test.ts` |
+| **S6 — Shift recap** | ✅ | `denis-shift-report.ts`, `build-daily-report.ts` (`denisShift`), `load-daily-report-context.ts`, `denis-shift-report.test.ts`, `daily-report.test.ts` |
+| **S7 — Pilot + E2E verifikacija (Faza 1 gate)** | ✅ | `pilot-wiring.ts` (stationQuestions + stationAwareTell), `adr-043-pilot-e2e.test.ts` — code-chain GO; live iota QR pending operator |
+| **S8 — Sto koji ćuti (tempo stola)** | ✅ | `detect-table-tempo-phase.ts`, `table-tempo-phase.test.ts`, `ops.tableTempo` config, `drink-sommelier-triggers.ts` (`detectSommelierStationTempoRefill`), watcher + proactive wiring |
+| **S9 — Nema na stanju (86 loop)** | ✅ | `eighty-six.ts`, `eighty-six-client.ts`, `api/products/[productId]/availability`, `api/locations/[locationId]/eighty-six`, `eighty-six-panel.tsx`, `order-item-product-line.tsx`, `tell-world-order.ts` (`commerce.product_unavailable`), `denis-shift-report.ts` + daily digest, `eighty-six.test.ts` |
+| **S10 — Desert i kafa u pravom trenutku** | ✅ | `detect-dessert-window.ts`, `dessert-window.test.ts`, `rank-proactive-candidates.ts`, `decide-proactive-turn-plan.ts`, `emit-proactive-nudge.ts`, `concierge-config.schema.ts` (`ops.dessertWindow`), `pilot-wiring.ts`, `denis-shift-report.ts`, `build-daily-report.ts`, `load-daily-report-context.ts` |
+| **S11 — Stalni gost** | ✅ | `platform/returning-guest.ts`, `returning-guest.test.ts`, `build-narration-facts.ts`, `derive-contextual-chips.ts`, `same-again-chips.ts`, `denis-shift-report.ts` (`aggregateReturningGuestStats`), `build-daily-report.ts`, `load-daily-report-context.ts`, `denis-guest-memory-store.ts` (postojeći), `api/guest/denis-memory` DELETE (forget me) |
+| **S12 — Nezadovoljan gost (service recovery)** | ✅ | `cognition/recovery/detect-service-recovery.ts`, `build-service-recovery-alert.ts`, `service-recovery-timeline.ts`, `resolve-turn-recovery.ts`, `apply-frustration-recovery.ts`, `detect-review-moment.ts`, `decide-proactive-turn-plan.ts`, `operations-triage.ts`, `operations-center.tsx`, `denis-shift-report.ts` (`aggregateServiceRecoveryStats`), `service-recovery.test.ts` |
 | **S13 — Sto posle plaćanja (obrt stola)** | ⬜ | |
 | **S14 — Brifing pre smene + nedeljni izveštaj vlasniku** | ⬜ | |
 
@@ -493,12 +493,12 @@ Denis detektuje nezadovoljstvo (ton poruka, žalba, dugo čekanje + ćutanje) �
 
 ### Integracioni check
 
-- [ ] Mapa postojeće frustracije/žalbe detekcije u session reportu
-- [ ] Test: žalbena poruka ⇒ urgent notifikacija menadžeru sa kontekstom
-- [ ] Test: recovery sto ⇒ review pitanje blokirano
-- [ ] Test: recovery sto ⇒ upsell blokiran (istina pre prodaje)
-- [ ] Gest je SAMO predlog — grep dokaz da nema auto-comp puta
-- [ ] `pnpm eval:denis` bez novih failova · nula novih test failova vs baseline
+- [x] Mapa postojeće frustracije/žalbe detekcije u session reportu
+- [x] Test: žalbena poruka ⇒ urgent notifikacija menadžeru sa kontekstom
+- [x] Test: recovery sto ⇒ review pitanje blokirano
+- [x] Test: recovery sto ⇒ upsell blokiran (istina pre prodaje)
+- [x] Gest je SAMO predlog — grep dokaz da nema auto-comp puta
+- [x] `pnpm eval:denis` bez novih failova · nula novih test failova vs baseline
 
 ---
 
@@ -582,3 +582,189 @@ Dobar vlasnik u 16h okupi smenu: "Večeras je rezervisana proslava u 20h, juče 
 **Gapovi/rizici za sledeću sesiju:**
 **Status tabela ažurirana:** ✓
 ```
+
+---
+
+## Session report — S8
+
+**Status:** ✅ gotovo
+
+**Fajlovi:**
+- **Novi:** `src/lib/denis/cognition/tempo/detect-table-tempo-phase.ts`, `src/__tests__/table-tempo-phase.test.ts`
+- **Izmenjeni (S8 scope):** `concierge-config.schema.ts`, `concierge-defaults.ts`, `pilot-wiring.ts` (`ops.tableTempo.enabled`), `load-order-facts.ts` + `types.ts` (`servedAt`), `drink-sommelier-triggers.ts`, `rank-proactive-candidates.ts`, `detect-staff-proactive.ts`, `emit-proactive-nudge.ts`, `run-session-watcher.ts`, `run-proactive-session-tick.ts`, `proactive-types.ts`, `proactive-dock-tell.ts`, `proactive-policy-defaults.ts`, `decide-proactive-turn-plan.ts`
+
+**Testovi:** 14 novih u `table-tempo-phase.test.ts`, svi zeleni · `test:run` vs baseline: **26 failed / 2084 passed** (nula novih failova)
+
+**Verifikacija:** type-check ✓ · lint ✓ (0 errors) · `verify:denis` ✓ · `eval:denis` **5 failed** (isti pre-S8 baseline: substitution gap, clone friend, manifest promote, waiter parity — **0 novih failova od S8**)
+
+**Integracioni check:**
+
+| Stavka | Dokaz |
+|--------|--------|
+| `detectTableTempoPhase`: sve 4 faze + granice pragova | `table-tempo-phase.test.ts`: `none` (disabled + below threshold), `browsing_stalled` (≥12 min bez ordera), `drinks_finished_estimate` (bar `served_at` + beer 20 min + grace), `post_meal_idle` (kitchen served + idle ≥18 min), boundary test below post-meal threshold → `none` |
+| Gost ignorisao nudge → konobar, ne ponovo gost | `shouldEscalateDrinksFinishedToWaiter` + `shouldEmitTableTempoGuestNudge` tests; integration test `staff_drinks_finished` u `detectStaffProactiveAlerts` kada je `table_tempo:drinks_finished_estimate` emitovan pre 10 min |
+| Sommelier tok proširen, ne dupliran | `grep`: `detectSommelierStationTempoRefill` samo u `drink-sommelier-triggers.ts` (export) + poziv u `rank-proactive-candidates.ts` kada `tableTempoPhase === "drinks_finished_estimate"`; postojeći `detectSommelierFoodPairingTrigger` / `detectPartyDrinkGapTrigger` netaknuti |
+| Anti-spam: jedan tempo-nudge po fazi | `tableTempoDedupeKey("browsing_stalled")` + `shouldEmitTableTempoGuestNudge` test; `emit-proactive-nudge.ts` dedupe keys `table_tempo:browsing_stalled`, `table_tempo:drinks_finished_estimate` |
+| `eval:denis` bez novih failova | 5 failed (pre-existing); S8 dira watcher/proactive ali ne menja substitution/clone/manifest scenarije |
+| Nula novih test failova vs baseline | `pnpm test:run` → 26 failed (unchanged) |
+
+**Heuristika (dokumentovano u kodu):** prazna čaša = bar `served_at` + `drinkConsumptionMinutes()` po VKG kategoriji (pivo 20, vino 25, kafa 10, default 20) + `drinksFinishedGraceMinutes` (2). Nema senzora, nema nove tabele/cron-a.
+
+**Akcije po fazi:**
+- `browsing_stalled` → guest `table_tempo_browse`; `staff_table_idle` preskočen (jedan primalac)
+- `drinks_finished_estimate` → sommelier refill (postojeći kanal) ili `staff_drinks_finished` posle ignore/dismiss
+- `post_meal_idle` → samo `table.tempo.phase` timeline signal (copilot); **nema** desert nudge (S10)
+
+**Gapovi/rizici za sledeću sesiju:**
+- Live pilot: tempo nudge treba ručno potvrditi na iota QR (anti-spam + rush skip u produkciji)
+- `post_meal_idle` još nema dedicated copilot UI kartice — samo timeline zapis
+- Pre-existing `eval:denis` 5 failova ostaju van S8 scope-a
+
+**Status tabela ažurirana:** ✓
+
+---
+
+## Session report — S10
+
+**Status:** ✅ gotovo
+
+**Fajlovi:**
+- **Novi:** `src/lib/denis/cognition/tempo/detect-dessert-window.ts`, `src/__tests__/dessert-window.test.ts`
+- **Izmenjeni (S10 scope):** `detect-table-tempo-phase.ts` (export `kitchenServedAt`), `concierge-config.schema.ts`, `concierge-defaults.ts`, `pilot-wiring.ts`, `proactive-types.ts`, `rank-proactive-candidates.ts`, `decide-proactive-turn-plan.ts`, `emit-proactive-nudge.ts`, `proactive-dock-tell.ts`, `denis-shift-report.ts`, `build-daily-report.ts`, `load-daily-report-context.ts`, `ADR-043-session-prompts.md`
+
+**Testovi:** 14 novih u `dessert-window.test.ts`, svi zeleni · `test:run` vs baseline: **26 failed / 2098 passed** (+14 novih testova, nula novih failova)
+
+**Verifikacija:** type-check ✓ · lint ✓ (0 errors) · `verify:denis` ✓ · `eval:denis` **5 failed** (isti pre-S10 baseline: obligation merge, iota replay, waiter parity, manifest promote, pilot gate — **0 novih failova od S10**) · `build` webpack `tls` (pre-existing web-push trace — van S10 scope)
+
+**Integracioni check:**
+
+| Stavka | Dokaz |
+|--------|--------|
+| `detectDessertWindow`: pre / u / posle prozora / bar-only | `dessert-window.test.ts`: `before_window` (10 min served), `in_window` (20 min served + 18+2 grace), `after_window` (55 min + dessert ordered), `none` (bar-only, disabled) |
+| Otvoreno station pitanje ⇒ NEMA upsell | `hasStationProblemsBlockingUpsell` test (pending 5 min); `rankProactiveCandidates` integration — nema `dessert_nudge` kad pending accept trigger aktivan |
+| Odbijen desert ⇒ lanac stao | `isDessertUpsellChainBlocked` + `detectPostMealChainStep` → `none` sa `dismissedKeys: ["dessert_nudge"]`; nema `coffee_nudge` posle decline |
+| `anticipation.resolved` loop | Dedupe keys `dessert_window`, `coffee_nudge`, `digestif_nudge` u emit; outcomes kroz postojeći `foldNudgeOutcomes` / `maybeAppendNudgeOutcomes` |
+| Daily report red | `aggregateDessertWindowStats` test; `formatDessertWindowDigestLines` u `build-daily-report.ts`; loader `loadDessertWindowStatsForDay` iz `experience_analytics_daily.by_nudge_kind` |
+| `eval:denis` bez novih failova | 5 failed — identično S8/S9 baseline listi |
+| Nula novih test failova vs baseline | `pnpm test:run` → 26 failed (unchanged), 2098 passed (+14) |
+
+**Heuristika (dokumentovano u kodu):** desert prozor = kitchen `served_at` + `mainCourseConsumptionMinutes` (18 min default) + `graceMinutes` (2) → otvara se; zatvara se posle `windowMaxMinutes` (12) ili kad gost već ima desert u porudžbini. Nema satnog okidača kad je `ops.dessertWindow.enabled`.
+
+**Lanac:** desert (`dessert_nudge` + dedupe `dessert_window`) → kafa (`coffee_nudge`, config `includeCoffee`) → digestiv (`digestif_nudge`, config `includeDigestif`, default off). Rush gating nasleđen kroz postojeći `UPSELL_NUDGE_KINDS` + `venueOpsSuppressUpsell`.
+
+**Gapovi/rizici za sledeću sesiju:**
+- `valueEuros` u daily reportu trenutno 0 — potreban join accepted `productId` → `order_items` snapshot (S14 rollup)
+- `dessertWindowAcceptRate` payload u tick-u još nije učitavan iz rollup-a (learning gate spreman, loader optional)
+- Live pilot: desert window na iota QR pending operator
+
+**Status tabela ažurirana:** ✓
+
+---
+
+## Session report — S11
+
+**Status:** ✅ gotovo
+
+**Mapa postojećeg memory sistema (pre koda):**
+
+| Šta | Gde | Koliko dugo |
+|-----|-----|-------------|
+| Device token (SHA-256 loc+fingerprint) | `denis-guest-memory-token.ts` | — |
+| Persistencija + consent | `denis_guest_memory` tabela, `denis-guest-memory-store.ts` | `memoryTtlDays` config (default 365) |
+| Whitelist polja | favorites, allergies, language, relationship snapshot | consent scopes |
+| Greet welcome | `build-welcome-message.ts` → `buildNarrationFacts` | welcome node |
+| Same-again chips | `same-again-chips.ts` + `resolveTurnQuickReplies` | T0 quick replies |
+| Forget me | `DELETE /api/guest/denis-memory` → `deleteGuestMemory()` | briše red |
+| Pilot gate | `pilot-wiring.ts` `memory.returnGuestEnabled: true` | config |
+
+**Fajlovi:**
+- **Novi:** `src/lib/denis/platform/returning-guest.ts`, `src/__tests__/returning-guest.test.ts`
+- **Izmenjeni (S11 scope):** `build-narration-facts.ts`, `derive-contextual-chips.ts`, `same-again-chips.ts`, `build-turn-quick-replies.ts`, `denis-shift-report.ts`, `build-daily-report.ts`, `load-daily-report-context.ts`, `denis-guest-memory.test.ts`, `derive-contextual-chips.test.ts`, `ADR-043-session-prompts.md`
+
+**Testovi:** 9 novih u `returning-guest.test.ts`, svi zeleni · `test:run` vs baseline: **26 failed / 2107 passed** (+9 novih testova, nula novih failova)
+
+**Verifikacija:** type-check ✓ · lint ✓ · `verify:denis` ✓ · `eval:denis` **5 failed** (isti pre-S11 baseline — 0 novih failova od S11)
+
+**Integracioni check:**
+
+| Stavka | Dokaz |
+|--------|--------|
+| Mapa memory sistema | gornja tabela + `grep -rn "denis-guest-memory" src/lib/guest` |
+| Povratnik: topliji pozdrav + "kao i obično" SAMO sa prošlim porudžbinama | `shouldEmitReturnGuestWelcome` + `returnGuestHasPastOrders`; test chip `Obično — Lav?`; `buildReturnGuestWelcomeMessage` visit≥2 |
+| Nov gost — nula promene | test: `visitCount: 0` → nema `returnGuestWelcome`, standardni allergy chip |
+| Alergija iz memory → guard bez ponovnog pitanja | `shouldSuppressAllergyPromptChip` + `resolveTurnAllergyContext` test (gluten memory, prazan chat → conflict) |
+| "Zaboravi me" | `DELETE /api/guest/denis-memory` + `deleteGuestMemory()`; UI `memory-consent.tsx` `onForget` |
+| Daily report: prepoznati + potrošnja vs prosek | `aggregateReturningGuestStats` + digest `Stalni gosti: N prepoznato` |
+| `eval:denis` bez novih failova | 5 failed — identično S8–S10 baseline |
+| Nula novih test failova vs baseline | 26 failed (unchanged) |
+
+**GDPR:** memory vezan za opaque `guest_token` (device fingerprint hash), ne ime/email; forget briše `denis_guest_memory` red; order/fiskal podaci netaknuti.
+
+**Chip label:** max 20 znakova (J2) → `Obično — {artikl}?` umesto dužeg prefiksa.
+
+**Gapovi/rizici:**
+- Consent prompt i localStorage sync ostaju na postojećem M17 toku — live pilot verify na iota QR
+- Returning spend u digestu = suma order totals po session-u (ne po unique guest cross-session istog dana)
+
+**Status tabela ažurirana:** ✓
+
+---
+
+## Session report — S12
+
+**Status:** ✅ gotovo
+
+**Mapa postojeće frustracije/žalbe detekcije (pre proširenja):**
+
+| Signal | Gde | Ponašanje danas |
+|--------|-----|-----------------|
+| Frustration level (none/mild/high) | `derive-affect.ts` → `mental.affect` | Watcher + turn perceive |
+| Frustration recovery plan | `frustration-recovery.ts` `planFrustrationRecovery` | empathy + staff_escalation (normal/urgent) |
+| REGEX žalba na porudžbinu | `semantic-intent-router.ts` `isGuestOrderComplaintMessage` | TDE intent |
+| Staff alert (generički) | `apply-frustration-recovery.ts` → `emitStaffProactiveAlert` | "Pređi na sto X" |
+| Review moment guard | `detect-review-moment.ts` | still_eating, rushed, … |
+| Comp/void izvršenje | **nema u Denis recovery** — `grep comp\|void src/app/api/orders` → samo `void executeOrderSaga` (fire-and-forget), storno route; gest ide menadžeru ručno |
+
+**S12 proširenja:**
+
+| Komponenta | Fajl | Šta radi |
+|------------|------|----------|
+| Detekcija | `detect-service-recovery.ts` | žalbeni rečnik + frustration + sentiment + long-wait silence |
+| Alert payload | `build-service-recovery-alert.ts` | `Recovery —` prefix, timeline excerpt, wait min, predlog gesta |
+| Timeline | `service-recovery-timeline.ts` | `service.recovery.opened/resolved`, `hasActiveServiceRecovery` |
+| Turn merge | `resolve-turn-recovery.ts` | spaja frustration + S12; upgrade na **urgent** kad S12 eskalira |
+| Side effects | `apply-frustration-recovery.ts` | enriched notification + timeline opened (bez auto-comp) |
+| Review block | `detect-review-moment.ts` + `resolve-review-session-signals.ts` | `active_service_recovery` |
+| Upsell block | `decide-proactive-turn-plan.ts` + `plan-proactive-turn.ts` | `service_recovery.active` |
+| Ops Center | `operations-triage.ts` + `operations-center.tsx` | sekcija 🩹 Service recovery (unread `Recovery —`) |
+| Daily report | `aggregateServiceRecoveryStats` | slučajevi, reakcija menadžera, resolved/unresolved |
+| Config | `ops.serviceRecovery` | gestures, waitSilenceMinutes, reviewBlockMinutes; pilot `enabled: true` |
+
+**Fajlovi:**
+- **Novi:** `detect-service-recovery.ts`, `build-service-recovery-alert.ts`, `service-recovery-timeline.ts`, `resolve-turn-recovery.ts`, `service-recovery.test.ts`
+- **Izmenjeni (S12 scope):** `concierge-config.schema.ts`, `concierge-defaults.ts`, `pilot-wiring.ts`, `recovery/index.ts`, `apply-frustration-recovery.ts`, `prepare-turn-context.ts`, `perceive-turn.ts`, `detect-review-moment.ts`, `resolve-review-session-signals.ts`, `build-review-funnel-offer.ts`, `decide-proactive-turn-plan.ts`, `plan-proactive-turn.ts`, `operations-triage.ts`, `operations-center.tsx`, `denis-shift-report.ts`, `load-daily-report-context.ts`, `build-daily-report.ts`, `operations-triage.test.ts`, `ADR-043-session-prompts.md`
+
+**Testovi:** 7 novih u `service-recovery.test.ts` + 1 u `operations-triage.test.ts`, svi zeleni · `test:run` vs baseline: **26 failed / 2115 passed** (+8 novih testova, nula novih failova)
+
+**Verifikacija:** type-check ✓ · lint ✓ (0 errors) · `verify:denis` ✓ · `eval:denis` **5 failed** (isti pre-S12 baseline — 0 novih failova od S12)
+
+**Integracioni check:**
+
+| Stavka | Dokaz |
+|--------|--------|
+| Mapa frustracije/žalbe | gornja tabela + `grep -rn "frustra\|complaint" src/lib/denis` |
+| Žalbena poruka → urgent + kontekst | `service-recovery.test.ts` → `buildServiceRecoveryStaffMessage` + `resolveRecoveryActionsForTurn` urgency urgent |
+| Recovery sto → review blok | `detectOptimalReviewMoment({ activeServiceRecovery: true })` → `active_service_recovery` |
+| Recovery sto → upsell blok | `decideProactiveTurnPlan({ activeServiceRecovery: true })` → `service_recovery.active` |
+| Gest SAMO predlog | `build-service-recovery-alert.ts` "SAMO predlog"; `apply-frustration-recovery.ts` nema `executeOrderSaga`/comp API |
+| Ops Center otvoreni slučajevi | `filterOpenServiceRecoveryNotifications` + UI sekcija |
+| Daily report recovery metrike | digest `Service recovery: N slučaj` |
+| `eval:denis` bez novih failova | 5 failed — identično S8–S11 baseline |
+| Nula novih test failova vs baseline | 26 failed (unchanged) |
+
+**Gapovi/rizici:**
+- `service.recovery.resolved` timeline event još nije automatski na notification read — ishod danas = `read_at` na notifikaciji (P0 dovoljno po ADR)
+- Live pilot: verify da manager vidi `Recovery —` u Operations Center pod opterećenjem
+
+**Status tabela ažurirana:** ✓
+

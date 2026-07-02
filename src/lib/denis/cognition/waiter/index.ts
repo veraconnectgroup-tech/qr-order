@@ -25,3 +25,18 @@ export {
   type WaiterNextAction,
   type WaiterObligation,
 } from "@/lib/denis/cognition/waiter/waiter-obligation-types";
+export {
+  BUS_TABLE_ESCALATION_PREFIX,
+  BUS_TABLE_GAP_KIND,
+  busTableWaiterPrompt,
+  completeBusTableObligation,
+  createBusTableObligation,
+  escalateOverdueBusTableObligations,
+  isBusTableEscalationMessage,
+  listOpenBusObligationsForLocation,
+  loadOpenBusObligationForTable,
+  maybeCreateBusTableObligationOnPaymentSettled,
+  minutesSincePaid,
+  turnaroundMinutesBetween,
+  type TableBusObligationRow,
+} from "@/lib/denis/cognition/waiter/bus-table-obligation";

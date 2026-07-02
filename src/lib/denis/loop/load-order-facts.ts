@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OrderFact } from "@/lib/denis/loop/types";
+import {
+  fetchOrderStationStates,
+  groupStationStatesByOrderId,
+} from "@/lib/orders/fetch-order-station-states";
 import { parseOrderFactRows } from "@/lib/supabase/parse-order-rows";
 
 function lineTotalCents(total: number | string): number {
@@ -24,7 +28,7 @@ export async function loadOrderFactsForSession(
       estimated_prep_minutes,
       created_at,
       order_source,
-      order_items (id, product_id, product_name, quantity, total)
+      order_items (id, product_id, product_name, quantity, total, menu_section)
     `
     )
     .eq("session_id", tableSessionId)
@@ -35,7 +39,12 @@ export async function loadOrderFactsForSession(
     throw new Error(error.message);
   }
 
-  return parseOrderFactRows(orders).map((order) => ({
+  const rows = parseOrderFactRows(orders);
+  const orderIds = rows.map((order) => order.id);
+  const stationRows = await fetchOrderStationStates(admin, orderIds);
+  const stationsByOrder = groupStationStatesByOrderId(stationRows);
+
+  return rows.map((order) => ({
     id: order.id,
     orderNumber: order.order_number,
     status: order.status,
@@ -43,12 +52,20 @@ export async function loadOrderFactsForSession(
     estimatedPrepMinutes: order.estimated_prep_minutes,
     createdAt: order.created_at,
     orderSource: order.order_source ?? null,
+    stationStates: (stationsByOrder.get(order.id) ?? []).map((row) => ({
+      station: row.station,
+      status: row.status,
+      readyAt: row.ready_at,
+      pickedUpAt: row.picked_up_at,
+      servedAt: row.served_at,
+    })),
     items: (order.order_items ?? []).map((item) => ({
       orderItemId: item.id,
       productId: item.product_id,
       productName: item.product_name,
       quantity: item.quantity,
       lineTotalCents: lineTotalCents(item.total),
+      menuSection: item.menu_section ?? null,
     })),
   }));
 }

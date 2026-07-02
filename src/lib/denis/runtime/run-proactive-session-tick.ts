@@ -1,4 +1,9 @@
 import { loadGuestOrdersForAi } from "@/lib/ai/order-context";
+import {
+  detectTableTempoPhase,
+  findDrinksTempoNudgeEmittedAt,
+} from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import { hasActiveDrinkOrder } from "@/lib/denis/cognition/proactive/triggers";
 import { loadProactiveMenuHints } from "@/lib/denis/cognition/proactive/load-proactive-menu-hints";
 import { loadAdminUpsellMatches } from "@/lib/upsell/load-admin-matches";
 import { buildSessionWatcherContext } from "@/lib/denis/cognition/proactive/session-watcher-context";
@@ -195,6 +200,15 @@ export async function runProactiveSessionTick(
       : {};
 
   const cartTotalEuros = cartLines.reduce((sum, line) => sum + line.lineTotal, 0);
+  const tableTempoPhase = config.ops.tableTempo.enabled
+    ? detectTableTempoPhase({
+        sessionOpenedAt: session.opened_at,
+        orders: fold.state.commerce.orders,
+        guestMessageCount: watcherContext.guestMessageCount,
+        idleMinutes: watcherContext.idleMinutes,
+        config: config.ops.tableTempo,
+      })
+    : "none";
   const adminUpsellMatches =
     cartProductIds.length > 0
       ? await loadAdminUpsellMatches(admin, {
@@ -256,6 +270,7 @@ export async function runProactiveSessionTick(
       followUpRequestedAt: watcherContext.followUpRequestedAt,
       followUpDelaySeconds: watcherContext.followUpDelaySeconds,
       adminUpsellMatches,
+      tableTempoPhase,
     },
   });
 }

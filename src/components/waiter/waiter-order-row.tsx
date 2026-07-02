@@ -5,14 +5,25 @@ import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { formatOrderNumber, formatPrice } from "@/lib/format";
-import { patchOrderStatus } from "@/lib/orders/patch-order-status";
+import {
+  patchOrderStatus,
+  patchStationStatusClient,
+} from "@/lib/orders/patch-order-status";
+import type { OrderStationState } from "@/lib/orders/fetch-order-station-states";
+import {
+  waiterNeedsLegacyDeliver,
+  waiterStationActions,
+} from "@/lib/orders/station-display";
+import type { StationKind } from "@/lib/orders/station-states";
 import { cn } from "@/lib/utils";
 import { hapticClick, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
 import type { WaiterDetailOrderRow } from "@/lib/dashboard/waiter-table-data";
 
-export type WaiterDetailOrder = WaiterDetailOrderRow;
+export type WaiterDetailOrder = WaiterDetailOrderRow & {
+  station_states?: OrderStationState[];
+};
 
 const SWIPE_ACTION_WIDTH = 112;
 const SWIPE_THRESHOLD = 72;
@@ -46,6 +57,12 @@ type Props = {
   canUpdateStatus: boolean;
   onUpdated: () => void;
   onOptimisticStatus?: (orderId: string, status: string) => void;
+  onOptimisticStationStatus?: (
+    orderId: string,
+    station: StationKind,
+    status: string,
+    globalStatus?: string
+  ) => void;
 };
 
 export function WaiterOrderRow({
@@ -54,6 +71,7 @@ export function WaiterOrderRow({
   canUpdateStatus,
   onUpdated,
   onOptimisticStatus,
+  onOptimisticStationStatus,
 }: Props) {
   const { t, menuLocale } = useWaiterI18n();
   const [expanded, setExpanded] = useState(false);
@@ -61,6 +79,15 @@ export function WaiterOrderRow({
   const [dragX, setDragX] = useState(0);
   const touchStartRef = { x: 0, y: 0 };
   const draggingRef = { horizontal: false };
+
+  const stationActions = waiterStationActions(
+    order.order_items,
+    order.station_states
+  );
+  const legacyDeliver = waiterNeedsLegacyDeliver(
+    order.status,
+    order.station_states
+  );
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -79,24 +106,55 @@ export function WaiterOrderRow({
     }
   };
 
-  const canDeliver = order.status === "ready";
-  const canMarkReady =
-    order.status === "preparing" || order.status === "accepted";
+  const canSwipeDeliver =
+    legacyDeliver ||
+    stationActions.some((action) => action.toStatus === "served");
 
-  async function applyStatus(status: "ready" | "delivered") {
+  async function applyStationAction(
+    station: StationKind,
+    toStatus: "picked_up" | "served"
+  ) {
     if (busy) return;
     setBusy(true);
     hapticClick();
-    onOptimisticStatus?.(order.id, status);
+    onOptimisticStationStatus?.(order.id, station, toStatus);
     setDragX(0);
 
     try {
-      await patchOrderStatus(order.id, status);
+      const result = await patchStationStatusClient(order.id, station, toStatus);
+      onOptimisticStationStatus?.(
+        order.id,
+        station,
+        result.stationStatus,
+        result.globalStatus
+      );
       hapticSuccess();
       toast.success(
-        status === "delivered" ? t("order.delivered") : t("order.ready"),
+        toStatus === "served" ? t("order.delivered") : t("action.pickedUp"),
         { duration: 3000 }
       );
+      onUpdated();
+    } catch (error) {
+      onUpdated();
+      toast.error(
+        error instanceof Error ? error.message : t("order.updateFailed")
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyLegacyDeliver() {
+    if (busy) return;
+    setBusy(true);
+    hapticClick();
+    onOptimisticStatus?.(order.id, "delivered");
+    setDragX(0);
+
+    try {
+      await patchOrderStatus(order.id, "delivered");
+      hapticSuccess();
+      toast.success(t("order.delivered"), { duration: 3000 });
       onUpdated();
     } catch (error) {
       onUpdated();
@@ -116,9 +174,9 @@ export function WaiterOrderRow({
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-dash-border-subtle bg-dash-surface touch-manipulation">
-      {canDeliver && canUpdateStatus && (
+      {canSwipeDeliver && canUpdateStatus && (
         <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-center bg-dash-accent text-sm font-semibold text-white">
-          {t("action.deliver")}
+          {t("action.served")}
         </div>
       )}
       <div className="absolute inset-y-0 left-0 flex w-28 items-center justify-center bg-dash-surface-raised text-sm font-semibold text-dash-text-muted">
@@ -144,7 +202,7 @@ export function WaiterOrderRow({
           }
           if (!draggingRef.horizontal) return;
 
-          if (deltaX < 0 && canDeliver && canUpdateStatus) {
+          if (deltaX < 0 && canSwipeDeliver && canUpdateStatus) {
             setDragX(Math.max(-SWIPE_ACTION_WIDTH, deltaX));
             return;
           }
@@ -153,8 +211,15 @@ export function WaiterOrderRow({
           }
         }}
         onTouchEnd={async () => {
-          if (dragX <= -SWIPE_THRESHOLD && canDeliver && canUpdateStatus) {
-            await applyStatus("delivered");
+          if (dragX <= -SWIPE_THRESHOLD && canSwipeDeliver && canUpdateStatus) {
+            const serveAction = stationActions.find(
+              (action) => action.toStatus === "served"
+            );
+            if (serveAction) {
+              await applyStationAction(serveAction.station, "served");
+            } else if (legacyDeliver) {
+              await applyLegacyDeliver();
+            }
             return;
           }
           if (dragX >= SWIPE_THRESHOLD) {
@@ -238,24 +303,29 @@ export function WaiterOrderRow({
           </ul>
         )}
 
-        {canUpdateStatus && (canMarkReady || canDeliver) && (
-          <div className="flex gap-2 border-t border-dash-border-subtle px-4 py-3">
-            {canMarkReady && (
+        {canUpdateStatus &&
+          (stationActions.length > 0 || legacyDeliver) && (
+          <div className="flex flex-col gap-2 border-t border-dash-border-subtle px-4 py-3">
+            {stationActions.map((action) => (
               <button
+                key={`${action.station}-${action.toStatus}`}
                 type="button"
                 disabled={busy}
-                onClick={() => void applyStatus("ready")}
-                className="min-h-12 flex-1 rounded-lg bg-orange-500 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
+                onClick={() =>
+                  void applyStationAction(action.station, action.toStatus)
+                }
+                className="min-h-12 w-full rounded-lg bg-dash-accent text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
               >
-                {t("action.markReady")}
+                {action.station === "bar" ? "Bar · " : "Kitchen · "}
+                {t(action.labelKey)}
               </button>
-            )}
-            {canDeliver && (
+            ))}
+            {legacyDeliver && (
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void applyStatus("delivered")}
-                className="min-h-12 flex-1 rounded-lg bg-dash-accent text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
+                onClick={() => void applyLegacyDeliver()}
+                className="min-h-12 w-full rounded-lg bg-dash-accent text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
               >
                 {t("action.deliver")}
               </button>

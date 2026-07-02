@@ -25,10 +25,8 @@ import {
   buildPendingSlotActPerceiveResult,
   runTdePerceive,
 } from "@/lib/denis/runtime/phases/run-tde-perceive";
-import {
-  resolveFrustrationRecoveryForTurn,
-  voiceDisabledResponse,
-} from "@/lib/denis/runtime/phases/prepare-turn-context";
+import { resolveRecoveryActionsForTurn } from "@/lib/denis/runtime/resolve-turn-recovery";
+import { voiceDisabledResponse } from "@/lib/denis/runtime/phases/prepare-turn-context";
 import type {
   PerceiveChatPayload,
   PerceiveTurnResult,
@@ -158,10 +156,12 @@ export async function perceiveTurn(input: {
     pendingDraftPromise,
   ]);
 
-  const frustrationRecovery = resolveFrustrationRecoveryForTurn({
-    ctx,
-    language: input.parsed.language,
-  });
+  const { actions: frustrationRecovery, serviceRecovery } =
+    resolveRecoveryActionsForTurn({
+      ctx,
+      language: input.parsed.language,
+      guestMessage: input.parsed.message,
+    });
 
   if (
     frustrationRecovery.length > 0 &&
@@ -169,6 +169,7 @@ export async function perceiveTurn(input: {
     input.parsed.tableId
   ) {
     const tableName = ctx.tableSessionState?.table?.name ?? "Sto";
+    const orders = ctx.tableSessionState?.commerce.orders ?? [];
     void applyFrustrationRecoveryEscalation(input.admin, {
       actions: frustrationRecovery,
       config: ctx.config,
@@ -178,6 +179,13 @@ export async function perceiveTurn(input: {
       aiSessionId,
       sessionToken: input.parsed.sessionToken ?? null,
       traceId: input.traceId,
+      language: input.parsed.language,
+      serviceRecovery,
+      timeline: ctx.tableSessionState?.timeline,
+      openOrders: orders.map((order) => ({
+        orderNumber: order.orderNumber,
+        status: order.status,
+      })),
     }).catch(() => undefined);
   }
 

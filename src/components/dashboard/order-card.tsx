@@ -9,6 +9,7 @@ import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import { AskStationButton } from "@/components/dashboard/ask-station-button";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
 import { OrderDetailPanel } from "@/components/dashboard/order-detail-panel";
+import { OrderTimelinePanel } from "@/components/dashboard/order-timeline-panel";
 import { OrderPaymentMethodSelect } from "@/components/dashboard/order-payment-method-select";
 import { KitchenPrintButton } from "@/components/dashboard/kitchen-print-button";
 import { ReceiptPrintButton } from "@/components/dashboard/receipt-print-button";
@@ -499,6 +500,7 @@ export function OrderCard({
           inPersonPaymentLocation={inPersonPaymentLocation}
           onPaymentMethodChange={onPaymentMethodChange}
         />
+        <OrderTimelinePanel orderId={order.id} />
       </div>
 
       {orgName && (

@@ -9,11 +9,13 @@ import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import {
   buildStationQuestionMessage,
   evaluateStationQuestionTriggers,
+  shouldSkipStationQuestionCandidate,
   type StationQuestionCandidate,
   type StationQuestionStation,
   type StationQuestionType,
-  type StationTriggerOrder,
 } from "@/lib/denis/stations/question-triggers";
+import { orderFactToTriggerOrder } from "@/lib/denis/stations/order-fact-station";
+import type { OrderFact } from "@/lib/denis/loop/types";
 import { isKitchenMenuSection } from "@/lib/kitchen/menu-section";
 import { logger } from "@/lib/logger";
 import { notifyGuestSessionPush } from "@/lib/push/notify-guest-session";
@@ -387,31 +389,10 @@ export function stationCheckingGuestMessage(input: {
   );
 }
 
-type WatcherOrder = {
-  id: string;
-  status: string;
-  created_at: string;
-  preparing_at?: string | null;
-  ready_at?: string | null;
-  order_number?: number | null;
-  order_items: Array<{ menu_section: string | null }>;
-};
+type WatcherOrder = OrderFact;
 
-function toTriggerOrder(order: WatcherOrder): StationTriggerOrder {
-  return {
-    id: order.id,
-    orderNumber: order.order_number ?? null,
-    status: order.status,
-    createdAt: order.created_at,
-    preparingAt: order.preparing_at ?? null,
-    readyAt: order.ready_at ?? null,
-    hasKitchenItems: order.order_items.some((item) =>
-      isKitchenMenuSection(item.menu_section)
-    ),
-    hasDrinkItems: order.order_items.some(
-      (item) => item.menu_section === "drinks"
-    ),
-  };
+function toTriggerOrder(order: WatcherOrder) {
+  return orderFactToTriggerOrder(order);
 }
 
 /** Watcher tick — evaluate T2/T4/T5/T6 triggers for one session's orders. */
@@ -428,13 +409,22 @@ export async function runStationQuestionTriggersForSession(
   const settings = input.config.ops.stationQuestions;
   if (!settings.enabled) return 0;
 
+  const triggerOrders = input.orders.map(toTriggerOrder);
   const candidates = evaluateStationQuestionTriggers({
-    orders: input.orders.map(toTriggerOrder),
+    orders: triggerOrders,
     config: settings,
   });
 
   let created = 0;
   for (const candidate of candidates) {
+    const order = triggerOrders.find((row) => row.id === candidate.orderId);
+    if (
+      order &&
+      shouldSkipStationQuestionCandidate(candidate, order)
+    ) {
+      continue;
+    }
+
     const result = await createStationQuestion(admin, {
       locationId: input.locationId,
       orderId: candidate.orderId,

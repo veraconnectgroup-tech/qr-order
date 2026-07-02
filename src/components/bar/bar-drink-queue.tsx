@@ -6,6 +6,7 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useBarOrders } from "@/hooks/use-bar-orders";
 import { BarOrderRow } from "@/components/bar/bar-order-row";
 import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { EightySixPanel } from "@/components/stations/eighty-six-panel";
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export function BarDrinkQueue() {
     error,
     refetch,
     optimisticUpdateStatus,
+    optimisticUpdateStationStatus,
   } = useBarOrders(locationId);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
@@ -49,6 +51,8 @@ export function BarDrinkQueue() {
       <SoundEnableBanner />
 
       <DenisQuestionStrip locationId={locationId} station="bar" />
+
+      <EightySixPanel locationId={locationId} station="bar" />
 
       <div className="flex items-center justify-between gap-2">
         <div>
@@ -131,6 +135,7 @@ export function BarDrinkQueue() {
               }
               onUpdated={() => void refetch()}
               onOptimisticStatus={optimisticUpdateStatus}
+              onOptimisticStationStatus={optimisticUpdateStationStatus}
             />
           ))}
         </div>

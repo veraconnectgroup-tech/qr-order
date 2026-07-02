@@ -91,6 +91,8 @@ export async function runDenisWorldSignal(
     orderNumber: payload.orderNumber,
     menuLocale: sessionLocale.menuLocale,
     isEnglish: sessionLocale.isEnglish,
+    stationTell: payload.stationTell,
+    productTell: payload.productTell,
   });
 
   if (!tell) return;

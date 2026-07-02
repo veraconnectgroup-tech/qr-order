@@ -9,6 +9,7 @@ import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-ty
 import type { FlowNodeId } from "@/lib/denis/platform/flow-types";
 import { productUnavailableMessage } from "@/lib/denis/runtime/act/guest-copy";
 import { buildReturnGuestWelcomeMessage } from "@/lib/guest/denis-guest-memory-messages";
+import { shouldEmitReturnGuestWelcome } from "@/lib/denis/platform/returning-guest";
 import {
   formatPresetMenuDecline,
   presetMenuBlockedProductNames,
@@ -146,21 +147,25 @@ export function buildNarrationFacts(
   }
 
   if (
-    input.guestMemory &&
-    input.guestMemory.hasMemoryConsent !== false &&
-    input.flowNodeId === "welcome" &&
-    topGoal === "GUEST_SEATED"
+    shouldEmitReturnGuestWelcome({
+      config: input.config,
+      memory: input.guestMemory,
+      flowNodeId: input.flowNodeId,
+      topGoal,
+    }) &&
+    input.guestMemory
   ) {
+    const memory = input.guestMemory;
     const welcome = buildReturnGuestWelcomeMessage({
       language: input.language,
-      lastVisitItems: input.guestMemory.lastVisitItemNames,
-      visitCount: input.guestMemory.visitCount,
-      lastFeedbackSentiment: input.guestMemory.lastFeedbackSentiment,
-      memory: input.guestMemory,
+      lastVisitItems: memory.lastVisitItemNames,
+      visitCount: memory.visitCount,
+      lastFeedbackSentiment: memory.lastFeedbackSentiment,
+      memory,
     });
     if (welcome) {
       committed.returnGuestWelcome = welcome;
-      allowedMentions.push(...input.guestMemory.lastVisitItemNames);
+      allowedMentions.push(...memory.lastVisitItemNames);
     }
   }
 

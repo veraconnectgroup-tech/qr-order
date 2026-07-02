@@ -55,7 +55,7 @@ describe("deriveContextualChips J2", () => {
       true
     );
     expect(chips.find((chip) => chip.id === CONTEXTUAL_CHIP_IDS.sameAgain)?.label).toBe(
-      "Ponovo isto"
+      "Obično — Burger?"
     );
     expect(chips.length).toBeLessThanOrEqual(4);
     chips.forEach((chip) => expect(chip.label.length).toBeLessThanOrEqual(20));

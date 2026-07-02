@@ -16,6 +16,7 @@ import {
 } from "@/lib/denis/cognition/proactive/pick-proactive-candidate";
 import { derivePartyIntelligence } from "@/lib/denis/venue/party/derive-party-intelligence";
 import { detectWaiterObligationTell } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
+import { hasActiveServiceRecovery } from "@/lib/denis/cognition/recovery/service-recovery-timeline";
 import { computeSessionCheckEuros } from "@/lib/denis/config/revenue-intelligence";
 import {
   buildSessionExperienceScore,
@@ -158,6 +159,10 @@ export function planProactiveTurn(input: {
 
   const sessionCheckEuros = computeSessionCheckEuros(input.orders);
   const revenueStrategy = input.payload.revenueStrategy ?? null;
+  const activeServiceRecovery = hasActiveServiceRecovery({
+    timeline: input.state.timeline,
+    blockMinutes: input.config.ops.serviceRecovery.reviewBlockMinutes,
+  });
 
   const obligationTell = detectWaiterObligationTell(input.state, language);
   if (obligationTell) {
@@ -170,6 +175,7 @@ export function planProactiveTurn(input: {
       revenueStrategy,
       sessionCheckEuros,
       mental: input.state.mental,
+      activeServiceRecovery,
     });
 
     if (decided.ok && obligationTell.message.trim()) {
@@ -211,6 +217,7 @@ export function planProactiveTurn(input: {
   const pick = pickProactiveCandidate({
     config: input.config,
     orders: input.orders,
+    orderFacts: input.state.commerce.orders,
     browse: input.state.browse,
     mental: input.state.mental,
     offer: input.state.offer,
@@ -328,6 +335,7 @@ export function planProactiveTurn(input: {
     revenueStrategy,
     sessionCheckEuros,
     mental: input.state.mental,
+    activeServiceRecovery,
   });
 
   if (!decided.ok) {

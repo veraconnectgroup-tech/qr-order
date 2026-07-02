@@ -1,9 +1,6 @@
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import { mergeTableSessionObligation } from "@/lib/denis/cognition/waiter";
-import {
-  deriveOrderLifecycleBeliefs,
-  planFrustrationRecovery,
-} from "@/lib/denis/cognition/recovery";
+import { resolveRecoveryActionsForTurn } from "@/lib/denis/runtime/resolve-turn-recovery";
 import {
   applyDegradationTransition,
   applyHealthStateTransition,
@@ -41,31 +38,13 @@ export type PrepareTurnContextResult =
 export function resolveFrustrationRecoveryForTurn(input: {
   ctx: DenisTurnContext;
   language: string;
+  guestMessage?: string;
 }) {
-  const mental = input.ctx.tableSessionState?.mental;
-  if (!mental) return [];
-
-  const orders = input.ctx.tableSessionState?.commerce.orders ?? [];
-  const hasOpenKitchenOrders = orders.some(
-    (order) =>
-      order.status !== "delivered" &&
-      order.status !== "cancelled" &&
-      ["pending", "confirmed", "preparing", "ready"].includes(order.status)
-  );
-
-  const staffCount = input.ctx.venueOps?.staffOnFloor;
-  const staffOnFloor = staffCount == null ? true : staffCount > 0;
-
-  return planFrustrationRecovery({
-    affect: mental.affect,
-    orderLifecycle: deriveOrderLifecycleBeliefs({
-      sessionPhase: input.ctx.foldMeta?.phase ?? null,
-      hasOpenKitchenOrders,
-      hasAnyOrders: orders.length > 0,
-    }),
-    staffOnFloor,
+  return resolveRecoveryActionsForTurn({
+    ctx: input.ctx,
     language: input.language,
-  });
+    guestMessage: input.guestMessage ?? "",
+  }).actions;
 }
 
 export function voiceDisabledResponse(): Response {

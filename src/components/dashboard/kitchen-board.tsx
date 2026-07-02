@@ -11,7 +11,12 @@ import {
 } from "@/lib/denis/commerce/delivery-mode";
 import { getKitchenOrderItems } from "@/lib/kitchen/menu-section";
 import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
-import { patchOrderStatus } from "@/lib/orders/patch-order-status";
+import {
+  executeKitchenAdvanceAction,
+  patchOrderStatus,
+} from "@/lib/orders/patch-order-status";
+import { getStationState } from "@/lib/orders/station-display";
+import type { KitchenOrder } from "@/hooks/use-kitchen-orders";
 import { useKitchenOrders } from "@/hooks/use-kitchen-orders";
 import {
   coursePacingHoldMinutesRemaining,
@@ -25,6 +30,7 @@ import { isProvisionalKdsOrder } from "@/lib/pos/provisional-display";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { EightySixPanel } from "@/components/stations/eighty-six-panel";
 import { KitchenHeader } from "@/components/dashboard/kitchen-header";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
 import { OrderItemProductLine } from "@/components/dashboard/order-item-product-line";
@@ -40,11 +46,32 @@ function formatKitchenTimer(seconds: number) {
 }
 
 async function patchKitchenOrderStatus(
-  orderId: string,
+  order: KitchenOrder,
   status: "preparing" | "ready" | "rejected",
   rejectionReason?: string
 ) {
-  await patchOrderStatus(orderId, status, rejectionReason);
+  if (status === "rejected") {
+    await patchOrderStatus(order.id, status, rejectionReason);
+    return;
+  }
+
+  const kitchenState = getStationState(order.station_states, "kitchen");
+  if (status === "preparing") {
+    await executeKitchenAdvanceAction(
+      order.id,
+      kitchenState
+        ? { kind: "station", station: "kitchen", status: "in_prep" }
+        : { kind: "global", status: "preparing" }
+    );
+    return;
+  }
+
+  await executeKitchenAdvanceAction(
+    order.id,
+    kitchenState
+      ? { kind: "station", station: "kitchen", status: "ready" }
+      : { kind: "global", status: "ready" }
+  );
 }
 
 export function KitchenCard({
@@ -93,7 +120,17 @@ export function KitchenCard({
   const courseHoldMinutes = courseHeld
     ? coursePacingHoldMinutesRemaining(order as OrderWithDetails, sessionOrders)
     : null;
-  const isAccepted = !isProvisional && order.status === "accepted";
+  const kitchenState = !isProvisional
+    ? getStationState((order as KitchenOrder).station_states, "kitchen")
+    : undefined;
+  const showStartPreparing = !isProvisional && (
+    kitchenState
+      ? kitchenState.status === "queued"
+      : order.status === "accepted"
+  );
+  const showMarkReady = !isProvisional && (
+    kitchenState ? kitchenState.status === "in_prep" : order.status === "preparing"
+  );
   const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
 
   useEffect(() => {
@@ -228,7 +265,7 @@ export function KitchenCard({
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          {isAccepted ? (
+          {showStartPreparing ? (
             <button
               type="button"
               disabled={busy}
@@ -237,7 +274,8 @@ export function KitchenCard({
             >
               Start Preparing
             </button>
-          ) : (
+          ) : null}
+          {showMarkReady ? (
             <button
               type="button"
               disabled={busy}
@@ -246,7 +284,7 @@ export function KitchenCard({
             >
               Ready
             </button>
-          )}
+          ) : null}
           <button
             type="button"
             disabled={busy}
@@ -341,7 +379,7 @@ export function KitchenBoard() {
       const orderId = order.id;
       setBusyId(orderId);
       try {
-        await patchKitchenOrderStatus(orderId, status, rejectionReason);
+        await patchKitchenOrderStatus(order as KitchenOrder, status, rejectionReason);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Update failed");
         await refetch();
@@ -358,6 +396,9 @@ export function KitchenBoard() {
 
       <div className="empty:hidden px-4 pt-3">
         <DenisQuestionStrip locationId={locationId} station="kitchen" />
+        <div className="mt-3">
+          <EightySixPanel locationId={locationId} station="kitchen" />
+        </div>
       </div>
 
       {provisionalSyncFailedCount > 0 && (

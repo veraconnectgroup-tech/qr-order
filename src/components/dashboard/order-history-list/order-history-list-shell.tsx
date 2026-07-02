@@ -14,6 +14,7 @@ import {
   OrderHistoryStatusBadge,
 } from "@/components/dashboard/order-history-list/order-history-row-parts";
 import { RefundOrderDialog } from "@/components/dashboard/refund-order-dialog";
+import { OrderTimelinePanel } from "@/components/dashboard/order-timeline-panel";
 import { TaxBreakdownLines } from "@/components/shared/tax-breakdown";
 import {
   Select,
@@ -295,6 +296,9 @@ export function OrderHistoryListShell({ state }: { state: OrderHistoryListState 
                         <OrderHistoryRefundCell order={order} currency={currency} />
                       </li>
                     )}
+                    <li className="border-t border-dash-border pt-2">
+                      <OrderTimelinePanel orderId={order.id} />
+                    </li>
                   </ul>
                 )}
               </div>
@@ -423,6 +427,7 @@ export function OrderHistoryListShell({ state }: { state: OrderHistoryListState 
                               className="mt-3 border-t border-dash-border pt-3"
                             />
                           )}
+                          <OrderTimelinePanel orderId={order.id} className="mt-3" />
                         </td>
                       </tr>
                     )}

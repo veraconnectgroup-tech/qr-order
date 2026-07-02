@@ -11,7 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { setProductAvailability } from "@/components/dashboard/order-item-product-line";
+import { patchProductAvailabilityClient } from "@/lib/products/eighty-six-client";
 import { hapticLight } from "@/lib/haptics";
 
 type Props = {
@@ -54,7 +54,7 @@ export function WaiterQuickActions({
     }
     setBusy(true);
     try {
-      await setProductAvailability(productId, false);
+      await patchProductAvailabilityClient(productId, false);
       toast.success(`${productName ?? "Stavka"} — 86`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Greška");

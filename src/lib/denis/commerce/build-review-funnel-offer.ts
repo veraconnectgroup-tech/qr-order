@@ -69,6 +69,8 @@ export function buildReviewFunnelOffer(input: {
     {
       nowMs,
       recoveryCompleted: input.recoveryCompleted,
+      serviceRecoveryReviewBlockMinutes:
+        input.state.config?.ops?.serviceRecovery?.reviewBlockMinutes ?? 120,
     }
   );
 

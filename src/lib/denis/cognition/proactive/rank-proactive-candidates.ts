@@ -53,9 +53,29 @@ import {
   detectCookingPlatingTrigger,
   detectStationBottleneckAvoidanceTrigger,
 } from "@/lib/denis/cognition/proactive/kitchen-mind-triggers";
+import type { OrderFact } from "@/lib/denis/loop/types";
+import {
+  buildTableTempoBrowseMessage,
+  shouldEmitTableTempoGuestNudge,
+  tableTempoDedupeKey,
+} from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import {
+  buildCoffeeAfterDessertMessage,
+  buildDigestifAfterCoffeeMessage,
+  COFFEE_AFTER_DESSERT_DEDUPE_KEY,
+  DESSERT_WINDOW_DEDUPE_KEY,
+  detectDessertWindow,
+  detectPostMealChainStep,
+  DIGESTIF_AFTER_COFFEE_DEDUPE_KEY,
+  hasStationProblemsBlockingUpsell,
+  isCoffeeUpsellChainBlocked,
+  isDessertUpsellChainBlocked,
+  shouldSkipDessertForAcceptRate,
+} from "@/lib/denis/cognition/tempo/detect-dessert-window";
 import {
   detectPartyDrinkGapTrigger,
   detectSommelierFoodPairingTrigger,
+  detectSommelierStationTempoRefill,
   detectSommelierRefillTrigger,
 } from "@/lib/denis/cognition/proactive/drink-sommelier-triggers";
 import { formatPartyDrinkGapMessage } from "@/lib/denis/intelligence/drink-sommelier";
@@ -100,8 +120,12 @@ export type RankedProactiveCandidate = {
 };
 
 export type RankProactiveCandidatesInput = {
-  config: Pick<ConciergeConfig, "proactive" | "upsell" | "mentalModel" | "handoff">;
+  config: Pick<
+    ConciergeConfig,
+    "proactive" | "upsell" | "mentalModel" | "handoff" | "ops"
+  >;
   orders: AiGuestOrder[];
+  orderFacts?: OrderFact[];
   payload: ProactiveTickPayload;
   browse?: GuestBrowseProfile | null;
   mental?: GuestMentalModel | null;
@@ -182,6 +206,7 @@ const LEGACY_KIND_PRIORITY: Record<GuestProactiveNudgeKind, number> = {
   order_ready: 1080,
   guest_welcome: 1000,
   browse_follow_up: 900,
+  table_tempo_browse: 910,
   kitchen_busy_preorder: 940,
   kitchen_busy: 920,
   station_bottleneck_avoid: 830,
@@ -209,6 +234,8 @@ const LEGACY_KIND_PRIORITY: Record<GuestProactiveNudgeKind, number> = {
   scroll_category: 770,
   scroll_bottom: 760,
   cart_abandonment_prevention: 955,
+  coffee_nudge: 710,
+  digestif_nudge: 705,
 };
 
 function posturePriority(
@@ -485,6 +512,8 @@ export function rankProactiveCandidates(
   const browseMinutes = payload.browseMinutes ?? 0;
   const idleMinutes = payload.idleMinutes ?? 0;
   const guestMessageCount = payload.guestMessageCount ?? 0;
+  const tableTempoPhase = payload.tableTempoPhase ?? "none";
+  const fullConfig = input.config as ConciergeConfig;
   const candidates: RankedProactiveCandidate[] = [];
   const revenueContext = {
     revenueStrategy: input.revenueStrategy,
@@ -607,6 +636,31 @@ export function rankProactiveCandidates(
         ),
       },
       "welcome",
+      mentalFirst,
+      mental
+    );
+  }
+
+  if (
+    fullConfig.ops.tableTempo.enabled &&
+    tableTempoPhase === "browsing_stalled" &&
+    !hasOrdered &&
+    !venueSuppressesBrowse(input) &&
+    shouldEmitTableTempoGuestNudge({
+      phase: "browsing_stalled",
+      emittedKeys: dismissed,
+      dismissedKeys: dismissed,
+    }) &&
+    !isDismissed(dismissed, tableTempoDedupeKey("browsing_stalled"))
+  ) {
+    pushCandidate(
+      candidates,
+      {
+        kind: "table_tempo_browse",
+        message: buildTableTempoBrowseMessage(payload.language ?? null),
+        prompt: "Table tempo: guest seated without ordering — offer menu help once.",
+      },
+      "table_tempo_browse",
       mentalFirst,
       mental
     );
@@ -985,29 +1039,105 @@ export function rankProactiveCandidates(
   const skipDessertWhileBrowsing =
     payload.sessionPhase === "browsing" && orders.length > 0;
 
+  const orderFacts = input.orderFacts ?? [];
+  const dessertWindowConfig = fullConfig.ops.dessertWindow;
+  const stationUpsellBlocked = hasStationProblemsBlockingUpsell({
+    orders: orderFacts,
+    stationQuestions: fullConfig.ops.stationQuestions,
+    nowMs: now,
+  });
+  const dessertLearningSkip = shouldSkipDessertForAcceptRate({
+    acceptRate: payload.dessertWindowAcceptRate ?? null,
+    impressions: payload.dessertWindowImpressions ?? 0,
+    config: dessertWindowConfig,
+  });
+
+  const useStationDessertWindow =
+    dessertWindowConfig.enabled &&
+    orderFacts.length > 0 &&
+    !stationUpsellBlocked &&
+    !dessertLearningSkip;
+
+  if (useStationDessertWindow) {
+    const chainStep = detectPostMealChainStep({
+      orders: orderFacts,
+      config: dessertWindowConfig,
+      dismissedKeys: dismissed,
+      nowMs: now,
+    });
+
+    if (chainStep === "coffee" && !isCoffeeUpsellChainBlocked(dismissed)) {
+      pushCandidate(
+        candidates,
+        {
+          kind: "coffee_nudge",
+          message: buildCoffeeAfterDessertMessage(payload.language ?? null),
+          prompt: "Post-dessert coffee offer — one suggestion per table.",
+        },
+        "dessert_window_coffee",
+        mentalFirst,
+        mental
+      );
+    } else if (
+      chainStep === "digestif" &&
+      !isDismissed(dismissed, DIGESTIF_AFTER_COFFEE_DEDUPE_KEY)
+    ) {
+      pushCandidate(
+        candidates,
+        {
+          kind: "digestif_nudge",
+          message: buildDigestifAfterCoffeeMessage(payload.language ?? null),
+          prompt: "Digestif after coffee — optional config gate.",
+        },
+        "dessert_window_digestif",
+        mentalFirst,
+        mental
+      );
+    }
+  }
+
   if (
     !isDismissed(dismissed, "dessert_nudge") &&
+    !isDismissed(dismissed, DESSERT_WINDOW_DEDUPE_KEY) &&
     !skipDessertWhileBrowsing &&
     !shouldSkipDessertForRevenueStrategy(input.revenueStrategy) &&
+    !stationUpsellBlocked &&
+    !dessertLearningSkip &&
     shouldOfferDessert({ enforceMode, mentalFirst, mental })
   ) {
+    const stationWindow = useStationDessertWindow
+      ? detectDessertWindow({
+          orders: orderFacts,
+          config: dessertWindowConfig,
+          nowMs: now,
+        })
+      : null;
+
     const dessert =
-      enforceMode && mental
-        ? resolveEnforceDessertPosture({ orders, mental })
-        : detectDessertTrigger(
-            orders,
-            () => isDismissed(dismissed, "dessert_nudge"),
-            now,
-            {
-              minMinutes:
-                payload.effectiveDessertDelayMinutes ??
-                config.upsell.dessertDelayMinutes,
-              maxMinutes: null,
-              preparingMinMinutes:
-                payload.effectiveDessertDelayMinutes ??
-                config.upsell.dessertDelayMinutes,
-            }
-          );
+      useStationDessertWindow && stationWindow?.phase === "in_window"
+        ? {
+            kind: "dessert" as const,
+            orderId: stationWindow.orderId ?? undefined,
+            prompt: `Kitchen served ${Math.round(stationWindow.minutesSinceServed ?? 0)} min ago — dessert window from station truth.`,
+          }
+        : enforceMode && mental
+          ? resolveEnforceDessertPosture({ orders, mental })
+          : !dessertWindowConfig.enabled
+            ? detectDessertTrigger(
+                orders,
+                () => isDismissed(dismissed, "dessert_nudge"),
+                now,
+                {
+                  minMinutes:
+                    payload.effectiveDessertDelayMinutes ??
+                    config.upsell.dessertDelayMinutes,
+                  maxMinutes: null,
+                  preparingMinMinutes:
+                    payload.effectiveDessertDelayMinutes ??
+                    config.upsell.dessertDelayMinutes,
+                }
+              )
+            : null;
     const suppressPreparingDessertWhileWaiting =
       payload.sessionPhase === "waiting" && Boolean(dessert?.orderId);
     if (dessert && !suppressPreparingDessertWhileWaiting) {
@@ -1266,16 +1396,36 @@ export function rankProactiveCandidates(
   }
 
   if (!payload.hasDrinkInCart && !isDismissed(dismissed, "drink_refill")) {
-    const sommelierRefill = detectSommelierRefillTrigger(orders, {
-      hasDrinkInCart: payload.hasDrinkInCart,
-      language: payload.language,
-      now,
-      isShown: (orderId) =>
-        isDismissed(dismissed, `sommelier_refill:${orderId}`) ||
-        isDismissed(dismissed, `drink_refill:${orderId}`) ||
-        isDismissed(dismissed, "sommelier_refill") ||
-        isDismissed(dismissed, "drink_refill"),
-    });
+    const tempoRefill =
+      fullConfig.ops.tableTempo.enabled &&
+      tableTempoPhase === "drinks_finished_estimate" &&
+      input.orderFacts?.length
+        ? detectSommelierStationTempoRefill(input.orderFacts, {
+            tempoConfig: fullConfig.ops.tableTempo,
+            hasDrinkInCart: payload.hasDrinkInCart,
+            language: payload.language,
+            now,
+            isShown: (orderId) =>
+              isDismissed(dismissed, tableTempoDedupeKey("drinks_finished_estimate")) ||
+              isDismissed(dismissed, `sommelier_refill:${orderId}`) ||
+              isDismissed(dismissed, "sommelier_refill") ||
+              isDismissed(dismissed, `drink_refill:${orderId}`) ||
+              isDismissed(dismissed, "drink_refill"),
+          })
+        : null;
+
+    const sommelierRefill =
+      tempoRefill ??
+      detectSommelierRefillTrigger(orders, {
+        hasDrinkInCart: payload.hasDrinkInCart,
+        language: payload.language,
+        now,
+        isShown: (orderId) =>
+          isDismissed(dismissed, `sommelier_refill:${orderId}`) ||
+          isDismissed(dismissed, `drink_refill:${orderId}`) ||
+          isDismissed(dismissed, "sommelier_refill") ||
+          isDismissed(dismissed, "drink_refill"),
+      });
     if (sommelierRefill?.orderId) {
       pushCandidate(
         candidates,

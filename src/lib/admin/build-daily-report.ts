@@ -1,5 +1,11 @@
 import type { FeedbackRow } from "@/lib/denis/platform/feedback-intelligence";
 import type { DenisHealthMetrics } from "@/lib/denis/monitoring";
+import {
+  buildDenisShiftRecap,
+  emptyDenisShiftRecap,
+  type BuildDenisShiftRecapInput,
+  type DenisShiftRecap,
+} from "@/lib/admin/denis-shift-report";
 
 export type DailyReportOrderRow = {
   id: string;
@@ -54,6 +60,7 @@ export type DailyReport = {
     };
     highlights: string[];
     issues: string[];
+    denisShift: DenisShiftRecap;
   };
 };
 
@@ -74,6 +81,7 @@ export type BuildDailyReportInput = {
   peakOrderCount: number;
   returningGuestSessions: number;
   newGuestSessions: number;
+  denisShift?: BuildDenisShiftRecapInput;
 };
 
 function pctChange(current: number, baseline: number): number {
@@ -175,6 +183,32 @@ function buildHighlightsAndIssues(input: BuildDailyReportInput): {
     );
   }
 
+  const denisShift = input.denisShift
+    ? buildDenisShiftRecap(input.denisShift)
+    : emptyDenisShiftRecap(input.prepTimeAvgMinutes);
+
+  if (denisShift.preventedProblems > 0) {
+    highlights.push(
+      `Denis sprečio ${denisShift.preventedProblems} problema (odgovor pre isteka pitanja)`
+    );
+  }
+
+  const expiredQuestions = denisShift.stationQuestions.reduce(
+    (sum, row) => sum + row.expired,
+    0
+  );
+  if (expiredQuestions >= 2) {
+    issues.push(
+      `${expiredQuestions} station pitanja isteklo bez odgovora — proveriti KDS/bar`
+    );
+  }
+
+  if (denisShift.riskiestTable && denisShift.riskiestTable.riskScore >= 4) {
+    issues.push(
+      `Najrizičniji sto: ${denisShift.riskiestTable.tableName} (${denisShift.riskiestTable.questionCount} pitanja, ${denisShift.riskiestTable.escalationCount} eskalacija)`
+    );
+  }
+
   if (highlights.length === 0 && revenueTotal > 0) {
     highlights.push("Stabilan radni dan — bez izuzetnih skokova");
   }
@@ -216,6 +250,10 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
 
   const { highlights, issues } = buildHighlightsAndIssues(input);
 
+  const denisShift = input.denisShift
+    ? buildDenisShiftRecap(input.denisShift)
+    : emptyDenisShiftRecap(input.prepTimeAvgMinutes);
+
   return {
     date: input.date,
     venueName: input.venueName,
@@ -249,6 +287,7 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
       },
       highlights,
       issues,
+      denisShift,
     },
   };
 }
@@ -261,6 +300,181 @@ export type DailyReportDigest = {
 
 function signedPct(value: number): string {
   return value >= 0 ? `+${value}%` : `${value}%`;
+}
+
+function formatStationQuestionLine(
+  row: DenisShiftRecap["stationQuestions"][number]
+): string {
+  const avg =
+    row.avgAnswerMinutes != null ? `${row.avgAnswerMinutes} min avg` : "—";
+  return `${row.station}: ${row.asked} pitanja, ${row.answered} odgov., ${row.expired} isteklo (${avg})`;
+}
+
+function formatEightySixDigestLines(
+  events: DenisShiftRecap["eightySixEvents"]
+): string[] {
+  if (!events.length) return ["86 danas: nema"];
+  const formatter = new Intl.DateTimeFormat("sr-RS", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return [
+    `86 danas: ${events.length}`,
+    ...events.map(
+      (event) =>
+        `  ${formatter.format(new Date(event.at))} — ${event.productName}`
+    ),
+  ];
+}
+
+function formatDessertWindowDigestLines(
+  stats: DenisShiftRecap["dessertWindow"],
+  currencyLabel: string
+): string[] {
+  if (stats.proposed === 0) {
+    return ["Desert prozor: nema predloga danas"];
+  }
+  const acceptPct =
+    stats.proposed > 0
+      ? Math.round((stats.accepted / stats.proposed) * 100)
+      : 0;
+  return [
+    `Desert prozor: ${stats.proposed} predloženo, ${stats.accepted} prihvaćeno (${acceptPct}%), ${stats.declined} odbijeno`,
+    `  Vrednost prihvaćenih: ${Math.round(stats.valueEuros).toLocaleString("sr-RS")} ${currencyLabel}`,
+  ];
+}
+
+function formatReturningGuestDigestLines(
+  stats: DenisShiftRecap["returningGuests"],
+  currencyLabel: string
+): string[] {
+  if (stats.recognizedToday === 0) {
+    return ["Stalni gosti: nema prepoznatih povrataka danas"];
+  }
+  const returningRounded = Math.round(stats.returningAvgSpend).toLocaleString(
+    "sr-RS"
+  );
+  const venueRounded = Math.round(stats.venueAvgSpend).toLocaleString("sr-RS");
+  const delta =
+    stats.venueAvgSpend > 0
+      ? Math.round(
+          ((stats.returningAvgSpend - stats.venueAvgSpend) /
+            stats.venueAvgSpend) *
+            100
+        )
+      : 0;
+  const deltaLabel = delta >= 0 ? `+${delta}%` : `${delta}%`;
+  return [
+    `Stalni gosti: ${stats.recognizedToday} prepoznato danas`,
+    `  Prosečna potrošnja: ${returningRounded} ${currencyLabel} vs lokacija ${venueRounded} ${currencyLabel} (${deltaLabel})`,
+  ];
+}
+
+function formatServiceRecoveryDigestLines(
+  stats: DenisShiftRecap["serviceRecovery"]
+): string[] {
+  if (stats.casesOpened === 0) {
+    return ["Service recovery: nema slučajeva danas"];
+  }
+  const response =
+    stats.avgManagerResponseMinutes != null
+      ? `${stats.avgManagerResponseMinutes} min prosečno`
+      : "—";
+  return [
+    `Service recovery: ${stats.casesOpened} slučaj(a)`,
+    `  Rešeno: ${stats.resolved} · otvoreno: ${stats.unresolved} · reakcija menadžera: ${response}`,
+  ];
+}
+
+function formatDenisShiftDigestText(
+  shift: DenisShiftRecap,
+  currencyLabel: string
+): string[] {
+  const lines = [
+    `🔄 DENIS SMENA:`,
+    ...shift.stationQuestions.map((row) => formatStationQuestionLine(row)),
+    `Eskalacije: ${shift.escalations.total} (${Object.entries(shift.escalations.byType)
+      .map(([type, count]) => `${type} ${count}`)
+      .join(", ") || "nema"})`,
+    shift.riskiestTable
+      ? `Najrizičniji sto: ${shift.riskiestTable.tableName} (${shift.riskiestTable.questionCount} pitanja, ${shift.riskiestTable.escalationCount} eskal., ${shift.riskiestTable.waiterCallCount} poziva)`
+      : `Najrizičniji sto: nema signala`,
+    ...shift.stationDelays.map((row) => {
+      const avg =
+        row.avgPrepMinutes != null
+          ? `${row.avgPrepMinutes} min${row.sampleCount ? "" : " (prior)"}`
+          : "—";
+      return `${row.station} prep: ${avg}`;
+    }),
+    `Sprečeni problemi: ${shift.preventedProblems}`,
+    ...formatEightySixDigestLines(shift.eightySixEvents),
+    ...formatDessertWindowDigestLines(shift.dessertWindow, currencyLabel),
+    ...formatReturningGuestDigestLines(shift.returningGuests, currencyLabel),
+    ...formatServiceRecoveryDigestLines(shift.serviceRecovery),
+  ];
+  return lines;
+}
+
+function formatDenisShiftDigestHtml(
+  shift: DenisShiftRecap,
+  currencyLabel: string
+): string {
+  const escalationSummary =
+    Object.entries(shift.escalations.byType)
+      .map(([type, count]) => `${type} ${count}`)
+      .join(", ") || "nema";
+
+  const delayLines = shift.stationDelays
+    .map((row) => {
+      const avg =
+        row.avgPrepMinutes != null
+          ? `${row.avgPrepMinutes} min${row.sampleCount ? "" : " (prior)"}`
+          : "—";
+      return `<li>${row.station}: ${avg}</li>`;
+    })
+    .join("");
+
+  const eightySixLines = shift.eightySixEvents.length
+    ? shift.eightySixEvents
+        .map((event) => {
+          const time = new Intl.DateTimeFormat("sr-RS", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(new Date(event.at));
+          return `<li>${time} — ${event.productName}</li>`;
+        })
+        .join("")
+    : `<li>Nema</li>`;
+
+  return `
+      <p style="margin:0 0 8px;font-weight:600;">🔄 Denis smena</p>
+      <ul style="margin:0 0 16px;padding-left:18px;">
+        ${shift.stationQuestions.map((row) => `<li>${formatStationQuestionLine(row)}</li>`).join("")}
+        <li>Eskalacije: ${shift.escalations.total} (${escalationSummary})</li>
+        <li>${shift.riskiestTable ? `Najrizičniji sto: ${shift.riskiestTable.tableName}` : "Najrizičniji sto: nema signala"}</li>
+        ${delayLines}
+        <li>Sprečeni problemi: ${shift.preventedProblems}</li>
+      </ul>
+      <p style="margin:0 0 8px;font-weight:600;">🛑 86 danas</p>
+      <ul style="margin:0 0 16px;padding-left:18px;">${eightySixLines}</ul>
+      <p style="margin:0 0 8px;font-weight:600;">🍰 Desert prozor</p>
+      <ul style="margin:0 0 16px;padding-left:18px;">
+        ${formatDessertWindowDigestLines(shift.dessertWindow, currencyLabel)
+          .map((line) => `<li>${line}</li>`)
+          .join("")}
+      </ul>
+      <p style="margin:0 0 8px;font-weight:600;">🔁 Stalni gosti</p>
+      <ul style="margin:0 0 16px;padding-left:18px;">
+        ${formatReturningGuestDigestLines(shift.returningGuests, currencyLabel)
+          .map((line) => `<li>${line}</li>`)
+          .join("")}
+      </ul>
+      <p style="margin:0 0 8px;font-weight:600;">🩹 Service recovery</p>
+      <ul style="margin:0 0 16px;padding-left:18px;">
+        ${formatServiceRecoveryDigestLines(shift.serviceRecovery)
+          .map((line) => `<li>${line}</li>`)
+          .join("")}
+      </ul>`;
 }
 
 export function formatDailyReportDigest(report: DailyReport): DailyReportDigest {
@@ -287,6 +501,8 @@ export function formatDailyReportDigest(report: DailyReport): DailyReportDigest 
     `🍳 KUHINJA:`,
     `Avg prep: ${s.kitchen.avgPrepTime} min | Najsporiji: ${s.kitchen.slowestItem.name} (${s.kitchen.slowestItem.avgMinutes} min)`,
     `Peak: ${s.kitchen.peakHour} (${s.kitchen.peakOrderCount} narudžbi)`,
+    "",
+    ...formatDenisShiftDigestText(s.denisShift, report.currencyLabel),
     "",
     ...(s.highlights.length
       ? [`✅ HIGHLIGHT: ${s.highlights.join(" · ")}`]
@@ -322,6 +538,7 @@ export function formatDailyReportDigest(report: DailyReport): DailyReportDigest 
         <li>Avg prep ${s.kitchen.avgPrepTime} min · najsporije ${s.kitchen.slowestItem.name} (${s.kitchen.slowestItem.avgMinutes} min)</li>
         <li>Peak ${s.kitchen.peakHour} (${s.kitchen.peakOrderCount} narudžbi)</li>
       </ul>
+      ${formatDenisShiftDigestHtml(s.denisShift, report.currencyLabel)}
       ${s.highlights.length ? `<p style="margin:0 0 8px;padding:10px;background:#ecfdf5;border-radius:8px;">✅ ${s.highlights.join(" · ")}</p>` : ""}
       ${s.issues.length ? `<p style="margin:0;padding:10px;background:#fff7ed;border-radius:8px;">⚠️ ${s.issues.join(" · ")}</p>` : ""}
       <p style="margin:16px 0 0;color:#777;font-size:12px;">Admin → Denis Insights</p>

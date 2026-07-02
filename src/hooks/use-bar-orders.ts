@@ -24,6 +24,13 @@ import { usePostgresRealtime } from "@/hooks/use-postgres-realtime";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { KDS_DELIVERED_HIDE_MS } from "@/lib/kds/settings";
 import { orderHasDrinksItems } from "@/lib/kitchen/menu-section";
+import {
+  attachStationStates,
+  fetchOrderStationStates,
+  type OrderStationState,
+} from "@/lib/orders/fetch-order-station-states";
+import { isBarWorkComplete } from "@/lib/orders/station-display";
+import type { StationKind, StationStatus } from "@/lib/orders/station-states";
 import type { OrderWithDetails } from "@/types";
 
 const ACTIVE_STATUSES = [
@@ -41,8 +48,12 @@ export type BarOrdersSnapshot = {
   stats: BarStatsSnapshot;
 };
 
+export type BarOrder = OrderWithDetails & {
+  station_states: OrderStationState[];
+};
+
 export function useBarOrders(locationId: string) {
-  const [allOrders, setAllOrders] = useState<OrderWithDetails[]>([]);
+  const [allOrders, setAllOrders] = useState<BarOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
@@ -75,9 +86,14 @@ export function useBarOrders(locationId: string) {
 
     setError(null);
     const rows = orderWithDetailsRows(data);
-    setAllOrders(rows);
+    const stationRows = await fetchOrderStationStates(
+      supabase,
+      rows.map((row) => row.id)
+    );
+    const merged = attachStationStates(rows, stationRows);
+    setAllOrders(merged);
 
-    const drinkOrders = rows.filter(orderHasDrinksItems);
+    const drinkOrders = merged.filter(orderHasDrinksItems);
     if (initializedRef.current) {
       for (const order of drinkOrders) {
         if (
@@ -96,6 +112,35 @@ export function useBarOrders(locationId: string) {
     initializedRef.current = true;
     setLoading(false);
   }, [locationId, play]);
+
+  const optimisticUpdateStationStatus = useCallback(
+    (
+      orderId: string,
+      station: StationKind,
+      status: StationStatus,
+      globalStatus?: OrderWithDetails["status"]
+    ) => {
+      const now = new Date().toISOString();
+      setAllOrders((prev) =>
+        prev.map((order) => {
+          if (order.id !== orderId) return order;
+          const station_states = order.station_states.map((row) =>
+            row.station === station ? { ...row, status } : row
+          );
+          const patch: Partial<BarOrder> = { station_states };
+          if (globalStatus) {
+            patch.status = globalStatus;
+            if (globalStatus === "accepted") patch.accepted_at = now;
+            if (globalStatus === "preparing") patch.preparing_at = now;
+            if (globalStatus === "ready") patch.ready_at = now;
+            if (globalStatus === "delivered") patch.delivered_at = now;
+          }
+          return { ...order, ...patch };
+        })
+      );
+    },
+    []
+  );
 
   const optimisticUpdateStatus = useCallback(
     (orderId: string, status: OrderWithDetails["status"]) => {
@@ -116,7 +161,15 @@ export function useBarOrders(locationId: string) {
   );
 
   const snapshot = useMemo((): BarOrdersSnapshot => {
-    const drinkOrders = allOrders.filter(orderHasDrinksItems);
+    const drinkOrders = allOrders
+      .filter(orderHasDrinksItems)
+      .filter(
+        (order) =>
+          !isBarWorkComplete(
+            order.status,
+            order.station_states.find((row) => row.station === "bar")
+          )
+      );
     const queue = prioritizeBarQueue(drinkOrders, allOrders);
     return {
       queue,
@@ -147,6 +200,17 @@ export function useBarOrders(locationId: string) {
     backupPollMs: REALTIME_BACKUP_POLL_MS,
   });
 
+  usePostgresRealtime({
+    channelName: `bar-station-states:${locationId}`,
+    table: "order_station_states",
+    locationId,
+    filter: `location_id=eq.${locationId}`,
+    onChange: fetchOrders,
+    enabled: Boolean(locationId),
+    fallbackPollMs: KDS_REALTIME_FALLBACK_POLL_MS,
+    backupPollMs: REALTIME_BACKUP_POLL_MS,
+  });
+
   return {
     orders: snapshot.queue.map((entry) => entry.order),
     queue: snapshot.queue,
@@ -157,5 +221,6 @@ export function useBarOrders(locationId: string) {
     error,
     refetch: fetchOrders,
     optimisticUpdateStatus,
+    optimisticUpdateStationStatus,
   };
 }

@@ -43,11 +43,16 @@ export type WaiterUiKey =
   | "action.allTables"
   | "action.deliver"
   | "action.markReady"
+  | "action.pickedUp"
+  | "action.served"
   | "session.activeOrders"
   | "table.backToTables"
   | "table.notFound"
   | "table.guestCalledWaiter"
   | "table.guestRequestedBill"
+  | "table.busTitle"
+  | "table.busCta"
+  | "table.busWaitSuffix"
   | "session.since"
   | "calls.pending"
   | "calls.empty"
@@ -102,11 +107,16 @@ const en: Table = {
   "action.allTables": "All tables",
   "action.deliver": "Delivered",
   "action.markReady": "Ready",
+  "action.pickedUp": "Picked up",
+  "action.served": "Served",
   "session.activeOrders": "Active orders",
   "table.backToTables": "All tables",
   "table.notFound": "Table not found.",
   "table.guestCalledWaiter": "Guest called for waiter.",
   "table.guestRequestedBill": "Guest requested the bill.",
+  "table.busTitle": "Bus table {table} — guests paid",
+  "table.busCta": "Table cleared",
+  "table.busWaitSuffix": "min since payment",
   "session.since": "Session since {time}",
   "calls.pending": "{count} pending",
   "calls.empty": "No waiter calls",
@@ -161,11 +171,16 @@ const de: Table = {
   "action.allTables": "Alle Tische",
   "action.deliver": "Geliefert",
   "action.markReady": "Fertig",
+  "action.pickedUp": "Abgeholt",
+  "action.served": "Serviert",
   "session.activeOrders": "Aktive Bestellungen",
   "table.backToTables": "Alle Tische",
   "table.notFound": "Tisch nicht gefunden.",
   "table.guestCalledWaiter": "Gast hat Kellner gerufen.",
   "table.guestRequestedBill": "Gast hat Rechnung angefordert.",
+  "table.busTitle": "Tisch {table} abräumen — bezahlt",
+  "table.busCta": "Abgeräumt",
+  "table.busWaitSuffix": "Min seit Zahlung",
   "session.since": "Sitzung seit {time}",
   "calls.pending": "{count} offen",
   "calls.empty": "Keine Kellnerrufe",
@@ -218,11 +233,16 @@ const sr: Table = {
   "action.allTables": "Svi stolovi",
   "action.deliver": "Dostavljeno",
   "action.markReady": "Spremno",
+  "action.pickedUp": "Preuzeto",
+  "action.served": "Isporučeno",
   "session.activeOrders": "Aktivne narudžbe",
   "table.backToTables": "Svi stolovi",
   "table.notFound": "Sto nije pronađen.",
   "table.guestCalledWaiter": "Gost je pozvao konobara.",
   "table.guestRequestedBill": "Gost je zatražio račun.",
+  "table.busTitle": "Raspremi sto {table} — gosti platili",
+  "table.busCta": "Raspremljeno",
+  "table.busWaitSuffix": "min od plaćanja",
   "session.since": "Sesija od {time}",
   "calls.pending": "{count} otvorenih",
   "calls.empty": "Nema poziva konobara",

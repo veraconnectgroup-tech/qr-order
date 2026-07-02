@@ -811,6 +811,25 @@ type Tables = {
     context_hash: string | null;
     created_at: string;
   };
+  order_station_states: {
+    id: string;
+    order_id: string;
+    location_id: string;
+    station: "kitchen" | "bar";
+    status:
+      | "queued"
+      | "in_prep"
+      | "ready"
+      | "picked_up"
+      | "served"
+      | "cancelled";
+    queued_at: string;
+    in_prep_at: string | null;
+    ready_at: string | null;
+    picked_up_at: string | null;
+    served_at: string | null;
+    updated_by: string | null;
+  };
   station_questions: {
     id: string;
     location_id: string;
@@ -835,6 +854,20 @@ type Tables = {
     asked_at: string;
     answered_at: string | null;
     expires_at: string;
+  };
+  table_bus_obligations: {
+    id: string;
+    location_id: string;
+    table_id: string;
+    session_id: string | null;
+    assigned_staff_id: string | null;
+    status: "open" | "bussed" | "cancelled";
+    paid_at: string;
+    bussed_at: string | null;
+    bussed_by: string | null;
+    reminder_sent_at: string | null;
+    escalated_at: string | null;
+    created_at: string;
   };
   denis_turn_traces: {
     id: string;
@@ -1088,6 +1121,15 @@ export interface Database {
           p_notes: string | null;
           p_order_payload: Json;
           p_items: Json;
+        };
+        Returns: Json;
+      };
+      patch_station_status_tx: {
+        Args: {
+          p_order_id: string;
+          p_station: string;
+          p_status: string;
+          p_staff_id: string;
         };
         Returns: Json;
       };

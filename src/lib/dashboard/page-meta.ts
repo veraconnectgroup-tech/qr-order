@@ -26,6 +26,10 @@ export const DASHBOARD_PAGES: Record<
     title: "Waiter Calls",
     subtitle: "Guest requests",
   },
+  "/dashboard/operations": {
+    title: "Operations Center",
+    subtitle: "Live triage — what needs attention now",
+  },
   "/dashboard/denis": {
     title: "Denis",
     subtitle: "Performance, floor ops, and table hints",

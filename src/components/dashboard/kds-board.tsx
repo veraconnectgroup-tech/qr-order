@@ -41,10 +41,19 @@ import {
   type KitchenPrintResult,
 } from "@/lib/printer/print-kitchen-order";
 import {
-  kdsActionLabel,
-  nextKdsStatus,
-  patchOrderStatus,
+  executeKitchenAdvanceAction,
+  patchStationStatusClient,
 } from "@/lib/orders/patch-order-status";
+import type { OrderStationState } from "@/lib/orders/fetch-order-station-states";
+import {
+  getStationState,
+  isManagerRole,
+  kitchenAdvanceActionLabel,
+  kitchenKdsColumnForOrder,
+  managerStationOverrideTransitions,
+  nextKitchenAdvanceAction,
+} from "@/lib/orders/station-display";
+import type { StationStatus } from "@/lib/orders/station-states";
 import { useKdsOrders } from "@/hooks/use-kds-orders";
 import {
   isProvisionalKdsOrder,
@@ -52,6 +61,7 @@ import {
 } from "@/lib/pos/provisional-display";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { EightySixPanel } from "@/components/stations/eighty-six-panel";
 import { KdsConnectionBadge, kdsSecondsSinceUpdate } from "@/components/dashboard/kds-connection-badge";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
 import {
@@ -106,6 +116,8 @@ function KdsOrderCard({
   orgName,
   autoPrinted,
   onAdvance,
+  onManagerOverride,
+  managerMode,
   onPrintResult,
 }: {
   order: OrderWithDetails | ProvisionalKdsOrder;
@@ -114,13 +126,29 @@ function KdsOrderCard({
   orgName: string;
   autoPrinted: boolean;
   onAdvance: () => void;
+  onManagerOverride?: (status: StationStatus) => void;
+  managerMode?: boolean;
   onPrintResult: (result: KitchenPrintResult) => void;
 }) {
   const [, tick] = useState(0);
   const isProvisional = isProvisionalKdsOrder(order);
   const tableName = order.tables?.name ?? "—";
   const items = groupOrderItemsForDisplay(getKitchenOrderItems(order));
-  const isDelivered = !isProvisional && order.status === "delivered";
+  const stationStates = !isProvisional
+    ? ((order as OrderWithDetails & { station_states?: OrderStationState[] })
+        .station_states ?? [])
+    : [];
+  const kitchenState = getStationState(stationStates, "kitchen");
+  const columnId = !isProvisional
+    ? kitchenKdsColumnForOrder(order.status, kitchenState)
+    : null;
+  const isKitchenDone =
+    !isProvisional &&
+    (kitchenState
+      ? ["ready", "picked_up", "served", "cancelled"].includes(
+          kitchenState.status
+        )
+      : order.status === "delivered");
   const elapsed = formatKdsElapsed(order.created_at);
   const minutes = kdsElapsedMinutes(order.created_at);
   const urgency = isProvisional ? "green" : kdsUrgencyForOrder(order);
@@ -129,8 +157,17 @@ function KdsOrderCard({
   const allergyBanner = isProvisional
     ? null
     : extractKitchenAllergyBanner(order);
-  const actionLabel =
-    isProvisional || isDelivered ? null : kdsActionLabel(order.status);
+  const advanceAction =
+    !isProvisional && !isKitchenDone
+      ? nextKitchenAdvanceAction(order.status, kitchenState)
+      : null;
+  const actionLabel = advanceAction
+    ? kitchenAdvanceActionLabel(advanceAction)
+    : null;
+  const overrideOptions =
+    managerMode && kitchenState
+      ? managerStationOverrideTransitions(kitchenState.status)
+      : [];
 
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 1000);
@@ -151,15 +188,15 @@ function KdsOrderCard({
           ? order.provisionalConflictReason
             ? "border-red-500"
             : "border-orange-500"
-          : isDelivered
+          : isKitchenDone
             ? "border-zinc-700 opacity-60"
             : isLate
               ? "border-red-500/80 animate-pulse"
-              : order.status === "pending"
+              : columnId === "pending"
                 ? "border-orange-500"
-                : order.status === "accepted"
+                : columnId === "accepted"
                   ? "border-blue-500"
-                  : order.status === "preparing"
+                  : columnId === "preparing"
                     ? "border-amber-500"
                     : "border-green-500"
       )}
@@ -262,10 +299,30 @@ function KdsOrderCard({
             Warte auf Cloud…
           </p>
         )}
-        {!isProvisional && isDelivered && (
+        {!isProvisional && isKitchenDone && (
           <p className="flex min-h-14 flex-1 items-center justify-center rounded-xl bg-zinc-800 text-lg font-semibold text-zinc-400">
-            Dostavljeno
+            Kitchen done
           </p>
+        )}
+        {managerMode && overrideOptions.length > 0 && onManagerOverride && (
+          <div className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 p-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+              Manager override
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {overrideOptions.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onManagerOverride(status)}
+                  className="min-h-10 rounded-lg border border-amber-500/50 px-3 text-sm font-medium text-amber-100 hover:bg-amber-500/20 disabled:opacity-50"
+                >
+                  → {status}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {!isProvisional && (
           <KitchenPrintButton
@@ -284,7 +341,8 @@ function KdsOrderCard({
 
 export function KdsBoard() {
   const router = useRouter();
-  const { locationId, orgName } = useDashboard();
+  const { locationId, orgName, staffRole } = useDashboard();
+  const managerMode = isManagerRole(staffRole);
   const { status: connectionStatus } = useConnectionStatus();
   const {
     orders,
@@ -297,6 +355,7 @@ export function KdsBoard() {
     lastUpdatedAt,
     fetchOk,
     optimisticUpdateStatus,
+    optimisticUpdateStationStatus,
     provisionalSyncFailedCount,
   } = useKdsOrders(locationId);
 
@@ -446,10 +505,17 @@ export function KdsBoard() {
       map.set(
         column.id,
         orders
-          .filter((order): order is OrderWithDetails =>
-            !isProvisionalKdsOrder(order) &&
-            (column.statuses as readonly string[]).includes(order.status)
-          )
+          .filter((order): order is OrderWithDetails => {
+            if (isProvisionalKdsOrder(order)) return column.id === "pending";
+            const kitchenState = getStationState(
+              (order as OrderWithDetails & {
+                station_states?: OrderStationState[];
+              }).station_states,
+              "kitchen"
+            );
+            const columnId = kitchenKdsColumnForOrder(order.status, kitchenState);
+            return columnId === column.id;
+          })
           .sort((a, b) => {
             const sorted = sortKitchenOrdersByUrgency([a, b]);
             return sorted[0]?.id === a.id ? -1 : 1;
@@ -462,18 +528,55 @@ export function KdsBoard() {
   const advanceOrder = useCallback(
     async (order: OrderWithDetails | ProvisionalKdsOrder) => {
       if (isProvisionalKdsOrder(order)) return;
-      const next = nextKdsStatus(order.status);
-      if (!next) return;
+      const kitchenState = getStationState(
+        (order as OrderWithDetails & { station_states?: OrderStationState[] })
+          .station_states,
+        "kitchen"
+      );
+      const action = nextKitchenAdvanceAction(order.status, kitchenState);
+      if (!action) return;
 
-      optimisticUpdateStatus(order.id, next);
+      if (action.kind === "global") {
+        optimisticUpdateStatus(order.id, action.status);
+      } else {
+        optimisticUpdateStationStatus(order.id, action.station, action.status);
+      }
+
       try {
-        await patchOrderStatus(order.id, next);
+        const result = await executeKitchenAdvanceAction(order.id, action);
+        if (result.globalStatus && action.kind === "station") {
+          optimisticUpdateStationStatus(
+            order.id,
+            action.station,
+            result.stationStatus ?? action.status,
+            result.globalStatus as OrderWithDetails["status"]
+          );
+        }
       } catch {
         toast.error("Status konnte nicht geändert werden");
         await refetch();
       }
     },
-    [optimisticUpdateStatus, refetch]
+    [optimisticUpdateStatus, optimisticUpdateStationStatus, refetch]
+  );
+
+  const managerOverrideKitchen = useCallback(
+    async (order: OrderWithDetails, status: StationStatus) => {
+      optimisticUpdateStationStatus(order.id, "kitchen", status);
+      try {
+        const result = await patchStationStatusClient(order.id, "kitchen", status);
+        optimisticUpdateStationStatus(
+          order.id,
+          "kitchen",
+          result.stationStatus,
+          result.globalStatus as OrderWithDetails["status"]
+        );
+      } catch {
+        toast.error("Manager override failed");
+        await refetch();
+      }
+    },
+    [optimisticUpdateStationStatus, refetch]
   );
 
   const staleSeconds = kdsSecondsSinceUpdate(lastUpdatedAt);
@@ -600,6 +703,9 @@ export function KdsBoard() {
 
       <div className="empty:hidden px-4 pt-3">
         <DenisQuestionStrip locationId={locationId} station="kitchen" />
+        <div className="mt-3 max-w-md">
+          <EightySixPanel locationId={locationId} station="kitchen" />
+        </div>
       </div>
 
       {prepBatches.length > 0 && (
@@ -668,7 +774,14 @@ export function KdsBoard() {
                           busy={false}
                           orgName={orgName}
                           autoPrinted={autoPrintedIds.has(order.id)}
-                          onAdvance={() => advanceOrder(order)}
+                          managerMode={managerMode}
+                          onAdvance={() => void advanceOrder(order)}
+                          onManagerOverride={
+                            managerMode && !isProvisionalKdsOrder(order)
+                              ? (status) =>
+                                  void managerOverrideKitchen(order, status)
+                              : undefined
+                          }
                           onPrintResult={handlePrintResult}
                         />
                       ))

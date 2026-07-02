@@ -14,6 +14,7 @@ import {
   isTableSessionActorInfrastructureReady,
 } from "@/lib/denis/actor/table-session-actor";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { maybeCreateBusTableObligationOnPaymentSettled } from "@/lib/denis/cognition/waiter/bus-table-obligation";
 import { resolveTableSessionActorEnabled } from "@/lib/denis/config/rollout";
 import { logger } from "@/lib/logger";
 import { scheduleOutboxProcess } from "@/lib/outbox/schedule-process";
@@ -228,6 +229,18 @@ export async function runCommerceExperience(
   }
 
   scheduleOutboxProcess();
+
+  if (trigger.kind === "payment_settled" && locationId) {
+    void maybeCreateBusTableObligationOnPaymentSettled(admin, {
+      orderId: trigger.orderId,
+      traceId: opts.traceId,
+    }).catch((error) => {
+      logger.warn("bus table obligation on payment failed", {
+        orderId: trigger.orderId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
 
   return { eventId: result.eventId, skipped: false };
 }

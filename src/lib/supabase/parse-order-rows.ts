@@ -16,6 +16,7 @@ export type OrderFactQueryRow = {
     product_name: string;
     quantity: number;
     total: number | string;
+    menu_section?: string | null;
   }> | null;
 };
 

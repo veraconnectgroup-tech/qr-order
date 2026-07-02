@@ -77,7 +77,10 @@ describe("reorder pattern helpers", () => {
       sameAgain: "Da, isto",
       somethingElse: "Nešto drugo",
     });
-    expect(sameAgainQuickReplyLabels("sr")).toEqual(reorderNudgeQuickReplyLabels("sr"));
+    expect(sameAgainQuickReplyLabels("sr", "Pilsner")).toEqual({
+      sameAgain: "Obično — Pilsner?",
+      somethingElse: "Nešto drugo",
+    });
   });
 });
 

@@ -146,7 +146,11 @@ export function resolveTurnQuickReplies(input: {
   const legacy = input.legacyQuickReplies ?? [];
 
   if (input.facts.committed.returnGuestWelcome) {
-    const sameAgain = sameAgainQuickReplyLabels(input.language ?? "sr");
+    const topItem = input.facts.allowedMentions?.[0] ?? null;
+    const sameAgain = sameAgainQuickReplyLabels(
+      input.language ?? "sr",
+      topItem
+    );
     return dedupeChips([sameAgain.sameAgain, sameAgain.somethingElse]).slice(
       0,
       MAX_CHIPS

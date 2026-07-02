@@ -72,6 +72,77 @@ describe("buildDailyReport (T2)", () => {
     expect(digest.text).toContain("52");
     expect(digest.text).toContain("4.3");
     expect(digest.text).toContain("Burger");
+    expect(report.sections.denisShift.stationQuestions).toHaveLength(2);
+    expect(digest.text).toContain("DENIS SMENA");
+  });
+
+  it("includes denis shift metrics when station data is provided", () => {
+    const report = buildDailyReport({
+      date: "2026-06-27",
+      venueName: "Kafana Beograd",
+      weekdayLabel: "Petak",
+      currencyLabel: "RSD",
+      orders: [],
+      sessions: [],
+      feedback: [],
+      denisMetrics: {
+        sessionsHandled: 0,
+        upsellRevenue: 0,
+        upsellConversionRate: 0,
+        proactiveNudgesSent: 0,
+        nudgeAcceptRate: 0,
+        avgResponseTime: 0,
+        creditsBurned: 0,
+      },
+      revenueYesterday: 0,
+      revenueLastWeekSameDay: 0,
+      prepTimeAvgMinutes: 14,
+      slowestItem: null,
+      peakHour: "—",
+      peakOrderCount: 0,
+      returningGuestSessions: 0,
+      newGuestSessions: 0,
+      denisShift: {
+        stationQuestions: [
+          {
+            station: "kitchen",
+            status: "answered",
+            asked_at: "2026-06-27T18:00:00.000Z",
+            answered_at: "2026-06-27T18:05:00.000Z",
+            expires_at: "2026-06-27T18:12:00.000Z",
+            table_id: "t1",
+            order_id: "o1",
+          },
+        ],
+        staffNotifications: [
+          {
+            type: "denis_escalation",
+            priority: "urgent",
+            table_id: "t1",
+            created_at: "2026-06-27T18:10:00.000Z",
+          },
+        ],
+        waiterCalls: [],
+        stationStates: [
+          {
+            station: "kitchen",
+            in_prep_at: "2026-06-27T17:00:00.000Z",
+            ready_at: "2026-06-27T17:18:00.000Z",
+          },
+        ],
+        tableNames: { t1: "Sto 7" },
+        kitchenFallbackPrepMinutes: 14,
+      },
+    });
+
+    expect(report.sections.denisShift.preventedProblems).toBe(1);
+    expect(report.sections.denisShift.riskiestTable?.tableName).toBe("Sto 7");
+    expect(report.sections.denisShift.stationDelays[0]?.avgPrepMinutes).toBe(18);
+
+    const digest = formatDailyReportDigest(report);
+    expect(digest.text).toContain("Sprečeni problemi: 1");
+    expect(digest.text).toContain("Sto 7");
+    expect(digest.html).toContain("Denis smena");
   });
 
   it("sends report even with zero orders", () => {

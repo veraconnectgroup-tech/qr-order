@@ -13,7 +13,9 @@ export type RealtimeTable =
   | "denis_staff_notifications"
   | "denis_party_devices"
   | "denis_timeline"
-  | "station_questions";
+  | "station_questions"
+  | "order_station_states"
+  | "table_bus_obligations";
 
 export type RealtimeSubscriber = {
   onChange: () => void;

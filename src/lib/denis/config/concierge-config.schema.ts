@@ -217,6 +217,94 @@ const ConciergeStationQuestionsSchema = z
     expirySeconds: 90,
   });
 
+const ConciergeTableTempoSchema = z
+  .object({
+    enabled: z.boolean(),
+    browsingStalledMinutes: z.number().int().min(5).max(45),
+    drinkBeerMinutes: z.number().int().min(5).max(60),
+    drinkWineMinutes: z.number().int().min(5).max(90),
+    drinkCoffeeMinutes: z.number().int().min(3).max(30),
+    drinkDefaultMinutes: z.number().int().min(5).max(60),
+    drinksFinishedGraceMinutes: z.number().int().min(0).max(15),
+    postMealIdleMinutes: z.number().int().min(5).max(45),
+    cooldownMinutes: z.number().int().min(5).max(60),
+    guestIgnoredMinutes: z.number().int().min(3).max(30),
+  })
+  .default({
+    enabled: false,
+    browsingStalledMinutes: 10,
+    drinkBeerMinutes: 20,
+    drinkWineMinutes: 25,
+    drinkCoffeeMinutes: 10,
+    drinkDefaultMinutes: 20,
+    drinksFinishedGraceMinutes: 2,
+    postMealIdleMinutes: 15,
+    cooldownMinutes: 20,
+    guestIgnoredMinutes: 8,
+  });
+
+/** ADR-043 S10 — dessert/coffee upsell from kitchen station served_at. */
+const ConciergeDessertWindowSchema = z
+  .object({
+    enabled: z.boolean(),
+    /** Minutes after kitchen served_at before dessert window opens. */
+    graceMinutes: z.number().int().min(0).max(30),
+    /** Heuristic: typical minutes to finish main course after served. */
+    mainCourseConsumptionMinutes: z.number().int().min(5).max(60),
+    /** Window closes this many minutes after it opens. */
+    windowMaxMinutes: z.number().int().min(5).max(60),
+    includeCoffee: z.boolean(),
+    includeDigestif: z.boolean(),
+    cooldownMinutes: z.number().int().min(5).max(60),
+    /** Below this accept rate (with min impressions), dessert nudges are skipped. */
+    minAcceptRate: z.number().min(0).max(1),
+    minImpressionsForLearning: z.number().int().min(1).max(100),
+  })
+  .default({
+    enabled: false,
+    graceMinutes: 2,
+    mainCourseConsumptionMinutes: 18,
+    windowMaxMinutes: 12,
+    includeCoffee: true,
+    includeDigestif: false,
+    cooldownMinutes: 25,
+    minAcceptRate: 0.12,
+    minImpressionsForLearning: 8,
+  });
+
+const ServiceRecoveryGestureSchema = z.enum([
+  "dessert_on_house",
+  "drink_on_house",
+  "discount_10",
+]);
+
+const ConciergeServiceRecoverySchema = z
+  .object({
+    enabled: z.boolean(),
+    gestures: z.array(ServiceRecoveryGestureSchema).min(0).max(5),
+    /** Long wait + guest silent this many minutes → recovery signal. */
+    waitSilenceMinutes: z.number().int().min(5).max(60),
+    /** Block review prompts for this long after recovery opened. */
+    reviewBlockMinutes: z.number().int().min(15).max(240),
+  })
+  .default({
+    enabled: false,
+    gestures: ["dessert_on_house", "drink_on_house"],
+    waitSilenceMinutes: 18,
+    reviewBlockMinutes: 120,
+  });
+
+const ConciergeTableTurnaroundSchema = z
+  .object({
+    enabled: z.boolean(),
+    /** Minutes after payment before waiter reminder; 2× → Operations Center. */
+    busSlaMinutes: z.number().int().min(3).max(30),
+  })
+  .default({
+    enabled: false,
+    busSlaMinutes: 8,
+  });
+
 const ConciergeOpsSchema = z.object({
   staffHintsEnabled: z.boolean(),
   rushSkipUpsell: z.boolean(),
@@ -225,6 +313,16 @@ const ConciergeOpsSchema = z.object({
   autoRushEnabled: z.boolean(),
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
   stationQuestions: ConciergeStationQuestionsSchema,
+  /** Per-station guest world tell (bar ready while global still preparing). */
+  stationAwareTell: z.boolean().default(false),
+  /** ADR-043 S8 — table tempo phases (browse stall, empty glass estimate, post-meal idle). */
+  tableTempo: ConciergeTableTempoSchema,
+  /** ADR-043 S10 — dessert window from kitchen station truth. */
+  dessertWindow: ConciergeDessertWindowSchema,
+  /** ADR-043 S12 — dissatisfied guest service recovery. */
+  serviceRecovery: ConciergeServiceRecoverySchema,
+  /** ADR-043 S13 — table turnaround after payment (bus obligation). */
+  tableTurnaround: ConciergeTableTurnaroundSchema,
 });
 
 const ConciergeLearningSchema = z.object({
@@ -365,6 +463,15 @@ export type ConciergeUpsell = z.infer<typeof ConciergeUpsellSchema>;
 export type ConciergeProactive = z.infer<typeof ConciergeProactiveSchema>;
 export type ConciergeStationQuestions = z.infer<
   typeof ConciergeStationQuestionsSchema
+>;
+export type ConciergeTableTempo = z.infer<typeof ConciergeTableTempoSchema>;
+export type ConciergeDessertWindow = z.infer<typeof ConciergeDessertWindowSchema>;
+export type ServiceRecoveryGesture = z.infer<typeof ServiceRecoveryGestureSchema>;
+export type ConciergeServiceRecovery = z.infer<
+  typeof ConciergeServiceRecoverySchema
+>;
+export type ConciergeTableTurnaround = z.infer<
+  typeof ConciergeTableTurnaroundSchema
 >;
 
 export const PartialConciergePersonaSchema = ConciergePersonaSchema.partial();

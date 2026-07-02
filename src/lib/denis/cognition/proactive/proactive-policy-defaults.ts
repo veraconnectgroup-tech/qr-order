@@ -46,6 +46,7 @@ export const DEFAULT_PROACTIVE_POLICY: ProactivePolicyManifest = {
       "welcome_skip_guest_initiated",
     ]),
     browse_follow_up: upsell(["follow_up_requires_defer"]),
+    table_tempo_browse: service(),
     browse_nudge: upsell([
       "pace_rushed",
       "browse_requires_exploring",

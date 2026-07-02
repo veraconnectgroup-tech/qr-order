@@ -11,7 +11,8 @@ export type ReviewTriggerMoment =
 export type ReviewMomentBlockReason =
   | "still_eating"
   | "guest_rushed"
-  | "no_optimal_window";
+  | "no_optimal_window"
+  | "active_service_recovery";
 
 const RUSH_SESSION_MAX_MINUTES = 25;
 const POSITIVE_AFFECT_THRESHOLD = 0.5;
@@ -30,6 +31,8 @@ export type DetectReviewMomentInput = {
   lastGuestMessage?: string | null;
   /** Folded guest affect — positive sentiment triggers compliment moment. */
   guestAffect?: Pick<GuestAffect, "sentiment"> | null;
+  /** ADR-043 S12 — block review while recovery case is open. */
+  activeServiceRecovery?: boolean;
 };
 
 export type ReviewMomentResult = {
@@ -74,6 +77,10 @@ function isGuestRushed(input: DetectReviewMomentInput): boolean {
 export function detectOptimalReviewMoment(
   input: DetectReviewMomentInput
 ): ReviewMomentResult {
+  if (input.activeServiceRecovery) {
+    return { moment: null, blocked: "active_service_recovery", priority: 0 };
+  }
+
   if (isStillEating(input)) {
     return { moment: null, blocked: "still_eating", priority: 0 };
   }

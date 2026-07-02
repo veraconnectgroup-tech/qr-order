@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { patchProductAvailabilityClient } from "@/lib/products/eighty-six-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,19 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-export async function setProductAvailability(
-  productId: string,
-  isAvailable: boolean
-) {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("products")
-    .update({ is_available: isAvailable })
-    .eq("id", productId);
-
-  if (error) throw new Error(error.message);
-}
 
 type OrderItemLine = {
   id: string;
@@ -38,6 +25,7 @@ export function OrderItemProductLine({
   className,
   nameClassName,
   allowMarkUnavailable = true,
+  onEightySix,
 }: {
   item: OrderItemLine;
   modifiers?: Array<{ id: string; modifier_name: string }>;
@@ -45,6 +33,7 @@ export function OrderItemProductLine({
   className?: string;
   nameClassName?: string;
   allowMarkUnavailable?: boolean;
+  onEightySix?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -52,8 +41,9 @@ export function OrderItemProductLine({
     if (!item.product_id || busy) return;
     setBusy(true);
     try {
-      await setProductAvailability(item.product_id, false);
-      toast.success(`${item.product_name} marked unavailable`);
+      await patchProductAvailabilityClient(item.product_id, false);
+      toast.success(`${item.product_name} označeno kao nedostupno`);
+      onEightySix?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -103,7 +93,7 @@ export function OrderItemProductLine({
             onClick={() => void markUnavailable()}
             className="cursor-pointer text-sm focus:bg-dash-surface-raised"
           >
-            Mark unavailable
+            Nema više (86)
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

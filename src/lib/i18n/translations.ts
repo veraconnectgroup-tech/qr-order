@@ -296,6 +296,28 @@ const de: TranslationMap = {
     "Die Bar meldet: Ihre Getränke sind fertig — sie kommen gleich.",
   "ai.station.problem":
     "Wir klären das gerade — jemand vom Team kommt gleich zu Ihnen.",
+  "ai.station.guest.allReady":
+    "Bestellung #{number} — alles ist fertig, wir bringen es gleich.",
+  "ai.station.guest.barReadyKitchenInPrep":
+    "Bestellung #{number} — Getränke sind fertig, das Essen wird noch zubereitet.",
+  "ai.station.guest.barReadyKitchenQueued":
+    "Bestellung #{number} — Getränke sind fertig, die Küche startet gleich mit dem Essen.",
+  "ai.station.guest.queued.kitchen":
+    "Bestellung #{number} ist in der Küche eingegangen und wartet auf den Start.",
+  "ai.station.guest.queued.bar":
+    "Bestellung #{number} ist an der Bar eingegangen und wartet auf den Start.",
+  "ai.station.guest.inPrep.kitchen":
+    "Bestellung #{number} — die Küche bereitet Ihr Essen zu.",
+  "ai.station.guest.inPrep.bar":
+    "Bestellung #{number} — die Bar bereitet Ihre Getränke zu.",
+  "ai.station.guest.ready.kitchen":
+    "Bestellung #{number} — Ihr Essen ist fertig.",
+  "ai.station.guest.ready.bar":
+    "Bestellung #{number} — Ihre Getränke sind fertig.",
+  "ai.station.guest.served.kitchen":
+    "Bestellung #{number} — Ihr Essen wurde serviert.",
+  "ai.station.guest.served.bar":
+    "Bestellung #{number} — Ihre Getränke wurden serviert.",
   "ai.chat.welcome": "Hallo! Ich bin Denis. Allergien?",
   "ai.chat.greeting":
     "Guten Tag! Möchten Sie etwas zu trinken oder etwas zu essen? Wie kann ich Ihnen helfen?",
@@ -777,6 +799,28 @@ const en: TranslationMap = {
     "The bar says your drinks are ready — they're on their way.",
   "ai.station.problem":
     "We're looking into it — someone from the team is coming to your table.",
+  "ai.station.guest.allReady":
+    "Order #{number} — everything is ready, we're bringing it now.",
+  "ai.station.guest.barReadyKitchenInPrep":
+    "Order #{number} — drinks are ready, food is still being prepared.",
+  "ai.station.guest.barReadyKitchenQueued":
+    "Order #{number} — drinks are ready, the kitchen will start on food shortly.",
+  "ai.station.guest.queued.kitchen":
+    "Order #{number} is received by the kitchen and waiting to start.",
+  "ai.station.guest.queued.bar":
+    "Order #{number} is received at the bar and waiting to start.",
+  "ai.station.guest.inPrep.kitchen":
+    "Order #{number} — the kitchen is preparing your food.",
+  "ai.station.guest.inPrep.bar":
+    "Order #{number} — the bar is preparing your drinks.",
+  "ai.station.guest.ready.kitchen":
+    "Order #{number} — your food is ready.",
+  "ai.station.guest.ready.bar":
+    "Order #{number} — your drinks are ready.",
+  "ai.station.guest.served.kitchen":
+    "Order #{number} — your food has been served.",
+  "ai.station.guest.served.bar":
+    "Order #{number} — your drinks have been served.",
   "ai.chat.welcome": "Hi! I'm Denis. Any allergies?",
   "ai.chat.greeting":
     "Good day! Would you like something to drink or something to eat? How can I help?",
@@ -1282,6 +1326,28 @@ const sr: TranslationMap = {
     "Bar javlja: vaše piće je spremno — stiže.",
   "ai.station.problem":
     "Proveravamo šta se dešava — neko iz tima dolazi kod vas.",
+  "ai.station.guest.allReady":
+    "Porudžbina #{number} — sve je spremno, stižemo.",
+  "ai.station.guest.barReadyKitchenInPrep":
+    "Porudžbina #{number} — piće je spremno, hrana se još priprema.",
+  "ai.station.guest.barReadyKitchenQueued":
+    "Porudžbina #{number} — piće je spremno, kuhinja uskoro kreće sa hranom.",
+  "ai.station.guest.queued.kitchen":
+    "Porudžbina #{number} je primljena u kuhinji i čeka početak pripreme.",
+  "ai.station.guest.queued.bar":
+    "Porudžbina #{number} je primljena na baru i čeka početak pripreme.",
+  "ai.station.guest.inPrep.kitchen":
+    "Porudžbina #{number} — kuhinja priprema vašu hranu.",
+  "ai.station.guest.inPrep.bar":
+    "Porudžbina #{number} — bar priprema vaše piće.",
+  "ai.station.guest.ready.kitchen":
+    "Porudžbina #{number} — hrana je spremna.",
+  "ai.station.guest.ready.bar":
+    "Porudžbina #{number} — piće je spremno.",
+  "ai.station.guest.served.kitchen":
+    "Porudžbina #{number} — hrana je servirana.",
+  "ai.station.guest.served.bar":
+    "Porudžbina #{number} — piće je servirano.",
 
   "error.generic": "Nešto nije u redu.",
   "error.rate_limited": "Previše zahteva. Sačekajte trenutak.",

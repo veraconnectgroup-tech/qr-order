@@ -34,6 +34,8 @@ export type DecideProactiveTurnPlanInput = {
   minutesSinceLastFoodDelivery?: number | null;
   /** ADR-038 — folded guest mental model for pace/budget gates. */
   mental?: GuestMentalModel | null;
+  /** ADR-043 S12 — open service recovery blocks upsell nudges. */
+  activeServiceRecovery?: boolean;
 };
 
 export type ProactiveTurnPlanResult =
@@ -50,6 +52,8 @@ const UPSELL_NUDGE_KINDS: GuestProactiveNudge["kind"][] = [
   "round_two",
   "happy_hour_upsell",
   "dessert_nudge",
+  "coffee_nudge",
+  "digestif_nudge",
   "popularity_pair",
 ];
 
@@ -79,12 +83,18 @@ function templateKeyForKind(kind: GuestProactiveNudge["kind"]): string {
       return "proactive.happy_hour_upsell";
     case "dessert_nudge":
       return "proactive.dessert";
+    case "coffee_nudge":
+      return "proactive.coffee_after_dessert";
+    case "digestif_nudge":
+      return "proactive.digestif";
     case "slow_kitchen":
       return "proactive.slow_kitchen";
     case "guest_welcome":
       return "proactive.guest_welcome";
     case "browse_follow_up":
       return "proactive.browse_follow_up";
+    case "table_tempo_browse":
+      return "proactive.table_tempo_browse";
     case "bill_prompt":
       return "proactive.bill_prompt";
     case "order_delay":
@@ -241,6 +251,10 @@ export function decideProactiveTurnPlan(
   }
 
   if (UPSELL_NUDGE_KINDS.includes(candidate.kind)) {
+    if (input.activeServiceRecovery) {
+      return { ok: false, reason: "service_recovery.active" };
+    }
+
     const settlingDessertAllowed =
       candidate.kind === "dessert_nudge" &&
       (sessionPhase === "settling" ||
@@ -275,7 +289,9 @@ export function decideProactiveTurnPlan(
   }
 
   if (
-    (candidate.kind === "browse_nudge" || candidate.kind === "cart_recovery") &&
+    (candidate.kind === "browse_nudge" ||
+      candidate.kind === "cart_recovery" ||
+      candidate.kind === "table_tempo_browse") &&
     sessionPhase !== "browsing" &&
     sessionPhase !== "latent"
   ) {
@@ -329,6 +345,20 @@ export function decideProactiveTurnPlan(
   }
 
   if (
+    (candidate.kind === "coffee_nudge" || candidate.kind === "digestif_nudge") &&
+    !config.ops.dessertWindow.enabled
+  ) {
+    return { ok: false, reason: "proactive.dessert_window_disabled" };
+  }
+
+  if (
+    candidate.kind === "digestif_nudge" &&
+    !config.ops.dessertWindow.includeDigestif
+  ) {
+    return { ok: false, reason: "proactive.digestif_disabled" };
+  }
+
+  if (
     candidate.kind === "slow_kitchen" &&
     !config.proactive.slowKitchen
   ) {
@@ -340,6 +370,13 @@ export function decideProactiveTurnPlan(
     !config.proactive.guestWelcome
   ) {
     return { ok: false, reason: "proactive.guest_welcome_disabled" };
+  }
+
+  if (
+    candidate.kind === "table_tempo_browse" &&
+    !config.ops.tableTempo.enabled
+  ) {
+    return { ok: false, reason: "proactive.table_tempo_disabled" };
   }
 
   if (

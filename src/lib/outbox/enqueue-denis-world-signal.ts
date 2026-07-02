@@ -17,6 +17,7 @@ export async function enqueueDenisWorldSignal(
     orderNumber: number;
     status: string;
     previousStatus?: string;
+    stationTell?: { station: "kitchen" | "bar" };
   }
 ): Promise<void> {
   try {
@@ -36,6 +37,7 @@ export async function enqueueDenisWorldSignal(
           orderNumber: input.orderNumber,
           status: input.status,
           previousStatus: input.previousStatus,
+          stationTell: input.stationTell,
         },
       },
     ]);
@@ -55,6 +57,7 @@ export async function enqueueDenisWorldSignalForOrder(
     sessionId: string;
     status: string;
     previousStatus?: string;
+    stationTell?: { station: "kitchen" | "bar" };
   }
 ): Promise<void> {
   const { data: orderRow, error: orderError } = await admin
@@ -86,6 +89,7 @@ export async function enqueueDenisWorldSignalForOrder(
     orderNumber: order.order_number,
     status: input.status,
     previousStatus: input.previousStatus,
+    stationTell: input.stationTell,
   });
 }
 

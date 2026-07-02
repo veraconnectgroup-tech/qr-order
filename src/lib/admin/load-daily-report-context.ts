@@ -6,6 +6,19 @@ import {
   type DailyReportOrderRow,
   type DailyReportSessionRow,
 } from "@/lib/admin/build-daily-report";
+import type {
+  BuildDenisShiftRecapInput,
+  DenisShiftDessertWindowStats,
+  DenisShiftNotificationRow,
+  DenisShiftQuestionRow,
+  DenisShiftStationStateRow,
+  DenisShiftWaiterCallRow,
+} from "@/lib/admin/denis-shift-report";
+import {
+  aggregateDessertWindowStats,
+  aggregateReturningGuestStats,
+  aggregateServiceRecoveryStats,
+} from "@/lib/admin/denis-shift-report";
 import { loadLocationRhythmPriors } from "@/lib/denis/config/load-rhythm-priors";
 import {
   locationPrepTimePriorsFromJson,
@@ -14,6 +27,10 @@ import {
 import { loadDenisHealthMetrics } from "@/lib/denis/monitoring";
 import type { FeedbackRow } from "@/lib/denis/platform/feedback-intelligence";
 import { loadLocationFeedbackRows } from "@/lib/denis/platform/load-location-feedback-rows";
+import {
+  loadEightySixEventsForRange,
+  type EightySixEvent,
+} from "@/lib/products/eighty-six";
 
 function localDateInTimezone(timezone: string | null, now = new Date()): string {
   const tz = timezone?.trim() || "Europe/Berlin";
@@ -168,7 +185,11 @@ async function loadGuestReturnCounts(
   admin: SupabaseClient,
   locationId: string,
   sessions: DailyReportSessionRow[]
-): Promise<{ returning: number; newGuests: number }> {
+): Promise<{
+  returning: number;
+  newGuests: number;
+  visitCountByToken: Record<string, number>;
+}> {
   const tokens = [
     ...new Set(
       sessions
@@ -178,7 +199,7 @@ async function loadGuestReturnCounts(
   ];
 
   if (!tokens.length) {
-    return { returning: 0, newGuests: sessions.length };
+    return { returning: 0, newGuests: sessions.length, visitCountByToken: {} };
   }
 
   const { data } = await admin
@@ -188,9 +209,11 @@ async function loadGuestReturnCounts(
     .in("guest_token", tokens);
 
   const visitByToken = new Map<string, number>();
+  const visitCountByToken: Record<string, number> = {};
   for (const row of data ?? []) {
     const typed = row as { guest_token: string; visit_count: number };
     visitByToken.set(typed.guest_token, typed.visit_count);
+    visitCountByToken[typed.guest_token] = typed.visit_count;
   }
 
   let returning = 0;
@@ -211,7 +234,7 @@ async function loadGuestReturnCounts(
     else newGuests += 1;
   }
 
-  return { returning, newGuests };
+  return { returning, newGuests, visitCountByToken };
 }
 
 async function loadDenisDayMetrics(
@@ -267,6 +290,181 @@ async function loadDenisDayMetrics(
     proactiveNudgesSent: nudges,
     nudgeAcceptRate: nudges ? conversions / nudges : 0,
     creditsBurned,
+  };
+}
+
+async function loadTableNamesForLocation(
+  admin: SupabaseClient,
+  locationId: string
+): Promise<Record<string, string>> {
+  const { data } = await admin
+    .from("tables")
+    .select("id, name")
+    .eq("location_id", locationId);
+
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    map[(row as { id: string }).id] = (row as { name: string }).name;
+  }
+  return map;
+}
+
+async function loadStationQuestionsForRange(
+  admin: SupabaseClient,
+  locationId: string,
+  from: string,
+  to: string
+): Promise<DenisShiftQuestionRow[]> {
+  const { data } = await admin
+    .from("station_questions")
+    .select(
+      "station, status, asked_at, answered_at, expires_at, table_id, order_id"
+    )
+    .eq("location_id", locationId)
+    .gte("asked_at", from)
+    .lt("asked_at", to);
+
+  return (data ?? []) as DenisShiftQuestionRow[];
+}
+
+async function loadStaffNotificationsForRange(
+  admin: SupabaseClient,
+  locationId: string,
+  from: string,
+  to: string
+): Promise<DenisShiftNotificationRow[]> {
+  const { data } = await admin
+    .from("denis_staff_notifications")
+    .select("type, priority, table_id, created_at, message, read_at")
+    .eq("location_id", locationId)
+    .gte("created_at", from)
+    .lt("created_at", to);
+
+  return (data ?? []) as DenisShiftNotificationRow[];
+}
+
+async function loadWaiterCallsForRange(
+  admin: SupabaseClient,
+  locationId: string,
+  from: string,
+  to: string
+): Promise<DenisShiftWaiterCallRow[]> {
+  const { data } = await admin
+    .from("waiter_calls")
+    .select("table_id, created_at")
+    .eq("location_id", locationId)
+    .gte("created_at", from)
+    .lt("created_at", to);
+
+  return (data ?? []) as DenisShiftWaiterCallRow[];
+}
+
+async function loadStationStatesForRange(
+  admin: SupabaseClient,
+  locationId: string,
+  from: string,
+  to: string
+): Promise<DenisShiftStationStateRow[]> {
+  const { data } = await admin
+    .from("order_station_states")
+    .select("station, in_prep_at, ready_at")
+    .eq("location_id", locationId)
+    .gte("in_prep_at", from)
+    .lt("in_prep_at", to);
+
+  return (data ?? []) as DenisShiftStationStateRow[];
+}
+
+async function loadDessertWindowStatsForDay(
+  admin: SupabaseClient,
+  locationId: string,
+  date: string
+): Promise<DenisShiftDessertWindowStats> {
+  const { data } = await admin
+    .from("experience_analytics_daily" as never)
+    .select("by_nudge_kind, by_outcome, offer_conversions")
+    .eq("location_id", locationId)
+    .eq("insight_date", date)
+    .maybeSingle();
+
+  const row = data as {
+    by_nudge_kind?: Record<string, number>;
+    by_outcome?: Record<string, number>;
+    offer_conversions?: number;
+  } | null;
+
+  return aggregateDessertWindowStats({
+    byNudgeKind: row?.by_nudge_kind,
+    byOutcome: row?.by_outcome,
+    valueEuros: 0,
+  });
+}
+
+async function loadDenisShiftInput(
+  admin: SupabaseClient,
+  input: {
+    orgId: string;
+    locationId: string;
+    from: string;
+    to: string;
+    kitchenFallbackPrepMinutes: number | null;
+    date: string;
+    orders: DailyReportOrderRow[];
+    sessions: DailyReportSessionRow[];
+    visitCountByToken: Record<string, number>;
+  }
+): Promise<BuildDenisShiftRecapInput> {
+  const [
+    stationQuestions,
+    staffNotifications,
+    waiterCalls,
+    stationStates,
+    tableNames,
+    eightySixEvents,
+    dessertWindow,
+  ] = await Promise.all([
+    loadStationQuestionsForRange(
+      admin,
+      input.locationId,
+      input.from,
+      input.to
+    ),
+    loadStaffNotificationsForRange(
+      admin,
+      input.locationId,
+      input.from,
+      input.to
+    ),
+    loadWaiterCallsForRange(admin, input.locationId, input.from, input.to),
+    loadStationStatesForRange(admin, input.locationId, input.from, input.to),
+    loadTableNamesForLocation(admin, input.locationId),
+    loadEightySixEventsForRange(admin, {
+      orgId: input.orgId,
+      locationId: input.locationId,
+      from: input.from,
+      to: input.to,
+    }),
+    loadDessertWindowStatsForDay(admin, input.locationId, input.date),
+  ]);
+
+  return {
+    stationQuestions,
+    staffNotifications,
+    waiterCalls,
+    stationStates,
+    tableNames,
+    kitchenFallbackPrepMinutes: input.kitchenFallbackPrepMinutes,
+    eightySixEvents: eightySixEvents.map((event: EightySixEvent) => ({
+      productName: event.productName,
+      at: event.at,
+    })),
+    dessertWindow,
+    returningGuests: aggregateReturningGuestStats({
+      orders: input.orders,
+      sessions: input.sessions,
+      visitCountByToken: input.visitCountByToken,
+    }),
+    serviceRecovery: aggregateServiceRecoveryStats(staffNotifications),
   };
 }
 
@@ -344,6 +542,21 @@ export async function loadDailyReportForLocation(
 
   const stationKitchen = prepPriors?.byStation.get("kitchen");
   const { peakHour, peakOrderCount } = peakHourFromOrders(orders, timezone);
+  const kitchenFallbackPrepMinutes = stationKitchen
+    ? Math.round(stationKitchen.p50)
+    : null;
+
+  const denisShift = await loadDenisShiftInput(admin, {
+    orgId: input.orgId,
+    locationId: input.locationId,
+    from: range.from,
+    to: range.to,
+    date,
+    kitchenFallbackPrepMinutes,
+    orders,
+    sessions,
+    visitCountByToken: guestCounts.visitCountByToken,
+  });
 
   const feedback: FeedbackRow[] = feedbackRows
     .filter(
@@ -375,13 +588,12 @@ export async function loadDailyReportForLocation(
     denisMetrics: denisMetricsFromHealth(healthMetrics, denisDay),
     revenueYesterday,
     revenueLastWeekSameDay,
-    prepTimeAvgMinutes: stationKitchen
-      ? Math.round(stationKitchen.p50)
-      : null,
+    prepTimeAvgMinutes: kitchenFallbackPrepMinutes,
     slowestItem: slowest,
     peakHour,
     peakOrderCount,
     returningGuestSessions: guestCounts.returning,
     newGuestSessions: guestCounts.newGuests,
+    denisShift,
   });
 }

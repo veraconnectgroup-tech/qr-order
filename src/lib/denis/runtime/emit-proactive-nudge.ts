@@ -24,6 +24,12 @@ import {
 } from "@/lib/denis/runtime/record-intervention-evaluation";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { waiterObligationDedupeKey } from "@/lib/denis/cognition/waiter/detect-waiter-obligation-tell";
+import { tableTempoDedupeKey } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import {
+  COFFEE_AFTER_DESSERT_DEDUPE_KEY,
+  DESSERT_WINDOW_DEDUPE_KEY,
+  DIGESTIF_AFTER_COFFEE_DEDUPE_KEY,
+} from "@/lib/denis/cognition/tempo/detect-dessert-window";
 import { persistProactiveDockTell } from "@/lib/denis/loop/persist-proactive-dock-tell";
 import { persistTableSessionView } from "@/lib/denis/loop/persist-table-session-view";
 import {
@@ -242,9 +248,22 @@ export async function emitProactiveNudge(
   const dedupeKey =
     nudge.kind === "waiter_gap"
       ? waiterObligationDedupeKey(input.state)
-      : nudge.orderId
-        ? `${nudge.kind}:${nudge.orderId}`
-        : nudge.kind;
+      : nudge.kind === "table_tempo_browse"
+        ? tableTempoDedupeKey("browsing_stalled")
+        : nudge.kind === "dessert_nudge" &&
+            input.config.ops.dessertWindow.enabled
+          ? DESSERT_WINDOW_DEDUPE_KEY
+          : nudge.kind === "coffee_nudge"
+            ? COFFEE_AFTER_DESSERT_DEDUPE_KEY
+            : nudge.kind === "digestif_nudge"
+              ? DIGESTIF_AFTER_COFFEE_DEDUPE_KEY
+              : input.payload.tableTempoPhase === "drinks_finished_estimate" &&
+                  (nudge.kind === "sommelier_refill" ||
+                    nudge.kind === "drink_refill")
+                ? tableTempoDedupeKey("drinks_finished_estimate")
+                : nudge.orderId
+                  ? `${nudge.kind}:${nudge.orderId}`
+                  : nudge.kind;
 
   const emittedPayload = buildProactiveEmittedPayload({
     state: input.state,

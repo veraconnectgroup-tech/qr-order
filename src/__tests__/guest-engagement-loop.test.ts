@@ -311,9 +311,9 @@ describe("monthKeyFromMs", () => {
 });
 
 describe("same-again chips", () => {
-  it("returns Da, isto / Nešto drugo for Serbian", () => {
+  it("returns Kao i obično labels for Serbian (S11)", () => {
     expect(sameAgainQuickReplyLabels("sr")).toEqual({
-      sameAgain: "Da, isto",
+      sameAgain: "Kao i obično?",
       somethingElse: "Nešto drugo",
     });
   });

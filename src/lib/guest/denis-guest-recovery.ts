@@ -7,6 +7,8 @@ import {
   paymentMethodNarrationKey,
 } from "@/lib/denis/runtime/act/handoff-narration";
 import type { OrderFact } from "@/lib/denis/loop/types";
+import type { FreshStationAnswer } from "@/lib/denis/stations/station-questions";
+import { buildStationAwareOrderStatusMessage } from "@/lib/guest/station-guest-message";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { formatPrice } from "@/lib/format";
@@ -802,7 +804,8 @@ const ORDER_STATUS_MESSAGE_KEYS = {
 /** Guest-facing kitchen status — 0 credits, from FOLD orders. */
 export function openOrderStatusGuestMessage(
   orders: OrderFact[],
-  language: string
+  language: string,
+  options?: { freshEta?: FreshStationAnswer | null }
 ): string | null {
   const open = orders.filter(
     (order) => order.status !== "delivered" && order.status !== "cancelled"
@@ -810,18 +813,26 @@ export function openOrderStatusGuestMessage(
   if (!open.length) return null;
 
   const primary = open[0]!;
+  const stationMessage = buildStationAwareOrderStatusMessage({
+    order: primary,
+    language,
+    freshEta: options?.freshEta,
+  });
+
   const number = primary.orderNumber != null ? String(primary.orderNumber) : "?";
   const statusKey =
     ORDER_STATUS_MESSAGE_KEYS[
       primary.status as keyof typeof ORDER_STATUS_MESSAGE_KEYS
     ];
 
-  const statusLine = statusKey
-    ? tForAiGuestLanguage(statusKey, language, { number })
-    : tForAiGuestLanguage("ai.recovery.statusLive", language, {
-        number,
-        items: primary.status,
-      });
+  const statusLine = stationMessage
+    ? stationMessage
+    : statusKey
+      ? tForAiGuestLanguage(statusKey, language, { number })
+      : tForAiGuestLanguage("ai.recovery.statusLive", language, {
+          number,
+          items: primary.status,
+        });
 
   const items = primary.items
     .map((item) => item.productName)

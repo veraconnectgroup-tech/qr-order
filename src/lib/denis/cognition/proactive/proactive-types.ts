@@ -1,4 +1,5 @@
 import type { SessionPhase } from "@/lib/scene/types";
+import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
 
 export type ProactiveTickPayload = {
   sessionPhase?: SessionPhase;
@@ -92,6 +93,12 @@ export type ProactiveTickPayload = {
   sessionDurationMinutes?: number | null;
   recoveryCompleted?: boolean;
   postRecoveryEligible?: boolean;
+  /** ADR-043 S8 — current table tempo phase from watcher/fold. */
+  tableTempoPhase?: TableTempoPhase;
+  /** ADR-043 S10 — dessert window accept rate for learning gate (0–1). */
+  dessertWindowAcceptRate?: number | null;
+  /** ADR-043 S10 — impressions for dessert nudge learning gate. */
+  dessertWindowImpressions?: number;
 };
 
 export type GuestProactiveNudgeKind =
@@ -128,7 +135,10 @@ export type GuestProactiveNudgeKind =
   | "internal_feedback"
   | "scroll_search"
   | "scroll_category"
-  | "scroll_bottom";
+  | "scroll_bottom"
+  | "table_tempo_browse"
+  | "coffee_nudge"
+  | "digestif_nudge";
 
 export type StaffProactiveAlertKind =
   | "staff_table_idle"
@@ -140,7 +150,8 @@ export type StaffProactiveAlertKind =
   | "staff_multi_table_delay"
   | "staff_preorder_heads_up"
   | "staff_low_experience"
-  | "staff_storno_suggestion";
+  | "staff_storno_suggestion"
+  | "staff_drinks_finished";
 
 export type GuestProactiveNudge = {
   kind: GuestProactiveNudgeKind;

@@ -28,9 +28,15 @@ import {
   type WaiterTableVisualStatus,
 } from "@/lib/dashboard/waiter-table-data";
 import { WaiterOrderRow, type WaiterDetailOrder } from "@/components/waiter/waiter-order-row";
+import {
+  attachStationStates,
+  fetchOrderStationStates,
+} from "@/lib/orders/fetch-order-station-states";
 import { WaiterTableBillSheet } from "@/components/waiter/waiter-table-bill-sheet";
 import { WaiterQuickActions } from "@/components/waiter/waiter-quick-actions";
 import { WaiterTableSessionDenis } from "@/components/waiter/waiter-table-session-denis";
+import { WaiterBusTableBanner } from "@/components/waiter/waiter-bus-table-banner";
+import { useTableBusObligation } from "@/hooks/use-table-bus-obligations";
 import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
@@ -85,6 +91,10 @@ export function WaiterTableDetail({ tableId }: Props) {
   const [orders, setOrders] = useState<WaiterDetailOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [billOpen, setBillOpen] = useState(false);
+  const {
+    obligation: busObligation,
+    refetch: refetchBusObligation,
+  } = useTableBusObligation(tableId);
 
   const canUpdateStatus = !["kitchen"].includes(staffRole);
 
@@ -155,7 +165,12 @@ export function WaiterTableDetail({ tableId }: Props) {
     );
 
     setTable(row ?? null);
-    setOrders(parseWaiterDetailOrders(detailOrdersData));
+    const parsed = parseWaiterDetailOrders(detailOrdersData);
+    const stationRows = await fetchOrderStationStates(
+      supabase,
+      parsed.map((entry) => entry.id)
+    );
+    setOrders(attachStationStates(parsed, stationRows));
     setLoading(false);
   }, [locationId, pendingCallTableIds, tableId]);
 
@@ -166,6 +181,15 @@ export function WaiterTableDetail({ tableId }: Props) {
   usePostgresRealtime({
     channelName: `waiter-table-detail-orders:${tableId}`,
     table: "orders",
+    locationId,
+    filter: `location_id=eq.${locationId}`,
+    onChange: load,
+    fallbackPollMs: REALTIME_FALLBACK_POLL_MS,
+  });
+
+  usePostgresRealtime({
+    channelName: `waiter-table-detail-stations:${tableId}`,
+    table: "order_station_states",
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: load,
@@ -246,6 +270,19 @@ export function WaiterTableDetail({ tableId }: Props) {
           {tableStatusLabel(visualStatus, t)}
         </p>
       </div>
+
+      {busObligation && (
+        <WaiterBusTableBanner
+          obligation={busObligation}
+          tableName={table.name}
+          onCompleted={() => void refetchBusObligation()}
+          labels={{
+            title: t("table.busTitle"),
+            cta: t("table.busCta"),
+            waitSuffix: t("table.busWaitSuffix"),
+          }}
+        />
+      )}
 
       {table.hasWaiterCall && (
         <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
@@ -345,6 +382,34 @@ export function WaiterTableDetail({ tableId }: Props) {
                     : current.map((row) =>
                         row.id === orderId ? { ...row, status } : row
                       )
+                );
+              }}
+              onOptimisticStationStatus={(
+                orderId,
+                station,
+                status,
+                globalStatus
+              ) => {
+                setOrders((current) =>
+                  globalStatus === "delivered"
+                    ? current.filter((row) => row.id !== orderId)
+                    : current.map((row) => {
+                        if (row.id !== orderId) return row;
+                        const station_states = (row.station_states ?? []).map(
+                          (entry) =>
+                            entry.station === station
+                              ? {
+                                  ...entry,
+                                  status: status as typeof entry.status,
+                                }
+                              : entry
+                        );
+                        return {
+                          ...row,
+                          station_states,
+                          ...(globalStatus ? { status: globalStatus } : {}),
+                        };
+                      })
                 );
               }}
             />

@@ -6,7 +6,9 @@ export type WaiterGapKind =
   | "allergy_warning"
   | "serve_size"
   | "modifier"
-  | "confirm_blocked";
+  | "confirm_blocked"
+  /** ADR-043 S13 — floor ops: table paid, needs bussing (persisted in table_bus_obligations). */
+  | "bus_table";
 
 export type WaiterGap = {
   kind: WaiterGapKind;

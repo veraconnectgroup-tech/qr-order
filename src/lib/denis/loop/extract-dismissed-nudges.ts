@@ -43,6 +43,10 @@ export function extractProactiveDedupeKeys(events: DenisTimelineRow[]): string[]
     const kind = payload.kind;
     if (typeof kind !== "string" || !kind.trim()) continue;
     keys.add(kind.trim());
+    const explicitDedupe = payload.dedupeKey;
+    if (typeof explicitDedupe === "string" && explicitDedupe.trim()) {
+      keys.add(explicitDedupe.trim());
+    }
     const orderId = payload.orderId;
     if (typeof orderId === "string" && orderId.trim()) {
       keys.add(`${kind.trim()}:${orderId.trim()}`);

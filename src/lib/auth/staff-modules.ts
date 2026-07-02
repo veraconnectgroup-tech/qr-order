@@ -126,6 +126,13 @@ export const STAFF_MODULE_REGISTRY: readonly StaffModule[] = [
     requiredPermissions: "calls.manage",
   },
   {
+    id: "dashboard-operations",
+    surface: "dashboard",
+    label: "Operations",
+    href: "/dashboard/operations",
+    requiredPermissions: "denis.ops.read",
+  },
+  {
     id: "kitchen-link",
     surface: "dashboard",
     label: "Prep display",

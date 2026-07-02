@@ -1,4 +1,9 @@
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
+import {
+  buildSameAgainChipLabel,
+  returnGuestHasPastOrders,
+  shouldSuppressAllergyPromptChip,
+} from "@/lib/denis/platform/returning-guest";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { CartView } from "@/lib/denis/loop/view-types";
 import type { SceneSituation, SessionPhase } from "@/lib/scene/types";
@@ -221,10 +226,19 @@ export function deriveContextualChips(input: {
   const chips: ContextualChip[] = [];
   const cartHasItems = input.cart.visibleItemCount > 0;
   const returning = isReturningGuest(input.memory);
+  const hasPastOrders = returnGuestHasPastOrders(input.memory);
+  const suppressAllergyChip = shouldSuppressAllergyPromptChip(input.memory);
 
-  if (returning && input.orderCount === 0 && !cartHasItems) {
+  if (returning && hasPastOrders && input.orderCount === 0 && !cartHasItems) {
+    const topItem =
+      input.memory?.favoriteItems?.[0] ??
+      input.memory?.lastVisitItemNames?.[0] ??
+      null;
     chips.push(
-      chip(CONTEXTUAL_CHIP_IDS.sameAgain, labels.sameAgain),
+      chip(
+        CONTEXTUAL_CHIP_IDS.sameAgain,
+        buildSameAgainChipLabel(input.language, topItem)
+      ),
       chip(CONTEXTUAL_CHIP_IDS.somethingNew, labels.somethingNew)
     );
   }
@@ -237,11 +251,14 @@ export function deriveContextualChips(input: {
       input.mental.intent === "arrived" ||
       input.mental.intent === "exploring")
   ) {
-    chips.push(
+    const browseChips = [
       chip(CONTEXTUAL_CHIP_IDS.recommend, labels.recommend),
       chip(CONTEXTUAL_CHIP_IDS.popular, labels.popular),
-      chip(CONTEXTUAL_CHIP_IDS.allergy, labels.allergy)
-    );
+    ];
+    if (!suppressAllergyChip) {
+      browseChips.push(chip(CONTEXTUAL_CHIP_IDS.allergy, labels.allergy));
+    }
+    chips.push(...browseChips);
   } else if (
     cartHasItems &&
     (input.phase === "ordering" ||

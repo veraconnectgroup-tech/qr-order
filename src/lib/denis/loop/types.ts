@@ -25,6 +25,20 @@ import type { SessionPhase } from "@/lib/scene/types";
 
 export type { SessionPhase };
 
+export type OrderStationFact = {
+  station: "kitchen" | "bar";
+  status:
+    | "queued"
+    | "in_prep"
+    | "ready"
+    | "picked_up"
+    | "served"
+    | "cancelled";
+  readyAt: string | null;
+  pickedUpAt: string | null;
+  servedAt?: string | null;
+};
+
 export type OrderFact = {
   id: string;
   orderNumber: number | null;
@@ -37,6 +51,7 @@ export type OrderFact = {
   deviceFingerprint?: string | null;
   orderSource?: string | null;
   tipAmount?: number | null;
+  stationStates?: OrderStationFact[];
   items: Array<{
     orderItemId?: string;
     productId?: string | null;

@@ -6,13 +6,28 @@ import { formatOrderNumber, formatPrice } from "@/lib/format";
 import { groupOrderItemsForDisplay } from "@/lib/orders/group-order-items-for-display";
 import { getDrinksOrderItems } from "@/lib/kitchen/menu-section";
 import {
-  kdsActionLabel,
-  nextKdsStatus,
-  patchOrderStatus,
+  executeBarAdvanceAction,
+  patchStationStatusClient,
 } from "@/lib/orders/patch-order-status";
+import type { OrderStationState } from "@/lib/orders/fetch-order-station-states";
+import {
+  barAdvanceActionLabel,
+  barDisplayGlobalStatus,
+  getStationState,
+  isBarWorkComplete,
+  isManagerRole,
+  managerStationOverrideTransitions,
+  nextBarAdvanceAction,
+} from "@/lib/orders/station-display";
+import type { StationStatus } from "@/lib/orders/station-states";
 import { barPrepLabel, type BarQueueEntry } from "@/lib/bar/bar-intelligence";
 import { cn } from "@/lib/utils";
 import { hapticClick, hapticSuccess } from "@/lib/haptics";
+import { useDashboard } from "@/components/dashboard/dashboard-provider";
+
+type BarOrder = BarQueueEntry["order"] & {
+  station_states?: OrderStationState[];
+};
 
 type Props = {
   entry: BarQueueEntry;
@@ -23,6 +38,12 @@ type Props = {
   onOptimisticStatus: (
     orderId: string,
     status: BarQueueEntry["order"]["status"]
+  ) => void;
+  onOptimisticStationStatus: (
+    orderId: string,
+    station: "bar",
+    status: StationStatus,
+    globalStatus?: BarQueueEntry["order"]["status"]
   ) => void;
 };
 
@@ -53,7 +74,7 @@ function statusLabel(status: string) {
     case "preparing":
       return "Preparing";
     case "delivered":
-      return "Delivered";
+      return "Done";
     default:
       return "New";
   }
@@ -66,21 +87,66 @@ export function BarOrderRow({
   onBusyChange,
   onUpdated,
   onOptimisticStatus,
+  onOptimisticStationStatus,
 }: Props) {
-  const { order } = entry;
+  const { staffRole } = useDashboard();
+  const managerMode = isManagerRole(staffRole);
+  const { order: rawOrder } = entry;
+  const order = rawOrder as BarOrder;
   const tableName = order.tables?.name ?? "—";
   const drinkItems = groupOrderItemsForDisplay(getDrinksOrderItems(order));
-  const actionLabel = kdsActionLabel(order.status);
-  const nextStatus = nextKdsStatus(order.status);
-  const isDelivered = order.status === "delivered";
+  const barState = getStationState(order.station_states, "bar");
+  const displayStatus = barDisplayGlobalStatus(order.status, barState);
+  const advanceAction = nextBarAdvanceAction(order.status, barState);
+  const actionLabel = advanceAction ? barAdvanceActionLabel(advanceAction) : null;
+  const isComplete = isBarWorkComplete(order.status, barState);
+  const overrideOptions = managerMode
+    ? managerStationOverrideTransitions(barState?.status)
+    : [];
 
   async function advance() {
-    if (busy || !nextStatus) return;
+    if (busy || !advanceAction) return;
     onBusyChange(true);
     hapticClick();
-    onOptimisticStatus(order.id, nextStatus);
+
+    if (advanceAction.kind === "global") {
+      onOptimisticStatus(order.id, advanceAction.status);
+    } else {
+      onOptimisticStationStatus(order.id, "bar", advanceAction.status);
+    }
+
     try {
-      await patchOrderStatus(order.id, nextStatus);
+      const result = await executeBarAdvanceAction(order.id, advanceAction);
+      if (advanceAction.kind === "station" && result.globalStatus) {
+        onOptimisticStationStatus(
+          order.id,
+          "bar",
+          result.stationStatus ?? advanceAction.status,
+          result.globalStatus as BarQueueEntry["order"]["status"]
+        );
+      }
+      hapticSuccess();
+      onUpdated();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Update failed");
+      onUpdated();
+    } finally {
+      onBusyChange(false);
+    }
+  }
+
+  async function managerOverride(status: StationStatus) {
+    if (busy) return;
+    onBusyChange(true);
+    onOptimisticStationStatus(order.id, "bar", status);
+    try {
+      const result = await patchStationStatusClient(order.id, "bar", status);
+      onOptimisticStationStatus(
+        order.id,
+        "bar",
+        result.stationStatus,
+        result.globalStatus as BarQueueEntry["order"]["status"]
+      );
       hapticSuccess();
       onUpdated();
     } catch (error) {
@@ -96,7 +162,7 @@ export function BarOrderRow({
       className={cn(
         "rounded-xl border border-dash-border-subtle bg-dash-surface p-4 shadow-sm",
         entry.foodWaitingBoost && "border-amber-500/40 ring-1 ring-amber-500/20",
-        isDelivered && "opacity-60"
+        isComplete && "opacity-60"
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -108,10 +174,10 @@ export function BarOrderRow({
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                statusBadgeClass(order.status)
+                statusBadgeClass(displayStatus)
               )}
             >
-              {statusLabel(order.status)}
+              {statusLabel(displayStatus)}
             </span>
             <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
               {barPrepLabel(entry)}
@@ -184,7 +250,7 @@ export function BarOrderRow({
         </div>
       ) : null}
 
-      {actionLabel && nextStatus && (
+      {actionLabel && !isComplete && (
         <button
           type="button"
           disabled={busy}
@@ -193,6 +259,27 @@ export function BarOrderRow({
         >
           {actionLabel}
         </button>
+      )}
+
+      {managerMode && overrideOptions.length > 0 && (
+        <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+            Manager override
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {overrideOptions.map((status) => (
+              <button
+                key={status}
+                type="button"
+                disabled={busy}
+                onClick={() => void managerOverride(status)}
+                className="min-h-10 rounded-lg border border-amber-500/50 px-3 text-xs font-medium text-amber-100"
+              >
+                → {status}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </article>
   );

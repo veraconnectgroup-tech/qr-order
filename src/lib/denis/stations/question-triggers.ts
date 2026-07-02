@@ -16,6 +16,12 @@ export type StationQuestionSourceEvent =
   | "pending_too_long"
   | "ready_not_picked";
 
+export type StationOrderState = {
+  status: string;
+  readyAt: string | null;
+  pickedUpAt: string | null;
+};
+
 export type StationTriggerOrder = {
   id: string;
   orderNumber: number | null;
@@ -25,6 +31,8 @@ export type StationTriggerOrder = {
   readyAt: string | null;
   hasKitchenItems: boolean;
   hasDrinkItems: boolean;
+  kitchenStation?: StationOrderState | null;
+  barStation?: StationOrderState | null;
 };
 
 export type StationQuestionCandidate = {
@@ -51,6 +59,78 @@ export function stationForOrder(order: {
   return order.hasKitchenItems ? "kitchen" : "bar";
 }
 
+/** Skip watcher questions when station status already answers them (ADR-043 S3). */
+export function shouldSkipStationQuestionCandidate(
+  candidate: Pick<StationQuestionCandidate, "questionType" | "station">,
+  order: StationTriggerOrder
+): boolean {
+  const state =
+    candidate.station === "kitchen"
+      ? order.kitchenStation
+      : order.barStation;
+  if (!state) return false;
+
+  switch (candidate.questionType) {
+    case "eta":
+    case "pending_accept":
+      return ["in_prep", "ready", "picked_up", "served"].includes(
+        state.status
+      );
+    case "ready_pickup":
+      return ["picked_up", "served"].includes(state.status);
+    case "mixed_conflict":
+      if (candidate.station === "bar") {
+        return !["queued", "in_prep"].includes(state.status);
+      }
+      return false;
+    default:
+      return false;
+  }
+}
+
+function pushCandidate(
+  candidates: StationQuestionCandidate[],
+  order: StationTriggerOrder,
+  candidate: StationQuestionCandidate
+): void {
+  if (shouldSkipStationQuestionCandidate(candidate, order)) return;
+  candidates.push(candidate);
+}
+
+function pushReadyPickupCandidates(input: {
+  order: StationTriggerOrder;
+  config: ConciergeStationQuestions;
+  now: number;
+  candidates: StationQuestionCandidate[];
+}): void {
+  const { order, config, now, candidates } = input;
+
+  for (const station of ["kitchen", "bar"] as const) {
+    const hasItems =
+      station === "kitchen" ? order.hasKitchenItems : order.hasDrinkItems;
+    if (!hasItems) continue;
+
+    const state =
+      station === "kitchen" ? order.kitchenStation : order.barStation;
+    if (!state || state.status !== "ready" || state.pickedUpAt) continue;
+
+    const wait = minutesSince(
+      state.readyAt ?? order.readyAt ?? order.createdAt,
+      now
+    );
+    if (wait < config.readyPickupMinutes) continue;
+
+    pushCandidate(candidates, order, {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      station,
+      questionType: "ready_pickup",
+      sourceEvent: "ready_not_picked",
+      waitMinutes: wait,
+    });
+  }
+}
+
 /**
  * Watcher trigger rules (T2 SLA / T4 mixed / T5 pending / T6 ready-not-picked).
  * Pure — anti-spam (open/cooldown/cap) is enforced at create time.
@@ -69,7 +149,7 @@ export function evaluateStationQuestionTriggers(input: {
     if (order.status === "pending" || order.status === "pending_approval") {
       const wait = minutesSince(order.createdAt, now);
       if (wait >= input.config.pendingAcceptMinutes) {
-        candidates.push({
+        pushCandidate(candidates, order, {
           orderId: order.id,
           orderNumber: order.orderNumber,
           station: stationForOrder(order),
@@ -85,7 +165,7 @@ export function evaluateStationQuestionTriggers(input: {
       const wait = minutesSince(order.createdAt, now);
 
       if (order.hasKitchenItems && wait >= input.config.foodSlaMinutes) {
-        candidates.push({
+        pushCandidate(candidates, order, {
           orderId: order.id,
           orderNumber: order.orderNumber,
           station: "kitchen",
@@ -93,22 +173,29 @@ export function evaluateStationQuestionTriggers(input: {
           sourceEvent: "sla_breach",
           waitMinutes: wait,
         });
+        pushReadyPickupCandidates({ order, config: input.config, now, candidates });
         continue;
       }
 
       if (order.hasDrinkItems && wait >= input.config.drinkSlaMinutes) {
         if (order.hasKitchenItems) {
-          // Mixed order: drinks should already be out while food still cooks.
-          candidates.push({
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            station: "bar",
-            questionType: "mixed_conflict",
-            sourceEvent: "mixed_conflict",
-            waitMinutes: wait,
-          });
+          const barStatus = order.barStation?.status;
+          if (
+            !barStatus ||
+            barStatus === "queued" ||
+            barStatus === "in_prep"
+          ) {
+            pushCandidate(candidates, order, {
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              station: "bar",
+              questionType: "mixed_conflict",
+              sourceEvent: "mixed_conflict",
+              waitMinutes: wait,
+            });
+          }
         } else {
-          candidates.push({
+          pushCandidate(candidates, order, {
             orderId: order.id,
             orderNumber: order.orderNumber,
             station: "bar",
@@ -118,20 +205,27 @@ export function evaluateStationQuestionTriggers(input: {
           });
         }
       }
+
+      pushReadyPickupCandidates({ order, config: input.config, now, candidates });
       continue;
     }
 
     if (order.status === "ready") {
-      const wait = minutesSince(order.readyAt ?? order.createdAt, now);
-      if (wait >= input.config.readyPickupMinutes) {
-        candidates.push({
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          station: stationForOrder(order),
-          questionType: "ready_pickup",
-          sourceEvent: "ready_not_picked",
-          waitMinutes: wait,
-        });
+      const hasStationStates = order.kitchenStation || order.barStation;
+      if (hasStationStates) {
+        pushReadyPickupCandidates({ order, config: input.config, now, candidates });
+      } else {
+        const wait = minutesSince(order.readyAt ?? order.createdAt, now);
+        if (wait >= input.config.readyPickupMinutes) {
+          pushCandidate(candidates, order, {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            station: stationForOrder(order),
+            questionType: "ready_pickup",
+            sourceEvent: "ready_not_picked",
+            waitMinutes: wait,
+          });
+        }
       }
     }
   }

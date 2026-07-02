@@ -12,6 +12,7 @@ export type ProactiveNudgeKind =
   | "slow_kitchen"
   | "guest_welcome"
   | "browse_follow_up"
+  | "table_tempo_browse"
   | "bill_prompt"
   | "order_delay"
   | "order_eta_update"
@@ -36,13 +37,16 @@ export type ProactiveNudgeKind =
   | "internal_feedback"
   | "scroll_search"
   | "scroll_category"
-  | "scroll_bottom";
+  | "scroll_bottom"
+  | "coffee_nudge"
+  | "digestif_nudge";
 
 const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
   "waiter_gap",
   "attention_handoff",
   "guest_welcome",
   "browse_follow_up",
+  "table_tempo_browse",
   "order_ready_notify",
   "order_ready",
   "cooking_plating",
@@ -51,6 +55,8 @@ const PROACTIVE_DOCK_KINDS: ProactiveNudgeKind[] = [
   "order_eta_update",
   "order_delay",
   "dessert_nudge",
+  "coffee_nudge",
+  "digestif_nudge",
   "bill_prompt",
   "popularity_pair",
 ];

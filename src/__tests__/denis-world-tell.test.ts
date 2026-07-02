@@ -147,4 +147,20 @@ describe("resolveWorldOrderTell (Phase D)", () => {
     expect(headline).toBe(tell.message);
     expect(tell.push).toBe(true);
   });
+
+  it("bar station ready tell fires while global status is still preparing", () => {
+    const tell = resolveWorldOrderTell({
+      signal: "commerce.order_status",
+      status: "preparing",
+      previousStatus: "preparing",
+      orderNumber: 5,
+      menuLocale: "sr",
+      stationTell: { station: "bar" },
+    });
+
+    expect(tell).not.toBeNull();
+    expect(tell!.message.toLowerCase()).toContain("piće");
+    expect(tell!.push).toBe(true);
+    expect(tell!.persistTell).toBe(true);
+  });
 });

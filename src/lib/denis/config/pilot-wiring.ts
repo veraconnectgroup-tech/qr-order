@@ -1,4 +1,5 @@
 import type { PartialConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import { CONCIERGE_PLATFORM_DEFAULTS } from "@/lib/denis/config/concierge-defaults";
 
 /** Skyline / iota pilot — full Table OS wiring (M25 + floor + proactive). */
 export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
@@ -20,6 +21,27 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     floorGraphEnabled: true,
     autoRushEnabled: true,
     autoRushBacklogMinutes: 20,
+    stationQuestions: {
+      ...CONCIERGE_PLATFORM_DEFAULTS.ops.stationQuestions,
+      enabled: true,
+    },
+    stationAwareTell: true,
+    tableTempo: {
+      ...CONCIERGE_PLATFORM_DEFAULTS.ops.tableTempo,
+      enabled: true,
+    },
+    dessertWindow: {
+      ...CONCIERGE_PLATFORM_DEFAULTS.ops.dessertWindow,
+      enabled: true,
+    },
+    serviceRecovery: {
+      ...CONCIERGE_PLATFORM_DEFAULTS.ops.serviceRecovery,
+      enabled: true,
+    },
+    tableTurnaround: {
+      ...CONCIERGE_PLATFORM_DEFAULTS.ops.tableTurnaround,
+      enabled: true,
+    },
   },
   learning: { learnedEdgesEnabled: true },
   language: {

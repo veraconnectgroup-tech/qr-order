@@ -1,5 +1,11 @@
 import type { AiGuestOrder } from "@/lib/ai/order-context";
 import type { GuestMealStage } from "@/lib/denis/cognition/mental-model/mental-model-types";
+import {
+  barServedAt,
+  drinkConsumptionMinutes,
+} from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import type { ConciergeTableTempo } from "@/lib/denis/config/concierge-config.schema";
+import type { OrderFact } from "@/lib/denis/loop/types";
 import { resolveSituationalDrinkOffer } from "@/lib/denis/cognition/offer/situational-drink-offer";
 import {
   avgDrinkDurationMinutes,
@@ -139,6 +145,69 @@ export function detectSommelierFoodPairingTrigger(
     suggestion,
     message,
     prompt: `Sommelier pairing for ${foodName}: ${suggestion.primary}${suggestion.secondary ? ` / ${suggestion.secondary}` : ""}.`,
+  };
+}
+
+/** ADR-043 S8 — station `served_at` + consumption heuristic (precise empty-glass estimate). */
+export function detectSommelierStationTempoRefill(
+  orderFacts: OrderFact[],
+  input: {
+    tempoConfig: ConciergeTableTempo;
+    hasDrinkInCart?: boolean;
+    language?: string | null;
+    now?: number;
+    isShown: (orderId: string) => boolean;
+  }
+): DrinkSommelierTriggerMatch | null {
+  if (input.hasDrinkInCart) return null;
+
+  const now = input.now ?? Date.now();
+
+  const candidate = orderFacts
+    .filter((order) => {
+      if (input.isShown(order.id)) return false;
+      if (order.status === "cancelled" || order.status === "rejected") return false;
+      const drinkItem = order.items.find((item) => item.menuSection === "drinks");
+      if (!drinkItem) return false;
+
+      const servedAt = barServedAt(order);
+      if (!servedAt) return false;
+
+      const targetMinutes = drinkConsumptionMinutes(
+        drinkItem.productName,
+        input.tempoConfig,
+        {
+          drinkFamily: drinkItem.drinkFamily ?? null,
+          menuSection: drinkItem.menuSection ?? "drinks",
+        }
+      );
+      const elapsed = minutesAgo(servedAt, now);
+      return (
+        elapsed >= targetMinutes + input.tempoConfig.drinksFinishedGraceMinutes
+      );
+    })
+    .sort((a, b) => {
+      const aServed = barServedAt(a) ?? a.createdAt;
+      const bServed = barServedAt(b) ?? b.createdAt;
+      return Date.parse(bServed) - Date.parse(aServed);
+    })[0];
+
+  if (!candidate) return null;
+
+  const drinkName =
+    candidate.items.find((item) => item.menuSection === "drinks")?.productName ??
+    "piće";
+  const message = formatSommelierRefillMessage({
+    drinkName,
+    language: input.language,
+  });
+
+  return {
+    kind: "sommelier_refill",
+    orderId: candidate.id,
+    drinkName,
+    message,
+    prompt: `${drinkName} served at bar — empty glass estimate reached, offer second round once.`,
   };
 }
 

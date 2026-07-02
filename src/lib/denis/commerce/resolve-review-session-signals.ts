@@ -1,5 +1,6 @@
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import type { DetectReviewMomentInput } from "@/lib/denis/cognition/proactive/detect-review-moment";
+import { hasActiveServiceRecovery } from "@/lib/denis/cognition/recovery/service-recovery-timeline";
 import type { SessionPhase } from "@/lib/scene/types";
 
 export function sessionHasTipRecorded(
@@ -42,6 +43,7 @@ export function resolveReviewSessionSignals(
     recoveryCompleted?: boolean;
     postRecoveryEligible?: boolean;
     kdsStress?: "normal" | "high";
+    serviceRecoveryReviewBlockMinutes?: number;
   }
 ): {
   momentInput: DetectReviewMomentInput;
@@ -84,6 +86,11 @@ export function resolveReviewSessionSignals(
       postRecoveryEligible: input?.postRecoveryEligible ?? lowScore,
       lastGuestMessage: state.conversation.model?.thread?.lastGuestText ?? null,
       guestAffect: state.mental?.affect ?? null,
+      activeServiceRecovery: hasActiveServiceRecovery({
+        timeline: state.timeline,
+        nowMs,
+        blockMinutes: input?.serviceRecoveryReviewBlockMinutes ?? 120,
+      }),
     },
   };
 }

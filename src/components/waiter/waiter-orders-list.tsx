@@ -12,6 +12,10 @@ import {
 } from "@/lib/dashboard/waiter-table-data";
 import { WAITER_ORDERS_LIST_SELECT } from "@/lib/supabase/query-rows";
 import {
+  attachStationStates,
+  fetchOrderStationStates,
+} from "@/lib/orders/fetch-order-station-states";
+import {
   WaiterOrderRow,
   type WaiterDetailOrder,
 } from "@/components/waiter/waiter-order-row";
@@ -44,7 +48,12 @@ export function WaiterOrdersList() {
       ])
       .order("created_at", { ascending: false });
 
-    setOrders(parseWaiterDetailOrders(data));
+    const parsed = parseWaiterDetailOrders(data);
+    const stationRows = await fetchOrderStationStates(
+      supabase,
+      parsed.map((row) => row.id)
+    );
+    setOrders(attachStationStates(parsed, stationRows));
     setLoading(false);
   }, [locationId]);
 
@@ -55,6 +64,15 @@ export function WaiterOrdersList() {
   usePostgresRealtime({
     channelName: `waiter-orders-list:${locationId}`,
     table: "orders",
+    locationId,
+    filter: `location_id=eq.${locationId}`,
+    onChange: load,
+    fallbackPollMs: REALTIME_FALLBACK_POLL_MS,
+  });
+
+  usePostgresRealtime({
+    channelName: `waiter-orders-list-stations:${locationId}`,
+    table: "order_station_states",
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: load,
@@ -116,6 +134,26 @@ export function WaiterOrdersList() {
                   : current.map((row) =>
                       row.id === orderId ? { ...row, status } : row
                     )
+              );
+            }}
+            onOptimisticStationStatus={(orderId, station, status, globalStatus) => {
+              setOrders((current) =>
+                globalStatus === "delivered"
+                  ? current.filter((row) => row.id !== orderId)
+                  : current.map((row) => {
+                      if (row.id !== orderId) return row;
+                      const station_states = (row.station_states ?? []).map(
+                        (entry) =>
+                          entry.station === station
+                            ? { ...entry, status: status as typeof entry.status }
+                            : entry
+                      );
+                      return {
+                        ...row,
+                        station_states,
+                        ...(globalStatus ? { status: globalStatus } : {}),
+                      };
+                    })
               );
             }}
           />

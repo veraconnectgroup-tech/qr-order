@@ -28,6 +28,8 @@ function order(overrides: Partial<StationTriggerOrder>): StationTriggerOrder {
     readyAt: null,
     hasKitchenItems: true,
     hasDrinkItems: false,
+    kitchenStation: null,
+    barStation: null,
     ...overrides,
   };
 }
@@ -108,6 +110,58 @@ describe("evaluateStationQuestionTriggers", () => {
     expect(candidates[0]).toMatchObject({
       station: "bar",
       questionType: "mixed_conflict",
+    });
+  });
+
+  it("skips mixed_conflict when bar station is already served (ADR-043 S3)", () => {
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [
+        order({
+          createdAt: minutesAgo(6),
+          hasKitchenItems: true,
+          hasDrinkItems: true,
+          barStation: {
+            status: "served",
+            readyAt: minutesAgo(4),
+            pickedUpAt: minutesAgo(3),
+          },
+          kitchenStation: {
+            status: "in_prep",
+            readyAt: null,
+            pickedUpAt: null,
+          },
+        }),
+      ],
+      config,
+      now: NOW,
+    });
+
+    expect(candidates.filter((c) => c.questionType === "mixed_conflict")).toHaveLength(0);
+  });
+
+  it("uses station ready_at for ready_pickup (T6)", () => {
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [
+        order({
+          status: "preparing",
+          createdAt: minutesAgo(20),
+          hasKitchenItems: true,
+          hasDrinkItems: false,
+          kitchenStation: {
+            status: "ready",
+            readyAt: minutesAgo(3),
+            pickedUpAt: null,
+          },
+        }),
+      ],
+      config,
+      now: NOW,
+    });
+
+    expect(candidates[0]).toMatchObject({
+      station: "kitchen",
+      questionType: "ready_pickup",
+      waitMinutes: 3,
     });
   });
 

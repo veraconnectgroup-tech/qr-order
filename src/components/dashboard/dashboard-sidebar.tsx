@@ -22,6 +22,7 @@ import {
   UtensilsCrossed,
   Clock,
   Gauge,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LocationSwitcher } from "@/components/dashboard/location-switcher";
@@ -59,6 +60,13 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
         label: "Orders",
         icon: LayoutGrid,
         alertKey: "orders",
+      },
+      {
+        href: "/dashboard/operations",
+        label: "Operations",
+        icon: Activity,
+        requiresDenis: true,
+        roles: ["owner", "manager"],
       },
       { href: "/dashboard/new-order", label: "New Order", icon: Plus },
       { href: "/dashboard/kitchen", label: "Prep Display", icon: ChefHat },

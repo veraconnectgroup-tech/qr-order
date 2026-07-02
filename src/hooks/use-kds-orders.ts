@@ -16,6 +16,12 @@ import { useProvisionalPosOrders } from "@/hooks/use-provisional-pos-orders";
 import { KDS_DELIVERED_HIDE_MS } from "@/lib/kds/settings";
 import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
 import {
+  attachStationStates,
+  fetchOrderStationStates,
+  type OrderStationState,
+} from "@/lib/orders/fetch-order-station-states";
+import type { StationKind, StationStatus } from "@/lib/orders/station-states";
+import {
   buildKitchenPrepBatches,
   sortKitchenOrdersByUrgency,
 } from "@/lib/kitchen/kds-intelligence";
@@ -28,8 +34,12 @@ import type { OrderWithDetails } from "@/types";
 
 const ACTIVE_STATUSES = ["pending", "accepted", "preparing", "ready"] as const;
 
+export type KdsOrder = OrderWithDetails & {
+  station_states: OrderStationState[];
+};
+
 export function useKdsOrders(locationId: string) {
-  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [orders, setOrders] = useState<KdsOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -63,10 +73,52 @@ export function useKdsOrders(locationId: string) {
     setError(null);
     setFetchOk(true);
     setLastUpdatedAt(new Date());
-    const rows = orderWithDetailsRows(data);
-    setOrders(rows.filter(orderHasKitchenItems));
+    const rows = orderWithDetailsRows(data).filter(orderHasKitchenItems);
+    const stationRows = await fetchOrderStationStates(
+      supabase,
+      rows.map((row) => row.id)
+    );
+    setOrders(attachStationStates(rows, stationRows));
     setLoading(false);
   }, [locationId]);
+
+  const optimisticUpdateStationStatus = useCallback(
+    (
+      orderId: string,
+      station: StationKind,
+      status: StationStatus,
+      globalStatus?: OrderWithDetails["status"]
+    ) => {
+      const now = new Date().toISOString();
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (order.id !== orderId) return order;
+          const station_states = order.station_states.map((row) =>
+            row.station === station
+              ? {
+                  ...row,
+                  status,
+                  ...(status === "in_prep" ? { in_prep_at: now } : {}),
+                  ...(status === "ready" ? { ready_at: now } : {}),
+                  ...(status === "picked_up" ? { picked_up_at: now } : {}),
+                  ...(status === "served" ? { served_at: now } : {}),
+                }
+              : row
+          );
+          const patch: Partial<KdsOrder> = { station_states };
+          if (globalStatus) {
+            patch.status = globalStatus;
+            if (globalStatus === "accepted") patch.accepted_at = now;
+            if (globalStatus === "preparing") patch.preparing_at = now;
+            if (globalStatus === "ready") patch.ready_at = now;
+            if (globalStatus === "delivered") patch.delivered_at = now;
+          }
+          return { ...order, ...patch };
+        })
+      );
+    },
+    []
+  );
 
   const optimisticUpdateStatus = useCallback(
     (orderId: string, status: OrderWithDetails["status"]) => {
@@ -99,6 +151,17 @@ export function useKdsOrders(locationId: string) {
   const realtimeMode = usePostgresRealtime({
     channelName: `kds-orders:${locationId}`,
     table: "orders",
+    locationId,
+    filter: `location_id=eq.${locationId}`,
+    onChange: fetchOrders,
+    enabled: Boolean(locationId),
+    fallbackPollMs: KDS_REALTIME_FALLBACK_POLL_MS,
+    backupPollMs: REALTIME_BACKUP_POLL_MS,
+  });
+
+  usePostgresRealtime({
+    channelName: `kds-station-states:${locationId}`,
+    table: "order_station_states",
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: fetchOrders,
@@ -155,6 +218,7 @@ export function useKdsOrders(locationId: string) {
     fetchOk,
     secondsSinceUpdate,
     optimisticUpdateStatus,
+    optimisticUpdateStationStatus,
     provisionalEnabled: provisional.enabled,
     provisionalSyncFailedCount: provisional.syncFailedCount,
   };

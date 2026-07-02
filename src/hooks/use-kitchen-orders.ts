@@ -20,9 +20,18 @@ import {
 } from "@/lib/pos/provisional-display";
 import type { OrderWithDetails } from "@/types";
 import { orderHasKitchenItems } from "@/lib/kitchen/menu-section";
+import {
+  attachStationStates,
+  fetchOrderStationStates,
+  type OrderStationState,
+} from "@/lib/orders/fetch-order-station-states";
+
+export type KitchenOrder = OrderWithDetails & {
+  station_states: OrderStationState[];
+};
 
 export function useKitchenOrders(locationId: string) {
-  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const locationRef = useRef(locationId);
@@ -46,8 +55,12 @@ export function useKitchenOrders(locationId: string) {
     }
 
     setError(null);
-    const rows = orderWithDetailsRows(data);
-    setOrders(rows.filter(orderHasKitchenItems));
+    const rows = orderWithDetailsRows(data).filter(orderHasKitchenItems);
+    const stationRows = await fetchOrderStationStates(
+      supabase,
+      rows.map((row) => row.id)
+    );
+    setOrders(attachStationStates(rows, stationRows));
     setLoading(false);
   }, [locationId]);
 
@@ -68,6 +81,15 @@ export function useKitchenOrders(locationId: string) {
   const realtimeMode = usePostgresRealtime({
     channelName: `kitchen-orders:${locationId}`,
     table: "orders",
+    locationId,
+    filter: `location_id=eq.${locationId}`,
+    onChange: fetchOrders,
+    enabled: Boolean(locationId),
+  });
+
+  usePostgresRealtime({
+    channelName: `kitchen-station-states:${locationId}`,
+    table: "order_station_states",
     locationId,
     filter: `location_id=eq.${locationId}`,
     onChange: fetchOrders,

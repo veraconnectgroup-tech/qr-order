@@ -14,6 +14,10 @@ import {
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
 import type { StaffProactiveAlert } from "@/lib/denis/cognition/proactive/proactive-types";
 import {
+  shouldEscalateDrinksFinishedToWaiter,
+  type TableTempoPhase,
+} from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
+import {
   isGuestHandoffMessage,
   isGuestVagueBrowseMessage,
 } from "@/lib/denis/cognition/tde/semantic-intent-router";
@@ -60,6 +64,11 @@ export function detectStaffProactiveAlerts(input: {
   experienceScore?: number | null;
   language?: string | null;
   sessionOrder?: StornoCopilotOrderContext | null;
+  tableTempoPhase?: TableTempoPhase;
+  dismissedNudgeKeys?: string[];
+  hasActiveDrinkOrder?: boolean;
+  drinksNudgeEmittedAtMs?: number | null;
+  nowMs?: number;
 }): StaffProactiveAlert[] {
   const alerts: StaffProactiveAlert[] = [];
   const emitted = new Set(input.emittedKeys);
@@ -69,6 +78,10 @@ export function detectStaffProactiveAlerts(input: {
 
   if (
     input.config.proactive.staffTableIdle &&
+    !(
+      input.config.ops.tableTempo.enabled &&
+      input.tableTempoPhase === "browsing_stalled"
+    ) &&
     !emitted.has("staff_table_idle") &&
     !hasSessionOrders &&
     input.idleMinutes >= input.config.proactive.staffTableIdleMinutes
@@ -77,6 +90,25 @@ export function detectStaffProactiveAlerts(input: {
       kind: "staff_table_idle",
       tableName: input.tableName,
       message: `Sto ${input.tableName} — ${Math.floor(input.idleMinutes)} min bez narudžbine`,
+    });
+  }
+
+  if (
+    input.config.ops.tableTempo.enabled &&
+    !emitted.has("staff_drinks_finished") &&
+    shouldEscalateDrinksFinishedToWaiter({
+      emittedKeys: input.emittedKeys,
+      dismissedKeys: input.dismissedNudgeKeys ?? [],
+      guestIgnoredMinutes: input.config.ops.tableTempo.guestIgnoredMinutes,
+      drinksNudgeEmittedAtMs: input.drinksNudgeEmittedAtMs ?? null,
+      nowMs: input.nowMs ?? Date.now(),
+      hasActiveDrinkOrder: input.hasActiveDrinkOrder ?? false,
+    })
+  ) {
+    alerts.push({
+      kind: "staff_drinks_finished",
+      tableName: input.tableName,
+      message: `Sto ${input.tableName} — prazne čaše, ponudite rundu pića`,
     });
   }
 
@@ -218,6 +250,7 @@ export function actionUrlForStaffProactiveAlert(input: {
     case "staff_low_experience":
     case "staff_storno_suggestion":
     case "staff_table_idle":
+    case "staff_drinks_finished":
       return input.tableId ? `/waiter/tables/${input.tableId}` : "/waiter";
     case "staff_kitchen_delay":
     case "staff_multi_table_delay":
@@ -242,6 +275,7 @@ export function priorityForStaffProactiveAlert(
     case "staff_waiter_request":
       return "medium";
     case "staff_table_idle":
+    case "staff_drinks_finished":
       return "medium";
     default:
       return "high";

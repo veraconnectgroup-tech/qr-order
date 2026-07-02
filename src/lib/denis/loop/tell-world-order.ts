@@ -7,7 +7,18 @@ import type { SceneMarkState } from "@/lib/scene/types";
 
 export type CommerceWorldSignalKind =
   | "commerce.order_created"
-  | "commerce.order_status";
+  | "commerce.order_status"
+  | "commerce.product_unavailable";
+
+export type WorldStationTell = {
+  station: "kitchen" | "bar";
+};
+
+export type WorldProductTell = {
+  productId: string;
+  productName: string;
+  message: string;
+};
 
 export type WorldOrderTellResult = {
   message: string;
@@ -30,6 +41,40 @@ function markStateForStatus(status: string): SceneMarkState {
   return "idle";
 }
 
+function resolveStationReadyTell(input: {
+  stationTell: WorldStationTell;
+  orderNumber: number;
+  menuLocale: MenuLocale;
+  isEnglish?: boolean;
+}): WorldOrderTellResult | null {
+  const messageKey =
+    input.stationTell.station === "bar"
+      ? "ai.station.readyAnswer.bar"
+      : "ai.station.readyAnswer.kitchen";
+
+  const message = t(messageKey, input.menuLocale, input.isEnglish ?? false, {
+    number: String(input.orderNumber),
+  });
+
+  return {
+    message,
+    markState: "listen",
+    push: true,
+    persistTell: true,
+  };
+}
+
+function resolveProductUnavailableTell(input: {
+  productTell: WorldProductTell;
+}): WorldOrderTellResult {
+  return {
+    message: input.productTell.message,
+    markState: "listen",
+    push: true,
+    persistTell: true,
+  };
+}
+
 /** Template TELL for commerce world signals — single source for headline/transcript/push (Phase D). */
 export function resolveWorldOrderTell(input: {
   signal: CommerceWorldSignalKind;
@@ -39,7 +84,22 @@ export function resolveWorldOrderTell(input: {
   menuLocale: MenuLocale;
   isEnglish?: boolean;
   orders?: unknown[];
+  stationTell?: WorldStationTell;
+  productTell?: WorldProductTell;
 }): WorldOrderTellResult | null {
+  if (input.productTell) {
+    return resolveProductUnavailableTell({ productTell: input.productTell });
+  }
+
+  if (input.stationTell) {
+    return resolveStationReadyTell({
+      stationTell: input.stationTell,
+      orderNumber: input.orderNumber,
+      menuLocale: input.menuLocale,
+      isEnglish: input.isEnglish,
+    });
+  }
+
   const effectiveStatus = resolveStatusForSignal(input.signal, input.status);
 
   if (
