@@ -586,17 +586,29 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   letter-spacing: -0.01em;
 }
 
-/* Hero mockup scales to remaining viewport below the copy block */
-.landing-page .landing-hero-mockup-scale {
-  --hero-scale: clamp(0.72, calc((100dvh - 16rem) / 34rem), 1);
+/* Hero mockup docked to stage bottom (nimt-style) */
+.landing-page .landing-hero-stage {
+  container-type: size;
+  container-name: hero-stage;
+}
+
+.landing-page .landing-hero-mockup-dock {
+  --hero-mockup-height: 30rem;
+  --hero-scale: clamp(0.48, calc(100cqh / var(--hero-mockup-height)), 0.94);
   transform: scale(var(--hero-scale));
   transform-origin: bottom center;
-  margin-bottom: calc((var(--hero-scale) - 1) * 34rem);
+}
+
+@media (max-height: 820px) {
+  .landing-page .landing-hero-mockup-dock {
+    --hero-mockup-height: 27rem;
+    --hero-scale: clamp(0.44, calc(100cqh / var(--hero-mockup-height)), 0.84);
+  }
 }
 
 @media (min-width: 1280px) {
-  .landing-page .landing-hero-mockup-scale {
-    --hero-scale: clamp(0.82, calc((100dvh - 16.5rem) / 34rem), 1);
+  .landing-page .landing-hero-mockup-dock {
+    --hero-scale: clamp(0.52, calc(100cqh / var(--hero-mockup-height)), 0.92);
   }
 }
 

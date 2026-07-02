@@ -21,10 +21,10 @@ const CART_TOTAL = DEMO_CART_ITEMS.reduce((sum, item) => sum + item.itemTotal, 0
 const CART_COUNT = DEMO_CART_ITEMS.reduce((sum, item) => sum + item.quantity, 0);
 
 const STATUS_BADGE: Record<string, string> = {
-  new: "bg-orange-500/15 text-orange-400",
-  preparing: "bg-yellow-500/15 text-yellow-400",
-  ready: "bg-green-500/15 text-green-400",
-  delivered: "bg-zinc-700/50 text-zinc-400",
+  new: "bg-orange-50 text-orange-700",
+  preparing: "bg-sky-50 text-sky-700",
+  ready: "bg-emerald-50 text-emerald-700",
+  delivered: "bg-[#eef1f5] text-[#596273]",
 };
 
 function trimOrderItems(order: OrderWithDetails, maxItems = 3): OrderWithDetails {
@@ -58,16 +58,16 @@ export function GuestMenuContent({
     );
 
     return (
-      <div className="pointer-events-none flex h-full min-h-[420px] w-full flex-col bg-[#09090b]">
-        <header className="shrink-0 border-b border-zinc-800/80 px-4 py-3">
+      <div className="pointer-events-none flex h-full min-h-[420px] w-full flex-col bg-[#fbfcfd]">
+        <header className="shrink-0 border-b border-[#e7ebf0] bg-white px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-[13px] font-semibold leading-tight text-zinc-100">
+              <p className="text-[13px] font-semibold leading-tight text-[#1f2328]">
                 Skyline Lounge
               </p>
-              <p className="text-[10px] text-zinc-500">Table 8 · Rooftop</p>
+              <p className="text-[10px] text-[#6b7280]">Table 8 · Rooftop</p>
             </div>
-            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-400 ring-1 ring-zinc-800">
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
               Drinks
             </span>
           </div>
@@ -77,9 +77,9 @@ export function GuestMenuContent({
           {products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center gap-3 rounded-lg bg-zinc-950/90 p-2.5 ring-1 ring-zinc-800/70"
+              className="flex items-center gap-3 rounded-lg bg-white p-2.5 ring-1 ring-[#e7ebf0]"
             >
-              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-zinc-800">
+              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-[#eef1f5]">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -88,30 +88,30 @@ export function GuestMenuContent({
                     className="size-full object-cover"
                   />
                 ) : (
-                  <div className="flex size-full items-center justify-center text-sm font-semibold text-zinc-600">
+                  <div className="flex size-full items-center justify-center text-sm font-semibold text-[#8b95a4]">
                     {product.name.charAt(0)}
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-zinc-100">
+                <p className="truncate text-[13px] font-medium text-[#1f2328]">
                   {product.name}
                 </p>
                 {product.prep_time_minutes != null && (
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-[#6b7280]">
                     {product.prep_time_minutes} min
                   </p>
                 )}
               </div>
-              <p className="font-mono text-[12px] tabular-nums text-zinc-300">
+              <p className="font-mono text-[12px] tabular-nums text-[#1f2328]">
                 {formatPrice(Number(product.price), DEMO_CURRENCY)}
               </p>
             </div>
           ))}
         </div>
 
-        <footer className="shrink-0 border-t border-zinc-800/80 px-3 py-3">
-          <div className="flex items-center justify-between rounded-lg bg-[#e85d04] px-3 py-2.5 text-white">
+        <footer className="shrink-0 border-t border-[#e7ebf0] bg-white px-3 py-3">
+          <div className="flex items-center justify-between rounded-lg bg-[#1f2328] px-3 py-2.5 text-white">
             <span className="text-[11px] font-medium">
               {products.length} {products.length === 1 ? "item" : "items"}
             </span>
@@ -128,22 +128,22 @@ export function GuestMenuContent({
   return (
     <div
       className={cn(
-        "pointer-events-none relative flex w-full flex-col bg-[#09090b]",
+        "pointer-events-none relative flex w-full flex-col bg-[#fbfcfd]",
         isHero ? "h-full min-h-[480px]" : "h-[min(520px,72dvh)] sm:h-[580px]"
       )}
     >
-      <header className="shrink-0 border-b border-zinc-800 bg-zinc-950/95 px-3 py-2.5">
+      <header className="shrink-0 border-b border-[#e7ebf0] bg-white px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-[var(--lp-accent)] ring-1 ring-zinc-700">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#1f2328] text-xs font-bold text-white">
             S
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight text-zinc-100">
+            <p className="truncate text-sm font-semibold leading-tight text-[#1f2328]">
               Skyline Lounge
             </p>
-            <p className="truncate text-[10px] text-zinc-500">Rooftop · Hamburg</p>
+            <p className="truncate text-[10px] text-[#6b7280]">Rooftop · Hamburg</p>
           </div>
-          <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
             Table 8
           </span>
         </div>
@@ -159,8 +159,8 @@ export function GuestMenuContent({
             className={cn(
               "shrink-0 rounded-full px-3 py-1 text-[11px] font-medium",
               activeCategory === cat.id
-                ? "bg-zinc-800 text-zinc-100 ring-1 ring-[var(--lp-accent)]/40"
-                : "bg-zinc-900 text-zinc-500 ring-1 ring-zinc-800"
+                ? "bg-[#1f2328] text-white"
+                : "bg-white text-[#6b7280] ring-1 ring-[#e7ebf0]"
             )}
           >
             {cat.name}
@@ -169,9 +169,9 @@ export function GuestMenuContent({
       </div>
 
       <div className={cn("min-h-0 flex-1 overflow-hidden px-3", isHero ? "pb-[52px]" : "pb-14 pt-1")}>
-        <p className="mb-2 text-[11px] font-semibold text-zinc-300">
+        <p className="mb-2 text-[11px] font-semibold text-[#1f2328]">
           {pillCategories.find((c) => c.id === activeCategory)?.name}{" "}
-          <span className="font-normal text-zinc-500">
+          <span className="font-normal text-[#6b7280]">
             ({activeProducts?.length ?? 0})
           </span>
         </p>
@@ -179,9 +179,9 @@ export function GuestMenuContent({
           {activeProducts?.map((product) => (
             <article
               key={product.id}
-              className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
+              className="overflow-hidden rounded-lg border border-[#e3e7ee] bg-white"
             >
-              <div className="relative h-[72px] overflow-hidden bg-gradient-to-br from-zinc-800 to-zinc-900 sm:h-[80px]">
+              <div className="relative h-[72px] overflow-hidden bg-[#eef1f5] sm:h-[80px]">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -191,26 +191,26 @@ export function GuestMenuContent({
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    <span className="text-xl font-bold text-zinc-700">
+                    <span className="text-xl font-bold text-[#a8b0bd]">
                       {product.name.charAt(0)}
                     </span>
                   </div>
                 )}
                 {product.prep_time_minutes != null && product.prep_time_minutes > 0 && (
-                  <span className="absolute right-1 top-1 rounded-full bg-zinc-950/80 px-1 py-0.5 text-[8px] text-zinc-400">
+                  <span className="absolute right-1 top-1 rounded-full bg-white/90 px-1 py-0.5 text-[8px] font-medium text-[#596273]">
                     {product.prep_time_minutes}m
                   </span>
                 )}
               </div>
               <div className="p-2">
-                <p className="truncate text-[11px] font-medium leading-tight text-zinc-100">
+                <p className="truncate text-[11px] font-medium leading-tight text-[#1f2328]">
                   {product.name}
                 </p>
                 <div className="mt-1.5 flex items-center justify-between gap-1">
-                  <span className="text-[11px] font-semibold text-zinc-200">
+                  <span className="text-[11px] font-semibold text-[#1f2328]">
                     {formatPrice(Number(product.price), DEMO_CURRENCY)}
                   </span>
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[var(--lp-accent)] ring-1 ring-zinc-700">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1f2328] text-white">
                     <span className="text-sm leading-none">+</span>
                   </span>
                 </div>
@@ -222,8 +222,8 @@ export function GuestMenuContent({
 
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 border-t border-zinc-800 bg-zinc-950/95 px-3 py-2.5 backdrop-blur-sm",
-          !isHero && "rounded-t-xl bg-orange-500 text-white shadow-2xl sm:rounded-t-2xl sm:px-3 sm:py-3"
+          "absolute inset-x-0 bottom-0 border-t border-[#e7ebf0] bg-white/95 px-3 py-2.5 backdrop-blur-sm",
+          !isHero && "rounded-t-xl bg-[#1f2328] text-white shadow-2xl sm:rounded-t-2xl sm:px-3 sm:py-3"
         )}
       >
         <div
@@ -232,14 +232,14 @@ export function GuestMenuContent({
             !isHero && "text-[10px] sm:text-xs"
           )}
         >
-          <span className={cn("font-medium", isHero ? "text-zinc-400" : "font-medium")}>
+          <span className={cn("font-medium", isHero ? "text-[#6b7280]" : "font-medium")}>
             {CART_COUNT} {CART_COUNT === 1 ? "item" : "items"}
           </span>
           <span className="font-semibold">Cart →</span>
           <span
             className={cn(
               "font-bold tabular-nums",
-              isHero ? "text-[var(--lp-accent)]" : "font-bold"
+              isHero ? "text-[#1f2328]" : "font-bold"
             )}
           >
             {formatPrice(CART_TOTAL, DEMO_CURRENCY)}
@@ -276,10 +276,10 @@ export function OrdersBoardContent({
       <div className="pointer-events-none select-none">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            <p className="text-[10px] font-medium uppercase tracking-normal text-zinc-600">
               Operations
             </p>
-            <p className="mt-1 text-lg font-semibold tracking-tight text-zinc-100">
+            <p className="mt-1 text-lg font-semibold tracking-normal text-zinc-100">
               Live Orders
             </p>
           </div>
@@ -297,7 +297,7 @@ export function OrdersBoardContent({
           />
           {preparingOrder && (
             <div className="hidden min-w-[160px] flex-1 pt-10 opacity-[0.38] sm:block">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-normal text-zinc-600">
                 Preparing
               </p>
               <p className="font-mono text-xl font-medium text-zinc-400">
@@ -316,14 +316,14 @@ export function OrdersBoardContent({
 
   if (isHero) {
     return (
-      <div className="pointer-events-none select-none p-3 [&_article]:p-3 [&_button]:py-1.5 [&_button]:text-xs [&_li]:text-xs [&_p.font-mono.text-lg]:text-base">
+      <div className="pointer-events-none select-none bg-[#fbfcfd] p-3 [&_article]:p-3 [&_button]:py-1.5 [&_button]:text-xs [&_li]:text-xs [&_p.font-mono.text-lg]:text-base">
         <div
           className={cn(
             "mb-2 flex items-center justify-between gap-2 border-b pb-2",
-            light ? "border-zinc-200" : "border-zinc-800"
+            light ? "border-[#e7ebf0]" : "border-zinc-800"
           )}
         >
-          <p className={cn("text-xs font-semibold", light ? "text-zinc-800" : "text-zinc-200")}>
+          <p className={cn("text-xs font-semibold", light ? "text-[#1f2328]" : "text-zinc-200")}>
             Live Orders
           </p>
           <span className="text-[10px] text-emerald-500">● Live</span>
@@ -340,12 +340,12 @@ export function OrdersBoardContent({
                 className={cn(
                   "min-w-0 flex-1 rounded-lg border-t-2 p-2",
                   column.border,
-                  light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900/50"
+                  light ? "bg-white ring-1 ring-[#e3e7ee]" : "bg-zinc-900/50"
                 )}
               >
                 <p
                   className={cn(
-                    "mb-1.5 text-[9px] font-bold uppercase tracking-wide",
+                    "mb-1.5 text-[9px] font-bold uppercase tracking-normal",
                     light ? "text-zinc-500" : "text-zinc-500"
                   )}
                 >
@@ -369,14 +369,14 @@ export function OrdersBoardContent({
       <div
         className={cn(
           "flex flex-wrap items-center justify-between gap-2 border-b px-3 py-3 sm:px-4",
-          light ? "border-zinc-200 bg-white" : "border-zinc-800"
+          light ? "border-[#e7ebf0] bg-white" : "border-zinc-800"
         )}
       >
         <div>
           <p
             className={cn(
-              "text-[10px] font-medium uppercase tracking-wider sm:text-xs",
-              light ? "text-zinc-500" : "text-zinc-500"
+              "text-[10px] font-medium uppercase tracking-normal sm:text-xs",
+              light ? "text-[#6b7280]" : "text-zinc-500"
             )}
           >
             Operations
@@ -384,13 +384,13 @@ export function OrdersBoardContent({
           <p
             className={cn(
               "text-sm font-semibold sm:text-base",
-              light ? "text-zinc-900" : "text-zinc-100"
+              light ? "text-[#1f2328]" : "text-zinc-100"
             )}
           >
             Live Orders
           </p>
         </div>
-        <p className="text-[10px] text-zinc-500 sm:text-xs">
+        <p className="text-[10px] text-[#6b7280] sm:text-xs">
           Skyline Lounge ·{" "}
           <span className="font-medium text-emerald-500">● Live</span>
         </p>
@@ -405,7 +405,7 @@ export function OrdersBoardContent({
             <div key={order.id}>
               <span
                 className={cn(
-                  "mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                  "mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-normal",
                   STATUS_BADGE[getShowcaseOrderColumnId(order.status)] ??
                     STATUS_BADGE.delivered
                 )}
@@ -434,14 +434,14 @@ export function OrdersBoardContent({
                 "flex w-[min(240px,38vw)] shrink-0 flex-col rounded-xl p-2.5",
                 "border-t-2 lg:w-[220px]",
                 column.border,
-                light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900/40"
+                light ? "bg-white ring-1 ring-[#e3e7ee]" : "bg-zinc-900/40"
               )}
             >
               <div className="mb-2.5 flex items-center justify-between px-0.5">
                 <h3
                   className={cn(
-                    "text-xs font-semibold uppercase tracking-wider",
-                    light ? "text-zinc-600" : "text-zinc-300"
+                    "text-xs font-semibold uppercase tracking-normal",
+                    light ? "text-[#596273]" : "text-zinc-300"
                   )}
                 >
                   {column.label}

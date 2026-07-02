@@ -13,8 +13,8 @@ function TabletCaption({ label }: { label: string }) {
 export function TablesShowcase() {
   return (
     <div className="w-full min-w-0">
-      <DashboardScreenShowcase screen="tables" />
-      <TabletCaption label="Staff tablet — Tables & QR codes" />
+      <DashboardScreenShowcase screen="tables" theme="light" />
+      <TabletCaption label="Staff tablet - Tables & QR codes" />
     </div>
   );
 }
@@ -22,8 +22,8 @@ export function TablesShowcase() {
 export function HistoryShowcase() {
   return (
     <div className="w-full min-w-0">
-      <DashboardScreenShowcase screen="history" />
-      <TabletCaption label="Staff tablet — History & analytics" />
+      <DashboardScreenShowcase screen="history" theme="light" />
+      <TabletCaption label="Staff tablet - History & analytics" />
     </div>
   );
 }

@@ -36,9 +36,9 @@ export function ShowcaseWindow({
         cinematic
           ? "rounded-none bg-[#09090b]"
           : cn(
-              "rounded-xl border shadow-[0_24px_80px_-24px_rgba(0,0,0,0.18)]",
+              "rounded-xl border shadow-[0_18px_52px_-28px_rgba(31,35,40,0.22)]",
               isLight
-                ? "border-zinc-200/90 bg-white"
+                ? "border-[#dfe5ed] bg-white"
                 : "border-white/[0.08] bg-[#09090b] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)]"
             ),
         className
@@ -49,7 +49,7 @@ export function ShowcaseWindow({
           "flex items-center gap-2.5 border-b",
           cinematic ? "px-4 py-2" : "px-3 py-2",
           isLight
-            ? "border-zinc-200 bg-zinc-50"
+            ? "border-[#e7ebf0] bg-[#fbfcfd]"
             : cinematic
               ? "border-white/[0.04] bg-white/[0.015]"
               : "border-white/[0.06] bg-white/[0.02]"
@@ -82,9 +82,9 @@ export function ShowcaseWindow({
           <div
             className={cn(
               "min-w-0 flex-1 truncate rounded-md text-center",
-              cinematic ? "px-2 py-0.5 text-[9px] tracking-wide" : "px-2.5 py-0.5 text-[10px]",
+              cinematic ? "px-2 py-0.5 text-[9px] tracking-normal" : "px-2.5 py-0.5 text-[10px]",
               isLight
-                ? "bg-white text-zinc-500 ring-1 ring-zinc-200"
+                ? "bg-white text-[#6b7280] ring-1 ring-[#e7ebf0]"
                 : "bg-zinc-950/90 text-zinc-500"
             )}
           >
@@ -142,7 +142,7 @@ function StatusBar({ url, theme }: { url: string; theme: ShowcaseTheme }) {
     <div
       className={cn(
         "flex items-center gap-2 border-b px-3 py-2",
-        isLight ? "border-zinc-200 bg-zinc-50" : "border-zinc-800 bg-zinc-950"
+        isLight ? "border-[#e7ebf0] bg-[#fbfcfd]" : "border-zinc-800 bg-zinc-950"
       )}
     >
       <div className="flex shrink-0 gap-1">
@@ -153,7 +153,7 @@ function StatusBar({ url, theme }: { url: string; theme: ShowcaseTheme }) {
       <div
         className={cn(
           "min-w-0 flex-1 truncate rounded-md px-2 py-0.5 text-center text-[9px] sm:text-[10px]",
-          isLight ? "bg-white text-zinc-500 ring-1 ring-zinc-200" : "bg-zinc-900 text-zinc-500"
+        isLight ? "bg-white text-[#6b7280] ring-1 ring-[#e7ebf0]" : "bg-zinc-900 text-zinc-500"
         )}
       >
         {url}
@@ -176,7 +176,7 @@ function TabletScreen({
     <div
       className={cn(
         "overflow-hidden rounded-xl border",
-        isLight ? "border-zinc-200 bg-white" : "border-zinc-800 bg-[#09090b]"
+        isLight ? "border-[#dfe5ed] bg-white" : "border-zinc-800 bg-[#09090b]"
       )}
     >
       {url && <StatusBar url={url} theme={theme} />}
@@ -215,16 +215,16 @@ export function ShowcaseTablet({
       <div className="mx-auto hidden w-full max-w-[920px] md:block">
         <div
           className={cn(
-            "relative rounded-[1.25rem] p-2 shadow-[0_16px_48px_rgba(0,0,0,0.12)] lg:rounded-[1.35rem] lg:p-2.5",
+            "relative rounded-[1.25rem] p-2 shadow-[0_18px_54px_-26px_rgba(31,35,40,0.24)] lg:rounded-[1.35rem] lg:p-2.5",
             isLight
-              ? "border-[6px] border-zinc-200 bg-zinc-100 lg:border-[7px]"
+              ? "border-[6px] border-[#e5e9ef] bg-[#f7f9fb] lg:border-[7px]"
               : "border-[6px] border-zinc-800 bg-zinc-900 lg:border-[7px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
           )}
         >
           <div
             className={cn(
               "absolute left-1/2 top-3.5 z-10 size-1.5 -translate-x-1/2 rounded-full lg:top-4 lg:size-2",
-              isLight ? "bg-zinc-300" : "bg-zinc-700"
+              isLight ? "bg-[#cfd6df]" : "bg-zinc-700"
             )}
           />
           <TabletScreen url={url} theme={theme}>
@@ -233,7 +233,7 @@ export function ShowcaseTablet({
           <div
             className={cn(
               "mx-auto mt-1.5 h-1 w-14 rounded-full lg:mt-2 lg:w-16",
-              isLight ? "bg-zinc-300" : "bg-zinc-700"
+              isLight ? "bg-[#cfd6df]" : "bg-zinc-700"
             )}
           />
         </div>

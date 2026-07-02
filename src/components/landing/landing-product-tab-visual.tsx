@@ -8,7 +8,7 @@ function TabVisualSkeleton() {
     <div
       className={cn(
         "mx-auto aspect-[9/16] w-full max-w-[280px] animate-pulse rounded-[2rem]",
-        "border border-zinc-800 bg-zinc-900/80"
+        "border border-[#dfe5ed] bg-[#fbfcfd]"
       )}
       aria-hidden
     />

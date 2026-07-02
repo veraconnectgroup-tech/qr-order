@@ -16,19 +16,19 @@ export function CheckoutShowcase() {
   const total = subtotal + taxAmount;
 
   return (
-    <ShowcasePhone label="Guest phone — checkout" shortLabel="Guest — pay">
-      <div className="pointer-events-none min-h-[min(520px,72dvh)] select-none bg-[#09090b] p-3 sm:min-h-[560px] sm:p-4">
-        <p className="text-sm font-semibold text-zinc-50">Checkout</p>
-        <p className="text-xs text-zinc-500">Table 8 · Skyline Lounge</p>
+    <ShowcasePhone label="Guest phone - checkout" shortLabel="Guest - pay">
+      <div className="pointer-events-none min-h-[min(520px,72dvh)] select-none bg-[#fbfcfd] p-3 sm:min-h-[560px] sm:p-4">
+        <p className="text-sm font-semibold text-[#1f2328]">Checkout</p>
+        <p className="text-xs text-[#6b7280]">Table 8 · Skyline Lounge</p>
 
-        <div className="mt-3 rounded-xl bg-zinc-900 p-3 sm:mt-4 sm:p-4">
-          <h2 className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500 sm:mb-3 sm:text-xs">
+        <div className="mt-3 rounded-xl border border-[#e7ebf0] bg-white p-3 sm:mt-4 sm:p-4">
+          <h2 className="mb-2 text-[10px] uppercase tracking-normal text-[#6b7280] sm:mb-3 sm:text-xs">
             Order summary
           </h2>
           {DEMO_CART_ITEMS.map((item, i) => (
             <div
               key={i}
-              className="flex justify-between gap-2 py-1 text-xs text-zinc-300 sm:text-sm"
+              className="flex justify-between gap-2 py-1 text-xs text-[#1f2328] sm:text-sm"
             >
               <span className="min-w-0 truncate">
                 {item.quantity}× {item.productName}
@@ -38,18 +38,18 @@ export function CheckoutShowcase() {
               </span>
             </div>
           ))}
-          <div className="mt-2 space-y-1 border-t border-zinc-800 pt-2 text-xs sm:mt-3 sm:pt-3 sm:text-sm">
-            <div className="flex justify-between text-zinc-400">
+          <div className="mt-2 space-y-1 border-t border-[#edf1f5] pt-2 text-xs sm:mt-3 sm:pt-3 sm:text-sm">
+            <div className="flex justify-between text-[#6b7280]">
               <span>Subtotal</span>
               <span>{formatPrice(subtotal, DEMO_CURRENCY)}</span>
             </div>
-            <div className="flex justify-between text-zinc-400">
+            <div className="flex justify-between text-[#6b7280]">
               <span>Tax ({DEMO_TAX_PERCENT}%)</span>
               <span>{formatPrice(taxAmount, DEMO_CURRENCY)}</span>
             </div>
-            <div className="flex justify-between font-semibold text-zinc-50">
+            <div className="flex justify-between font-semibold text-[#1f2328]">
               <span>Total</span>
-              <span className="text-[var(--lp-accent)]">
+              <span>
                 {formatPrice(total, DEMO_CURRENCY)}
               </span>
             </div>
@@ -61,33 +61,33 @@ export function CheckoutShowcase() {
         </div>
 
         <div className="my-2.5 flex items-center gap-2 sm:my-3">
-          <div className="h-px flex-1 bg-zinc-800" />
-          <span className="text-[9px] text-zinc-600 sm:text-[10px]">or pay with card</span>
-          <div className="h-px flex-1 bg-zinc-800" />
+          <div className="h-px flex-1 bg-[#e7ebf0]" />
+          <span className="text-[9px] text-[#6b7280] sm:text-[10px]">or pay with card</span>
+          <div className="h-px flex-1 bg-[#e7ebf0]" />
         </div>
 
-        <div className="flex h-9 items-center rounded-md border border-zinc-800 bg-zinc-900 px-3 text-[10px] tracking-widest text-zinc-400 sm:h-10 sm:text-xs">
+        <div className="flex h-9 items-center rounded-md border border-[#e7ebf0] bg-white px-3 text-[10px] tracking-normal text-[#6b7280] sm:h-10 sm:text-xs">
           4242 ···· ···· 4242
         </div>
 
         <Button
           type="button"
-          className="mt-3 h-10 w-full rounded-xl bg-zinc-100 text-sm font-semibold text-zinc-900 hover:bg-white sm:mt-4 sm:h-11"
+          className="mt-3 h-10 w-full rounded-xl bg-[#1f2328] text-sm font-semibold text-white hover:bg-[#111317] sm:mt-4 sm:h-11"
         >
           Pay {formatPrice(total, DEMO_CURRENCY)}
         </Button>
 
-        <p className="mt-2 flex items-center justify-center gap-1 text-[9px] text-zinc-600 sm:mt-3 sm:text-[10px]">
+        <p className="mt-2 flex items-center justify-center gap-1 text-[9px] text-[#6b7280] sm:mt-3 sm:text-[10px]">
           <Lock className="size-3" />
           Secure payment via Stripe
         </p>
 
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] text-zinc-500 sm:mt-4 sm:text-xs">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[10px] text-[#6b7280] sm:mt-4 sm:text-xs">
           <span className="flex items-center gap-1.5">
             <Lock className="size-3.5" />
             256-bit SSL
           </span>
-          <span className="text-zinc-600">Stripe</span>
+          <span className="font-semibold text-[#635BFF]">stripe</span>
           <span className="flex items-center gap-1.5">
             <Shield className="size-3.5" />
             PCI DSS compliant

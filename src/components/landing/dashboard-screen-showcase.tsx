@@ -78,38 +78,38 @@ function TableCard({
         "rounded-xl border text-center",
         compact ? "p-2" : "p-4",
         light ? "bg-white" : "bg-zinc-900",
-        table.status === "attention" && "animate-pulse border-red-500",
-        table.status === "occupied" && "border-green-500/50",
-        table.status === "available" && (light ? "border-zinc-200" : "border-zinc-800")
+        table.status === "attention" && "border-red-300 bg-red-50",
+        table.status === "occupied" && (light ? "border-emerald-200 bg-emerald-50/40" : "border-green-500/50"),
+        table.status === "available" && (light ? "border-[#e3e7ee]" : "border-zinc-800")
       )}
     >
       <p
         className={cn(
           "font-mono font-bold",
           compact ? "text-xs" : "text-lg",
-          light ? "text-zinc-900" : "text-zinc-50"
+          light ? "text-[#1f2328]" : "text-zinc-50"
         )}
       >
         {table.name}
       </p>
-      <p className={cn("text-zinc-500", compact ? "text-[9px]" : "text-xs")}>
+      <p className={cn(light ? "text-[#6b7280]" : "text-zinc-500", compact ? "text-[9px]" : "text-xs")}>
         {table.seats} seats
       </p>
       {table.status === "attention" ? (
-        <p className={cn("text-red-400", compact ? "mt-1 text-[8px]" : "mt-1.5 text-xs")}>
+        <p className={cn("text-red-500", compact ? "mt-1 text-[8px]" : "mt-1.5 text-xs")}>
           <span className="mr-0.5 inline-block size-1 rounded-full bg-red-500" />
           Attention
         </p>
       ) : table.status === "occupied" ? (
         <>
-          <p className={cn("text-green-400", compact ? "mt-1 text-[8px]" : "mt-1.5 text-xs")}>
+          <p className={cn("text-emerald-600", compact ? "mt-1 text-[8px]" : "mt-1.5 text-xs")}>
             <span className="mr-0.5 inline-block size-1 rounded-full bg-green-500" />
             Occupied
           </p>
           {table.sessionTotal != null && (
             <p
               className={cn(
-                "font-mono text-orange-500",
+                "font-mono text-[#1f2328]",
                 compact ? "text-[9px]" : "text-sm"
               )}
             >
@@ -118,7 +118,7 @@ function TableCard({
           )}
         </>
       ) : (
-        <p className={cn("text-zinc-500", compact ? "mt-1 text-[8px]" : "mt-1.5 text-xs")}>
+        <p className={cn(light ? "text-[#6b7280]" : "text-zinc-500", compact ? "mt-1 text-[8px]" : "mt-1.5 text-xs")}>
           <span className="mr-0.5 inline-block size-1 rounded-full bg-green-500" />
           Available
         </p>
@@ -148,10 +148,10 @@ export function TablesShowcaseContent({
       {cinematic && (
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-600">
+            <p className="text-[10px] font-medium uppercase tracking-normal text-zinc-600">
               Floor
             </p>
-            <p className="mt-1 text-lg font-semibold tracking-tight text-zinc-100">
+            <p className="mt-1 text-lg font-semibold tracking-normal text-zinc-100">
               Tables
             </p>
           </div>
@@ -171,14 +171,14 @@ export function TablesShowcaseContent({
             className={cn(
               "flex flex-wrap gap-4 border-b pb-1.5",
               compact && "gap-2",
-              light ? "border-zinc-200" : "border-zinc-800"
+              light ? "border-[#e7ebf0]" : "border-zinc-800"
             )}
           >
             <span
               className={cn(
-                "border-b-2 border-orange-500 pb-1.5 font-medium",
+                "border-b-2 border-[#e85d04] pb-1.5 font-medium",
                 compact ? "text-[10px]" : "text-xs",
-                light ? "text-zinc-900" : "text-white"
+                light ? "text-[#1f2328]" : "text-white"
               )}
             >
               All ({DEMO_TABLES.length})
@@ -187,7 +187,8 @@ export function TablesShowcaseContent({
               <span
                 key={zone.id}
                 className={cn(
-                  "pb-1.5 font-medium text-zinc-400",
+                  "pb-1.5 font-medium",
+                  light ? "text-[#6b7280]" : "text-zinc-400",
                   compact ? "text-[10px]" : "text-xs"
                 )}
               >
@@ -197,10 +198,10 @@ export function TablesShowcaseContent({
           </div>
           {!compact && (
             <div className="flex gap-2">
-              <span className={cn("rounded-lg px-3 py-1.5 text-[11px]", light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300")}>
+              <span className={cn("rounded-md px-3 py-1.5 text-[11px]", light ? "bg-[#eef1f5] text-[#596273]" : "bg-zinc-800 text-zinc-300")}>
                 Download All QR Codes
               </span>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#1f2328] px-3 py-1.5 text-[11px] font-semibold text-white">
                 <Plus className="size-3" />
                 Add Table
               </span>
@@ -280,7 +281,7 @@ function HistoryShowcaseContent({ theme = "dark" }: { theme?: ShowcaseTheme }) {
       <div className={cn("overflow-hidden rounded-xl border", light ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-900/50")}>
         <table className="w-full text-[11px]">
           <thead>
-            <tr className={cn("text-left text-[10px] font-semibold uppercase tracking-wider", light ? "bg-zinc-50 text-zinc-500" : "bg-zinc-800/50 text-zinc-400")}>
+            <tr className={cn("text-left text-[10px] font-semibold uppercase tracking-normal", light ? "bg-zinc-50 text-zinc-500" : "bg-zinc-800/50 text-zinc-400")}>
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Table</th>
               <th className="px-3 py-2">Items</th>

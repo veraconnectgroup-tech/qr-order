@@ -5,7 +5,6 @@ import {
   Download,
   Grid3X3,
   LayoutGrid,
-  Plus,
   Settings,
   UtensilsCrossed,
 } from "lucide-react";
@@ -53,7 +52,7 @@ export function ShowcaseDashboardShell({
     return (
       <div className="flex h-full flex-col bg-[#09090b] text-zinc-50">
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-zinc-800/70 px-8 sm:px-10">
-          <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
+          <p className="text-[13px] font-semibold tracking-normal text-zinc-100">
             {title}
           </p>
           <div className="flex items-center gap-3">
@@ -75,22 +74,22 @@ export function ShowcaseDashboardShell({
     <div
       className={cn(
         "flex h-full",
-        light ? "bg-white text-zinc-900" : "bg-zinc-950 text-zinc-50"
+        light ? "bg-white text-[#1f2328]" : "bg-zinc-950 text-zinc-50"
       )}
     >
       <aside
         className={cn(
           "flex shrink-0 flex-col border-r",
           compact ? "w-[168px]" : "w-[220px]",
-          light ? "border-zinc-200 bg-zinc-50" : "border-zinc-800 bg-zinc-950"
+          light ? "border-[#e7ebf0] bg-[#fbfcfd]" : "border-zinc-800 bg-zinc-950"
         )}
       >
-        <div className={cn("border-b", compact ? "p-2.5" : "p-4", light ? "border-zinc-200" : "border-zinc-800")}>
+        <div className={cn("border-b", compact ? "p-2.5" : "p-4", light ? "border-[#e7ebf0]" : "border-zinc-800")}>
           <p
             className={cn(
               "truncate font-bold",
               compact ? "text-xs" : "text-sm",
-              light ? "text-zinc-900" : "text-zinc-50"
+              light ? "text-[#1f2328]" : "text-zinc-50"
             )}
           >
             Skyline Lounge
@@ -119,10 +118,10 @@ export function ShowcaseDashboardShell({
                   compact ? "px-2 py-1.5 text-[11px]" : "gap-2.5 px-2.5 py-2 text-[13px]",
                   active
                     ? light
-                      ? "border-l-2 border-orange-500 bg-orange-50 pl-1.5 text-orange-900"
+                    ? "border-l-2 border-[#e85d04] bg-orange-50 pl-1.5 text-orange-900"
                       : "border-l-2 border-orange-500 bg-zinc-800/50 pl-1.5 text-white"
                     : light
-                      ? "border-l-2 border-transparent text-zinc-500"
+                      ? "border-l-2 border-transparent text-[#6b7280]"
                       : "border-l-2 border-transparent text-zinc-400"
                 )}
               >
@@ -134,10 +133,10 @@ export function ShowcaseDashboardShell({
         </nav>
 
         {!compact && (
-          <div className={cn("border-t p-3", light ? "border-zinc-200" : "border-zinc-800")}>
-            <div className={cn("rounded-lg p-2.5", light ? "bg-white ring-1 ring-zinc-200" : "bg-zinc-900")}>
-              <p className={cn("text-[10px]", light ? "text-zinc-500" : "text-zinc-500")}>Staff</p>
-              <p className={cn("mt-0.5 truncate text-xs font-medium", light ? "text-zinc-800" : "text-zinc-300")}>
+          <div className={cn("border-t p-3", light ? "border-[#e7ebf0]" : "border-zinc-800")}>
+            <div className={cn("rounded-lg p-2.5", light ? "bg-white ring-1 ring-[#e3e7ee]" : "bg-zinc-900")}>
+              <p className={cn("text-[10px]", light ? "text-[#6b7280]" : "text-zinc-500")}>Staff</p>
+              <p className={cn("mt-0.5 truncate text-xs font-medium", light ? "text-[#1f2328]" : "text-zinc-300")}>
                 Nica
               </p>
               <p className={cn("text-[10px] capitalize", light ? "text-zinc-400" : "text-zinc-600")}>owner</p>
@@ -151,14 +150,14 @@ export function ShowcaseDashboardShell({
           className={cn(
             "flex shrink-0 items-center justify-between border-b",
             compact ? "h-11 px-3" : "h-14 px-5",
-            light ? "border-zinc-200 bg-white" : "border-zinc-800 bg-zinc-950/90"
+            light ? "border-[#e7ebf0] bg-white" : "border-zinc-800 bg-zinc-950/90"
           )}
         >
           <h1
             className={cn(
               "font-bold",
               compact ? "text-sm" : "text-lg",
-              light ? "text-zinc-900" : "text-zinc-50"
+              light ? "text-[#1f2328]" : "text-zinc-50"
             )}
           >
             {title}
@@ -171,7 +170,7 @@ export function ShowcaseDashboardShell({
                 light ? "bg-orange-50 ring-1 ring-orange-100" : "bg-zinc-900"
               )}
             >
-              <span className={cn("text-[10px]", light ? "text-zinc-500" : "text-zinc-500")}>Today </span>
+              <span className={cn("text-[10px]", light ? "text-[#6b7280]" : "text-zinc-500")}>Today </span>
               <span className="font-mono text-xs font-bold text-orange-500">
                 {formatPrice(todayRevenue, currency)}
               </span>
@@ -180,7 +179,7 @@ export function ShowcaseDashboardShell({
               <div
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px]",
-                  light ? "bg-zinc-100 text-zinc-700" : "bg-zinc-800 text-zinc-300"
+                  light ? "bg-[#eef1f5] text-[#596273]" : "bg-zinc-800 text-zinc-300"
                 )}
               >
                 <Download className="size-3" />
@@ -194,7 +193,7 @@ export function ShowcaseDashboardShell({
           className={cn(
             "flex-1 overflow-hidden",
             compact ? "p-3" : "p-5",
-            light ? "bg-zinc-50/50" : ""
+            light ? "bg-[#fbfcfd]" : ""
           )}
         >
           {children}

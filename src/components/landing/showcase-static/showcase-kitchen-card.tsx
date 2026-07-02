@@ -26,15 +26,21 @@ export function ShowcaseKitchenCard({
   return (
     <article
       className={cn(
-        "rounded-xl border-2 p-4",
+        "rounded-xl border p-3.5",
         light ? "bg-white" : "bg-zinc-900",
-        isAccepted ? "border-orange-500" : "border-blue-500"
+        isAccepted
+          ? light
+            ? "border-l-2 border-[#e3e7ee] border-l-[#e85d04]"
+            : "border-orange-500"
+          : light
+            ? "border-l-2 border-[#e3e7ee] border-l-sky-500"
+            : "border-blue-500"
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <p
           className={cn(
-            "text-2xl font-bold",
+            "font-mono text-xl font-bold",
             light ? "text-zinc-900" : "text-zinc-100"
           )}
         >
@@ -43,27 +49,27 @@ export function ShowcaseKitchenCard({
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              "rounded-full px-3 py-1 text-sm",
-              light ? "bg-zinc-100 text-zinc-600" : "bg-zinc-800 text-zinc-400"
+              "rounded-md px-2 py-0.5 text-xs font-medium",
+              light ? "bg-[#eef1f5] text-[#596273]" : "bg-zinc-800 text-zinc-400"
             )}
           >
             {tableName}
           </span>
-          <span className="text-sm text-green-400">
+          <span className="text-xs font-medium text-emerald-600">
             {formatTimeAgo(order.created_at)}
           </span>
         </div>
       </div>
 
       <div
-        className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")}
+        className={cn("my-3 border-t", light ? "border-[#edf1f5]" : "border-zinc-800")}
       />
 
       <ul className="space-y-2">
         {items.map((item) => (
           <li
             key={item.id}
-            className={cn("text-sm", light ? "text-zinc-800" : "text-zinc-200")}
+            className={cn("text-[13px]", light ? "text-zinc-800" : "text-zinc-200")}
           >
             <span className="font-semibold">{item.quantity}×</span>{" "}
             {item.product_name}
@@ -83,20 +89,34 @@ export function ShowcaseKitchenCard({
       )}
 
       <div
-        className={cn("my-3 border-t", light ? "border-zinc-200" : "border-zinc-800")}
+        className={cn("my-3 border-t", light ? "border-[#edf1f5]" : "border-zinc-800")}
       />
+
+      <div className="mb-3 grid grid-cols-3 gap-2 text-[11px]">
+        <span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
+          Bar ready
+        </span>
+        <span className="rounded-md bg-sky-50 px-2 py-1 font-semibold text-sky-700">
+          Kitchen {isAccepted ? "queued" : "active"}
+        </span>
+        <span className="rounded-md bg-orange-50 px-2 py-1 font-semibold text-orange-700">
+          Waiter hold
+        </span>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {isAccepted ? (
-          <span className="rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white">
+          <span className="rounded-md bg-[#1f2328] px-3 py-1.5 text-xs font-semibold text-white">
             Start Preparing
           </span>
         ) : (
-          <span className="rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white">
+          <span className="rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
             Ready
           </span>
         )}
-        <span className="px-3 text-sm text-red-400">Reject</span>
+        <span className="px-2 text-xs font-medium text-[#6b7280]">
+          Ask Denis
+        </span>
       </div>
     </article>
   );

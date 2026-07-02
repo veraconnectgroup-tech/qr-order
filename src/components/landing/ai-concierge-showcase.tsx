@@ -1,36 +1,24 @@
 "use client";
 
-import { Check } from "lucide-react";
-import {
-  DenisMessageBlock,
-  DenisThreadLabel,
-} from "@/components/design-system/denis-message-block";
-import {
-  DenisPanel,
-  DenisPanelBody,
-  DenisPanelFooter,
-  DenisPanelHeader,
-} from "@/components/design-system/denis-panel";
-import { GuestProductRow } from "@/components/design-system/guest-product-row";
+import { Check, CreditCard, MessageCircle, Sparkles } from "lucide-react";
 import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import { ShowcasePhone } from "@/components/landing/showcase-frame";
 import { formatPrice } from "@/lib/format";
 
-const DEMO_RECOMMENDATIONS = [
+const RECOMMENDATIONS = [
   {
     name: "Caesar Salad",
     price: 12.5,
-    reason: "Allergen-safe for your selection",
+    reason: "Safe with current allergy notes",
   },
   {
     name: "Grilled Sea Bass",
-    price: 24.0,
-    reason: "Light option · 18 min prep",
+    price: 24,
+    reason: "Kitchen says 18 min prep",
   },
 ] as const;
 
-/** Static demo row — same primitive as guest menu + Denis chat (DE-04). */
-function DenisShowcaseRecommendRow({
+function RecommendationRow({
   name,
   price,
   reason,
@@ -40,68 +28,98 @@ function DenisShowcaseRecommendRow({
   reason: string;
 }) {
   return (
-    <GuestProductRow
-      name={name}
-      price={price}
-      currency="EUR"
-      subtitle={reason}
-      density="compact"
-      addStyle="icon"
-      addAriaLabel={`Add ${name}`}
-      onAdd={() => undefined}
-      className="pointer-events-none"
-    />
+    <div className="flex items-center gap-3 rounded-lg border border-[#e7ebf0] bg-white p-2.5">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#eef1f5] text-[12px] font-bold text-[#596273]">
+        {name.charAt(0)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[12px] font-semibold text-[#1f2328]">
+          {name}
+        </p>
+        <p className="truncate text-[10px] text-[#6b7280]">{reason}</p>
+      </div>
+      <p className="font-mono text-[11px] font-semibold text-[#1f2328]">
+        {formatPrice(price, "EUR")}
+      </p>
+    </div>
   );
 }
 
-/** Static Denis thread for landing — same panel gramat as guest `ai-concierge-chat` (DE-08). */
 function DenisPanelPreview() {
   return (
-    <DenisPanel className="max-h-none min-h-[420px] rounded-none bg-[var(--qr-void)]">
-      <DenisPanelHeader className="border-b border-[var(--qr-elevated)] px-3 py-2.5 sm:px-3">
+    <div className="flex min-h-[430px] flex-col bg-[#fbfcfd]">
+      <header className="flex items-center gap-2 border-b border-[#e7ebf0] bg-white px-3 py-3">
         <DenisTableMark size={24} state="idle" />
-        <span className="text-[11px] font-semibold text-[var(--qr-ivory)]">
-          Denis
-        </span>
-        <span className="ms-auto rounded-full border border-[var(--qr-ember)]/30 bg-[var(--qr-ember-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--qr-ivory)]">
-          2 · {formatPrice(36.5, "EUR")}
-        </span>
-      </DenisPanelHeader>
-
-      <DenisPanelBody className="space-y-4 px-3 py-3 sm:px-3">
-        <DenisMessageBlock role="assistant">
-          <DenisThreadLabel />
-          <p className="text-[11px] leading-relaxed text-[var(--qr-ivory)]">
-            Based on your preferences, here are two options that fit your table.
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold leading-tight text-[#1f2328]">
+            Denis
           </p>
-          <div className="mt-2 divide-y divide-[var(--qr-elevated)]/80">
-            {DEMO_RECOMMENDATIONS.map((item) => (
-              <DenisShowcaseRecommendRow
-                key={item.name}
-                name={item.name}
-                price={item.price}
-                reason={item.reason}
-              />
+          <p className="text-[10px] text-[#6b7280]">Table 8 assistant</p>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+          Live
+        </span>
+      </header>
+
+      <main className="flex-1 space-y-3 px-3 py-3">
+        <div className="rounded-xl border border-[#e7ebf0] bg-white p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Sparkles className="size-3.5 text-[#e85d04]" />
+            <p className="text-[10px] font-semibold uppercase tracking-normal text-[#6b7280]">
+              Denis recommendation
+            </p>
+          </div>
+          <p className="text-[12px] leading-relaxed text-[#1f2328]">
+            The table is calm. Kitchen has capacity. Suggest one light main and
+            keep the drinks flowing.
+          </p>
+          <div className="mt-3 space-y-2">
+            {RECOMMENDATIONS.map((item) => (
+              <RecommendationRow key={item.name} {...item} />
             ))}
           </div>
-        </DenisMessageBlock>
+        </div>
 
-        <DenisMessageBlock role="user" className="[&_p]:text-[11px]">
-          Add the salad and a still water
-        </DenisMessageBlock>
-      </DenisPanelBody>
+        <div className="ml-8 rounded-xl rounded-br-sm bg-[#1f2328] p-3 text-white">
+          <p className="text-[12px] leading-relaxed">
+            Add the salad and a still water.
+          </p>
+        </div>
 
-      <DenisPanelFooter className="border-t border-[var(--qr-elevated)] px-3 py-2 sm:px-3">
-        <div className="flex items-center gap-2 rounded-full border border-[var(--qr-elevated)] bg-[var(--qr-surface)] px-3 py-2">
-          <span className="flex-1 text-[10px] text-[var(--qr-muted)]">
-            Ask Denis…
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+          <div className="flex items-center gap-2">
+            <Check className="size-4 text-emerald-700" />
+            <p className="text-[12px] font-semibold text-emerald-900">
+              Added to cart
+            </p>
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-emerald-800">
+            Denis will watch kitchen load before suggesting dessert.
+          </p>
+        </div>
+      </main>
+
+      <footer className="border-t border-[#e7ebf0] bg-white px-3 py-3">
+        <div className="mb-2 grid grid-cols-2 gap-2 text-[10px]">
+          <span className="inline-flex items-center gap-1 rounded-md bg-[#eef1f5] px-2 py-1 font-semibold text-[#596273]">
+            <CreditCard className="size-3" />
+            Stripe ready
           </span>
-          <span className="flex size-6 items-center justify-center rounded-full bg-[var(--qr-ember)]">
+          <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1 font-semibold text-orange-700">
+            <MessageCircle className="size-3" />
+            Guest truth
+          </span>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-[#e7ebf0] bg-[#fbfcfd] px-3 py-2">
+          <span className="flex-1 text-[10px] text-[#6b7280]">
+            Ask Denis...
+          </span>
+          <span className="flex size-6 items-center justify-center rounded-full bg-[#1f2328]">
             <Check className="size-3 text-white" />
           </span>
         </div>
-      </DenisPanelFooter>
-    </DenisPanel>
+      </footer>
+    </div>
   );
 }
 
@@ -112,8 +130,8 @@ export function AiConciergeShowcase({
 }) {
   return (
     <ShowcasePhone
-      label="Guest phone — Denis panel"
-      shortLabel="Guest — Denis"
+      label="Guest phone - Denis panel"
+      shortLabel="Guest - Denis"
       hideLabel={hideLabel}
     >
       <DenisPanelPreview />
