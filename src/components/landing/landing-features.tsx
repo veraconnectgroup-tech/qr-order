@@ -8,6 +8,7 @@ import { AiConciergeShowcase } from "@/components/landing/ai-concierge-showcase"
 import { DashboardScreenShowcase } from "@/components/landing/dashboard-screen-showcase";
 import { ShowcaseWindow } from "@/components/landing/showcase-frame";
 import { useLandingCopy } from "@/components/landing/landing-locale-provider";
+import { LandingVisualStage } from "@/components/landing/landing-visual-stage";
 
 export function LandingFeatures() {
   const { copy } = useLandingCopy();
@@ -21,7 +22,11 @@ export function LandingFeatures() {
         title={guest.title}
         lead={guest.lead}
         bullets={guest.bullets}
-        visual={<GuestMenuShowcase hideLabel />}
+        visual={
+          <LandingVisualStage variant="phone">
+            <GuestMenuShowcase hideLabel />
+          </LandingVisualStage>
+        }
       />
 
       <FeatureRow
@@ -31,11 +36,12 @@ export function LandingFeatures() {
         lead={kitchen.lead}
         bullets={kitchen.bullets}
         reverse={kitchen.reverse}
+        tone="tint"
         visual={
-          <div className="space-y-6">
+          <LandingVisualStage variant="panel" className="space-y-5">
             <KitchenShowcase />
             <OrdersShowcase compact />
-          </div>
+          </LandingVisualStage>
         }
       />
 
@@ -46,13 +52,19 @@ export function LandingFeatures() {
         lead={staff.lead}
         bullets={staff.bullets}
         visual={
-          <ShowcaseWindow url="denis.app/dashboard/tables" theme="dark">
-            <DashboardScreenShowcase
-              screen="tables"
-              variant="feature"
-              theme="dark"
-            />
-          </ShowcaseWindow>
+          <LandingVisualStage variant="flush">
+            <ShowcaseWindow
+              url="denis.app/dashboard/tables"
+              theme="light"
+              className="shadow-[0_24px_64px_-24px_rgba(22,20,14,0.14)]"
+            >
+              <DashboardScreenShowcase
+                screen="tables"
+                variant="feature"
+                theme="light"
+              />
+            </ShowcaseWindow>
+          </LandingVisualStage>
         }
       />
 
@@ -63,7 +75,12 @@ export function LandingFeatures() {
         lead={denis.lead}
         bullets={denis.bullets}
         reverse={denis.reverse}
-        visual={<AiConciergeShowcase hideLabel />}
+        tone="tint"
+        visual={
+          <LandingVisualStage variant="phone">
+            <AiConciergeShowcase hideLabel />
+          </LandingVisualStage>
+        }
       />
     </>
   );

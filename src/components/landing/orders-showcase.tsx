@@ -6,12 +6,14 @@ import { OrdersBoardContent } from "@/components/landing/showcase-content";
 export function OrdersShowcase({ compact = false }: { compact?: boolean }) {
   return (
     <ShowcaseTablet
-      url="dashboard.qrorder.app/orders"
-      label="Staff tablet — live orders"
-      shortLabel="Staff — orders"
-      theme="dark"
+      url="denis.app/orders"
+      hideCaption
+      theme="light"
     >
-      <OrdersBoardContent variant={compact ? "hero" : "feature"} theme="dark" />
+      <OrdersBoardContent
+        variant={compact ? "hero" : "feature"}
+        theme="light"
+      />
     </ShowcaseTablet>
   );
 }

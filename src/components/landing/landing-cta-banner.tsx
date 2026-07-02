@@ -22,15 +22,15 @@ export function LandingCtaBanner() {
       />
       {/* Soft wash so copy stays readable on the painting */}
       <div
-        className="absolute inset-0 bg-[#f7f4ec]/55"
+        className="absolute inset-0 bg-[var(--lp-bg)]/60"
         aria-hidden
       />
 
       <div className="relative z-10 px-6">
-        <h2 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-medium leading-tight tracking-[-0.02em] text-[#14120b]">
+        <h2 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-medium leading-tight tracking-[-0.02em] text-[var(--lp-ink)]">
           {ctaBanner.title}
         </h2>
-        <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-[#4b463c]">
+        <p className="mx-auto mt-4 max-w-lg text-[16px] leading-relaxed text-[var(--lp-muted)]">
           {ctaBanner.lead}
         </p>
 
@@ -38,7 +38,7 @@ export function LandingCtaBanner() {
           <Button
             size="lg"
             asChild
-            className="h-11 min-w-[180px] rounded-full border-none bg-[#14120b] px-6 text-[14px] font-medium text-[#f5f2ea] hover:bg-[#2a271f]"
+            className="landing-btn-primary h-11 min-w-[180px] px-6 text-[14px] font-medium"
           >
             <Link href="/signup">
               {ctaBanner.primary}
@@ -48,13 +48,13 @@ export function LandingCtaBanner() {
           <Button
             size="lg"
             asChild
-            className="h-11 min-w-[180px] rounded-full border border-[#14120b]/20 bg-white/60 px-6 text-[14px] font-medium text-[#14120b] backdrop-blur-sm hover:bg-white/80"
+            className="landing-btn-secondary h-11 min-w-[180px] px-6 text-[14px] font-medium backdrop-blur-sm"
           >
             <Link href="/skyline-lounge/demo-table-8">{ctaBanner.secondary}</Link>
           </Button>
         </div>
 
-        <p className="mt-5 text-xs text-[#6b6558]">{ctaBanner.footnote}</p>
+        <p className="mt-5 text-xs text-[var(--lp-subtle)]">{ctaBanner.footnote}</p>
       </div>
     </section>
   );

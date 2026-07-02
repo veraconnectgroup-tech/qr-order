@@ -17,30 +17,30 @@ export function LandingFaq() {
   return (
     <section
       id="faq"
-      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-[var(--lp-ink)] md:py-20"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
-        <AnimateInView className="max-w-[480px]">
+        <AnimateInView className="mx-auto max-w-[520px] text-center">
           <LandingHeadline inverted>{faq.title}</LandingHeadline>
           <LandingLead inverted className="mt-4">
             {faq.lead}
           </LandingLead>
         </AnimateInView>
 
-        <div className="mt-12 divide-y divide-[var(--lp-border-subtle)] border-y border-[var(--lp-border-subtle)]">
+        <div className="mx-auto mt-14 max-w-[720px] space-y-3">
           {faq.items.map((item) => (
             <AnimateInView key={item.q}>
-              <details className="group py-5 md:py-6">
+              <details className="group rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] px-6 shadow-[0_1px_2px_rgba(22,20,14,0.04)] open:shadow-[0_8px_24px_rgba(22,20,14,0.06)]">
                 <summary
                   className={cn(
-                    "flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-[var(--lp-ink)]",
+                    "flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-[15px] font-medium text-[var(--lp-ink)]",
                     "[&::-webkit-details-marker]:hidden"
                   )}
                 >
                   {item.q}
                   <ChevronDown className="size-4 shrink-0 text-[var(--lp-subtle)] transition group-open:rotate-180" />
                 </summary>
-                <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--lp-muted)]">
+                <p className="border-t border-[var(--lp-border-subtle)] pb-5 pt-4 text-[15px] leading-relaxed text-[var(--lp-muted)]">
                   {item.a}
                 </p>
               </details>

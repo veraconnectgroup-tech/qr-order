@@ -40,10 +40,10 @@ export function LandingPricing() {
   return (
     <section
       id="pricing"
-      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-tint)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
-        <AnimateInView className="max-w-[480px]">
+        <AnimateInView className="mx-auto max-w-[520px] text-center">
           <LandingEyebrow inverted>{pricing.eyebrow}</LandingEyebrow>
           <LandingHeadline inverted className="mt-3">
             {pricing.title}
@@ -133,8 +133,12 @@ export function LandingPricing() {
                   <tr key={row.label} className="border-b border-[var(--lp-border-subtle)]">
                     <td className="py-3 pr-4 text-[var(--lp-ink)]/80">{row.label}</td>
                     {row.values.map((value, index) => (
-                      <td key={index} className="px-3 py-3 text-center text-[var(--lp-muted)]">
-                        {value ? "✓" : "—"}
+                      <td key={index} className="px-3 py-3 text-center">
+                        {value ? (
+                          <span className="font-medium text-[var(--lp-ember)]">✓</span>
+                        ) : (
+                          <span className="text-[var(--lp-subtle)]">—</span>
+                        )}
                       </td>
                     ))}
                   </tr>

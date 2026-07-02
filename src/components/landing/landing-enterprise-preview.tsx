@@ -19,10 +19,10 @@ export function LandingEnterprisePreview() {
   return (
     <section
       id="enterprise"
-      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] py-20 text-[var(--lp-ink)] md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
-        <AnimateInView className="max-w-[640px]">
+        <AnimateInView className="mx-auto max-w-[640px] text-center">
           <LandingEyebrow inverted>{enterprise.eyebrow}</LandingEyebrow>
           <LandingHeadline inverted className="mt-3">
             {enterprise.title}
@@ -32,11 +32,14 @@ export function LandingEnterprisePreview() {
           </LandingLead>
         </AnimateInView>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {enterprise.pillars.map((pillar) => (
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {enterprise.pillars.map((pillar, index) => (
             <AnimateInView key={pillar.title}>
-              <div className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
-                <h3 className="text-[15px] font-medium text-[var(--lp-ink)]">
+              <div className="flex h-full flex-col rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-[var(--lp-ember-muted)] text-[13px] font-semibold tabular-nums text-[var(--lp-ember)]">
+                  {index + 1}
+                </span>
+                <h3 className="mt-5 text-[15px] font-medium text-[var(--lp-ink)]">
                   {pillar.title}
                 </h3>
                 <p className="mt-3 text-[14px] leading-relaxed text-[var(--lp-muted)]">
@@ -65,7 +68,7 @@ export function LandingEnterprisePreview() {
           ))}
         </div>
 
-        <AnimateInView className="mt-12 flex flex-col items-start gap-3 sm:flex-row">
+        <AnimateInView className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button
             size="lg"
             asChild

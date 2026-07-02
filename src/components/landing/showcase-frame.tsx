@@ -280,7 +280,7 @@ export function ShowcasePhone({
           "relative bg-zinc-950",
           floating
             ? "rounded-[2rem] border border-zinc-800/80 bg-[#0a0a0a] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.88)] sm:rounded-[2.125rem]"
-            : "rounded-[2rem] border-[3px] border-zinc-700 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] sm:rounded-[2.5rem] sm:p-2"
+            : "rounded-[2rem] border-[3px] border-zinc-700 p-1.5 shadow-[0_24px_56px_-16px_rgba(22,20,14,0.38)] sm:rounded-[2.5rem] sm:p-2"
         )}
       >
         <div
