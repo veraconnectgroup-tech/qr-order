@@ -28,6 +28,11 @@ import {
 } from "@/lib/denis/intelligence/dynamic-vkg";
 import { formatLearnedEdgeLift } from "@/lib/admin/sync-discovered-pairings";
 import {
+  loadDailyPrepBriefing,
+  dailyPrepBriefingToCopilotBlock,
+} from "@/lib/denis/venue/copilot/daily-prep-briefing-store";
+import { loadDailyPrepBriefingForLocation } from "@/lib/admin/load-daily-prep-briefing-context";
+import {
   loadEventCopilotStats,
   loadRecentSessionOpens,
 } from "@/lib/denis/venue/ops/load-event-order-stats";
@@ -67,6 +72,7 @@ const EMPTY_SNAPSHOT: StaffCopilotSnapshot = {
   gatheringHint: null,
   learnedPairingsBlock: null,
   inventoryBrief: null,
+  prepBriefingBlock: null,
 };
 
 /** Staff-facing Denis copilot snapshot — no guest session leakage (M15). */
@@ -81,7 +87,7 @@ export async function loadStaffCopilotSnapshot(
     admin
       .from("locations")
       .select(
-        "ai_concierge_enabled, denis_operating_mode, denis_kds_stress, denis_event_config"
+        "ai_concierge_enabled, denis_operating_mode, denis_kds_stress, denis_event_config, timezone, org_id"
       )
       .eq("id", input.locationId)
       .maybeSingle(),
@@ -222,6 +228,30 @@ export async function loadStaffCopilotSnapshot(
   const inventoryBriefRaw = formatInventoryCopilotBrief(inventorySnapshot.alerts);
   const inventoryBrief = inventoryBriefRaw.trim() ? inventoryBriefRaw : null;
 
+  let prepBriefingBlock: StaffCopilotSnapshot["prepBriefingBlock"] = null;
+  if (location) {
+    const timezone = (location as { timezone?: string | null }).timezone ?? null;
+    const orgId = (location as { org_id?: string }).org_id;
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone?.trim() || "Europe/Berlin",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const storedBriefing = await loadDailyPrepBriefing(input.locationId, today);
+    const briefing =
+      storedBriefing ??
+      (orgId
+        ? await loadDailyPrepBriefingForLocation(admin, {
+            locationId: input.locationId,
+            orgId,
+          })
+        : null);
+    if (briefing) {
+      prepBriefingBlock = dailyPrepBriefingToCopilotBlock(briefing);
+    }
+  }
+
   return {
     enabled: true,
     at: floor.at,
@@ -246,5 +276,6 @@ export async function loadStaffCopilotSnapshot(
     gatheringHint,
     learnedPairingsBlock,
     inventoryBrief,
+    prepBriefingBlock,
   };
 }

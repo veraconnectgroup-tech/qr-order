@@ -7,6 +7,12 @@ import {
   type DenisShiftRecap,
 } from "@/lib/admin/denis-shift-report";
 
+export type DailyReportProductRollupRow = {
+  name: string;
+  quantity: number;
+  revenue: number;
+};
+
 export type DailyReportOrderRow = {
   id: string;
   total: number;
@@ -61,6 +67,8 @@ export type DailyReport = {
     highlights: string[];
     issues: string[];
     denisShift: DenisShiftRecap;
+    /** Per-day product rollup for weekly owner report (S14). */
+    productRollup: DailyReportProductRollupRow[];
   };
 };
 
@@ -82,7 +90,25 @@ export type BuildDailyReportInput = {
   returningGuestSessions: number;
   newGuestSessions: number;
   denisShift?: BuildDenisShiftRecapInput;
+  productRollup?: DailyReportProductRollupRow[];
 };
+
+export function aggregateProductRollupFromItems(
+  items: Array<{ productName: string; quantity: number; total: number }>
+): DailyReportProductRollupRow[] {
+  const totals = new Map<string, { quantity: number; revenue: number }>();
+  for (const row of items) {
+    const name = row.productName.trim() || "Artikal";
+    const existing = totals.get(name) ?? { quantity: 0, revenue: 0 };
+    totals.set(name, {
+      quantity: existing.quantity + row.quantity,
+      revenue: existing.revenue + row.total,
+    });
+  }
+  return [...totals.entries()]
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.quantity - a.quantity);
+}
 
 function pctChange(current: number, baseline: number): number {
   if (baseline <= 0) return current > 0 ? 100 : 0;
@@ -288,6 +314,7 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
       highlights,
       issues,
       denisShift,
+      productRollup: input.productRollup ?? [],
     },
   };
 }

@@ -41,7 +41,7 @@
 | **S11 — Stalni gost** | ✅ | `platform/returning-guest.ts`, `returning-guest.test.ts`, `build-narration-facts.ts`, `derive-contextual-chips.ts`, `same-again-chips.ts`, `denis-shift-report.ts` (`aggregateReturningGuestStats`), `build-daily-report.ts`, `load-daily-report-context.ts`, `denis-guest-memory-store.ts` (postojeći), `api/guest/denis-memory` DELETE (forget me) |
 | **S12 — Nezadovoljan gost (service recovery)** | ✅ | `cognition/recovery/detect-service-recovery.ts`, `build-service-recovery-alert.ts`, `service-recovery-timeline.ts`, `resolve-turn-recovery.ts`, `apply-frustration-recovery.ts`, `detect-review-moment.ts`, `decide-proactive-turn-plan.ts`, `operations-triage.ts`, `operations-center.tsx`, `denis-shift-report.ts` (`aggregateServiceRecoveryStats`), `service-recovery.test.ts` |
 | **S13 — Sto posle plaćanja (obrt stola)** | ✅ | `00153_table_bus_obligations.sql`, `bus-table-obligation.ts`, `waiter-obligation-types.ts` (`bus_table`), `run-commerce-experience.ts`, `run-session-watcher.ts`, `table-bus-obligations/[id]/complete/route.ts`, `waiter-bus-table-banner.tsx`, `operations-triage.ts`, `denis-shift-report.ts`, `table-turnaround.test.ts` |
-| **S14 — Brifing pre smene + nedeljni izveštaj vlasniku** | ⬜ | |
+| **S14 — Brifing pre smene + nedeljni izveštaj vlasniku** | ✅ | `prep-briefing-rhythm-rush.ts`, `prep-briefing-station-issues.ts`, `build-daily-prep-briefing.ts`, `load-daily-prep-briefing-context.ts`, `daily-report-store.ts`, `build-weekly-owner-report.ts`, `run-daily-report.ts`, `load-staff-copilot-snapshot.ts`, `denis-dashboard-view.tsx`, `prep-briefing-s14.test.ts`, `weekly-owner-report.test.ts` |
 
 > **Faza 1 = S1–S7** (station truth + operations proof). **Faza 2 = S8–S14** (host + revenue). Faza 2 kreće tek kad S7 da "go" — jer skoro sve u Fazi 2 čita station istinu iz Faze 1.
 
@@ -561,12 +561,12 @@ Dobar vlasnik u 16h okupi smenu: "Večeras je rezervisana proslava u 20h, juče 
 
 ### Integracioni check
 
-- [ ] Brifing sadrži: rhythm očekivanja + jučerašnji 86 + ponavljajuće probleme (test sa mock danima)
-- [ ] Nedeljni rollup čita store, ne preračunava (grep dokaz)
-- [ ] Test: nedelja bez ijednog problema ⇒ izveštaj kaže "mirna nedelja", bez praznih sekcija
-- [ ] Svaka preporuka u izveštaju ima prag iz kojeg je izvedena (dokumentovano u kodu)
-- [ ] `grep -rn "buildDailyReport\|formatDailyReportDigest" src/` — svi potrošači i dalje rade
-- [ ] Nula novih test failova vs baseline
+- [x] Brifing sadrži: rhythm očekivanja + jučerašnji 86 + ponavljajuće probleme (test sa mock danima)
+- [x] Nedeljni rollup čita store, ne preračunava (grep dokaz)
+- [x] Test: nedelja bez ijednog problema ⇒ izveštaj kaže "mirna nedelja", bez praznih sekcija
+- [x] Svaka preporuka u izveštaju ima prag iz kojeg je izvedena (dokumentovano u kodu)
+- [x] `grep -rn "buildDailyReport\|formatDailyReportDigest" src/` — svi potrošači i dalje rade
+- [x] Nula novih test failova vs baseline
 
 ---
 
@@ -822,6 +822,43 @@ Dobar vlasnik u 16h okupi smenu: "Večeras je rezervisana proslava u 20h, juče 
 - `orders.paid_at` ne postoji — anchor pri create: `delivered_at ?? updated_at`
 - Migracija `00153` mora na remote pre live pilota
 - QR blokada stola namerno van scope-a
+
+**Status tabela ažurirana:** ✓
+
+---
+
+## Session report — S14
+
+**Status:** ✅ gotovo
+
+**Fajlovi:**
+- **Novi:** `prep-briefing-rhythm-rush.ts`, `prep-briefing-station-issues.ts`, `build-weekly-owner-report.ts`, `api/cron/weekly-owner-report/route.ts`, `prep-briefing-s14.test.ts`, `weekly-owner-report.test.ts`
+- **Izmenjeni (S14 scope):** `build-daily-prep-briefing.ts`, `load-daily-prep-briefing-context.ts`, `daily-report-store.ts`, `build-daily-report.ts` (`productRollup`), `load-daily-report-context.ts`, `run-daily-report.ts` (`storeDailyReport`, `deliverWeeklyOwnerReport`), `load-staff-copilot-snapshot.ts`, `copilot/types.ts`, `denis-dashboard-view.tsx`, `vercel.json`, `ADR-043-session-prompts.md`
+
+**Testovi:** 7 novih (`prep-briefing-s14.test.ts` 3 + `weekly-owner-report.test.ts` 4), svi zeleni · `test:run` vs baseline: **27 failed / 2128 passed** (+7 novih testova; **0 novih failova** vs S13 baseline 27)
+
+**Verifikacija:** type-check ✓ · lint ✓ (0 errors) · `verify:denis` ✓ · `eval:denis` **5 failed** (isti pre-S14 baseline)
+
+**Integracioni check:**
+
+| Stavka | Dokaz |
+|--------|--------|
+| Brifing: rhythm + 86 + ponavljajući problemi | `prep-briefing-s14.test.ts`: `buildRhythmRushHourLines`, `aggregateRepeatingStationIssues`, `buildDailyPrepBriefing` sa `yesterdayEightySixLines` + `repeatingStationIssues`; loader u `load-daily-prep-briefing-context.ts` |
+| Dashboard kartica (ne mejl) | `prepBriefingBlock` u `StaffCopilotSnapshot` + `denis-dashboard-view.tsx`; `loadStaffCopilotSnapshot` čita Redis store ili live build |
+| Nedeljni rollup čita store | `deliverWeeklyOwnerReport` → `loadStoredDailyReportsForRange`; `build-weekly-owner-report.ts` bez `loadDailyReportForLocation`; `storeDailyReport` u `deliverDailyReport` |
+| Mirna nedelja | `weekly-owner-report.test.ts`: `isQuietWeek` → "Mirna nedelja", prazan recommendations, digest bez TOP 5 |
+| Pragovi preporuka u kodu | `WEEKLY_STATION_DELAY_THRESHOLD_MINUTES=8`, `WEEKLY_STATION_DELAY_MIN_DAYS=3`, `WEEKLY_RECOVERY_CASES_THRESHOLD=2`, `REPEATING_STATION_ISSUE_THRESHOLD=3` |
+| `buildDailyReport` / `formatDailyReportDigest` potrošači | `grep -rn`: `run-daily-report.ts`, `load-daily-report-context.ts`, postojeći testovi — digest API netaknut |
+| Nula novih test failova | `pnpm test:run` → 27 failed (unchanged vs S13) |
+
+**Dizajn:**
+- Pre-smene: rhythm rush sati + demand forecast + jučerašnji 86 + station repeat (≥3 pitanja) u briefing sekcijama i copilot kartici
+- Nedeljno: rollup 7 sačuvanih `DailyReport` snapshot-a (Redis, 8d TTL) — top/flop iz `productRollup`, obrt, station delay trend, Denis brojke, determinističke preporuke
+- Dostava weekly: isti kanal kao daily (email + Slack + push), cron nedelja 20:00 UTC
+
+**Gapovi/rizici:**
+- Weekly rollup zahteva 7 dana sačuvanih daily snapshot-a — bez svakodnevnog `deliverDailyReport` nema rollup-a
+- Live pilot: prep karticu potvrditi na `/dashboard/denis` pre smene
 
 **Status tabela ažurirana:** ✓
 

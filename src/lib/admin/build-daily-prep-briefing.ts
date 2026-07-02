@@ -28,6 +28,10 @@ export type DailyPrepBriefing = {
     todayFocus: string[];
     /** Hourly demand forecast lines (X2 + O2). */
     demandForecast: string[];
+    /** Jučerašnji 86 događaji (S9). */
+    yesterdayEightySix: string[];
+    /** Stanice sa ponavljajućim pitanjima juče (S14). */
+    repeatingStationIssues: string[];
   };
 };
 
@@ -74,6 +78,8 @@ export type BuildDailyPrepBriefingInput = {
   waitTimeComplaintCount?: number;
   currencyLabel?: string;
   demandForecastLines?: string[];
+  yesterdayEightySixLines?: string[];
+  repeatingStationIssues?: string[];
   yesterdayFiscal?: {
     orderCount: number;
     totalGross: number;
@@ -218,6 +224,10 @@ function buildTodayFocus(input: BuildDailyPrepBriefingInput): string[] {
     );
   }
 
+  if (input.repeatingStationIssues?.length) {
+    focus.push(...input.repeatingStationIssues.slice(0, 2));
+  }
+
   return focus.slice(0, 5);
 }
 
@@ -254,6 +264,8 @@ export function buildDailyPrepBriefing(
       },
       todayFocus: buildTodayFocus(input),
       demandForecast: (input.demandForecastLines ?? []).slice(0, 6),
+      yesterdayEightySix: (input.yesterdayEightySixLines ?? []).slice(0, 5),
+      repeatingStationIssues: (input.repeatingStationIssues ?? []).slice(0, 3),
     },
   };
 }
@@ -344,6 +356,17 @@ export function formatDailyPrepBriefingText(
     lines.push(...sections.demandForecast.map((line) => `- ${line}`));
   }
 
+  if (sections.yesterdayEightySix.length > 0) {
+    lines.push("");
+    lines.push(`🛑 JUČE 86: ${sections.yesterdayEightySix.join(" · ")}`);
+  }
+
+  if (sections.repeatingStationIssues.length > 0) {
+    lines.push("");
+    lines.push("⚠️ PONAVLJAJUĆI PROBLEMI:");
+    lines.push(...sections.repeatingStationIssues.map((line) => `- ${line}`));
+  }
+
   return lines.join("\n");
 }
 
@@ -394,5 +417,13 @@ export function formatDailyPrepCopilotLines(
     lines.push(`Prognoza: ${sections.demandForecast[0]}`);
   }
 
-  return lines.slice(0, 5);
+  if (sections.yesterdayEightySix.length > 0) {
+    lines.push(`Juče 86: ${sections.yesterdayEightySix.slice(0, 2).join(" · ")}`);
+  }
+
+  if (sections.repeatingStationIssues.length > 0) {
+    lines.push(sections.repeatingStationIssues[0]!);
+  }
+
+  return lines.slice(0, 6);
 }

@@ -6,7 +6,10 @@ import type { ServiceRecoveryTrigger } from "@/lib/denis/cognition/recovery/dete
 import { guestTextFromTimeline } from "@/lib/denis/cognition/conversation/guest-continuity";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 
-export const SERVICE_RECOVERY_MESSAGE_PREFIX = "Recovery —";
+import {
+  SERVICE_RECOVERY_MESSAGE_PREFIX,
+  isServiceRecoveryNotificationMessage,
+} from "@/lib/denis/notifications/staff-notification-markers";
 
 const GESTURE_LABELS: Record<
   ServiceRecoveryGesture,
@@ -128,6 +131,4 @@ export function buildServiceRecoveryStaffMessage(input: {
   return { message, detail: lines.join("\n") };
 }
 
-export function isServiceRecoveryNotificationMessage(message: string): boolean {
-  return message.trimStart().startsWith(SERVICE_RECOVERY_MESSAGE_PREFIX);
-}
+export { isServiceRecoveryNotificationMessage, SERVICE_RECOVERY_MESSAGE_PREFIX };

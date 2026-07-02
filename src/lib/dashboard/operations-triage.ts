@@ -1,6 +1,8 @@
 import type { StaffNotificationRow } from "@/lib/denis/notifications/persist-staff-notification";
-import { isServiceRecoveryNotificationMessage } from "@/lib/denis/cognition/recovery/build-service-recovery-alert";
-import { isBusTableEscalationMessage } from "@/lib/denis/cognition/waiter/bus-table-obligation";
+import {
+  isBusTableEscalationMessage,
+  isServiceRecoveryNotificationMessage,
+} from "@/lib/denis/notifications/staff-notification-markers";
 
 export const DEFAULT_READY_STUCK_MINUTES = 2;
 

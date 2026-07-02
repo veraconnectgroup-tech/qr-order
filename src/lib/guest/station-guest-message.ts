@@ -2,7 +2,7 @@ import type { OrderFact } from "@/lib/denis/loop/types";
 import {
   cachedStationAnswerGuestMessage,
   type FreshStationAnswer,
-} from "@/lib/denis/stations/station-questions";
+} from "@/lib/denis/stations/station-question-messages";
 import { stationsForOrderItems } from "@/lib/orders/station-states";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
 import type { TranslationKey } from "@/lib/i18n/translations";

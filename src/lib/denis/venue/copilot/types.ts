@@ -43,6 +43,8 @@ export type StaffCopilotSnapshot = {
   /** Basket-analysis pairings discovered from order history (X1). */
   learnedPairingsBlock: EventCopilotBlock | null;
   inventoryBrief: string | null;
+  /** Pre-shift briefing card (S14) — dashboard, not email. */
+  prepBriefingBlock: EventCopilotBlock | null;
 };
 
 export type EventCopilotBlock = {

@@ -4,10 +4,12 @@ import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import {
   floorHintLabel,
   staffCopilotPriorityLabel,
-  type StaffCopilotTablePriority,
-  type StaffCopilotTableRow,
-  type StaffRevenueOpportunity,
-} from "@/lib/denis/venue/copilot";
+} from "@/lib/denis/venue/copilot/prioritize-tables";
+import type {
+  StaffCopilotTablePriority,
+  StaffCopilotTableRow,
+  StaffRevenueOpportunity,
+} from "@/lib/denis/venue/copilot/types";
 import { cn } from "@/lib/utils";
 
 function priorityStyles(priority: StaffCopilotTablePriority) {

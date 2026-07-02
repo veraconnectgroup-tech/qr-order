@@ -7,7 +7,7 @@ import {
   paymentMethodNarrationKey,
 } from "@/lib/denis/runtime/act/handoff-narration";
 import type { OrderFact } from "@/lib/denis/loop/types";
-import type { FreshStationAnswer } from "@/lib/denis/stations/station-questions";
+import type { FreshStationAnswer } from "@/lib/denis/stations/station-question-messages";
 import { buildStationAwareOrderStatusMessage } from "@/lib/guest/station-guest-message";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
 import type { TranslationKey } from "@/lib/i18n/translations";

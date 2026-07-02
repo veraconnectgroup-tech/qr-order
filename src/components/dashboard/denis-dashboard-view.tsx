@@ -264,6 +264,23 @@ export function DenisDashboardView() {
         </div>
 
         <div className="border-b border-dash-border px-4 py-4 md:px-6">
+          {copilot?.prepBriefingBlock ? (
+            <div className="mb-4 rounded-lg border border-dash-accent/40 bg-dash-accent/10 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-dash-accent">
+                {copilot.prepBriefingBlock.title}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {copilot.prepBriefingBlock.lines.map((line) => (
+                  <li
+                    key={line}
+                    className="text-sm text-dash-text-secondary before:me-2 before:text-dash-accent before:content-['•']"
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <InsightBlock title="Actionable insights">
             <ActionableInsightsWidget
               insights={actionableInsights ?? []}

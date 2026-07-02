@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { minutesSincePaid } from "@/lib/denis/cognition/waiter/bus-table-obligation";
+import { minutesSincePaid } from "@/lib/denis/cognition/waiter/bus-table-utils";
 import type { TableBusObligationClientRow } from "@/hooks/use-table-bus-obligations";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  aggregateProductRollupFromItems,
   buildDailyReport,
   denisMetricsFromHealth,
   type DailyReport,
@@ -100,6 +101,31 @@ async function loadOrdersForRange(
     .neq("status", "cancelled");
 
   return (data ?? []) as DailyReportOrderRow[];
+}
+
+async function loadOrderItemsForOrders(
+  admin: SupabaseClient,
+  orderIds: string[]
+): Promise<Array<{ productName: string; quantity: number; total: number }>> {
+  if (orderIds.length === 0) return [];
+
+  const { data } = await admin
+    .from("order_items")
+    .select("product_name, quantity, total")
+    .in("order_id", orderIds);
+
+  return (data ?? []).map((row) => {
+    const typed = row as {
+      product_name: string;
+      quantity: number;
+      total: number;
+    };
+    return {
+      productName: typed.product_name,
+      quantity: typed.quantity,
+      total: Number(typed.total),
+    };
+  });
 }
 
 async function loadSessionsForRange(
@@ -583,6 +609,12 @@ export async function loadDailyReportForLocation(
     visitCountByToken: guestCounts.visitCountByToken,
   });
 
+  const orderItems = await loadOrderItemsForOrders(
+    admin,
+    orders.map((row) => row.id)
+  );
+  const productRollup = aggregateProductRollupFromItems(orderItems);
+
   const feedback: FeedbackRow[] = feedbackRows
     .filter(
       (row) =>
@@ -620,5 +652,6 @@ export async function loadDailyReportForLocation(
     returningGuestSessions: guestCounts.returning,
     newGuestSessions: guestCounts.newGuests,
     denisShift,
+    productRollup,
   });
 }

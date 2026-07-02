@@ -11,19 +11,18 @@ import { logger } from "@/lib/logger";
 import { isPaidPaymentStatus } from "@/lib/orders/payment-status";
 import type { Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  BUS_TABLE_ESCALATION_PREFIX,
+  isBusTableEscalationMessage,
+} from "@/lib/denis/notifications/staff-notification-markers";
+import { minutesSincePaid } from "@/lib/denis/cognition/waiter/bus-table-utils";
 
 export const BUS_TABLE_GAP_KIND = "bus_table" as const satisfies WaiterGapKind;
-
-export const BUS_TABLE_ESCALATION_PREFIX = "Obrt —";
 
 export type TableBusObligationRow =
   Database["public"]["Tables"]["table_bus_obligations"]["Row"];
 
-export function minutesSincePaid(paidAt: string, nowMs: number = Date.now()): number {
-  const ts = Date.parse(paidAt);
-  if (!Number.isFinite(ts)) return 0;
-  return Math.max(0, Math.floor((nowMs - ts) / 60_000));
-}
+export { minutesSincePaid };
 
 export function busTableWaiterPrompt(
   tableName: string,
@@ -40,9 +39,7 @@ export function busTableWaiterPrompt(
   return `Sto ${tableName} — plaćeno pre ${waitMinutes} min, raspremi sto.`;
 }
 
-export function isBusTableEscalationMessage(message: string): boolean {
-  return message.trimStart().startsWith(BUS_TABLE_ESCALATION_PREFIX);
-}
+export { isBusTableEscalationMessage, BUS_TABLE_ESCALATION_PREFIX };
 
 async function loadSessionPaymentContext(
   admin: SupabaseClient,

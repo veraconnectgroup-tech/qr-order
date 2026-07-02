@@ -25,6 +25,9 @@ import { loadVenueInventorySnapshot } from "@/lib/denis/intelligence/load-venue-
 import { formatMorningPrepReplenishment } from "@/lib/denis/intelligence/inventory-awareness";
 import { yesterdayBusinessDate } from "@/lib/fiscal/daily-closing";
 import { parseEventConfig } from "@/lib/denis/venue/ops/event-mode";
+import { buildRhythmRushHourLines } from "@/lib/admin/prep-briefing-rhythm-rush";
+import { aggregateRepeatingStationIssues } from "@/lib/admin/prep-briefing-station-issues";
+import { loadEightySixEventsForRange } from "@/lib/products/eighty-six";
 
 const DAY_NAMES_SR = [
   "Nedelja",
@@ -367,6 +370,8 @@ export async function loadDailyPrepBriefingForLocation(
     inventorySnapshot,
     yesterdayFiscal,
     orgRow,
+    yesterdayEightySixEvents,
+    yesterdayStationQuestions,
   ] = await Promise.all([
     loadReturningGuestRows(admin, input.locationId),
     loadYesterdayOrders(
@@ -397,6 +402,18 @@ export async function loadDailyPrepBriefingForLocation(
       .select("currency")
       .eq("id", input.orgId)
       .maybeSingle(),
+    loadEightySixEventsForRange(admin, {
+      orgId: input.orgId,
+      locationId: input.locationId,
+      from: yesterday.start,
+      to: yesterday.end,
+    }),
+    admin
+      .from("station_questions")
+      .select("station")
+      .eq("location_id", input.locationId)
+      .gte("asked_at", yesterday.start)
+      .lt("asked_at", yesterday.end),
   ]);
 
   const feedbackTrends =
@@ -416,6 +433,26 @@ export async function loadDailyPrepBriefingForLocation(
     minHistoryDays: 30,
   });
   const demandForecastLines = formatPrepBriefingLines(demandForecast);
+  const rhythmRushLines = buildRhythmRushHourLines({
+    priors: rhythmRow?.priors ?? null,
+    weekday,
+    minSampleSessions: config.rhythm.minSampleSessions,
+  });
+
+  const eightySixFormatter = new Intl.DateTimeFormat("sr-RS", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const yesterdayEightySixLines = yesterdayEightySixEvents.map(
+    (event) =>
+      `${eightySixFormatter.format(new Date(event.at))} ${event.productName}`
+  );
+
+  const repeatingStationIssues = aggregateRepeatingStationIssues(
+    (yesterdayStationQuestions.data ?? []).map((row) => ({
+      station: (row as { station: "kitchen" | "bar" }).station,
+    }))
+  );
 
   const briefingInput: BuildDailyPrepBriefingInput = {
     date,
@@ -454,9 +491,12 @@ export async function loadDailyPrepBriefingForLocation(
         : 0,
     currencyLabel: "RSD",
     demandForecastLines: [
+      ...rhythmRushLines,
       ...formatMorningPrepReplenishment(inventorySnapshot.alerts),
       ...demandForecastLines,
     ].slice(0, 6),
+    yesterdayEightySixLines,
+    repeatingStationIssues,
     yesterdayFiscal: yesterdayFiscal
       ? {
           ...yesterdayFiscal,
