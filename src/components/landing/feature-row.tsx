@@ -29,7 +29,7 @@ export function FeatureRow({
   return (
     <section
       id={id}
-      className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 text-white md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
         <div

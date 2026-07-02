@@ -12,7 +12,7 @@ function LogoTile({
   return (
     <li
       className={cn(
-        "flex shrink-0 items-center justify-center gap-2.5 rounded-xl border border-[#1e1e2e] bg-zinc-900/60 px-4 py-3",
+        "flex shrink-0 items-center justify-center gap-2.5 px-4 py-2 opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0",
         className
       )}
       aria-label={label}

@@ -40,7 +40,7 @@ export function LandingPricing() {
   return (
     <section
       id="pricing"
-      className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 text-white md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
         <AnimateInView className="max-w-[480px]">
@@ -60,12 +60,12 @@ export function LandingPricing() {
                 className={cn(
                   "relative flex h-full flex-col rounded-2xl border p-8",
                   plan.primary
-                    ? "border-white/[0.12] bg-white/[0.03] ring-1 ring-white/[0.08]"
-                    : "border-white/[0.06] bg-white/[0.02]"
+                    ? "border-white/[0.14] bg-[var(--lp-surface)]"
+                    : "border-[var(--lp-border)] bg-[var(--lp-surface)]/60"
                 )}
               >
                 {plan.primary && (
-                  <span className="absolute -top-3 left-8 rounded-full bg-[var(--qr-ember)] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
+                  <span className="absolute -top-3 left-8 rounded-full bg-[#edecec] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#14120b]">
                     {pricing.popular}
                   </span>
                 )}
@@ -101,12 +101,9 @@ export function LandingPricing() {
                 <Button
                   asChild
                   className={cn(
-                    "mt-8 h-12 w-full rounded-full text-sm font-semibold",
-                    plan.primary
-                      ? "bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
-                      : "border border-white/[0.12] bg-transparent text-zinc-200 hover:bg-white/[0.04] hover:text-white"
+                    "mt-8 h-11 w-full text-sm font-medium",
+                    plan.primary ? "landing-btn-primary" : "landing-btn-secondary"
                   )}
-                  variant={plan.primary ? "default" : "outline"}
                 >
                   <Link href={plan.href}>{plan.cta}</Link>
                 </Button>
@@ -115,7 +112,7 @@ export function LandingPricing() {
           ))}
         </div>
 
-        <AnimateInView className="mt-16 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 md:p-10">
+        <AnimateInView className="mt-16 rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)]/60 p-8 md:p-10">
           <h3 className="font-display text-xl font-medium text-white">
             {pricing.compareTitle}
           </h3>
@@ -147,7 +144,7 @@ export function LandingPricing() {
           </div>
         </AnimateInView>
 
-        <AnimateInView className="mt-10 rounded-2xl border border-[var(--qr-ember)]/20 bg-[var(--qr-ember)]/5 p-8 md:p-10">
+        <AnimateInView className="mt-10 rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)]/60 p-8 md:p-10">
           <h3 className="font-display text-xl font-medium text-white">
             {pricing.roiTitle}
           </h3>

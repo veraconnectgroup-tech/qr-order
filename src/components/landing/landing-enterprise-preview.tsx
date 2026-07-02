@@ -19,7 +19,7 @@ export function LandingEnterprisePreview() {
   return (
     <section
       id="enterprise"
-      className="scroll-mt-24 border-t border-white/[0.06] bg-white/[0.015] py-20 text-white md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
         <AnimateInView className="max-w-[640px]">
@@ -35,7 +35,7 @@ export function LandingEnterprisePreview() {
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {enterprise.pillars.map((pillar) => (
             <AnimateInView key={pillar.title}>
-              <div className="h-full rounded-2xl border border-white/[0.08] bg-black/40 p-8">
+              <div className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-bg)] p-8">
                 <h3 className="text-[15px] font-medium text-white">
                   {pillar.title}
                 </h3>
@@ -50,7 +50,7 @@ export function LandingEnterprisePreview() {
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {enterprise.caseStudies.map((study) => (
             <AnimateInView key={study.venue}>
-              <article className="rounded-2xl border border-white/[0.08] bg-black/50 p-8">
+              <article className="rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-bg)] p-8">
                 <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--qr-ember)]">
                   {study.result}
                 </p>
@@ -69,7 +69,7 @@ export function LandingEnterprisePreview() {
           <Button
             size="lg"
             asChild
-            className="h-12 rounded-full bg-[var(--qr-ember)] px-8 text-sm font-semibold text-white hover:bg-[var(--qr-ember-hover)]"
+            className="landing-btn-primary h-11 px-6 text-[14px] font-medium"
           >
             <Link href="/enterprise">
               {enterprise.cta}
@@ -78,9 +78,8 @@ export function LandingEnterprisePreview() {
           </Button>
           <Button
             size="lg"
-            variant="outline"
             asChild
-            className="h-12 rounded-full border-white/[0.12] bg-transparent px-8 text-sm text-zinc-200 hover:bg-white/[0.04]"
+            className="landing-btn-secondary h-11 px-6 text-[14px] font-medium"
           >
             <Link href="/signup">{enterprise.ctaSecondary}</Link>
           </Button>

@@ -323,7 +323,7 @@ function GuestPhone({ step }: { step: ShiftStep }) {
   );
 }
 
-export function LandingHeroDenisDemo() {
+export function LandingHeroDenisDemo({ frameless }: { frameless?: boolean }) {
   const { locale, copy } = useLandingCopy();
   const steps = SHIFT_STEPS[locale] ?? SHIFT_STEPS.en;
   const [stepIndex, setStepIndex] = useState(0);
@@ -334,12 +334,26 @@ export function LandingHeroDenisDemo() {
   }, [steps.length]);
 
   return (
-    <div className="relative mx-auto w-full max-w-[760px]">
-      <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-normal text-zinc-500">
-        {copy.hero.demoLabel}
-      </p>
+    <div
+      className={cn(
+        "relative mx-auto w-full",
+        frameless ? "max-w-none" : "max-w-[760px]"
+      )}
+    >
+      {!frameless && (
+        <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-normal text-zinc-500">
+          {copy.hero.demoLabel}
+        </p>
+      )}
 
-      <div className="rounded-lg border border-white/[0.08] bg-[#0d0c0b] shadow-2xl shadow-black/50">
+      <div
+        className={cn(
+          "border border-white/[0.08] bg-[#0d0c0b]",
+          frameless
+            ? "overflow-hidden rounded-lg sm:rounded-xl"
+            : "rounded-lg shadow-2xl shadow-black/50"
+        )}
+      >
         <div className="flex items-center justify-between gap-4 border-b border-white/[0.08] px-4 py-3">
           <div className="flex items-center gap-3">
             <DenisTableMark size={24} state="think" />

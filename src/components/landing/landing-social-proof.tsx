@@ -17,7 +17,7 @@ export function LandingSocialProof() {
   return (
     <section
       id="social-proof"
-      className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 text-white md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
         <AnimateInView className="mx-auto max-w-[560px] text-center">
@@ -47,7 +47,7 @@ export function LandingSocialProof() {
         <div className="mt-16 grid gap-6 md:grid-cols-2">
           {social.testimonials.map((item) => (
             <AnimateInView key={item.name}>
-              <blockquote className="h-full rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8">
+              <blockquote className="h-full rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)]/60 p-8">
                 <p className="text-[16px] leading-relaxed text-zinc-300">
                   &ldquo;{item.quote}&rdquo;
                 </p>

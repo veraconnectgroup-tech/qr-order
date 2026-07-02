@@ -74,7 +74,7 @@ export function LandingNav() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200",
           scrolled
-            ? "border-white/[0.06] bg-black/80 backdrop-blur-xl"
+            ? "border-[var(--lp-border-subtle)] bg-[color-mix(in_srgb,var(--lp-bg)_85%,transparent)] backdrop-blur-xl"
             : "border-transparent bg-transparent"
         )}
       >
@@ -113,7 +113,7 @@ export function LandingNav() {
             <Button
               size="sm"
               asChild
-              className="hidden h-8 rounded-full bg-[var(--qr-ember)] px-4 text-[13px] font-semibold text-white hover:bg-[var(--qr-ember-hover)] sm:inline-flex"
+              className="landing-btn-primary hidden h-8 px-4 text-[13px] font-medium sm:inline-flex"
             >
               <Link href="/signup">{nav.cta}</Link>
             </Button>
@@ -130,7 +130,7 @@ export function LandingNav() {
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-40 bg-black lg:hidden">
+        <div className="fixed inset-0 z-40 bg-[var(--lp-bg)] lg:hidden">
           <div className="flex h-14 items-center justify-between border-b border-white/[0.06] px-6">
             <span className="text-[14px] font-semibold text-white">Menu</span>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close">
@@ -157,7 +157,7 @@ export function LandingNav() {
           <div className="px-6">
             <Button
               asChild
-              className="h-11 w-full rounded-full bg-[var(--qr-ember)] text-white hover:bg-[var(--qr-ember-hover)]"
+              className="landing-btn-primary h-11 w-full font-medium"
             >
               <Link href="/signup" onClick={() => setOpen(false)}>
                 {nav.cta}

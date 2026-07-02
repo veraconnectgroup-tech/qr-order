@@ -10,7 +10,7 @@ export function LandingTrustStrip() {
   return (
     <section
       aria-label="Integrations and compliance"
-      className="border-y border-white/[0.06] bg-black py-6"
+      className="border-y border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-6"
     >
       <LandingContainer wide>
         <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">

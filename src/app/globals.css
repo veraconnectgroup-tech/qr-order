@@ -543,17 +543,19 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
    ═══════════════════════════════════════════════════ */
 
 .landing-page {
-  --lp-bg: #0a0908;
-  --lp-surface: #141210;
-  --lp-elevated: #1c1917;
-  --lp-ink: #f5f0eb;
-  --lp-muted: #9c958c;
+  /* Warm charcoal canvas (Cursor-like #14120b family), not pure black */
+  --lp-bg: #131110;
+  --lp-surface: #1a1815;
+  --lp-elevated: #221f1b;
+  --lp-ink: #edecec;
+  --lp-muted: #a29b92;
   --lp-subtle: #6b645c;
-  --lp-border: #232329;
-  --lp-border-subtle: #1a1816;
+  --lp-border: rgba(255, 255, 255, 0.07);
+  --lp-border-subtle: rgba(255, 255, 255, 0.05);
   --lp-ember: #e85d04;
   --lp-ember-hover: #d14d04;
   --lp-ember-muted: rgba(232, 93, 4, 0.1);
+  --lp-accent: var(--lp-ember);
   background: var(--lp-bg);
   color: var(--lp-ink);
   position: relative;
@@ -782,15 +784,6 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   to { transform: scaleX(1); }
 }
 
-.landing-cta-ripple {
-  animation: landing-cta-ripple 4s ease-out infinite;
-}
-
-@keyframes landing-cta-ripple {
-  0% { transform: scale(0.6); opacity: 0.4; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-
 .landing-preview-shimmer::after {
   content: "";
   position: absolute;
@@ -811,7 +804,6 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   .landing-float,
   .landing-glow-border:hover::before,
   .landing-pricing-border::before,
-  .landing-cta-ripple,
   .landing-tab-progress,
   .landing-preview-shimmer::after,
   .landing-hero-stagger-item { animation: none; }
@@ -820,23 +812,36 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   .landing-hero-stagger-item { opacity: 1; transform: none; transition: none; }
 }
 
+/* Pill buttons — Cursor/Nimt style: monochrome primary, subtle surface secondary */
 .landing-btn-primary {
-  background: #ededef !important;
-  color: #08080c !important;
+  background: #edecec !important;
+  color: #14120b !important;
+  border-radius: 9999px !important;
+  border: none !important;
 }
 .landing-btn-primary:hover {
   background: #ffffff !important;
+}
+
+.landing-btn-secondary {
+  background: #26241e !important;
+  color: #edecec !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 9999px !important;
+}
+.landing-btn-secondary:hover {
+  background: #2e2b25 !important;
+  color: #ffffff !important;
 }
 
 .landing-btn-accent {
   background: var(--lp-ember) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 0 20px rgba(249, 115, 22, 0.35);
+  border-radius: 9999px !important;
 }
 .landing-btn-accent:hover {
   background: var(--lp-ember-hover) !important;
-  box-shadow: 0 0 28px rgba(249, 115, 22, 0.45);
 }
 
 .landing-hero-dark {
@@ -977,30 +982,6 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
 
 .landing-closing-fade {
   background: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
-}
-
-.landing-cta-banner {
-  background: #08080c;
-}
-
-.landing-cta-banner-grid {
-  background-image:
-    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-}
-
-.landing-cta-banner-rings {
-  background-image: repeating-radial-gradient(
-    circle at 50% 18%,
-    transparent 0,
-    transparent 47px,
-    rgba(99, 102, 241, 0.11) 48px,
-    rgba(99, 102, 241, 0.04) 49px,
-    transparent 50px
-  );
-  mask-image: radial-gradient(ellipse 90% 80% at 50% 25%, #000 10%, transparent 68%);
-  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 25%, #000 10%, transparent 68%);
 }
 
 .landing-marquee-mask {

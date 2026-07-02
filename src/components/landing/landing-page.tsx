@@ -23,7 +23,7 @@ const LandingFeatures = dynamic(
   {
     loading: () => (
       <div
-        className="scroll-mt-24 border-t border-white/[0.06] bg-black py-20 md:py-28"
+        className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 md:py-28"
         aria-hidden
       >
         <div className="mx-auto h-[640px] max-w-[1080px] animate-pulse rounded-2xl bg-white/[0.03]" />
@@ -34,7 +34,7 @@ const LandingFeatures = dynamic(
 
 function LandingPageContent() {
   return (
-    <div className="landing-page relative min-h-screen overflow-x-hidden bg-black antialiased">
+    <div className="landing-page relative min-h-screen overflow-x-hidden antialiased">
       <LandingDocumentHead />
       <LandingNav />
 

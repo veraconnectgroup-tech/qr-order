@@ -141,7 +141,7 @@ export function LandingFooter() {
   const labels = footerLabels[locale];
 
   return (
-    <footer className="relative z-[2] border-t border-[#1e1e2e]/60 bg-black py-16 text-zinc-400 sm:py-20">
+    <footer className="relative z-[2] border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-zinc-400 sm:py-20">
       <LandingContainer wide>
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
@@ -185,7 +185,7 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-6 flex flex-col gap-2 border-t border-[#1e1e2e] pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border-t border-[var(--lp-border-subtle)] pt-8 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px]">{copy.footer.copyright}</p>
           <p className="text-[12px] text-zinc-500">{labels.payments}</p>
         </div>

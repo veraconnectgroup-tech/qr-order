@@ -17,7 +17,7 @@ export function LandingFaq() {
   return (
     <section
       id="faq"
-      className="scroll-mt-24 border-t border-white/[0.06] bg-black py-16 text-white md:py-20"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-[var(--lp-ink)] md:py-20"
     >
       <LandingContainer wide>
         <AnimateInView className="max-w-[480px]">
