@@ -113,18 +113,31 @@ function StationPill({
   label,
   value,
   tone,
+  compact,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   tone: StationTone;
+  compact?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-[#e3e7ee] bg-[#fbfcfd] p-2.5">
-      <div className="flex items-center gap-2 text-[12px] font-medium text-[#6b7280]">
+    <div
+      className={cn(
+        "rounded-md border border-[#e3e7ee] bg-[#fbfcfd]",
+        compact ? "p-2" : "p-2.5"
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 font-medium text-[#6b7280]",
+          compact ? "text-[11px]" : "text-[12px]"
+        )}
+      >
         <span
           className={cn(
-            "flex size-7 items-center justify-center rounded-md",
+            "flex items-center justify-center rounded-md",
+            compact ? "size-6" : "size-7",
             tone === "green" && "bg-emerald-50 text-emerald-700",
             tone === "blue" && "bg-sky-50 text-sky-700",
             tone === "orange" && "bg-orange-50 text-orange-700",
@@ -135,7 +148,12 @@ function StationPill({
         </span>
         {label}
       </div>
-      <p className="mt-1.5 text-[13px] font-semibold text-[#1f2328]">
+      <p
+        className={cn(
+          "font-semibold text-[#1f2328]",
+          compact ? "mt-1 text-[12px]" : "mt-1.5 text-[13px]"
+        )}
+      >
         {value}
       </p>
     </div>
@@ -149,6 +167,7 @@ function Message({
   badge,
   children,
   reactions,
+  compact,
 }: {
   avatar: ReactNode;
   name: string;
@@ -156,9 +175,15 @@ function Message({
   badge?: string;
   children: ReactNode;
   reactions?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex gap-3 px-4 py-2.5 sm:px-5">
+    <div
+      className={cn(
+        "flex gap-3 px-4 sm:px-5",
+        compact ? "py-2" : "py-2.5"
+      )}
+    >
       {avatar}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
@@ -220,34 +245,44 @@ export function LandingHeroDenisDemo({
       <div
         className={cn(
           "flex overflow-x-auto border-b border-[#e7ebf0] px-4 sm:px-5",
-          compact && "hidden"
+          compact && "px-4"
         )}
       >
         <button
           type="button"
-          className="flex min-h-11 shrink-0 items-center gap-2 border-b-2 border-[#1f2328] px-1 text-[14px] font-semibold text-[#1f2328] sm:text-[15px]"
+          className={cn(
+            "flex shrink-0 items-center gap-2 border-b-2 border-[#1f2328] px-1 font-semibold text-[#1f2328]",
+            compact ? "min-h-9 text-[13px]" : "min-h-11 text-[14px] sm:text-[15px]"
+          )}
         >
           <MessageCircle className="size-5" />
           Messages
         </button>
         <button
           type="button"
-          className="ms-6 flex min-h-11 shrink-0 items-center gap-2 text-[14px] font-semibold text-[#6b7280] sm:ms-8 sm:text-[15px]"
+          className={cn(
+            "flex shrink-0 items-center gap-2 font-semibold text-[#6b7280]",
+            compact ? "ms-5 min-h-9 text-[13px]" : "ms-6 min-h-11 text-[14px] sm:ms-8 sm:text-[15px]"
+          )}
         >
           <Check className="size-5" />
           Actions
         </button>
         <button
           type="button"
-          className="ms-6 flex min-h-11 shrink-0 items-center gap-2 text-[14px] font-semibold text-[#6b7280] sm:ms-8 sm:text-[15px]"
+          className={cn(
+            "flex shrink-0 items-center gap-2 font-semibold text-[#6b7280]",
+            compact ? "ms-5 min-h-9 text-[13px]" : "ms-6 min-h-11 text-[14px] sm:ms-8 sm:text-[15px]"
+          )}
         >
           <Clock3 className="size-5" />
           Timeline
         </button>
       </div>
 
-      <div className={cn("bg-white", compact ? "py-1.5" : "py-2")}>
+      <div className={cn("bg-white", compact ? "py-1" : "py-2")}>
         <Message
+          compact={compact}
           avatar={<Avatar name="Marko" tone="blue" />}
           name="Marko"
           time="7:41 PM"
@@ -259,6 +294,7 @@ export function LandingHeroDenisDemo({
         </Message>
 
         <Message
+          compact={compact}
           avatar={<Avatar name="Denis" tone="denis" />}
           name="Denis"
           badge="App"
@@ -280,20 +316,23 @@ export function LandingHeroDenisDemo({
             Table 8: drinks ready 4 min. Kitchen in prep. Marko — pick up drinks now.
           </p>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-3 sm:gap-3">
+          <div className={cn("mt-3 grid gap-2", compact ? "grid-cols-3" : "sm:grid-cols-3 sm:gap-3")}>
             <StationPill
+              compact={compact}
               icon={<Wine className="size-4" />}
               label="Bar"
               value="Ready 4 min"
               tone="green"
             />
             <StationPill
+              compact={compact}
               icon={<ChefHat className="size-4" />}
               label="Kitchen"
               value="In prep"
               tone="blue"
             />
             <StationPill
+              compact={compact}
               icon={<UserCheck className="size-4" />}
               label="Waiter"
               value="Pickup needed"
@@ -301,7 +340,7 @@ export function LandingHeroDenisDemo({
             />
           </div>
 
-          <div className={cn("mt-3 flex flex-wrap gap-2", compact && "hidden")}>
+          <div className={cn("mt-3 flex flex-wrap gap-2", compact && "mt-2")}>
             <ActionChip
               icon={<UserCheck className="size-4" />}
               label="Notify waiter"
@@ -344,7 +383,6 @@ export function LandingHeroDenisDemo({
         )}
       </div>
 
-      {!compact && (
       <div className="border-t border-[#e7ebf0] bg-[#fbfcfd] p-3 sm:p-4">
         <div className="rounded-lg border border-[#dfe5ed] bg-white">
           <div
@@ -407,7 +445,6 @@ export function LandingHeroDenisDemo({
           </div>
         )}
       </div>
-      )}
     </div>
   );
 }

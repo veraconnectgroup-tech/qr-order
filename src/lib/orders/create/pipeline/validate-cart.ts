@@ -21,6 +21,30 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+export function resolveUnavailableProductNames({
+  productIds,
+  products,
+  items,
+}: {
+  productIds: string[];
+  products: Array<CatalogProduct & { is_available: boolean }>;
+  items: CreateOrderInput["items"];
+}): string[] {
+  return productIds
+    .map((id) => {
+      const product = products.find((row) => row.id === id);
+      if (product?.is_available) return null;
+      return (
+        product?.name ??
+        items.find((item) => item.productId === id)?.productName ??
+        "This item"
+      );
+    })
+    .filter((name): name is string => Boolean(name))
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
 export async function validateOrderCart(
   admin: AdminClient,
   input: CreateOrderInput,
@@ -59,10 +83,11 @@ export async function validateOrderCart(
     CatalogProduct & { is_available: boolean }
   >;
 
-  const unavailableNames = productIds
-    .map((id) => allProducts.find((product) => product.id === id))
-    .filter((product) => !product || !product.is_available)
-    .map((product) => product?.name ?? "Unknown product");
+  const unavailableNames = resolveUnavailableProductNames({
+    productIds,
+    products: allProducts,
+    items: input.items,
+  });
 
   if (unavailableNames.length > 0) {
     return err(
@@ -75,12 +100,18 @@ export async function validateOrderCart(
   const productMap = new Map(allProducts.map((product) => [product.id, product]));
 
   if (productMap.size !== productIds.length) {
+    const missingNames = productIds
+      .filter((id) => !productMap.has(id))
+      .map(
+        (id) =>
+          input.items.find((item) => item.productId === id)?.productName ??
+          "This item"
+      );
+
     return err(
-      orderError(
-        "unavailable_products",
-        "One or more products are unavailable.",
-        400
-      )
+      orderError("unavailable_products", "unavailable_products", 400, {
+        products: missingNames,
+      })
     );
   }
 

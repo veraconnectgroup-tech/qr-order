@@ -9,6 +9,7 @@ import {
   type GuestMealStage,
   type GuestSentiment,
   type TurnInterpretation,
+  type TurnModification,
 } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -78,6 +79,41 @@ function followUpMinutesFromFormat(message: string): number | null {
   return null;
 }
 
+const SWAP_MARKER = /\b(?:umesto|umjesto|statt|anstatt|instead\s+of)\b/i;
+
+const SWAP_SIDE_INTRO = new Set(["sa", "s", "mit", "with"]);
+
+const SWAP_CONJUNCTION = /\s+(?:i|and|und|pa|plus)\s+|[,.;!?]/i;
+
+/** Deterministic "X umesto Y" swap when LLM interpretation is unavailable. */
+function swapModificationFromText(text: string): TurnModification | null {
+  const marker = SWAP_MARKER.exec(text);
+  if (!marker) return null;
+
+  const before = text.slice(0, marker.index).trim();
+  const after = text.slice(marker.index + marker[0].length).trim();
+  if (!before || !after) return null;
+
+  // Requested side: words after the last "sa/mit/with" marker, else trailing words.
+  const beforeWords = before.split(/\s+/);
+  let introIdx = -1;
+  for (let i = beforeWords.length - 1; i >= 0; i--) {
+    if (SWAP_SIDE_INTRO.has(beforeWords[i]!.toLowerCase())) {
+      introIdx = i;
+      break;
+    }
+  }
+  const requestedWords =
+    introIdx >= 0 ? beforeWords.slice(introIdx + 1) : beforeWords.slice(-3);
+  const requested = requestedWords.join(" ").trim();
+
+  // Replaced side: words up to the next conjunction / punctuation.
+  const insteadOf = after.split(SWAP_CONJUNCTION)[0]?.trim() ?? "";
+
+  if (requested.length < 2 || insteadOf.length < 2) return null;
+  return { swap: { from: insteadOf, to: requested } };
+}
+
 /** Router fallback when LLM did not return turnInterpretation (T0/T1 / template turns). */
 export function synthesizeTurnInterpretationFromRouter(
   guestMessage: string
@@ -88,11 +124,13 @@ export function synthesizeTurnInterpretationFromRouter(
   const route = classifyGuestIntent(text);
   const intent = route.intent;
   const followUpMinutes = followUpMinutesFromFormat(text);
+  const swap = swapModificationFromText(text);
 
   return {
     ...EMPTY_TURN_INTERPRETATION,
     sentiment: sentimentFromRouterIntent(intent),
     mealStage: mealStageFromRouterIntent(intent),
+    modifications: swap ? [swap] : [],
     followUpMinutes,
   };
 }

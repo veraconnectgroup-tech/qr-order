@@ -147,6 +147,8 @@ const de: TranslationMap = {
   "cart.checkout": "Bestellung aufgeben →",
   "cart.checkoutUnavailable": "Kasse nicht verfügbar",
   "cart.unavailableProduct": "{name} ist nicht mehr verfügbar. Bitte aus dem Warenkorb entfernen.",
+  "cart.unavailableProductsRefresh":
+    "Ein Artikel ist nicht mehr verfügbar. Bitte prüfe deinen Warenkorb und sende die Bestellung erneut.",
   "cart.addMore": "+ Weitere Artikel hinzufügen",
   "cart.orderingPaused": "Bestellungen sind pausiert. Du kannst deinen Warenkorb prüfen, aber die Kasse ist geschlossen, bis das Team wieder Bestellungen annimmt.",
   "cart.serve": "Portion",
@@ -651,6 +653,8 @@ const en: TranslationMap = {
   "cart.checkout": "Place order →",
   "cart.checkoutUnavailable": "Checkout unavailable",
   "cart.unavailableProduct": "{name} is no longer available. Remove it from your cart.",
+  "cart.unavailableProductsRefresh":
+    "One item is no longer available. Please review your cart and send the order again.",
   "cart.addMore": "+ Add more items",
   "cart.orderingPaused": "Ordering is paused. You can review your cart, but checkout is unavailable until staff reopens ordering.",
   "cart.serve": "Serve",
@@ -1101,6 +1105,8 @@ const sr: TranslationMap = {
   "cart.checkout": "Poruči →",
   "cart.checkoutUnavailable": "Plaćanje nije dostupno",
   "cart.unavailableProduct": "{name} više nije dostupna. Ukloni iz korpe.",
+  "cart.unavailableProductsRefresh":
+    "Jedna stavka više nije dostupna. Proverite korpu i pošaljite porudžbinu ponovo.",
   "cart.addMore": "+ Dodaj još stavki",
   "cart.orderingPaused": "Poručivanje je pauzirano. Možete pregledati korpu, ali plaćanje nije dostupno dok osoblje ne nastavi sa prijemom porudžbina.",
   "cart.serve": "Porcija",

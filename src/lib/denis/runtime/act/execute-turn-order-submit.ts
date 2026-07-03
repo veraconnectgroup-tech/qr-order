@@ -128,7 +128,7 @@ export async function executeTurnOrderSubmit(
   const command = buildDenisOrderCommand({
     aiSessionId: input.aiSessionId,
     tableToken: input.tableToken,
-    sessionToken: input.sessionToken,
+    sessionToken: trusted.sessionToken,
     deviceFingerprint: input.deviceFingerprint,
     deviceToken: trusted.deviceToken,
     cartDraft: pricedCart,

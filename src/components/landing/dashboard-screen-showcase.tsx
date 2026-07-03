@@ -43,11 +43,19 @@ function TableCard({
           table.status === "attention" &&
             "border-red-500/50 bg-red-500/[0.06]",
           table.status === "occupied" &&
-            "border-green-500/35 bg-zinc-950/90",
-          table.status === "available" && "border-zinc-800 bg-zinc-950/70"
+            (light ? "border-emerald-200 bg-emerald-50/70" : "border-green-500/35 bg-zinc-950/90"),
+          table.status === "available" &&
+            (light ? "border-[#e3e7ee] bg-white" : "border-zinc-800 bg-zinc-950/70")
         )}
       >
-        <p className="font-mono text-sm font-semibold text-zinc-100">{table.name}</p>
+        <p
+          className={cn(
+            "font-mono text-sm font-semibold",
+            light ? "text-[#1f2328]" : "text-zinc-100"
+          )}
+        >
+          {table.name}
+        </p>
         {table.status === "attention" ? (
           <p className="mt-2 text-[10px] font-medium text-red-400">
             <span className="mr-1 inline-block size-1 rounded-full bg-red-500" />
@@ -60,13 +68,20 @@ function TableCard({
               Active
             </p>
             {table.sessionTotal != null && (
-              <p className="mt-1 font-mono text-[11px] tabular-nums text-zinc-400">
+              <p
+                className={cn(
+                  "mt-1 font-mono text-[11px] tabular-nums",
+                  light ? "text-[#596273]" : "text-zinc-400"
+                )}
+              >
                 {formatPrice(table.sessionTotal, DEMO_CURRENCY)}
               </p>
             )}
           </>
         ) : (
-          <p className="mt-2 text-[10px] text-zinc-500">Open</p>
+          <p className={cn("mt-2 text-[10px]", light ? "text-[#6b7280]" : "text-zinc-500")}>
+            Open
+          </p>
         )}
       </div>
     );
@@ -148,14 +163,24 @@ export function TablesShowcaseContent({
       {cinematic && (
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-normal text-zinc-600">
+            <p
+              className={cn(
+                "text-[10px] font-medium uppercase tracking-normal",
+                light ? "text-[#6b7280]" : "text-zinc-600"
+              )}
+            >
               Floor
             </p>
-            <p className="mt-1 text-lg font-semibold tracking-normal text-zinc-100">
+            <p
+              className={cn(
+                "mt-1 text-lg font-semibold tracking-normal",
+                light ? "text-[#1f2328]" : "text-zinc-100"
+              )}
+            >
               Tables
             </p>
           </div>
-          <p className="text-[11px] text-zinc-500">
+          <p className={cn("text-[11px]", light ? "text-[#6b7280]" : "text-zinc-500")}>
             Rooftop <span className="font-medium text-emerald-500">● Live</span>
           </p>
         </div>

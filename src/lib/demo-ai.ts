@@ -12,6 +12,7 @@ const DEMO_REASONS: Record<string, string> = {
 
 export type DemoAiChatResponse = {
   messageKey:
+    | "ai.chat.greeting"
     | "ai.demo.drinkReply"
     | "ai.demo.foodReply"
     | "ai.demo.veganReply"
@@ -48,6 +49,27 @@ function pickFromPool(
   return products.slice(0, limit).map((product) => toRecommendation(product, reason));
 }
 
+function isPureGreeting(message: string): boolean {
+  const text = message
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[!?.,:;'"`´]/g, " ")
+    .replace(/\s+/g, " ");
+
+  if (!text || text.length > 42) return false;
+
+  const withoutName = text
+    .replace(/\b(denis|denise|vera|konobaru|konobar)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return /^(zdravo|cao|hej|ej|dobar dan|dobro jutro|dobro vece|hi|hello|hey|hallo|guten tag|servus|moin)$/.test(
+    withoutName
+  );
+}
+
 /** Static AI picks for the public demo menu (no OpenAI / Supabase). */
 export function getDemoAiRecommendations(
   categories: MenuCategory[],
@@ -80,6 +102,13 @@ export function getDemoAiChatResponse(
   const reason = DEMO_REASONS[mood] ?? DEMO_REASONS.ueberraschung;
   const products = availableProducts(categories);
 
+  if (isPureGreeting(message)) {
+    return {
+      messageKey: "ai.chat.greeting",
+      recommendations: [],
+    };
+  }
+
   const drinks = products.filter((product) => {
     const category = categories.find((row) =>
       row.products.some((item) => item.id === product.id)
@@ -94,7 +123,11 @@ export function getDemoAiChatResponse(
     return category ? inferMenuSection(category) === "desserts" : false;
   });
 
-  if (/(getränk|drink|cocktail|wein|wine|bier|beer|aperol|negroni|spritz)/i.test(text)) {
+  if (
+    /(getränk|drink|cocktail|wein|wine|bier|beer|aperol|negroni|spritz|pi[ćc]e|pivo|vino|koktel|sok|kafa)/i.test(
+      text
+    )
+  ) {
     return {
       messageKey: "ai.demo.drinkReply",
       recommendations: pickFromPool(categories, drinks, reason),
@@ -113,14 +146,18 @@ export function getDemoAiChatResponse(
     };
   }
 
-  if (/(dessert|süß|suss|sweet|kuchen|cake|tiramisu)/i.test(text)) {
+  if (/(dessert|desert|süß|suss|sweet|slatko|kola[čc]|kuchen|cake|tiramisu)/i.test(text)) {
     return {
       messageKey: "ai.demo.dessertReply",
       recommendations: pickFromPool(categories, desserts, reason),
     };
   }
 
-  if (/(pasta|risotto|burger|steak|salat|salad|essen|food|gericht|dish)/i.test(text)) {
+  if (
+    /(pasta|risotto|burger|steak|salat|salad|essen|food|gericht|dish|hrana|jelo|jela|gladan|rucak|ru[čc]ak|vecera|ve[čc]era)/i.test(
+      text
+    )
+  ) {
     const foodPool = products.filter((product) => !drinks.includes(product));
     return {
       messageKey: "ai.demo.foodReply",

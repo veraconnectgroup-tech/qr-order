@@ -11,6 +11,10 @@ import {
   backfillDraftFromOrderMessage,
   isOrderPlacementMessage,
 } from "@/lib/ai/ordering/order-message-backfill";
+import {
+  guardProposedItemsAgainstMenu,
+  unavailableItemsGuestNote,
+} from "@/lib/ai/ordering/proposed-item-guard";
 import { applyGuestCartMutations, isMidOrderCartSwapMessage } from "@/lib/denis/cognition/conversation/apply-guest-cart-mutations";
 import type {
   AiOrderDraft,
@@ -26,6 +30,8 @@ export type OrderingTurnResult = {
   intent: AiStructuredResponse["intent"];
   skippedLlm: boolean;
   confirmationMessage?: string;
+  /** Honest note when LLM-proposed items were dropped as menu hallucinations. */
+  unavailableNote?: string;
 };
 
 function confirmationForActions(actions: ValidatedCartAction[]) {
@@ -98,8 +104,18 @@ export function processOrderingTurn(input: {
   let cartActions: ValidatedCartAction[] = [];
   let quickReplies = input.structured.quickReplies;
 
+  const guarded = guardProposedItemsAgainstMenu({
+    proposedItems: input.structured.proposedItems,
+    catalog: input.catalog,
+    userMessage: input.userMessage,
+  });
+  const unavailableNote =
+    guarded.droppedCount > 0 && guarded.unavailableTerms.length > 0
+      ? unavailableItemsGuestNote(guarded.unavailableTerms, input.language ?? "sr")
+      : undefined;
+
   const hasProposed =
-    input.structured.proposedItems.length > 0 && !input.structured.submitOrder;
+    guarded.items.length > 0 && !input.structured.submitOrder;
   const cartEmpty = draft.items.length === 0 && !draft.pending;
 
   // Always apply when cart is empty (LLM sometimes uses intent "confirm" on first item).
@@ -116,7 +132,7 @@ export function processOrderingTurn(input: {
       const processed = processProposedItems(
         draft,
         input.catalog,
-        input.structured.proposedItems,
+        guarded.items,
         { userMessage: input.userMessage }
       );
       draft = processed.draft;
@@ -172,6 +188,7 @@ export function processOrderingTurn(input: {
     quickReplies,
     intent: input.structured.intent,
     skippedLlm: false,
+    unavailableNote,
   };
 }
 

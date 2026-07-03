@@ -112,7 +112,7 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
     expect: {
       gapCount: 1,
       planKind: "template_tell",
-      planReason: "waiter.gap_blocks_confirm",
+      planReason: "waiter.gap_blocks_confirm.llm_reply",
     },
   },
   {
@@ -223,7 +223,7 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
       gapCount: 1,
       primaryGap: "substitution_note",
       planKind: "template_tell",
-      planReason: "waiter.gap_blocks_confirm",
+      planReason: "waiter.gap_blocks_confirm.llm_reply",
     },
   },
   {
@@ -276,7 +276,7 @@ export const IOTA_TIMELINE_OBLIGATION_SCENARIOS: TimelineObligationScenario[] = 
       gapCount: 1,
       primaryGap: "drink_unspecified",
       planKind: "template_tell",
-      planReason: "waiter.gap_blocks_confirm",
+      planReason: "waiter.gap_blocks_confirm.llm_reply",
     },
   },
   {

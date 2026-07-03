@@ -23,25 +23,25 @@ export function ShowcaseOrderCard({
 
   if (cinematic) {
     return (
-      <article className="max-w-[320px] rounded-xl border border-zinc-800/90 bg-zinc-950/90 p-5 border-l-2 border-l-[#e85d04]">
+      <article className="max-w-[320px] rounded-xl border border-[#e3e7ee] border-l-2 border-l-[#e85d04] bg-white p-5 shadow-[0_18px_52px_-32px_rgba(31,35,40,0.28)]">
         <div className="flex items-start justify-between gap-3">
-          <p className="font-mono text-[1.75rem] font-semibold leading-none tracking-normal text-zinc-50">
+          <p className="font-mono text-[1.75rem] font-semibold leading-none tracking-normal text-[#1f2328]">
             {formatOrderNumber(order.order_number)}
           </p>
-          <span className="shrink-0 rounded-md bg-zinc-800/90 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
+          <span className="shrink-0 rounded-md bg-[#eef1f5] px-2 py-0.5 text-[11px] font-medium text-[#596273]">
             {tableName}
           </span>
         </div>
 
         <div className="mt-3 flex items-center gap-2">
           <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-          <span className="text-[10px] font-semibold uppercase tracking-normal text-orange-400">
-            New
+          <span className="text-[10px] font-semibold uppercase tracking-normal text-orange-700">
+            Pending
           </span>
-          <span className="text-[11px] text-zinc-600">· just now</span>
+          <span className="text-[11px] text-[#8b95a4]">· just now</span>
         </div>
 
-        <ul className="mt-4 space-y-1.5 text-[13px] leading-snug text-zinc-300">
+        <ul className="mt-4 space-y-1.5 text-[13px] leading-snug text-[#596273]">
           {items.slice(0, 2).map((line) => (
             <li key={line.id}>
               {line.quantity}× {line.product_name}
@@ -49,11 +49,11 @@ export function ShowcaseOrderCard({
           ))}
         </ul>
 
-        <div className="mt-5 flex items-center justify-between border-t border-zinc-800/80 pt-4">
-          <span className="font-mono text-sm font-semibold tabular-nums text-zinc-200">
+        <div className="mt-5 flex items-center justify-between border-t border-[#edf1f5] pt-4">
+          <span className="font-mono text-sm font-semibold tabular-nums text-[#1f2328]">
             {formatPrice(Number(order.total), currency)}
           </span>
-          <span className="rounded-lg bg-[#e85d04] px-3.5 py-1.5 text-[11px] font-semibold text-white">
+          <span className="rounded-lg bg-[#1f2328] px-3.5 py-1.5 text-[11px] font-semibold text-white">
             Accept
           </span>
         </div>

@@ -586,57 +586,101 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   letter-spacing: -0.01em;
 }
 
-/* NIMT hero — one viewport, terrace full-bleed, mockup docked bottom */
+/* NIMT hero — clean product-led fold, with terrace as a soft hospitality cue */
 .landing-page .landing-hero-wash {
-  background: linear-gradient(
-    to bottom,
-    var(--lp-bg) 0%,
-    var(--lp-bg) 36%,
-    color-mix(in srgb, var(--lp-bg) 88%, transparent) 44%,
-    color-mix(in srgb, var(--lp-bg) 40%, transparent) 52%,
-    transparent 64%
-  );
+  background:
+    linear-gradient(
+      to bottom,
+      var(--lp-bg) 0%,
+      color-mix(in srgb, var(--lp-bg) 92%, transparent) 22%,
+      color-mix(in srgb, var(--lp-bg) 26%, transparent) 56%,
+      transparent 78%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--lp-bg) 84%, transparent) 0%,
+      transparent 22%,
+      transparent 78%,
+      color-mix(in srgb, var(--lp-bg) 84%, transparent) 100%
+    );
 }
 
-.landing-page .landing-hero-mockup-dock {
-  height: 100%;
-  max-height: min(52dvh, 34rem);
-  display: flex;
-  align-items: flex-end;
+.landing-page .landing-hero-media {
+  opacity: 0.78;
 }
 
-.landing-page .landing-hero-mockup-frame {
-  width: 100%;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.landing-page .landing-hero-mockup-frame > * {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+.landing-page .landing-hero-product-shell {
+  backdrop-filter: blur(18px);
 }
 
 @media (max-height: 820px) {
   .landing-page .landing-hero-wash {
-    background: linear-gradient(
-      to bottom,
-      var(--lp-bg) 0%,
-      var(--lp-bg) 32%,
-      color-mix(in srgb, var(--lp-bg) 85%, transparent) 40%,
-      transparent 58%
-    );
-  }
-
-  .landing-page .landing-hero-mockup-dock {
-    max-height: min(46dvh, 28rem);
+    background:
+      linear-gradient(
+        to bottom,
+        var(--lp-bg) 0%,
+        color-mix(in srgb, var(--lp-bg) 90%, transparent) 20%,
+        color-mix(in srgb, var(--lp-bg) 36%, transparent) 54%,
+        transparent 76%,
+        transparent 100%
+      ),
+      linear-gradient(
+        to right,
+        color-mix(in srgb, var(--lp-bg) 86%, transparent) 0%,
+        transparent 20%,
+        transparent 80%,
+        color-mix(in srgb, var(--lp-bg) 86%, transparent) 100%
+      );
   }
 }
 
-@media (min-width: 1280px) {
-  .landing-page .landing-hero-mockup-dock {
-    max-height: min(54dvh, 36rem);
+/* Feature scene — watercolor under the whole row.
+   Text column gets a stronger paper wash so copy stays readable;
+   the mockup side keeps the paint visible so it melts into the scene. */
+.landing-page .landing-feature-scene-wash-left {
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--lp-bg) 96%, transparent) 0%,
+      color-mix(in srgb, var(--lp-bg) 90%, transparent) 34%,
+      color-mix(in srgb, var(--lp-bg) 55%, transparent) 52%,
+      color-mix(in srgb, var(--lp-bg) 22%, transparent) 70%,
+      color-mix(in srgb, var(--lp-bg) 10%, transparent) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--lp-bg) 55%, transparent) 0%,
+      transparent 22%,
+      transparent 78%,
+      color-mix(in srgb, var(--lp-bg) 55%, transparent) 100%
+    );
+}
+
+.landing-page .landing-feature-scene-wash-right {
+  background:
+    linear-gradient(
+      to left,
+      color-mix(in srgb, var(--lp-bg) 96%, transparent) 0%,
+      color-mix(in srgb, var(--lp-bg) 90%, transparent) 34%,
+      color-mix(in srgb, var(--lp-bg) 55%, transparent) 52%,
+      color-mix(in srgb, var(--lp-bg) 22%, transparent) 70%,
+      color-mix(in srgb, var(--lp-bg) 10%, transparent) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--lp-bg) 55%, transparent) 0%,
+      transparent 22%,
+      transparent 78%,
+      color-mix(in srgb, var(--lp-bg) 55%, transparent) 100%
+    );
+}
+
+/* On small screens the columns stack — use a uniform readable wash */
+@media (max-width: 1023px) {
+  .landing-page .landing-feature-scene-wash-left,
+  .landing-page .landing-feature-scene-wash-right {
+    background: color-mix(in srgb, var(--lp-bg) 82%, transparent);
   }
 }
 

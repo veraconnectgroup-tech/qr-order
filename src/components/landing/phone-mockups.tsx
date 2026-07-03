@@ -4,9 +4,9 @@ import { Lock, Minus, Plus } from "lucide-react";
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative mx-auto w-[280px] rounded-[2.5rem] border-[3px] border-zinc-700 bg-zinc-950 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.45)]">
-      <div className="absolute left-1/2 top-0 z-10 h-6 w-[120px] -translate-x-1/2 rounded-b-2xl bg-zinc-950" />
-      <div className="pointer-events-none overflow-hidden rounded-[2rem] bg-zinc-950">
+    <div className="relative mx-auto w-[280px] rounded-[2.5rem] border-[6px] border-[#e5e9ef] bg-[#f7f9fb] p-2 shadow-[0_22px_60px_-30px_rgba(31,35,40,0.35)]">
+      <div className="absolute left-1/2 top-0 z-10 h-6 w-[120px] -translate-x-1/2 rounded-b-2xl bg-[#f7f9fb]" />
+      <div className="pointer-events-none overflow-hidden rounded-[2rem] bg-[#fbfcfd]">
         {children}
       </div>
     </div>
@@ -28,22 +28,22 @@ function BrowserWindow({
 
   return (
     <div className={`mx-auto w-full ${widthClass}`}>
-      <div className="overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-900 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-        <div className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-3">
+      <div className="overflow-hidden rounded-xl border border-[#dfe5ed] bg-white shadow-[0_18px_52px_-28px_rgba(31,35,40,0.22)]">
+        <div className="flex items-center gap-3 border-b border-[#e7ebf0] bg-[#fbfcfd] px-4 py-3">
           <div className="flex shrink-0 gap-1.5">
-            <div className="size-2.5 rounded-full bg-zinc-600" />
-            <div className="size-2.5 rounded-full bg-zinc-600" />
-            <div className="size-2.5 rounded-full bg-zinc-600" />
+            <div className="size-2.5 rounded-full bg-red-400/80" />
+            <div className="size-2.5 rounded-full bg-amber-400/80" />
+            <div className="size-2.5 rounded-full bg-emerald-400/80" />
           </div>
           {url ? (
-            <div className="min-w-0 flex-1 rounded-md bg-zinc-950/80 px-3 py-1 text-center text-[11px] text-zinc-500">
+            <div className="min-w-0 flex-1 rounded-md bg-white px-3 py-1 text-center text-[11px] text-[#6b7280] ring-1 ring-[#e7ebf0]">
               {url}
             </div>
           ) : (
             <div className="flex-1" />
           )}
         </div>
-        <div className="pointer-events-none overflow-hidden bg-[#09090b]">
+        <div className="pointer-events-none overflow-hidden bg-[#fbfcfd]">
           {children}
         </div>
       </div>
@@ -104,13 +104,13 @@ const categories = ["Cocktails", "Wine", "Beer", "Food"];
 
 function MenuScreen() {
   return (
-    <div className="flex aspect-[16/10] flex-col p-4">
+    <div className="flex aspect-[16/10] flex-col bg-[#fbfcfd] p-4">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-semibold text-zinc-50">Skyline Lounge</p>
-          <p className="text-[11px] text-zinc-500">Rooftop · Hamburg</p>
+          <p className="text-sm font-semibold text-[#1f2328]">Skyline Lounge</p>
+          <p className="text-[11px] text-[#6b7280]">Rooftop · Hamburg</p>
         </div>
-        <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
           Table 8
         </span>
       </div>
@@ -121,8 +121,8 @@ function MenuScreen() {
             key={c}
             className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
               i === 0
-                ? "bg-orange-500 text-white"
-                : "bg-zinc-800 text-zinc-400"
+                ? "bg-[#1f2328] text-white"
+                : "bg-white text-[#6b7280] ring-1 ring-[#e7ebf0]"
             }`}
           >
             {c}
@@ -130,15 +130,15 @@ function MenuScreen() {
         ))}
       </div>
 
-      <p className="mt-2.5 text-[10px] font-bold tracking-wider text-zinc-500">
-        COCKTAILS
+      <p className="mt-2.5 text-[10px] font-semibold text-[#6b7280]">
+        Cocktails
       </p>
 
       <div className="mt-2 grid flex-1 grid-cols-2 grid-rows-2 gap-2">
         {menuProducts.map((item) => (
           <div
             key={item.name}
-            className="flex min-h-0 flex-col overflow-hidden rounded-lg bg-zinc-900"
+            className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[#e3e7ee] bg-white"
           >
             <ProductGradient
               gradient={item.gradient}
@@ -147,14 +147,14 @@ function MenuScreen() {
             />
             <div className="flex shrink-0 items-center justify-between px-2 py-1.5">
               <div className="min-w-0">
-                <p className="truncate text-[10px] font-semibold text-zinc-50">
+                <p className="truncate text-[10px] font-semibold text-[#1f2328]">
                   {item.name}
                 </p>
-                <span className="text-[10px] font-bold text-orange-500">
+                <span className="text-[10px] font-bold text-[#1f2328]">
                   {item.price}
                 </span>
               </div>
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#1f2328] text-[10px] font-bold text-white">
                 +
               </span>
             </div>
@@ -162,7 +162,7 @@ function MenuScreen() {
         ))}
       </div>
 
-      <div className="mt-2 flex h-9 shrink-0 items-center justify-between rounded-lg bg-orange-500 px-3">
+      <div className="mt-2 flex h-9 shrink-0 items-center justify-between rounded-lg bg-[#1f2328] px-3">
         <span className="text-[11px] font-semibold text-white">
           3 items · €31.50
         </span>
@@ -174,7 +174,7 @@ function MenuScreen() {
 
 function ModifiersScreen() {
   return (
-    <div className="grid aspect-[16/10] grid-cols-2">
+    <div className="grid aspect-[16/10] grid-cols-2 bg-[#fbfcfd]">
       <ProductGradient
         gradient="from-amber-900 via-stone-800 to-stone-950"
         name="Espresso Martini"
@@ -182,11 +182,11 @@ function ModifiersScreen() {
       />
       <div className="flex flex-col p-3.5">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-zinc-50">Espresso Martini</h3>
-          <span className="text-sm font-bold text-orange-500">€13</span>
+          <h3 className="text-sm font-semibold text-[#1f2328]">Espresso Martini</h3>
+          <span className="text-sm font-bold text-[#1f2328]">€13</span>
         </div>
 
-        <p className="mb-1.5 mt-2.5 text-[9px] font-semibold uppercase tracking-wider text-zinc-500">
+        <p className="mb-1.5 mt-2.5 text-[9px] font-semibold text-[#6b7280]">
           Size
         </p>
         {[
@@ -197,20 +197,20 @@ function ModifiersScreen() {
             key={opt.label}
             className={`mb-1 flex items-center gap-2 rounded-md border px-2 py-1.5 text-[10px] ${
               opt.selected
-                ? "border-orange-500/60 bg-orange-500/10 text-zinc-100"
-                : "border-zinc-800 text-zinc-400"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-[#e3e7ee] bg-white text-[#596273]"
             }`}
           >
             <span
               className={`size-2.5 shrink-0 rounded-full ${
-                opt.selected ? "bg-orange-500" : "border border-zinc-600"
+                opt.selected ? "bg-emerald-500" : "border border-[#cfd6df]"
               }`}
             />
             {opt.label}
           </div>
         ))}
 
-        <p className="mb-1.5 mt-2 text-[9px] font-semibold uppercase tracking-wider text-zinc-500">
+        <p className="mb-1.5 mt-2 text-[9px] font-semibold text-[#6b7280]">
           Extras
         </p>
         {[
@@ -219,24 +219,24 @@ function ModifiersScreen() {
         ].map((extra) => (
           <div
             key={extra.label}
-            className="mb-1 flex items-center gap-2 rounded-md border border-zinc-800 px-2 py-1.5 text-[10px] text-zinc-300"
+            className="mb-1 flex items-center gap-2 rounded-md border border-[#e3e7ee] bg-white px-2 py-1.5 text-[10px] text-[#596273]"
           >
-            <span className="size-2.5 shrink-0 rounded border border-zinc-600" />
+            <span className="size-2.5 shrink-0 rounded border border-[#cfd6df]" />
             {extra.label}
           </div>
         ))}
 
         <div className="mt-auto flex items-center justify-between pt-2">
           <div className="flex items-center gap-2">
-            <span className="flex size-6 items-center justify-center rounded-md border border-zinc-700 text-zinc-400">
+            <span className="flex size-6 items-center justify-center rounded-md border border-[#dfe5ed] bg-white text-[#6b7280]">
               <Minus className="size-3" />
             </span>
-            <span className="text-xs font-bold text-zinc-50">2</span>
-            <span className="flex size-6 items-center justify-center rounded-md border border-zinc-700 text-zinc-400">
+            <span className="text-xs font-bold text-[#1f2328]">2</span>
+            <span className="flex size-6 items-center justify-center rounded-md border border-[#dfe5ed] bg-white text-[#6b7280]">
               <Plus className="size-3" />
             </span>
           </div>
-          <div className="rounded-lg bg-orange-500 px-3 py-1.5 text-[10px] font-bold text-white">
+          <div className="rounded-lg bg-[#1f2328] px-3 py-1.5 text-[10px] font-bold text-white">
             Add · €28.00
           </div>
         </div>
@@ -255,18 +255,18 @@ function ApplePayLogo() {
 
 function CheckoutScreen() {
   return (
-    <div className="p-4">
-      <p className="text-sm font-semibold text-zinc-50">Checkout</p>
-      <p className="text-[11px] text-zinc-500">Table 8 · Skyline Lounge</p>
+    <div className="bg-[#fbfcfd] p-4">
+      <p className="text-sm font-semibold text-[#1f2328]">Checkout</p>
+      <p className="text-[11px] text-[#6b7280]">Table 8 · Skyline Lounge</p>
 
-      <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
-        <div className="flex justify-between text-[11px] text-zinc-300">
+      <div className="mt-3 rounded-lg border border-[#e3e7ee] bg-white p-3">
+        <div className="flex justify-between text-[11px] text-[#596273]">
           <span>2× Espresso Martini</span>
           <span className="tabular-nums">€28.00</span>
         </div>
-        <div className="mt-1 flex justify-between border-t border-zinc-800 pt-1.5 text-[11px] font-bold text-zinc-50">
+        <div className="mt-1 flex justify-between border-t border-[#edf1f5] pt-1.5 text-[11px] font-bold text-[#1f2328]">
           <span>Total</span>
-          <span className="tabular-nums text-orange-500">€44.63</span>
+          <span className="tabular-nums">€44.63</span>
         </div>
       </div>
 
@@ -279,32 +279,32 @@ function CheckoutScreen() {
       </button>
 
       <div className="my-2.5 flex items-center gap-2">
-        <div className="h-px flex-1 bg-zinc-800" />
-        <span className="text-[9px] text-zinc-600">or pay with card</span>
-        <div className="h-px flex-1 bg-zinc-800" />
+        <div className="h-px flex-1 bg-[#e7ebf0]" />
+        <span className="text-[9px] text-[#8b95a4]">or pay with card</span>
+        <div className="h-px flex-1 bg-[#e7ebf0]" />
       </div>
 
       <div className="space-y-2">
-        <div className="flex h-8 items-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5">
-          <span className="text-[10px] tracking-widest text-zinc-400">
+        <div className="flex h-8 items-center rounded-md border border-[#e3e7ee] bg-white px-2.5">
+          <span className="text-[10px] tracking-widest text-[#6b7280]">
             4242 ···· ···· 4242
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex h-8 items-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5">
-            <span className="text-[10px] text-zinc-400">12 / 28</span>
+          <div className="flex h-8 items-center rounded-md border border-[#e3e7ee] bg-white px-2.5">
+            <span className="text-[10px] text-[#6b7280]">12 / 28</span>
           </div>
-          <div className="flex h-8 items-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5">
-            <span className="text-[10px] text-zinc-400">CVC</span>
+          <div className="flex h-8 items-center rounded-md border border-[#e3e7ee] bg-white px-2.5">
+            <span className="text-[10px] text-[#6b7280]">CVC</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex h-9 items-center justify-center rounded-lg bg-orange-500 text-[11px] font-bold text-white">
+      <div className="mt-3 flex h-9 items-center justify-center rounded-lg bg-[#1f2328] text-[11px] font-bold text-white">
         Pay €44.63
       </div>
 
-      <p className="mt-2 flex items-center justify-center gap-1 text-[9px] text-zinc-600">
+      <p className="mt-2 flex items-center justify-center gap-1 text-[9px] text-[#8b95a4]">
         <Lock className="size-2.5" />
         Secure payment via Stripe
       </p>
@@ -314,46 +314,46 @@ function CheckoutScreen() {
 
 const kitchenOrders = [
   {
-    table: "TABLE 8",
+    table: "Table 8",
     id: "#052",
     items: "2× Aperol Spritz / 1× Cola",
     timer: "3m",
-    timerColor: "text-zinc-100",
-    border: "border-l-orange-500",
-    status: "PREPARING",
-    statusColor: "text-orange-400",
+    timerColor: "text-[#1f2328]",
+    border: "border-l-sky-500",
+    status: "In prep",
+    statusColor: "text-sky-700 bg-sky-50 ring-1 ring-sky-200",
   },
   {
     table: "VIP 2",
     id: "#045",
     items: "3× Beer / 1× Nachos",
     timer: "12m",
-    timerColor: "text-red-400",
+    timerColor: "text-orange-700",
     border: "border-l-emerald-500",
-    status: "READY ✓",
-    statusColor: "text-emerald-400",
+    status: "Ready pickup",
+    statusColor: "text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200",
   },
   {
-    table: "BAR 1",
+    table: "Bar 1",
     id: "#044",
     items: "1× Negroni",
     timer: "1m",
-    timerColor: "text-zinc-100",
+    timerColor: "text-[#1f2328]",
     border: "border-l-blue-500",
-    status: "NEW",
-    statusColor: "text-blue-400",
+    status: "Queued",
+    statusColor: "text-[#596273] bg-[#eef1f5] ring-1 ring-[#dfe5ed]",
   },
 ];
 
 function KitchenScreen() {
   return (
-    <div className="p-4">
-      <div className="mb-3 flex items-center justify-between border-b border-zinc-800/80 pb-3">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-300">
-          Prep Display
+    <div className="bg-[#fbfcfd] p-4">
+      <div className="mb-3 flex items-center justify-between border-b border-[#e7ebf0] pb-3">
+        <p className="text-xs font-bold text-[#1f2328]">
+          Kitchen station
         </p>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-          ● Live
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+          Live
         </span>
       </div>
 
@@ -361,14 +361,14 @@ function KitchenScreen() {
         {kitchenOrders.map((order) => (
           <div
             key={order.id}
-            className={`rounded-lg border border-zinc-800 border-l-[3px] ${order.border} bg-zinc-900/90 p-3`}
+            className={`rounded-lg border border-[#e3e7ee] border-l-[3px] ${order.border} bg-white p-3`}
           >
             <div className="flex items-start justify-between gap-1">
               <div>
-                <p className="text-xs font-black leading-tight text-white">
+                <p className="text-xs font-black leading-tight text-[#1f2328]">
                   {order.table}
                 </p>
-                <p className="text-[9px] font-medium text-zinc-500">
+                <p className="text-[9px] font-medium text-[#8b95a4]">
                   {order.id}
                 </p>
               </div>
@@ -378,11 +378,11 @@ function KitchenScreen() {
                 {order.timer}
               </span>
             </div>
-            <p className="mt-2 text-[9px] leading-relaxed text-zinc-300">
+            <p className="mt-2 text-[9px] leading-relaxed text-[#596273]">
               {order.items}
             </p>
             <p
-              className={`mt-2 text-[9px] font-bold tracking-wide ${order.statusColor}`}
+              className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold ${order.statusColor}`}
             >
               {order.status}
             </p>
@@ -433,19 +433,19 @@ export function HeroPhoneMockup() {
   return (
     <div className="relative py-2">
       <div className="absolute inset-0 -z-10" aria-hidden>
-        <div className="absolute left-1/2 top-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500/10 blur-[200px]" />
+        <div className="absolute left-1/2 top-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1f2328]/10 blur-[200px]" />
       </div>
       <PhoneFrame>
-        <div className="relative flex min-h-[520px] flex-col bg-[#09090b]">
+        <div className="relative flex min-h-[520px] flex-col bg-[#fbfcfd]">
           <div className="px-3.5 pb-2 pt-9">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[12px] font-semibold leading-tight text-zinc-50">
+                <p className="text-[12px] font-semibold leading-tight text-[#1f2328]">
                   Skyline Lounge
                 </p>
-                <p className="text-[9px] text-zinc-500">Rooftop · Hamburg</p>
+                <p className="text-[9px] text-[#6b7280]">Rooftop · Hamburg</p>
               </div>
-              <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[9px] font-semibold text-white">
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                 Table 8
               </span>
             </div>
@@ -455,16 +455,16 @@ export function HeroPhoneMockup() {
                   key={c}
                   className={`shrink-0 rounded-full px-2.5 py-1 text-[8px] font-medium ${
                     i === 0
-                      ? "bg-orange-500 text-white"
-                      : "bg-zinc-800/90 text-zinc-400"
+                      ? "bg-[#1f2328] text-white"
+                      : "bg-white text-[#6b7280] ring-1 ring-[#e7ebf0]"
                   }`}
                 >
                   {c}
                 </span>
               ))}
             </div>
-            <p className="mt-3 text-[9px] font-bold tracking-wider text-zinc-400">
-              COCKTAILS
+            <p className="mt-3 text-[9px] font-semibold text-[#6b7280]">
+              Cocktails
             </p>
           </div>
           <div className="flex-1 px-3.5 pb-14">
@@ -472,7 +472,7 @@ export function HeroPhoneMockup() {
               {menuProducts.map((item) => (
                 <div
                   key={item.name}
-                  className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
+                  className="overflow-hidden rounded-lg border border-[#e3e7ee] bg-white"
                 >
                   <div
                     className={`flex h-12 items-center justify-center bg-gradient-to-br ${item.gradient}`}
@@ -482,14 +482,14 @@ export function HeroPhoneMockup() {
                     </span>
                   </div>
                   <div className="p-1.5">
-                    <p className="truncate text-[8px] font-medium text-zinc-100">
+                    <p className="truncate text-[8px] font-medium text-[#1f2328]">
                       {item.name}
                     </p>
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="text-[8px] font-semibold text-orange-500">
+                      <span className="text-[8px] font-semibold text-[#1f2328]">
                         {item.price}
                       </span>
-                      <span className="flex size-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
+                      <span className="flex size-4 items-center justify-center rounded-full bg-[#1f2328] text-[9px] font-bold text-white">
                         +
                       </span>
                     </div>
@@ -498,11 +498,13 @@ export function HeroPhoneMockup() {
               ))}
             </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 flex h-11 items-center justify-between rounded-t-xl bg-orange-500 px-3.5">
-            <span className="text-[10px] font-semibold text-white">
+          <div className="absolute inset-x-0 bottom-0 flex h-11 items-center justify-between border-t border-[#e7ebf0] bg-white px-3.5">
+            <span className="text-[10px] font-semibold text-[#1f2328]">
               3 items · €31.50
             </span>
-            <span className="text-[11px] font-bold text-white">→</span>
+            <span className="rounded-lg bg-[#1f2328] px-3 py-1.5 text-[10px] font-bold text-white">
+              Cart →
+            </span>
           </div>
         </div>
       </PhoneFrame>

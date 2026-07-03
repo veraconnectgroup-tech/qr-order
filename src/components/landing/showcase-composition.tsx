@@ -27,7 +27,7 @@ export function ShowcaseCropFrame({
 }) {
   return (
     <div
-      className={cn("relative overflow-hidden bg-[#09090b]", className)}
+      className={cn("relative overflow-hidden bg-white", className)}
       style={aspect ? { aspectRatio: aspect } : undefined}
     >
       <div

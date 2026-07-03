@@ -33,12 +33,13 @@ export function CinematicDashboardShowcase({
         currency={DEMO_CURRENCY}
         compact
         cinematic
+        theme="light"
       >
         {screen === "orders" && (
-          <OrdersBoardContent variant="cinematic" theme="dark" />
+          <OrdersBoardContent variant="cinematic" theme="light" />
         )}
         {screen === "tables" && (
-          <TablesShowcaseContent compact cinematic theme="dark" />
+          <TablesShowcaseContent compact cinematic theme="light" />
         )}
       </ShowcaseDashboardShell>
     </ScaledDashboardPreview>

@@ -276,14 +276,24 @@ export function OrdersBoardContent({
       <div className="pointer-events-none select-none">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-normal text-zinc-600">
+            <p
+              className={cn(
+                "text-[10px] font-medium uppercase tracking-normal",
+                light ? "text-[#6b7280]" : "text-zinc-600"
+              )}
+            >
               Operations
             </p>
-            <p className="mt-1 text-lg font-semibold tracking-normal text-zinc-100">
+            <p
+              className={cn(
+                "mt-1 text-lg font-semibold tracking-normal",
+                light ? "text-[#1f2328]" : "text-zinc-100"
+              )}
+            >
               Live Orders
             </p>
           </div>
-          <p className="text-[11px] text-zinc-500">
+          <p className={cn("text-[11px]", light ? "text-[#6b7280]" : "text-zinc-500")}>
             Skyline Lounge{" "}
             <span className="font-medium text-emerald-500">● Live</span>
           </p>
@@ -293,17 +303,27 @@ export function OrdersBoardContent({
           <ShowcaseOrderCard
             order={trimOrderItems(primaryOrder, 2)}
             currency={DEMO_CURRENCY}
-            appearance="cinematic"
+            appearance={light ? "light" : "cinematic"}
           />
           {preparingOrder && (
             <div className="hidden min-w-[160px] flex-1 pt-10 opacity-[0.38] sm:block">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-normal text-zinc-600">
+              <p
+                className={cn(
+                  "mb-3 text-[10px] font-semibold uppercase tracking-normal",
+                  light ? "text-[#6b7280]" : "text-zinc-600"
+                )}
+              >
                 Preparing
               </p>
-              <p className="font-mono text-xl font-medium text-zinc-400">
+              <p
+                className={cn(
+                  "font-mono text-xl font-medium",
+                  light ? "text-[#1f2328]" : "text-zinc-400"
+                )}
+              >
                 {formatOrderNumber(preparingOrder.order_number)}
               </p>
-              <p className="mt-2 text-[12px] text-zinc-600">
+              <p className={cn("mt-2 text-[12px]", light ? "text-[#6b7280]" : "text-zinc-600")}>
                 {preparingOrder.tables?.name ?? "Bar"} ·{" "}
                 {preparingOrder.order_items?.[0]?.product_name}
               </p>

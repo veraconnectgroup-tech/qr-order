@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import {
   LandingContainer,
@@ -19,6 +20,7 @@ export function FeatureRow({
   reverse = false,
   tone = "default",
   index,
+  scene,
 }: {
   id: string;
   eyebrow: string;
@@ -30,24 +32,51 @@ export function FeatureRow({
   tone?: "default" | "surface" | "tint";
   /** Optional 1-based chapter number rendered as a premium chip. */
   index?: number;
+  /**
+   * Watercolor scene under the whole section (hero language).
+   * Mockup floats on the paint; the text column gets a stronger wash.
+   */
+  scene?: string;
 }) {
   return (
     <section
       id={id}
       className={cn(
-        "relative scroll-mt-24 border-t border-[var(--lp-border-subtle)] py-20 text-[var(--lp-ink)] md:py-28",
-        tone === "surface" && "bg-[var(--lp-surface)]",
-        tone === "tint" && "bg-[var(--lp-tint)]",
-        tone === "default" && "bg-[var(--lp-bg)]"
+        "relative scroll-mt-24 overflow-hidden border-t border-[var(--lp-border-subtle)] py-20 text-[var(--lp-ink)] md:py-28",
+        !scene && tone === "surface" && "bg-[var(--lp-surface)]",
+        !scene && tone === "tint" && "bg-[var(--lp-tint)]",
+        !scene && tone === "default" && "bg-[var(--lp-bg)]",
+        scene && "bg-[var(--lp-bg)]"
       )}
     >
+      {scene && (
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          <Image
+            src={scene}
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+          {/* Stronger wash over the text column, paint stays visible under the mockup */}
+          <div
+            className={cn(
+              "absolute inset-0",
+              reverse
+                ? "landing-feature-scene-wash-right"
+                : "landing-feature-scene-wash-left"
+            )}
+          />
+        </div>
+      )}
+
       {/* Ember hairline at the section seam */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-px max-w-[240px] bg-gradient-to-r from-transparent via-[var(--lp-ember)]/35 to-transparent"
         aria-hidden
       />
 
-      <LandingContainer wide>
+      <LandingContainer wide className="relative">
         <div
           className={cn(
             "grid items-center gap-12 lg:grid-cols-2 lg:gap-16 xl:gap-20",
@@ -86,11 +115,12 @@ export function FeatureRow({
           </AnimateInView>
 
           <AnimateInView delay={0.08} className="relative min-w-0">
-            {/* Soft glow pedestal behind the visual */}
-            <div
-              className="pointer-events-none absolute -inset-8 rounded-[2rem] bg-[radial-gradient(ellipse_65%_55%_at_50%_50%,rgba(232,93,4,0.055),transparent_70%)]"
-              aria-hidden
-            />
+            {!scene && (
+              <div
+                className="pointer-events-none absolute -inset-8 rounded-[2rem] bg-[radial-gradient(ellipse_65%_55%_at_50%_50%,rgba(232,93,4,0.055),transparent_70%)]"
+                aria-hidden
+              />
+            )}
             <div className="relative">{visual}</div>
           </AnimateInView>
         </div>

@@ -1496,14 +1496,19 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
             ? data.message
             : narration.message;
 
+  // Submit failed — the honest error must reach the guest untouched
+  // (sanitizer would otherwise rewrite "nije poslata" into a recap loop).
+  const submitBlocked =
+    !turnSubmitOutcome.orderId && Boolean(turnSubmitOutcome.guestBlockedReason);
+
   if (turnSubmitOutcome.orderId) {
     guestMessage = orderSubmitSuccessMessage({
       language: parsed.data.language,
       orderNumber: turnSubmitOutcome.orderNumber,
       awaitingApproval: turnSubmitOutcome.awaitingApproval,
     });
-  } else if (turnSubmitOutcome.guestBlockedReason && !turnSubmitOutcome.orderId) {
-    guestMessage = turnSubmitOutcome.guestBlockedReason;
+  } else if (submitBlocked) {
+    guestMessage = turnSubmitOutcome.guestBlockedReason ?? guestMessage;
   } else if (
     Boolean(data.submitOrder) &&
     actSubmitLive &&
@@ -1515,14 +1520,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const hasOpenOrders = (ctx.tableSessionState?.commerce.orders ?? []).some(
     (order) => order.status !== "delivered" && order.status !== "cancelled"
   );
-  guestMessage = sanitizeGuestOrderHonesty({
-    message: guestMessage ?? "",
-    language: parsed.data.language,
-    orderSubmitted: Boolean(turnSubmitOutcome.orderId),
-    draft: cartDraftToAiOrderDraft(cartDraftForAct),
-  });
+  guestMessage = submitBlocked
+    ? (guestMessage ?? "")
+    : sanitizeGuestOrderHonesty({
+        message: guestMessage ?? "",
+        language: parsed.data.language,
+        orderSubmitted: Boolean(turnSubmitOutcome.orderId),
+        draft: cartDraftToAiOrderDraft(cartDraftForAct),
+      });
 
-  if (!turnSubmitOutcome.orderId && waiterObligation.gaps.length > 0) {
+  if (!submitBlocked && !turnSubmitOutcome.orderId && waiterObligation.gaps.length > 0) {
     const tellBase =
       !waiterObligation.canConfirm &&
       guestMessage &&

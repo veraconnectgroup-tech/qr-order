@@ -2,68 +2,68 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { HeroItem, HeroStagger } from "@/components/landing/animate-in-view";
 import { LandingHeroDenisDemo } from "@/components/landing/landing-hero-denis-demo";
+import { LandingContainer } from "@/components/landing/landing-primitives";
 import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { Button } from "@/components/ui/button";
 
 /**
- * NIMT layout: one viewport, three layers.
- * 1. Terrace full-bleed + white wash at top
- * 2. Copy centered in upper zone (no solid block)
- * 3. Mockup docked to bottom edge (rounded top only)
+ * NIMT-style hero: copy first, product window second, atmosphere behind it.
+ * Product is the signal; the terrace image is only a hospitality cue.
  */
 export function LandingHero() {
   const { copy } = useLandingCopy();
   const { hero } = copy;
 
   return (
-    <section className="landing-hero relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[var(--lp-bg)]">
-      {/* Layer 1 — background */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
+    <section className="landing-hero relative flex min-h-[100dvh] overflow-hidden border-b border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] pb-8 pt-[5.25rem] sm:pb-10 sm:pt-[5.75rem] lg:pt-20">
+      <div
+        className="landing-hero-media pointer-events-none absolute inset-x-0 bottom-0 top-[39%] z-0 sm:top-[38%] lg:top-[37%]"
+        aria-hidden
+      >
         <Image
           src="/landing/hero-terrace.jpg"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[50%_90%]"
+          className="object-cover object-[50%_78%]"
         />
         <div className="landing-hero-wash absolute inset-0" />
       </div>
 
-      {/* Layer 2 — copy (upper zone, never overlaps mockup) */}
-      <div className="relative z-20 shrink-0 px-6 pt-[4.75rem] text-center sm:pt-20">
-        <HeroStagger className="mx-auto flex w-full max-w-[680px] flex-col items-center">
+      <LandingContainer wide className="relative z-10 flex flex-1 flex-col">
+        <HeroStagger className="mx-auto flex min-h-0 w-full max-w-[660px] flex-1 flex-col items-center justify-center pb-7 text-center sm:pb-8 lg:pb-10">
           <HeroItem>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--lp-border)] bg-[var(--lp-surface)]/95 px-3 py-1 text-[12px] font-medium text-[var(--lp-muted)]">
-              <Sparkles className="size-3.5 text-[var(--lp-ember)]" aria-hidden />
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--lp-border)] bg-[var(--lp-surface)]/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--lp-muted)]">
+              <span className="size-1.5 rounded-full bg-[var(--lp-ember)]" aria-hidden />
               {hero.eyebrow}
             </span>
           </HeroItem>
 
           <HeroItem>
-            <h1 className="mt-4 font-display text-[clamp(2.375rem,5.5vw,3.75rem)] font-bold leading-[1.06] tracking-[-0.04em] text-[var(--lp-ink)] sm:mt-5">
+            <h1 className="mt-3 font-display text-[clamp(2.15rem,4.7vw,3.55rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-[var(--lp-ink)] sm:mt-4">
               {hero.title}
-              <span className="landing-serif-accent block pt-1 font-normal text-[var(--lp-ember)] [font-size:1.02em]">
+              <span className="landing-serif-accent block pt-1 font-normal text-[var(--lp-ember)] [font-size:0.94em]">
                 {hero.titleAccent}
               </span>
             </h1>
           </HeroItem>
 
           <HeroItem>
-            <p className="mx-auto mt-4 max-w-[520px] text-[15px] leading-[1.6] text-[var(--lp-muted)] sm:mt-5 sm:text-[16px]">
+            <p className="mx-auto mt-3 max-w-[520px] text-[14px] font-medium leading-[1.6] text-[#514c43] sm:mt-4 sm:text-[15px]">
               {hero.lead}
             </p>
           </HeroItem>
 
           <HeroItem>
-            <div className="mt-5 flex flex-col items-center gap-3 sm:mt-6 sm:flex-row sm:gap-4">
+            <div className="mt-4 flex flex-col items-center gap-2.5 sm:mt-5 sm:flex-row sm:gap-3">
               <Button
                 size="lg"
                 asChild
-                className="landing-btn-primary h-11 px-6 text-[14px] font-medium shadow-[0_10px_28px_rgba(22,20,14,0.18)]"
+                className="landing-btn-primary h-10 px-5 text-[14px] font-medium shadow-[0_10px_28px_rgba(22,20,14,0.18)] sm:h-11 sm:px-6"
               >
                 <Link href="/signup">
                   {hero.cta}
@@ -73,7 +73,7 @@ export function LandingHero() {
               <Button
                 size="lg"
                 asChild
-                className="landing-btn-secondary h-11 px-6 text-[14px] font-medium"
+                className="landing-btn-secondary h-10 px-5 text-[14px] font-medium sm:h-11 sm:px-6"
               >
                 <Link href="/skyline-lounge/demo-table-8">
                   <Play className="me-1.5 size-4" />
@@ -84,21 +84,18 @@ export function LandingHero() {
           </HeroItem>
 
           <HeroItem>
-            <p className="mt-3 text-[12px] text-[var(--lp-subtle)] sm:text-[13px]">
+            <p className="mt-2.5 text-[11px] text-[var(--lp-subtle)] sm:text-[12px]">
               {hero.meta}
             </p>
           </HeroItem>
         </HeroStagger>
-      </div>
 
-      {/* Layer 3 — mockup fills remaining height, flush to bottom (NIMT video dock) */}
-      <div className="relative z-10 mt-auto flex min-h-0 flex-1 items-end justify-center px-4 pb-0 sm:px-6 lg:px-8">
-        <div className="landing-hero-mockup-dock w-full max-w-[1080px]">
-          <div className="landing-hero-mockup-frame overflow-hidden rounded-t-2xl border border-b-0 border-black/10 bg-white shadow-[0_-20px_70px_rgba(20,18,11,0.2)] sm:rounded-t-[1.25rem]">
+        <HeroItem className="mx-auto w-full max-w-[1120px] shrink-0">
+          <div className="landing-hero-product-shell overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_28px_90px_-34px_rgba(22,20,14,0.34)]">
             <LandingHeroDenisDemo frameless compact />
           </div>
-        </div>
-      </div>
+        </HeroItem>
+      </LandingContainer>
     </section>
   );
 }

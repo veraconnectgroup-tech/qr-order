@@ -373,6 +373,7 @@ export function CheckoutForm({
         for (const name of json.details.products) {
           toast.error(tUI("cart.unavailableProduct", { name }));
         }
+        throw new Error(tUI("cart.unavailableProductsRefresh"));
       }
       throw new Error(json.error ?? tUI("error.orderFailed"));
     }

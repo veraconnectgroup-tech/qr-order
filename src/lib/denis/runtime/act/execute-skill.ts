@@ -326,7 +326,11 @@ export async function executePlannedSkill(
       };
     }
 
-    const trustedCommand = { ...command, deviceToken: trusted.deviceToken };
+    const trustedCommand = {
+      ...command,
+      sessionToken: trusted.sessionToken,
+      deviceToken: trusted.deviceToken,
+    };
 
     const result = await executeDenisOrderCommand({
       command: trustedCommand,

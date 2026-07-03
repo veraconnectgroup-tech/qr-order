@@ -69,6 +69,15 @@ export function applyOrderComprehend(
   let assistantMessage = flowResult.message;
   let submitOrder = flowResult.submitOrder;
 
+  if (orderingResult.unavailableNote) {
+    // LLM proposed a product the guest never asked for (menu miss) — be honest
+    // about the miss instead of narrating the hallucinated addition.
+    assistantMessage =
+      orderingResult.cartActions.length > 0
+        ? `${assistantMessage} ${orderingResult.unavailableNote}`.trim()
+        : orderingResult.unavailableNote;
+  }
+
   assistantMessage = sanitizeFalseOrderClaimMessage({
     message: assistantMessage,
     draft: workingDraft,

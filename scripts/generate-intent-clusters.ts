@@ -545,6 +545,18 @@ export const INTENT_CLUSTER_EXAMPLES: Record<string, readonly string[]> = {
     "daj mi ono što je on naručio",
     "same as partner",
     "clone friend's order",
+    "i za drugara isto",
+    "za drugara isto",
+    "isto za drugara",
+    "za druga isto",
+    "i za prijatelja isto",
+    "za prijatelja isto",
+    "i za njega isto",
+    "za nju isto",
+    "and the same for my friend",
+    "same for my friend",
+    "für meinen freund das gleiche",
+    "das gleiche für ihn",
   ],
 };
 

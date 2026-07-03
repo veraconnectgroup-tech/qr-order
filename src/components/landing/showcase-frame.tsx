@@ -25,7 +25,7 @@ export function ShowcaseWindow({
 
   if (cinematic) {
     return (
-      <div className={cn("overflow-hidden bg-[#09090b]", className)}>{children}</div>
+      <div className={cn("overflow-hidden bg-white", className)}>{children}</div>
     );
   }
 
@@ -277,28 +277,28 @@ export function ShowcasePhone({
     >
       <div
         className={cn(
-          "relative bg-zinc-950",
+          "relative",
           floating
-            ? "rounded-[2rem] border border-zinc-800/80 bg-[#0a0a0a] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.88)] sm:rounded-[2.125rem]"
-            : "rounded-[2rem] border-[3px] border-zinc-700 p-1.5 shadow-[0_24px_56px_-16px_rgba(22,20,14,0.38)] sm:rounded-[2.5rem] sm:p-2"
+            ? "rounded-[2rem] border border-[#dfe5ed] bg-[#f7f9fb] p-[3px] shadow-[0_28px_70px_-30px_rgba(31,35,40,0.36)] sm:rounded-[2.125rem]"
+            : "rounded-[2rem] border-[6px] border-[#e5e9ef] bg-[#f7f9fb] p-1.5 shadow-[0_24px_56px_-24px_rgba(31,35,40,0.34)] sm:rounded-[2.5rem] sm:p-2"
         )}
       >
         <div
           className={cn(
-            "absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b-2xl bg-zinc-950",
+            "absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b-2xl bg-[#f7f9fb]",
             floating ? "h-3.5 w-[64px] sm:h-4 sm:w-[72px]" : "h-5 w-[96px] sm:h-6 sm:w-[108px]"
           )}
         />
         <div
           className={cn(
-            "overflow-hidden bg-[#09090b]",
+            "overflow-hidden bg-[#fbfcfd]",
             floating ? "rounded-[1.75rem] sm:rounded-[1.875rem]" : "rounded-[1.65rem] sm:rounded-[2rem]"
           )}
         >
           {children}
         </div>
         {!floating && (
-          <div className="mx-auto mt-1.5 h-1 w-20 rounded-full bg-zinc-800 sm:mt-2 sm:w-24" />
+          <div className="mx-auto mt-1.5 h-1 w-20 rounded-full bg-[#cfd6df] sm:mt-2 sm:w-24" />
         )}
       </div>
       {!hideLabel && (

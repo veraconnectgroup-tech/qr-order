@@ -333,7 +333,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "još jedno pivo",
         expect: {
           planKind: "reflex_only",
-          requiresLlm: false,
+          requiresLlm: true,
           usedT0: true,
           conversationMode: "ordering",
         },
@@ -543,7 +543,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "možemo da platimo",
-        expect: { planKind: "reflex_only", usedT0: true, requiresLlm: false },
+        expect: { planKind: "reflex_only", usedT0: true, requiresLlm: true },
       },
     ],
   },
@@ -570,8 +570,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "gde je moje pivo",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
           conversationMode: "ordering",
         },
       },
@@ -774,7 +774,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
     turns: [
       {
         message: "ukloni colu",
-        expect: { planKind: "reflex_only", usedT0: true, requiresLlm: false },
+        expect: { planKind: "reflex_only", usedT0: true, requiresLlm: true },
       },
     ],
   },
@@ -843,8 +843,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "da",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
           conversationAwaiting: "confirm",
         },
       },
@@ -885,8 +885,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "da",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -906,8 +906,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "moze",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
           conversationAwaiting: "confirm",
         },
       },
@@ -926,8 +926,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "ok",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -945,8 +945,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "ajde",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -964,8 +964,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "super",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -983,8 +983,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "pošalji",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1003,8 +1003,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "yes",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1023,8 +1023,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "send it",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1043,8 +1043,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "ja",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1063,8 +1063,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "schick es",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1082,8 +1082,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "da",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1128,8 +1128,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "moze",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "waiter.gap_blocks_confirm",
+          requiresLlm: true,
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
     ],
@@ -1243,8 +1243,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "where is my beer",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
           conversationMode: "ordering",
         },
       },
@@ -1264,8 +1264,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "wo ist mein bier",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1284,8 +1284,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "wo ist meine bestellung",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1303,8 +1303,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "gde je moja narudžbina",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1322,8 +1322,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "gde je narudžba",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1341,8 +1341,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "kad stiže",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1360,8 +1360,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "moje pivo",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1380,8 +1380,8 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         message: "order status",
         expect: {
           planKind: "template_tell",
-          requiresLlm: false,
-          reason: "commerce.status.open_order",
+          requiresLlm: true,
+          reason: "commerce.status.open_order.llm_reply",
         },
       },
     ],
@@ -1457,7 +1457,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         expect: {
           planKind: "reflex_only",
           usedT0: true,
-          requiresLlm: false,
+          requiresLlm: true,
         },
       },
     ],
@@ -1673,7 +1673,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         expect: {
           planKind: "reflex_only",
           usedT0: true,
-          requiresLlm: false,
+          requiresLlm: true,
         },
       },
     ],
@@ -1718,7 +1718,7 @@ export const WAITER_PARITY_SCENARIOS: WaiterParityScenario[] = [
         },
         expect: {
           planKind: "template_tell",
-          reason: "waiter.gap_blocks_confirm",
+          reason: "waiter.gap_blocks_confirm.llm_reply",
         },
       },
       {

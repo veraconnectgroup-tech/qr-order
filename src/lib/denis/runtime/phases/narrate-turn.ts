@@ -116,14 +116,20 @@ export async function narrateTurn(input: {
             ? perceiveData.message
             : narration.message;
 
+  // Submit failed — the honest error must reach the guest untouched
+  // (sanitizer would otherwise rewrite "nije poslata" into a recap loop).
+  const submitBlocked =
+    !input.act.turnSubmitOutcome.orderId &&
+    Boolean(input.act.turnSubmitOutcome.guestBlockedReason);
+
   if (input.act.turnSubmitOutcome.orderId) {
     guestMessage = orderSubmitSuccessMessage({
       language: input.parsed.language,
       orderNumber: input.act.turnSubmitOutcome.orderNumber,
       awaitingApproval: input.act.turnSubmitOutcome.awaitingApproval,
     });
-  } else if (input.act.turnSubmitOutcome.guestBlockedReason && !input.act.turnSubmitOutcome.orderId) {
-    guestMessage = input.act.turnSubmitOutcome.guestBlockedReason;
+  } else if (submitBlocked) {
+    guestMessage = input.act.turnSubmitOutcome.guestBlockedReason ?? guestMessage;
   } else if (
     Boolean(perceiveData.submitOrder) &&
     input.act.actSubmitLive &&
@@ -132,14 +138,20 @@ export async function narrateTurn(input: {
     guestMessage = orderSubmitNotAttemptedMessage(input.parsed.language);
   }
 
-  guestMessage = sanitizeGuestOrderHonesty({
-    message: guestMessage ?? "",
-    language: input.parsed.language,
-    orderSubmitted: Boolean(input.act.turnSubmitOutcome.orderId),
-    draft: cartDraftToAiOrderDraft(input.act.cartDraftForAct),
-  });
+  guestMessage = submitBlocked
+    ? (guestMessage ?? "")
+    : sanitizeGuestOrderHonesty({
+        message: guestMessage ?? "",
+        language: input.parsed.language,
+        orderSubmitted: Boolean(input.act.turnSubmitOutcome.orderId),
+        draft: cartDraftToAiOrderDraft(input.act.cartDraftForAct),
+      });
 
-  if (!input.act.turnSubmitOutcome.orderId && input.act.waiterObligation.gaps.length > 0) {
+  if (
+    !submitBlocked &&
+    !input.act.turnSubmitOutcome.orderId &&
+    input.act.waiterObligation.gaps.length > 0
+  ) {
     const tellBase =
       !input.act.waiterObligation.canConfirm &&
       guestMessage &&

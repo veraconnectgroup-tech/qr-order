@@ -1246,12 +1246,13 @@ export function AiConciergeChat({
       try {
         if (isDemo) {
           const demo = getDemoAiChatResponse(trimmed, menuCategories);
+          setChatLanguage(requestLanguage);
           setMessages((prev) => [
             ...prev,
             {
               id: nextId(),
               role: "assistant",
-              content: tUI(demo.messageKey),
+              content: tForAiGuestLanguage(demo.messageKey, requestLanguage),
               recommendations: demo.recommendations.length
                 ? demo.recommendations
                 : undefined,

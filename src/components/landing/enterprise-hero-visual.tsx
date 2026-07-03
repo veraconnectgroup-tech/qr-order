@@ -24,8 +24,8 @@ function HeroLiveOrderCard() {
   const reduce = useReducedMotion();
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800/90 bg-zinc-950/95 shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-sm">
-      <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
+    <div className="overflow-hidden rounded-xl border border-[#e3e7ee] bg-white shadow-[0_18px_52px_-32px_rgba(31,35,40,0.28)] backdrop-blur-sm">
+      <div className="flex items-center gap-2 border-b border-[#edf1f5] px-3 py-2">
         <motion.span
           className="size-2 rounded-full bg-emerald-500/80"
           animate={reduce ? undefined : { opacity: [1, 0.35, 1] }}
@@ -35,21 +35,21 @@ function HeroLiveOrderCard() {
               : { duration: 2, repeat: Infinity, ease: "easeInOut" }
           }
         />
-        <span className="text-[11px] font-semibold text-zinc-200">
+        <span className="text-[11px] font-semibold text-[#1f2328]">
           Live order
         </span>
-        <span className="ml-auto font-mono text-[10px] text-zinc-500">
+        <span className="ml-auto font-mono text-[10px] text-[#8b95a4]">
           #{order.order_number}
         </span>
       </div>
       <div className="px-3 py-2.5">
-        <p className="text-xs font-medium text-zinc-100">
+        <p className="text-xs font-medium text-[#1f2328]">
           {order.tables?.name ?? "Table 8"}
         </p>
-        <p className="mt-0.5 text-[10px] text-zinc-500">
+        <p className="mt-0.5 text-[10px] text-[#6b7280]">
           {itemCount} items · {formatPrice(order.total, DEMO_CURRENCY)}
         </p>
-        <span className="mt-2 text-[10px] font-medium text-zinc-400">
+        <span className="mt-2 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
           Preparing · ~8 min
         </span>
       </div>
@@ -104,9 +104,10 @@ export function EnterpriseHeroVisual() {
         >
           <ShowcaseWindow
             url="app.qr-order.com/orders"
+            theme="light"
             className="shadow-[0_28px_90px_-20px_rgba(0,0,0,0.85)]"
           >
-            <DashboardScreenShowcase screen="orders" variant="hero" />
+            <DashboardScreenShowcase screen="orders" variant="hero" theme="light" />
           </ShowcaseWindow>
         </HeroSlideIn>
 

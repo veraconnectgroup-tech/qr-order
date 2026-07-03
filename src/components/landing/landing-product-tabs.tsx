@@ -225,10 +225,10 @@ export function LandingProductTabs() {
                     ))}
                   </ul>
                 </div>
-                <div className="landing-product-visual flex min-h-[380px] items-center justify-center bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-8 sm:min-h-[460px] sm:p-10">
+                <div className="landing-product-visual flex min-h-[380px] items-center justify-center bg-[#fbfcfd] p-8 sm:min-h-[460px] sm:p-10">
                   <div className="relative w-full max-w-[420px]">
                     <div
-                      className="pointer-events-none absolute -inset-8 rounded-full bg-indigo-500/10 blur-3xl"
+                      className="pointer-events-none absolute -inset-8 rounded-full bg-[#1f2328]/5 blur-3xl"
                       aria-hidden
                     />
                     <div className="relative scale-[1.05] sm:scale-110">

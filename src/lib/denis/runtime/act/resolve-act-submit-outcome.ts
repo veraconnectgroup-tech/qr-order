@@ -28,6 +28,10 @@ export function actSubmitGuestBlockedMessage(error: string): string {
       return "Korpa je prazna — dodajte stavke pre slanja porudžbine.";
     case "missing_submit_context":
       return "Nije moguće poslati porudžbinu — osvežite stranicu i pokušajte ponovo.";
+    case "pin_required":
+    case "session_required":
+    case "Session expired or invalid":
+      return "Ne mogu da pošaljem porudžbinu sa ovog uređaja — skenirajte QR kod stola ponovo ili pozovite osoblje.";
     default:
       return "Porudžbina nije mogla biti poslata. Pokušajte ponovo ili pitajte osoblje.";
   }
