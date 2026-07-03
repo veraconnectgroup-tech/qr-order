@@ -46,5 +46,60 @@ export const POST = withErrorHandler("denis-signal-post", async (req, _ctx) => {
     }
   }
 
-  return runDenisSignal(body);
+  const wantsStream = (body as { stream?: boolean }).stream === true;
+  if (!wantsStream) {
+    return runDenisSignal(body);
+  }
+
+  return streamDenisSignal(body);
 });
+
+/**
+ * Opt-in streaming variant — reveals the guest-facing message text as the
+ * LLM generates it via newline-delimited JSON events, then a final `done`
+ * event carrying the exact same response envelope as the non-streaming path.
+ */
+function streamDenisSignal(body: unknown): Response {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const enqueueLine = (line: Record<string, unknown>) => {
+        controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`));
+      };
+
+      try {
+        const response = await runDenisSignal(body, {
+          onMessageDelta: (text) => enqueueLine({ type: "delta", text }),
+        });
+        const parsedBody = await response.json().catch(() => null);
+        enqueueLine({ type: "done", status: response.status, body: parsedBody });
+      } catch (error) {
+        enqueueLine({
+          type: "done",
+          status: 500,
+          body: {
+            ok: false,
+            data: null,
+            error: {
+              code: "stream_failed",
+              message:
+                error instanceof Error ? error.message : "Stream failed.",
+              retryable: true,
+            },
+          },
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}

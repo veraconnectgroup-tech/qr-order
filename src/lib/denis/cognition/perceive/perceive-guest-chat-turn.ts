@@ -32,6 +32,7 @@ import {
   AiCircuitOpenError,
   AiOpenAiError,
   callOpenAiChat,
+  callOpenAiChatStreaming,
 } from "@/lib/ai/openai-client";
 import { parseAiStructuredResponse } from "@/lib/ai/parse-response";
 import {
@@ -510,6 +511,7 @@ export async function perceiveGuestChatTurn(
       recommendations: [],
       openAiResult,
     };
+    opts.onMessageDelta?.(structured.message);
   } else {
     const openAiMessages: OpenAiChatMessage[] = [
       { role: "system", content: systemPrompt },
@@ -518,14 +520,23 @@ export async function perceiveGuestChatTurn(
     ];
 
     try {
-      openAiResult = await callOpenAiChat(openAiMessages, {
-        model: opts.model,
-        extendedThinking: opts.extendedThinking,
-        promptCacheKey: buildDenisPromptCacheKey(
-          "perceive",
-          `${input.locationId}:${menuPayload.cachedAt.slice(0, 10)}`
-        ),
-      });
+      openAiResult = opts.onMessageDelta
+        ? await callOpenAiChatStreaming(openAiMessages, opts.onMessageDelta, {
+            model: opts.model,
+            extendedThinking: opts.extendedThinking,
+            promptCacheKey: buildDenisPromptCacheKey(
+              "perceive",
+              `${input.locationId}:${menuPayload.cachedAt.slice(0, 10)}`
+            ),
+          })
+        : await callOpenAiChat(openAiMessages, {
+            model: opts.model,
+            extendedThinking: opts.extendedThinking,
+            promptCacheKey: buildDenisPromptCacheKey(
+              "perceive",
+              `${input.locationId}:${menuPayload.cachedAt.slice(0, 10)}`
+            ),
+          });
     } catch (error) {
       if (error instanceof AiCircuitOpenError) {
         return apiError(resolveAiGuestUnavailableMessage(language), 503);

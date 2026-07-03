@@ -233,7 +233,10 @@ function resolveSignalId(rawBody: unknown): string {
 }
 
 /** Core guest signal execution — used by HTTP ingress and Table Session Actor (Phase C/E). */
-export async function executeDenisSignalCore(rawBody: unknown): Promise<Response> {
+export async function executeDenisSignalCore(
+  rawBody: unknown,
+  opts?: { onMessageDelta?: (text: string) => void }
+): Promise<Response> {
   const { normalizeDenisSignal } = await import(
     "@/lib/denis/ingress/normalize-signal"
   );
@@ -313,6 +316,7 @@ export async function executeDenisSignalCore(rawBody: unknown): Promise<Response
   const response = await runDenisTurn({
     channel: signal.channel,
     rawBody: buildTurnBody(turnRequest, ctx, signal),
+    onMessageDelta: opts?.onMessageDelta,
   });
 
   if (response.status === 200 && ctx.tableSessionId) {

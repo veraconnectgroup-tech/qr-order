@@ -94,6 +94,7 @@ import type { AllergenId } from "@/lib/allergens";
 import type { GuestMemoryProfile } from "@/lib/guest/guest-memory-storage";
 import {
   postDenisMessageTurn,
+  postDenisMessageTurnStreaming,
   postDenisThinkingPreview,
 } from "@/lib/guest/denis-signal-client";
 import {
@@ -608,6 +609,7 @@ export function AiConciergeChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingPreview, setStreamingPreview] = useState("");
   const [pendingThinkingMessage, setPendingThinkingMessage] = useState<
     string | null
   >(null);
@@ -967,7 +969,8 @@ export function AiConciergeChat({
       message: string,
       prefs?: { allergies: string[]; mood: string },
       retryWithoutSession = false,
-      inputSurface: "chat" | "voice" = "chat"
+      inputSurface: "chat" | "voice" = "chat",
+      onDelta?: (text: string) => void
     ) => {
       const aiContextToken = resolveGuestAiContextToken(token, sessionToken);
       if (!aiContextToken) {
@@ -993,41 +996,7 @@ export function AiConciergeChat({
         chatLanguage
       );
 
-      let res: Response;
-      try {
-        res = await postDenisMessageTurn(
-          {
-            tableToken: token,
-            tableSessionToken: sessionToken ?? undefined,
-            locationId,
-            tableId,
-            message,
-            language: requestLanguage,
-            aiSessionId: sessionId,
-            preferences: prefs ?? preferencesRef.current,
-            includeOrderContext: true,
-            allowOrdering: !orderingDisabled,
-            browsingContext: resolveScrollContext?.() ?? undefined,
-            deviceFingerprint: resolvedDeviceFingerprint,
-            deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
-            surface: inputSurface,
-            accessibilitySignals: detectClientAccessibilitySignals(),
-          },
-          { signal: controller.signal }
-        );
-      } catch (fetchError) {
-        if (fetchError instanceof Error && fetchError.name === "AbortError") {
-          const failureCount = bumpGuestRecoveryFailureCount(recoveryScopeKey);
-          throw new GuestRecoveryError(
-            buildRecovery(message, failureCount, requestLanguage)
-          );
-        }
-        throw fetchError;
-      } finally {
-        window.clearTimeout(timeoutId);
-      }
-
-      const json = (await res.json()) as {
+      type CallAiChatJson = {
         ok?: boolean;
         error?: string | { code?: string; message?: string; retryable?: boolean };
         details?: { code?: string };
@@ -1044,6 +1013,54 @@ export function AiConciergeChat({
           openPaymentSheet?: boolean;
         };
       };
+
+      const requestPayload = {
+        tableToken: token,
+        tableSessionToken: sessionToken ?? undefined,
+        locationId,
+        tableId,
+        message,
+        language: requestLanguage,
+        aiSessionId: sessionId,
+        preferences: prefs ?? preferencesRef.current,
+        includeOrderContext: true,
+        allowOrdering: !orderingDisabled,
+        browsingContext: resolveScrollContext?.() ?? undefined,
+        deviceFingerprint: resolvedDeviceFingerprint,
+        deviceToken: getStoredDeviceToken(locationId, tableId) ?? undefined,
+        surface: inputSurface,
+        accessibilitySignals: detectClientAccessibilitySignals(),
+      };
+
+      let res: { ok: boolean; status: number };
+      let json: CallAiChatJson;
+      try {
+        if (onDelta) {
+          const streamResult = await postDenisMessageTurnStreaming(
+            requestPayload,
+            onDelta,
+            { signal: controller.signal }
+          );
+          res = { ok: streamResult.ok, status: streamResult.status };
+          json = streamResult.json as CallAiChatJson;
+        } else {
+          const fetchRes = await postDenisMessageTurn(requestPayload, {
+            signal: controller.signal,
+          });
+          res = { ok: fetchRes.ok, status: fetchRes.status };
+          json = (await fetchRes.json()) as CallAiChatJson;
+        }
+      } catch (fetchError) {
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          const failureCount = bumpGuestRecoveryFailureCount(recoveryScopeKey);
+          throw new GuestRecoveryError(
+            buildRecovery(message, failureCount, requestLanguage)
+          );
+        }
+        throw fetchError;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       const parsedError = !res.ok
         ? parseApiErrorFromJson(json, res.status)
@@ -1073,7 +1090,7 @@ export function AiConciergeChat({
             ...legacyTokens,
           ]);
           setAiSessionId(null);
-          return callAiChat(message, prefs, true, inputSurface);
+          return callAiChat(message, prefs, true, inputSurface, onDelta);
         }
 
         if (isInfrastructureChatError(parsedError, res.status)) {
@@ -1198,6 +1215,7 @@ export function AiConciergeChat({
 
       setPendingThinkingMessage(trimmed);
       setServerThinkingSteps([]);
+      setStreamingPreview("");
       setIsTyping(true);
       setMessages((prev) => [
         ...prev,
@@ -1307,7 +1325,13 @@ export function AiConciergeChat({
           return;
         }
 
-        const data = await callAiChat(trimmed, undefined, false, inputSurface);
+        const data = await callAiChat(
+          trimmed,
+          undefined,
+          false,
+          inputSurface,
+          (text) => setStreamingPreview((prev) => prev + text)
+        );
         applyCartActions(data.cartActions);
 
         if (data.orderSubmit) {
@@ -1400,6 +1424,7 @@ export function AiConciergeChat({
         setIsTyping(false);
         setPendingThinkingMessage(null);
         setServerThinkingSteps([]);
+        setStreamingPreview("");
       }
     },
     [
@@ -1766,7 +1791,23 @@ export function AiConciergeChat({
           {isTyping &&
           (messages.length === 0 ||
             messages[messages.length - 1]?.role === "user") ? (
-            <DenisMessageThinking label={thinkingHeadline} />
+            streamingPreview ? (
+              <DenisMessageRow
+                message={{
+                  id: "streaming-preview",
+                  role: "assistant",
+                  content: streamingPreview,
+                }}
+                currency={currency}
+                orderingDisabled={orderingDisabled}
+                addedIds={addedIds}
+                continueLabel={tUI("ai.chat.continue")}
+                markState="think"
+                onAddRecommendation={handleAddRecommendation}
+              />
+            ) : (
+              <DenisMessageThinking label={thinkingHeadline} />
+            )
           ) : null}
         </DenisPanelBody>
 

@@ -1,4 +1,5 @@
 import { AI_CONFIG, isOpenAiConfigured } from "@/lib/ai/config";
+import { StreamingJsonStringFieldExtractor } from "@/lib/ai/streaming-json-field-extractor";
 import type { OpenAiCallResult, OpenAiChatMessage } from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import {
@@ -210,6 +211,178 @@ export async function callOpenAiChat(
   return withCircuitBreaker(
     "openai",
     () => callOpenAiWithRetries(messages, callOptions),
+    () => {
+      throw new AiCircuitOpenError();
+    }
+  );
+}
+
+async function callOpenAiOnceStreaming(
+  model: string,
+  messages: OpenAiChatMessage[],
+  signal: AbortSignal,
+  onMessageDelta: (text: string) => void,
+  callOptions?: {
+    temperature?: number;
+    maxTokens?: number;
+    promptCacheKey?: string;
+  }
+): Promise<OpenAiCallResult> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new AiOpenAiError("OpenAI API key is not configured.");
+  }
+
+  const bodyPayload: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
+    max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
+    response_format: { type: "json_object" },
+    stream: true,
+    stream_options: { include_usage: true },
+  };
+
+  if (
+    AI_CONFIG.promptCachingEnabled &&
+    callOptions?.promptCacheKey?.trim()
+  ) {
+    bodyPayload.prompt_cache_key = callOptions.promptCacheKey.trim();
+  }
+
+  const res = await fetch(OPENAI_CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(bodyPayload),
+    signal,
+  });
+
+  if (!res.ok || !res.body) {
+    const body = (await res.json().catch(() => ({}))) as ChatCompletionResponse;
+    throw new AiOpenAiError(
+      body.error?.message ?? `OpenAI request failed (${res.status})`,
+      res.status
+    );
+  }
+
+  const extractor = new StreamingJsonStringFieldExtractor("message");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullContent = "";
+  let resolvedModel = model;
+  let usage: ChatCompletionResponse["usage"];
+  let sseBuffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuffer += decoder.decode(value, { stream: true });
+
+      const lines = sseBuffer.split("\n");
+      sseBuffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice("data:".length).trim();
+        if (payload === "[DONE]") continue;
+
+        let event: {
+          model?: string;
+          choices?: Array<{ delta?: { content?: string } }>;
+          usage?: ChatCompletionResponse["usage"];
+        };
+        try {
+          event = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+
+        if (event.model) resolvedModel = event.model;
+        if (event.usage) usage = event.usage;
+
+        const delta = event.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullContent += delta;
+          const revealed = extractor.push(delta);
+          if (revealed) onMessageDelta(revealed);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const content = fullContent.trim();
+  if (!content) {
+    throw new AiOpenAiError("OpenAI returned an empty response.");
+  }
+
+  const tokensUsed =
+    usage?.total_tokens ??
+    (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0);
+
+  return {
+    content,
+    tokensUsed,
+    promptTokens: usage?.prompt_tokens ?? 0,
+    completionTokens: usage?.completion_tokens ?? 0,
+    cachedPromptTokens: usage?.prompt_tokens_details?.cached_tokens,
+    model: resolvedModel,
+  };
+}
+
+/**
+ * Streaming variant of `callOpenAiChat` — reveals the guest-facing `message`
+ * field as it's generated via `onMessageDelta`, while still returning the
+ * exact same `OpenAiCallResult` shape once the full JSON is complete, so
+ * every downstream consumer (parsing, guards, ordering) is unchanged.
+ *
+ * No cross-model retry: a mid-stream failure means text may already be
+ * visible to the guest, so the caller must fall back to an error state
+ * rather than silently re-requesting a second reply.
+ */
+export async function callOpenAiChatStreaming(
+  messages: OpenAiChatMessage[],
+  onMessageDelta: (text: string) => void,
+  options?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    extendedThinking?: boolean;
+    promptCacheKey?: string;
+  }
+): Promise<OpenAiCallResult> {
+  if (!isOpenAiConfigured()) {
+    throw new AiOpenAiError("OpenAI is not configured.");
+  }
+
+  const callOptions = options?.extendedThinking
+    ? {
+        temperature: 0.2,
+        maxTokens: Math.max(AI_CONFIG.maxTokens, 1200),
+        ...options,
+      }
+    : options;
+
+  return withCircuitBreaker(
+    "openai",
+    () =>
+      callOpenAiOnceStreaming(
+        callOptions?.model ?? AI_CONFIG.model,
+        messages,
+        AbortSignal.timeout(AI_CONFIG.requestTimeoutMs),
+        onMessageDelta,
+        {
+          temperature: callOptions?.temperature,
+          maxTokens: callOptions?.maxTokens,
+          promptCacheKey: callOptions?.promptCacheKey,
+        }
+      ),
     () => {
       throw new AiCircuitOpenError();
     }

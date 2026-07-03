@@ -30,4 +30,11 @@ export type DenisPerceiveTurnOpts = PerceiveGuestChatTurnOpts & {
   evidence?: TurnEvidencePack;
   templateIntent?: "chat" | "clarify" | "confirm" | "menu_info";
   leadershipContext?: import("@/lib/ai/conversation-leadership").ConversationLeadershipContext;
+  /**
+   * Opt-in — when set, the guest-facing `message` text is revealed
+   * token-by-token as the LLM generates it. Everything else (cart actions,
+   * quick replies, guards) is unaffected and still resolves from the full
+   * parsed response once the stream completes.
+   */
+  onMessageDelta?: (text: string) => void;
 };

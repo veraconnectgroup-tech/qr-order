@@ -54,6 +54,8 @@ export const denisSignalContextSchema = z.object({
   manualCartSnapshot: manualCartSnapshotSchema.optional(),
   allowOrdering: z.boolean().optional(),
   browsingContext: z.string().trim().max(500).optional(),
+  /** Opt-in — response streams as newline-delimited JSON instead of one JSON blob. */
+  stream: z.boolean().optional(),
   preferences: z
     .object({
       allergies: z.array(z.string()),

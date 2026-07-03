@@ -25,7 +25,10 @@ function resolveSignalId(rawBody: unknown): string {
 }
 
 /** ADR-019 Phase C/E — unified guest write ingress. */
-export async function runDenisSignal(rawBody: unknown): Promise<Response> {
+export async function runDenisSignal(
+  rawBody: unknown,
+  opts?: { onMessageDelta?: (text: string) => void }
+): Promise<Response> {
   const normalized = normalizeDenisSignal(rawBody);
   if (!normalized.ok) {
     return apiError("Invalid signal.", 400);
@@ -45,7 +48,7 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
   );
 
   if (!actorEnabled || !tableSessionId) {
-    return executeDenisSignalCore(rawBody);
+    return executeDenisSignalCore(rawBody, opts);
   }
 
   const signalId = resolveSignalId(rawBody);
@@ -56,8 +59,12 @@ export async function runDenisSignal(rawBody: unknown): Promise<Response> {
 
   // Template obligation turns — sync path (no Redis queue / 15s actor SLA).
   if (isGuestTemplateSignal(bodyWithId)) {
-    return executeDenisSignalCore(bodyWithId);
+    return executeDenisSignalCore(bodyWithId, opts);
   }
+
+  // Table Session Actor path is queue-based (Redis) — no in-process stream to
+  // hook into, so streaming is a no-op here; guest still gets the full
+  // response once the actor resolves, same as before this feature existed.
 
   const result = await enqueueGuestSignalAndWait(
     tableSessionId,

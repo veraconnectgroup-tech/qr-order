@@ -574,6 +574,7 @@ async function runTdePerceive(input: {
   beliefs: BeliefGraph;
   timelineEnabled: boolean;
   orgId: string;
+  onMessageDelta?: (text: string) => void;
 }): Promise<TdePerceiveResult> {
   const tdeBeliefs = input.beliefs as Parameters<
     typeof decideTurnPlan
@@ -698,6 +699,7 @@ async function runTdePerceive(input: {
           ? ""
           : defaultGuestChatFallback(input.body.language)),
       templateIntent: mapTemplateIntent(turnPlan),
+      onMessageDelta: input.onMessageDelta,
     });
 
     return {
@@ -831,6 +833,7 @@ async function runTdePerceive(input: {
         input.reflexTurn.pipelineHints?.reflexIntent ??
         input.reflexTurn.pipelineHints?.handoffIntent,
     },
+    onMessageDelta: input.onMessageDelta,
   });
 
   logger.info("Denis adaptive model route", {
@@ -1142,6 +1145,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
           beliefs: beliefGraph ?? { beliefs: [] },
           timelineEnabled,
           orgId: orgResult.data.orgId,
+          onMessageDelta: input.onMessageDelta,
         }));
     }
   } else {
@@ -1154,6 +1158,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         beliefs: beliefGraph ?? { beliefs: [] },
         timelineEnabled,
         orgId: orgResult.data.orgId,
+        onMessageDelta: input.onMessageDelta,
       }));
   }
   const perceiveResponse = perceiveResult.response;

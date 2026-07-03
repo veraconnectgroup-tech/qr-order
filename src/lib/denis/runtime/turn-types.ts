@@ -65,6 +65,8 @@ export type DenisChatBody = z.infer<typeof denisChatBodySchema>;
 export type DenisTurnRunInput = {
   channel: DenisChannel;
   rawBody: unknown;
+  /** Opt-in — streams the guest-facing message text as the LLM generates it. */
+  onMessageDelta?: (text: string) => void;
 };
 
 export type DenisTurnContext = {

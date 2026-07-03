@@ -151,3 +151,109 @@ export async function postDenisMessageTurn(
     } satisfies DenisSignalRequest),
   });
 }
+
+type StreamedDoneLine = {
+  type: "done";
+  status: number;
+  body: { data?: DenisSignalResponse & Record<string, unknown>; error?: string } | null;
+};
+
+export type DenisSignalStreamResult = {
+  ok: boolean;
+  status: number;
+  json: { data?: DenisSignalResponse & Record<string, unknown>; error?: string };
+};
+
+/**
+ * Streaming variant of `postDenisMessageTurn` — calls `onDelta` with the
+ * guest-facing message text as it's generated. Resolves with the same
+ * `{ok, status, json}` shape a caller would derive from the non-streaming
+ * `Response` (so existing error handling keeps working unchanged), covering
+ * both real NDJSON streams and the plain-JSON early-error case (e.g. rate
+ * limiting, which returns before any streaming starts).
+ */
+export async function postDenisMessageTurnStreaming(
+  input: PostDenisMessageTurnInput,
+  onDelta: (text: string) => void,
+  init?: RequestInit
+): Promise<DenisSignalStreamResult> {
+  const res = await fetch("/api/denis/signal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    ...init,
+    body: JSON.stringify({
+      type: "message",
+      text: input.message,
+      tableToken: input.tableToken,
+      tableSessionToken: input.tableSessionToken,
+      locationId: input.locationId,
+      tableId: input.tableId,
+      language: input.language,
+      aiSessionId: input.aiSessionId,
+      preferences: input.preferences,
+      allowOrdering: input.allowOrdering,
+      browsingContext: input.browsingContext,
+      manualCartSnapshot: input.manualCartSnapshot,
+      deviceFingerprint: input.deviceFingerprint,
+      deviceToken: input.deviceToken,
+      structuredIntent: input.structuredIntent,
+      handoffPaymentMethod: input.handoffPaymentMethod,
+      surface: input.surface,
+      includeOrderContext: input.includeOrderContext,
+      accessibilitySignals: input.accessibilitySignals,
+      stream: true,
+    } satisfies DenisSignalRequest),
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("ndjson") || !res.body) {
+    // Early error before streaming started (e.g. rate limit, invalid input) —
+    // a normal JSON error envelope, not the NDJSON stream.
+    const json = (await res.json().catch(() => ({}))) as DenisSignalStreamResult["json"];
+    return { ok: res.ok, status: res.status, json };
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let done: StreamedDoneLine | null = null;
+
+  while (true) {
+    const { done: streamDone, value } = await reader.read();
+    if (streamDone) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      let parsed: { type?: string; text?: string } | StreamedDoneLine;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        continue;
+      }
+
+      if (parsed.type === "delta" && typeof (parsed as { text?: string }).text === "string") {
+        onDelta((parsed as { text: string }).text);
+      } else if (parsed.type === "done") {
+        done = parsed as StreamedDoneLine;
+      }
+    }
+  }
+
+  if (!done) {
+    return {
+      ok: false,
+      status: 500,
+      json: { error: "signal_stream_incomplete" },
+    };
+  }
+
+  return {
+    ok: done.status >= 200 && done.status < 300,
+    status: done.status,
+    json: done.body ?? {},
+  };
+}
