@@ -77,11 +77,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Panel nije uvezen u admin analytics — obrisano 6 fajlova (4 lib, panel, test). record-google-review-click.ts ostaje (živi kod).
 
 ### A8 — Guest Language Stats
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:21
 - Fajlovi: `src/app/api/dashboard/guest-languages/route.ts`, `src/lib/dashboard/load-guest-language-stats.ts`, `src/components/dashboard/guest-language-stats-card.tsx`, `src/lib/denis/runtime/persist-guest-language-turn.ts`, `src/lib/denis/cognition/context/build-guest-language-section.ts`, test `language-intelligence.test.ts`
 - Zadatak: trijaža po pravilu — proveriti da li je kartica uvezana u dashboard i da li se `persist-guest-language-turn` zove iz runtime-a. Uvezati ili obrisati; `language-intelligence.test.ts` na zeleno.
-- Napomena: —
+- Napomena: Kartica nije u dashboardu, persist nije pozvan iz runtime-a — obrisano 5 fajlova. language-intelligence.test.ts 5/5 zelen (ažuriran script detector test na željeno ponašanje).
 
 ### A9 — Table Lifecycle orkestracija
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A8 | Obrisan neuvuzen Guest Language Stats paket; language-intelligence test 5/5. |
 | 2026-07-03 | Composer | A7 | Obrisan neuvuzen Review Request paket (6 fajlova). |
 | 2026-07-03 | Composer | A6 | ROI paket komitovan; TS fix na admin/roi + panel; test 6/6; migracija 00157. |
 | 2026-07-03 | Composer | A5 | Obrisan neuvuzen send-sms.ts duplikat (sms-provider ostaje). |
