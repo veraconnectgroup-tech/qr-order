@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { tableSessionOpenedCutoff } from "@/lib/sessions/session-devices";
 
 type AdminClient = SupabaseClient;
 
@@ -179,6 +180,7 @@ export async function validateTableSession(
     .eq("session_token", sessionToken)
     .eq("status", "active")
     .eq("bill_status", "open")
+    .gte("opened_at", tableSessionOpenedCutoff())
     .maybeSingle();
 
   if (!session) {

@@ -528,7 +528,7 @@ export type AiConciergeChatProps = {
   /** M28 — Denis payment handoff opens session bill sheet. */
   onOpenPaymentSheet?: () => void;
   /** Reload view.transcript after a turn (SSE may lag). */
-  onViewRefresh?: () => void;
+  onViewRefresh?: () => void | Promise<void>;
   /** Prompt 38 — first-message language detection adapts menu + chips. */
   onGuestLanguageDetected?: (language: string) => void;
 };
@@ -573,13 +573,13 @@ export function AiConciergeChat({
   const { prefs: a11yPrefs } = useGuestAccessibility();
   const isOnline = useOnlineStatus();
   const defaultLanguage = isEnglish ? "en" : menuLocale;
-  const venueGreeting = useMemo(
-    () => tForAiGuestLanguage("ai.chat.greeting", menuLocale),
-    [menuLocale]
-  );
   const [chatLanguage, setChatLanguage] = useState<
     (typeof AI_SUPPORTED_LANGUAGES)[number]
   >(resolveAiPromptLanguage(menuLocale));
+  const venueGreeting = useMemo(
+    () => tForAiGuestLanguage("ai.chat.greeting", chatLanguage),
+    [chatLanguage]
+  );
   const resolveScrollContext = scrollContext ?? getBrowsingContext;
   const resolvedDeviceFingerprint = useMemo(
     () => deviceFingerprint ?? getOrCreateDeviceFingerprint(),
@@ -1212,6 +1212,7 @@ export function AiConciergeChat({
         menuLocale,
         chatLanguage
       );
+      setChatLanguage(requestLanguage);
       onGuestLanguageDetected?.(requestLanguage);
 
       const legacyTokens = aiLegacySessionTokens(tableId, sessionToken);
@@ -1288,7 +1289,7 @@ export function AiConciergeChat({
 
         const localAnswer = tryLocalGuestAnswer({
           guestMessage: trimmed,
-          language: chatLanguage,
+          language: requestLanguage,
           situation: sceneChrome?.situation,
           cartItemCount: cartItems.length,
           cartTotal,
@@ -1317,6 +1318,9 @@ export function AiConciergeChat({
           hapticSuccess();
           recordGuestOrderPlaced();
           handleDenisOrderSubmit(data.orderSubmit);
+          await Promise.resolve(onViewRefresh?.());
+        } else {
+          void onViewRefresh?.();
         }
 
         if (data.openPaymentSheet) {
@@ -1347,8 +1351,6 @@ export function AiConciergeChat({
               : undefined,
           };
         }
-
-        void onViewRefresh?.();
 
         if (
           inputSurface === "voice" &&

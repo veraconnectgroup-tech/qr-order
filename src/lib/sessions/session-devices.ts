@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SESSION_MAX_AGE_HOURS } from "@/lib/constants";
 import { scheduleSessionCompletedCommerce } from "@/lib/commerce/projections/project-session-completed";
 import { generateTablePin, hashTablePin } from "@/lib/sessions/table-pin";
 import { logger } from "@/lib/logger";
@@ -17,10 +18,17 @@ export type ActiveSessionRow = {
   opened_at: string;
 };
 
+/** Matches findOrCreateTableSession — stale active rows are not guest-visible. */
+export function tableSessionOpenedCutoff(now = Date.now()): string {
+  const maxAgeMs = SESSION_MAX_AGE_HOURS * 60 * 60 * 1000;
+  return new Date(now - maxAgeMs).toISOString();
+}
+
 export async function getActiveTableSession(
   admin: AdminClient,
   tableId: string
 ): Promise<ActiveSessionRow | null> {
+  const cutoff = tableSessionOpenedCutoff();
   const { data } = await admin
     .from("table_sessions")
     .select(
@@ -29,6 +37,9 @@ export async function getActiveTableSession(
     .eq("table_id", tableId)
     .eq("status", "active")
     .eq("bill_status", "open")
+    .gte("opened_at", cutoff)
+    .order("opened_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   return (data as ActiveSessionRow | null) ?? null;

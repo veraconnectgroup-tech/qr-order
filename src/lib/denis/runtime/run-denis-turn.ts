@@ -45,6 +45,10 @@ import {
   type TurnPlanKind,
 } from "@/lib/denis/cognition/tde";
 import { narrateOfferFromBeliefs } from "@/lib/denis/cognition/offer/narrate-offer-from-beliefs";
+import {
+  isGuestStatusTurnReason,
+  maybeProcessGuestStatusForTurn,
+} from "@/lib/denis/stations/maybe-process-guest-status-for-turn";
 import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 import {
@@ -609,67 +613,35 @@ async function runTdePerceive(input: {
       narrateOfferFromBeliefs(tdeBeliefs, input.body.language) ?? templateMessage;
   }
 
+  let guestStatusSection: string | null = null;
+
   if (
-    (turnPlan.reason === "commerce.status.open_order" ||
-      turnPlan.reason === "commerce.post_order.settling") &&
+    isGuestStatusTurnReason(turnPlan.reason) &&
     input.ctx.tableSessionState?.commerce.orders.length
   ) {
-    const { openOrderStatusGuestMessage } = await import(
-      "@/lib/guest/denis-guest-recovery"
-    );
-    const statusMessage = openOrderStatusGuestMessage(
-      input.ctx.tableSessionState.commerce.orders,
-      input.body.language
-    );
-    if (statusMessage) {
-      if (turnPlan.reason === "commerce.post_order.settling") {
-        const thanks =
-          templateMessage ??
-          defaultGuestChatFallback(input.body.language);
-        templateMessage = `${statusMessage}\n\n${thanks}`;
-      } else {
-        templateMessage = statusMessage;
-      }
-    }
-
-    // Denis never invents ETAs — ask the station (or reuse its fresh answer).
-    if (
-      turnPlan.reason === "commerce.status.open_order" &&
-      input.ctx.config.ops.stationQuestions.enabled
-    ) {
-      try {
-        const { handleGuestStatusQuery } = await import(
-          "@/lib/denis/stations/station-questions"
-        );
-        const state = input.ctx.tableSessionState;
-        const stationLine = await handleGuestStatusQuery(createAdminClient(), {
+    try {
+      const state = input.ctx.tableSessionState;
+      const statusInquiry = await maybeProcessGuestStatusForTurn(
+        createAdminClient(),
+        {
+          turnPlanReason: turnPlan.reason,
           locationId: input.body.locationId,
           tableId: input.body.tableId,
           tableName: state.table.name || null,
-          orders: state.commerce.orders.map((order) => ({
-            id: order.id,
-            orderNumber: order.orderNumber,
-            status: order.status,
-            createdAt: order.createdAt,
-            items: order.items,
-          })),
+          orders: state.commerce.orders,
+          venueOps: input.ctx.venueOps,
           config: input.ctx.config,
-          language: input.body.language,
-        });
-        if (stationLine) {
-          templateMessage = statusMessage
-            ? `${statusMessage}\n\n${stationLine}`
-            : stationLine;
         }
-      } catch (stationError) {
-        logger.warn("guest station question failed", {
-          locationId: input.body.locationId,
-          error:
-            stationError instanceof Error
-              ? stationError.message
-              : String(stationError),
-        });
-      }
+      );
+      guestStatusSection = statusInquiry?.section ?? null;
+    } catch (statusError) {
+      logger.warn("guest status inquiry failed", {
+        locationId: input.body.locationId,
+        error:
+          statusError instanceof Error
+            ? statusError.message
+            : String(statusError),
+      });
     }
   }
 
@@ -831,6 +803,7 @@ async function runTdePerceive(input: {
     playbookBlock,
     vkgPairingBlock,
     contextAwareness,
+    guestStatusSection,
   });
 
   const modelRoute = resolveAdaptiveModelRoute({

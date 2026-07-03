@@ -156,6 +156,21 @@ describe("decideTurnPlan — guest comprehension eval (regression guard)", () =>
     }
   );
 
+  it("comprehends seated order line before welcome/banter path", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "banter"),
+        belief("commerce.pressure", "none"),
+      ]),
+      reflex: reflexFor("Jedno veliko pivo weizen", "browse"),
+      message: "Jedno veliko pivo weizen",
+    });
+    expect(plan.kind).toBe("transactional_perceive");
+    expect(plan.reason).toMatch(/^comprehend_first\.order_line(\.llm_reply)?$/);
+    expect(plan.requiresLlm).toBe(true);
+    expect(plan.templateKey).not.toBe("banter.welcome");
+  });
+
   it("never returns banter.welcome for any guest comprehension scenario", () => {
     const all = [...llmScenarios, ...reflexScenarios, ...templateScenarios];
     for (const scenario of all) {

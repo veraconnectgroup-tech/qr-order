@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   classifyGuestRecoveryIntent,
   openOrderStatusGuestMessage,
-  paymentRecoveryQuickReplies,
   resolveGuestRecoveryResponse,
   resolveIntentRecoveryTier,
   tryLocalGuestAnswer,
@@ -80,14 +79,30 @@ describe("denis guest recovery ladder", () => {
     expect(message).toContain("Chicken Burger");
   });
 
-  it("does not answer locally — all guest chat goes through Denis LLM", () => {
-    const local = tryLocalGuestAnswer({
-      guestMessage: "Kad stiže moj burger?",
-      language: "sr",
-      situation: preparingSituation,
-      cartItemCount: 0,
-    });
-    expect(local).toBeNull();
+  it("defers live status to Denis API (order + bar intel on server)", () => {
+    expect(
+      tryLocalGuestAnswer({
+        guestMessage: "Kad stiže moj burger?",
+        language: "sr",
+        situation: preparingSituation,
+        cartItemCount: 0,
+      })
+    ).toBeNull();
+  });
+
+  it("defers status ETA to Denis when scene fold has no open orders", () => {
+    expect(
+      tryLocalGuestAnswer({
+        guestMessage: "Za koliko stiže moje pivo?",
+        language: "sr",
+        situation: null,
+        cartItemCount: 0,
+      })
+    ).toBeNull();
+
+    expect(classifyGuestRecoveryIntent("Za koliko stiže moje pivo?")).toBe(
+      "status"
+    );
   });
 
   it.skip("auto-calls waiter when guest cannot reach staff", () => {
@@ -109,67 +124,73 @@ describe("denis guest recovery ladder", () => {
     expect(resolveIntentRecoveryTier("order")).toBe(2);
   });
 
-  it("payment intent is not answered locally (Denis LLM only)", () => {
+  it("payment intent opens payment locally when there is payable context", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Mogu li da platim?",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.action?.openPaymentSheet).toBe(true);
   });
 
-  it("cash payment is not answered locally (Denis LLM only)", () => {
+  it("cash payment is handled locally as a payment handoff", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Kes",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.action?.tryPaymentHandoff).toBeTruthy();
   });
 
-  it("post-order settling is not answered locally (Denis LLM only)", () => {
+  it("post-order settling reassures with current order status locally", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "To je sve",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message).toContain("Chicken Burger");
   });
 
-  it("already-ordered reassurance is not answered locally (Denis LLM only)", () => {
+  it("already-ordered reassurance uses current order status locally", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Porucio sam već",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message).toContain("Chicken Burger");
   });
 
-  it("add-more chip is not answered locally (Denis LLM only)", () => {
+  it("add-more chip is answered locally", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Još nešto",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message.toLowerCase()).toContain("šta još");
   });
 
-  it("bill amount is not answered locally (Denis LLM only)", () => {
+  it("bill amount is answered locally from open orders", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Koliki mi je račun?",
       language: "sr",
       situation: preparingSituation,
       cartItemCount: 0,
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.action?.openPaymentSheet).toBe(true);
   });
 
-  it("cart total is not answered locally (Denis LLM only)", () => {
+  it("cart total is answered locally from the visible cart", () => {
     const local = tryLocalGuestAnswer({
       guestMessage: "Koliko je ukupno?",
       language: "sr",
@@ -178,6 +199,7 @@ describe("denis guest recovery ladder", () => {
       cartTotal: 24.5,
       currency: "EUR",
     });
-    expect(local).toBeNull();
+    expect(local?.answeredLocally).toBe(true);
+    expect(local?.message).toContain("24,50");
   });
 });

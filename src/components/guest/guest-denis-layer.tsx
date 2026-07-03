@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
@@ -167,7 +167,12 @@ export function GuestDenisLayer({
   menuChat?: GuestDenisMenuChatProps;
 }) {
   const { tUI, menuLocale, isEnglish } = useAppLocale();
-  const language = isEnglish ? "en" : menuLocale;
+  const menuLanguage = isEnglish ? "en" : menuLocale;
+  const [guestLanguage, setGuestLanguage] = useState(menuLanguage);
+  useEffect(() => {
+    setGuestLanguage(menuLanguage);
+  }, [menuLanguage]);
+  const language = guestLanguage;
   const deviceFingerprint = useMemo(() => getOrCreateDeviceFingerprint(), []);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [sceneTurnBusy, setSceneTurnBusy] = useState(false);
@@ -191,6 +196,14 @@ export function GuestDenisLayer({
     setAiChatOpen(true);
     onChatOpenChange?.(true);
   }, [onChatOpenChange]);
+
+  const handleGuestLanguageDetected = useCallback(
+    (detected: string) => {
+      setGuestLanguage(detected);
+      onGuestLanguageDetected?.(detected);
+    },
+    [onGuestLanguageDetected]
+  );
 
   const handleAiChatOpenChange = useCallback(
     (open: boolean) => {
@@ -432,7 +445,7 @@ export function GuestDenisLayer({
         voiceTtsEnabled={voiceTtsEnabled}
         deviceFingerprint={deviceFingerprint}
         bootstrapTranscript={view?.transcript}
-        onViewRefresh={() => void refreshGuestSceneView()}
+        onViewRefresh={() => refreshGuestSceneView()}
         isDemo={menuChat?.isDemo}
         menuCategories={menuChat?.menuCategories}
         menuSectionByProductId={menuChat?.menuSectionByProductId}
@@ -445,7 +458,7 @@ export function GuestDenisLayer({
         onOpenProductDetail={menuChat?.onOpenProductDetail}
         onRecommendations={menuChat?.onRecommendations}
         onSaveAllergies={menuChat?.onSaveAllergies}
-        onGuestLanguageDetected={onGuestLanguageDetected}
+        onGuestLanguageDetected={handleGuestLanguageDetected}
       />
 
       {!aiChatOpen ? (

@@ -84,6 +84,7 @@ export type PlanEvidenceInput = {
   promoBlock?: string | null;
   crossDeviceBlock?: string | null;
   contextAwareness?: ContextAwarenessSnapshot | null;
+  guestStatusSection?: string | null;
 };
 
 function guestTurnNeedsMenuContext(
@@ -227,6 +228,11 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
 
   if (input.frustrationRecoveryBlock?.trim()) {
     blocks.push(input.frustrationRecoveryBlock.trim());
+  }
+
+  if (input.guestStatusSection?.trim()) {
+    pointers.push("commerce.status");
+    blocks.push(input.guestStatusSection.trim());
   }
 
   if (input.promoBlock?.trim()) {

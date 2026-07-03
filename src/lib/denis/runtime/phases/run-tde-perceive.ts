@@ -18,6 +18,10 @@ import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/lo
 import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import { narrateOfferFromBeliefs } from "@/lib/denis/cognition/offer/narrate-offer-from-beliefs";
 import {
+  isGuestStatusTurnReason,
+  maybeProcessGuestStatusForTurn,
+} from "@/lib/denis/stations/maybe-process-guest-status-for-turn";
+import {
   perceiveGuestChatTurn,
 } from "@/lib/denis/cognition/perceive";
 import {
@@ -285,27 +289,32 @@ export async function runTdePerceive(input: {
       narrateOfferFromBeliefs(tdeBeliefs, input.body.language) ?? templateMessage;
   }
 
+  let guestStatusSection: string | null = null;
+
   if (
-    (turnPlan.reason === "commerce.status.open_order" ||
-      turnPlan.reason === "commerce.post_order.settling") &&
+    isGuestStatusTurnReason(turnPlan.reason) &&
     input.ctx.tableSessionState?.commerce.orders.length
   ) {
-    const { openOrderStatusGuestMessage } = await import(
-      "@/lib/guest/denis-guest-recovery"
-    );
-    const statusMessage = openOrderStatusGuestMessage(
-      input.ctx.tableSessionState.commerce.orders,
-      input.body.language
-    );
-    if (statusMessage) {
-      if (turnPlan.reason === "commerce.post_order.settling") {
-        const thanks =
-          templateMessage ??
-          defaultGuestChatFallback(input.body.language);
-        templateMessage = `${statusMessage}\n\n${thanks}`;
-      } else {
-        templateMessage = statusMessage;
-      }
+    try {
+      const state = input.ctx.tableSessionState;
+      const statusInquiry = await maybeProcessGuestStatusForTurn(input.admin, {
+        turnPlanReason: turnPlan.reason,
+        locationId: input.body.locationId,
+        tableId: input.body.tableId,
+        tableName: state.table.name || null,
+        orders: state.commerce.orders,
+        venueOps: input.ctx.venueOps,
+        config: input.ctx.config,
+      });
+      guestStatusSection = statusInquiry?.section ?? null;
+    } catch (statusError) {
+      logger.warn("guest status inquiry failed", {
+        locationId: input.body.locationId,
+        error:
+          statusError instanceof Error
+            ? statusError.message
+            : String(statusError),
+      });
     }
   }
 
@@ -596,6 +605,7 @@ export async function runTdePerceive(input: {
     promoBlock: promoTurnContext.promoBlock,
     crossDeviceBlock,
     accessibilityBlock,
+    guestStatusSection,
   });
 
   const modelRoute = resolveAdaptiveModelRoute({

@@ -386,6 +386,9 @@ function shouldComprehendOrderLineOverride(
   if (!text || !isOrderPlacementMessage(text)) return false;
   if (looksLikeMenuQuestion(text)) return false;
   if (VAGUE_COMPREHEND_PATTERN.test(text)) return false;
+  if (isGuestStatusQueryMessage(text)) return false;
+  if (isGuestSettlingMessage(text)) return false;
+  if (isGuestOrderComplaintMessage(text)) return false;
   return true;
 }
 

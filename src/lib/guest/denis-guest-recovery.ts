@@ -96,7 +96,7 @@ const BILL_AMOUNT_PATTERN =
 const ADD_MORE_CHIP_PATTERN =
   /^(jo[sš]\s+nešto|jos\s+nesto|noch\s+etwas|add\s+more|something\s+else)$/i;
 const STATUS_PATTERN =
-  /\b(kad\s+sti[žz]e|kada\s+sti[žz]e|gde\s+je|gdje\s+je|status|ready|fertig|spremn|koliko\s+čeka|order\s+status|moj\s+burger|moje\s+pivo)\b/i;
+  /\b(za\s+koliko\s+sti[žz]e|kad\s+sti[žz]e|kada\s+sti[žz]e|gde\s+je|gdje\s+je|status|ready|fertig|spremn|koliko\s+čeka|order\s+status|moj\s+burger|moje\s+pivo)\b/i;
 const WAITER_PATTERN =
   /\b(konobar[a-zšđčćž]*|kellner|waiter|garson|pozov[a-zšđčćž]*|ne\s+mogu\s+da\s+pozov)\b/i;
 const ORDER_PATTERN =
@@ -404,23 +404,8 @@ function parseRecoveryChipReply(input: {
   }
 
   if (STATUS_DETAIL_CHIP_PATTERN.test(text)) {
-    const detail = detailedStatusMessage(input.situation, input.language);
-    if (!detail) {
-      return {
-        tier: 0,
-        answeredLocally: true,
-        message: tForAiGuestLanguage(
-          "ai.recovery.noOpenOrders",
-          input.language
-        ),
-      };
-    }
-    return {
-      tier: 0,
-      answeredLocally: true,
-      message: detail,
-      quickReplies: statusRecoveryQuickReplies(input.language),
-    };
+    // Status detail needs bar/kitchen intel — always defer to Denis API.
+    return null;
   }
 
   return null;
@@ -443,19 +428,10 @@ function contextualTier0Message(input: {
   language: string;
   situation?: SceneSituation | null;
   cartItemCount: number;
-}): Pick<GuestRecoveryResult, "message" | "quickReplies" | "action"> {
+}): Pick<GuestRecoveryResult, "message" | "quickReplies" | "action"> | null {
   if (input.intent === "status") {
-    const status = knownStatusMessage(input.situation, input.language);
-    if (status) {
-      return {
-        message: status,
-        quickReplies: statusFollowUpChips(input.language, input.situation),
-      };
-    }
-    return {
-      message: tForAiGuestLanguage("ai.recovery.noOpenOrders", input.language),
-      quickReplies: undefined,
-    };
+    // Never answer status locally — server runs order + bar load check + LLM narration.
+    return null;
   }
 
   if (input.intent === "payment") {
@@ -537,7 +513,15 @@ export function resolveGuestRecoveryResponse(input: {
       situation: input.situation,
       cartItemCount,
     });
-    return { tier, ...contextual };
+    if (contextual) {
+      return { tier, ...contextual };
+    }
+    if (intent === "status") {
+      return {
+        tier: 1,
+        message: tForAiGuestLanguage("ai.recovery.retryStatus", input.language),
+      };
+    }
   }
 
   const paymentMethod = resolvePaymentMethodAnswer(
@@ -592,9 +576,10 @@ export function resolveGuestRecoveryMessage(input: {
 }
 
 /**
- * Instant answer from dock/scene — disabled; all guest replies go through Denis LLM.
+ * Instant answer from dock/scene facts. Ordering intents still go through Denis'
+ * ordering flow; factual status/payment/waiter questions should not wait for LLM.
  */
-export function tryLocalGuestAnswer(_input: {
+export function tryLocalGuestAnswer(input: {
   guestMessage: string;
   language: string;
   situation?: SceneSituation | null;
@@ -602,7 +587,89 @@ export function tryLocalGuestAnswer(_input: {
   cartTotal?: number;
   currency?: string;
 }): GuestRecoveryResult | null {
-  return null;
+  const chip = parseRecoveryChipReply({
+    guestMessage: input.guestMessage,
+    language: input.language,
+    situation: input.situation,
+  });
+  if (chip) return chip;
+
+  const paymentMethod = resolvePaymentMethodAnswer(
+    input.guestMessage,
+    input.language
+  );
+  if (paymentMethod) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      ...paymentMethod,
+    };
+  }
+
+  if (isWaiterConfirmMessage(input.guestMessage)) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: handoffNarrationMessage("waiter_on_way", input.language),
+      action: { tryWaiterCall: true },
+    };
+  }
+
+  if (ADD_MORE_CHIP_PATTERN.test(input.guestMessage.trim())) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: addMoreReplyMessage(input.language),
+    };
+  }
+
+  const hasOpenOrder = openSituationOrders(input.situation).length > 0;
+  if (
+    hasOpenOrder &&
+    input.cartItemCount === 0 &&
+    (SETTLING_PATTERN.test(input.guestMessage) ||
+      ALREADY_ORDERED_PATTERN.test(input.guestMessage))
+  ) {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      message: postOrderSettleMessage(input.situation, input.language),
+      quickReplies: statusFollowUpChips(input.language, input.situation),
+    };
+  }
+
+  const intent = classifyGuestRecoveryIntent(input.guestMessage);
+  if (intent === "order" || intent === "general") return null;
+
+  if (intent === "bill_amount") {
+    return {
+      tier: 0,
+      answeredLocally: true,
+      ...billAmountReply({
+        language: input.language,
+        situation: input.situation,
+        cartTotal: input.cartTotal ?? 0,
+        currency: input.currency ?? "EUR",
+      }),
+    };
+  }
+
+  const contextual = contextualTier0Message({
+    intent,
+    language: input.language,
+    situation: input.situation,
+    cartItemCount: input.cartItemCount,
+  });
+
+  if (!contextual) {
+    return null;
+  }
+
+  return {
+    tier: 0,
+    answeredLocally: true,
+    ...contextual,
+  };
 }
 
 export function isInfrastructureChatError(

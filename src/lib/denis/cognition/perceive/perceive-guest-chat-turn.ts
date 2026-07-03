@@ -349,10 +349,8 @@ export async function perceiveGuestChatTurn(
     }
 
     if (row.status !== "active") {
-      return apiError("Session is no longer active.", 410);
-    }
-
-    if (isAiSessionExpired(row)) {
+      sessionRow = null;
+    } else if (isAiSessionExpired(row)) {
       await admin
         .from("ai_sessions")
         .update({
