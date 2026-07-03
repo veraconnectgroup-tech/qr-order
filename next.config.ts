@@ -96,6 +96,9 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
     /** Lower peak RSS during webpack on Vercel 2-core/8GB builders. */
     webpackMemoryOptimizations: true,
+    /** Single-threaded compilation — parallel workers multiply peak RSS and were SIGKILLing the build. */
+    cpus: 1,
+    workerThreads: false,
   },
   productionBrowserSourceMaps: false,
   images: {
