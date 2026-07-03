@@ -63,11 +63,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Obrisan duplikat send-sms.ts — SMS u produkciji ide preko sms-provider.ts (outbox, channel-router).
 
 ### A6 — ROI Tracker + Admin ROI stranica
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:13
 - Fajlovi: `src/lib/billing/denis-roi-tracker.ts`, `src/lib/admin/load-org-multi-venue-roi.ts`, `src/app/(admin)/admin/roi/page.tsx`, `src/components/admin/denis-owner-roi-panel.tsx`, `src/components/admin/admin-venue-hub-selector.tsx`, `supabase/migrations/00157_denis_roi_events.sql`, test `denis-roi-tracker.test.ts`
 - Zadatak: JESTE uvezan (admin/roi stranica postoji). Popraviti TS greške (denis-owner-roi-panel, load-org-multi-venue-roi), verifikovati da stranica radi, komitovati. Migraciju 00157 pušiti po `ADR-001-safe-rollout.md`.
-- Napomena: —
+- Napomena: Popravljen admin/roi page (odvojen org query umesto broken join) i Recharts tooltip formatter. denis-roi-tracker.test.ts 6/6 zelen. Migracija 00157 sa RLS uključena u commit.
 
 ### A7 — Review Request paket
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A6 | ROI paket komitovan; TS fix na admin/roi + panel; test 6/6; migracija 00157. |
 | 2026-07-03 | Composer | A5 | Obrisan neuvuzen send-sms.ts duplikat (sms-provider ostaje). |
 | 2026-07-03 | Composer | A4 | Obrisana run-event-gathering-detection + event-gathering-alert-store. |
 | 2026-07-03 | Composer | A3 | Obrisan recovery-playbook; predictive recovery u lifecycle + test zelen. |
