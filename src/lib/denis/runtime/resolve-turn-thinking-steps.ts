@@ -1,4 +1,5 @@
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
+import { isGuestAllergyRelatedMessage } from "@/lib/denis/cognition/safety/allergy-guard";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
@@ -53,7 +54,8 @@ function reasonMatches(
 /** Map TDE turn plan → guest-visible thinking steps (server truth). */
 export function resolveTurnThinkingStepKeys(
   turnPlan: TurnPlan,
-  reflexTurn?: Pick<ReflexTurnResult, "handoffCommand"> | null
+  reflexTurn?: Pick<ReflexTurnResult, "handoffCommand"> | null,
+  guestMessage?: string | null
 ): TranslationKey[] {
   const handoffType = reflexTurn?.handoffCommand?.type;
   if (handoffType === "WAITER.REQUEST") {
@@ -67,6 +69,13 @@ export function resolveTurnThinkingStepKeys(
   }
 
   const reason = turnPlan.reason;
+
+  if (guestMessage && isGuestAllergyRelatedMessage(guestMessage)) {
+    return capTurnThinkingStepKeys([
+      "ai.chat.thinking.allergy",
+      "ai.chat.thinking.menu",
+    ]);
+  }
 
   if (reasonMatches(STATUS_REASONS, reason)) {
     return capTurnThinkingStepKeys(["ai.chat.thinking.status"]);

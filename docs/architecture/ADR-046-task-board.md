@@ -105,11 +105,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Oba modula nisu uvezeni van sopstvenog koda — obrisani lib fajlovi + migracija 00156. Živi allergy guard ostaje u kernel/cognition allergy-guard.ts (A12).
 
 ### A12 — Status-flow izmene jezgra (komitovati)
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:30
 - Fajlovi (modifikovani, već testirani): `src/lib/denis/kernel/safety/allergy-guard.ts`, `src/lib/denis/cognition/safety/allergy-guard.ts`, `src/lib/denis/cognition/tde/decide-turn-plan.ts`, `src/lib/denis/commands/perceive-table-guest-command.ts`, `src/lib/guest/denis-thinking-steps.ts`, `src/lib/denis/runtime/resolve-turn-thinking-steps.ts`, `run-denis-thinking-preview.ts`, `src/components/guest/ai-concierge-chat.tsx`, `src/lib/denis/stations/process-guest-status-inquiry.ts` (1 TS greška), `src/lib/denis/cognition/context/plan-evidence.ts` (1), + prateći testovi (allergy-guard, denis-tde, denis-thinking-steps, denis-handoff-phrases)
 - Zadatak: ovo je NAMERAN rad (dvofazni status tok, kontekstualni allergy thinking, "to je sve" fix). Popraviti 2 preostale TS greške, verifikovati da su prateći testovi zeleni, komitovati kao jednu celinu.
-- Napomena: —
+- Napomena: Komitovan status-flow paket. TS fix: commerce.status EvidencePointer + buildStationQuestionMessage import iz question-triggers. Testovi allergy-guard/denis-tde/denis-thinking-steps/denis-handoff-phrases 80/80 zeleni.
 
 ### A13 — Ostali nekomitovani fajlovi
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A12 | Status-flow jezgro komitovano; TS fix + 80/80 testova. |
 | 2026-07-03 | Composer | A11 | Obrisan neuvuzen allergy audit log + printer warnings paket. |
 | 2026-07-03 | Composer | A10 | Obrisano 6 menu/promo siročića; Phase2 + promo testovi zeleni. |
 | 2026-07-03 | Composer | A9 | Runtime table lifecycle TS fix; testovi 11/11 zeleni. |

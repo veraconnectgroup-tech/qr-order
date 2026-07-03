@@ -1,4 +1,6 @@
 import type { SelectablePaymentMethod } from "@/lib/payment-methods";
+import { isGuestDoneOrdering } from "@/lib/ai/ordering/order-flow";
+import { isGuestSettlingMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 
 export type TableGuestCommand =
@@ -126,6 +128,9 @@ export function isOrderModifyMessage(message: string): boolean {
   const text = normalize(message);
   if (isOrderCancelMessage(message)) return false;
   if (isProductSubstitutionPhrase(text)) return false;
+  if (isGuestSettlingMessage(message) || isGuestDoneOrdering(message)) {
+    return false;
+  }
   return (
     /\b(promen[iu]|izmen[iu]|change order|modify order|drugačije|ändere|andere bestellung)\b/.test(
       text

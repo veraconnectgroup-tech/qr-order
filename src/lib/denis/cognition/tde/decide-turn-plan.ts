@@ -409,10 +409,7 @@ function shouldSettleTemplateTurn(input: DecideTurnPlanInput): boolean {
     return false;
   }
 
-  const mode = resolveConversationMode(input);
-  if (mode === "ordering") return false;
-
-  return mode === "settling" || isGuestSettlingMessage(trimmed);
+  return true;
 }
 
 /** ADR-030 — LLM confirm at recap; T0 cart edits (add/remove) stay reflex_only. */

@@ -2,6 +2,7 @@ export {
   catalogToAllergyGuardProducts,
   checkAllergyConflict,
   isAllergyAcknowledged,
+  isGuestAllergyRelatedMessage,
   mergeAllergieLabelSets,
   parseAllergenExclusionsFromText,
   resolveKnownAllergenIds,

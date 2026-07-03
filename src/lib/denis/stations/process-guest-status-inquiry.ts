@@ -2,10 +2,10 @@ import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema
 import { buildGuestStatusSection } from "@/lib/denis/cognition/context/build-guest-status-section";
 import type { OrderFact } from "@/lib/denis/loop/types";
 import {
-  buildStationQuestionMessage,
   createStationQuestion,
   getFreshStationAnswer,
 } from "@/lib/denis/stations/station-questions";
+import { buildStationQuestionMessage } from "@/lib/denis/stations/question-triggers";
 import {
   resolveGuestStatusIntel,
   type GuestStatusIntel,

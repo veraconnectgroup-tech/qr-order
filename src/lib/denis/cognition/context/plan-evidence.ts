@@ -33,6 +33,7 @@ import type { ContextAwarenessSnapshot } from "@/lib/denis/intelligence/event-co
 
 export type EvidencePointer =
   | "commerce.*"
+  | "commerce.status"
   | "transcript.window"
   | "situation.pack"
   | "dialogue.frame"

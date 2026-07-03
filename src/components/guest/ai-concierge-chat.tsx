@@ -937,14 +937,11 @@ export function AiConciergeChat({
         (guestProfile?.visitHistory?.length ?? 0) > 0 ||
         (guestProfile?.favorites?.length ?? 0) > 0 ||
         guestProfile?.lastVisitAt != null,
-      hasAllergy:
-        resolvedAllergySelection.length > 0 ||
-        preferencesRef.current.allergies.length > 0,
       isLargeOrder:
         cartItems.reduce((sum, item) => sum + item.quantity, 0) >= 4 ||
         cartItems.length >= 3,
     }),
-    [guestProfile, resolvedAllergySelection, cartItems]
+    [guestProfile, cartItems]
   );
 
   const thinkingSteps = useMemo(() => {

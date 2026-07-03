@@ -35,6 +35,17 @@ describe("order change phrases", () => {
     expect(isOrderCancelMessage("poništite porudžbinu")).toBe(true);
     expect(isOrderModifyMessage("promeni porudžbinu")).toBe(true);
     expect(isOrderModifyMessage("ne to, drugačije")).toBe(true);
+    expect(isOrderModifyMessage("ne to je sve")).toBe(false);
+    expect(isOrderModifyMessage("to je sve")).toBe(false);
+  });
+
+  it("does not map done-ordering lines to ORDER_MODIFY", () => {
+    expect(
+      perceiveTableGuestCommand({ message: "ne to je sve" })
+    ).toBeNull();
+    expect(
+      perceiveTableGuestCommand({ message: "to je sve" })
+    ).toBeNull();
   });
 
   it("does not treat side substitution as order modify", () => {

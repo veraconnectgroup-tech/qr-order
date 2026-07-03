@@ -58,7 +58,7 @@ describe("denis-thinking-steps", () => {
     ).toEqual(["ai.chat.thinking.menu", "ai.chat.thinking.recommend"]);
   });
 
-  it("uses personalized steps for returning guests and allergies", () => {
+  it("uses personalized steps for returning guests and allergy questions", () => {
     expect(
       resolveDenisThinkingStepKeys("sta imate", {
         isReturningGuest: true,
@@ -68,14 +68,14 @@ describe("denis-thinking-steps", () => {
       "ai.chat.thinking.menu",
     ]);
 
-    expect(
-      resolveDenisThinkingStepKeys("Hoću dva piva", {
-        hasAllergy: true,
-      })
-    ).toEqual([
-      "ai.chat.thinking.allergy",
+    expect(resolveDenisThinkingStepKeys("Hoću dva piva")).toEqual([
       "ai.chat.thinking.menu",
+      "ai.chat.thinking.order",
     ]);
+
+    expect(
+      resolveDenisThinkingStepKeys("Da li imate nešto bez lešnika?")
+    ).toEqual(["ai.chat.thinking.allergy", "ai.chat.thinking.menu"]);
 
     expect(
       resolveDenisThinkingStepKeys("Hoću dva piva", {

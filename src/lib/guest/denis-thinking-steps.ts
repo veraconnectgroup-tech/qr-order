@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isGuestAllergyRelatedMessage } from "@/lib/denis/cognition/safety/allergy-guard";
 import {
   classifyGuestRecoveryIntent,
   isGuestPauseMessage,
@@ -22,7 +23,6 @@ export type DenisThinkingContext =
 
 export type DenisThinkingPersonalization = {
   isReturningGuest?: boolean;
-  hasAllergy?: boolean;
   isLargeOrder?: boolean;
 };
 
@@ -57,16 +57,20 @@ export function resolveDenisThinkingContext(message: string): DenisThinkingConte
 
 function resolvePersonalizedStepKey(
   context: DenisThinkingContext,
+  message: string,
   personalization?: DenisThinkingPersonalization
 ): TranslationKey | null {
-  if (!personalization) return null;
-
   if (
-    personalization.hasAllergy &&
-    (context === "menu" || context === "order")
+    isGuestAllergyRelatedMessage(message) &&
+    context !== "pause" &&
+    context !== "status" &&
+    context !== "payment" &&
+    context !== "waiter"
   ) {
     return "ai.chat.thinking.allergy";
   }
+
+  if (!personalization) return null;
 
   if (personalization.isLargeOrder && context === "order") {
     return "ai.chat.thinking.largeOrder";
@@ -85,10 +89,17 @@ export function resolveDenisThinkingStepKeys(
 ): TranslationKey[] {
   const context = resolveDenisThinkingContext(message);
   const base = [...THINKING_STEPS[context]];
-  const personalized = resolvePersonalizedStepKey(context, personalization);
+  const personalized = resolvePersonalizedStepKey(
+    context,
+    message,
+    personalization
+  );
 
   if (personalized) {
-    const tail = base.filter((key) => key !== personalized);
+    const tail =
+      personalized === "ai.chat.thinking.allergy" && context === "general"
+        ? THINKING_STEPS.menu.filter((key) => key !== personalized)
+        : base.filter((key) => key !== personalized);
     return capDenisThinkingStepKeys([personalized, ...tail]);
   }
 

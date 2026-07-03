@@ -6,6 +6,7 @@ import {
 import {
   checkAllergyConflict,
   isAllergyAcknowledged,
+  isGuestAllergyRelatedMessage,
   parseAllergenExclusionsFromText,
 } from "@/lib/denis/cognition/safety/allergy-guard";
 import { foldSessionGuestAllergies } from "@/lib/denis/cognition/safety/fold-session-allergens";
@@ -190,6 +191,11 @@ describe("allergy guard F2", () => {
     expect(
       parseAllergenExclusionsFromText("imam alergiju na kikiriki")
     ).toContain("peanuts");
+    expect(parseAllergenExclusionsFromText("bez lešnika")).toContain("nuts");
+    expect(
+      isGuestAllergyRelatedMessage("Da li imate nešto bez lešnika?")
+    ).toBe(true);
+    expect(isGuestAllergyRelatedMessage("jedno veliko pivo")).toBe(false);
   });
 
   it("detects guest acknowledgment phrases", () => {

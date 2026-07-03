@@ -64,9 +64,26 @@ function allergenFromToken(raw: string): AllergenId | null {
   if (token.startsWith("laktose") || token.startsWith("lactose")) return "milk";
   if (token.startsWith("milch") || token.startsWith("mleka")) return "milk";
   if (token.startsWith("nuss") || token.startsWith("orah")) return "nuts";
+  if (
+    token.startsWith("lesnik") ||
+    token.startsWith("lešnik") ||
+    token.startsWith("lesnike") ||
+    token.startsWith("lešnike") ||
+    token.startsWith("hazelnut") ||
+    token.startsWith("orasast")
+  ) {
+    return "nuts";
+  }
   if (token.startsWith("kikiriki") || token.startsWith("peanut")) return "peanuts";
 
   return null;
+}
+
+/** Guest turn mentions allergens — show allergy thinking / filter menu, not on plain orders. */
+export function isGuestAllergyRelatedMessage(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return parseAllergenExclusionsFromText(trimmed).length > 0;
 }
 
 /** Parse allergen exclusions from guest text (chat + menu query). */

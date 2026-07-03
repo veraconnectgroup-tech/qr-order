@@ -62,7 +62,11 @@ export async function runDenisThinkingPreview(
     message: parsed.data.message,
   });
 
-  const stepKeys = resolveTurnThinkingStepKeys(turnPlan, reflexTurn);
+  const stepKeys = resolveTurnThinkingStepKeys(
+    turnPlan,
+    reflexTurn,
+    parsed.data.message
+  );
   const language = parsed.data.language;
   const steps = stepKeys.map((key) => tForAiGuestLanguage(key, language));
 

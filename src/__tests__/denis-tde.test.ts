@@ -343,6 +343,20 @@ describe("decideTurnPlan — ADR-025 state-driven routing", () => {
     expect(plan.requiresLlm).toBe(true);
   });
 
+  it("to je sve after submit closes round even when mode still ordering", () => {
+    const plan = decideTurnPlan({
+      beliefs: beliefGraph([
+        belief("conversation.mode", "ordering"),
+        belief("commerce.pressure", "none"),
+        belief("commerce.has_open_orders", true),
+      ]),
+      reflex: reflexFor("to je sve"),
+      message: "to je sve",
+    });
+    expect(plan.kind).toBe("template_tell");
+    expect(plan.templateKey).toBe("settle.thanks");
+  });
+
   it("Može without confirm context → relational_perceive (not banter.welcome)", () => {
     const plan = decideTurnPlan({
       beliefs: beliefGraph([
