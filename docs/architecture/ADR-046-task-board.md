@@ -49,18 +49,18 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Obrisan recovery-playbook + test. U orchestrate-table-lifecycle dodat optional predictiveRecovery (slow_kitchen boost). Popravljen resolve-table-lifecycle-context (uklonjen nepostojeći state cache). predictive-recovery-phase4.test.ts zelen; uklonjeni resolveDogBrowseRedirect testovi (A10 scope).
 
 ### A4 — Event Gathering Detection
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:11
 - Fajlovi: `src/lib/denis/venue/ops/run-event-gathering-detection.ts` (4 TS greške), `src/lib/denis/venue/ops/event-gathering-alert-store.ts`
 - Zadatak: NIJE uvezan nigde → obrisati oba fajla.
-- Napomena: —
+- Napomena: Obrisana oba fajla — nisu uvezeni van sopstvenog modula. Event gathering u produkciji ostaje preko event-mode.ts.
 
 ### A5 — send-sms
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:12
 - Fajlovi: `src/lib/notifications/send-sms.ts`
 - Zadatak: NIJE uvezan nigde → obrisati.
-- Napomena: —
+- Napomena: Obrisan duplikat send-sms.ts — SMS u produkciji ide preko sms-provider.ts (outbox, channel-router).
 
 ### A6 — ROI Tracker + Admin ROI stranica
 - Status: TODO
@@ -220,6 +220,8 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A5 | Obrisan neuvuzen send-sms.ts duplikat (sms-provider ostaje). |
+| 2026-07-03 | Composer | A4 | Obrisana run-event-gathering-detection + event-gathering-alert-store. |
 | 2026-07-03 | Composer | A3 | Obrisan recovery-playbook; predictive recovery u lifecycle + test zelen. |
 | 2026-07-03 | Composer | A2 | Obrisan neuvuzen Kitchen Morning Brief + Demand Intelligence paket (6 fajlova). |
 | 2026-07-03 | Composer | A1 | Obrisan neuvuzen Waiter Copilot paket (8 lib fajlova, komponenta, test); uklonjeni copilot testovi iz denis-phase5-pilot.test.ts. |
