@@ -58,6 +58,7 @@ export function FeatureRow({
             sizes="100vw"
             className="object-cover"
           />
+          <div className="landing-feature-scene-vignette absolute inset-0" />
           {/* Stronger wash over the text column, paint stays visible under the mockup */}
           <div
             className={cn(

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   CheckCircle2,
   CreditCard,
@@ -260,18 +259,14 @@ function GuestOrderingFeature({ feature }: { feature: LandingFeature }) {
       id={feature.id}
       className="relative scroll-mt-24 overflow-hidden border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-[4.5rem] text-[var(--lp-ink)] sm:py-20 lg:py-24"
     >
-      {/* Watercolor scene under the whole section — mockup melts into it,
-          text column sits on a stronger paper wash */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <Image
-          src="/landing/bg-guest-qr.jpg"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="landing-feature-scene-wash-left absolute inset-0" />
-      </div>
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-white to-transparent"
+        aria-hidden
+      />
 
       <div
         className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-px max-w-[240px] bg-gradient-to-r from-transparent via-[var(--lp-ember)]/35 to-transparent"

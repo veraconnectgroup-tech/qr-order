@@ -595,7 +595,7 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
       color-mix(in srgb, var(--lp-bg) 92%, transparent) 22%,
       color-mix(in srgb, var(--lp-bg) 26%, transparent) 56%,
       transparent 78%,
-      transparent 100%
+      color-mix(in srgb, var(--lp-bg) 72%, transparent) 100%
     ),
     linear-gradient(
       to right,
@@ -623,7 +623,7 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
         color-mix(in srgb, var(--lp-bg) 90%, transparent) 20%,
         color-mix(in srgb, var(--lp-bg) 36%, transparent) 54%,
         transparent 76%,
-        transparent 100%
+        color-mix(in srgb, var(--lp-bg) 74%, transparent) 100%
       ),
       linear-gradient(
         to right,
@@ -635,25 +635,49 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   }
 }
 
-/* Feature scene — watercolor under the whole row.
-   Text column gets a stronger paper wash so copy stays readable;
-   the mockup side keeps the paint visible so it melts into the scene. */
+/* Feature scene — watercolor sits behind the row and fades back into paper. */
+.landing-page .landing-feature-scene-vignette {
+  background:
+    linear-gradient(
+      to bottom,
+      var(--lp-bg) 0%,
+      color-mix(in srgb, var(--lp-bg) 96%, transparent) 11%,
+      color-mix(in srgb, var(--lp-bg) 50%, transparent) 28%,
+      transparent 45%,
+      transparent 61%,
+      color-mix(in srgb, var(--lp-bg) 54%, transparent) 78%,
+      color-mix(in srgb, var(--lp-bg) 96%, transparent) 93%,
+      var(--lp-bg) 100%
+    ),
+    linear-gradient(
+      to right,
+      var(--lp-bg) 0%,
+      color-mix(in srgb, var(--lp-bg) 88%, transparent) 9%,
+      color-mix(in srgb, var(--lp-bg) 22%, transparent) 24%,
+      transparent 39%,
+      transparent 61%,
+      color-mix(in srgb, var(--lp-bg) 22%, transparent) 76%,
+      color-mix(in srgb, var(--lp-bg) 88%, transparent) 91%,
+      var(--lp-bg) 100%
+    );
+}
+
 .landing-page .landing-feature-scene-wash-left {
   background:
     linear-gradient(
       to right,
-      color-mix(in srgb, var(--lp-bg) 96%, transparent) 0%,
-      color-mix(in srgb, var(--lp-bg) 90%, transparent) 34%,
-      color-mix(in srgb, var(--lp-bg) 55%, transparent) 52%,
-      color-mix(in srgb, var(--lp-bg) 22%, transparent) 70%,
-      color-mix(in srgb, var(--lp-bg) 10%, transparent) 100%
+      var(--lp-bg) 0%,
+      color-mix(in srgb, var(--lp-bg) 96%, transparent) 30%,
+      color-mix(in srgb, var(--lp-bg) 64%, transparent) 48%,
+      color-mix(in srgb, var(--lp-bg) 22%, transparent) 68%,
+      transparent 100%
     ),
     linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--lp-bg) 55%, transparent) 0%,
+      color-mix(in srgb, var(--lp-bg) 76%, transparent) 0%,
       transparent 22%,
       transparent 78%,
-      color-mix(in srgb, var(--lp-bg) 55%, transparent) 100%
+      color-mix(in srgb, var(--lp-bg) 76%, transparent) 100%
     );
 }
 
@@ -661,18 +685,18 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   background:
     linear-gradient(
       to left,
-      color-mix(in srgb, var(--lp-bg) 96%, transparent) 0%,
-      color-mix(in srgb, var(--lp-bg) 90%, transparent) 34%,
-      color-mix(in srgb, var(--lp-bg) 55%, transparent) 52%,
-      color-mix(in srgb, var(--lp-bg) 22%, transparent) 70%,
-      color-mix(in srgb, var(--lp-bg) 10%, transparent) 100%
+      var(--lp-bg) 0%,
+      color-mix(in srgb, var(--lp-bg) 96%, transparent) 30%,
+      color-mix(in srgb, var(--lp-bg) 64%, transparent) 48%,
+      color-mix(in srgb, var(--lp-bg) 22%, transparent) 68%,
+      transparent 100%
     ),
     linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--lp-bg) 55%, transparent) 0%,
+      color-mix(in srgb, var(--lp-bg) 76%, transparent) 0%,
       transparent 22%,
       transparent 78%,
-      color-mix(in srgb, var(--lp-bg) 55%, transparent) 100%
+      color-mix(in srgb, var(--lp-bg) 76%, transparent) 100%
     );
 }
 
@@ -681,6 +705,18 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   .landing-page .landing-feature-scene-wash-left,
   .landing-page .landing-feature-scene-wash-right {
     background: color-mix(in srgb, var(--lp-bg) 82%, transparent);
+  }
+
+  .landing-page .landing-feature-scene-vignette {
+    background:
+      linear-gradient(
+        to bottom,
+        var(--lp-bg) 0%,
+        color-mix(in srgb, var(--lp-bg) 92%, transparent) 16%,
+        color-mix(in srgb, var(--lp-bg) 38%, transparent) 46%,
+        color-mix(in srgb, var(--lp-bg) 92%, transparent) 84%,
+        var(--lp-bg) 100%
+      );
   }
 }
 
