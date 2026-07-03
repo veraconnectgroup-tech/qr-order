@@ -84,11 +84,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Kartica nije u dashboardu, persist nije pozvan iz runtime-a — obrisano 5 fajlova. language-intelligence.test.ts 5/5 zelen (ažuriran script detector test na željeno ponašanje).
 
 ### A9 — Table Lifecycle orkestracija
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:22
 - Fajlovi: `src/lib/denis/runtime/orchestrate-table-lifecycle.ts` (3 TS greške), `src/lib/denis/cognition/lifecycle/resolve-table-lifecycle-context.ts` (4 TS greške), test `orchestrate-table-lifecycle.test.ts`
 - Zadatak: JESTE uvezan (build-situation-pack, rank-proactive-candidates, run-proactive-session-tick). Popraviti TS greške, test na zeleno, komitovati.
-- Napomena: —
+- Napomena: Uklonjen nevalidan eventConfig poziv u runtime orchestrateTableLifecycleTurn; resolveInterventionSpeakAllowed koristi config.intervention.mode. orchestrate-table-lifecycle + table-lifecycle-orchestration testovi 11/11 zeleni.
 
 ### A10 — Menu Engineering + Promo sekcije
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A9 | Runtime table lifecycle TS fix; testovi 11/11 zeleni. |
 | 2026-07-03 | Composer | A8 | Obrisan neuvuzen Guest Language Stats paket; language-intelligence test 5/5. |
 | 2026-07-03 | Composer | A7 | Obrisan neuvuzen Review Request paket (6 fajlova). |
 | 2026-07-03 | Composer | A6 | ROI paket komitovan; TS fix na admin/roi + panel; test 6/6; migracija 00157. |
