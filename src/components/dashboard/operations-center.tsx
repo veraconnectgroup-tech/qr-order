@@ -169,7 +169,7 @@ export function OperationsCenter() {
     [calls]
   );
 
-  const loading =
+  const anyLoading =
     notifLoading ||
     copilotLoading ||
     questionsLoading ||
@@ -275,7 +275,7 @@ export function OperationsCenter() {
     );
   }
 
-  if (loading) {
+  if (anyLoading && !hasWork) {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         {Array.from({ length: 4 }).map((_, index) => (
@@ -288,7 +288,7 @@ export function OperationsCenter() {
     );
   }
 
-  if (!hasWork) {
+  if (!anyLoading && !hasWork) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center justify-center py-24 text-center">
         <CheckCircle2 className="size-16 text-emerald-400/80" />
@@ -305,7 +305,10 @@ export function OperationsCenter() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-8">
-      {openRecovery.length > 0 && (
+      {notifLoading && (
+        <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
+      )}
+      {!notifLoading && openRecovery.length > 0 && (
         <SectionShell
           tone="red"
           title="🩹 Service recovery"
@@ -337,7 +340,7 @@ export function OperationsCenter() {
         </SectionShell>
       )}
 
-      {busEscalations.length > 0 && (
+      {!notifLoading && busEscalations.length > 0 && (
         <SectionShell tone="red" title="🔄 Obrt stola" count={busEscalations.length}>
           {busEscalations.map((notification) => (
             <article
@@ -365,7 +368,7 @@ export function OperationsCenter() {
         </SectionShell>
       )}
 
-      {burning.length > 0 && (
+      {!notifLoading && burning.length > 0 && (
         <SectionShell tone="red" title="🔴 Gori sada" count={burning.length}>
           {burning.map((notification) => (
             <article
@@ -395,7 +398,10 @@ export function OperationsCenter() {
         </SectionShell>
       )}
 
-      {questions.length > 0 && (
+      {questionsLoading && (
+        <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
+      )}
+      {!questionsLoading && questions.length > 0 && (
         <SectionShell
           tone="orange"
           title="🟠 Čeka odgovor"
@@ -442,7 +448,10 @@ export function OperationsCenter() {
         </SectionShell>
       )}
 
-      {readyStuck.length > 0 && (
+      {readyLoading && (
+        <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
+      )}
+      {!readyLoading && readyStuck.length > 0 && (
         <SectionShell
           tone="amber"
           title="🟡 Spremno a stoji"
@@ -477,7 +486,10 @@ export function OperationsCenter() {
         </SectionShell>
       )}
 
-      {riskTables.length > 0 && (
+      {copilotLoading && (
+        <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
+      )}
+      {!copilotLoading && riskTables.length > 0 && (
         <SectionShell
           tone="blue"
           title="🔵 Stolovi u riziku"
@@ -510,7 +522,10 @@ export function OperationsCenter() {
         </SectionShell>
       )}
 
-      {pendingCalls.length > 0 && (
+      {callsLoading && (
+        <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
+      )}
+      {!callsLoading && pendingCalls.length > 0 && (
         <SectionShell
           tone="neutral"
           title="⚪ Pozivi konobara"

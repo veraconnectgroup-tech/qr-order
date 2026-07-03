@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
+import { logger } from "@/lib/logger";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { buildRushModeSuggestion } from "@/lib/denis/venue/copilot/build-staff-table-brief";
 import {
@@ -75,7 +77,19 @@ const EMPTY_SNAPSHOT: StaffCopilotSnapshot = {
   prepBriefingBlock: null,
 };
 
-/** Staff-facing Denis copilot snapshot — no guest session leakage (M15). */
+const SNAPSHOT_CACHE_TTL_SECONDS = 8;
+
+function snapshotCacheKey(locationId: string) {
+  return `denis:staff-copilot-snapshot:${locationId}`;
+}
+
+/**
+ * Staff-facing Denis copilot snapshot — no guest session leakage (M15).
+ * The underlying analysis (table priorities, floor graph, inventory, event
+ * mode) is identical for every staff member at a location, so it's cached
+ * for a few seconds behind Redis; only the two role-derived booleans are
+ * computed fresh per caller.
+ */
 export async function loadStaffCopilotSnapshot(
   admin: SupabaseClient,
   input: {
@@ -83,17 +97,58 @@ export async function loadStaffCopilotSnapshot(
     staffRole: string;
   }
 ): Promise<StaffCopilotSnapshot> {
+  const canManageOps = ["owner", "manager"].includes(input.staffRole);
+  const canSetTableHints = ["owner", "manager", "waiter"].includes(
+    input.staffRole
+  );
+
+  const redis = getRedisClient();
+  const cacheKey = snapshotCacheKey(input.locationId);
+
+  if (redis) {
+    try {
+      const cached = await redis.get<StaffCopilotSnapshot>(cacheKey);
+      if (cached) {
+        return { ...cached, canManageOps, canSetTableHints };
+      }
+    } catch (error) {
+      logRedisDegradation(`staff-copilot-snapshot:read:${input.locationId}`, error);
+    }
+  }
+
+  const body = await computeStaffCopilotSnapshotBody(admin, input.locationId);
+
+  if (redis) {
+    try {
+      await redis.set(cacheKey, body, { ex: SNAPSHOT_CACHE_TTL_SECONDS });
+    } catch (error) {
+      logRedisDegradation(`staff-copilot-snapshot:write:${input.locationId}`, error);
+      logger.warn("staff copilot snapshot cache write failed", {
+        locationId: input.locationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { ...body, canManageOps, canSetTableHints };
+}
+
+/** Role fields are placeholders here — the caller always overwrites them. */
+async function computeStaffCopilotSnapshotBody(
+  admin: SupabaseClient,
+  locationId: string
+): Promise<StaffCopilotSnapshot> {
   const [{ data: locationRow }, config, recentOpens, inventorySnapshot] = await Promise.all([
     admin
       .from("locations")
       .select(
         "ai_concierge_enabled, denis_operating_mode, denis_kds_stress, denis_event_config, timezone, org_id"
       )
-      .eq("id", input.locationId)
+      .eq("id", locationId)
       .maybeSingle(),
-    loadConciergeConfigForLocation(input.locationId),
-    loadRecentSessionOpens(admin, { locationId: input.locationId }),
-    loadVenueInventorySnapshot(admin, { locationId: input.locationId }),
+    loadConciergeConfigForLocation(locationId),
+    loadRecentSessionOpens(admin, { locationId }),
+    loadVenueInventorySnapshot(admin, { locationId }),
   ]);
 
   const location = locationRow as LocationRow | null;
@@ -101,29 +156,24 @@ export async function loadStaffCopilotSnapshot(
     return { ...EMPTY_SNAPSHOT, at: new Date().toISOString() };
   }
 
-  const canManageOps = ["owner", "manager"].includes(input.staffRole);
-  const canSetTableHints = ["owner", "manager", "waiter"].includes(
-    input.staffRole
-  );
-
   const [{ data: tableRows }, { data: hintRows }, floor, pendingLearnedEdges] =
     await Promise.all([
     admin
       .from("tables")
       .select("id, name")
-      .eq("location_id", input.locationId)
+      .eq("location_id", locationId)
       .eq("is_active", true)
       .order("name"),
     admin
       .from("denis_staff_table_hints" as never)
       .select("table_id, text, visibility")
-      .eq("location_id", input.locationId)
+      .eq("location_id", locationId)
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString()),
-    loadFloorGraph(admin, input.locationId, {
+    loadFloorGraph(admin, locationId, {
       backlogThresholdMinutes: config.ops.autoRushBacklogMinutes,
     }),
-    loadLearnedEdgeQueue(admin, input.locationId, "pending"),
+    loadLearnedEdgeQueue(admin, locationId, "pending"),
   ]);
 
   const tableNames = new Map(
@@ -140,7 +190,7 @@ export async function loadStaffCopilotSnapshot(
   );
 
   const tableContexts = await loadStaffCopilotTableContexts(admin, {
-    locationId: input.locationId,
+    locationId,
     floor,
   });
 
@@ -180,7 +230,7 @@ export async function loadStaffCopilotSnapshot(
     const eventPhase = resolveEventPhase(event);
     const effects = resolveEventEffects(event, eventPhase);
     const stats = await loadEventCopilotStats(admin, {
-      locationId: input.locationId,
+      locationId,
       floor,
     });
     eventBlock = {
@@ -192,7 +242,7 @@ export async function loadStaffCopilotSnapshot(
   const { data: productRows } = await admin
     .from("products")
     .select("id, name")
-    .eq("location_id", input.locationId)
+    .eq("location_id", locationId)
     .is("deleted_at", null);
 
   const productNames = Object.fromEntries(
@@ -238,12 +288,12 @@ export async function loadStaffCopilotSnapshot(
       month: "2-digit",
       day: "2-digit",
     }).format(new Date());
-    const storedBriefing = await loadDailyPrepBriefing(input.locationId, today);
+    const storedBriefing = await loadDailyPrepBriefing(locationId, today);
     const briefing =
       storedBriefing ??
       (orgId
         ? await loadDailyPrepBriefingForLocation(admin, {
-            locationId: input.locationId,
+            locationId,
             orgId,
           })
         : null);
@@ -268,8 +318,8 @@ export async function loadStaffCopilotSnapshot(
       autoRushEnabled: config.ops.autoRushEnabled,
       autoRushBacklogMinutes: config.ops.autoRushBacklogMinutes,
     }),
-    canManageOps,
-    canSetTableHints,
+    canManageOps: false,
+    canSetTableHints: false,
     priorityTables: staffCopilotPriorityTables(sorted),
     tables: sorted,
     eventBlock,
