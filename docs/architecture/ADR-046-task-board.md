@@ -70,11 +70,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Popravljen admin/roi page (odvojen org query umesto broken join) i Recharts tooltip formatter. denis-roi-tracker.test.ts 6/6 zelen. Migracija 00157 sa RLS uključena u commit.
 
 ### A7 — Review Request paket
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:20
 - Fajlovi: `src/lib/denis/commerce/review-request.ts`, `google-review-url.ts`, `load-review-request-stats.ts`, `src/lib/commerce/capabilities/reviews/record-review-request-sent.ts`, `src/components/admin/analytics/review-request-stats-panel.tsx`, test `review-request.test.ts`
 - Zadatak: trijaža po pravilu — utvrditi da li je panel uvezan u admin analytics; ako jeste popraviti 2 TS greške i komitovati, ako nije obrisati paket.
-- Napomena: —
+- Napomena: Panel nije uvezen u admin analytics — obrisano 6 fajlova (4 lib, panel, test). record-google-review-click.ts ostaje (živi kod).
 
 ### A8 — Guest Language Stats
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A7 | Obrisan neuvuzen Review Request paket (6 fajlova). |
 | 2026-07-03 | Composer | A6 | ROI paket komitovan; TS fix na admin/roi + panel; test 6/6; migracija 00157. |
 | 2026-07-03 | Composer | A5 | Obrisan neuvuzen send-sms.ts duplikat (sms-provider ostaje). |
 | 2026-07-03 | Composer | A4 | Obrisana run-event-gathering-detection + event-gathering-alert-store. |
