@@ -12,6 +12,7 @@ import {
   isOrderPlacementMessage,
 } from "@/lib/ai/ordering/order-message-backfill";
 import {
+  classMismatchGuestNote,
   guardProposedItemsAgainstMenu,
   unavailableItemsGuestNote,
 } from "@/lib/ai/ordering/proposed-item-guard";
@@ -112,7 +113,9 @@ export function processOrderingTurn(input: {
   const unavailableNote =
     guarded.droppedCount > 0 && guarded.unavailableTerms.length > 0
       ? unavailableItemsGuestNote(guarded.unavailableTerms, input.language ?? "sr")
-      : undefined;
+      : guarded.droppedCount > 0 && guarded.classMatchAlternatives.length > 0
+        ? classMismatchGuestNote(guarded.classMatchAlternatives, input.language ?? "sr")
+        : undefined;
 
   const hasProposed =
     guarded.items.length > 0 && !input.structured.submitOrder;

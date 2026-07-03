@@ -117,14 +117,23 @@ export type ProposedItemGuardResult = {
   items: AiProposedItem[];
   /** Guest-named terms that exist in no catalog product (e.g. "weizen"). */
   unavailableTerms: string[];
+  /**
+   * Names of catalog products that actually match the requested class,
+   * populated when the venue DOES serve that class but the LLM proposed a
+   * mismatched product (e.g. wine instead of beer) — lets the caller offer
+   * the real options instead of silently dropping with no explanation.
+   */
+  classMatchAlternatives: string[];
   droppedCount: number;
 };
 
 /**
  * Deterministic post-LLM guard: when the guest explicitly asks for a drink
- * class the venue does not serve, drop LLM-proposed items that neither match
- * the message text nor the requested class — never silently substitute
- * an unrelated product.
+ * class, drop LLM-proposed items that neither match the message text nor the
+ * requested class — never silently substitute an unrelated product. Applies
+ * both when the venue doesn't serve that class at all AND when it does but
+ * the LLM proposed the wrong product (e.g. "pivo" → Pinot Grigio when beer
+ * is actually on the menu).
  */
 export function guardProposedItemsAgainstMenu(input: {
   proposedItems: AiProposedItem[];
@@ -134,6 +143,7 @@ export function guardProposedItemsAgainstMenu(input: {
   const passthrough: ProposedItemGuardResult = {
     items: input.proposedItems,
     unavailableTerms: [],
+    classMatchAlternatives: [],
     droppedCount: 0,
   };
 
@@ -148,11 +158,6 @@ export function guardProposedItemsAgainstMenu(input: {
   for (const product of products) {
     for (const cls of productClasses(product)) servedClasses.add(cls);
   }
-
-  const unavailableClasses = [...requestedClasses].filter(
-    (cls) => !servedClasses.has(cls)
-  );
-  if (!unavailableClasses.length) return passthrough;
 
   const kept: AiProposedItem[] = [];
   let droppedCount = 0;
@@ -177,6 +182,9 @@ export function guardProposedItemsAgainstMenu(input: {
 
   if (!droppedCount) return passthrough;
 
+  const unavailableClasses = [...requestedClasses].filter(
+    (cls) => !servedClasses.has(cls)
+  );
   const messageTokens = textTokens(input.userMessage);
   const unavailableTerms = messageTokens.filter((token) =>
     unavailableClasses.some((cls) =>
@@ -184,9 +192,27 @@ export function guardProposedItemsAgainstMenu(input: {
     )
   );
 
+  const servedRequestedClasses = [...requestedClasses].filter((cls) =>
+    servedClasses.has(cls)
+  );
+  const classMatchAlternatives = servedRequestedClasses.length
+    ? [
+        ...new Set(
+          products
+            .filter((product) =>
+              [...productClasses(product)].some((cls) =>
+                servedRequestedClasses.includes(cls)
+              )
+            )
+            .map((product) => product.name)
+        ),
+      ].slice(0, 4)
+    : [];
+
   return {
     items: kept,
     unavailableTerms: [...new Set(unavailableTerms)],
+    classMatchAlternatives,
     droppedCount,
   };
 }
@@ -205,4 +231,20 @@ export function unavailableItemsGuestNote(
     return `We don't have ${list} on the menu. Tell me what you'd like instead — happy to suggest alternatives.`;
   }
   return `Nažalost nemamo ${list} u ponudi. Reci šta želiš umesto toga — mogu da predložim alternative.`;
+}
+
+/** Honest guest note when the venue serves the requested class but the proposed item was wrong. */
+export function classMismatchGuestNote(
+  alternatives: string[],
+  language: string
+): string {
+  const list = alternatives.join(", ");
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "de") {
+    return `Das war nicht ganz richtig — wir haben: ${list}. Was davon möchtest du?`;
+  }
+  if (lang === "en") {
+    return `That wasn't quite right — we have: ${list}. Which one would you like?`;
+  }
+  return `Nisam dobro pogodio — imamo: ${list}. Koje od ovoga želiš?`;
 }
