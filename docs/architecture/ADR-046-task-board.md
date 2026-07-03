@@ -98,11 +98,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Obrisano 6 neuvuzenih modula. denis-phase2-integrations (3/3) i promo-intelligence (11/11) zeleni. T0 promo_inquiry pre menu availability u semantic-intent-router.
 
 ### A11 — Allergy Audit Log + Printer upozorenja
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:29
 - Fajlovi: `src/lib/denis/compliance/allergy-audit-log.ts` (1 TS greška), `src/lib/printer/load-order-allergy-warnings.ts` (1), `supabase/migrations/00156_allergy_audit_log.sql`
 - Zadatak: trijaža po pravilu; ako se zadržava — migracija 00156 po safe-rollout proceduri, RLS obavezan.
-- Napomena: —
+- Napomena: Oba modula nisu uvezeni van sopstvenog koda — obrisani lib fajlovi + migracija 00156. Živi allergy guard ostaje u kernel/cognition allergy-guard.ts (A12).
 
 ### A12 — Status-flow izmene jezgra (komitovati)
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A11 | Obrisan neuvuzen allergy audit log + printer warnings paket. |
 | 2026-07-03 | Composer | A10 | Obrisano 6 menu/promo siročića; Phase2 + promo testovi zeleni. |
 | 2026-07-03 | Composer | A9 | Runtime table lifecycle TS fix; testovi 11/11 zeleni. |
 | 2026-07-03 | Composer | A8 | Obrisan neuvuzen Guest Language Stats paket; language-intelligence test 5/5. |
