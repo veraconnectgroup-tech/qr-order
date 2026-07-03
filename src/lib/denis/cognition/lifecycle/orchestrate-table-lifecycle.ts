@@ -1,6 +1,7 @@
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { TableLifecycleOrchestration } from "@/lib/denis/cognition/lifecycle/table-lifecycle-types";
 import { emptyGuestScrollPosture } from "@/lib/denis/cognition/mental-model/derive-scroll-posture";
+import type { PredictiveRecoveryResult } from "@/lib/denis/cognition/recovery/detect-predictive-recovery";
 import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-tempo-phase";
 import type { GuestProactiveNudgeKind } from "@/lib/denis/cognition/proactive/proactive-types";
 import type { OrderFact } from "@/lib/denis/loop/types";
@@ -92,6 +93,7 @@ export function orchestrateTableLifecycle(input: {
   tableTempoPhase: TableTempoPhase;
   orders: OrderFact[];
   cartLineCount: number;
+  predictiveRecovery?: PredictiveRecoveryResult | null;
 }): TableLifecycleOrchestration {
   const mental = input.mental;
   const scrollPosture = mental?.scrollPosture ?? emptyGuestScrollPosture();
@@ -160,12 +162,15 @@ export function orchestrateTableLifecycle(input: {
   }
 
   if (mental?.intent === "waiting_food" || hasPreparingOrder(input.orders)) {
-    const preferred: GuestProactiveNudgeKind[] = [
-      "order_eta_update",
-      "order_preparing_notify",
-      "slow_kitchen",
-      "order_delay",
-    ];
+    const kitchenDelayProactive = input.predictiveRecovery?.signals.includes(
+      "kitchen_delay_proactive"
+    );
+    const preferred: GuestProactiveNudgeKind[] = kitchenDelayProactive
+      ? ["slow_kitchen", "order_eta_update", "order_preparing_notify", "order_delay"]
+      : ["order_eta_update", "order_preparing_notify", "slow_kitchen", "order_delay"];
+    if (kitchenDelayProactive) {
+      evidence.push("recovery.kitchen_delay_proactive");
+    }
     if (input.tableTempoPhase === "drinks_finished_estimate" && sommelierEligible) {
       preferred.push("sommelier_refill", "drink_refill");
     }

@@ -42,11 +42,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Trijaža potvrdila da paket nije uvezen van sopstvenih testova — obrisano 6 fajlova (2 lib, API ruta, banner, 2 testa). Uklonjeno ~12 TS grešaka iz paketa. Pun green suite ostaje za sekciju B.
 
 ### A3 — Recovery Playbook + Predictive Recovery
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:08
 - Fajlovi: `src/lib/denis/cognition/recovery/recovery-playbook.ts`, `src/lib/denis/cognition/recovery/detect-predictive-recovery.ts`, testovi `recovery-playbook.test.ts` + `predictive-recovery-phase4.test.ts`
 - Zadatak: `recovery-playbook` NIJE uvezan nigde → obrisati. `detect-predictive-recovery` JESTE uvezan (resolve-table-lifecycle-context, derive-waiter-floor-vision) → popraviti greške i učiniti test zelenim (zavisi od ishoda A1/A9).
-- Napomena: —
+- Napomena: Obrisan recovery-playbook + test. U orchestrate-table-lifecycle dodat optional predictiveRecovery (slow_kitchen boost). Popravljen resolve-table-lifecycle-context (uklonjen nepostojeći state cache). predictive-recovery-phase4.test.ts zelen; uklonjeni resolveDogBrowseRedirect testovi (A10 scope).
 
 ### A4 — Event Gathering Detection
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A3 | Obrisan recovery-playbook; predictive recovery u lifecycle + test zelen. |
 | 2026-07-03 | Composer | A2 | Obrisan neuvuzen Kitchen Morning Brief + Demand Intelligence paket (6 fajlova). |
 | 2026-07-03 | Composer | A1 | Obrisan neuvuzen Waiter Copilot paket (8 lib fajlova, komponenta, test); uklonjeni copilot testovi iz denis-phase5-pilot.test.ts. |
 | 2026-07-03 | Fable (analiza) | — | Kreiran ADR-046, task board i agent prompt. Izmereno: 79 TS grešaka, 43 pala testa, 78 nekomitovanih fajlova. |
