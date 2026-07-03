@@ -98,7 +98,7 @@ function ActionChip({
       className={cn(
         "inline-flex min-h-8 items-center gap-2 rounded-md border px-3 text-[12px] font-medium transition sm:text-[13px]",
         active
-          ? "border-[#1f2328] bg-[#1f2328] text-white"
+          ? "border-zinc-900 bg-zinc-900 text-white"
           : "border-[#d8dee8] bg-white text-[#596273] hover:border-[#aeb7c5] hover:text-[#1f2328]"
       )}
     >
@@ -200,7 +200,7 @@ export function LandingHeroDenisDemo({
           : "rounded-xl border border-[#dfe5ed] shadow-[0_32px_100px_rgba(31,35,40,0.12)]"
       )}
     >
-      <div className="flex h-11 items-center justify-between border-b border-[#e7ebf0] px-4 sm:h-12 sm:px-5">
+      <div className={cn("flex h-11 items-center justify-between border-b border-[#e7ebf0] px-4", compact ? "sm:h-11" : "sm:h-12 sm:px-5")}>
         <div className="flex min-w-0 items-center gap-3">
           <Hash className="size-5 shrink-0 text-[#6b7280]" />
           <p className="truncate text-[18px] font-bold text-[#1f2328]">
@@ -246,7 +246,7 @@ export function LandingHeroDenisDemo({
         </button>
       </div>
 
-      <div className="bg-white py-2">
+      <div className={cn("bg-white", compact ? "py-1.5" : "py-2")}>
         <Message
           avatar={<Avatar name="Marko" tone="blue" />}
           name="Marko"
@@ -264,22 +264,23 @@ export function LandingHeroDenisDemo({
           badge="App"
           time="7:42 PM"
           reactions={
-            <>
-              <Reaction icon={<Check className="size-4" />} count={1} />
-              <Reaction
-                icon={<UserCheck className="size-4" />}
-                count={1}
-                tone="orange"
-              />
-            </>
+            compact ? undefined : (
+              <>
+                <Reaction icon={<Check className="size-4" />} count={1} />
+                <Reaction
+                  icon={<UserCheck className="size-4" />}
+                  count={1}
+                  tone="orange"
+                />
+              </>
+            )
           }
         >
           <p>
-            Table 8: drinks have been ready for 4 min. Food is still in prep.
-            Next action: Marko, pick up drinks now.
+            Table 8: drinks ready 4 min. Kitchen in prep. Marko — pick up drinks now.
           </p>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:grid-cols-3 sm:gap-3">
             <StationPill
               icon={<Wine className="size-4" />}
               label="Bar"
@@ -343,9 +344,15 @@ export function LandingHeroDenisDemo({
         )}
       </div>
 
-      <div className={cn("border-t border-[#e7ebf0] bg-[#fbfcfd]", compact ? "p-2.5 sm:p-3" : "p-3 sm:p-4")}>
+      {!compact && (
+      <div className="border-t border-[#e7ebf0] bg-[#fbfcfd] p-3 sm:p-4">
         <div className="rounded-lg border border-[#dfe5ed] bg-white">
-          <div className="hidden min-h-9 items-center gap-4 border-b border-[#edf1f5] px-4 text-[#6b7280] sm:flex">
+          <div
+            className={cn(
+              "min-h-9 items-center gap-4 border-b border-[#edf1f5] px-4 text-[#6b7280]",
+              compact ? "hidden" : "hidden sm:flex"
+            )}
+          >
             <span className="font-semibold">B</span>
             <span className="italic">I</span>
             <span className="underline">U</span>
@@ -400,6 +407,7 @@ export function LandingHeroDenisDemo({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
