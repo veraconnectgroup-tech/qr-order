@@ -35,11 +35,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Trijaža potvrdila da ceo paket nije uvezen van sopstvenih testova — obrisano 8 lib modula, komponenta i test. U `denis-phase5-pilot.test.ts` uklonjeni testovi za obrisane module. Pun `test:run`/type-check/lint/build ostaje za sekciju B (prethodno crveno stanje repoa).
 
 ### A2 — Kitchen Morning Brief + Demand Intelligence
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:05
 - Fajlovi: `src/lib/denis/intelligence/kitchen-demand-intelligence.ts`, `src/lib/admin/format-kitchen-morning-brief.ts`, `src/app/api/kitchen/morning-brief/route.ts`, `src/components/dashboard/kitchen-morning-brief-banner.tsx`, testovi `kitchen-demand-intelligence.test.ts` + `format-kitchen-morning-brief.test.ts`
 - Zadatak: `kitchen-demand-intelligence` i banner NISU importovani nigde; 12+ TS grešaka u paketu. Preporuka: **obrisati ceo paket** (ruta, banner, lib, testovi). Vratiti iz git istorije kada dođe na roadmapu.
-- Napomena: —
+- Napomena: Trijaža potvrdila da paket nije uvezen van sopstvenih testova — obrisano 6 fajlova (2 lib, API ruta, banner, 2 testa). Uklonjeno ~12 TS grešaka iz paketa. Pun green suite ostaje za sekciju B.
 
 ### A3 — Recovery Playbook + Predictive Recovery
 - Status: TODO
@@ -220,5 +220,6 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A2 | Obrisan neuvuzen Kitchen Morning Brief + Demand Intelligence paket (6 fajlova). |
 | 2026-07-03 | Composer | A1 | Obrisan neuvuzen Waiter Copilot paket (8 lib fajlova, komponenta, test); uklonjeni copilot testovi iz denis-phase5-pilot.test.ts. |
 | 2026-07-03 | Fable (analiza) | — | Kreiran ADR-046, task board i agent prompt. Izmereno: 79 TS grešaka, 43 pala testa, 78 nekomitovanih fajlova. |
