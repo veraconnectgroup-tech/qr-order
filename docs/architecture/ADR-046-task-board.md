@@ -91,11 +91,11 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Uklonjen nevalidan eventConfig poziv u runtime orchestrateTableLifecycleTurn; resolveInterventionSpeakAllowed koristi config.intervention.mode. orchestrate-table-lifecycle + table-lifecycle-orchestration testovi 11/11 zeleni.
 
 ### A10 — Menu Engineering + Promo sekcije
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Composer — 2026-07-03 15:26
 - Fajlovi: `src/lib/denis/cognition/context/build-menu-engineering-section.ts`, `build-menu-engineering-browse-section.ts` (2 TS greške), `build-promo-situation-section.ts` (1), `src/lib/denis/runtime/build-promo-intel-snapshot.ts` (2), `schedule-menu-rag-rebuild.ts`, `detect-playbook-pack-from-menu.ts`, testovi `denis-phase2-integrations.test.ts` + `promo-intelligence.test.ts`
 - Zadatak: trijaža po pravilu za svaki fajl; popraviti greške za uvezane, obrisati siročiće; oba testa na zeleno.
-- Napomena: —
+- Napomena: Obrisano 6 neuvuzenih modula. denis-phase2-integrations (3/3) i promo-intelligence (11/11) zeleni. T0 promo_inquiry pre menu availability u semantic-intent-router.
 
 ### A11 — Allergy Audit Log + Printer upozorenja
 - Status: TODO
@@ -220,6 +220,7 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 
 | Datum | Agent | Zadatak | Šta je urađeno |
 |---|---|---|---|
+| 2026-07-03 | Composer | A10 | Obrisano 6 menu/promo siročića; Phase2 + promo testovi zeleni. |
 | 2026-07-03 | Composer | A9 | Runtime table lifecycle TS fix; testovi 11/11 zeleni. |
 | 2026-07-03 | Composer | A8 | Obrisan neuvuzen Guest Language Stats paket; language-intelligence test 5/5. |
 | 2026-07-03 | Composer | A7 | Obrisan neuvuzen Review Request paket (6 fajlova). |

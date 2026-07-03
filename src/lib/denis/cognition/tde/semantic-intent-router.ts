@@ -77,7 +77,10 @@ const T0_DECLINE =
 const T0_CLARIFY_REPLY = /^\d{1,2}$/;
 
 const T0_MENU_AVAILABILITY =
-  /^(imate li|imaju li|da li imate|do you have)\s+.+/i;
+  /^(imate li|imaju li|da li imate|do you have)\s+(?!.*\b(popust\w*|discount|rabatt|promo|akcij\w*|gutschein|coupon)\b).+/i;
+
+const T0_PROMO_INQUIRY =
+  /\b(popust\w*|discount|rabatt|promo code|promocij\w*|akcij\w*|gutschein|coupon)\b/i;
 
 function normalizeMessage(message: string): string {
   return message
@@ -100,6 +103,9 @@ function classifyT0(message: string): SemanticIntentResult | null {
   }
   if (T0_CLARIFY_REPLY.test(text)) {
     return { intent: "clarify_reply", tier: "T0", confidence: 1 };
+  }
+  if (T0_PROMO_INQUIRY.test(text)) {
+    return { intent: "promo_inquiry", tier: "T0", confidence: 1 };
   }
   if (T0_MENU_AVAILABILITY.test(text)) {
     return { intent: "order", tier: "T0", confidence: 1 };
