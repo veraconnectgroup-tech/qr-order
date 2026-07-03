@@ -113,7 +113,7 @@ import {
   menuEngineeringScoreMultiplier,
   type MenuEngineeringCategory,
 } from "@/lib/denis/platform/menu-engineering";
-import { buildOccasionAwareWelcomeMessage } from "@/lib/denis/learning/guest-memory/build-occasion-aware-welcome";
+import { buildOccasionAwareWelcomeMessage } from "@/lib/denis/platform/guest-memory-format";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 
 export type RankedProactiveCandidate = {

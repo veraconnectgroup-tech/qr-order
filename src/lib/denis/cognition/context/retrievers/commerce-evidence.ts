@@ -90,7 +90,7 @@ export function retrieveCommerceEvidence(
       blocks.push(`VISIBLE CART:\n${lines.join("\n")}`);
     }
 
-    const gaps = state.conversation.obligation?.gaps ?? [];
+    const gaps = state.conversation?.obligation?.gaps ?? [];
     if (gaps.length > 0) {
       const gapLines = gaps.map(
         (gap) => `- ${waiterGapDirective(gap.kind)}`

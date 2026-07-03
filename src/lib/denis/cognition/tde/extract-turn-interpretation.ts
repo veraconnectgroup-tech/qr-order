@@ -81,7 +81,7 @@ function followUpMinutesFromFormat(message: string): number | null {
 
 const SWAP_MARKER = /\b(?:umesto|umjesto|statt|anstatt|instead\s+of)\b/i;
 
-const SWAP_SIDE_INTRO = new Set(["sa", "s", "mit", "with"]);
+const SWAP_SIDE_INTRO: readonly string[] = ["sa", "s", "mit", "with"];
 
 const SWAP_CONJUNCTION = /\s+(?:i|and|und|pa|plus)\s+|[,.;!?]/i;
 
@@ -98,7 +98,7 @@ function swapModificationFromText(text: string): TurnModification | null {
   const beforeWords = before.split(/\s+/);
   let introIdx = -1;
   for (let i = beforeWords.length - 1; i >= 0; i--) {
-    if (SWAP_SIDE_INTRO.has(beforeWords[i]!.toLowerCase())) {
+    if (SWAP_SIDE_INTRO.includes(beforeWords[i]!.toLowerCase())) {
       introIdx = i;
       break;
     }

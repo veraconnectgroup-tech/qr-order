@@ -3,7 +3,7 @@ import type { GuestLevelId } from "@/lib/denis/commerce/loyalty/guest-level";
 import { buildDenisToneGuide, resolveGuestLevel } from "@/lib/denis/commerce/loyalty/guest-level";
 import type { GuestMentalModel } from "@/lib/denis/cognition/mental-model/mental-model-types";
 import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
-import { formatOccasionHintLine } from "@/lib/denis/learning/guest-memory/detect-guest-occasions";
+import { formatOccasionHintLine } from "@/lib/denis/platform/guest-memory-format";
 import {
   buildCulturalSensitivityBlock,
   resolveCulturalProfile,

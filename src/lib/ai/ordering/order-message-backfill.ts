@@ -64,6 +64,17 @@ function segmentTokens(segment: string) {
     .filter((t) => t.length >= 3);
 }
 
+function segmentTokenVariants(token: string): string[] {
+  const variants = new Set([token]);
+  if (token.length >= 5) {
+    variants.add(token.slice(0, -1));
+  }
+  if (token.length >= 6 && /(om|em|og|im|ih|ima|ama)$/.test(token)) {
+    variants.add(token.replace(/(om|em|og|im|ih|ima|ama)$/, ""));
+  }
+  return [...variants].filter((value) => value.length >= 3);
+}
+
 export function isOrderPlacementMessage(message: string): boolean {
   const text = message.trim();
   if (!text || isGuestFinalConfirm(text)) return false;
@@ -149,11 +160,18 @@ function scoreSegmentMatch(segment: string, product: AiCatalogProduct): number {
   if (!tokens.length) return 0;
 
   const haystack = product.name.toLowerCase();
+  const words = haystack.split(/\s+/);
   let score = 0;
   for (const token of tokens) {
-    if (haystack.includes(token)) score += 12;
-    if (haystack.split(/\s+/).some((word) => word.startsWith(token))) {
-      score += 6;
+    for (const variant of segmentTokenVariants(token)) {
+      if (haystack.includes(variant)) score += 12;
+      if (
+        words.some(
+          (word) => word.startsWith(variant) || variant.startsWith(word)
+        )
+      ) {
+        score += 6;
+      }
     }
   }
   return score;

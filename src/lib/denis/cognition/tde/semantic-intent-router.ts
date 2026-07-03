@@ -1,8 +1,3 @@
-import {
-  buildMenuQueryEmbedText,
-  cosineSimilarity,
-  embedMenuTextLocal,
-} from "@/lib/denis/cognition/context/menu-rag-embeddings";
 import intentClustersJson from "@/lib/denis/cognition/tde/intent-clusters.json";
 
 /** Semantic guest-message intent clusters (T1 embedding router). */
@@ -82,6 +77,20 @@ const T0_MENU_AVAILABILITY =
 const T0_PROMO_INQUIRY =
   /\b(popust\w*|discount|rabatt|promo code|promocij\w*|akcij\w*|gutschein|coupon)\b/i;
 
+const LOCAL_EMBED_DIM = 96;
+
+const INTENT_SEMANTIC_EXPANSIONS: Record<string, readonly string[]> = {
+  lagano: ["lagana", "light", "leicht", "salata", "salad", "supa", "soup"],
+  lagana: ["lagano", "light", "leicht", "salata", "salad"],
+  light: ["lagano", "lagana", "salad", "salata"],
+  teško: ["teški", "heavy", "burger", "steak", "jelo"],
+  teški: ["teško", "heavy", "burger", "steak"],
+  bez: ["free", "frei", "without", "no"],
+  glutena: ["gluten", "glutenfree", "glutenfrei"],
+  pivo: ["beer", "lager", "pilsner", "radler", "ale"],
+  vegan: ["plant", "biljno", "vegetarijanski"],
+};
+
 function normalizeMessage(message: string): string {
   return message
     .trim()
@@ -89,6 +98,66 @@ function normalizeMessage(message: string): string {
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .replace(/\s+/g, " ");
+}
+
+function expandIntentTokens(tokens: string[]): string[] {
+  const expanded: string[] = [];
+  for (const token of tokens) {
+    if (!expanded.includes(token)) expanded.push(token);
+    for (const alias of INTENT_SEMANTIC_EXPANSIONS[token] ?? []) {
+      if (!expanded.includes(alias)) expanded.push(alias);
+    }
+  }
+  return expanded;
+}
+
+function tokenizeIntentText(value: string): string[] {
+  const tokens = normalizeMessage(value)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length >= 3);
+  return expandIntentTokens(tokens);
+}
+
+function buildIntentEmbedText(query: string): string {
+  return tokenizeIntentText(query).join(" ");
+}
+
+function hashIntentToken(token: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < token.length; i++) {
+    hash ^= token.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function normalizeVector(values: number[]): number[] {
+  const magnitude = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
+  if (magnitude <= 0) return values;
+  return values.map((value) => value / magnitude);
+}
+
+function embedIntentTextLocal(text: string): number[] {
+  const vec = new Array<number>(LOCAL_EMBED_DIM).fill(0);
+  for (const token of tokenizeIntentText(text)) {
+    const hash = hashIntentToken(token);
+    for (let i = 0; i < LOCAL_EMBED_DIM; i++) {
+      const sign = (hash >> (i % 32)) & 1 ? 1 : -1;
+      vec[i] += sign;
+    }
+  }
+  return normalizeVector(vec);
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  const length = Math.min(a.length, b.length);
+  if (length === 0) return 0;
+
+  let dot = 0;
+  for (let i = 0; i < length; i++) {
+    dot += a[i]! * b[i]!;
+  }
+  return dot;
 }
 
 function classifyT0(message: string): SemanticIntentResult | null {
@@ -114,7 +183,7 @@ function classifyT0(message: string): SemanticIntentResult | null {
 }
 
 function embedGuestMessage(message: string): number[] {
-  return embedMenuTextLocal(buildMenuQueryEmbedText(message));
+  return embedIntentTextLocal(buildIntentEmbedText(message));
 }
 
 function classifyT1(message: string): SemanticIntentResult | null {

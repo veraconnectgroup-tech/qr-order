@@ -6,13 +6,13 @@ import type { StationQuestionStation } from "@/lib/denis/stations/question-trigg
 import type { VenueOpsBeliefs } from "@/lib/denis/venue/ops/types";
 import { isBarMenuSection, isKitchenMenuSection } from "@/lib/kitchen/menu-section";
 
-const WAITING_STATUSES = new Set([
+const WAITING_STATUSES: readonly string[] = [
   "pending",
   "pending_approval",
   "accepted",
   "preparing",
   "ready",
-]);
+];
 
 export type GuestStatusScenario =
   | "no_open_order"
@@ -113,7 +113,7 @@ export function resolveGuestStatusIntel(input: {
   const foodSla = input.config.ops.stationQuestions.foodSlaMinutes ?? 12;
 
   const waiting = input.orders.filter((order) =>
-    WAITING_STATUSES.has(order.status)
+    WAITING_STATUSES.includes(order.status)
   );
   const primaryOrder =
     waiting.sort(

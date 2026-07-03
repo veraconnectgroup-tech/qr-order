@@ -138,8 +138,8 @@ describe("offer beliefs GMM-11", () => {
     });
 
     expect(plan.kind).toBe("template_tell");
-    expect(plan.reason).toBe("offer.anchored_recommend");
-    expect(plan.requiresLlm).toBe(false);
+    expect(plan.reason).toBe("offer.anchored_recommend.llm_reply");
+    expect(plan.requiresLlm).toBe(true);
   });
 
   it("narrateOfferFromBeliefs matches product in chat copy", () => {

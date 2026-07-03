@@ -32,7 +32,10 @@ export const DRINK_EMPTY_BEER_MINUTES = 15;
 export const DRINK_EMPTY_COCKTAIL_MINUTES = 25;
 
 export function isReorderRequestMessage(message: string): boolean {
-  return isGuestReorderMessage(message.trim());
+  const text = message.trim();
+  if (!text) return false;
+  if (/jo[sš]\s+jedn[oa]\b/i.test(text)) return true;
+  return isGuestReorderMessage(text);
 }
 
 export function isGroupRoundRequestMessage(message: string): boolean {
@@ -44,11 +47,15 @@ export function drinkEmptyThresholdMinutes(
   catalogProduct?: Pick<AiCatalogProduct, "drinkFamily" | "menuSection"> | null
 ): number {
   const family = catalogProduct?.drinkFamily?.toLowerCase() ?? "";
+  const normalizedName = productName.toLowerCase();
   if (
     family === "cocktail" ||
     family === "spirit" ||
     family === "wine_red" ||
-    family === "wine_white"
+    family === "wine_white" ||
+    /\b(mojito|negroni|spritz|martini|cocktail|koktel|gin|whisky|whiskey|rum|vodka|vino|wine)\b/i.test(
+      normalizedName
+    )
   ) {
     return DRINK_EMPTY_COCKTAIL_MINUTES;
   }

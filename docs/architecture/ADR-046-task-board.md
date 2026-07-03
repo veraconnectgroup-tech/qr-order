@@ -112,40 +112,40 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 - Napomena: Komitovan status-flow paket. TS fix: commerce.status EvidencePointer + buildStationQuestionMessage import iz question-triggers. Testovi allergy-guard/denis-tde/denis-thinking-steps/denis-handoff-phrases 80/80 zeleni.
 
 ### A13 — Ostali nekomitovani fajlovi
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Codex — 2026-07-03 20:07 CEST
 - Fajlovi: `scripts/sync-vercel-ordering-env.sh`, `src/app/api/cron/engagement-tick/route.ts`, `src/lib/api/guest-api-errors.ts`, `src/lib/ai/guest-quick-reply-labels.ts`, `src/lib/denis/commerce/resolve-venue-occupancy.ts`, `src/lib/admin/load-denis-integrations-health.ts`, `src/components/admin/denis-integrations-health-panel.tsx`, `src/lib/denis/cognition/mental-model/frustration-patterns.ts`, testovi `denis-integrations-health.test.ts`, `denis-phase5-pilot.test.ts`, `denis-full-guest-cycle.test.ts`
 - Zadatak: trijaža po pravilu, fajl po fajl. Posle ovoga `git status` mora biti čist.
-- Napomena: —
+- Napomena: A13 siročići su obrisani, a `language-intelligence` i `denis-phase5-pilot` su ažurirani na živo ponašanje. Završno provereno kroz `pnpm test:run`, `pnpm type-check`, `pnpm lint` i `pnpm build`.
 
 ---
 
 ## Sekcija B — Type-check i testovi na zeleno (PRIORITET 2, posle A)
 
 ### B1 — `pnpm type-check` = 0 grešaka
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Codex — 2026-07-03 20:07 CEST
 - Zadatak: posle sekcije A pokrenuti `pnpm exec tsc --noEmit`; popraviti SVE preostale greške. Cilj: 0.
-- Napomena: —
+- Napomena: `pnpm type-check` je zelen posle čišćenja stale `.next` tipova i type fix-a u `denis-phase5-pilot.test.ts`. Završno provereno kroz kompletan ADR-046 gate.
 
 ### B2 — Padajući testovi jezgra (nisu vezani za A-siročiće)
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Codex — 2026-07-03 20:07 CEST
 - Fajlovi: `conversation-graph.test.ts`, `denis-browsing-defer.test.ts`, `denis-conversation-mastery.test.ts`, `denis-drink-sommelier.test.ts`, `denis-kitchen-mind-link.test.ts`, `denis-offer-beliefs.test.ts`, `denis-proactive-bar-intelligence.test.ts`, `denis-proactive-kitchen-awareness.test.ts`, `dynamic-vkg.test.ts`, `platform-admin.test.ts`, `pos-speed-p1-idempotency.test.ts`, `preorder-flow.test.ts`, `reorder-intelligence.test.ts`, `waiter-autonomous-tell.test.ts`
 - Zadatak: za svaki test utvrditi: da li testira ŽELJENO ponašanje (→ popravi kod) ili STARO ponašanje pregaženo novim status/settle tokom (→ ažuriraj test). Videti ADR-046 §3.3.
-- Napomena: —
+- Napomena: Popravljeni core Denis padovi: status evidence null guard, srpski defer/preorder/order parsing, reorder, waiter tell i zastareli time-drift/eval očekivani rezultati. `pnpm test:run` sada prolazi 332/332 test fajla.
 
 ### B3 — `denis-architecture-compliance.test.ts` na zeleno
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Codex — 2026-07-03 20:07 CEST
 - Zadatak: ovaj test je čuvar arhitekture (ADR-019) i MORA biti zelen. Pokrenuti, pročitati šta tačno prijavljuje, ispraviti prekršaje u kodu (ne labaviti test osim ako pravilo više ne važi po ADR-u).
-- Napomena: —
+- Napomena: `denis-architecture-compliance.test.ts` je zelen bez labavljenja testa: cognition više ne importuje learning, a module-level `Set` kršenja su uklonjena. Završno provereno kroz kompletan ADR-046 gate.
 
 ### B4 — `pnpm lint` + `pnpm build` zeleni
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Codex — 2026-07-03 20:07 CEST
 - Zadatak: finalna kapija sekcije B. Lint 0 grešaka, build prolazi.
-- Napomena: —
+- Napomena: `semantic-intent-router` više ne uvlači server-only menu RAG modul u client bundle, a service-role env se proverava tek kada se admin client stvarno koristi. `pnpm lint` ima 0 error-a, a `pnpm build` prolazi.
 
 ---
 
@@ -233,3 +233,8 @@ učini test zelenim, komituj. Brisanje je podrazumevana opcija — git čuva ist
 | 2026-07-03 | Composer | A2 | Obrisan neuvuzen Kitchen Morning Brief + Demand Intelligence paket (6 fajlova). |
 | 2026-07-03 | Composer | A1 | Obrisan neuvuzen Waiter Copilot paket (8 lib fajlova, komponenta, test); uklonjeni copilot testovi iz denis-phase5-pilot.test.ts. |
 | 2026-07-03 | Fable (analiza) | — | Kreiran ADR-046, task board i agent prompt. Izmereno: 79 TS grešaka, 43 pala testa, 78 nekomitovanih fajlova. |
+| 2026-07-03 | Codex | A13 | Obrisan A13 orphan paket i ažurirani pogođeni testovi; kompletan gate zelen. |
+| 2026-07-03 | Codex | B1 | Type-check doveden na zeleno posle stale `.next` cleanup-a i test type fix-a. |
+| 2026-07-03 | Codex | B2 | Core Denis testovi popravljeni; `pnpm test:run` 332/332 fajla zeleno. |
+| 2026-07-03 | Codex | B3 | Architecture compliance zelen bez labavljenja guard testa. |
+| 2026-07-03 | Codex | B4 | Lint/build gate zelen; client bundle očišćen od server-only RAG import traga. |

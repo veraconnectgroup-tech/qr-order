@@ -42,6 +42,10 @@ const TOPIC_DETECTORS: Array<{
       if (interpretation?.modifications.some((m) => m.cooking)) {
         return interpretation.modifications.find((m) => m.cooking)?.cooking ?? null;
       }
+      const withoutMatch = text.match(/\bbez\s+([\p{L}\s]{2,24})/iu);
+      if (withoutMatch?.[1]) return `bez ${withoutMatch[1].trim()}`;
+      const cookingMatch = text.match(/\b(medium\s+rare|rare|well\s+done)\b/i);
+      if (cookingMatch?.[1]) return cookingMatch[1].toLowerCase();
       if (/\bcena\b/i.test(text)) return "cena";
       return null;
     },
@@ -74,7 +78,10 @@ const TOPIC_DETECTORS: Array<{
       const fromRemove = interpretation?.modifications.find((m) => m.remove)?.remove;
       if (fromRemove) return fromRemove.toLowerCase();
       const fromModifier = interpretation?.modifications.find((m) => m.modifier)?.modifier;
-      return fromModifier?.toLowerCase() ?? null;
+      if (fromModifier) return fromModifier.toLowerCase();
+      const text = _text.toLowerCase();
+      const allergen = text.match(/\b(gluten|orah|orasi|nuts|mleko|laktoz[a-z]*)\b/i);
+      return allergen?.[1]?.toLowerCase() ?? null;
     },
   },
   {
@@ -377,6 +384,14 @@ export function resolveGuestReference(
       detail: active.priceHint
         ? `${active.label} price: ${active.priceHint}`
         : `${active.label} price inquiry`,
+    };
+  }
+
+  if (/^(prvo|first|the first one)\b/i.test(text) && active?.firstMentionedItem) {
+    return {
+      kind: "first_mentioned",
+      topicId: active.id,
+      detail: active.firstMentionedItem,
     };
   }
 

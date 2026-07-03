@@ -194,7 +194,9 @@ describe("detectReorderOpportunity P1", () => {
       language: "sr",
       lastVisitItems: ["Schnitzel", "Pilsner"],
       visitCount: 2,
-    })).toBe("Prošli put ste imali Schnitzel i Pilsner — ponovo?");
+    })).toBe(
+      "Dobro došli ponovo! Prošli put ste imali Schnitzel i Pilsner — ponovo?"
+    );
   });
 
   it("detects group round when primary orders another round for the table", () => {

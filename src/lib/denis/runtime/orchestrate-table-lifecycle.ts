@@ -79,7 +79,7 @@ export type OrchestrateTableLifecycleResult = {
   trigger: string | null;
 };
 
-const CLOSED_ORDER = new Set(["cancelled", "rejected"]);
+const CLOSED_ORDER: readonly string[] = ["cancelled", "rejected"];
 
 function starRecommendationHint(
   menuInsight: MenuEngineeringInsight | null | undefined
@@ -361,7 +361,7 @@ function latestFoodDeliveryMinutes(
 ): number | null {
   let latest: number | null = null;
   for (const order of orders) {
-    if (CLOSED_ORDER.has(order.status)) continue;
+    if (CLOSED_ORDER.includes(order.status)) continue;
     if (order.status !== "delivered") continue;
     const hasFood = order.items.some((item) => item.menuSection !== "drinks");
     if (!hasFood) continue;

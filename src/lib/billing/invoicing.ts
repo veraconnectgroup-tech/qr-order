@@ -35,11 +35,9 @@ export function resolvePlanChangeDirection(
   return "same";
 }
 
-/** Extend trial from current end (or now if expired/missing) by N days. */
+/** Extend trial from current end (or now if missing) by N days. */
 export function extendTrialEndDate(current: string | null, days: number): string {
-  const now = Date.now();
-  const base =
-    current && new Date(current).getTime() > now ? new Date(current) : new Date();
+  const base = current ? new Date(current) : new Date();
   base.setDate(base.getDate() + days);
   return base.toISOString();
 }

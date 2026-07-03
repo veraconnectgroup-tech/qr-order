@@ -53,6 +53,9 @@ function interpretationForGuestText(
 export function isGuestBrowsingDeferMessage(message: string): boolean {
   const text = message.trim();
   if (!text || text.length > 160) return false;
+  if (/(ne\s+jo[sš]|jo[sš]\s+gledamo|samo\s+gledamo)/i.test(text)) {
+    return true;
+  }
   return isGuestStillBrowsingMessage(text);
 }
 

@@ -69,7 +69,67 @@ export function formatAvgSpendEuros(
   return `€${avgSpend.toFixed(2)}`;
 }
 
-function formatOccasionHintLine(
+const WEEKEND_DOW = [0, 6];
+const MILESTONE_VISITS = [3, 5, 10, 25, 50];
+
+function resolveOccasionHour(now: Date): number {
+  return now.getUTCHours();
+}
+
+export function detectGuestOccasions(input: {
+  relationship: GuestMemoryProjection["relationship"] | null | undefined;
+  visitCount: number;
+  currentPartySize?: number | null;
+  currentDayOfWeek?: number;
+  now?: Date;
+}): GuestOccasionHint[] {
+  const occasions: GuestOccasionHint[] = [];
+  const relationship = input.relationship;
+  const visitCount = input.visitCount;
+  const now = input.now ?? new Date();
+  const currentDow = input.currentDayOfWeek ?? now.getUTCDay();
+  const currentParty = input.currentPartySize ?? null;
+  const hour = resolveOccasionHour(now);
+  const isEvening = hour >= 17 || hour < 1;
+  const isWeekday = !WEEKEND_DOW.includes(currentDow);
+  const isLunchWindow = hour >= 11 && hour < 15;
+
+  if (MILESTONE_VISITS.includes(visitCount)) {
+    occasions.push("visit_milestone");
+  }
+
+  if (relationship && currentParty != null && relationship.typicalPartySize != null) {
+    if (currentParty >= relationship.typicalPartySize + 2) {
+      occasions.push("celebration_larger_party");
+    }
+  }
+
+  const typicalDays = relationship?.behavioral.typicalVisitDays ?? [];
+  if (typicalDays.length > 0) {
+    const usuallyWeekend = typicalDays.every((dow) => WEEKEND_DOW.includes(dow));
+    if (usuallyWeekend && isWeekday) {
+      occasions.push("weekday_surprise");
+    }
+  }
+
+  if (currentParty != null && currentParty >= 4) {
+    occasions.push("family_dining");
+  } else if (currentParty === 2 && isEvening) {
+    occasions.push("date_night");
+  } else if (
+    currentParty != null &&
+    currentParty >= 2 &&
+    currentParty <= 6 &&
+    isWeekday &&
+    isLunchWindow
+  ) {
+    occasions.push("business_meal");
+  }
+
+  return occasions;
+}
+
+export function formatOccasionHintLine(
   occasion: GuestOccasionHint,
   language = "sr"
 ): string {
@@ -104,6 +164,48 @@ function formatOccasionHintLine(
   }
 }
 
+export function formatOccasionWelcomeOpener(
+  occasions: GuestOccasionHint[],
+  language = "sr"
+): string | null {
+  if (occasions.length === 0) return null;
+
+  const lang = language.slice(0, 2);
+  const primary =
+    occasions.find((row) => row === "celebration_larger_party") ??
+    occasions.find((row) => row === "visit_milestone") ??
+    occasions[0];
+
+  switch (primary) {
+    case "celebration_larger_party":
+      if (lang === "de") return "Feiern Sie heute etwas Besonderes?";
+      if (lang === "en") return "Are you celebrating something special tonight?";
+      return "Slavite nešto posebno večeras?";
+    case "visit_milestone":
+      if (lang === "de") return "Schön, Sie wiederzusehen!";
+      if (lang === "en") return "So good to see you again!";
+      return "Drago nam je što ste opet kod nas!";
+    case "weekday_surprise":
+      if (lang === "de") return "Schön, Sie unter der Woche zu sehen!";
+      if (lang === "en") return "Nice to see you on a weekday!";
+      return "Lepo vas je videti i radnim danom!";
+    case "date_night":
+      if (lang === "de") return "Willkommen — ein schöner Abend zu zweit?";
+      if (lang === "en") return "Welcome — lovely evening for two?";
+      return "Dobro veče — lep večer za dvoje?";
+    case "family_dining":
+      if (lang === "de") return "Willkommen — wir helfen schnell für die ganze Gruppe.";
+      if (lang === "en") return "Welcome — we'll keep things easy for the whole table.";
+      return "Dobrodošli — brzo ćemo sve srediti za celu ekipu.";
+    case "business_meal":
+      if (lang === "de") return "Willkommen — ich halte es kurz und effizient.";
+      if (lang === "en") return "Welcome — I'll keep this quick and efficient.";
+      return "Dobrodošli — držaću se kratko i efikasno.";
+    default:
+      return null;
+  }
+}
+
 function preferenceEvolutionChanged(phases: GuestPreferencePhase[]): boolean {
   if (phases.length < 2) return false;
   const first = phases[0]?.dominantItems[0]?.toLowerCase();
@@ -129,6 +231,199 @@ function formatPreferenceEvolutionHint(
     return `Taste evolved: ${previous} → ${current} — suggest new fits, don't push old favorite.`;
   }
   return `Prelazak sa ${previous} na ${current} — predloži novo, ne guraj stari favorit.`;
+}
+
+export function formatPreferenceEvolutionWelcome(input: {
+  phases: GuestPreferencePhase[];
+  currentItems: string[];
+  language?: string;
+}): string | null {
+  if (!preferenceEvolutionChanged(input.phases)) return null;
+
+  const previous = input.phases[input.phases.length - 2]?.dominantItems[0];
+  const current =
+    input.currentItems[0] ??
+    input.phases[input.phases.length - 1]?.dominantItems[0];
+  if (!previous || !current) return null;
+
+  const lang = (input.language ?? "sr").slice(0, 2);
+  if (lang === "de") {
+    return `Früher ${previous}, zuletzt eher ${current} — probieren Sie heute etwas Neues?`;
+  }
+  if (lang === "en") {
+    return `You used to order ${previous}, lately ${current} — want to try something new today?`;
+  }
+  return `Ranije ste birali ${previous}, poslednja 3 puta ${current} — da probamo nešto novo danas?`;
+}
+
+function joinVisitItems(items: string[], language: string): string {
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "en" || lang === "de") {
+    return items.join(", ");
+  }
+  return items.join(" i ");
+}
+
+function formatEmotionalRecoveryWelcome(
+  language: string,
+  favoriteItem?: string | null
+): string {
+  const lang = language.toLowerCase().slice(0, 2);
+  const item = favoriteItem?.trim();
+
+  if (lang === "de") {
+    return item
+      ? `Schön, dass Sie wieder da sind! Beim letzten Mal lief nicht alles ideal — heute kümmern wir uns extra um Sie. Mögen Sie wieder ${item}?`
+      : "Schön, dass Sie wieder da sind! Beim letzten Mal lief nicht alles ideal — heute kümmern wir uns extra um Sie.";
+  }
+  if (lang === "en") {
+    return item
+      ? `Welcome back! Last time wasn't perfect — we'll take extra care today. Would you like ${item} again?`
+      : "Welcome back! Last time wasn't perfect — we'll take extra care today.";
+  }
+  return item
+    ? `Drago nam je što ste se vratili! Prošli put nije bilo idealno — danas ćemo biti posebno pažljivi. Ponovo ${item}?`
+    : "Drago nam je što ste se vratili! Prošli put nije bilo idealno — danas ćemo biti posebno pažljivi.";
+}
+
+function formatPositiveMemoryWelcome(
+  language: string,
+  favoriteItem: string
+): string {
+  const lang = language.toLowerCase().slice(0, 2);
+  if (lang === "de") {
+    return `Schön, dass Sie wieder da sind! Beim letzten Mal mochten Sie ${favoriteItem} — wieder?`;
+  }
+  if (lang === "en") {
+    return `Welcome back! You loved ${favoriteItem} last time — again?`;
+  }
+  return `Drago nam je što ste opet tu! Prošli put vam je ${favoriteItem} bio odličan — ponovo?`;
+}
+
+function formatFavoriteReturnWelcome(
+  language: string,
+  itemsText: string,
+  todaySpecial?: string | null
+): string {
+  const lang = language.toLowerCase().slice(0, 2);
+  const special = todaySpecial?.trim();
+
+  if (lang === "de") {
+    const base = `Willkommen zurück! Beim letzten Mal: ${itemsText} — noch einmal?`;
+    return special ? `${base} Heute als Special: ${special}.` : base;
+  }
+  if (lang === "en") {
+    const base = `Welcome back! Last time you had ${itemsText} — again?`;
+    return special ? `${base} Today's special: ${special}.` : base;
+  }
+  const base = `Dobro došli ponovo! Prošli put ste imali ${itemsText} — ponovo?`;
+  return special ? `${base} Danas imamo ${special} — nešto posebno za vas.` : base;
+}
+
+export function buildOccasionAwareWelcomeMessage(input: {
+  language: string;
+  visitCount: number;
+  memory?: GuestMemoryProjection | null;
+  lastVisitItems?: string[];
+  lastFeedbackSentiment?: "positive" | "neutral" | "negative" | null;
+  todaySpecial?: string | null;
+  currentPartySize?: number | null;
+  now?: Date;
+  requireConsent?: boolean;
+}): string | null {
+  const requireConsent = input.requireConsent ?? true;
+  const memory = input.memory ?? null;
+
+  if (requireConsent && memory && memory.hasMemoryConsent === false) {
+    return null;
+  }
+  if (input.visitCount < 2) return null;
+
+  const lang = input.language.toLowerCase().slice(0, 2);
+  const relationship = memory?.relationship ?? null;
+  const currentItems =
+    relationship?.currentPreferenceItems ??
+    memory?.favoriteItems ??
+    memory?.lastVisitItemNames ??
+    input.lastVisitItems ??
+    [];
+  const favoriteItem = currentItems.find(Boolean) ?? null;
+  const feedback =
+    input.lastFeedbackSentiment ?? memory?.lastFeedbackSentiment ?? null;
+
+  const occasions = detectGuestOccasions({
+    relationship,
+    visitCount: input.visitCount,
+    currentPartySize: input.currentPartySize ?? null,
+    now: input.now,
+  });
+
+  if (feedback === "negative") {
+    return formatEmotionalRecoveryWelcome(input.language, favoriteItem);
+  }
+
+  const evolutionWelcome =
+    memory?.relationship &&
+    formatPreferenceEvolutionWelcome({
+      phases: memory.relationship.preferenceEvolution,
+      currentItems: memory.relationship.currentPreferenceItems,
+      language: input.language,
+    });
+
+  const celebrationOpener = formatOccasionWelcomeOpener(
+    occasions,
+    input.language
+  );
+
+  if (occasions.includes("visit_milestone") && input.visitCount >= 5) {
+    if (lang === "de") {
+      return celebrationOpener
+        ? `${celebrationOpener} Schön, dass Sie wieder da sind!`
+        : `Schön, dass Sie wieder da sind — schon ${input.visitCount}. Besuch!`;
+    }
+    if (lang === "en") {
+      return celebrationOpener
+        ? `${celebrationOpener} Great to see you again!`
+        : `Welcome back — visit number ${input.visitCount}!`;
+    }
+    return celebrationOpener
+      ? `${celebrationOpener} Drago nam je što ste opet tu!`
+      : `Dobro došli ponovo — ${input.visitCount}. put ste kod nas!`;
+  }
+
+  if (evolutionWelcome) {
+    return celebrationOpener
+      ? `${celebrationOpener} ${evolutionWelcome}`
+      : evolutionWelcome;
+  }
+
+  if (feedback === "positive" && favoriteItem) {
+    const positive = formatPositiveMemoryWelcome(input.language, favoriteItem);
+    return celebrationOpener ? `${celebrationOpener} ${positive}` : positive;
+  }
+
+  const items = currentItems.filter(Boolean).slice(0, 4);
+  if (items.length > 0) {
+    const itemsText = joinVisitItems(items, input.language);
+    const favoriteReturn = formatFavoriteReturnWelcome(
+      input.language,
+      itemsText,
+      input.todaySpecial
+    );
+    return celebrationOpener
+      ? `${celebrationOpener} ${favoriteReturn}`
+      : favoriteReturn;
+  }
+
+  if (celebrationOpener) return celebrationOpener;
+
+  if (input.visitCount >= 3) {
+    if (lang === "de") return "Schön, dass Sie wieder da sind!";
+    if (lang === "en") return "Welcome back — great to see you again!";
+    return "Dobro došli ponovo! Drago nam je što ste opet tu.";
+  }
+
+  return null;
 }
 
 export function formatRelativeLastVisit(

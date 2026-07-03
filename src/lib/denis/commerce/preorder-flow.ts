@@ -34,6 +34,9 @@ const PREORDER_TIME_PATTERN =
 export function isPreorderIntentMessage(message: string): boolean {
   const text = message.trim();
   if (!text || !PREORDER_TIME_PATTERN.test(text)) return false;
+  if (/\b(naru[čc]i|poru[čc]i|ho[ćc]u|[žz]elim)\b/i.test(text)) {
+    return true;
+  }
   return isGuestPreorderMessage(text);
 }
 

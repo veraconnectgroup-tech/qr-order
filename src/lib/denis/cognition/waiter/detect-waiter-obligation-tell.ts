@@ -65,19 +65,24 @@ export function detectWaiterObligationTell(
           : `Za sada: ${recapLines.join(", ")}.`
       : "";
 
-  const message = enforceWaiterTell({
+  const baseMessage = enforceWaiterTell({
     message: recapPrefix,
     obligation,
     language,
     draft,
   }).trim();
+  const prompt = primary.prompt.trim();
+  const message =
+    prompt && !baseMessage.toLowerCase().includes(prompt.toLowerCase())
+      ? [baseMessage, prompt].filter(Boolean).join(" ")
+      : baseMessage;
 
   if (!message) return null;
 
   return {
     kind: "waiter_gap",
     message,
-    prompt: primary.prompt,
+    prompt,
   };
 }
 

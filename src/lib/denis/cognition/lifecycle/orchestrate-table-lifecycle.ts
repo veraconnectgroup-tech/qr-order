@@ -6,12 +6,12 @@ import type { TableTempoPhase } from "@/lib/denis/cognition/tempo/detect-table-t
 import type { GuestProactiveNudgeKind } from "@/lib/denis/cognition/proactive/proactive-types";
 import type { OrderFact } from "@/lib/denis/loop/types";
 
-const CLOSED_ORDER_STATUSES = new Set(["cancelled", "rejected"]);
+const CLOSED_ORDER_STATUSES: readonly string[] = ["cancelled", "rejected"];
 
 function hasActiveDrinkOrderFacts(orders: OrderFact[]): boolean {
   return orders.some(
     (order) =>
-      !CLOSED_ORDER_STATUSES.has(order.status) &&
+      !CLOSED_ORDER_STATUSES.includes(order.status) &&
       order.items.some((item) => item.menuSection === "drinks")
   );
 }

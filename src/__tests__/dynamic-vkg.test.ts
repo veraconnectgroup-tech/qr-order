@@ -52,7 +52,7 @@ describe("dynamic VKG X1", () => {
     const pairings = discoverPairings({
       orders: mockOrders(30, 60),
       minCoOccurrence: 5,
-      lookbackDays: 30,
+      lookbackDays: 60,
     });
 
     const burgerPilsner = pairings.find(
@@ -73,7 +73,7 @@ describe("dynamic VKG X1", () => {
     const pairings = discoverPairings({
       orders: mockOrders(30, 50),
       minCoOccurrence: 5,
-      lookbackDays: 30,
+      lookbackDays: 60,
     });
 
     const burgerPilsner = pairings.find(
