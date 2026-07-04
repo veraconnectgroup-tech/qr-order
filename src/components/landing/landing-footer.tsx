@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
+import { DenisTableMark } from "@/components/design-system/denis-table-mark";
 import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 
@@ -50,7 +52,8 @@ const footerLabels = {
     privacy: "Datenschutz",
     terms: "AGB",
     imprint: "Impressum",
-    builtWith: "Built with",
+    brandLine: "Denis AI. Ihr Restaurant Co-worker für echte Schichten.",
+    creditsCta: "30.000 Credits kostenlos starten",
     payments: "Payments powered by Stripe Connect",
   },
   en: {
@@ -68,7 +71,8 @@ const footerLabels = {
     privacy: "Privacy",
     terms: "Terms",
     imprint: "Imprint",
-    builtWith: "Built with",
+    brandLine: "Denis AI. Your restaurant co-worker for real shifts.",
+    creditsCta: "Get 30,000 free credits",
     payments: "Payments powered by Stripe Connect",
   },
   sr: {
@@ -86,69 +90,47 @@ const footerLabels = {
     privacy: "Privatnost",
     terms: "Uslovi",
     imprint: "Impresum",
-    builtWith: "Built with",
+    brandLine: "Denis AI. Tvoj restaurant co-worker za prave smene.",
+    creditsCta: "Uzmi 30.000 besplatnih kredita",
     payments: "Plaćanja preko Stripe Connect",
   },
 };
 
-function NextJsLogo() {
+function FooterWordmark() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4" aria-hidden fill="currentColor">
-      <path d="M11.6 2.1h.8l7.5 19.8h-2.3l-1.6-4.2H7.7L6.1 21.9H3.8L11.6 2.1Zm-.8 12.2 2.5-6.8 2.5 6.8H10.8Z" />
-    </svg>
+    <div
+      className="font-display flex items-end justify-center gap-2 overflow-hidden text-[3.25rem] font-black uppercase leading-none tracking-normal text-[var(--lp-ink)] sm:gap-4 sm:text-[6rem] md:text-[8rem] lg:text-[10.5rem] xl:text-[12.5rem]"
+      aria-label="DENIS AI"
+    >
+      <span>DENIS</span>
+      <span className="mb-[0.14em] inline-flex items-center justify-center" aria-hidden>
+        <DenisTableMark size={40} className="size-[0.52em] text-[var(--lp-ink)]" />
+      </span>
+      <span>AI</span>
+    </div>
   );
 }
-
-function StripeMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-auto" aria-hidden>
-      <path
-        fill="#635BFF"
-        d="M13.5 10.2c0-.9-.7-1.2-1.9-1.4-1.6-.2-1.9-.5-1.9-.9 0-.5.4-.8 1.2-.8.7 0 1.2.2 1.6.6l1-1.2c-.6-.5-1.4-.8-2.6-.8-1.8 0-3 1-3 2.4 0 1.5 1.1 2 2.8 2.2 1.5.2 1.8.5 1.8.9 0 .6-.5.9-1.5.9-1 0-1.7-.3-2.2-.8l-1 1.2c.7.7 1.7 1.1 3.2 1.1 2 0 3.2-1 3.2-2.6Z"
-      />
-    </svg>
-  );
-}
-
-function SupabaseLogo() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
-      <path
-        fill="#3ECF8E"
-        d="M11.9 2.2c-.4 0-.8.3-.9.8L8.1 18.1c-.1.5.3 1 .8 1h6.2c.4 0 .8-.3.9-.8l2.9-15.1c.1-.5-.3-1-.8-1H11.9Z"
-      />
-    </svg>
-  );
-}
-
-function VercelLogo() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden fill="currentColor">
-      <path d="m12 2.5 10 17.5H2L12 2.5Z" />
-    </svg>
-  );
-}
-
-const builtWith = [
-  { name: "Next.js", Logo: NextJsLogo },
-  { name: "Stripe", Logo: StripeMark },
-  { name: "Supabase", Logo: SupabaseLogo },
-  { name: "Vercel", Logo: VercelLogo },
-] as const;
 
 export function LandingFooter() {
   const { locale, copy } = useLandingCopy();
   const labels = footerLabels[locale];
 
   return (
-    <footer className="relative z-[2] border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-16 text-[var(--lp-muted)] sm:py-20">
+    <footer className="relative z-[2] border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] pt-16 text-[var(--lp-muted)] sm:pt-20">
       <LandingContainer wide>
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
-          <div>
+        <div className="grid gap-12 pb-14 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
+          <div className="max-w-sm">
             <DenisBrandMark className="[&_.text-dash-text-muted]:text-[var(--lp-subtle)] [&_.text-dash-text]:text-[var(--lp-ink)]" />
             <p className="mt-4 max-w-xs text-[13px] leading-relaxed">
-              {copy.footer.tagline}
+              {labels.brandLine}
             </p>
+            <Link
+              href="/signup"
+              className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[var(--lp-ink)] px-4 text-[13px] font-semibold text-white shadow-[0_14px_34px_rgba(15,15,14,0.12)] transition hover:bg-black"
+            >
+              {labels.creditsCta}
+              <ArrowRight className="size-3.5" aria-hidden />
+            </Link>
           </div>
           {columns.map((col) => (
             <div key={col.titleKey}>
@@ -171,23 +153,14 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-[var(--lp-subtle)]">
-          <span>{labels.builtWith}</span>
-          {builtWith.map(({ name, Logo }) => (
-            <span
-              key={name}
-              className="inline-flex items-center gap-1.5 text-[var(--lp-subtle)]"
-              title={name}
-            >
-              <Logo />
-              <span className="sr-only">{name}</span>
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-6 flex flex-col gap-2 border-t border-[var(--lp-border-subtle)] pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px]">{copy.footer.copyright}</p>
-          <p className="text-[12px] text-[var(--lp-subtle)]">{labels.payments}</p>
+        <div className="border-t border-[var(--lp-border-subtle)] pt-8">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[12px]">{copy.footer.copyright}</p>
+            <p className="text-[12px] text-[var(--lp-subtle)]">{labels.payments}</p>
+          </div>
+          <div className="mt-8 pb-2 sm:mt-10">
+            <FooterWordmark />
+          </div>
         </div>
       </LandingContainer>
     </footer>
