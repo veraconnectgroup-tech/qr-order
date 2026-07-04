@@ -17,13 +17,37 @@ import {
 } from "@/components/landing/trust-logos";
 import { cn } from "@/lib/utils";
 
-const TRUST_GRID_ITEMS = [
-  { label: "Stripe", node: <StripeLogo /> },
-  { label: "Apple Pay", node: <ApplePayLogo /> },
-  { label: "Google Pay", node: <GooglePayLogo /> },
-  { label: "KassenSichV", node: <KassenSichVSeal /> },
-  { label: "DSGVO", node: <DsgvoBadge /> },
-  { label: "DATEV", node: <DatevLogo /> },
+const INTEGRATION_TILES = [
+  {
+    label: "Stripe",
+    node: <StripeLogo className="text-[18px]" />,
+    className: "left-[13%] top-[42%]",
+  },
+  {
+    label: "Apple Pay",
+    node: <ApplePayLogo className="text-[17px] [&_svg]:size-5 [&_span]:text-[15px]" />,
+    className: "left-[24%] top-[18%]",
+  },
+  {
+    label: "Google Pay",
+    node: <GooglePayLogo className="[&_svg]:size-5 [&_span]:text-[15px]" />,
+    className: "right-[24%] top-[22%]",
+  },
+  {
+    label: "DATEV",
+    node: <DatevLogo />,
+    className: "right-[16%] top-[46%]",
+  },
+  {
+    label: "KassenSichV",
+    node: <KassenSichVSeal />,
+    className: "left-[31%] bottom-[18%]",
+  },
+  {
+    label: "DSGVO",
+    node: <DsgvoBadge />,
+    className: "right-[31%] bottom-[20%]",
+  },
   {
     label: "QR ordering",
     node: (
@@ -31,6 +55,7 @@ const TRUST_GRID_ITEMS = [
         QR ordering
       </span>
     ),
+    className: "left-[43%] top-[34%]",
   },
   {
     label: "Denis AI",
@@ -39,25 +64,41 @@ const TRUST_GRID_ITEMS = [
         Denis AI
       </span>
     ),
+    className: "right-[38%] bottom-[35%]",
   },
 ];
 
-function TrustGridCell({
+function IntegrationTile({
   children,
   className,
+  label,
 }: {
   children: ReactNode;
   className?: string;
+  label: string;
 }) {
   return (
     <div
       className={cn(
-        "flex min-h-[76px] items-center justify-center border-t border-[var(--lp-border-subtle)] px-5 py-4 text-center sm:min-h-[88px]",
+        "absolute hidden min-h-[66px] min-w-[92px] items-center justify-center rounded-xl border border-[var(--lp-border-subtle)] bg-white/92 px-4 py-3 text-center shadow-[0_22px_54px_-42px_rgba(22,20,14,0.56)] ring-1 ring-white/80 backdrop-blur md:flex",
         className
       )}
+      aria-label={label}
     >
       {children}
     </div>
+  );
+}
+
+function GhostTile({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "absolute hidden size-16 rounded-xl border border-[var(--lp-border-subtle)] bg-white/38 shadow-[0_18px_48px_-44px_rgba(22,20,14,0.5)] md:block",
+        className
+      )}
+      aria-hidden
+    />
   );
 }
 
@@ -133,44 +174,70 @@ export function LandingTrustStrip() {
     >
       <LandingContainer wide className="px-0 sm:px-6">
         <div className="mx-auto max-w-[1140px] border-x border-[var(--lp-border-subtle)] bg-[var(--lp-surface)]">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-[1.45fr_repeat(4,minmax(0,1fr))]">
-            <div className="flex min-h-[152px] items-center border-t border-[var(--lp-border-subtle)] px-8 py-8 sm:col-span-2 lg:col-span-1 lg:row-span-2 lg:border-r">
-              <p className="max-w-[15rem] text-[14px] font-medium leading-[1.55] text-[var(--lp-muted)]">
-                Trusted by hospitality teams that need QR ordering, payments,
-                service truth, and compliance in one operating system.
-              </p>
+          <div className="relative min-h-[620px] overflow-hidden border-b border-[var(--lp-border-subtle)] bg-white">
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-[0.62]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(22,20,14,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(22,20,14,0.045) 1px, transparent 1px)",
+                backgroundSize: "88px 88px",
+              }}
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05),rgba(255,255,255,0.72)_64%,#fff_100%)]"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-x-0 top-[250px] h-40 bg-[linear-gradient(to_bottom,transparent,#fff)]"
+              aria-hidden
+            />
+
+            <GhostTile className="left-[8%] top-[25%]" />
+            <GhostTile className="right-[8%] top-[30%]" />
+            <GhostTile className="left-[48%] top-[19%] opacity-55" />
+            <GhostTile className="right-[43%] bottom-[33%] opacity-55" />
+
+            {INTEGRATION_TILES.map((item) => (
+              <IntegrationTile
+                key={item.label}
+                label={item.label}
+                className={item.className}
+              >
+                {item.node}
+              </IntegrationTile>
+            ))}
+
+            <div className="absolute inset-x-6 top-[270px] z-10 mx-auto flex w-fit items-center gap-2 rounded-full border border-[var(--lp-border-subtle)] bg-white/92 px-5 py-3 text-[14px] font-semibold text-[var(--lp-ink)] shadow-[0_16px_46px_-36px_rgba(22,20,14,0.62)] backdrop-blur">
+              <span className="size-1.5 rounded-full bg-[var(--lp-ember)]" aria-hidden />
+              Stripe · Apple Pay · Google Pay · DATEV
             </div>
 
-            {TRUST_GRID_ITEMS.map((item, index) => (
-              <TrustGridCell
-                key={item.label}
-                className={cn(
-                  "sm:border-l",
-                  index % 4 !== 0 && "lg:border-l"
-                )}
-              >
-                <div aria-label={item.label}>{item.node}</div>
-              </TrustGridCell>
-            ))}
-          </div>
-
-          <div className="grid border-t border-[var(--lp-border-subtle)] lg:grid-cols-[1.02fr_0.98fr]">
-            <div className="px-8 py-12 sm:px-10 lg:px-12 lg:py-16">
+            <div className="relative z-10 mx-auto flex min-h-[620px] max-w-[690px] flex-col items-center justify-end px-8 pb-20 pt-[360px] text-center sm:px-10">
               <p className="text-[11px] font-semibold uppercase tracking-normal text-[var(--lp-subtle)]">
                 {copy.trust.eyebrow}
               </p>
-              <h2 className="mt-6 max-w-[28rem] font-display text-3xl font-semibold leading-[1.1] tracking-normal text-[var(--lp-ink)] sm:text-4xl">
+              <h2 className="mt-5 font-display text-[clamp(2.15rem,5vw,3.7rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-[var(--lp-ink)]">
                 {copy.trust.headline}
-                <span className="landing-serif-accent block pt-1 font-normal text-[var(--lp-ember)] [font-size:1.02em]">
+                <span className="landing-serif-accent block pt-1 font-normal text-[var(--lp-ember)] [font-size:0.92em]">
                   {copy.trust.headlineAccent}
                 </span>
               </h2>
-            </div>
-
-            <div className="border-t border-[var(--lp-border-subtle)] px-8 py-12 sm:px-10 lg:border-t-0 lg:border-l lg:px-12 lg:py-16">
-              <p className="max-w-[33rem] text-[15px] font-medium leading-[1.75] text-[var(--lp-muted)]">
+              <p className="mt-5 max-w-[620px] text-[17px] font-medium leading-[1.72] text-[var(--lp-muted)]">
                 {copy.trust.lead}
               </p>
+
+              <div className="mt-8 flex flex-wrap justify-center gap-2 md:hidden">
+                {INTEGRATION_TILES.map((item) => (
+                  <span
+                    key={item.label}
+                    className="inline-flex min-h-10 items-center rounded-full border border-[var(--lp-border-subtle)] bg-white px-3.5 py-2 shadow-[0_1px_2px_rgba(22,20,14,0.04)]"
+                    aria-label={item.label}
+                  >
+                    {item.node}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
