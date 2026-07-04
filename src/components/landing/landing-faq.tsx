@@ -20,32 +20,34 @@ export function LandingFaq() {
       className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
-        <AnimateInView className="mx-auto max-w-[520px] text-center">
-          <LandingHeadline inverted>{faq.title}</LandingHeadline>
-          <LandingLead inverted className="mt-4">
-            {faq.lead}
-          </LandingLead>
-        </AnimateInView>
+        <div className="mx-auto grid max-w-[1140px] border-x border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] lg:grid-cols-[0.86fr_1.14fr]">
+          <AnimateInView className="border-b border-[var(--lp-border-subtle)] px-8 py-12 sm:px-10 lg:border-b-0 lg:border-r lg:px-12 lg:py-16">
+            <LandingHeadline inverted>{faq.title}</LandingHeadline>
+            <LandingLead inverted className="mt-4 max-w-[28rem]">
+              {faq.lead}
+            </LandingLead>
+          </AnimateInView>
 
-        <div className="mx-auto mt-14 max-w-[720px] space-y-3">
-          {faq.items.map((item) => (
-            <AnimateInView key={item.q}>
-              <details className="group rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] px-6 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition-all duration-300 open:border-[var(--lp-ember)]/25 open:shadow-[0_8px_24px_rgba(22,20,14,0.06)] hover:border-[var(--lp-ink)]/20">
-                <summary
-                  className={cn(
-                    "flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-[15px] font-medium text-[var(--lp-ink)]",
-                    "[&::-webkit-details-marker]:hidden"
-                  )}
-                >
-                  {item.q}
-                  <ChevronDown className="size-4 shrink-0 text-[var(--lp-subtle)] transition group-open:rotate-180" />
-                </summary>
-                <p className="border-t border-[var(--lp-border-subtle)] pb-5 pt-4 text-[15px] leading-relaxed text-[var(--lp-muted)]">
-                  {item.a}
-                </p>
-              </details>
-            </AnimateInView>
-          ))}
+          <div className="divide-y divide-[var(--lp-border-subtle)]">
+            {faq.items.map((item) => (
+              <AnimateInView key={item.q}>
+                <details className="group px-8 transition-colors open:bg-[var(--lp-tint)]/35 hover:bg-[var(--lp-tint)]/28 sm:px-10 lg:px-12">
+                  <summary
+                    className={cn(
+                      "flex cursor-pointer list-none items-center justify-between gap-4 py-6 text-[15px] font-semibold text-[var(--lp-ink)]",
+                      "[&::-webkit-details-marker]:hidden"
+                    )}
+                  >
+                    {item.q}
+                    <ChevronDown className="size-4 shrink-0 text-[var(--lp-subtle)] transition group-open:rotate-180" />
+                  </summary>
+                  <p className="max-w-[42rem] pb-7 text-[15px] leading-relaxed text-[var(--lp-muted)]">
+                    {item.a}
+                  </p>
+                </details>
+              </AnimateInView>
+            ))}
+          </div>
         </div>
       </LandingContainer>
     </section>

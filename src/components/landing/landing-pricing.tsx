@@ -40,10 +40,10 @@ export function LandingPricing() {
   return (
     <section
       id="pricing"
-      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-tint)] py-20 text-[var(--lp-ink)] md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
-        <AnimateInView className="mx-auto max-w-[520px] text-center">
+        <AnimateInView className="mx-auto max-w-[620px] text-center">
           <LandingEyebrow inverted>{pricing.eyebrow}</LandingEyebrow>
           <LandingHeadline inverted className="mt-3">
             {pricing.title}
@@ -53,20 +53,20 @@ export function LandingPricing() {
           </LandingLead>
         </AnimateInView>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+        <div className="mx-auto mt-14 grid max-w-[1140px] overflow-hidden border-x border-y border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] lg:grid-cols-3">
           {pricing.plans.map((plan) => (
             <AnimateInView key={plan.name}>
               <div
                 className={cn(
-                  "relative flex h-full flex-col rounded-2xl border p-8 transition-all duration-300 hover:-translate-y-1",
+                  "relative flex h-full flex-col border-b border-[var(--lp-border-subtle)] p-8 transition-colors duration-300 hover:bg-[var(--lp-tint)]/35 lg:border-b-0 lg:border-r lg:last:border-r-0 sm:p-10",
                   plan.primary
-                    ? "border-[var(--lp-ink)]/20 bg-[var(--lp-surface)] shadow-[0_12px_40px_rgba(22,20,14,0.08)] ring-1 ring-[var(--lp-ember)]/15 hover:shadow-[0_24px_60px_rgba(22,20,14,0.14)]"
-                    : "border-[var(--lp-border)] bg-[var(--lp-surface)] shadow-[0_1px_2px_rgba(22,20,14,0.04)] hover:shadow-[0_16px_44px_rgba(22,20,14,0.1)]"
+                    ? "bg-[var(--lp-tint)]/42 ring-1 ring-inset ring-[var(--lp-ember)]/18"
+                    : "bg-[var(--lp-surface)]"
                 )}
               >
                 {plan.primary && (
                   <div
-                    className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-[var(--lp-ember)]/50 to-transparent"
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--lp-ember)]/50 to-transparent"
                     aria-hidden
                   />
                 )}
@@ -118,7 +118,7 @@ export function LandingPricing() {
           ))}
         </div>
 
-        <AnimateInView className="mt-16 rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)] md:p-10">
+        <AnimateInView className="mx-auto mt-10 max-w-[1140px] border-x border-y border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] p-8 md:p-10">
           <h3 className="font-display text-xl font-medium text-[var(--lp-ink)]">
             {pricing.compareTitle}
           </h3>
@@ -154,7 +154,7 @@ export function LandingPricing() {
           </div>
         </AnimateInView>
 
-        <AnimateInView className="mt-10 rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)] md:p-10">
+        <AnimateInView className="mx-auto mt-10 max-w-[1140px] border-x border-y border-[var(--lp-border-subtle)] bg-[var(--lp-surface)] p-8 md:p-10">
           <h3 className="font-display text-xl font-medium text-[var(--lp-ink)]">
             {pricing.roiTitle}
           </h3>

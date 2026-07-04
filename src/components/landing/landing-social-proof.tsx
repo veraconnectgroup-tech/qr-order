@@ -17,29 +17,37 @@ export function LandingSocialProof() {
   return (
     <section
       id="social-proof"
-      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-tint)] py-20 text-[var(--lp-ink)] md:py-28"
+      className="scroll-mt-24 border-t border-[var(--lp-border-subtle)] bg-[var(--lp-bg)] py-20 text-[var(--lp-ink)] md:py-28"
     >
       <LandingContainer wide>
-        <AnimateInView className="mx-auto max-w-[560px] text-center">
-          <LandingEyebrow inverted>{social.eyebrow}</LandingEyebrow>
-          <LandingHeadline inverted className="mt-3">
-            {social.title}
-          </LandingHeadline>
-          <LandingLead inverted className="mt-4">
-            {social.lead}
-          </LandingLead>
-        </AnimateInView>
-
-        <StaggerInView className="relative mt-14 overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] shadow-[0_1px_2px_rgba(22,20,14,0.04)]">
-          {/* Ember top hairline on the stat band */}
+        <div className="mx-auto max-w-[1140px] border-x border-[var(--lp-border-subtle)] bg-[var(--lp-surface)]">
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--lp-ember)]/40 to-transparent"
+            className="pointer-events-none h-px bg-gradient-to-r from-transparent via-[var(--lp-ember)]/35 to-transparent"
             aria-hidden
           />
-          <div className="grid grid-cols-2 divide-x-0 divide-y divide-[var(--lp-border-subtle)] md:grid-cols-4 md:divide-x md:divide-y-0">
+
+          <div className="grid border-b border-[var(--lp-border-subtle)] lg:grid-cols-[0.95fr_1.05fr]">
+            <AnimateInView className="px-8 py-12 sm:px-10 lg:px-12 lg:py-16">
+              <LandingEyebrow inverted>{social.eyebrow}</LandingEyebrow>
+              <LandingHeadline inverted className="mt-4 max-w-[29rem]">
+                {social.title}
+              </LandingHeadline>
+            </AnimateInView>
+
+            <AnimateInView
+              delay={0.06}
+              className="border-t border-[var(--lp-border-subtle)] px-8 py-12 sm:px-10 lg:border-l lg:border-t-0 lg:px-12 lg:py-16"
+            >
+              <LandingLead inverted className="max-w-[34rem]">
+                {social.lead}
+              </LandingLead>
+            </AnimateInView>
+          </div>
+
+          <StaggerInView className="grid grid-cols-2 divide-x-0 divide-y divide-[var(--lp-border-subtle)] md:grid-cols-4 md:divide-x md:divide-y-0">
             {social.stats.map((stat) => (
               <StaggerItem key={stat.label}>
-                <div className="px-6 py-8 transition-colors hover:bg-[var(--lp-tint)]/60 md:py-10">
+                <div className="min-h-[154px] px-6 py-8 transition-colors hover:bg-[var(--lp-tint)]/45 md:py-10">
                   <CountUpStat
                     value={stat.value}
                     suffix={stat.suffix}
@@ -50,29 +58,32 @@ export function LandingSocialProof() {
                 </div>
               </StaggerItem>
             ))}
-          </div>
-        </StaggerInView>
+          </StaggerInView>
 
-        <div className="mt-16 grid gap-6 md:grid-cols-2">
-          {social.testimonials.map((item) => (
-            <AnimateInView key={item.name}>
-              <blockquote className="relative h-full overflow-hidden rounded-2xl border border-[var(--lp-border)] bg-[var(--lp-surface)] p-8 shadow-[0_1px_2px_rgba(22,20,14,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--lp-ember)]/25 hover:shadow-[0_16px_44px_rgba(22,20,14,0.1)]">
-                <span
-                  className="pointer-events-none absolute -left-1 -top-3 font-display text-[5rem] leading-none text-[var(--lp-ember)]/15"
-                  aria-hidden
-                >
-                  &ldquo;
-                </span>
-                <p className="relative text-[16px] leading-relaxed text-[var(--lp-ink)]/80">
-                  {item.quote}
-                </p>
-                <footer className="mt-6 border-t border-[var(--lp-border-subtle)] pt-4">
-                  <p className="text-[14px] font-medium text-[var(--lp-ink)]">{item.name}</p>
-                  <p className="mt-1 text-[13px] text-[var(--lp-subtle)]">{item.role}</p>
-                </footer>
-              </blockquote>
-            </AnimateInView>
-          ))}
+          <div className="grid border-t border-[var(--lp-border-subtle)] md:grid-cols-2">
+            {social.testimonials.map((item, index) => (
+              <AnimateInView key={item.name}>
+                <blockquote className="relative h-full px-8 py-10 transition-colors hover:bg-[var(--lp-tint)]/35 sm:px-10 lg:px-12">
+                  {index > 0 && (
+                    <div className="absolute inset-y-0 left-0 hidden w-px bg-[var(--lp-border-subtle)] md:block" />
+                  )}
+                  <span
+                    className="font-display text-[3.25rem] leading-none text-[var(--lp-ember)]/18"
+                    aria-hidden
+                  >
+                    &ldquo;
+                  </span>
+                  <p className="mt-2 text-[16px] leading-relaxed text-[var(--lp-ink)]/82">
+                    {item.quote}
+                  </p>
+                  <footer className="mt-7 border-t border-[var(--lp-border-subtle)] pt-4">
+                    <p className="text-[14px] font-medium text-[var(--lp-ink)]">{item.name}</p>
+                    <p className="mt-1 text-[13px] text-[var(--lp-subtle)]">{item.role}</p>
+                  </footer>
+                </blockquote>
+              </AnimateInView>
+            ))}
+          </div>
         </div>
       </LandingContainer>
     </section>
