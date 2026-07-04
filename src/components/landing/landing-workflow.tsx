@@ -36,7 +36,7 @@ export function LandingWorkflow() {
       id="how-it-works"
       className="scroll-mt-24 border-y border-[var(--lp-border)] bg-[var(--lp-surface)] px-6 py-20 sm:py-24"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1140px]">
         <AnimateInView className="mb-12 text-center sm:mb-14">
           <h2 className="font-display text-3xl font-semibold tracking-[-0.02em] text-[var(--lp-ink)] md:text-4xl">
             Three steps. Zero friction.

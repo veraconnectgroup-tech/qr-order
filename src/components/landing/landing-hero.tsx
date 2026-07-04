@@ -90,7 +90,7 @@ export function LandingHero() {
           </HeroItem>
         </HeroStagger>
 
-        <HeroItem className="mx-auto w-full max-w-[1120px] shrink-0">
+        <HeroItem className="mx-auto w-full max-w-[1140px] shrink-0">
           <div className="landing-hero-product-shell overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_28px_90px_-34px_rgba(22,20,14,0.34)]">
             <LandingHeroDenisDemo frameless compact />
           </div>

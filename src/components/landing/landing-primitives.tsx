@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 export function LandingContainer({
   children,
   className,
-  wide,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -13,7 +12,7 @@ export function LandingContainer({
     <div
       className={cn(
         "landing-container mx-auto w-full px-6",
-        wide ? "max-w-[1280px]" : "max-w-[1120px]",
+        "max-w-[1140px]",
         className
       )}
     >

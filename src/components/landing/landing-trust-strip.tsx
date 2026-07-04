@@ -174,9 +174,9 @@ export function LandingTrustStrip() {
     >
       <LandingContainer wide className="px-0 sm:px-6">
         <div className="mx-auto max-w-[1140px] border-x border-[var(--lp-border-subtle)] bg-[var(--lp-surface)]">
-          <div className="relative min-h-[620px] overflow-hidden border-b border-[var(--lp-border-subtle)] bg-white">
+          <div className="relative overflow-hidden border-b border-[var(--lp-border-subtle)] bg-white">
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-[360px] opacity-[0.62]"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[390px] opacity-[0.62]"
               style={{
                 backgroundImage:
                   "linear-gradient(rgba(22,20,14,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(22,20,14,0.045) 1px, transparent 1px)",
@@ -185,35 +185,37 @@ export function LandingTrustStrip() {
               aria-hidden
             />
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05),rgba(255,255,255,0.72)_64%,#fff_100%)]"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[440px] bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05),rgba(255,255,255,0.72)_70%,#fff_100%)]"
               aria-hidden
             />
             <div
-              className="pointer-events-none absolute inset-x-0 top-[250px] h-40 bg-[linear-gradient(to_bottom,transparent,#fff)]"
+              className="pointer-events-none absolute inset-x-0 top-[310px] h-44 bg-[linear-gradient(to_bottom,transparent,#fff)]"
               aria-hidden
             />
 
-            <GhostTile className="left-[8%] top-[25%]" />
-            <GhostTile className="right-[8%] top-[30%]" />
-            <GhostTile className="left-[48%] top-[19%] opacity-55" />
-            <GhostTile className="right-[43%] bottom-[33%] opacity-55" />
+            <div className="relative z-10 hidden h-[360px] md:block">
+              <GhostTile className="left-[8%] top-[25%]" />
+              <GhostTile className="right-[8%] top-[30%]" />
+              <GhostTile className="left-[48%] top-[19%] opacity-55" />
+              <GhostTile className="right-[43%] bottom-[33%] opacity-55" />
 
-            {INTEGRATION_TILES.map((item) => (
-              <IntegrationTile
-                key={item.label}
-                label={item.label}
-                className={item.className}
-              >
-                {item.node}
-              </IntegrationTile>
-            ))}
+              {INTEGRATION_TILES.map((item) => (
+                <IntegrationTile
+                  key={item.label}
+                  label={item.label}
+                  className={item.className}
+                >
+                  {item.node}
+                </IntegrationTile>
+              ))}
 
-            <div className="absolute inset-x-6 top-[270px] z-10 mx-auto flex w-fit items-center gap-2 rounded-full border border-[var(--lp-border-subtle)] bg-white/92 px-5 py-3 text-[14px] font-semibold text-[var(--lp-ink)] shadow-[0_16px_46px_-36px_rgba(22,20,14,0.62)] backdrop-blur">
-              <span className="size-1.5 rounded-full bg-[var(--lp-ember)]" aria-hidden />
-              Stripe · Apple Pay · Google Pay · DATEV
+              <div className="absolute inset-x-6 bottom-5 z-20 mx-auto flex w-fit items-center gap-2 rounded-full border border-[var(--lp-border-subtle)] bg-white/94 px-5 py-3 text-[14px] font-semibold text-[var(--lp-ink)] shadow-[0_16px_46px_-36px_rgba(22,20,14,0.62)] backdrop-blur">
+                <span className="size-1.5 rounded-full bg-[var(--lp-ember)]" aria-hidden />
+                Stripe · Apple Pay · Google Pay · DATEV
+              </div>
             </div>
 
-            <div className="relative z-10 mx-auto flex min-h-[620px] max-w-[690px] flex-col items-center justify-end px-8 pb-20 pt-[360px] text-center sm:px-10">
+            <div className="relative z-20 mx-auto max-w-[690px] px-8 pb-20 pt-16 text-center sm:px-10 md:pt-12">
               <p className="text-[11px] font-semibold uppercase tracking-normal text-[var(--lp-subtle)]">
                 {copy.trust.eyebrow}
               </p>

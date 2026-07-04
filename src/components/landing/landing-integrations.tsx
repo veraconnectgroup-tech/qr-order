@@ -12,7 +12,7 @@ const integrations = [
 export function LandingIntegrations() {
   return (
     <section className="border-b border-white/[0.06] px-5 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1140px]">
         <AnimateInView className="max-w-xl">
           <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
             Integrations

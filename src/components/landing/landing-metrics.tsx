@@ -10,7 +10,7 @@ const metrics = [
 export function LandingMetrics() {
   return (
     <section className="border-y border-white/[0.06] bg-white/[0.015]">
-      <AnimateInView className="mx-auto grid max-w-6xl grid-cols-2 divide-white/[0.06] md:grid-cols-4 md:divide-x">
+      <AnimateInView className="mx-auto grid max-w-[1140px] grid-cols-2 divide-white/[0.06] md:grid-cols-4 md:divide-x">
         {metrics.map((metric) => (
           <div
             key={metric.label}
