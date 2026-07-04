@@ -228,8 +228,8 @@ const copyDe: LandingCopy = {
   },
   pricing: {
     eyebrow: "Preise",
-    title: "Transparente Preise",
-    lead: "Keine Plattformgebühr im Standard. Klare Kartengebühr über Stripe.",
+    title: "Starte mit 30.000 kostenlosen Credits.",
+    lead: "Denis im Pilot kostenlos testen. Danach klare Pläne ab €49 pro Monat.",
     popular: "Beliebteste Wahl",
     roiTitle: "ROI berechnen",
     roiLead: "Schätzen Sie Denis-Uplift für Ihren Betrieb.",
@@ -494,8 +494,8 @@ const copyEn: LandingCopy = {
   pricing: {
     ...copyDe.pricing,
     eyebrow: "Pricing",
-    title: "Transparent pricing",
-    lead: "No platform fee on Standard. Clear card fee via Stripe.",
+    title: "Start with 30,000 free credits.",
+    lead: "Put Denis to work for free during your pilot. Then clear plans from €49 per month.",
     popular: "Most popular",
     roiTitle: "Calculate ROI",
     roiLead: "Estimate Denis uplift for your venue.",
@@ -706,8 +706,8 @@ const copySr: LandingCopy = {
   pricing: {
     ...copyEn.pricing,
     eyebrow: "Cene",
-    title: "Transparentne cene",
-    lead: "Bez mesečne naknade na Standard planu. Jasna provizija preko Stripe-a.",
+    title: "Počni sa 30.000 besplatnih kredita.",
+    lead: "Pusti Denisa da radi besplatno tokom pilota. Posle toga jasni planovi od €49 mesečno.",
     popular: "Najpopularnije",
     roiTitle: "Izračunaj ROI",
     roiLead: "Proceni Denis uplift za tvoj lokal.",
