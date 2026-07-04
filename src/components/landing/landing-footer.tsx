@@ -54,6 +54,8 @@ const footerLabels = {
     imprint: "Impressum",
     brandLine: "Denis AI. Ihr Restaurant Co-worker für echte Schichten.",
     creditsCta: "30.000 Credits kostenlos starten",
+    pulseLabel: "Live shift",
+    pulseItems: ["18 open tables", "42 orders watched", "0 forgotten tickets", "Stripe ready"],
     payments: "Payments powered by Stripe Connect",
   },
   en: {
@@ -73,6 +75,8 @@ const footerLabels = {
     imprint: "Imprint",
     brandLine: "Denis AI. Your restaurant co-worker for real shifts.",
     creditsCta: "Get 30,000 free credits",
+    pulseLabel: "Live shift",
+    pulseItems: ["18 open tables", "42 orders watched", "0 forgotten tickets", "Stripe ready"],
     payments: "Payments powered by Stripe Connect",
   },
   sr: {
@@ -92,21 +96,87 @@ const footerLabels = {
     imprint: "Impresum",
     brandLine: "Denis AI. Tvoj restaurant co-worker za prave smene.",
     creditsCta: "Uzmi 30.000 besplatnih kredita",
+    pulseLabel: "Live shift",
+    pulseItems: ["18 otvorenih stolova", "42 praćene porudžbine", "0 zaboravljenih tiketa", "Stripe spreman"],
     payments: "Plaćanja preko Stripe Connect",
   },
 };
 
+const DENIS_WORDMARK_LETTERS = ["D", "E", "N", "I", "S"] as const;
+
+function DenisWordmarkLetter({ letter }: { letter: string }) {
+  return (
+    <span className="relative isolate flex h-20 items-end justify-center overflow-hidden border-r border-[var(--lp-ink)]/8 last:border-r-0 sm:h-28 md:h-36 lg:h-48 xl:h-56">
+      <span
+        className="absolute bottom-0 translate-x-[0.035em] translate-y-[0.035em] font-display text-[4.25rem] font-extrabold uppercase leading-[0.74] tracking-normal text-[var(--lp-ember)] opacity-95 sm:text-[6rem] md:text-[8.5rem] lg:text-[11rem] xl:text-[12.5rem]"
+        aria-hidden
+      >
+        {letter}
+      </span>
+      <span className="relative font-display text-[4.25rem] font-extrabold uppercase leading-[0.74] tracking-normal text-[var(--lp-ink)] [-webkit-text-stroke:1px_rgba(232,93,4,0.22)] sm:text-[6rem] md:text-[8.5rem] lg:text-[11rem] xl:text-[12.5rem]">
+        {letter}
+      </span>
+      <span
+        className="absolute inset-x-[18%] bottom-1 h-px bg-[var(--lp-ember)]/65 sm:bottom-2"
+        aria-hidden
+      />
+    </span>
+  );
+}
+
 function FooterWordmark() {
   return (
     <div
-      className="font-display flex items-end justify-center gap-2 overflow-hidden text-[3.25rem] font-black uppercase leading-none tracking-normal text-[var(--lp-ink)] sm:gap-4 sm:text-[6rem] md:text-[8rem] lg:text-[10.5rem] xl:text-[12.5rem]"
-      aria-label="DENIS AI"
+      className="relative overflow-hidden border-y border-[var(--lp-border-subtle)] bg-[linear-gradient(180deg,#fff_0%,rgba(232,93,4,0.045)_100%)] py-6 sm:py-8"
+      aria-label="Denis AI"
     >
-      <span>DENIS</span>
-      <span className="mb-[0.14em] inline-flex items-center justify-center" aria-hidden>
-        <DenisTableMark size={40} className="size-[0.52em] text-[var(--lp-ink)]" />
-      </span>
-      <span>AI</span>
+      <div className="flex items-end justify-between gap-4 sm:gap-6">
+        <span
+          className="grid min-w-0 flex-1 grid-cols-5 items-end gap-0 border-y border-[var(--lp-ember)]/22"
+          aria-hidden
+        >
+          {DENIS_WORDMARK_LETTERS.map((letter) => (
+            <DenisWordmarkLetter key={letter} letter={letter} />
+          ))}
+        </span>
+        <span className="mb-[0.62em] flex shrink-0 flex-col items-end gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--lp-ink)] px-3.5 py-2 text-[12px] font-bold uppercase tracking-normal text-white shadow-[0_18px_42px_-30px_rgba(22,20,14,0.9)] sm:px-4 sm:py-2.5 sm:text-[13px]">
+            <DenisTableMark size={24} className="size-4 text-white" />
+            AI
+          </span>
+          <span className="hidden text-right text-[11px] font-semibold uppercase tracking-normal text-[var(--lp-subtle)] sm:block">
+            Restaurant co-worker
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FooterShiftPulse({
+  label,
+  items,
+}: {
+  label: string;
+  items: string[];
+}) {
+  return (
+    <div className="mt-6 grid overflow-hidden border-y border-[var(--lp-border-subtle)] text-[11px] font-semibold uppercase tracking-normal text-[var(--lp-muted)] sm:grid-cols-[1.05fr_repeat(4,1fr)]">
+      <div className="flex items-center gap-2 border-b border-[var(--lp-border-subtle)] px-4 py-3 text-[var(--lp-ink)] sm:border-b-0 sm:border-r">
+        <span className="relative flex size-2.5" aria-hidden>
+          <span className="absolute inline-flex size-full rounded-full bg-[var(--lp-ember)] opacity-30" />
+          <span className="relative inline-flex size-2.5 rounded-full bg-[var(--lp-ember)]" />
+        </span>
+        {label}
+      </div>
+      {items.map((item) => (
+        <div
+          key={item}
+          className="flex min-h-11 items-center border-b border-[var(--lp-border-subtle)] px-4 py-3 sm:border-b-0 sm:border-r last:border-b-0 sm:last:border-r-0"
+        >
+          {item}
+        </div>
+      ))}
     </div>
   );
 }
@@ -158,8 +228,9 @@ export function LandingFooter() {
             <p className="text-[12px]">{copy.footer.copyright}</p>
             <p className="text-[12px] text-[var(--lp-subtle)]">{labels.payments}</p>
           </div>
-          <div className="mt-8 pb-2 sm:mt-10">
+          <div className="mt-8 pb-8 sm:mt-10 sm:pb-10">
             <FooterWordmark />
+            <FooterShiftPulse label={labels.pulseLabel} items={labels.pulseItems} />
           </div>
         </div>
       </LandingContainer>
