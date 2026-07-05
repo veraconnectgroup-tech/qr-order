@@ -24,7 +24,7 @@ type BrowserSpeechRecognition = {
         };
       }) => void)
     | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -78,7 +78,12 @@ export function useDenisStationVoice(locationId: string) {
   const listen = useCallback(
     (onResult: (transcript: string) => void) => {
       const Ctor = getSpeechRecognitionCtor();
-      if (!Ctor) return;
+      if (!Ctor) {
+        console.warn(
+          "[denis-station-voice] SpeechRecognition unsupported in this browser"
+        );
+        return;
+      }
       stopListening();
 
       const recognition = new Ctor();
@@ -100,7 +105,13 @@ export function useDenisStationVoice(locationId: string) {
         const transcript = event.results[lastIndex]?.[0]?.transcript?.trim() ?? "";
         finish(transcript);
       };
-      recognition.onerror = () => finish("");
+      recognition.onerror = (event) => {
+        console.error(
+          "[denis-station-voice] listen failed",
+          event?.error ?? "unknown"
+        );
+        finish("");
+      };
       recognition.onend = () => finish("");
 
       recognitionRef.current = recognition;
