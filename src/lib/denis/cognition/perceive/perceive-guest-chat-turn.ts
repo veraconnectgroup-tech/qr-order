@@ -301,6 +301,18 @@ export async function perceiveGuestChatTurn(
 
   let sessionRow: AiSessionRow | null = null;
 
+  // The conversation belongs to the table, not a clock or a message count -
+  // while the guest's table session is still open, Denis must not silently
+  // forget everything and start a "new" chat mid-visit.
+  const { data: openTableSession } = await admin
+    .from("table_sessions")
+    .select("id")
+    .eq("table_id", input.tableId)
+    .eq("status", "active")
+    .eq("bill_status", "open")
+    .maybeSingle();
+  const tableIsOpen = Boolean(openTableSession);
+
   if (input.sessionId) {
     const { data, error } = await admin
       .from("ai_sessions")
@@ -351,7 +363,7 @@ export async function perceiveGuestChatTurn(
 
     if (row.status !== "active") {
       sessionRow = null;
-    } else if (isAiSessionExpired(row)) {
+    } else if (!tableIsOpen && isAiSessionExpired(row)) {
       await admin
         .from("ai_sessions")
         .update({
@@ -365,7 +377,11 @@ export async function perceiveGuestChatTurn(
     }
   }
 
-  if (sessionRow && aiSessionInactiveStatus(sessionRow) !== "active") {
+  if (
+    sessionRow &&
+    !tableIsOpen &&
+    aiSessionInactiveStatus(sessionRow) !== "active"
+  ) {
     return apiError("Session is no longer active.", 410);
   }
 
@@ -373,7 +389,11 @@ export async function perceiveGuestChatTurn(
     ? timelineToStoredMessages(await loadDenisTimeline(admin, sessionRow.id))
     : [];
 
-  if (sessionRow && priorMessages.length + 2 > AI_CONFIG.maxMessagesPerSession) {
+  if (
+    sessionRow &&
+    !tableIsOpen &&
+    priorMessages.length + 2 > AI_CONFIG.maxMessagesPerSession
+  ) {
     await admin
       .from("ai_sessions")
       .update({
