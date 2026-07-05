@@ -27,20 +27,50 @@ function formatCountdown(totalSeconds: number): string {
 
 export type QuestionUrgency = "normal" | "urgent" | "critical";
 
+/** A guest order still waiting this long is already a five-alarm fire, regardless of how fresh Denis's current re-ask is. */
+const OVERDUE_SEVERITY_CAP_MINUTES = 30;
+
+/** Pulls "... čeka 154 min ..." back out of the staff-facing message text (see buildStationQuestionMessage). */
+export function extractWaitMinutes(message: string): number | null {
+  const match = message.match(/(\d+)\s*min\b/);
+  if (!match) return null;
+  const minutes = Number(match[1]);
+  return Number.isFinite(minutes) ? minutes : null;
+}
+
 /** 0 = just asked, 1 = about to expire — drives Denis's mark color continuously. */
 export function resolveUrgencyRatio(
   askedAt: string,
   expiresAt: string,
-  now: number
+  now: number,
+  waitMinutes?: number | null
 ): number {
   const total = Date.parse(expiresAt) - Date.parse(askedAt);
-  if (!Number.isFinite(total) || total <= 0) return 0;
-  return Math.min(1, Math.max(0, (now - Date.parse(askedAt)) / total));
+  const timerRatio =
+    !Number.isFinite(total) || total <= 0
+      ? 0
+      : Math.min(1, Math.max(0, (now - Date.parse(askedAt)) / total));
+
+  if (waitMinutes == null || !Number.isFinite(waitMinutes)) return timerRatio;
+
+  // Denis re-asking resets the short per-question timer, but an order that's
+  // been waiting 154 minutes shouldn't look calm just because the question
+  // itself is new — take whichever signal is more urgent.
+  const overdueRatio = Math.min(
+    1,
+    Math.max(0, waitMinutes / OVERDUE_SEVERITY_CAP_MINUTES)
+  );
+  return Math.max(timerRatio, overdueRatio);
 }
 
 /** Guest is still waiting and the station hasn't answered — Denis gets more insistent, never rude. */
-export function resolveUrgency(askedAt: string, expiresAt: string, now: number): QuestionUrgency {
-  const elapsedRatio = resolveUrgencyRatio(askedAt, expiresAt, now);
+export function resolveUrgency(
+  askedAt: string,
+  expiresAt: string,
+  now: number,
+  waitMinutes?: number | null
+): QuestionUrgency {
+  const elapsedRatio = resolveUrgencyRatio(askedAt, expiresAt, now, waitMinutes);
   if (elapsedRatio >= 0.75) return "critical";
   if (elapsedRatio >= 0.4) return "urgent";
   return "normal";
@@ -81,7 +111,12 @@ export function DenisQuestionStrip({
   // on every clock tick.
   useEffect(() => {
     if (!active) return;
-    const tier = resolveUrgency(active.asked_at, active.expires_at, now);
+    const tier = resolveUrgency(
+      active.asked_at,
+      active.expires_at,
+      now,
+      extractWaitMinutes(active.message)
+    );
     const key = `${active.id}:${tier}`;
     if (spokenTiersRef.current.has(key)) return;
     spokenTiersRef.current.add(key);
@@ -112,8 +147,19 @@ export function DenisQuestionStrip({
     ) : null;
   }
 
-  const urgencyRatio = resolveUrgencyRatio(active.asked_at, active.expires_at, now);
-  const urgency = resolveUrgency(active.asked_at, active.expires_at, now);
+  const activeWaitMinutes = extractWaitMinutes(active.message);
+  const urgencyRatio = resolveUrgencyRatio(
+    active.asked_at,
+    active.expires_at,
+    now,
+    activeWaitMinutes
+  );
+  const urgency = resolveUrgency(
+    active.asked_at,
+    active.expires_at,
+    now,
+    activeWaitMinutes
+  );
 
   const handleAnswer = async (
     answer: NonNullable<StationQuestionRow["answer"]>,
