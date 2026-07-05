@@ -6,27 +6,17 @@ import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
 import { classifyStationVoiceReply } from "@/lib/denis/stations/classify-station-voice-reply";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
-import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
-import { resolveDenisMoodColor } from "@/components/design-system/denis-mood-color";
-import { cn } from "@/lib/utils";
-
-const ETA_OPTIONS: Record<"kitchen" | "bar", number[]> = {
-  kitchen: [2, 5, 10],
-  bar: [1, 3, 5],
-};
 
 function secondsLeft(expiresAt: string, now: number): number {
   return Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000));
 }
 
-function formatCountdown(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
 export type QuestionUrgency = "normal" | "urgent" | "critical";
+
+/** How many times Denis re-asks for a clarification before giving up on this listen window. */
+const MAX_CLARIFY_RETRIES = 2;
+const CLARIFY_LINE = "Nisam razumeo, možete li ponoviti?";
 
 /** A guest order still waiting this long is already a five-alarm fire, regardless of how fresh Denis's current re-ask is. */
 const OVERDUE_SEVERITY_CAP_MINUTES = 30;
@@ -77,13 +67,13 @@ export function resolveUrgency(
   return "normal";
 }
 
-const URGENCY_PREFIX: Record<QuestionUrgency, string> = {
-  normal: "",
-  urgent: "Asking again — ",
-  critical: "Guest still waiting, urgent — ",
-};
-
-/** Denis question card strip — one card at a time, one-tap answers. */
+/**
+ * Denis's voice presence — just the orb, full-screen and blurred behind,
+ * while he has an unanswered question. Answering happens by voice
+ * (walkie-talkie style, see useDenisStationVoice); the question text itself
+ * lives in the station's normal alert/notification surfaces, not duplicated
+ * here.
+ */
 export function DenisQuestionStrip({
   locationId,
   station,
@@ -97,7 +87,8 @@ export function DenisQuestionStrip({
   );
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const { speak, activate, voicePrimed, speaking, listen, listening } =
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const { speak, activate, voicePrimed, speaking, listen } =
     useDenisStationVoice(locationId);
   const spokenTiersRef = useRef<Set<string>>(new Set());
 
@@ -150,19 +141,29 @@ export function DenisQuestionStrip({
     if (!line) return;
     const questionId = active.id;
     const questionType = active.question_type;
-    speak(line, () => {
+
+    // Short back-and-forth: if Denis can't make sense of the reply, he asks
+    // once more (up to MAX_CLARIFY_RETRIES) instead of silently giving up
+    // after a single unrecognized answer.
+    const attemptListen = (retriesLeft: number) => {
       listen((transcript) => {
-        // The active question may have changed (answered via tap, or a new
-        // one arrived) while this listen window was open — don't submit
-        // a stale voice reply against whatever question is active now.
         if (activeIdRef.current !== questionId) return;
         const reply = classifyStationVoiceReply(transcript, questionType);
-        if (!reply) return;
-        void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
-          spokenTiersRef.current.add(`${questionId}:answered`);
+        if (reply) {
+          void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
+            spokenTiersRef.current.add(`${questionId}:answered`);
+          });
+          return;
+        }
+        if (retriesLeft <= 0) return;
+        speak(CLARIFY_LINE, () => {
+          if (activeIdRef.current !== questionId) return;
+          attemptListen(retriesLeft - 1);
         });
       });
-    });
+    };
+
+    speak(line, () => attemptListen(MAX_CLARIFY_RETRIES));
   }, [active, now, speak, listen, handleAnswer]);
 
   const activateButton = voicePrimed ? null : (
@@ -202,129 +203,31 @@ export function DenisQuestionStrip({
     activeWaitMinutes
   );
 
-  const isEtaQuestion =
-    active.question_type === "eta" || active.question_type === "mixed_conflict";
+  const dismissKey = `${active.id}:${urgency}`;
+  const dismissed = dismissedKey === dismissKey;
+
+  if (dismissed) {
+    return activateButton ? (
+      <div className="flex justify-center">{activateButton}</div>
+    ) : null;
+  }
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      {activateButton}
-      <DenisVoicePresenceOrb moodIntensity={urgencyRatio} speaking={speaking} />
-      <div
-        className="w-full rounded-xl border p-4 transition-colors duration-700"
-        style={{
-          borderColor: resolveDenisMoodColor(urgencyRatio, 0.4),
-          backgroundColor: resolveDenisMoodColor(urgencyRatio, 0.1),
-        }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
+      <button
+        type="button"
+        onClick={() => setDismissedKey(dismissKey)}
+        aria-label="Dismiss"
+        className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-white/80 hover:bg-white/20"
       >
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <DenisMarkBadge size="sm" moodIntensity={urgencyRatio} />
-            <p
-              className={cn(
-                "text-xs font-bold uppercase tracking-wide",
-                urgency === "critical" ? "text-red-300" : "text-orange-300"
-              )}
-            >
-              Denis asks
-              {questions.length > 1 ? (
-                <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
-                  +{questions.length - 1} queued
-                </span>
-              ) : null}
-              {listening ? (
-                <span className="ml-2 animate-pulse rounded-full bg-emerald-500/25 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
-                  🎤 Slušam...
-                </span>
-              ) : null}
-            </p>
-          </div>
-          <span
-            className={cn(
-              "font-mono text-sm font-semibold",
-              remaining <= 20 ? "text-red-300" : "text-orange-200"
-            )}
-          >
-            {formatCountdown(remaining)}
-          </span>
-        </div>
-
-        <p className="mt-2 text-lg font-semibold leading-snug text-orange-50">
-          {URGENCY_PREFIX[urgency]}
-          {active.message}
-        </p>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {isEtaQuestion ? (
-            <>
-              {ETA_OPTIONS[station].map((minutes) => (
-                <button
-                  key={minutes}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleAnswer("eta", minutes)}
-                  className="min-h-12 flex-1 rounded-lg bg-orange-500 px-4 text-base font-bold text-white hover:bg-orange-400 disabled:opacity-50"
-                >
-                  {minutes} min
-                </button>
-              ))}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleAnswer("problem")}
-                className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-              >
-                Problem
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleAnswer("ready")}
-                className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
-              >
-                Ready
-              </button>
-            </>
-          ) : active.question_type === "pending_accept" ? (
-            <>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleAnswer("accepted")}
-                className="min-h-12 flex-1 rounded-lg bg-orange-500 px-4 text-base font-bold text-white hover:bg-orange-400 disabled:opacity-50"
-              >
-                Starting now
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleAnswer("problem")}
-                className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-              >
-                Problem
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleAnswer("picked_up")}
-                className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
-              >
-                Picked up
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleAnswer("still_waiting")}
-                className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-              >
-                Still at pass
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+        ×
+      </button>
+      {activateButton}
+      <DenisVoicePresenceOrb
+        size={160}
+        moodIntensity={urgencyRatio}
+        speaking={speaking}
+      />
     </div>
   );
 }
