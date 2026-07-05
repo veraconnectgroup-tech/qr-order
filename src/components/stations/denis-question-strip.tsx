@@ -48,8 +48,8 @@ export function resolveUrgency(askedAt: string, expiresAt: string, now: number):
 
 const URGENCY_PREFIX: Record<QuestionUrgency, string> = {
   normal: "",
-  urgent: "Ponovo pitam — ",
-  critical: "Gost i dalje čeka, molim hitno — ",
+  urgent: "Asking again — ",
+  critical: "Guest still waiting, urgent — ",
 };
 
 /** Denis question card strip — one card at a time, one-tap answers. */
@@ -66,7 +66,7 @@ export function DenisQuestionStrip({
   );
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const { speak } = useDenisStationVoice(locationId);
+  const { speak, activate, voicePrimed } = useDenisStationVoice(locationId);
   const spokenTiersRef = useRef<Set<string>>(new Set());
 
   const active = questions[0] ?? null;
@@ -89,10 +89,28 @@ export function DenisQuestionStrip({
     if (line) speak(line);
   }, [active, now, speak]);
 
-  if (!active) return null;
+  const activateButton = voicePrimed ? null : (
+    <button
+      type="button"
+      onClick={activate}
+      className="min-h-11 rounded-full border border-orange-500/50 bg-orange-500/15 px-4 text-sm font-semibold text-orange-200 hover:bg-orange-500/25"
+    >
+      Aktiviraj Denisa 🔊
+    </button>
+  );
+
+  if (!active) {
+    return activateButton ? (
+      <div className="flex justify-center">{activateButton}</div>
+    ) : null;
+  }
 
   const remaining = secondsLeft(active.expires_at, now);
-  if (remaining <= 0) return null;
+  if (remaining <= 0) {
+    return activateButton ? (
+      <div className="flex justify-center">{activateButton}</div>
+    ) : null;
+  }
 
   const urgencyRatio = resolveUrgencyRatio(active.asked_at, active.expires_at, now);
   const urgency = resolveUrgency(active.asked_at, active.expires_at, now);
@@ -117,6 +135,7 @@ export function DenisQuestionStrip({
 
   return (
     <div className="flex flex-col items-center gap-3">
+      {activateButton}
       <DenisVoicePresenceOrb moodIntensity={urgencyRatio} />
       <div
         className="w-full rounded-xl border p-4 transition-colors duration-700"
@@ -134,10 +153,10 @@ export function DenisQuestionStrip({
                 urgency === "critical" ? "text-red-300" : "text-orange-300"
               )}
             >
-              Denis pita
+              Denis asks
               {questions.length > 1 ? (
                 <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
-                  +{questions.length - 1} u redu
+                  +{questions.length - 1} queued
                 </span>
               ) : null}
             </p>
@@ -185,7 +204,7 @@ export function DenisQuestionStrip({
                 onClick={() => void handleAnswer("ready")}
                 className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
               >
-                Spremno
+                Ready
               </button>
             </>
           ) : active.question_type === "pending_accept" ? (
@@ -196,7 +215,7 @@ export function DenisQuestionStrip({
                 onClick={() => void handleAnswer("accepted")}
                 className="min-h-12 flex-1 rounded-lg bg-orange-500 px-4 text-base font-bold text-white hover:bg-orange-400 disabled:opacity-50"
               >
-                Kreće odmah
+                Starting now
               </button>
               <button
                 type="button"
@@ -215,7 +234,7 @@ export function DenisQuestionStrip({
                 onClick={() => void handleAnswer("picked_up")}
                 className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
               >
-                Preuzeto
+                Picked up
               </button>
               <button
                 type="button"
@@ -223,7 +242,7 @@ export function DenisQuestionStrip({
                 onClick={() => void handleAnswer("still_waiting")}
                 className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
               >
-                Još čeka na prozoru
+                Still at pass
               </button>
             </>
           )}

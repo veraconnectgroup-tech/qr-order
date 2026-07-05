@@ -1,20 +1,28 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
+
+const ACTIVATION_LINE = "Denis je spreman.";
 
 /**
  * Denis speaking out loud at a kitchen/bar station — reuses the same
  * enabled/localStorage gate as the existing sound alerts (one shared
- * "enable sound" toggle, not a separate permission to grant).
+ * "enable sound" toggle, not a separate permission to grant), plus an
+ * explicit one-tap "Activate Denis" gesture. Browsers only allow audio
+ * playback that traces back to a real click; a speak() call fired later
+ * from a background effect (no click involved) can silently fail to
+ * play even when the fetch itself succeeds, so `primed` tracks whether
+ * this tab has had that one unlocking click yet.
  */
 export function useDenisStationVoice(locationId: string) {
-  const { enabled } = useSoundAlert();
+  const { enabled, enable } = useSoundAlert();
   const playingRef = useRef(false);
+  const [primed, setPrimed] = useState(false);
 
-  const speak = useCallback(
+  const playText = useCallback(
     (text: string) => {
-      if (!enabled || !text.trim() || playingRef.current) return;
+      if (!text.trim() || playingRef.current) return;
       playingRef.current = true;
 
       fetch("/api/ai/voice/speak", {
@@ -44,8 +52,23 @@ export function useDenisStationVoice(locationId: string) {
           playingRef.current = false;
         });
     },
-    [enabled, locationId]
+    [locationId]
   );
 
-  return { voiceEnabled: enabled, speak };
+  const speak = useCallback(
+    (text: string) => {
+      if (!enabled || !primed) return;
+      playText(text);
+    },
+    [enabled, primed, playText]
+  );
+
+  /** Explicit user tap — unlocks audio playback for this tab and turns on sound. */
+  const activate = useCallback(() => {
+    enable();
+    setPrimed(true);
+    playText(ACTIVATION_LINE);
+  }, [enable, playText]);
+
+  return { voiceEnabled: enabled, voicePrimed: primed, speak, activate };
 }
