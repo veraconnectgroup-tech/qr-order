@@ -134,7 +134,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
     stationQuestions: {
-      enabled: false,
+      enabled: true,
       foodSlaMinutes: 12,
       drinkSlaMinutes: 4,
       pendingAcceptMinutes: 2,
@@ -196,8 +196,9 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     consentPromptTemplate: null,
   },
   surfaces: {
-    voiceEnabled: false,
+    voiceEnabled: true,
     voiceTtsEnabled: true,
+    voiceStaffEnabled: true,
   },
   mentalModel: {
     enabled: false,

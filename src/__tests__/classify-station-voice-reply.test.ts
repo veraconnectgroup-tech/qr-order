@@ -53,6 +53,23 @@ describe("classifyStationVoiceReply", () => {
     ).toEqual({ answer: "still_waiting" });
   });
 
+  it("recognizes colloquial kitchen speech", () => {
+    expect(classifyStationVoiceReply("da krecemo", "pending_accept")).toEqual({
+      answer: "accepted",
+    });
+    expect(classifyStationVoiceReply("moze", "pending_accept")).toEqual({
+      answer: "accepted",
+    });
+    expect(classifyStationVoiceReply("15", "eta")).toEqual({
+      answer: "eta",
+      etaMinutes: 15,
+    });
+    expect(classifyStationVoiceReply("uskoro", "eta")).toEqual({
+      answer: "eta",
+      etaMinutes: 5,
+    });
+  });
+
   it("returns null for unrecognized or empty speech", () => {
     expect(classifyStationVoiceReply("", "eta")).toBeNull();
     expect(classifyStationVoiceReply("blah blah nesto random", "eta")).toBeNull();

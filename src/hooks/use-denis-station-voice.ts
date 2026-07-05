@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
+import { speakWithBrowserVoice } from "@/lib/denis/surfaces/voice/speak-with-browser-voice";
 
 const ACTIVATION_LINE = "Denis je spreman.";
-const LISTEN_TIMEOUT_MS = 8000;
+const LISTEN_TIMEOUT_MS = 12000;
 // The mic permission prompt can take longer than LISTEN_TIMEOUT_MS to
 // resolve the first time a browser ever asks (user has to notice and click
 // Allow) — this hard cap only exists to stop a recognizer that never
@@ -45,6 +46,11 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
     webkitSpeechRecognition?: SpeechRecognitionCtor;
   };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+/** Expected STT errors when we stop the mic ourselves — not worth console.error. */
+function isBenignListenError(code: string | undefined): boolean {
+  return code === "aborted" || code === "no-speech";
 }
 
 /**
@@ -112,13 +118,15 @@ export function useDenisStationVoice(locationId: string) {
         finish(transcript);
       };
       recognition.onerror = (event) => {
-        console.error(
-          "[denis-station-voice] listen failed",
-          event?.error ?? "unknown"
-        );
+        const code = event?.error ?? "unknown";
+        if (!isBenignListenError(code)) {
+          console.warn("[denis-station-voice] listen failed", code);
+        }
         finish("");
       };
-      recognition.onend = () => finish("");
+      recognition.onend = () => {
+        if (!settled) finish("");
+      };
       // Only start the real listen window once recognition has actually
       // begun capturing — calling start() merely requests the mic; on a
       // fresh permission prompt the browser can sit waiting on the user for
@@ -150,10 +158,12 @@ export function useDenisStationVoice(locationId: string) {
       playingRef.current = true;
       setSpeaking(true);
 
-      fetch("/api/ai/voice/speak", {
+      const trimmed = text.trim();
+
+      const playServerTts = fetch("/api/ai/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), sessionToken: locationId }),
+        body: JSON.stringify({ text: trimmed, sessionToken: locationId }),
       })
         .then(async (res) => {
           if (!res.ok) {
@@ -162,9 +172,6 @@ export function useDenisStationVoice(locationId: string) {
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           const audio = new Audio(url);
-          // Wait for playback to actually finish (not just start) so
-          // `speaking` — and any listen-after-speak callback — reflect
-          // real speech duration instead of firing the instant play() begins.
           await new Promise<void>((resolve) => {
             audio.addEventListener("ended", () => {
               URL.revokeObjectURL(url);
@@ -176,13 +183,16 @@ export function useDenisStationVoice(locationId: string) {
             });
             audio.play().catch(() => resolve());
           });
-        })
-        .catch((error) => {
-          // The visible question card + color already carry the message —
-          // voice is a bonus, not the only channel — so this stays non-fatal.
-          // Logged (not silent) so a recurring failure is diagnosable from
-          // the station device's console instead of guessing blind.
-          console.error("[denis-station-voice] speak failed", error);
+        });
+
+      void playServerTts
+        .catch(async (error) => {
+          // OpenAI TTS often 502 locally without key — browser voice keeps Denis talking.
+          console.warn(
+            "[denis-station-voice] server TTS unavailable, using browser voice",
+            error instanceof Error ? error.message : error
+          );
+          await speakWithBrowserVoice(trimmed);
         })
         .finally(() => {
           playingRef.current = false;
@@ -194,9 +204,10 @@ export function useDenisStationVoice(locationId: string) {
   );
 
   const speak = useCallback(
-    (text: string, onEnded?: () => void) => {
-      if (!enabled || !primed) return;
+    (text: string, onEnded?: () => void): boolean => {
+      if (!enabled || !primed || playingRef.current) return false;
       playText(text, onEnded);
+      return true;
     },
     [enabled, primed, playText]
   );

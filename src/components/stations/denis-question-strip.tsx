@@ -4,8 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
 import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
-import { classifyStationVoiceReply } from "@/lib/denis/stations/classify-station-voice-reply";
+import {
+  classifyStationVoiceReply,
+  isLikelyDenisEchoTranscript,
+  stationVoiceConfirmationLine,
+} from "@/lib/denis/stations/classify-station-voice-reply";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
+import {
+  buildStationVoiceClarifyLine,
+  resolveStationVoiceConversationTurn,
+} from "@/lib/denis/stations/station-voice-conversation";
+import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-context";
+import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
 
 function secondsLeft(expiresAt: string, now: number): number {
@@ -14,9 +24,11 @@ function secondsLeft(expiresAt: string, now: number): number {
 
 export type QuestionUrgency = "normal" | "urgent" | "critical";
 
-/** How many times Denis re-asks for a clarification before giving up on this listen window. */
-const MAX_CLARIFY_RETRIES = 2;
-const CLARIFY_LINE = "Nisam razumeo, možete li ponoviti?";
+/** Max back-and-forth turns after the opening question (listen → reply → Denis speaks). */
+const MAX_CONVERSATION_TURNS = 6;
+const LISTEN_AFTER_SPEAK_MS = 700;
+const EMPTY_LISTEN_LINE =
+  "Nisam dobro čuo — možete ponoviti? Pitam za status porudžbine.";
 
 /** A guest order still waiting this long is already a five-alarm fire, regardless of how fresh Denis's current re-ask is. */
 const OVERDUE_SEVERITY_CAP_MINUTES = 30;
@@ -91,6 +103,9 @@ export function DenisQuestionStrip({
   const { speak, activate, voicePrimed, speaking, listen } =
     useDenisStationVoice(locationId);
   const spokenTiersRef = useRef<Set<string>>(new Set());
+  const priorTurnsRef = useRef<Array<{ role: "denis" | "staff"; text: string }>>(
+    []
+  );
 
   const active = questions[0] ?? null;
   const activeIdRef = useRef<string | null>(null);
@@ -126,8 +141,13 @@ export function DenisQuestionStrip({
   // Speak once per (question, urgency tier) — never repeat the same line
   // on every clock tick. Right after Denis finishes asking, open a short
   // listen window so staff can just answer out loud instead of tapping.
+  //
+  // Only announce after the staff taps "Aktiviraj Denisa" (voicePrimed) and
+  // while Denis isn't already speaking — otherwise we'd mark the tier as
+  // spoken while speak() no-ops, and Denis would stay silent after
+  // "Denis je spreman."
   useEffect(() => {
-    if (!active) return;
+    if (!active || !voicePrimed || speaking) return;
     const tier = resolveUrgency(
       active.asked_at,
       active.expires_at,
@@ -136,35 +156,181 @@ export function DenisQuestionStrip({
     );
     const key = `${active.id}:${tier}`;
     if (spokenTiersRef.current.has(key)) return;
-    spokenTiersRef.current.add(key);
-    const line = resolveStationVoiceLine(tier, active.message);
+    const line = resolveStationVoiceLine(tier, active.message, station);
     if (!line) return;
     const questionId = active.id;
     const questionType = active.question_type;
+    const voiceContext = parseStationQuestionContext(
+      active.message,
+      questionType,
+      station
+    );
 
-    // Short back-and-forth: if Denis can't make sense of the reply, he asks
-    // once more (up to MAX_CLARIFY_RETRIES) instead of silently giving up
-    // after a single unrecognized answer.
-    const attemptListen = (retriesLeft: number) => {
-      listen((transcript) => {
-        if (activeIdRef.current !== questionId) return;
-        const reply = classifyStationVoiceReply(transcript, questionType);
-        if (reply) {
-          void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
-            spokenTiersRef.current.add(`${questionId}:answered`);
-          });
-          return;
+    const speakTurn = (
+      turn: StationVoiceTurnResult,
+      onDone?: () => void
+    ) => {
+      if (!turn.speak) {
+        onDone?.();
+        return;
+      }
+      priorTurnsRef.current.push({ role: "denis", text: turn.speak });
+      speak(turn.speak, onDone);
+    };
+
+    const offlineTurn = (transcript: string): StationVoiceTurnResult => {
+      const conversational = resolveStationVoiceConversationTurn({
+        context: voiceContext,
+        staffTranscript: transcript,
+        priorTurns: priorTurnsRef.current,
+      });
+      return (
+        conversational ?? {
+          speak: buildStationVoiceClarifyLine(voiceContext),
+          resolved: null,
+          continueListening: true,
         }
-        if (retriesLeft <= 0) return;
-        speak(CLARIFY_LINE, () => {
-          if (activeIdRef.current !== questionId) return;
-          attemptListen(retriesLeft - 1);
-        });
+      );
+    };
+
+    const finishResolved = (turn: StationVoiceTurnResult) => {
+      if (!turn.resolved) return false;
+      const submit = () => {
+        void handleAnswer(turn.resolved!.answer, turn.resolved!.etaMinutes).then(
+          () => {
+            spokenTiersRef.current.add(`${questionId}:answered`);
+          }
+        );
+      };
+      if (turn.speak) {
+        speakTurn(turn, submit);
+      } else {
+        submit();
+      }
+      return true;
+    };
+
+    const continueConversation = (
+      turn: StationVoiceTurnResult,
+      turnsLeft: number
+    ) => {
+      speakTurn(turn, () => {
+        if (activeIdRef.current !== questionId) return;
+        if (turn.continueListening && turnsLeft > 0) {
+          listenForReply((next) => processStaffReply(next, turnsLeft - 1));
+        }
       });
     };
 
-    speak(line, () => attemptListen(MAX_CLARIFY_RETRIES));
-  }, [active, now, speak, listen, handleAnswer]);
+    const listenForReply = (onTranscript: (transcript: string) => void) => {
+      window.setTimeout(() => listen(onTranscript), LISTEN_AFTER_SPEAK_MS);
+    };
+
+    const resolveLocally = (trimmed: string): boolean => {
+      if (isLikelyDenisEchoTranscript(trimmed)) return false;
+      const reply = classifyStationVoiceReply(trimmed, questionType);
+      if (!reply) return false;
+      const confirm = stationVoiceConfirmationLine(reply);
+      priorTurnsRef.current.push({ role: "denis", text: confirm });
+      speak(confirm, () => {
+        void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
+          spokenTiersRef.current.add(`${questionId}:answered`);
+        });
+      });
+      return true;
+    };
+
+    const processStaffReply = (transcript: string, turnsLeft: number) => {
+      if (activeIdRef.current !== questionId) return;
+
+      const trimmed = transcript.trim();
+      if (!trimmed || isLikelyDenisEchoTranscript(trimmed)) {
+        if (turnsLeft <= 0) return;
+        speak(EMPTY_LISTEN_LINE, () => {
+          if (activeIdRef.current !== questionId) return;
+          listenForReply((next) => processStaffReply(next, turnsLeft - 1));
+        });
+        return;
+      }
+
+      if (resolveLocally(trimmed)) return;
+
+      priorTurnsRef.current.push({ role: "staff", text: trimmed });
+
+      void fetch("/api/denis/station-voice/turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId,
+          transcript: trimmed,
+          priorTurns: priorTurnsRef.current.slice(0, -1),
+        }),
+      })
+        .then(async (res) => {
+          if (activeIdRef.current !== questionId) return;
+
+          if (!res.ok) {
+            if (resolveLocally(trimmed)) return;
+            if (turnsLeft <= 0) return;
+            continueConversation(offlineTurn(trimmed), turnsLeft);
+            return;
+          }
+
+          const body = (await res.json()) as {
+            ok?: boolean;
+            data?: {
+              turn?: {
+                speak: string;
+                resolved: {
+                  answer: NonNullable<StationQuestionRow["answer"]>;
+                  etaMinutes?: number;
+                } | null;
+                continueListening: boolean;
+              };
+            };
+          };
+
+          const turn = body.data?.turn;
+          if (!turn) {
+            if (turnsLeft <= 0) return;
+            continueConversation(offlineTurn(trimmed), turnsLeft);
+            return;
+          }
+
+          if (turn.resolved) {
+            if (finishResolved(turn)) return;
+          }
+
+          if (!turn.speak) return;
+          continueConversation(turn, turnsLeft);
+        })
+        .catch(() => {
+          if (activeIdRef.current !== questionId) return;
+          if (resolveLocally(trimmed)) return;
+          if (turnsLeft <= 0) return;
+          continueConversation(offlineTurn(trimmed), turnsLeft);
+        });
+    };
+
+    const started = speak(line, () =>
+      listenForReply((transcript) =>
+        processStaffReply(transcript, MAX_CONVERSATION_TURNS)
+      )
+    );
+    if (!started) return;
+
+    spokenTiersRef.current.add(key);
+    priorTurnsRef.current = [{ role: "denis", text: line }];
+  }, [
+    active,
+    now,
+    speak,
+    listen,
+    handleAnswer,
+    station,
+    voicePrimed,
+    speaking,
+  ]);
 
   const activateButton = voicePrimed ? null : (
     <button
@@ -213,21 +379,31 @@ export function DenisQuestionStrip({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
-      <button
-        type="button"
-        onClick={() => setDismissedKey(dismissKey)}
-        aria-label="Dismiss"
-        className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-white/80 hover:bg-white/20"
-      >
-        ×
-      </button>
-      {activateButton}
-      <DenisVoicePresenceOrb
-        size={160}
-        moodIntensity={urgencyRatio}
-        speaking={speaking}
+    <div className="fixed inset-0 z-50">
+      {/* Backdrop on its own layer — backdrop-filter on the same subtree as
+          the orb's filter/transform animations makes the orb paint invisible
+          in Safari/Chrome (compositing bug). Content sits in a sibling layer. */}
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        aria-hidden
       />
+      <div className="relative flex h-full flex-col items-center justify-center gap-8 p-4">
+        <button
+          type="button"
+          onClick={() => setDismissedKey(dismissKey)}
+          aria-label="Dismiss"
+          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-white/80 hover:bg-white/20"
+        >
+          ×
+        </button>
+
+        {activateButton}
+        <DenisVoicePresenceOrb
+          size={220}
+          moodIntensity={urgencyRatio}
+          speaking={speaking}
+        />
+      </div>
     </div>
   );
 }

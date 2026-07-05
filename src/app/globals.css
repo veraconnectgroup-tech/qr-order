@@ -1376,6 +1376,71 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   animation: denis-voice-orb-speak 1.1s ease-in-out infinite;
 }
 
+/* Denis presence orb v2 — rotating energy rings + waveform, tinted via
+   --denis-tint-* custom properties. Every shade is precomputed in JS and
+   passed in as a plain rgb()/rgba() string (see denis-voice-presence-orb.tsx
+   and denis-orb-waveform.tsx) rather than blended here with color-mix(). */
+@keyframes denis-orb2-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes denis-orb2-rotate-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes denis-orb2-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes denis-orb2-talk {
+  0%,
+  100% {
+    transform: scale(1.05);
+  }
+  50% {
+    transform: scale(1.16);
+  }
+}
+
+.denis-orb2-breathe {
+  animation: denis-orb2-breathe 4s ease-in-out infinite;
+}
+
+.denis-orb2--talking {
+  animation: denis-orb2-talk 0.9s ease-in-out infinite;
+}
+
+@keyframes denis-orb2-wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.75);
+  }
+  50% {
+    transform: scaleY(1.15);
+  }
+}
+
+.denis-orb2-wave-bar {
+  animation: denis-orb2-wave-bar 0.9s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* Legacy class names kept for reduced-motion — orb paint is inline now. */
+.denis-orb2 {
+  position: relative;
+  border-radius: 9999px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .spatial-tile-occupy::before {
     animation: none !important;
@@ -1388,7 +1453,10 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   .denis-presence-line--listen,
   .denis-presence-line--think,
   .denis-thinking-dot,
-  .denis-voice-orb {
+  .denis-voice-orb,
+  .denis-orb2-breathe,
+  .denis-orb2--talking,
+  .denis-orb2-wave-bar {
     animation: none !important;
     transition: none !important;
   }

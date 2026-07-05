@@ -19,7 +19,11 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     actSubmitEnabled: true,
   },
   memory: { returnGuestEnabled: true },
-  surfaces: { voiceEnabled: true, voiceTtsEnabled: true },
+  surfaces: {
+    voiceEnabled: true,
+    voiceTtsEnabled: true,
+    voiceStaffEnabled: true,
+  },
   ops: {
     staffHintsEnabled: true,
     rushSkipUpsell: true,

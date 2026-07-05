@@ -16,27 +16,25 @@ export type DenisVoicePresenceOrbProps = {
 };
 
 /**
- * Large "speaking presence" orb for kitchen/bar stations — soft white cloud
- * core, tinted by Denis's mood color (ember orange calm, alert red urgent),
- * styled after voice-assistant orbs (ChatGPT/Siri): diffuse, glowing,
- * no hard edge.
+ * Soft glowing voice orb — all paint inline (reliable in modal + blur).
+ * Styled after voice-assistant orbs: white cloud core, ember/red mood tint.
  */
 export function DenisVoicePresenceOrb({
   moodIntensity,
   speaking = false,
-  size = 96,
+  size = 220,
   className,
 }: DenisVoicePresenceOrbProps) {
-  // The "white" stops themselves shift toward the mood color as intensity
-  // rises, so at full urgency the whole orb reads as solid red instead of
-  // keeping a white highlight forever.
   const coreWhite = mixTowardMoodColor(WHITE, moodIntensity);
   const coreNearWhite = mixTowardMoodColor(NEAR_WHITE, moodIntensity);
   const highlight = mixTowardMoodColor(WHITE, moodIntensity, 0.95);
   const highlightSoft = mixTowardMoodColor(WHITE, moodIntensity, 0.7);
   const tintStrong = resolveDenisMoodColor(moodIntensity, 0.85);
   const tintMid = resolveDenisMoodColor(moodIntensity, 0.55);
-  const tintSoft = resolveDenisMoodColor(moodIntensity, moodIntensity >= 0.99 ? 1 : 0.2);
+  const tintSoft = resolveDenisMoodColor(
+    moodIntensity,
+    moodIntensity >= 0.99 ? 1 : 0.2
+  );
   const glow = resolveDenisMoodColor(moodIntensity, 0.45);
 
   return (

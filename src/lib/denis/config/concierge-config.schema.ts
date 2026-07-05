@@ -351,8 +351,11 @@ const ConciergeMemorySchema = z.object({
 });
 
 const ConciergeSurfacesSchema = z.object({
+  /** Guest voice input + spoken replies (menu / order chat). */
   voiceEnabled: z.boolean(),
   voiceTtsEnabled: z.boolean(),
+  /** Kitchen/bar walkie-talkie voice — Denis speaks to staff and listens back. */
+  voiceStaffEnabled: z.boolean().default(true),
 });
 
 const ConciergeMentalModelSchema = z.object({

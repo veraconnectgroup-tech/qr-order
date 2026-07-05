@@ -24,6 +24,7 @@ import { enqueueOrRunProactiveSessionTick } from "@/lib/denis/runtime/enqueue-or
 import { emitStaffProactiveAlert } from "@/lib/denis/runtime/emit-staff-proactive-alert";
 import {
   expireStationQuestions,
+  expireStaleStationQuestionsGlobally,
   runStationQuestionTriggersForSession,
 } from "@/lib/denis/stations/station-questions";
 import { escalateAllOverdueBusTableObligations } from "@/lib/denis/cognition/waiter/bus-table-obligation";
@@ -77,7 +78,7 @@ export type SessionWatcherTickResult = {
   skipped: number;
 };
 
-const WATCHER_LOOKBACK_HOURS = 6;
+const WATCHER_LOOKBACK_HOURS = 24;
 
 /** Server-side session watcher — proactive guest nudges + staff alerts (60s cron). */
 export async function runSessionWatcherTick(
@@ -88,6 +89,8 @@ export async function runSessionWatcherTick(
   const since = new Date(
     Date.now() - WATCHER_LOOKBACK_HOURS * 60 * 60 * 1000
   ).toISOString();
+
+  await expireStaleStationQuestionsGlobally(admin);
 
   const { data: sessions, error } = await admin
     .from("table_sessions")

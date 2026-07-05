@@ -1,21 +1,29 @@
 import type { QuestionUrgency } from "@/components/stations/denis-question-strip";
 
+type StationVoiceTarget = "kitchen" | "bar";
+
+function stationLabel(station: StationVoiceTarget): string {
+  return station === "kitchen" ? "kuhinju" : "bar";
+}
+
 /**
- * What Denis actually SAYS out loud at each urgency tier, once per tier per
- * question. Never rude — increasingly hard to ignore because a guest is
- * genuinely waiting.
+ * What Denis SAYS when a station question appears — full sentences, not a
+ * dry card readout. Escalates tone with urgency but always includes context.
  */
 export function resolveStationVoiceLine(
   urgency: QuestionUrgency,
-  questionMessage: string
+  questionMessage: string,
+  station: StationVoiceTarget = "kitchen"
 ): string | null {
+  const target = stationLabel(station);
+
   switch (urgency) {
     case "normal":
-      return questionMessage;
+      return `Zdravo, javljam vam se u ${target}. ${questionMessage} Možete li mi reći gde smo?`;
     case "urgent":
-      return `Izvinjavam se, verovatno ste u gužvi. ${questionMessage}`;
+      return `Izvinite što uznemiravam, znam da je gužva. Ali gost još čeka — ${questionMessage} Molim vas, možete li mi dati informaciju?`;
     case "critical":
-      return "Zdravo? Ima li koga? Gost čeka, molim vas požurite.";
+      return `Molim vas hitno — gost već predugo čeka. ${questionMessage} Recite mi molim vas, šta je status?`;
     default:
       return null;
   }

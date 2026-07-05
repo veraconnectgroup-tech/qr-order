@@ -2,21 +2,25 @@ import { describe, expect, it } from "vitest";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
 
 describe("resolveStationVoiceLine", () => {
-  const question = "Sto Table 2 · Bon #3 čeka 6 min bez prihvatanja. Kreće li priprema?";
+  const question =
+    "Sto Table 2 · Bon #3 čeka 6 min bez prihvatanja. Kreće li priprema?";
 
-  it("reads the question as-is the first time", () => {
-    expect(resolveStationVoiceLine("normal", question)).toBe(question);
+  it("opens with a full conversational line the first time", () => {
+    const line = resolveStationVoiceLine("normal", question, "kitchen");
+    expect(line).toContain("kuhinju");
+    expect(line).toContain(question);
+    expect(line).toContain("gde smo");
   });
 
-  it("apologizes and repeats the question when urgent", () => {
-    const line = resolveStationVoiceLine("urgent", question);
-    expect(line).toContain("Izvinjavam se");
+  it("apologizes and keeps context when urgent", () => {
+    const line = resolveStationVoiceLine("urgent", question, "bar");
+    expect(line).toContain("Izvinite");
     expect(line).toContain(question);
   });
 
-  it("asks if anyone is there when critical, without repeating the raw question", () => {
-    const line = resolveStationVoiceLine("critical", question);
-    expect(line).toContain("Ima li koga");
-    expect(line).not.toContain(question);
+  it("stays insistent but still includes the question when critical", () => {
+    const line = resolveStationVoiceLine("critical", question, "kitchen");
+    expect(line).toContain("hitno");
+    expect(line).toContain(question);
   });
 });

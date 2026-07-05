@@ -225,6 +225,36 @@ export async function answerStationQuestion(
   return { ok: true, question };
 }
 
+/** Expire stale open questions at every location that has them (cron-safe). */
+export async function expireStaleStationQuestionsGlobally(
+  admin: SupabaseClient
+): Promise<number> {
+  const { data: rows, error } = await admin
+    .from("station_questions")
+    .select("location_id")
+    .eq("status", "open")
+    .lt("expires_at", new Date().toISOString());
+
+  if (error) {
+    logger.warn("expireStaleStationQuestionsGlobally lookup failed", {
+      error: error.message,
+    });
+    return 0;
+  }
+
+  const locationIds = [
+    ...new Set(
+      (rows ?? []).map((row) => (row as { location_id: string }).location_id)
+    ),
+  ];
+
+  let expired = 0;
+  for (const locationId of locationIds) {
+    expired += await expireStationQuestions(admin, { locationId });
+  }
+  return expired;
+}
+
 /** Expire unanswered questions past expires_at → escalate to manager. */
 export async function expireStationQuestions(
   admin: SupabaseClient,
