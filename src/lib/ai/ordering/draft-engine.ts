@@ -22,6 +22,18 @@ function normalizeText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * Bare "yes"-style confirmation (sr/en/de) with no size info at all —
+ * only safe to resolve when there's exactly one option, never a guess
+ * between multiple sizes.
+ */
+const GENERIC_AFFIRMATION =
+  /^(mo[žz]e|da|u redu|va[žz]i|ok(ej|ay)?|aha|jeste|tako je|yes|sure|yeah|yep|fine|ja|gerne|passt|klar)[.!]?$/i;
+
+function isGenericAffirmation(message: string): boolean {
+  return GENERIC_AFFIRMATION.test(normalizeText(message));
+}
+
 function matchServeSizeOption(message: string, options: string[]) {
   const normalized = normalizeText(message);
   for (const option of options) {
@@ -51,6 +63,10 @@ function matchServeSizeOption(message: string, options: string[]) {
         return formatServeSize(option);
       }
     }
+  }
+
+  if (options.length === 1 && isGenericAffirmation(message)) {
+    return formatServeSize(options[0]);
   }
 
   return null;
