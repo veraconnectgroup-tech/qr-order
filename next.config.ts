@@ -159,9 +159,13 @@ export default process.env.NEXT_PUBLIC_SENTRY_DSN
       silent: true,
       // widenClientFileUpload spikes memory during webpack — CI/Vercel already OOM-prone.
       widenClientFileUpload: false,
-      // Avoid failing Vercel builds when SENTRY_AUTH_TOKEN is not set.
+      // Sourcemap generation/upload was still SIGKILLing the 2-core/8GB Vercel
+      // builder even with widenClientFileUpload off and single-threaded webpack
+      // (cpus: 1 above) — disable unconditionally. Trades readable Sentry
+      // stack traces for a build that actually finishes; revisit if the
+      // Vercel build machine tier is upgraded.
       sourcemaps: {
-        disable: !process.env.SENTRY_AUTH_TOKEN,
+        disable: true,
       },
     })
   : configWithPwa;
