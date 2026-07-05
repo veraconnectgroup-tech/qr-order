@@ -26,6 +26,13 @@ export function useDenisView({
   const [error, setError] = useState<string | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
   const lastVersionRef = useRef<number | null>(null);
+  // Concurrent SSE version bumps (e.g. guest message + Denis reply landing
+  // within milliseconds) can each trigger their own refresh(); the fetches
+  // are not guaranteed to resolve in the order they were issued. Without a
+  // sequence guard, a straggling response for an older snapshot can land
+  // after a newer one and overwrite it, making recent messages vanish from
+  // the transcript.
+  const requestSeqRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!enabled || !sessionToken) {
@@ -34,9 +41,11 @@ export function useDenisView({
       return;
     }
 
+    const seq = ++requestSeqRef.current;
     setLoading(true);
     try {
       const next = await fetchDenisView(tableToken, sessionToken);
+      if (seq !== requestSeqRef.current) return;
       const nextView = next?.view ?? null;
       setView(nextView);
       setScene(
@@ -49,9 +58,10 @@ export function useDenisView({
       }
       setError(null);
     } catch (err) {
+      if (seq !== requestSeqRef.current) return;
       setError(err instanceof Error ? err.message : "View unavailable");
     } finally {
-      setLoading(false);
+      if (seq === requestSeqRef.current) setLoading(false);
     }
   }, [enabled, sessionToken, tableToken]);
 
