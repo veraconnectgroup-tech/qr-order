@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
 import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
+import { classifyStationVoiceReply } from "@/lib/denis/stations/classify-station-voice-reply";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
@@ -96,10 +97,34 @@ export function DenisQuestionStrip({
   );
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const { speak, activate, voicePrimed, speaking } = useDenisStationVoice(locationId);
+  const { speak, activate, voicePrimed, speaking, listen, listening } =
+    useDenisStationVoice(locationId);
   const spokenTiersRef = useRef<Set<string>>(new Set());
 
   const active = questions[0] ?? null;
+  const activeIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeIdRef.current = active?.id ?? null;
+  }, [active]);
+
+  const handleAnswer = useCallback(
+    async (
+      answer: NonNullable<StationQuestionRow["answer"]>,
+      etaMinutes?: number
+    ) => {
+      if (!active || busy) return;
+      setBusy(true);
+      try {
+        await answerQuestion(active.id, { answer, etaMinutes });
+      } catch {
+        // Refetch already happened in the hook on failure.
+      } finally {
+        setBusy(false);
+      }
+    },
+    [active, busy, answerQuestion]
+  );
 
   useEffect(() => {
     if (!active) return;
@@ -108,7 +133,8 @@ export function DenisQuestionStrip({
   }, [active]);
 
   // Speak once per (question, urgency tier) — never repeat the same line
-  // on every clock tick.
+  // on every clock tick. Right after Denis finishes asking, open a short
+  // listen window so staff can just answer out loud instead of tapping.
   useEffect(() => {
     if (!active) return;
     const tier = resolveUrgency(
@@ -121,8 +147,23 @@ export function DenisQuestionStrip({
     if (spokenTiersRef.current.has(key)) return;
     spokenTiersRef.current.add(key);
     const line = resolveStationVoiceLine(tier, active.message);
-    if (line) speak(line);
-  }, [active, now, speak]);
+    if (!line) return;
+    const questionId = active.id;
+    const questionType = active.question_type;
+    speak(line, () => {
+      listen((transcript) => {
+        // The active question may have changed (answered via tap, or a new
+        // one arrived) while this listen window was open — don't submit
+        // a stale voice reply against whatever question is active now.
+        if (activeIdRef.current !== questionId) return;
+        const reply = classifyStationVoiceReply(transcript, questionType);
+        if (!reply) return;
+        void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
+          spokenTiersRef.current.add(`${questionId}:answered`);
+        });
+      });
+    });
+  }, [active, now, speak, listen, handleAnswer]);
 
   const activateButton = voicePrimed ? null : (
     <button
@@ -161,21 +202,6 @@ export function DenisQuestionStrip({
     activeWaitMinutes
   );
 
-  const handleAnswer = async (
-    answer: NonNullable<StationQuestionRow["answer"]>,
-    etaMinutes?: number
-  ) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await answerQuestion(active.id, { answer, etaMinutes });
-    } catch {
-      // Refetch already happened in the hook on failure.
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const isEtaQuestion =
     active.question_type === "eta" || active.question_type === "mixed_conflict";
 
@@ -203,6 +229,11 @@ export function DenisQuestionStrip({
               {questions.length > 1 ? (
                 <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
                   +{questions.length - 1} queued
+                </span>
+              ) : null}
+              {listening ? (
+                <span className="ml-2 animate-pulse rounded-full bg-emerald-500/25 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                  🎤 Slušam...
                 </span>
               ) : null}
             </p>
