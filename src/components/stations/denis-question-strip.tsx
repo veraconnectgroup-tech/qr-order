@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
+import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
+import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
+import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
 import { resolveDenisMoodColor } from "@/components/design-system/denis-mood-color";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +66,8 @@ export function DenisQuestionStrip({
   );
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const { speak } = useDenisStationVoice(locationId);
+  const spokenTiersRef = useRef<Set<string>>(new Set());
 
   const active = questions[0] ?? null;
 
@@ -71,6 +76,18 @@ export function DenisQuestionStrip({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [active]);
+
+  // Speak once per (question, urgency tier) — never repeat the same line
+  // on every clock tick.
+  useEffect(() => {
+    if (!active) return;
+    const tier = resolveUrgency(active.asked_at, active.expires_at, now);
+    const key = `${active.id}:${tier}`;
+    if (spokenTiersRef.current.has(key)) return;
+    spokenTiersRef.current.add(key);
+    const line = resolveStationVoiceLine(tier, active.message);
+    if (line) speak(line);
+  }, [active, now, speak]);
 
   if (!active) return null;
 
@@ -99,115 +116,118 @@ export function DenisQuestionStrip({
     active.question_type === "eta" || active.question_type === "mixed_conflict";
 
   return (
-    <div
-      className="rounded-xl border p-4 transition-colors duration-700"
-      style={{
-        borderColor: resolveDenisMoodColor(urgencyRatio, 0.4),
-        backgroundColor: resolveDenisMoodColor(urgencyRatio, 0.1),
-      }}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <DenisMarkBadge size="sm" moodIntensity={urgencyRatio} />
-          <p
+    <div className="flex flex-col items-center gap-3">
+      <DenisVoicePresenceOrb moodIntensity={urgencyRatio} />
+      <div
+        className="w-full rounded-xl border p-4 transition-colors duration-700"
+        style={{
+          borderColor: resolveDenisMoodColor(urgencyRatio, 0.4),
+          backgroundColor: resolveDenisMoodColor(urgencyRatio, 0.1),
+        }}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <DenisMarkBadge size="sm" moodIntensity={urgencyRatio} />
+            <p
+              className={cn(
+                "text-xs font-bold uppercase tracking-wide",
+                urgency === "critical" ? "text-red-300" : "text-orange-300"
+              )}
+            >
+              Denis pita
+              {questions.length > 1 ? (
+                <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
+                  +{questions.length - 1} u redu
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <span
             className={cn(
-              "text-xs font-bold uppercase tracking-wide",
-              urgency === "critical" ? "text-red-300" : "text-orange-300"
+              "font-mono text-sm font-semibold",
+              remaining <= 20 ? "text-red-300" : "text-orange-200"
             )}
           >
-            Denis pita
-            {questions.length > 1 ? (
-              <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
-                +{questions.length - 1} u redu
-              </span>
-            ) : null}
-          </p>
+            {formatCountdown(remaining)}
+          </span>
         </div>
-        <span
-          className={cn(
-            "font-mono text-sm font-semibold",
-            remaining <= 20 ? "text-red-300" : "text-orange-200"
-          )}
-        >
-          {formatCountdown(remaining)}
-        </span>
-      </div>
 
-      <p className="mt-2 text-lg font-semibold leading-snug text-orange-50">
-        {URGENCY_PREFIX[urgency]}
-        {active.message}
-      </p>
+        <p className="mt-2 text-lg font-semibold leading-snug text-orange-50">
+          {URGENCY_PREFIX[urgency]}
+          {active.message}
+        </p>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {isEtaQuestion ? (
-          <>
-            {ETA_OPTIONS[station].map((minutes) => (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {isEtaQuestion ? (
+            <>
+              {ETA_OPTIONS[station].map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleAnswer("eta", minutes)}
+                  className="min-h-12 flex-1 rounded-lg bg-orange-500 px-4 text-base font-bold text-white hover:bg-orange-400 disabled:opacity-50"
+                >
+                  {minutes} min
+                </button>
+              ))}
               <button
-                key={minutes}
                 type="button"
                 disabled={busy}
-                onClick={() => void handleAnswer("eta", minutes)}
+                onClick={() => void handleAnswer("problem")}
+                className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+              >
+                Problem
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleAnswer("ready")}
+                className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+              >
+                Spremno
+              </button>
+            </>
+          ) : active.question_type === "pending_accept" ? (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleAnswer("accepted")}
                 className="min-h-12 flex-1 rounded-lg bg-orange-500 px-4 text-base font-bold text-white hover:bg-orange-400 disabled:opacity-50"
               >
-                {minutes} min
+                Kreće odmah
               </button>
-            ))}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("problem")}
-              className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-            >
-              Problem
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("ready")}
-              className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
-            >
-              Spremno
-            </button>
-          </>
-        ) : active.question_type === "pending_accept" ? (
-          <>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("accepted")}
-              className="min-h-12 flex-1 rounded-lg bg-orange-500 px-4 text-base font-bold text-white hover:bg-orange-400 disabled:opacity-50"
-            >
-              Kreće odmah
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("problem")}
-              className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-            >
-              Problem
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("picked_up")}
-              className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
-            >
-              Preuzeto
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("still_waiting")}
-              className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-            >
-              Još čeka na prozoru
-            </button>
-          </>
-        )}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleAnswer("problem")}
+                className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+              >
+                Problem
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleAnswer("picked_up")}
+                className="min-h-12 flex-1 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 text-base font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+              >
+                Preuzeto
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleAnswer("still_waiting")}
+                className="min-h-12 flex-1 rounded-lg border border-red-500/50 bg-red-500/15 px-4 text-base font-bold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+              >
+                Još čeka na prozoru
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
