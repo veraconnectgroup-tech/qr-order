@@ -20,6 +20,24 @@ function formatCountdown(totalSeconds: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+export type QuestionUrgency = "normal" | "urgent" | "critical";
+
+/** Guest is still waiting and the station hasn't answered — Denis gets more insistent, never rude. */
+export function resolveUrgency(askedAt: string, expiresAt: string, now: number): QuestionUrgency {
+  const total = Date.parse(expiresAt) - Date.parse(askedAt);
+  if (!Number.isFinite(total) || total <= 0) return "normal";
+  const elapsedRatio = (now - Date.parse(askedAt)) / total;
+  if (elapsedRatio >= 0.75) return "critical";
+  if (elapsedRatio >= 0.4) return "urgent";
+  return "normal";
+}
+
+const URGENCY_PREFIX: Record<QuestionUrgency, string> = {
+  normal: "",
+  urgent: "Ponovo pitam — ",
+  critical: "Gost i dalje čeka, molim hitno — ",
+};
+
 /** Denis question card strip — one card at a time, one-tap answers. */
 export function DenisQuestionStrip({
   locationId,
@@ -48,6 +66,8 @@ export function DenisQuestionStrip({
   const remaining = secondsLeft(active.expires_at, now);
   if (remaining <= 0) return null;
 
+  const urgency = resolveUrgency(active.asked_at, active.expires_at, now);
+
   const handleAnswer = async (
     answer: NonNullable<StationQuestionRow["answer"]>,
     etaMinutes?: number
@@ -67,9 +87,21 @@ export function DenisQuestionStrip({
     active.question_type === "eta" || active.question_type === "mixed_conflict";
 
   return (
-    <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 p-4">
+    <div
+      className={cn(
+        "rounded-xl border p-4 transition-colors",
+        urgency === "critical"
+          ? "border-red-500/50 bg-red-500/10"
+          : "border-orange-500/40 bg-orange-500/10"
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-orange-300">
+        <p
+          className={cn(
+            "text-xs font-bold uppercase tracking-wide",
+            urgency === "critical" ? "text-red-300" : "text-orange-300"
+          )}
+        >
           Denis pita
           {questions.length > 1 ? (
             <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
@@ -88,6 +120,7 @@ export function DenisQuestionStrip({
       </div>
 
       <p className="mt-2 text-lg font-semibold leading-snug text-orange-50">
+        {URGENCY_PREFIX[urgency]}
         {active.message}
       </p>
 
