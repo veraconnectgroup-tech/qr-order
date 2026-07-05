@@ -40,8 +40,13 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
   "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  // microphone=(self) — guest voice input (concierge mic) and station voice
+  // replies both use SpeechRecognition, which this header was blocking
+  // outright (Web Speech API surfaces that as a silent "not-allowed" error,
+  // not a permission prompt, since the policy denies it before the browser
+  // ever asks the user).
   "Permissions-Policy":
-    "camera=(), microphone=(), geolocation=(), payment=(self)",
+    "camera=(), microphone=(self), geolocation=(), payment=(self)",
   "Content-Security-Policy": CONTENT_SECURITY_POLICY,
 };
 

@@ -26,12 +26,12 @@ async function pingHealth(): Promise<boolean> {
 }
 
 export function useConnectionStatus() {
-  const [status, setStatus] = useState<ConnectionStatus>(() =>
-    typeof navigator !== "undefined" && navigator.onLine ? "online" : "offline"
-  );
-  const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(() =>
-    typeof navigator !== "undefined" && navigator.onLine ? new Date() : null
-  );
+  // Must match on the server (no `navigator`) and the client's first paint,
+  // or React throws a hydration mismatch — the real value is only known
+  // after mount, so start optimistic here and let the mount effect below
+  // correct it within milliseconds.
+  const [status, setStatus] = useState<ConnectionStatus>("online");
+  const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(null);
   const [secondsOffline, setSecondsOffline] = useState(0);
   const statusRef = useRef(status);
   statusRef.current = status;
