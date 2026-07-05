@@ -25,6 +25,10 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.sentry.io",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
+  // Denis TTS audio arrives as a fetch()ed blob and plays via a blob: object
+  // URL — without an explicit media-src, this falls back to default-src
+  // 'self', which does not permit blob:, so playback was silently blocked.
+  "media-src 'self' blob:",
   "font-src 'self'",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.sentry.io https://*.upstash.io",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
