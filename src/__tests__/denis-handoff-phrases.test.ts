@@ -27,6 +27,15 @@ describe("handoff bill phrases", () => {
     expect(result?.intent).toBe("HANDOFF_PAY");
     expect(result?.command.type).toBe("BILL.REQUEST");
   });
+
+  it("does not treat 'order more AND bring the bill' as a pure bill handoff", () => {
+    expect(
+      isHandoffBillRequestMessage("daj mi jos jedno pivo i donesi mi racun")
+    ).toBe(false);
+    expect(
+      isHandoffBillRequestMessage("hocu jos jedno pivo i racun molim")
+    ).toBe(false);
+  });
 });
 
 describe("order change phrases", () => {

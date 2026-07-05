@@ -166,7 +166,8 @@ async function resolveStructuredResponse(
     string,
     { id: string; name: string; price: number; imageUrl: string | null }
   >,
-  openAiMessages: OpenAiChatMessage[]
+  openAiMessages: OpenAiChatMessage[],
+  language: string
 ) {
   try {
     return {
@@ -206,7 +207,7 @@ async function resolveStructuredResponse(
 
     return {
       structured: {
-        message: "Sorry, I didn't catch that — could you try again?",
+        message: resolveAiGuestRetryMessage(language),
         recommendations: [] as { productId: string; reason: string }[],
         proposedItems: [],
         quickReplies: [],
@@ -580,7 +581,8 @@ export async function perceiveGuestChatTurn(
     resolved = await resolveStructuredResponse(
       openAiResult,
       menuPayload.productMap,
-      openAiMessages
+      openAiMessages,
+      language
     );
 
     openAiResult = resolved.openAiResult;

@@ -3,6 +3,14 @@ import { isGuestDoneOrdering } from "@/lib/ai/ordering/order-flow";
 import { isGuestSettlingMessage } from "@/lib/denis/cognition/tde/semantic-intent-router";
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 
+/**
+ * Concrete menu-item nouns only — deliberately NOT the broad request-verb
+ * heuristics from isOrderPlacementMessage (e.g. "želim"/"daj" match almost
+ * any request, including "želim da platim", and would false-positive here).
+ */
+const MENTIONS_MENU_ITEM =
+  /\b(pivo|pils|pilsner|lager|radler|beer|bier|burger|kisel|kisela|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee|cevap|ćevap|pile[cć]i)\b/i;
+
 export type TableGuestCommand =
   | { type: "WAITER.REQUEST" }
   | { type: "BILL.REQUEST" }
@@ -84,6 +92,10 @@ export function isHandoffBillRequestMessage(message: string): boolean {
   const text = normalize(message);
   if (parseHandoffPaymentMethod(message)) return false;
   if (isOrderCancelMessage(message) || isOrderModifyMessage(message)) return false;
+  // "give me another beer AND bring the bill" must not collapse to a pure
+  // bill handoff — the order half would be silently dropped. Let the LLM
+  // turn handle both parts together instead of short-circuiting here.
+  if (MENTIONS_MENU_ITEM.test(text)) return false;
   return (
     /\b(račun|racun|rechnung|bill|checkout)\b/.test(text) ||
     /(želim|zelim|hoću|hocu|treba)\s+(da\s+)?(platim|platiti|naplatim|naplatiti)/.test(

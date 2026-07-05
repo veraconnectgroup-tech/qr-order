@@ -599,6 +599,9 @@ export function AiConciergeChat({
     new Map<string, { userMessage: string; tryAgainLabel: string }>()
   );
   const chatWasOpenRef = useRef(false);
+  /** Show the static bootstrap greeting at most once per mount — never
+   * re-insert it just because the panel was closed and reopened. */
+  const greetingShownRef = useRef(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
@@ -737,8 +740,9 @@ export function AiConciergeChat({
       allergySelectionRef.current = [];
     }
 
-    if (justOpened && !bootstrapTranscript?.length) {
+    if (justOpened && !bootstrapTranscript?.length && !greetingShownRef.current) {
       setMessages((prev) => {
+        greetingShownRef.current = true;
         if (prev.length > 0) return prev;
         return [
           {
@@ -762,6 +766,11 @@ export function AiConciergeChat({
   useEffect(() => {
     if (!open || isDemo || phase !== "chat") return;
     if (!bootstrapTranscript?.length) return;
+
+    // Real server-persisted turns exist — the static bootstrap greeting must
+    // never be inserted again for this mount, even if the transcript later
+    // blips empty on a reconnect.
+    greetingShownRef.current = true;
 
     setMessages((prev) =>
       chatMessagesFromViewTranscript(bootstrapTranscript, {
