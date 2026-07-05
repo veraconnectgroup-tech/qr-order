@@ -274,13 +274,6 @@ function nextId() {
   return crypto.randomUUID();
 }
 
-function formatDenisPinMessage(
-  tUI: (key: string, vars?: Record<string, string | number>) => string,
-  tablePin: string
-) {
-  return tUI("ai.order.tablePinReveal", { pin: tablePin });
-}
-
 function DenisRecommendList({
   recommendations,
   currency,
@@ -610,6 +603,7 @@ export function AiConciergeChat({
   const [phase, setPhase] = useState<ChatPhase>("chat");
   const [isTyping, setIsTyping] = useState(false);
   const [streamingPreview, setStreamingPreview] = useState("");
+  const [revealedTablePin, setRevealedTablePin] = useState<string | null>(null);
   const [pendingThinkingMessage, setPendingThinkingMessage] = useState<
     string | null
   >(null);
@@ -675,21 +669,9 @@ export function AiConciergeChat({
       }
 
       const appendPinMessage = (tablePin: string) => {
-        const tPin = (key: string, vars?: Record<string, string | number>) =>
-          tForAiGuestLanguage(
-            key as Parameters<typeof tForAiGuestLanguage>[0],
-            chatLanguage,
-            vars
-          );
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            content: formatDenisPinMessage(tPin, tablePin),
-            ephemeral: true,
-          },
-        ]);
+        // Shown as a persistent banner (below), not a chat bubble — it must
+        // not interrupt the conversation flow mid-order.
+        setRevealedTablePin(tablePin);
       };
 
       if (payload.sessionOpened?.tablePin) {
@@ -1766,6 +1748,21 @@ export function AiConciergeChat({
           <div aria-live="assertive" aria-atomic="true" className="sr-only">
             {cartAnnouncement}
           </div>
+          {revealedTablePin ? (
+            <div className="flex items-start gap-2.5 rounded-xl border border-[var(--qr-elevated)] bg-[var(--qr-elevated)]/60 px-4 py-3 text-[14px] leading-[1.5] text-[var(--qr-ivory)]">
+              <span className="min-w-0 flex-1">
+                {tUI("ai.order.tablePinReveal", { pin: revealedTablePin })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setRevealedTablePin(null)}
+                className="touch-target -m-1.5 shrink-0 rounded-full p-1.5 text-[var(--qr-muted)] transition hover:text-[var(--qr-ivory)]"
+                aria-label={tUI("ai.chat.close")}
+              >
+                <X className="size-4" strokeWidth={1.5} />
+              </button>
+            </div>
+          ) : null}
           {messages.map((message, index) => (
             <DenisMessageRow
               key={message.id}
