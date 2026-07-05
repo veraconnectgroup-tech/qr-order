@@ -414,6 +414,9 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
   const menuPart = input.omitFullMenu ? "" : `\n\nMENU:\n${input.menuText}`;
 
   return [
+    // Stable across every turn for a given venue/day — kept first so
+    // OpenAI's prefix-based prompt caching (+ our explicit cache key)
+    // actually covers the menu instead of a request-varying prefix.
     multilingualPolicyBlock(input.venueMenuLocale ?? input.language),
     identityBlock(input),
     personalityBlock(input),
@@ -421,9 +424,10 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     platformContractBlock(),
     conversationBlock(),
     outputFormatBlock(),
+    menuPart.trim(),
+    // Per-turn/live state — varies every call, so it goes last.
     situationPack,
     periodBlock,
-    menuPart.trim(),
   ]
     .filter(Boolean)
     .join("\n\n");
