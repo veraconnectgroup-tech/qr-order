@@ -907,6 +907,7 @@ export function AiConciergeChat({
     language: chatLanguage,
     menuLanguage: menuLocale,
     autoSpeak: voiceTtsEnabled,
+    sessionToken: sessionToken ?? token,
   });
 
   const tChat = useCallback(

@@ -61,6 +61,8 @@ export type UseDenisVoiceOptions = {
   menuLanguage: string;
   autoSpeak: boolean;
   playbookTone?: VenuePlaybookTone | null;
+  /** Rate-limit key for the server TTS call — falls back to browser TTS without it. */
+  sessionToken?: string | null;
 };
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -92,6 +94,7 @@ export function useDenisVoice({
   menuLanguage,
   autoSpeak,
   playbookTone = "friendly",
+  sessionToken,
 }: UseDenisVoiceOptions) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
@@ -101,6 +104,7 @@ export function useDenisVoice({
     null
   );
   const peakSignalRef = useRef(0);
+  const playbackRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setSupported(!!getSpeechRecognitionCtor() && enabled);
@@ -119,11 +123,9 @@ export function useDenisVoice({
     setListening(false);
   }, [teardownAudioPipeline]);
 
-  const speak = useCallback(
+  const speakWithBrowserVoice = useCallback(
     (text: string, speakLanguage?: string) => {
-      if (!autoSpeak || typeof window === "undefined" || !text.trim()) {
-        return;
-      }
+      if (typeof window === "undefined") return;
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text.trim());
       utterance.lang = mapLocaleToSpeechTag(speakLanguage ?? language);
@@ -132,7 +134,53 @@ export function useDenisVoice({
       utterance.pitch = profile.pitch;
       window.speechSynthesis.speak(utterance);
     },
-    [autoSpeak, language, playbookTone]
+    [language, playbookTone]
+  );
+
+  const stopPlayback = useCallback(() => {
+    if (playbackRef.current) {
+      playbackRef.current.pause();
+      playbackRef.current = null;
+    }
+    if (typeof window !== "undefined") {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
+
+  const speak = useCallback(
+    (text: string, speakLanguage?: string) => {
+      if (!autoSpeak || typeof window === "undefined" || !text.trim()) {
+        return;
+      }
+      stopPlayback();
+
+      if (!sessionToken) {
+        speakWithBrowserVoice(text, speakLanguage);
+        return;
+      }
+
+      fetch("/api/ai/voice/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim(), sessionToken }),
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error("tts_failed");
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          playbackRef.current = audio;
+          audio.addEventListener("ended", () => URL.revokeObjectURL(url));
+          audio.addEventListener("error", () => URL.revokeObjectURL(url));
+          await audio.play();
+        })
+        .catch(() => {
+          // Brand voice unavailable — fall back to the device's own TTS
+          // rather than leaving the guest with no spoken reply at all.
+          speakWithBrowserVoice(text, speakLanguage);
+        });
+    },
+    [autoSpeak, sessionToken, speakWithBrowserVoice, stopPlayback]
   );
 
   const startListening = useCallback(
@@ -250,11 +298,9 @@ export function useDenisVoice({
   useEffect(() => {
     return () => {
       stopListening();
-      if (typeof window !== "undefined") {
-        window.speechSynthesis.cancel();
-      }
+      stopPlayback();
     };
-  }, [stopListening]);
+  }, [stopListening, stopPlayback]);
 
   return {
     supported,
