@@ -10,8 +10,8 @@ type DenisVoiceMicButtonProps = {
   listenLabel: string;
   listeningLabel: string;
   unsupportedLabel: string;
-  onPressStart: () => void;
-  onPressEnd: () => void;
+  onStart: () => void;
+  onStop: () => void;
 };
 
 export function DenisVoiceMicButton({
@@ -21,8 +21,8 @@ export function DenisVoiceMicButton({
   listenLabel,
   listeningLabel,
   unsupportedLabel,
-  onPressStart,
-  onPressEnd,
+  onStart,
+  onStop,
 }: DenisVoiceMicButtonProps) {
   const inactive = disabled || !supported;
 
@@ -32,20 +32,12 @@ export function DenisVoiceMicButton({
       disabled={inactive}
       aria-label={listening ? listeningLabel : listenLabel}
       title={!supported ? unsupportedLabel : undefined}
-      onPointerDown={(e) => {
-        e.preventDefault();
+      onClick={() => {
         if (inactive) return;
-        onPressStart();
-      }}
-      onPointerUp={(e) => {
-        e.preventDefault();
-        if (inactive) return;
-        onPressEnd();
-      }}
-      onPointerLeave={(e) => {
         if (listening) {
-          e.preventDefault();
-          onPressEnd();
+          onStop();
+        } else {
+          onStart();
         }
       }}
       className={cn(

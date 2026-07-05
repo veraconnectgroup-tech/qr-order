@@ -1823,8 +1823,8 @@ export function AiConciergeChat({
                   listenLabel={tUI("ai.voice.listen")}
                   listeningLabel={tUI("ai.voice.listening")}
                   unsupportedLabel={tUI("ai.voice.unsupported")}
-                  onPressStart={() => voice.startListening(handleVoiceResult)}
-                  onPressEnd={() => voice.stopListening()}
+                  onStart={() => voice.startListening(handleVoiceResult)}
+                  onStop={() => voice.stopListening()}
                 />
               )}
               <input
