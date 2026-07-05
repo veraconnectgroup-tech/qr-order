@@ -88,7 +88,7 @@ export type PlanEvidenceInput = {
   guestStatusSection?: string | null;
 };
 
-function guestTurnNeedsMenuContext(
+export function guestTurnNeedsMenuContext(
   turnPlan: TurnPlan,
   message: string,
   interpretationTask?: InterpretationTask | null,

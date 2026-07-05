@@ -15,6 +15,7 @@ import {
 import type { BeliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import { getBeliefValue } from "@/lib/denis/cognition/beliefs/belief-types";
 import {
+  guestTurnNeedsMenuContext,
   planEvidence,
   type TurnEvidencePack,
 } from "@/lib/denis/cognition/context/plan-evidence";
@@ -738,7 +739,15 @@ async function runTdePerceive(input: {
     isMenuRagEnabled({
       catalogRagLevel: effective.capabilities.catalogRag,
       menuRagEnabled: profile.menuRagEnabled,
-    })
+    }) &&
+    // planEvidence() discards RAG evidence for turns like bare confirms/status
+    // checks anyway - skip the embedding call entirely instead of throwing it away.
+    guestTurnNeedsMenuContext(
+      turnPlan,
+      input.body.message,
+      interpretationTask,
+      input.beliefs
+    )
   ) {
     try {
       const ragBundle = await ensureMenuRagEmbeddings(
@@ -756,6 +765,14 @@ async function runTdePerceive(input: {
     }
   }
 
+  // Mirrors plan-evidence.ts's own inclusion check - if it wouldn't be used
+  // in the prompt anyway, don't spend a fetch producing it.
+  const wantsPlaybook =
+    interpretationTask?.evidenceBudget.includePlaybook ??
+    (turnPlan.kind === "transactional_perceive" ||
+      turnPlan.kind === "relational_perceive" ||
+      turnPlan.kind === "narrate_paraphrase");
+
   const [vkgPairingBlock, playbookBlock, contextAwareness] = await Promise.all([
     loadTurnVkgPairingBlock({
       locationId: input.body.locationId,
@@ -771,12 +788,14 @@ async function runTdePerceive(input: {
           row.productId ? [row.productId] : []
         ) ?? [],
     }),
-    loadTurnPlaybookBlock({
-      orgId: input.orgId,
-      locationId: input.body.locationId,
-      playbookPackId: effective.playbookPackId,
-      customPlaybookPack: effective.customPlaybookPack,
-    }).catch(() => null),
+    wantsPlaybook
+      ? loadTurnPlaybookBlock({
+          orgId: input.orgId,
+          locationId: input.body.locationId,
+          playbookPackId: effective.playbookPackId,
+          customPlaybookPack: effective.customPlaybookPack,
+        }).catch(() => null)
+      : Promise.resolve(null),
     resolveContextAwareness({
       locationId: input.body.locationId,
       intelligence: input.ctx.config.intelligence,
