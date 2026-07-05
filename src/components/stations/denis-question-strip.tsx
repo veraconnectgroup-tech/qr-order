@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
+import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
+import { resolveDenisMoodColor } from "@/components/design-system/denis-mood-color";
 import { cn } from "@/lib/utils";
 
 const ETA_OPTIONS: Record<"kitchen" | "bar", number[]> = {
@@ -22,11 +24,20 @@ function formatCountdown(totalSeconds: number): string {
 
 export type QuestionUrgency = "normal" | "urgent" | "critical";
 
+/** 0 = just asked, 1 = about to expire — drives Denis's mark color continuously. */
+export function resolveUrgencyRatio(
+  askedAt: string,
+  expiresAt: string,
+  now: number
+): number {
+  const total = Date.parse(expiresAt) - Date.parse(askedAt);
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  return Math.min(1, Math.max(0, (now - Date.parse(askedAt)) / total));
+}
+
 /** Guest is still waiting and the station hasn't answered — Denis gets more insistent, never rude. */
 export function resolveUrgency(askedAt: string, expiresAt: string, now: number): QuestionUrgency {
-  const total = Date.parse(expiresAt) - Date.parse(askedAt);
-  if (!Number.isFinite(total) || total <= 0) return "normal";
-  const elapsedRatio = (now - Date.parse(askedAt)) / total;
+  const elapsedRatio = resolveUrgencyRatio(askedAt, expiresAt, now);
   if (elapsedRatio >= 0.75) return "critical";
   if (elapsedRatio >= 0.4) return "urgent";
   return "normal";
@@ -66,6 +77,7 @@ export function DenisQuestionStrip({
   const remaining = secondsLeft(active.expires_at, now);
   if (remaining <= 0) return null;
 
+  const urgencyRatio = resolveUrgencyRatio(active.asked_at, active.expires_at, now);
   const urgency = resolveUrgency(active.asked_at, active.expires_at, now);
 
   const handleAnswer = async (
@@ -88,27 +100,29 @@ export function DenisQuestionStrip({
 
   return (
     <div
-      className={cn(
-        "rounded-xl border p-4 transition-colors",
-        urgency === "critical"
-          ? "border-red-500/50 bg-red-500/10"
-          : "border-orange-500/40 bg-orange-500/10"
-      )}
+      className="rounded-xl border p-4 transition-colors duration-700"
+      style={{
+        borderColor: resolveDenisMoodColor(urgencyRatio, 0.4),
+        backgroundColor: resolveDenisMoodColor(urgencyRatio, 0.1),
+      }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p
-          className={cn(
-            "text-xs font-bold uppercase tracking-wide",
-            urgency === "critical" ? "text-red-300" : "text-orange-300"
-          )}
-        >
-          Denis pita
-          {questions.length > 1 ? (
-            <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
-              +{questions.length - 1} u redu
-            </span>
-          ) : null}
-        </p>
+        <div className="flex items-center gap-2">
+          <DenisMarkBadge size="sm" moodIntensity={urgencyRatio} />
+          <p
+            className={cn(
+              "text-xs font-bold uppercase tracking-wide",
+              urgency === "critical" ? "text-red-300" : "text-orange-300"
+            )}
+          >
+            Denis pita
+            {questions.length > 1 ? (
+              <span className="ml-2 rounded-full bg-orange-500/25 px-2 py-0.5 text-[11px] font-semibold text-orange-200">
+                +{questions.length - 1} u redu
+              </span>
+            ) : null}
+          </p>
+        </div>
         <span
           className={cn(
             "font-mono text-sm font-semibold",

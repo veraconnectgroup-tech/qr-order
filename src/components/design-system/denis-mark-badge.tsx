@@ -1,10 +1,13 @@
 import { DenisTableMark, type DenisTableMarkState } from "./denis-table-mark";
+import { resolveDenisMoodColor } from "./denis-mood-color";
 import { cn } from "@/lib/utils";
 
 export type DenisMarkBadgeProps = {
   size?: "sm" | "md" | "lg";
   markState?: DenisTableMarkState;
   className?: string;
+  /** 0 = calm brand ember, 1 = full alert red. */
+  moodIntensity?: number;
 };
 
 const BOX: Record<NonNullable<DenisMarkBadgeProps["size"]>, string> = {
@@ -27,17 +30,30 @@ export function DenisMarkBadge({
   size = "md",
   markState = "idle",
   className,
+  moodIntensity,
 }: DenisMarkBadgeProps) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center bg-[var(--qr-ember-muted)] ring-1 ring-border",
+        "flex shrink-0 items-center justify-center ring-1 ring-border",
+        moodIntensity === undefined
+          ? "bg-[var(--qr-ember-muted)]"
+          : "transition-colors duration-700",
         BOX[size],
         className
       )}
+      style={
+        moodIntensity !== undefined
+          ? { backgroundColor: resolveDenisMoodColor(moodIntensity, 0.12) }
+          : undefined
+      }
       aria-hidden
     >
-      <DenisTableMark size={MARK[size]} state={markState} />
+      <DenisTableMark
+        size={MARK[size]}
+        state={markState}
+        moodIntensity={moodIntensity}
+      />
     </div>
   );
 }

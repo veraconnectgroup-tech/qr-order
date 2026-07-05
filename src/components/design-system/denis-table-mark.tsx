@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { resolveDenisMoodColor } from "./denis-mood-color";
 
 export type DenisTableMarkState = "idle" | "listen" | "think";
 
@@ -6,6 +7,8 @@ export type DenisTableMarkProps = {
   size?: 24 | 32 | 40;
   state?: DenisTableMarkState;
   className?: string;
+  /** 0 = calm brand ember, 1 = full alert red — e.g. an unanswered station question aging out. */
+  moodIntensity?: number;
 };
 
 /** Table D — vertical spine + top bar + leg (Denis spatial v4, ADR-007). */
@@ -13,6 +16,7 @@ export function DenisTableMark({
   size = 24,
   state = "idle",
   className,
+  moodIntensity,
 }: DenisTableMarkProps) {
   return (
     <svg
@@ -21,8 +25,16 @@ export function DenisTableMark({
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
+      style={
+        moodIntensity !== undefined
+          ? { color: resolveDenisMoodColor(moodIntensity) }
+          : undefined
+      }
       className={cn(
-        "shrink-0 text-[var(--qr-ember)]",
+        "shrink-0",
+        moodIntensity !== undefined
+          ? "transition-colors duration-700"
+          : "text-[var(--qr-ember)]",
         state === "listen" && "denis-table-mark--listen",
         state === "think" && "denis-table-mark--think",
         className
