@@ -1,35 +1,63 @@
 "use client";
 
-import { resolveDenisMoodColor } from "./denis-mood-color";
+import { mixTowardMoodColor, resolveDenisMoodColor } from "./denis-mood-color";
 import { cn } from "@/lib/utils";
+
+const WHITE = { r: 255, g: 255, b: 255 };
+const NEAR_WHITE = { r: 253, g: 253, b: 253 };
 
 export type DenisVoicePresenceOrbProps = {
   /** 0 = calm, 1 = critical — same signal driving the D-mark and card color. */
   moodIntensity: number;
+  /** True while audio is actually playing — orb swells bigger and faster. */
+  speaking?: boolean;
   size?: number;
   className?: string;
 };
 
-/** Large soft "speaking" orb for kitchen/bar stations — white core fading to Denis's mood color. */
+/**
+ * Large "speaking presence" orb for kitchen/bar stations — soft white cloud
+ * core, tinted by Denis's mood color (ember orange calm, alert red urgent),
+ * styled after voice-assistant orbs (ChatGPT/Siri): diffuse, glowing,
+ * no hard edge.
+ */
 export function DenisVoicePresenceOrb({
   moodIntensity,
+  speaking = false,
   size = 96,
   className,
 }: DenisVoicePresenceOrbProps) {
-  const edgeColor = resolveDenisMoodColor(moodIntensity, 0.9);
-  const midColor = resolveDenisMoodColor(moodIntensity, 0.5);
+  // The "white" stops themselves shift toward the mood color as intensity
+  // rises, so at full urgency the whole orb reads as solid red instead of
+  // keeping a white highlight forever.
+  const coreWhite = mixTowardMoodColor(WHITE, moodIntensity);
+  const coreNearWhite = mixTowardMoodColor(NEAR_WHITE, moodIntensity);
+  const highlight = mixTowardMoodColor(WHITE, moodIntensity, 0.95);
+  const highlightSoft = mixTowardMoodColor(WHITE, moodIntensity, 0.7);
+  const tintStrong = resolveDenisMoodColor(moodIntensity, 0.85);
+  const tintMid = resolveDenisMoodColor(moodIntensity, 0.55);
+  const tintSoft = resolveDenisMoodColor(moodIntensity, moodIntensity >= 0.99 ? 1 : 0.2);
+  const glow = resolveDenisMoodColor(moodIntensity, 0.45);
 
   return (
     <div
       aria-hidden
       className={cn(
-        "denis-voice-orb shrink-0 rounded-full transition-[background] duration-700",
+        "denis-voice-orb shrink-0 rounded-full transition-[background,box-shadow] duration-700",
+        speaking && "denis-voice-orb--speaking",
         className
       )}
       style={{
         width: size,
         height: size,
-        background: `radial-gradient(circle at 35% 30%, #ffffff 0%, ${midColor} 55%, ${edgeColor} 100%)`,
+        background: `
+          radial-gradient(circle at 32% 26%, ${highlight} 0%, ${highlightSoft} 20%, transparent 48%),
+          radial-gradient(circle at 68% 34%, ${highlightSoft} 0%, transparent 42%),
+          radial-gradient(circle at 60% 78%, ${tintStrong} 0%, transparent 60%),
+          radial-gradient(circle at 30% 72%, ${tintMid} 0%, transparent 65%),
+          radial-gradient(circle at 50% 50%, ${coreWhite} 0%, ${coreNearWhite} 40%, ${tintSoft} 100%)
+        `,
+        boxShadow: `0 0 ${Math.round(size * 0.4)}px ${Math.round(size * 0.08)}px ${glow}`,
       }}
     />
   );

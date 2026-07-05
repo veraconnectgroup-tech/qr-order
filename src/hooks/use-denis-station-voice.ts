@@ -19,11 +19,13 @@ export function useDenisStationVoice(locationId: string) {
   const { enabled, enable } = useSoundAlert();
   const playingRef = useRef(false);
   const [primed, setPrimed] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const playText = useCallback(
     (text: string) => {
       if (!text.trim() || playingRef.current) return;
       playingRef.current = true;
+      setSpeaking(true);
 
       fetch("/api/ai/voice/speak", {
         method: "POST",
@@ -50,6 +52,7 @@ export function useDenisStationVoice(locationId: string) {
         })
         .finally(() => {
           playingRef.current = false;
+          setSpeaking(false);
         });
     },
     [locationId]
@@ -70,5 +73,5 @@ export function useDenisStationVoice(locationId: string) {
     playText(ACTIVATION_LINE);
   }, [enable, playText]);
 
-  return { voiceEnabled: enabled, voicePrimed: primed, speak, activate };
+  return { voiceEnabled: enabled, voicePrimed: primed, speaking, speak, activate };
 }

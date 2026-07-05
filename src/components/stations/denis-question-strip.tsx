@@ -66,7 +66,7 @@ export function DenisQuestionStrip({
   );
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const { speak, activate, voicePrimed } = useDenisStationVoice(locationId);
+  const { speak, activate, voicePrimed, speaking } = useDenisStationVoice(locationId);
   const spokenTiersRef = useRef<Set<string>>(new Set());
 
   const active = questions[0] ?? null;
@@ -136,7 +136,7 @@ export function DenisQuestionStrip({
   return (
     <div className="flex flex-col items-center gap-3">
       {activateButton}
-      <DenisVoicePresenceOrb moodIntensity={urgencyRatio} />
+      <DenisVoicePresenceOrb moodIntensity={urgencyRatio} speaking={speaking} />
       <div
         className="w-full rounded-xl border p-4 transition-colors duration-700"
         style={{

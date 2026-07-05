@@ -14,3 +14,20 @@ export function resolveDenisMoodColor(intensity: number, alpha = 1): string {
   const b = lerp(EMBER.b, ALERT_RED.b, t);
   return alpha >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+/**
+ * Blends a base color (e.g. the orb's white core) toward the mood color as
+ * intensity rises, so the whole shape reads as fully red at max urgency
+ * instead of keeping a white highlight forever.
+ */
+export function mixTowardMoodColor(
+  base: { r: number; g: number; b: number },
+  intensity: number,
+  alpha = 1
+): string {
+  const t = Math.min(1, Math.max(0, intensity));
+  const r = lerp(base.r, lerp(EMBER.r, ALERT_RED.r, t), t);
+  const g = lerp(base.g, lerp(EMBER.g, ALERT_RED.g, t), t);
+  const b = lerp(base.b, lerp(EMBER.b, ALERT_RED.b, t), t);
+  return alpha >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
