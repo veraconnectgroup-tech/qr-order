@@ -36,6 +36,17 @@ describe("handoff bill phrases", () => {
       isHandoffBillRequestMessage("hocu jos jedno pivo i racun molim")
     ).toBe(false);
   });
+
+  it("does not treat a refusal to pay as a bill request", () => {
+    expect(
+      isHandoffBillRequestMessage(
+        "sta je ovo cekam 40 minuta na porudzbinu, ja vam necu platiti, idem"
+      )
+    ).toBe(false);
+    expect(isHandoffBillRequestMessage("necu platiti, idem")).toBe(false);
+    expect(isHandoffBillRequestMessage("ne zelim da platim ovo")).toBe(false);
+    expect(isHandoffBillRequestMessage("želim da platim")).toBe(true);
+  });
 });
 
 describe("order change phrases", () => {

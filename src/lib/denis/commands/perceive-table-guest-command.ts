@@ -88,6 +88,13 @@ export function isHandoffWaiterMessage(message: string): boolean {
   return false;
 }
 
+// "neću platiti"/"ne želim da platim" (I refuse to pay) is a complaint, not
+// a request for the bill — the bare plat(i|iti|imo) match below has no
+// notion of the preceding negation, so it must be excluded before that
+// regex ever runs.
+const PAYMENT_REFUSAL =
+  /\b(ne[cć]u|ne\s+(zelim|želim)|ne\s+mogu)\s+(da\s+)?(za)?plat/i;
+
 export function isHandoffBillRequestMessage(message: string): boolean {
   const text = normalize(message);
   if (parseHandoffPaymentMethod(message)) return false;
@@ -96,6 +103,7 @@ export function isHandoffBillRequestMessage(message: string): boolean {
   // bill handoff — the order half would be silently dropped. Let the LLM
   // turn handle both parts together instead of short-circuiting here.
   if (MENTIONS_MENU_ITEM.test(text)) return false;
+  if (PAYMENT_REFUSAL.test(text)) return false;
   return (
     /\b(račun|racun|rechnung|bill|checkout)\b/.test(text) ||
     /(želim|zelim|hoću|hocu|treba)\s+(da\s+)?(platim|platiti|naplatim|naplatiti)/.test(
