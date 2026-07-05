@@ -4,7 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 
 const ACTIVATION_LINE = "Denis je spreman.";
-const LISTEN_TIMEOUT_MS = 6000;
+const LISTEN_TIMEOUT_MS = 8000;
+// The mic permission prompt can take longer than LISTEN_TIMEOUT_MS to
+// resolve the first time a browser ever asks (user has to notice and click
+// Allow) — this hard cap only exists to stop a recognizer that never
+// reports onstart at all, so it's intentionally generous.
+const LISTEN_HARD_CAP_MS = 20000;
 
 type BrowserSpeechRecognitionResult = { transcript?: string };
 
@@ -25,6 +30,7 @@ type BrowserSpeechRecognition = {
       }) => void)
     | null;
   onerror: ((event: { error?: string }) => void) | null;
+  onstart: (() => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -113,13 +119,27 @@ export function useDenisStationVoice(locationId: string) {
         finish("");
       };
       recognition.onend = () => finish("");
+      // Only start the real listen window once recognition has actually
+      // begun capturing — calling start() merely requests the mic; on a
+      // fresh permission prompt the browser can sit waiting on the user for
+      // several seconds before onstart fires, and stopping on a fixed timer
+      // from start() alone would abort the very first listen attempt on
+      // every device before the person ever gets to speak.
+      recognition.onstart = () => {
+        if (listenTimeoutRef.current != null) {
+          clearTimeout(listenTimeoutRef.current);
+        }
+        listenTimeoutRef.current = setTimeout(() => {
+          recognition.stop();
+        }, LISTEN_TIMEOUT_MS);
+      };
 
       recognitionRef.current = recognition;
       setListening(true);
       recognition.start();
       listenTimeoutRef.current = setTimeout(() => {
         recognition.stop();
-      }, LISTEN_TIMEOUT_MS);
+      }, LISTEN_HARD_CAP_MS);
     },
     [stopListening]
   );
