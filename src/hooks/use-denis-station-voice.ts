@@ -23,7 +23,9 @@ export function useDenisStationVoice(locationId: string) {
         body: JSON.stringify({ text: text.trim(), sessionToken: locationId }),
       })
         .then(async (res) => {
-          if (!res.ok) throw new Error("tts_failed");
+          if (!res.ok) {
+            throw new Error(`tts_failed (${res.status})`);
+          }
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           const audio = new Audio(url);
@@ -31,9 +33,12 @@ export function useDenisStationVoice(locationId: string) {
           audio.addEventListener("error", () => URL.revokeObjectURL(url));
           await audio.play();
         })
-        .catch(() => {
-          // Silent failure — the visible question card + color already carry
-          // the message; voice is a bonus, not the only channel.
+        .catch((error) => {
+          // The visible question card + color already carry the message —
+          // voice is a bonus, not the only channel — so this stays non-fatal.
+          // Logged (not silent) so a recurring failure is diagnosable from
+          // the station device's console instead of guessing blind.
+          console.error("[denis-station-voice] speak failed", error);
         })
         .finally(() => {
           playingRef.current = false;
