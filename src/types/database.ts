@@ -862,6 +862,18 @@ type Tables = {
     text: string;
     created_at: string;
   };
+  denis_relationship_signals: {
+    id: string;
+    location_id: string;
+    staff_id: string;
+    warmth_score: number;
+    interaction_count: number;
+    last_tone: "warm" | "neutral" | "curt";
+    last_sample: string | null;
+    last_interaction_at: string;
+    created_at: string;
+    updated_at: string;
+  };
   table_bus_obligations: {
     id: string;
     location_id: string;
