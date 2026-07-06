@@ -1,7 +1,7 @@
 import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { AiOpenAiError } from "@/lib/ai/openai-client";
-import { synthesizeDenisSpeech } from "@/lib/ai/openai-tts";
+import { streamDenisSpeech } from "@/lib/ai/openai-tts";
 import { resolveDenisVoiceInstructions } from "@/lib/ai/denis-voice-instructions";
 import { loadStationVoiceSnapshot } from "@/lib/denis/venue/floor/load-station-voice-snapshot";
 import { withRateLimitByKey } from "@/lib/rate-limit";
@@ -71,7 +71,10 @@ export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) =>
   }
 
   try {
-    const audio = await synthesizeDenisSpeech(
+    // Pipe OpenAI's bytes straight to the client as they arrive instead of
+    // buffering the full file server-side first — overlaps generation and
+    // transfer instead of waiting for both in sequence.
+    const stream = await streamDenisSpeech(
       text.trim(),
       resolveDenisVoiceInstructions({
         urgencyRatio,
@@ -79,7 +82,7 @@ export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) =>
         relationshipWarmth,
       })
     );
-    return new Response(audio, {
+    return new Response(stream, {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "no-store",

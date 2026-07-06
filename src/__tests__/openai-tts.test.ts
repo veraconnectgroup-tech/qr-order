@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { synthesizeDenisSpeech } from "@/lib/ai/openai-tts";
+import { streamDenisSpeech, synthesizeDenisSpeech } from "@/lib/ai/openai-tts";
 import { AiOpenAiError } from "@/lib/ai/openai-client";
 
 describe("synthesizeDenisSpeech", () => {
@@ -48,5 +48,50 @@ describe("synthesizeDenisSpeech", () => {
   it("throws when OpenAI is not configured", async () => {
     delete process.env.OPENAI_API_KEY;
     await expect(synthesizeDenisSpeech("hi")).rejects.toThrow(AiOpenAiError);
+  });
+});
+
+describe("streamDenisSpeech", () => {
+  beforeEach(() => {
+    process.env.OPENAI_API_KEY = "test-key";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("hands back the raw response stream instead of buffering it", async () => {
+    const audioBytes = new Uint8Array([1, 2, 3, 4]).buffer;
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(audioBytes, {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const stream = await streamDenisSpeech("Dobro vece!");
+    expect(stream).toBeInstanceOf(ReadableStream);
+
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+    const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    expect(total).toBe(4);
+  });
+
+  it("throws AiOpenAiError with the upstream message on failure", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "bad voice" } }), {
+        status: 400,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(streamDenisSpeech("hi")).rejects.toThrow("bad voice");
   });
 });

@@ -19,6 +19,102 @@ export type DenisVoiceTone = {
   station?: "kitchen" | "bar";
 };
 
+const TTS_MIME_TYPE = "audio/mpeg";
+
+function canStreamViaMediaSource(): boolean {
+  return (
+    typeof MediaSource !== "undefined" &&
+    MediaSource.isTypeSupported(TTS_MIME_TYPE)
+  );
+}
+
+/**
+ * Progressive playback — starts speaking as soon as the first audio chunk
+ * arrives instead of waiting for the whole file to download. Any failure
+ * here just resolves quietly (same "Denis stops gracefully" behavior as
+ * the blob fallback) rather than retrying, since the stream is already
+ * partially consumed at that point.
+ */
+function playViaMediaSource(body: ReadableStream<Uint8Array>): Promise<void> {
+  const mediaSource = new MediaSource();
+  const url = URL.createObjectURL(mediaSource);
+  const audio = new Audio(url);
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+
+    audio.addEventListener("ended", finish);
+    audio.addEventListener("error", finish);
+
+    mediaSource.addEventListener(
+      "sourceopen",
+      () => {
+        let sourceBuffer: SourceBuffer;
+        try {
+          sourceBuffer = mediaSource.addSourceBuffer(TTS_MIME_TYPE);
+        } catch {
+          finish();
+          return;
+        }
+
+        const reader = body.getReader();
+
+        const pump = (): void => {
+          reader
+            .read()
+            .then(({ done, value }) => {
+              if (done) {
+                if (mediaSource.readyState === "open") {
+                  mediaSource.endOfStream();
+                }
+                return;
+              }
+              if (!value) {
+                pump();
+                return;
+              }
+              sourceBuffer.appendBuffer(value as BufferSource);
+            })
+            .catch(finish);
+        };
+
+        sourceBuffer.addEventListener("updateend", pump);
+        pump();
+      },
+      { once: true }
+    );
+
+    audio.play().catch(() => {
+      // Queued playback resumes once appendBuffer feeds the first chunk —
+      // an immediate rejection here is expected before data exists yet.
+    });
+  });
+}
+
+/** Full-download path — used whenever MediaSource/mp3 streaming isn't supported. */
+async function playViaBlob(res: Response): Promise<void> {
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  await new Promise<void>((resolve) => {
+    audio.addEventListener("ended", () => {
+      URL.revokeObjectURL(url);
+      resolve();
+    });
+    audio.addEventListener("error", () => {
+      URL.revokeObjectURL(url);
+      resolve();
+    });
+    audio.play().catch(() => resolve());
+  });
+}
+
 const LISTEN_TIMEOUT_MS = 12000;
 // The mic permission prompt can take longer than LISTEN_TIMEOUT_MS to
 // resolve the first time a browser ever asks (user has to notice and click
@@ -189,20 +285,11 @@ export function useDenisStationVoice(locationId: string) {
           if (!res.ok) {
             throw new Error(`tts_failed (${res.status})`);
           }
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
-          await new Promise<void>((resolve) => {
-            audio.addEventListener("ended", () => {
-              URL.revokeObjectURL(url);
-              resolve();
-            });
-            audio.addEventListener("error", () => {
-              URL.revokeObjectURL(url);
-              resolve();
-            });
-            audio.play().catch(() => resolve());
-          });
+          if (res.body && canStreamViaMediaSource()) {
+            await playViaMediaSource(res.body);
+          } else {
+            await playViaBlob(res);
+          }
         });
 
       void playServerTts

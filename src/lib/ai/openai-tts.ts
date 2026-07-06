@@ -11,10 +11,10 @@ const DENIS_TTS_VOICE = "alloy";
  * voice identity every time, only how it's spoken shifts (e.g. calmer vs. more urgent). */
 const DENIS_TTS_MODEL = "gpt-4o-mini-tts";
 
-export async function synthesizeDenisSpeech(
+async function requestDenisSpeech(
   text: string,
   instructions?: string
-): Promise<ArrayBuffer> {
+): Promise<Response> {
   if (!isOpenAiConfigured()) {
     throw new AiOpenAiError("OpenAI is not configured.");
   }
@@ -47,5 +47,30 @@ export async function synthesizeDenisSpeech(
     throw new AiOpenAiError(message, res.status);
   }
 
+  return res;
+}
+
+export async function synthesizeDenisSpeech(
+  text: string,
+  instructions?: string
+): Promise<ArrayBuffer> {
+  const res = await requestDenisSpeech(text, instructions);
   return res.arrayBuffer();
+}
+
+/**
+ * Same request, but hands back OpenAI's raw byte stream instead of
+ * buffering the full file first — lets a route pipe bytes to the client
+ * as they arrive instead of two sequential full-file waits (generation,
+ * then transfer). Throws AiOpenAiError the same way on a non-OK response.
+ */
+export async function streamDenisSpeech(
+  text: string,
+  instructions?: string
+): Promise<ReadableStream<Uint8Array>> {
+  const res = await requestDenisSpeech(text, instructions);
+  if (!res.body) {
+    throw new AiOpenAiError("OpenAI TTS response had no body.");
+  }
+  return res.body;
 }
