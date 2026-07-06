@@ -323,6 +323,15 @@ const ConciergeOpsSchema = z.object({
   rushSkipUpsell: z.boolean(),
   kdsStressSkipUpsell: z.boolean(),
   floorGraphEnabled: z.boolean(),
+  /**
+   * ADR-048 §III — correlated kitchen/bar-busy + guest-frustration note in
+   * the guest-turn prompt (assemble-operational-context.ts). Instant kill
+   * switch per location; unifiedOperationalContextCanaryPercent ramps
+   * guest-cohort exposure within an enabled location (0 = dark launch,
+   * compute-and-log only).
+   */
+  unifiedOperationalContextEnabled: z.boolean().default(false),
+  unifiedOperationalContextCanaryPercent: z.number().int().min(0).max(100).default(0),
   autoRushEnabled: z.boolean(),
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
   stationQuestions: ConciergeStationQuestionsSchema,

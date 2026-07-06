@@ -39,6 +39,7 @@ export type EvidencePointer =
   | "dialogue.frame"
   | "guest.memory"
   | "venue.ops"
+  | "operational_context"
   | "catalog.rag"
   | "playbook.examples";
 
@@ -79,6 +80,8 @@ export type PlanEvidenceInput = {
   playbookBlock?: string | null;
   vkgPairingBlock?: string | null;
   frustrationRecoveryBlock?: string | null;
+  /** Correlated kitchen/bar-busy + guest-frustration note (ADR-048 §III) — see assemble-operational-context.ts. */
+  operationalContextBlock?: string | null;
   rhythm?: ResolvedRhythmContext | null;
   revenueInsight?: unknown;
   accessibilityBlock?: string | null;
@@ -229,6 +232,11 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
 
   if (input.frustrationRecoveryBlock?.trim()) {
     blocks.push(input.frustrationRecoveryBlock.trim());
+  }
+
+  if (input.operationalContextBlock?.trim()) {
+    pointers.push("operational_context");
+    blocks.push(input.operationalContextBlock.trim());
   }
 
   if (input.guestStatusSection?.trim()) {

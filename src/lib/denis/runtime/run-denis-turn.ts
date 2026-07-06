@@ -20,6 +20,8 @@ import {
   type TurnEvidencePack,
 } from "@/lib/denis/cognition/context/plan-evidence";
 import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
+import { assembleGuestTurnOperationalContext } from "@/lib/denis/cognition/context/assemble-operational-context";
+import { retrieveOperationalContextEvidence } from "@/lib/denis/cognition/context/retrievers/operational-context-evidence";
 import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/load-venue-manifests";
 import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import { resolveContextAwareness } from "@/lib/denis/intelligence/resolve-context-awareness";
@@ -85,6 +87,7 @@ import {
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
 import { resolveCanonicalChatAiSessionId } from "@/lib/denis/venue/party";
 import {
+  isInCanaryCohort,
   kernelTimelineEnabled,
   resolveEffectiveRollout,
   resolveGuestLegacyPath,
@@ -804,6 +807,26 @@ async function runTdePerceive(input: {
     }).catch(() => null),
   ]);
 
+  // ADR-048 §III — correlated kitchen/bar-busy + guest-frustration note.
+  // Instant kill switch per location plus a guest-cohort canary ramp so
+  // this can dark-launch (flag on, 0%) before reaching any real guest.
+  const opsConfig = input.ctx.config.ops;
+  const operationalContextCohortKey =
+    input.ctx.tableSessionState?.session.id ?? input.body.tableId;
+  const operationalContextBlock =
+    opsConfig.unifiedOperationalContextEnabled &&
+    isInCanaryCohort(
+      operationalContextCohortKey,
+      opsConfig.unifiedOperationalContextCanaryPercent
+    )
+      ? retrieveOperationalContextEvidence(
+          assembleGuestTurnOperationalContext({
+            venueOps: input.ctx.venueOps,
+            mental: input.ctx.tableSessionState?.mental,
+          })
+        )
+      : null;
+
   const evidence = planEvidence({
     turnPlan,
     interpretationTask,
@@ -825,6 +848,7 @@ async function runTdePerceive(input: {
     vkgPairingBlock,
     contextAwareness,
     guestStatusSection,
+    operationalContextBlock,
   });
 
   const modelRoute = resolveAdaptiveModelRoute({

@@ -131,6 +131,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     rushSkipUpsell: true,
     kdsStressSkipUpsell: true,
     floorGraphEnabled: false,
+    unifiedOperationalContextEnabled: false,
+    unifiedOperationalContextCanaryPercent: 0,
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
     stationQuestions: {
