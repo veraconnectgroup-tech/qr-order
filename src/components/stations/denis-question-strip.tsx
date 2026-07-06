@@ -17,6 +17,8 @@ import {
 import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-context";
 import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
+import { resolveVenueChaosRatio } from "@/lib/denis/venue/floor/resolve-venue-chaos-ratio";
+import type { DenisVoiceTone } from "@/hooks/use-denis-station-voice";
 
 function secondsLeft(expiresAt: string, now: number): number {
   return Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000));
@@ -204,6 +206,21 @@ export function DenisQuestionStrip({
       station
     );
 
+    // Same Denis voice identity always — only how pressured he sounds shifts,
+    // from how urgent this question is and how many are stacked up right now.
+    const tone: DenisVoiceTone = {
+      urgencyRatio: resolveUrgencyRatio(
+        active.asked_at,
+        active.expires_at,
+        now,
+        extractWaitMinutes(active.message)
+      ),
+      venueChaosRatio: resolveVenueChaosRatio({
+        openQuestionCount: questions.length,
+        averageBacklogMinutes: null,
+      }),
+    };
+
     const speakTurn = (
       turn: StationVoiceTurnResult,
       onDone?: () => void,
@@ -217,7 +234,7 @@ export function DenisQuestionStrip({
       if (!skipPersist) {
         persistTurn(questionId, "denis", turn.speak);
       }
-      speak(turn.speak, onDone);
+      speak(turn.speak, onDone, tone);
     };
 
     const offlineTurn = (transcript: string): StationVoiceTurnResult => {
@@ -282,11 +299,15 @@ export function DenisQuestionStrip({
       priorTurnsRef.current.push({ role: "denis", text: confirm });
       persistTurn(questionId, "staff", trimmed);
       persistTurn(questionId, "denis", confirm);
-      speak(confirm, () => {
-        void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
-          spokenTiersRef.current.add(`${questionId}:answered`);
-        });
-      });
+      speak(
+        confirm,
+        () => {
+          void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
+            spokenTiersRef.current.add(`${questionId}:answered`);
+          });
+        },
+        tone
+      );
       return true;
     };
 
@@ -296,10 +317,14 @@ export function DenisQuestionStrip({
       const trimmed = transcript.trim();
       if (!trimmed || isLikelyDenisEchoTranscript(trimmed)) {
         if (turnsLeft <= 0) return;
-        speak(EMPTY_LISTEN_LINE, () => {
-          if (activeIdRef.current !== questionId) return;
-          listenForReply((next) => processStaffReply(next, turnsLeft - 1));
-        });
+        speak(
+          EMPTY_LISTEN_LINE,
+          () => {
+            if (activeIdRef.current !== questionId) return;
+            listenForReply((next) => processStaffReply(next, turnsLeft - 1));
+          },
+          tone
+        );
         return;
       }
 
@@ -369,10 +394,13 @@ export function DenisQuestionStrip({
       return;
     }
 
-    const started = speak(line, () =>
-      listenForReply((transcript) =>
-        processStaffReply(transcript, MAX_CONVERSATION_TURNS)
-      )
+    const started = speak(
+      line,
+      () =>
+        listenForReply((transcript) =>
+          processStaffReply(transcript, MAX_CONVERSATION_TURNS)
+        ),
+      tone
     );
     if (!started) return;
 
@@ -382,6 +410,7 @@ export function DenisQuestionStrip({
   }, [
     active,
     now,
+    questions.length,
     speak,
     listen,
     handleAnswer,

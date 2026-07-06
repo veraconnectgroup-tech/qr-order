@@ -5,6 +5,12 @@ import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { speakWithBrowserVoice } from "@/lib/denis/surfaces/voice/speak-with-browser-voice";
 
 const ACTIVATION_LINE = "Denis je spreman.";
+
+/** How pressured the moment is — shades TTS delivery without changing Denis's voice identity (see denis-voice-instructions.ts). */
+export type DenisVoiceTone = {
+  urgencyRatio?: number;
+  venueChaosRatio?: number;
+};
 const LISTEN_TIMEOUT_MS = 12000;
 // The mic permission prompt can take longer than LISTEN_TIMEOUT_MS to
 // resolve the first time a browser ever asks (user has to notice and click
@@ -153,7 +159,7 @@ export function useDenisStationVoice(locationId: string) {
   );
 
   const playText = useCallback(
-    (text: string, onEnded?: () => void) => {
+    (text: string, onEnded?: () => void, tone?: DenisVoiceTone) => {
       if (!text.trim() || playingRef.current) return;
       playingRef.current = true;
       setSpeaking(true);
@@ -163,7 +169,12 @@ export function useDenisStationVoice(locationId: string) {
       const playServerTts = fetch("/api/ai/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trimmed, sessionToken: locationId }),
+        body: JSON.stringify({
+          text: trimmed,
+          sessionToken: locationId,
+          urgencyRatio: tone?.urgencyRatio,
+          venueChaosRatio: tone?.venueChaosRatio,
+        }),
       })
         .then(async (res) => {
           if (!res.ok) {
@@ -204,9 +215,9 @@ export function useDenisStationVoice(locationId: string) {
   );
 
   const speak = useCallback(
-    (text: string, onEnded?: () => void): boolean => {
+    (text: string, onEnded?: () => void, tone?: DenisVoiceTone): boolean => {
       if (!enabled || !primed || playingRef.current) return false;
-      playText(text, onEnded);
+      playText(text, onEnded, tone);
       return true;
     },
     [enabled, primed, playText]
