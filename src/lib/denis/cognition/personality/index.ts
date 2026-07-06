@@ -22,3 +22,12 @@ export {
   resolveCulturalProfile,
   type CulturalProfile,
 } from "@/lib/denis/cognition/personality/cultural-sensitivity";
+
+export {
+  resolveInteractionTone,
+  updateRelationshipWarmth,
+  buildStaffRelationshipToneBlock,
+  DENIS_OPINIONS_BLOCK,
+  type InteractionTone,
+  type RelationshipWarmth,
+} from "@/lib/denis/cognition/personality/staff-relationship-engine";
