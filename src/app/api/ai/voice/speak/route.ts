@@ -2,10 +2,15 @@ import { apiError } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { AiOpenAiError } from "@/lib/ai/openai-client";
 import { synthesizeDenisSpeech } from "@/lib/ai/openai-tts";
+import { resolveDenisVoiceInstructions } from "@/lib/ai/denis-voice-instructions";
 import { withRateLimitByKey } from "@/lib/rate-limit";
 import { zSessionToken } from "@/lib/security/zod-fields";
 
 const MAX_TTS_TEXT_LENGTH = 2000;
+
+function optionalRatio(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
 
 /** Guest-facing Denis TTS — brand voice via OpenAI, not device-dependent browser TTS. */
 export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) => {
@@ -32,8 +37,24 @@ export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) =>
   const limited = await withRateLimitByKey("ai", sessionTokenParsed.data);
   if (limited) return limited;
 
+  const moodInput = body as {
+    urgencyRatio?: unknown;
+    venueChaosRatio?: unknown;
+    relationshipWarmth?: unknown;
+  };
+  const urgencyRatio = optionalRatio(moodInput.urgencyRatio) ?? 0;
+  const venueChaosRatio = optionalRatio(moodInput.venueChaosRatio);
+  const relationshipWarmth = optionalRatio(moodInput.relationshipWarmth);
+
   try {
-    const audio = await synthesizeDenisSpeech(text.trim());
+    const audio = await synthesizeDenisSpeech(
+      text.trim(),
+      resolveDenisVoiceInstructions({
+        urgencyRatio,
+        venueChaosRatio,
+        relationshipWarmth,
+      })
+    );
     return new Response(audio, {
       headers: {
         "Content-Type": "audio/mpeg",

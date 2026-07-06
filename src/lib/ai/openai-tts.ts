@@ -7,9 +7,14 @@ const OPENAI_TTS_URL =
 
 /** Fixed brand voice — consistent across every guest device (browser TTS varies per OS/browser). */
 const DENIS_TTS_VOICE = "alloy";
-const DENIS_TTS_MODEL = "tts-1";
+/** gpt-4o-mini-tts supports a natural-language `instructions` field for delivery/tone — same
+ * voice identity every time, only how it's spoken shifts (e.g. calmer vs. more urgent). */
+const DENIS_TTS_MODEL = "gpt-4o-mini-tts";
 
-export async function synthesizeDenisSpeech(text: string): Promise<ArrayBuffer> {
+export async function synthesizeDenisSpeech(
+  text: string,
+  instructions?: string
+): Promise<ArrayBuffer> {
   if (!isOpenAiConfigured()) {
     throw new AiOpenAiError("OpenAI is not configured.");
   }
@@ -27,6 +32,7 @@ export async function synthesizeDenisSpeech(text: string): Promise<ArrayBuffer> 
       voice: DENIS_TTS_VOICE,
       input: text,
       response_format: "mp3",
+      ...(instructions ? { instructions } : {}),
     }),
   });
 
