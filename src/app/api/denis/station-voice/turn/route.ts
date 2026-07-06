@@ -3,6 +3,10 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { interpretStationVoiceTurn } from "@/lib/denis/stations/interpret-station-voice-turn";
+import {
+  appendStationQuestionTurn,
+  listStationQuestionTurns,
+} from "@/lib/denis/stations/station-question-turns";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,15 +15,6 @@ import { createServerClient } from "@/lib/supabase/server";
 const schema = z.object({
   questionId: z.string().uuid(),
   transcript: z.string().trim().max(2000),
-  priorTurns: z
-    .array(
-      z.object({
-        role: z.enum(["denis", "staff"]),
-        text: z.string().trim().max(2000),
-      })
-    )
-    .max(12)
-    .default([]),
 });
 
 /** Kitchen/bar — Denis understands a spoken staff reply and continues the conversation. */
@@ -74,7 +69,7 @@ export const POST = withErrorHandler(
       return apiError("Question not found.", 404);
     }
 
-    const questionRow = question as {
+    const questionRow = question as unknown as {
       id: string;
       location_id: string;
       station: "kitchen" | "bar";
@@ -141,19 +136,39 @@ export const POST = withErrorHandler(
       return apiError("Station questions are not enabled.", 403);
     }
 
+    const priorTurns = await listStationQuestionTurns(
+      admin,
+      parsed.data.questionId
+    );
+
     const turn = await interpretStationVoiceTurn(
       {
         questionMessage: questionRow.message,
         questionType: questionRow.question_type,
         station: questionRow.station,
         staffTranscript: parsed.data.transcript,
-        priorTurns: parsed.data.priorTurns,
+        priorTurns,
         tableName: tableRel?.name ?? null,
         orderNumber: orderRel?.order_number ?? null,
         waitMinutes,
       },
       config
     );
+
+    await appendStationQuestionTurn(
+      admin,
+      parsed.data.questionId,
+      "staff",
+      parsed.data.transcript
+    );
+    if (turn.speak) {
+      await appendStationQuestionTurn(
+        admin,
+        parsed.data.questionId,
+        "denis",
+        turn.speak
+      );
+    }
 
     return apiSuccess({ turn });
   }

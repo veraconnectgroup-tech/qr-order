@@ -106,9 +106,47 @@ export function DenisQuestionStrip({
   const priorTurnsRef = useRef<Array<{ role: "denis" | "staff"; text: string }>>(
     []
   );
+  const [turnsHydrated, setTurnsHydrated] = useState(false);
+
+  const persistTurn = useCallback(
+    (questionId: string, role: "denis" | "staff", text: string) => {
+      void fetch("/api/denis/station-voice/turns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, role, text }),
+      }).catch(() => {
+        // Offline — local ref still holds the turn for this session.
+      });
+    },
+    []
+  );
 
   const active = questions[0] ?? null;
   const activeIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!active?.id) {
+      priorTurnsRef.current = [];
+      setTurnsHydrated(true);
+      return;
+    }
+
+    setTurnsHydrated(false);
+    void fetch(
+      `/api/denis/station-voice/turns?questionId=${encodeURIComponent(active.id)}`
+    )
+      .then(async (res) => {
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          data?: { turns?: Array<{ role: "denis" | "staff"; text: string }> };
+        };
+        priorTurnsRef.current = body.data?.turns ?? [];
+      })
+      .catch(() => {
+        priorTurnsRef.current = [];
+      })
+      .finally(() => setTurnsHydrated(true));
+  }, [active?.id]);
 
   useEffect(() => {
     activeIdRef.current = active?.id ?? null;
@@ -147,7 +185,7 @@ export function DenisQuestionStrip({
   // spoken while speak() no-ops, and Denis would stay silent after
   // "Denis je spreman."
   useEffect(() => {
-    if (!active || !voicePrimed || speaking) return;
+    if (!active || !voicePrimed || speaking || !turnsHydrated) return;
     const tier = resolveUrgency(
       active.asked_at,
       active.expires_at,
@@ -168,13 +206,17 @@ export function DenisQuestionStrip({
 
     const speakTurn = (
       turn: StationVoiceTurnResult,
-      onDone?: () => void
+      onDone?: () => void,
+      skipPersist = false
     ) => {
       if (!turn.speak) {
         onDone?.();
         return;
       }
       priorTurnsRef.current.push({ role: "denis", text: turn.speak });
+      if (!skipPersist) {
+        persistTurn(questionId, "denis", turn.speak);
+      }
       speak(turn.speak, onDone);
     };
 
@@ -193,7 +235,7 @@ export function DenisQuestionStrip({
       );
     };
 
-    const finishResolved = (turn: StationVoiceTurnResult) => {
+    const finishResolved = (turn: StationVoiceTurnResult, skipPersist = false) => {
       if (!turn.resolved) return false;
       const submit = () => {
         void handleAnswer(turn.resolved!.answer, turn.resolved!.etaMinutes).then(
@@ -203,7 +245,7 @@ export function DenisQuestionStrip({
         );
       };
       if (turn.speak) {
-        speakTurn(turn, submit);
+        speakTurn(turn, submit, skipPersist);
       } else {
         submit();
       }
@@ -212,14 +254,19 @@ export function DenisQuestionStrip({
 
     const continueConversation = (
       turn: StationVoiceTurnResult,
-      turnsLeft: number
+      turnsLeft: number,
+      skipPersist = false
     ) => {
-      speakTurn(turn, () => {
-        if (activeIdRef.current !== questionId) return;
-        if (turn.continueListening && turnsLeft > 0) {
-          listenForReply((next) => processStaffReply(next, turnsLeft - 1));
-        }
-      });
+      speakTurn(
+        turn,
+        () => {
+          if (activeIdRef.current !== questionId) return;
+          if (turn.continueListening && turnsLeft > 0) {
+            listenForReply((next) => processStaffReply(next, turnsLeft - 1));
+          }
+        },
+        skipPersist
+      );
     };
 
     const listenForReply = (onTranscript: (transcript: string) => void) => {
@@ -231,7 +278,10 @@ export function DenisQuestionStrip({
       const reply = classifyStationVoiceReply(trimmed, questionType);
       if (!reply) return false;
       const confirm = stationVoiceConfirmationLine(reply);
+      priorTurnsRef.current.push({ role: "staff", text: trimmed });
       priorTurnsRef.current.push({ role: "denis", text: confirm });
+      persistTurn(questionId, "staff", trimmed);
+      persistTurn(questionId, "denis", confirm);
       speak(confirm, () => {
         void handleAnswer(reply.answer, reply.etaMinutes).then(() => {
           spokenTiersRef.current.add(`${questionId}:answered`);
@@ -263,7 +313,6 @@ export function DenisQuestionStrip({
         body: JSON.stringify({
           questionId,
           transcript: trimmed,
-          priorTurns: priorTurnsRef.current.slice(0, -1),
         }),
       })
         .then(async (res) => {
@@ -298,11 +347,11 @@ export function DenisQuestionStrip({
           }
 
           if (turn.resolved) {
-            if (finishResolved(turn)) return;
+            if (finishResolved(turn, true)) return;
           }
 
           if (!turn.speak) return;
-          continueConversation(turn, turnsLeft);
+          continueConversation(turn, turnsLeft, true);
         })
         .catch(() => {
           if (activeIdRef.current !== questionId) return;
@@ -311,6 +360,14 @@ export function DenisQuestionStrip({
           continueConversation(offlineTurn(trimmed), turnsLeft);
         });
     };
+
+    if (priorTurnsRef.current.length > 0) {
+      spokenTiersRef.current.add(key);
+      listenForReply((transcript) =>
+        processStaffReply(transcript, MAX_CONVERSATION_TURNS)
+      );
+      return;
+    }
 
     const started = speak(line, () =>
       listenForReply((transcript) =>
@@ -321,6 +378,7 @@ export function DenisQuestionStrip({
 
     spokenTiersRef.current.add(key);
     priorTurnsRef.current = [{ role: "denis", text: line }];
+    persistTurn(questionId, "denis", line);
   }, [
     active,
     now,
@@ -330,6 +388,8 @@ export function DenisQuestionStrip({
     station,
     voicePrimed,
     speaking,
+    turnsHydrated,
+    persistTurn,
   ]);
 
   const activateButton = voicePrimed ? null : (

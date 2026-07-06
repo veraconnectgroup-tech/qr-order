@@ -855,6 +855,13 @@ type Tables = {
     answered_at: string | null;
     expires_at: string;
   };
+  station_question_turns: {
+    id: string;
+    station_question_id: string;
+    role: "denis" | "staff";
+    text: string;
+    created_at: string;
+  };
   table_bus_obligations: {
     id: string;
     location_id: string;
