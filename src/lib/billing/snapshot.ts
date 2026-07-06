@@ -16,6 +16,8 @@ import {
 } from "@/lib/billing/usage";
 import { isTrialing, shouldNotifyTrialEnding, trialDaysLeft } from "@/lib/billing/trial";
 import { fromCents } from "@/lib/format";
+import type { BillingCreditsSnapshot } from "@/components/dashboard/billing/billing-credits-panel";
+import type { AiCreditPackage } from "@/types";
 
 export type BillingInvoiceRow = {
   id: string;
@@ -49,6 +51,8 @@ export type BillingDashboardSnapshot = {
   invoices: BillingInvoiceRow[];
   nextInvoiceDate: string;
   paymentMethodLabel: string;
+  credits: BillingCreditsSnapshot;
+  creditPackages: AiCreditPackage[];
 };
 
 function nextMonthFirstDay(now = new Date()): string {
@@ -94,17 +98,33 @@ export async function loadBillingDashboard(orgId: string): Promise<BillingDashbo
     .toISOString()
     .slice(0, 10);
 
-  const [{ data: org }, plans, { data: locations }] = await Promise.all([
-    admin
-      .from("organizations")
-      .select(
-        "name, plan_id, subscription_status, trial_ends_at, currency, platform_fee_percent, platform_fee_fixed, stripe_onboarded"
-      )
-      .eq("id", orgId)
-      .single(),
-    loadActivePlans(),
-    admin.from("locations").select("id").eq("org_id", orgId).eq("is_active", true),
-  ]);
+  const [{ data: org }, plans, { data: locations }, { data: creditsRow }, { data: aiOpsRow }, { data: packages }] =
+    await Promise.all([
+      admin
+        .from("organizations")
+        .select(
+          "name, plan_id, subscription_status, trial_ends_at, currency, platform_fee_percent, platform_fee_fixed, stripe_onboarded"
+        )
+        .eq("id", orgId)
+        .single(),
+      loadActivePlans(),
+      admin.from("locations").select("id").eq("org_id", orgId).eq("is_active", true),
+      admin
+        .from("ai_credits")
+        .select("balance, lifetime_used, lifetime_purchased")
+        .eq("org_id", orgId)
+        .maybeSingle(),
+      admin
+        .from("org_ai_ops")
+        .select("turns_24h, low_balance")
+        .eq("org_id", orgId)
+        .maybeSingle(),
+      admin
+        .from("ai_credit_packages")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order"),
+    ]);
 
   const orgRow = org as {
     name: string;
@@ -172,6 +192,28 @@ export async function loadBillingDashboard(orgId: string): Promise<BillingDashbo
   const subscriptionStatus = orgRow.subscription_status ?? "trialing";
   const daysLeft = trialDaysLeft(orgRow.trial_ends_at);
 
+  const creditsRowTyped = creditsRow as {
+    balance: number;
+    lifetime_used: number;
+    lifetime_purchased: number;
+  } | null;
+
+  const aiOpsRowTyped = aiOpsRow as {
+    turns_24h: number;
+    low_balance: boolean;
+  } | null;
+
+  const credits: BillingCreditsSnapshot = {
+    balance: creditsRowTyped?.balance ?? 0,
+    lifetimeUsed: creditsRowTyped?.lifetime_used ?? 0,
+    lifetimePurchased: creditsRowTyped?.lifetime_purchased ?? 0,
+    lowBalance: aiOpsRowTyped?.low_balance ?? false,
+    turns24h: aiOpsRowTyped?.turns_24h ?? null,
+    currency: orgRow.currency,
+  };
+
+  const creditPackages = (packages ?? []) as AiCreditPackage[];
+
   return {
     org: {
       name: orgRow.name,
@@ -204,6 +246,8 @@ export async function loadBillingDashboard(orgId: string): Promise<BillingDashbo
     paymentMethodLabel: orgRow.stripe_onboarded
       ? "Stripe Connect (venue payouts)"
       : "Not connected — add Stripe in Admin",
+    credits,
+    creditPackages,
   };
 }
 

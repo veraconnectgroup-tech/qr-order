@@ -145,7 +145,7 @@ async function main() {
 
   console.log("\nCandidate orders:", orders?.length ?? 0);
 
-  const orderRows = (orders ?? []) as OrderRow[];
+  const orderRows = (orders ?? []) as unknown as OrderRow[];
   const created: string[] = [];
 
   for (const station of ["kitchen", "bar"] as const) {
