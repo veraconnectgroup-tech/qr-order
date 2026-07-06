@@ -165,6 +165,21 @@ export const floorViewStatusLabel: Record<FloorViewStatus, string> = {
   problem: "Needs attention",
 };
 
+/** Lowercase summary copy for overview stats row. */
+export const floorViewStatusCountLabel: Record<FloorViewStatus, string> = {
+  free: "free",
+  ordering: "ordering",
+  waiting: "waiting",
+  problem: "problem",
+};
+
+export const floorViewStatuses: FloorViewStatus[] = [
+  "free",
+  "ordering",
+  "waiting",
+  "problem",
+];
+
 export const floorViewStatusColor: Record<
   FloorViewStatus,
   { border: string; dot: string; text: string }

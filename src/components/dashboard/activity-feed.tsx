@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { DenisMarkBadge } from "@/components/design-system/denis-mark-badge";
-import { QrCard, QrCardHeading } from "@/components/design-system/qr-card";
 import type { StaffNotificationRow } from "@/lib/denis/notifications/persist-staff-notification";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -22,22 +20,9 @@ export function ActivityFeed({
   loading?: boolean;
 }) {
   return (
-    <QrCard variant="muted" padding="md">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <DenisMarkBadge size="sm" className="bg-dash-accent-muted ring-0" />
-          <QrCardHeading>Denis activity</QrCardHeading>
-        </div>
-        <Link
-          href="/dashboard/denis"
-          className="text-xs font-medium text-[var(--qr-ember)] hover:text-[var(--qr-ember-hover)]"
-        >
-          Full log →
-        </Link>
-      </div>
-
+    <div className="h-full overflow-y-auto">
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-2 py-1">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton
               key={index}
@@ -46,22 +31,31 @@ export function ActivityFeed({
           ))}
         </div>
       ) : !items.length ? (
-        <p className="py-4 text-center text-sm text-dash-text-disabled">
-          No Denis activity yet today.
-        </p>
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+          <DenisMarkBadge
+            size="sm"
+            className="bg-dash-accent-muted opacity-60 ring-0"
+          />
+          <p className="text-sm text-dash-text-disabled">
+            No Denis activity yet today.
+          </p>
+        </div>
       ) : (
-        <ul className="max-h-64 space-y-2 overflow-y-auto">
+        <ul className="divide-y divide-dash-border-subtle">
           {items.map((item) => (
             <li
               key={item.id}
               className={cn(
-                "rounded-lg border border-dash-border/60 bg-dash-surface/50 px-3 py-2",
-                item.priority === "critical" && "border-red-500/30 bg-red-500/5",
-                item.priority === "high" && "border-amber-500/25"
+                "overview-v3-activity-row",
+                item.priority === "critical" &&
+                  "overview-v3-activity-row--critical",
+                item.priority === "high" && "overview-v3-activity-row--high"
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm text-dash-text-secondary">{item.message}</p>
+                <p className="text-sm text-dash-text-secondary">
+                  {item.message}
+                </p>
                 <time
                   className="shrink-0 text-[10px] tabular-nums text-dash-text-disabled"
                   dateTime={item.createdAt}
@@ -70,7 +64,7 @@ export function ActivityFeed({
                 </time>
               </div>
               {item.tableName ? (
-                <p className="mt-1 text-xs text-dash-text-muted">
+                <p className="mt-0.5 text-xs text-dash-text-muted">
                   Table {item.tableName}
                 </p>
               ) : null}
@@ -78,6 +72,6 @@ export function ActivityFeed({
           ))}
         </ul>
       )}
-    </QrCard>
+    </div>
   );
 }

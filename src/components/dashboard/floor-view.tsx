@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
-import { QrCard, QrCardHeading } from "@/components/design-system/qr-card";
 import {
   FloorTableDetailSheet,
   FloorViewLegend,
@@ -102,29 +100,26 @@ export function FloorView({
   }, [tables]);
 
   return (
-    <>
-      <QrCard variant="muted" padding="md">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <QrCardHeading>Live floor</QrCardHeading>
-          <Link
-            href="/dashboard/tables"
-            className="text-xs font-medium text-[var(--qr-ember)] hover:text-[var(--qr-ember-hover)]"
-          >
-            Full floor →
-          </Link>
+    <div className="flex h-full flex-col">
+      <div className="overview-v3-floor-meta shrink-0">
+        <div className="overview-v3-floor-stats">
+          <span className="overview-v3-floor-stat">{statusCounts.free} free</span>
+          <span className="overview-v3-floor-stat">
+            {statusCounts.ordering} ordering
+          </span>
+          <span className="overview-v3-floor-stat">
+            {statusCounts.waiting} waiting
+          </span>
+          <span className="overview-v3-floor-stat">
+            {statusCounts.problem} problem
+          </span>
         </div>
-
-        <div className="mb-3 flex flex-wrap gap-2 text-[10px] tabular-nums text-dash-text-muted">
-          <span>{statusCounts.free} free</span>
-          <span>{statusCounts.ordering} ordering</span>
-          <span>{statusCounts.waiting} waiting</span>
-          <span>{statusCounts.problem} problem</span>
-        </div>
-
         <FloorViewLegend />
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto pt-3">
         {loading ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton
                 key={index}
@@ -133,15 +128,15 @@ export function FloorView({
             ))}
           </div>
         ) : !tables.length ? (
-          <p className="mt-4 py-6 text-center text-sm text-dash-text-disabled">
+          <p className="py-6 text-center text-sm text-dash-text-disabled">
             No tables configured
           </p>
         ) : (
-          <div className="mt-4 space-y-5">
+          <div className="space-y-5 pb-1">
             {groups.map((group) => (
               <section key={group.zoneId}>
                 {groups.length > 1 ? (
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-dash-text-muted">
+                  <h4 className="overview-v3-zone-label mb-2">
                     {group.zoneName}
                   </h4>
                 ) : null}
@@ -160,7 +155,7 @@ export function FloorView({
             ))}
           </div>
         )}
-      </QrCard>
+      </div>
 
       <AnimatePresence>
         {selected ? (
@@ -172,6 +167,6 @@ export function FloorView({
           />
         ) : null}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
