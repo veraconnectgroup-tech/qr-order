@@ -6,11 +6,19 @@ import { speakWithBrowserVoice } from "@/lib/denis/surfaces/voice/speak-with-bro
 
 const ACTIVATION_LINE = "Denis je spreman.";
 
-/** How pressured the moment is — shades TTS delivery without changing Denis's voice identity (see denis-voice-instructions.ts). */
+/**
+ * How pressured the moment is — shades TTS delivery without changing
+ * Denis's voice identity (see denis-voice-instructions.ts). `station`, when
+ * set, tells the server this is a station-voice call so it recomputes
+ * venueChaosRatio from real order backlog instead of trusting the client's
+ * number (see resolve-station-voice-snapshot.ts).
+ */
 export type DenisVoiceTone = {
   urgencyRatio?: number;
   venueChaosRatio?: number;
+  station?: "kitchen" | "bar";
 };
+
 const LISTEN_TIMEOUT_MS = 12000;
 // The mic permission prompt can take longer than LISTEN_TIMEOUT_MS to
 // resolve the first time a browser ever asks (user has to notice and click
@@ -174,6 +182,7 @@ export function useDenisStationVoice(locationId: string) {
           sessionToken: locationId,
           urgencyRatio: tone?.urgencyRatio,
           venueChaosRatio: tone?.venueChaosRatio,
+          station: tone?.station,
         }),
       })
         .then(async (res) => {

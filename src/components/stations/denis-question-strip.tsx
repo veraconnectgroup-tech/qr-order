@@ -17,7 +17,6 @@ import {
 import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-context";
 import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
-import { resolveVenueChaosRatio } from "@/lib/denis/venue/floor/resolve-venue-chaos-ratio";
 import type { DenisVoiceTone } from "@/hooks/use-denis-station-voice";
 
 function secondsLeft(expiresAt: string, now: number): number {
@@ -207,7 +206,10 @@ export function DenisQuestionStrip({
     );
 
     // Same Denis voice identity always — only how pressured he sounds shifts,
-    // from how urgent this question is and how many are stacked up right now.
+    // from how urgent this question is and how slammed the station really is.
+    // venueChaosRatio itself is recomputed server-side from real order
+    // backlog (resolve-station-voice-snapshot.ts) — the client can't see
+    // that data, so it only sends urgency + which station this is.
     const tone: DenisVoiceTone = {
       urgencyRatio: resolveUrgencyRatio(
         active.asked_at,
@@ -215,10 +217,7 @@ export function DenisQuestionStrip({
         now,
         extractWaitMinutes(active.message)
       ),
-      venueChaosRatio: resolveVenueChaosRatio({
-        openQuestionCount: questions.length,
-        averageBacklogMinutes: null,
-      }),
+      station,
     };
 
     const speakTurn = (
@@ -410,7 +409,6 @@ export function DenisQuestionStrip({
   }, [
     active,
     now,
-    questions.length,
     speak,
     listen,
     handleAnswer,

@@ -3,13 +3,23 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { AiOpenAiError } from "@/lib/ai/openai-client";
 import { synthesizeDenisSpeech } from "@/lib/ai/openai-tts";
 import { resolveDenisVoiceInstructions } from "@/lib/ai/denis-voice-instructions";
+import { loadStationVoiceSnapshot } from "@/lib/denis/venue/floor/load-station-voice-snapshot";
 import { withRateLimitByKey } from "@/lib/rate-limit";
+import { isUuid } from "@/lib/security/sanitize";
 import { zSessionToken } from "@/lib/security/zod-fields";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_TTS_TEXT_LENGTH = 2000;
+const STATION_VALUES = new Set(["kitchen", "bar"]);
 
 function optionalRatio(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function optionalStation(value: unknown): "kitchen" | "bar" | undefined {
+  return typeof value === "string" && STATION_VALUES.has(value)
+    ? (value as "kitchen" | "bar")
+    : undefined;
 }
 
 /** Guest-facing Denis TTS — brand voice via OpenAI, not device-dependent browser TTS. */
@@ -41,10 +51,24 @@ export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) =>
     urgencyRatio?: unknown;
     venueChaosRatio?: unknown;
     relationshipWarmth?: unknown;
+    station?: unknown;
   };
   const urgencyRatio = optionalRatio(moodInput.urgencyRatio) ?? 0;
-  const venueChaosRatio = optionalRatio(moodInput.venueChaosRatio);
   const relationshipWarmth = optionalRatio(moodInput.relationshipWarmth);
+  const station = optionalStation(moodInput.station);
+
+  // Station-voice calls carry the locationId as sessionToken — recompute
+  // venueChaosRatio server-side from real order backlog instead of trusting
+  // whatever the client sent (the client can't see backlog data at all).
+  let venueChaosRatio = optionalRatio(moodInput.venueChaosRatio);
+  if (station && isUuid(sessionTokenParsed.data)) {
+    const snapshot = await loadStationVoiceSnapshot(
+      createAdminClient(),
+      sessionTokenParsed.data,
+      station
+    );
+    venueChaosRatio = snapshot.venueChaosRatio;
+  }
 
   try {
     const audio = await synthesizeDenisSpeech(
