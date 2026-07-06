@@ -205,6 +205,18 @@ const ConciergeStationQuestionsSchema = z
     cooldownMinutes: z.number().int().min(1).max(30).default(4),
     maxOpenPerStation: z.number().int().min(1).max(10).default(3),
     expirySeconds: z.number().int().min(30).max(600).default(90),
+    /**
+     * Explicit decision (not a silent default): station voice is internal
+     * staff-coordination — talking to kitchen/bar — not guest-billed AI
+     * usage, so it does NOT burn ai_credits by default. Guest ordering
+     * turns are metered (assertSufficientCredits/finalizeTurnMetering)
+     * because that's a service sold to the venue's guests; nudging staff
+     * to avoid talking to their own AI colleague to save credits would
+     * undercut the product itself. Flip to true only after extending
+     * finalize_denis_turn_metering to accept a non-guest-session context —
+     * it currently requires an aiSessionId station voice doesn't have.
+     */
+    meteredByCredits: z.boolean().default(false),
   })
   .default({
     enabled: false,
@@ -215,6 +227,7 @@ const ConciergeStationQuestionsSchema = z
     cooldownMinutes: 4,
     maxOpenPerStation: 3,
     expirySeconds: 90,
+    meteredByCredits: false,
   });
 
 const ConciergeTableTempoSchema = z

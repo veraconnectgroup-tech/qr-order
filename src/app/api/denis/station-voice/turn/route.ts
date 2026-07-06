@@ -136,6 +136,11 @@ export const POST = withErrorHandler(
       return apiError("Station questions are not enabled.", 403);
     }
 
+    // config.ops.stationQuestions.meteredByCredits is an explicit decision,
+    // default false — station voice is internal staff coordination, not
+    // guest-billed AI usage (see the schema doc for the full reasoning).
+    // No ai_credits gating call here by design.
+
     const priorTurns = await listStationQuestionTurns(
       admin,
       parsed.data.questionId
