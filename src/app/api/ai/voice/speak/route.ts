@@ -51,10 +51,12 @@ export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) =>
     urgencyRatio?: unknown;
     venueChaosRatio?: unknown;
     relationshipWarmth?: unknown;
+    respectPressure?: unknown;
     station?: unknown;
   };
   const urgencyRatio = optionalRatio(moodInput.urgencyRatio) ?? 0;
   const relationshipWarmth = optionalRatio(moodInput.relationshipWarmth);
+  const respectPressure = optionalRatio(moodInput.respectPressure);
   const station = optionalStation(moodInput.station);
 
   // Station-voice calls carry the locationId as sessionToken — recompute
@@ -80,6 +82,7 @@ export const POST = withErrorHandler("ai-voice-speak-post", async (req, _ctx) =>
         urgencyRatio,
         venueChaosRatio,
         relationshipWarmth,
+        respectPressure,
       })
     );
     return new Response(stream, {

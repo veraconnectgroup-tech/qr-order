@@ -1,6 +1,6 @@
 /**
  * Composes a single natural-language delivery instruction for Denis's TTS
- * voice (gpt-4o-mini-tts's `instructions` field) out of three independent
+ * voice (gpt-4o-mini-tts's `instructions` field) out of independent
  * signals, rather than a fixed lookup table of moods:
  *
  * 1. Question urgency — how close THIS question is to timing out / how
@@ -11,8 +11,11 @@
  * 3. Relationship warmth — this specific person's running history with
  *    Denis (see staff-relationship-engine.ts), -1 = has been dismissive,
  *    1 = consistently kind.
+ * 4. Conversation respect — how this ONE still-open exchange has gone
+ *    (stonewalled, dismissed, cut off), not a per-person score — see
+ *    resolve-conversation-respect-signal.ts.
  *
- * Composable by design: adding a fourth signal later means adding one more
+ * Composable by design: adding another signal later means adding one more
  * clause-resolver, not rewriting a mood switch statement. The voice
  * identity itself never changes — only delivery (pace, warmth, tension).
  */
@@ -24,6 +27,8 @@ export type DenisVoiceMoodInput = {
   venueChaosRatio?: number;
   /** -1 to 1, clamped. Defaults to 0 (neutral/unknown relationship). */
   relationshipWarmth?: number;
+  /** 0-1, clamped. Defaults to 0. How this specific conversation has gone so far. */
+  respectPressure?: number;
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -57,16 +62,25 @@ function resolveRelationshipClause(relationshipWarmth: number): string | null {
   return null;
 }
 
+function resolveRespectClause(respectPressure: number): string | null {
+  if (respectPressure >= 0.6) {
+    return "You've been trying to get a straight answer in this exact conversation for a while now without one — stay fully warm and professional, just let a touch of genuine, patient persistence come through, like someone whose time matters quietly continuing to ask. Never petty, never irritated-sounding, never mention it.";
+  }
+  return null;
+}
+
 /** Builds the full instruction string for a given mood input. Pure — no I/O, easy to test. */
 export function resolveDenisVoiceInstructions(input: DenisVoiceMoodInput): string {
   const urgencyRatio = clamp(input.urgencyRatio, 0, 1);
   const venueChaosRatio = clamp(input.venueChaosRatio ?? 0, 0, 1);
   const relationshipWarmth = clamp(input.relationshipWarmth ?? 0, -1, 1);
+  const respectPressure = clamp(input.respectPressure ?? 0, 0, 1);
 
   const clauses = [
     resolveUrgencyClause(urgencyRatio),
     resolveChaosClause(venueChaosRatio),
     resolveRelationshipClause(relationshipWarmth),
+    resolveRespectClause(respectPressure),
   ].filter((clause): clause is string => clause != null);
 
   return clauses.join(" ");

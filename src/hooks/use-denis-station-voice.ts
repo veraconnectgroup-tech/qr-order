@@ -17,6 +17,8 @@ export type DenisVoiceTone = {
   urgencyRatio?: number;
   venueChaosRatio?: number;
   station?: "kitchen" | "bar";
+  /** How this specific conversation has gone so far — see resolve-conversation-respect-signal.ts. */
+  respectPressure?: number;
 };
 
 const TTS_MIME_TYPE = "audio/mpeg";
@@ -279,6 +281,7 @@ export function useDenisStationVoice(locationId: string) {
           urgencyRatio: tone?.urgencyRatio,
           venueChaosRatio: tone?.venueChaosRatio,
           station: tone?.station,
+          respectPressure: tone?.respectPressure,
         }),
       })
         .then(async (res) => {

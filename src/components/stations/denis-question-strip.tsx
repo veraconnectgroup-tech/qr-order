@@ -18,6 +18,8 @@ import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-
 import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
 import type { DenisVoiceTone } from "@/hooks/use-denis-station-voice";
+import { resolveInteractionTone } from "@/lib/denis/cognition/personality/staff-relationship-engine";
+import { resolveConversationRespectSignal } from "@/lib/denis/cognition/personality/resolve-conversation-respect-signal";
 
 function secondsLeft(expiresAt: string, now: number): number {
   return Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000));
@@ -220,6 +222,20 @@ export function DenisQuestionStrip({
       station,
     };
 
+    // Scoped to THIS still-open conversation only — never written anywhere
+    // persistent, discarded the moment this effect re-runs for the next
+    // question. Denis doesn't need to know WHO is dodging him, just that
+    // this exchange has been dodged (see resolve-conversation-respect-signal.ts).
+    const respectSignal = {
+      dismissiveTranscriptSeen: false,
+      turnsConsumed: 0,
+      wasAbandoned: false,
+    };
+    const currentTone = (): DenisVoiceTone => ({
+      ...tone,
+      respectPressure: resolveConversationRespectSignal(respectSignal),
+    });
+
     const speakTurn = (
       turn: StationVoiceTurnResult,
       onDone?: () => void,
@@ -233,7 +249,7 @@ export function DenisQuestionStrip({
       if (!skipPersist) {
         persistTurn(questionId, "denis", turn.speak);
       }
-      speak(turn.speak, onDone, tone);
+      speak(turn.speak, onDone, currentTone());
     };
 
     const offlineTurn = (transcript: string): StationVoiceTurnResult => {
@@ -305,15 +321,26 @@ export function DenisQuestionStrip({
             spokenTiersRef.current.add(`${questionId}:answered`);
           });
         },
-        tone
+        currentTone()
       );
       return true;
     };
 
     const processStaffReply = (transcript: string, turnsLeft: number) => {
-      if (activeIdRef.current !== questionId) return;
+      if (activeIdRef.current !== questionId) {
+        respectSignal.wasAbandoned = true;
+        return;
+      }
 
       const trimmed = transcript.trim();
+      respectSignal.turnsConsumed = Math.max(
+        respectSignal.turnsConsumed,
+        MAX_CONVERSATION_TURNS - turnsLeft
+      );
+      if (trimmed && resolveInteractionTone(trimmed) === "curt") {
+        respectSignal.dismissiveTranscriptSeen = true;
+      }
+
       if (!trimmed || isLikelyDenisEchoTranscript(trimmed)) {
         if (turnsLeft <= 0) return;
         speak(
@@ -322,7 +349,7 @@ export function DenisQuestionStrip({
             if (activeIdRef.current !== questionId) return;
             listenForReply((next) => processStaffReply(next, turnsLeft - 1));
           },
-          tone
+          currentTone()
         );
         return;
       }
@@ -399,7 +426,7 @@ export function DenisQuestionStrip({
         listenForReply((transcript) =>
           processStaffReply(transcript, MAX_CONVERSATION_TURNS)
         ),
-      tone
+      currentTone()
     );
     if (!started) return;
 

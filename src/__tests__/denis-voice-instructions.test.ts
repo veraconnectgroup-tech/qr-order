@@ -73,4 +73,26 @@ describe("resolveDenisVoiceInstructions", () => {
     const line = resolveDenisVoiceInstructions({ urgencyRatio: 0.5 });
     expect(line).not.toMatch(/slammed|get along well|dismissive/i);
   });
+
+  it("adds a patient-persistence clause when this conversation has been dodged", () => {
+    const line = resolveDenisVoiceInstructions({
+      urgencyRatio: 0.2,
+      respectPressure: 0.8,
+    });
+    expect(line).toMatch(/patient persistence/i);
+    expect(line).toMatch(/never petty, never irritated/i);
+  });
+
+  it("omits the respect clause on a clean conversation", () => {
+    const line = resolveDenisVoiceInstructions({
+      urgencyRatio: 0.2,
+      respectPressure: 0.1,
+    });
+    expect(line).not.toMatch(/patient persistence/i);
+  });
+
+  it("defaults respectPressure to neutral when omitted", () => {
+    const line = resolveDenisVoiceInstructions({ urgencyRatio: 0.5 });
+    expect(line).not.toMatch(/patient persistence/i);
+  });
 });
