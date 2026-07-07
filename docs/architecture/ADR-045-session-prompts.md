@@ -25,7 +25,7 @@
 | Sesija | Status | Ključni fajlovi |
 |--------|--------|-----------------|
 | **S1 — Memory registar + mapa** | ⬜ | |
-| **S2 — Day Close pipeline** | ⬜ | |
+| **S2 — Day Close pipeline** | ✅ | `src/lib/denis/memory/day-close.ts`, `src/app/api/cron/daily-closing/route.ts`, `src/lib/denis/stations/station-questions.ts`, `supabase/migrations/00160_denis_day_closes.sql`, `src/types/database.ts` |
 | **S3 — Retencija izvršna + zaboravi me** | ⬜ | |
 | **S4 — Granice čitanja** | ⬜ | |
 | **S5 — Pilot + verifikacija** | ⬜ | |

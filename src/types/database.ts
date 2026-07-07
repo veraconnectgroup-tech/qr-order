@@ -862,6 +862,13 @@ type Tables = {
     text: string;
     created_at: string;
   };
+  denis_day_closes: {
+    id: string;
+    location_id: string;
+    business_date: string;
+    summary: Record<string, unknown>;
+    closed_at: string;
+  };
   denis_relationship_signals: {
     id: string;
     location_id: string;

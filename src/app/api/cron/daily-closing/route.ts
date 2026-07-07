@@ -8,6 +8,7 @@ import {
   yesterdayBusinessDate,
 } from "@/lib/fiscal/daily-closing";
 import { runFiscalZClosingPipeline } from "@/lib/fiscal/runtime/run-fiscal-z-closing";
+import { runDenisDayClose } from "@/lib/denis/memory/day-close";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -68,6 +69,25 @@ export const GET = withErrorHandler(
           zNr: result.zNr,
           orderCount: data.orderCount,
         });
+
+        // ADR-045 S2: Day Close runs after the fiscal daily closing so
+        // shift recap/rollup has already read today's shift state.
+        try {
+          await runDenisDayClose(admin, {
+            locationId: location.id,
+            businessDate,
+          });
+        } catch (dayCloseError) {
+          logger.error("Denis day close failed for location", {
+            locationId: location.id,
+            orgId: location.org_id,
+            businessDate,
+            error:
+              dayCloseError instanceof Error
+                ? dayCloseError.message
+                : String(dayCloseError),
+          });
+        }
       } catch (err) {
         failed += 1;
         const message = err instanceof Error ? err.message : String(err);

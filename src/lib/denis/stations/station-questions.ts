@@ -255,22 +255,31 @@ export async function expireStaleStationQuestionsGlobally(
   return expired;
 }
 
-/** Expire unanswered questions past expires_at → escalate to manager. */
+/**
+ * Expire unanswered questions past expires_at → escalate to manager.
+ * `reason` tags the timeline event ("ttl" = normal SLA expiry, "day_close" =
+ * ADR-045 Day Close closing out anything still open at shift end).
+ */
 export async function expireStationQuestions(
   admin: SupabaseClient,
-  input: { locationId: string }
+  input: { locationId: string; reason?: "ttl" | "day_close" }
 ): Promise<number> {
-  const { data: expiredRows, error } = await admin
+  const reason = input.reason ?? "ttl";
+
+  const query = admin
     .from("station_questions")
     .update({ status: "expired" })
     .eq("location_id", input.locationId)
-    .eq("status", "open")
-    .lt("expires_at", new Date().toISOString())
-    .select("*");
+    .eq("status", "open");
+
+  const { data: expiredRows, error } = await (
+    reason === "day_close" ? query : query.lt("expires_at", new Date().toISOString())
+  ).select("*");
 
   if (error) {
     logger.warn("expireStationQuestions failed", {
       locationId: input.locationId,
+      reason,
       error: error.message,
     });
     return 0;
@@ -298,7 +307,7 @@ export async function expireStationQuestions(
       admin,
       question,
       "station.question.expired",
-      {},
+      { reason },
       context
     );
   }
