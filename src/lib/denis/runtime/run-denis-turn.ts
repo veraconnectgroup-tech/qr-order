@@ -22,6 +22,7 @@ import {
 import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
 import { assembleGuestTurnOperationalContext } from "@/lib/denis/cognition/context/assemble-operational-context";
 import { retrieveOperationalContextEvidence } from "@/lib/denis/cognition/context/retrievers/operational-context-evidence";
+import { runToolLoop } from "@/lib/denis/agentic/run-tool-loop";
 import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/load-venue-manifests";
 import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import { resolveContextAwareness } from "@/lib/denis/intelligence/resolve-context-awareness";
@@ -826,6 +827,50 @@ async function runTdePerceive(input: {
           })
         )
       : null;
+
+  // ADR-049 P1 — agentic tool-use loop, shadow-only. Fires and logs a
+  // trace of what the loop WOULD have answered/checked; never awaited on
+  // the critical path and never allowed to affect the real guest response
+  // in P1 (that's P4+, gated separately behind eval + founder review).
+  const agenticConfig = input.ctx.config.ops.agenticToolLoop;
+  if (
+    agenticConfig.enabled &&
+    isInCanaryCohort(operationalContextCohortKey, agenticConfig.canaryPercent)
+  ) {
+    const admin = createAdminClient();
+    void runToolLoop({
+      // Minimal shadow harness — not the full production evidence prompt
+      // (that lives in planEvidence/buildSituationPack below). Enough to
+      // validate the loop mechanism against real venue data without
+      // duplicating the whole prompt-building pipeline for a shadow run.
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are Denis, a restaurant AI colleague. Use the available tools to check real venue state before answering. Answer briefly, in the guest's language.",
+        },
+        { role: "user", content: input.body.message },
+      ],
+      executorInput: { admin, ctx: input.ctx },
+      maxRounds: agenticConfig.maxRounds,
+    })
+      .then((result) => {
+        logger.info("agentic tool loop shadow trace", {
+          locationId: input.body.locationId,
+          rounds: result.rounds.length,
+          hitRoundCap: result.hitRoundCap,
+          toolsCalled: result.rounds.flatMap((round) =>
+            round.toolCalls.map((call) => call.name)
+          ),
+        });
+      })
+      .catch((error) => {
+        logger.warn("agentic tool loop shadow failed", {
+          locationId: input.body.locationId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+  }
 
   const evidence = planEvidence({
     turnPlan,

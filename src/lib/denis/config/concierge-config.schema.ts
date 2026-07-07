@@ -318,6 +318,27 @@ const ConciergeTableTurnaroundSchema = z
     busSlaMinutes: 8,
   });
 
+/**
+ * ADR-049 — bounded LLM-proposes/tool-executes loop (kitchen/stock/bill
+ * checks mid-conversation). P1 scope: read-only tools only, shadowOnly
+ * true means the loop runs and its trace is logged but never reaches a
+ * real guest response. canaryPercent ramps guest-cohort exposure once
+ * shadowOnly is false, same precedent as unifiedOperationalContext.
+ */
+const ConciergeAgenticToolLoopSchema = z
+  .object({
+    enabled: z.boolean(),
+    shadowOnly: z.boolean(),
+    canaryPercent: z.number().int().min(0).max(100),
+    maxRounds: z.number().int().min(1).max(6),
+  })
+  .default({
+    enabled: false,
+    shadowOnly: true,
+    canaryPercent: 0,
+    maxRounds: 3,
+  });
+
 const ConciergeOpsSchema = z.object({
   staffHintsEnabled: z.boolean(),
   rushSkipUpsell: z.boolean(),
@@ -332,6 +353,8 @@ const ConciergeOpsSchema = z.object({
    */
   unifiedOperationalContextEnabled: z.boolean().default(false),
   unifiedOperationalContextCanaryPercent: z.number().int().min(0).max(100).default(0),
+  /** ADR-049 — Denis's agentic tool-use loop (kitchen/stock/bill checks mid-conversation). */
+  agenticToolLoop: ConciergeAgenticToolLoopSchema,
   autoRushEnabled: z.boolean(),
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
   stationQuestions: ConciergeStationQuestionsSchema,

@@ -133,6 +133,12 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     floorGraphEnabled: false,
     unifiedOperationalContextEnabled: false,
     unifiedOperationalContextCanaryPercent: 0,
+    agenticToolLoop: {
+      enabled: false,
+      shadowOnly: true,
+      canaryPercent: 0,
+      maxRounds: 3,
+    },
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
     stationQuestions: {
