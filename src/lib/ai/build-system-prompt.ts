@@ -13,6 +13,7 @@ import {
   buildPersonalityBlock,
   buildPersonaIdentityBlock,
 } from "@/lib/denis/cognition/personality/personality-engine";
+import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
 
 export type SystemPromptBlockMeasurement = {
   id: string;
@@ -385,6 +386,7 @@ export function measureSystemPromptBlocks(
   const blocks: Array<{ id: string; text: string }> = [
     { id: "language_policy", text: multilingualPolicyBlock(input.venueMenuLocale ?? input.language) },
     { id: "identity", text: identityBlock(input) },
+    { id: "persona", text: buildDenisPersonaBlock() },
     { id: "personality", text: personalityBlock(input) },
     { id: "rules", text: rulesBlock(allowOrdering) },
     { id: "platform_contract", text: platformContractBlock() },
@@ -419,6 +421,7 @@ export function buildSystemPrompt(input: BuildSystemPromptInput): string {
     // actually covers the menu instead of a request-varying prefix.
     multilingualPolicyBlock(input.venueMenuLocale ?? input.language),
     identityBlock(input),
+    buildDenisPersonaBlock(),
     personalityBlock(input),
     rulesBlock(allowOrdering),
     platformContractBlock(),

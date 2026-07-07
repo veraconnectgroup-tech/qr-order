@@ -22,11 +22,12 @@ describe("buildSystemPrompt token budget", () => {
     expect(tokens).toBeLessThan(AI_CONFIG.maxSystemPromptTokens);
   });
 
-  it("has 8 consolidated blocks (no menu)", () => {
+  it("has 9 consolidated blocks (no menu)", () => {
     const blocks = measureSystemPromptBlocks(BASE_INPUT);
     expect(blocks.map((row) => row.id)).toEqual([
       "language_policy",
       "identity",
+      "persona",
       "rules",
       "platform_contract",
       "conversation",
