@@ -1,6 +1,11 @@
 import { AI_CONFIG, isOpenAiConfigured } from "@/lib/ai/config";
 import { StreamingJsonStringFieldExtractor } from "@/lib/ai/streaming-json-field-extractor";
-import type { OpenAiCallResult, OpenAiChatMessage } from "@/lib/ai/types";
+import type {
+  OpenAiCallResult,
+  OpenAiChatMessage,
+  OpenAiToolCall,
+  OpenAiToolDefinition,
+} from "@/lib/ai/types";
 import { logger } from "@/lib/logger";
 import {
   resetCircuitBreakerForTests,
@@ -32,9 +37,19 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+type ChatCompletionToolCall = {
+  id: string;
+  function?: { name?: string; arguments?: string };
+};
+
 type ChatCompletionResponse = {
   model?: string;
-  choices?: Array<{ message?: { content?: string | null } }>;
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+      tool_calls?: ChatCompletionToolCall[];
+    };
+  }>;
   usage?: {
     total_tokens?: number;
     prompt_tokens?: number;
@@ -44,6 +59,31 @@ type ChatCompletionResponse = {
   error?: { message?: string };
 };
 
+function toChatMessagePayload(message: OpenAiChatMessage): Record<string, unknown> {
+  if (message.role === "tool") {
+    return {
+      role: "tool",
+      tool_call_id: message.toolCallId,
+      content: message.content,
+    };
+  }
+  return { role: message.role, content: message.content };
+}
+
+function toOpenAiToolCalls(
+  toolCalls: ChatCompletionToolCall[] | undefined
+): OpenAiToolCall[] | undefined {
+  if (!toolCalls?.length) return undefined;
+  const mapped = toolCalls
+    .filter((call) => call.function?.name)
+    .map((call) => ({
+      id: call.id,
+      name: call.function!.name!,
+      arguments: call.function?.arguments ?? "{}",
+    }));
+  return mapped.length > 0 ? mapped : undefined;
+}
+
 async function callOpenAiOnce(
   model: string,
   messages: OpenAiChatMessage[],
@@ -52,6 +92,8 @@ async function callOpenAiOnce(
     temperature?: number;
     maxTokens?: number;
     promptCacheKey?: string;
+    tools?: OpenAiToolDefinition[];
+    toolChoice?: "auto" | "none";
   }
 ): Promise<OpenAiCallResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
@@ -59,13 +101,32 @@ async function callOpenAiOnce(
     throw new AiOpenAiError("OpenAI API key is not configured.");
   }
 
+  const hasTools = Boolean(callOptions?.tools?.length);
+
   const bodyPayload: Record<string, unknown> = {
     model,
-    messages,
+    messages: messages.map(toChatMessagePayload),
     temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
     max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
-    response_format: { type: "json_object" },
+    // ADR-049: json_object mode and tool-calling don't compose cleanly —
+    // when a tool is called the model returns tool_calls, not JSON content.
+    // Only force JSON mode when this call carries no tools.
+    ...(hasTools
+      ? {}
+      : { response_format: { type: "json_object" } }),
   };
+
+  if (hasTools) {
+    bodyPayload.tools = callOptions!.tools!.map((tool) => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      },
+    }));
+    bodyPayload.tool_choice = callOptions?.toolChoice ?? "auto";
+  }
 
   if (
     AI_CONFIG.promptCachingEnabled &&
@@ -93,8 +154,10 @@ async function callOpenAiOnce(
     );
   }
 
-  const content = body.choices?.[0]?.message?.content?.trim();
-  if (!content) {
+  const content = body.choices?.[0]?.message?.content?.trim() ?? "";
+  const toolCalls = toOpenAiToolCalls(body.choices?.[0]?.message?.tool_calls);
+
+  if (!content && !toolCalls) {
     throw new AiOpenAiError("OpenAI returned an empty response.");
   }
 
@@ -109,6 +172,7 @@ async function callOpenAiOnce(
     completionTokens: body.usage?.completion_tokens ?? 0,
     cachedPromptTokens: body.usage?.prompt_tokens_details?.cached_tokens,
     model: body.model ?? model,
+    toolCalls,
   };
 }
 
@@ -119,6 +183,8 @@ async function callOpenAiWithRetries(
     temperature?: number;
     maxTokens?: number;
     promptCacheKey?: string;
+    tools?: OpenAiToolDefinition[];
+    toolChoice?: "auto" | "none";
   }
 ): Promise<OpenAiCallResult> {
   const primaryModel = options?.model ?? AI_CONFIG.model;
@@ -142,6 +208,8 @@ async function callOpenAiWithRetries(
             temperature: options?.temperature,
             maxTokens: options?.maxTokens,
             promptCacheKey: options?.promptCacheKey,
+            tools: options?.tools,
+            toolChoice: options?.toolChoice,
           }
         );
 
@@ -194,6 +262,9 @@ export async function callOpenAiChat(
     maxTokens?: number;
     extendedThinking?: boolean;
     promptCacheKey?: string;
+    /** ADR-049 — when set, the model may return tool_calls instead of/alongside content. */
+    tools?: OpenAiToolDefinition[];
+    toolChoice?: "auto" | "none";
   }
 ): Promise<OpenAiCallResult> {
   if (!isOpenAiConfigured()) {

@@ -121,11 +121,28 @@ export type BuildSystemPromptInput = {
 };
 
 export type OpenAiChatMessage = {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  /** Required on a "tool" role message — which tool call this result answers. */
+  toolCallId?: string;
+};
+
+/** ADR-049 — one callable tool definition (OpenAI Chat Completions tool-calling shape). */
+export type OpenAiToolDefinition = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+};
+
+/** ADR-049 — one tool invocation the model asked for; arguments is the raw JSON string OpenAI returns. */
+export type OpenAiToolCall = {
+  id: string;
+  name: string;
+  arguments: string;
 };
 
 export type OpenAiCallResult = {
+  /** Empty string when the model only returned tool calls (see toolCalls). */
   content: string;
   tokensUsed: number;
   promptTokens: number;
@@ -133,6 +150,8 @@ export type OpenAiCallResult = {
   /** OpenAI prompt cache hits (when prompt caching enabled). */
   cachedPromptTokens?: number;
   model: string;
+  /** ADR-049 — set only when tools were passed and the model asked to call one. */
+  toolCalls?: OpenAiToolCall[];
 };
 
 export type ModerationResult =
