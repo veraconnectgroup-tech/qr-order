@@ -4,11 +4,13 @@ test.describe("Landing page", () => {
   test("shows Denis hero section with AI waiter headline", async ({ page }) => {
     await page.goto("/?lang=sr");
 
-    await expect(page.getByText("Denis · Part of Vera Group")).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: /Denis — AI konobar/i })
+      page.getByText("Denis · AI Restaurant Co-worker")
     ).toBeVisible();
-    await expect(page.getByText(/nikad ne spava/i)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Denis vodi smenu/i })
+    ).toBeVisible();
+    await expect(page.getByText(/QR naručivanje/i)).toBeVisible();
   });
 
   test("primary CTA links to signup", async ({ page }) => {
@@ -41,11 +43,15 @@ test.describe("Landing page", () => {
     );
   });
 
-  test("interactive Denis demo advances on chip tap", async ({ page }) => {
+  test("interactive Denis demo shows staff coordination actions", async ({
+    page,
+  }) => {
     await page.goto("/?lang=en");
 
-    await page.getByRole("button", { name: "Burger & beer" }).click();
-    await expect(page.getByText("Burger and a beer")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Notify waiter" })
+    ).toBeVisible();
+    await expect(page.getByText("Table 8: drinks ready 4 min.")).toBeVisible();
   });
 
   test("footer legal links use correct URLs", async ({ page }) => {

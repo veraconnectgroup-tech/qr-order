@@ -186,13 +186,13 @@ export function resolveTurnThinkingStepKeys(
   }
 }
 
-const MENU_STEP_KEYS = new Set<TranslationKey>([
+const MENU_STEP_KEYS: readonly TranslationKey[] = [
   "ai.chat.thinking.menu",
   "ai.chat.thinking.recommend",
-]);
+];
 
 function isMenuRelatedPlan(keys: TranslationKey[], turnPlan: TurnPlan): boolean {
-  if (keys.some((key) => MENU_STEP_KEYS.has(key))) return true;
+  if (keys.some((key) => MENU_STEP_KEYS.includes(key))) return true;
   return (
     turnPlan.reason === "vague_recommend" ||
     turnPlan.kind === "slot_extract" ||

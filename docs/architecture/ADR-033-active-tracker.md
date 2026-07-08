@@ -6,7 +6,7 @@
 | **Rule** | **Ne počinje sledeći ADR** dok trenutni nije **COMPLETE** |
 | **Perfection** | [ADR-034](./ADR-034-denis-perfection-doctrine.md) — menjamo arhitekturu ako eval kaže |
 | **Stubovi (detalj)** | [ADR-035](./ADR-035-pillar-strengthening-plan.md) — stub po stub, sloj po sloj |
-| **Updated** | 2026-06-07 — PR-019-F.3: ADR-019 Phase F COMPLETE, ADR-020 §Kad ACTIVE |
+| **Updated** | 2026-07-08 — ADR-020 §Kad COMPLETE; ADR-031 hardening ACTIVE |
 
 ---
 
@@ -25,19 +25,21 @@
 
 | ADR | Naziv | Nedelja u toku | Status |
 |-----|-------|----------------|--------|
-| **[ADR-020](./ADR-020-denis-table-operating-system.md) §Kad** | Continuous mind, proactive enterprise | 15–20 | **ACTIVE** |
+| **[ADR-031](./ADR-031-denis-maximum-cognition-phases.md) hardening** | Waiter scenarios + iota fixtures | 21–24 | **ACTIVE** |
 
-**Exit gate §Kad:** proactive kroz isti brain loop · playbook u templates · anticipation eval proširen · autonomous tell bez guest poruke · `pnpm eval:denis` PASS.
+**Exit gate ADR-031:** 80+ waiter scenarios green · iota fixtures in eval · `pnpm eval:denis` PASS.
 
-### Sledeći PR-ovi (ADR-020 §Kad, redom — jedan po sesiji)
+### ADR-020 §Kad (COMPLETE — 2026-07-08)
 
-| # | Stub | Šta | Doc | Status |
-|---|------|-----|-----|--------|
-| 020-K.1 | D-PLAY | playbook pack resolver + perceive wiring | ADR-023 MR-9 | QUEUED |
-| 020-K.2 | ARCH-6 | watcher + world continuous mind hardening | ADR-020 §Kad | QUEUED |
-| 020-K.3 | D-EVAL | anticipation eval 40+ scenarija | ADR-031 | QUEUED |
+| # | Stub | Šta | Status |
+|---|------|-----|--------|
+| 020-K.1 | D-PLAY | playbook pack resolver + perceive wiring | **CODE** |
+| 020-K.2 | ARCH-6 | watcher + world continuous mind hardening | **CODE** |
+| 020-K.3 | D-EVAL | anticipation eval 40+ scenarija | **CODE** |
 
-**Batch promptovi:** [ADR-033-agent-batch-prompts.md](./ADR-033-agent-batch-prompts.md) (AGENT-17+) · **Checklist:** [ADR-019-verification-checklist.md](./ADR-019-verification-checklist.md) · [ADR-035](./ADR-035-pillar-strengthening-plan.md) P6
+**Acceptance:** `resolvePlaybookPack` wired in `run-tde-perceive` · `run-continuous-mind-fixture` green · 46 anticipation scenarios · `table_os_pilot` preset ships full stack · `pnpm eval:denis` PASS.
+
+### Sledeći PR-ovi (ADR-031 hardening, redom)
 
 ### ADR-019 Phase F (COMPLETE — PR-019-F.3)
 
@@ -101,8 +103,8 @@
 | 3 | [ADR-019](./ADR-019-denis-unified-brain.md) Phase D | 3–4 | **COMPLETE** | WORLD → TELL, kitchen = chat |
 | 4 | [ADR-019](./ADR-019-denis-unified-brain.md) Phase E | 3–4 | **COMPLETE** | Actor FIFO, SSE |
 | 5 | [ADR-019](./ADR-019-denis-unified-brain.md) **Phase F** | 2–3 | **COMPLETE** | Transcript = timeline only (ARCH-4) |
-| 6 | **[ADR-020](./ADR-020-denis-table-operating-system.md) §Kad** | 4–6 | **ACTIVE** | Continuous mind (ARCH-6) |
-| 7 | [ADR-031](./ADR-031-denis-maximum-cognition-phases.md) **hardening** | 3–4 | QUEUED | 80+ waiter scenarios, iota fixtures |
+| 6 | **[ADR-020](./ADR-020-denis-table-operating-system.md) §Kad** | 4–6 | **COMPLETE** | Playbook + ARCH-6 + 46 anticipation scenarios |
+| 7 | [ADR-031](./ADR-031-denis-maximum-cognition-phases.md) **hardening** | 3–4 | **ACTIVE** | 80+ waiter scenarios, iota fixtures |
 | 8 | [ADR-023](./ADR-023-denis-maximum-runtime.md) **MR-9** | 3–4 | QUEUED | Playbook pack po org |
 | 9 | [ADR-023](./ADR-023-denis-maximum-runtime.md) **MR-6/E2** | 4–6 | QUEUED | Menu RAG embeddings |
 | 10 | [ADR-023](./ADR-023-denis-maximum-runtime.md) **manifest+sim** | 3–4 | QUEUED | Promote gate, quality contract |

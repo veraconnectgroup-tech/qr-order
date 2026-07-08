@@ -28,7 +28,7 @@
 | **S2 — Void lestvica** | ✅ | `evaluate-void-ladder.ts`, `resolve-void-phase.ts`, PATCH orders |
 | **S3 — Transfer + split/merge invarijante** | ✅ | `assert-total-preserved.ts`, transfer/split wire |
 | **S4 — Payment guardrails** | ✅ | `payment-guardrails.ts`, session close route |
-| **S5 — Keš rizik + manual override** | ✅ | `cash-risk.ts`, bill settle, storno guard, cron sweep · manual price override nema puta |
+| **S5 — Keš rizik + manual override** | ✅ | `cash-risk.ts`, bill settle, storno guard, cron sweep · `PATCH /api/orders/[orderId]/items/[itemId]/price` |
 | **S6 — Popust patterni** | ✅ | `discount-patterns.ts`, journal na create-order |
 | **S7 — Owner suspicious report** | ✅ | digest u daily report, Ops Center, `audit.suspicious.view` |
 | **S8 — Pilot + E2E verifikacija** | ✅ | `loss-prevention.test.ts` |

@@ -20,6 +20,8 @@ import {
   evaluateCashRefundGuard,
   isCashPaymentMethod,
 } from "@/lib/loss-prevention/cash-risk";
+import { evaluatePriceOverride } from "@/lib/loss-prevention/evaluate-price-override";
+import { recalculateOrderTotalsFromItems } from "@/lib/orders/recalculate-order-totals";
 
 describe("ADR-044 loss prevention", () => {
   describe("void ladder", () => {
@@ -243,6 +245,74 @@ describe("ADR-044 loss prevention", () => {
         actorRole: "manager",
       });
       expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe("price override", () => {
+    it("allows pending override with reason for waiter", () => {
+      const result = evaluatePriceOverride({
+        orderStatus: "pending",
+        paymentStatus: "pending",
+        reason: "staff meal discount",
+        actorRole: "waiter",
+        unitPrice: 8.5,
+      });
+      expect(result.allowed).toBe(true);
+    });
+
+    it("blocks override without reason", () => {
+      const result = evaluatePriceOverride({
+        orderStatus: "pending",
+        paymentStatus: "pending",
+        reason: "",
+        actorRole: "waiter",
+        unitPrice: 8.5,
+      });
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.status).toBe(400);
+      }
+    });
+
+    it("blocks override after payment", () => {
+      const result = evaluatePriceOverride({
+        orderStatus: "delivered",
+        paymentStatus: "paid",
+        reason: "late fix",
+        actorRole: "manager",
+        unitPrice: 8.5,
+      });
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.status).toBe(409);
+      }
+    });
+
+    it("requires manager after acceptance", () => {
+      const result = evaluatePriceOverride({
+        orderStatus: "preparing",
+        paymentStatus: "pending",
+        reason: "comp drink",
+        actorRole: "waiter",
+        unitPrice: 0.01,
+      });
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.status).toBe(403);
+      }
+    });
+
+    it("recalculates order totals from line snapshots", () => {
+      const totals = recalculateOrderTotalsFromItems(
+        [
+          { total: 10, tax_rate: 19 },
+          { total: 5, tax_rate: 7 },
+        ],
+        2
+      );
+      expect(totals.total).toBe(13);
+      expect(totals.tax_amount).toBeGreaterThan(0);
+      expect(totals.subtotal).toBeGreaterThan(0);
     });
   });
 });

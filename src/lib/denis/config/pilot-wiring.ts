@@ -24,6 +24,11 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     voiceTtsEnabled: true,
     voiceStaffEnabled: true,
   },
+  mentalModel: {
+    ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
+    enabled: true,
+    mode: "enforce",
+  },
   ops: {
     staffHintsEnabled: true,
     rushSkipUpsell: true,
@@ -51,6 +56,25 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
     tableTurnaround: {
       ...CONCIERGE_PLATFORM_DEFAULTS.ops.tableTurnaround,
       enabled: true,
+    },
+    agenticToolLoop: {
+      enabled: true,
+      shadowOnly: false,
+      canaryPercent: 100,
+      maxRounds: 3,
+      legacySingleCallFallback: false,
+    },
+    lossPrevention: {
+      enabled: true,
+      voidLadderEnabled: true,
+      transferInvariantsEnabled: true,
+      paymentGuardrailsEnabled: true,
+      cashRiskEnabled: true,
+      discountPatternsEnabled: true,
+      suspiciousReportEnabled: true,
+      discountDeviationMultiplier: 2,
+      digestMaxItems: 10,
+      cashSessionOpenMinutes: 120,
     },
   },
   learning: { learnedEdgesEnabled: true },
@@ -103,11 +127,6 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
       latitude: 53.5511,
       longitude: 9.9937,
     },
-  },
-  mentalModel: {
-    ...CONCIERGE_PLATFORM_DEFAULTS.mentalModel,
-    enabled: true,
-    mode: "shadow",
   },
 };
 

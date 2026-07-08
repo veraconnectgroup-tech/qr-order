@@ -9,9 +9,9 @@
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **V0** | ADR-025 + waiter eval (prerequisite) | 🔲 |
-| **V1** | Operator API read + audit | 🔲 |
-| **V2** | Webhooks + admin register | 🔲 |
+| **V0** | ADR-025 + waiter eval (prerequisite) | ✅ |
+| **V1** | Operator API read + audit | ✅ |
+| **V2** | Webhooks + admin register | ✅ |
 | **V3** | OpenAPI + sandbox | 🔲 |
 
 **Do not start V1 until V0 gate passes.**

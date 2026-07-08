@@ -6,7 +6,9 @@ test.describe("Guest accessibility (WCAG 2.1 AA)", () => {
   test("menu page has no critical axe violations", async ({ page }) => {
     await openDemoMenu(page);
 
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Aperol Spritz").first()).toBeVisible({
+      timeout: 15_000,
+    });
 
     const results = await new AxeBuilder({ page })
       .include("#main-content")

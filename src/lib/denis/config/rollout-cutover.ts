@@ -13,6 +13,9 @@ export type DenisRolloutPresetId =
   | "denis_act_submit_pilot"
   | "agentic_canary_5"
   | "agentic_live_canary_5"
+  | "agentic_live_100"
+  | "upds_enforce_pilot"
+  | "loss_prevention_pilot"
   | "table_os_pilot";
 
 export type DenisRolloutPreset = {
@@ -185,6 +188,75 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
           canaryPercent: 5,
           maxRounds: 3,
           legacySingleCallFallback: true,
+        },
+      },
+    },
+  },
+  {
+    id: "agentic_live_100",
+    label: "Agentic loop — live 100% (P5)",
+    description:
+      "ADR-049 P5: full agentic tool loop for all sessions; legacy single-call fallback disabled.",
+    patch: {
+      version: 1,
+      rollout: { mode: "denis_only" },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: {
+        slotExtractEnabled: true,
+        actLayerEnabled: true,
+        actDryRun: false,
+        actSubmitEnabled: true,
+      },
+      ops: {
+        agenticToolLoop: {
+          enabled: true,
+          shadowOnly: false,
+          canaryPercent: 100,
+          maxRounds: 3,
+          legacySingleCallFallback: false,
+        },
+      },
+    },
+  },
+  {
+    id: "upds_enforce_pilot",
+    label: "UPDS enforce pilot",
+    description:
+      "ADR-040 R1: GMM enforce + offer enrich paired — single proactive decider path.",
+    patch: {
+      version: 1,
+      rollout: { mode: "denis_only" },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: { slotExtractEnabled: true, ...SHADOW_SAFE_ACT },
+      proactive: {
+        enabled: true,
+        offerEnrich: true,
+      },
+      mentalModel: {
+        enabled: true,
+        mode: "enforce",
+      },
+    },
+  },
+  {
+    id: "loss_prevention_pilot",
+    label: "Loss prevention pilot",
+    description:
+      "ADR-044: enable all guardrails + suspicious report for owner/manager review.",
+    patch: {
+      version: 1,
+      ops: {
+        lossPrevention: {
+          enabled: true,
+          voidLadderEnabled: true,
+          transferInvariantsEnabled: true,
+          paymentGuardrailsEnabled: true,
+          cashRiskEnabled: true,
+          discountPatternsEnabled: true,
+          suspiciousReportEnabled: true,
+          discountDeviationMultiplier: 2,
+          digestMaxItems: 10,
+          cashSessionOpenMinutes: 120,
         },
       },
     },

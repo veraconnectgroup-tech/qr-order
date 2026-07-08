@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | **P0–P4 engineering complete** — P5 default-on requires `legacySingleCallFallback: false` at 100% canary per location |
+| **Status** | **P0–P5 engineering complete** — P5 preset `agentic_live_100` + `table_os_pilot` ship `legacySingleCallFallback: false` at 100% canary |
 | **Date** | 2026-07-07 |
 | **Deepens** | [ADR-048](./ADR-048-denis-operational-knowledge-integration-catalog.md) Part II (Brain), Part V (Capability Engine), Part VI (Expert Registry), Part VII (Connectors — internal experts only, not external POS/reservation connectors) |
 | **Reuses** | `src/lib/denis/acl/` (schema → validate → execute), `src/lib/denis/config/rollout.ts` (canary/shadow), `src/lib/denis/eval/` (eval harness), `src/lib/denis/commercial/metering.ts` (credit gating) |

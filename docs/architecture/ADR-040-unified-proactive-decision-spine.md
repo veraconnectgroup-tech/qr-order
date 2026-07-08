@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | **APPROVED** — architecture contract (implementation pending) |
+| **Status** | **IMPLEMENTED** — P1–P5 complete (R0–R3 rollout presets; R4 learning uses `timingKind`) |
 | **Parent** | [ADR-019](./ADR-019-denis-unified-brain.md) · [ADR-038 GMM](./ADR-038-guest-mental-model.md) · [ADR-039](./ADR-039-nudge-outcome-learning.md) · [ADR-020 §Kad](./ADR-020-denis-table-operating-system.md) |
 | **Rule** | One loop · one decider · one emitter · timing in offer fold · audit in `mental_model.gate` |
 
