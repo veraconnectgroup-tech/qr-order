@@ -3,8 +3,8 @@
  * docs/architecture/ADR-050-denis-persona.md. Pure and venue-agnostic: no
  * tone, time-of-day, or per-guest signal here (those stay in
  * personality-engine.ts / denis-voice-instructions.ts). This block is meant
- * to be shared verbatim across surfaces (guest-turn prompt today; station
- * voice later — see ADR-050 §4, not wired in yet).
+ * to be shared verbatim across surfaces (guest-turn prompt + station-voice
+ * TTS via resolveDenisVoiceInstructions in denis-voice-instructions.ts).
  */
 
 export function buildDenisPersonaBlock(): string {

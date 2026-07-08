@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | Accepted |
+| **Status** | **Implemented** |
 | **Date** | 2026-07-07 |
 | **Deepens** | [ADR-048](./ADR-048-denis-operational-knowledge-integration-catalog.md) — this is the persona layer underneath Parts II–IV, not a new pillar |
 | **Reuses** | `src/lib/denis/cognition/personality/staff-relationship-engine.ts`, `src/lib/denis/cognition/personality/resolve-conversation-respect-signal.ts`, `src/lib/ai/denis-voice-instructions.ts` |
@@ -51,14 +51,24 @@ guest-turn prompt (src/lib/ai/build-system-prompt.ts)
 
 station-voice TTS (src/app/api/ai/voice/speak/route.ts)
   └─ resolveDenisVoiceInstructions (denis-voice-instructions.ts)
+       ← buildDenisPersonaBlock() — same spine as guest prompt (ADR-050)
        ← relationshipWarmth from staff-relationship-engine.ts
        ← respectPressure from resolve-conversation-respect-signal.ts
 ```
 
-The guest-facing text prompt and the staff-facing voice instructions describe the **same person** through two different channels (written JSON reply vs. TTS delivery instructions) — this ADR is what makes that explicit. `denis-persona-block.ts` is the one new artifact: a pure function holding the base identity text so both surfaces can eventually pull from one place instead of restating it.
+The guest-facing text prompt and the staff-facing voice instructions describe the **same person** through two different channels (written JSON reply vs. TTS delivery instructions) — `denis-persona-block.ts` is the shared identity spine both surfaces pull from.
 
 ## 4. What this ADR does not do
 
-- Does not change `identityBlock` / `buildPersonaIdentityBlock` or any existing call site — `denis-persona-block.ts` is additive only, wired into station-voice in a later change once reviewed.
+- Does not change `identityBlock` / `buildPersonaIdentityBlock` or any existing call site — `denis-persona-block.ts` is additive only.
 - Does not touch `src/lib/denis/agentic/`, `src/lib/denis/runtime/run-denis-turn.ts`, or `src/lib/denis/config/` — those are runtime/tool-loop concerns, out of scope for a persona-text consolidation.
 - Does not add a new personality dimension or signal — `DENIS_OPINIONS_BLOCK`, `buildStaffRelationshipToneBlock`, `resolveDenisVoiceInstructions`, and `resolveConversationRespectSignal` keep their existing behavior unchanged.
+
+## 5. Implementation status
+
+| Surface | Persona block | Delivery signals |
+|---------|---------------|------------------|
+| Guest text prompt (`build-system-prompt.ts`) | `buildDenisPersonaBlock()` | `personality-engine.ts` |
+| Guest + station TTS (`/api/ai/voice/speak`) | `buildDenisPersonaBlock()` via `resolveDenisVoiceInstructions` | urgency / chaos / warmth / respect in `denis-voice-instructions.ts` |
+
+**Status:** Implemented — both channels pull from the same `buildDenisPersonaBlock()` spine.

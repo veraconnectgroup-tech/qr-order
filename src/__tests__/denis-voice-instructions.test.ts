@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { resolveDenisVoiceInstructions } from "@/lib/ai/denis-voice-instructions";
 
 describe("resolveDenisVoiceInstructions", () => {
+  it("includes ADR-050 persona spine before delivery clauses", () => {
+    const line = resolveDenisVoiceInstructions({ urgencyRatio: 0.1 });
+    expect(line).toContain("DENIS — WHO YOU ARE:");
+    expect(line).toContain("DELIVERY FOR THIS LINE:");
+    expect(line).toMatch(/calmly and warmly/i);
+  });
+
   it("stays calm at low urgency with no other signals", () => {
     const line = resolveDenisVoiceInstructions({ urgencyRatio: 0.1 });
     expect(line).toMatch(/calmly and warmly/i);

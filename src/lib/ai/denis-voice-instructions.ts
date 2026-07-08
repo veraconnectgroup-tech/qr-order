@@ -3,6 +3,8 @@
  * voice (gpt-4o-mini-tts's `instructions` field) out of independent
  * signals, rather than a fixed lookup table of moods:
  *
+ * 0. Base identity — `buildDenisPersonaBlock()` (ADR-050), shared with the
+ *    guest text prompt so written and spoken surfaces describe the same person.
  * 1. Question urgency — how close THIS question is to timing out / how
  *    overdue the order behind it is (0 = just asked, 1 = critical).
  * 2. Venue chaos — how slammed the station is overall right now (0 = calm
@@ -19,6 +21,8 @@
  * clause-resolver, not rewriting a mood switch statement. The voice
  * identity itself never changes — only delivery (pace, warmth, tension).
  */
+
+import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
 
 export type DenisVoiceMoodInput = {
   /** 0-1, clamped. */
@@ -69,8 +73,10 @@ function resolveRespectClause(respectPressure: number): string | null {
   return null;
 }
 
-/** Builds the full instruction string for a given mood input. Pure — no I/O, easy to test. */
-export function resolveDenisVoiceInstructions(input: DenisVoiceMoodInput): string {
+/** Delivery-only clauses (pace, warmth, tension) — mood signals without identity spine. */
+export function resolveDenisVoiceDeliveryInstructions(
+  input: DenisVoiceMoodInput
+): string {
   const urgencyRatio = clamp(input.urgencyRatio, 0, 1);
   const venueChaosRatio = clamp(input.venueChaosRatio ?? 0, 0, 1);
   const relationshipWarmth = clamp(input.relationshipWarmth ?? 0, -1, 1);
@@ -84,4 +90,13 @@ export function resolveDenisVoiceInstructions(input: DenisVoiceMoodInput): strin
   ].filter((clause): clause is string => clause != null);
 
   return clauses.join(" ");
+}
+
+/**
+ * Full OpenAI TTS `instructions` string — ADR-050 persona spine plus
+ * per-line delivery shading. Used by guest and station-voice speak routes.
+ */
+export function resolveDenisVoiceInstructions(input: DenisVoiceMoodInput): string {
+  const delivery = resolveDenisVoiceDeliveryInstructions(input);
+  return `${buildDenisPersonaBlock()}\n\nDELIVERY FOR THIS LINE:\n${delivery}`;
 }
