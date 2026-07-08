@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { VenuePlaybookTone } from "@/lib/admin/generate-venue-playbook";
 import { detectVoiceLanguage } from "@/lib/denis/surfaces/voice/detect-voice-language";
 import {
-  isSignalAboveNoiseGate,
+  createVoiceActivityDetector,
+  type VoiceActivityDetector,
+} from "@/lib/denis/surfaces/voice/voice-activity-detector";
+import {
   openVoiceAudioPipeline,
   type VoiceAudioPipeline,
 } from "@/lib/denis/surfaces/voice/voice-audio-config";
@@ -100,10 +103,11 @@ export function useDenisVoice({
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const audioPipelineRef = useRef<VoiceAudioPipeline | null>(null);
+  const vadRef = useRef<VoiceActivityDetector | null>(null);
+  const sttStartedRef = useRef(false);
   const onResultRef = useRef<((result: VoiceCaptureResult) => void) | null>(
     null
   );
-  const peakSignalRef = useRef(0);
   const playbackRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -111,16 +115,36 @@ export function useDenisVoice({
   }, [enabled]);
 
   const teardownAudioPipeline = useCallback(() => {
+    vadRef.current?.teardown();
+    vadRef.current = null;
     audioPipelineRef.current?.teardown();
     audioPipelineRef.current = null;
-    peakSignalRef.current = 0;
+    sttStartedRef.current = false;
   }, []);
 
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
+  const stopListening = useCallback((options?: { silent?: boolean }) => {
+    const hadConfirmedSpeech = vadRef.current?.hasConfirmedSpeech() ?? false;
+    const sttWasStarted = sttStartedRef.current;
+
+    if (sttWasStarted && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setListening(false);
+      return;
+    }
+
     recognitionRef.current = null;
+    vadRef.current?.pause();
     teardownAudioPipeline();
     setListening(false);
+
+    if (
+      !options?.silent &&
+      !hadConfirmedSpeech &&
+      onResultRef.current
+    ) {
+      onResultRef.current({ ok: false, reason: "no_speech" });
+      onResultRef.current = null;
+    }
   }, [teardownAudioPipeline]);
 
   const speakWithBrowserVoice = useCallback(
@@ -196,35 +220,27 @@ export function useDenisVoice({
         return false;
       }
 
-      stopListening();
+      stopListening({ silent: true });
       onResultRef.current = onResult;
-      peakSignalRef.current = 0;
-
-      void openVoiceAudioPipeline()
-        .then((pipeline) => {
-          if (pipeline) {
-            audioPipelineRef.current = pipeline;
-          }
-        })
-        .catch(() => {
-          /* STT still works without parallel metering */
-        });
+      sttStartedRef.current = false;
 
       const recognition = new Ctor();
       recognition.lang = mapLocaleToSpeechTag(language);
       recognition.interimResults = false;
       recognition.maxAlternatives = 3;
-      recognition.continuous = true;
+      recognition.continuous = false;
+
+      const startSttIfNeeded = () => {
+        if (sttStartedRef.current || !recognitionRef.current) return;
+        sttStartedRef.current = true;
+        try {
+          recognitionRef.current.start();
+        } catch {
+          /* already active */
+        }
+      };
 
       recognition.onresult = (event) => {
-        const pipeline = audioPipelineRef.current;
-        if (pipeline) {
-          const level = pipeline.getSignalLevel();
-          if (level > peakSignalRef.current) {
-            peakSignalRef.current = level;
-          }
-        }
-
         const results = event.results as SpeechRecognitionResultList;
         const lastIndex = results.length - 1;
         const result = results[lastIndex];
@@ -238,11 +254,7 @@ export function useDenisVoice({
           return;
         }
 
-        if (
-          pipeline &&
-          peakSignalRef.current > 0 &&
-          !isSignalAboveNoiseGate(peakSignalRef.current)
-        ) {
+        if (!vadRef.current?.hasConfirmedSpeech()) {
           onResultRef.current?.({
             ok: false,
             reason: "noise_gate",
@@ -272,6 +284,7 @@ export function useDenisVoice({
           confidence,
           detectedLanguage,
         });
+        onResultRef.current = null;
       };
 
       recognition.onerror = () => {
@@ -279,6 +292,7 @@ export function useDenisVoice({
         recognitionRef.current = null;
         teardownAudioPipeline();
         onResultRef.current?.({ ok: false, reason: "error" });
+        onResultRef.current = null;
       };
 
       recognition.onend = () => {
@@ -289,7 +303,38 @@ export function useDenisVoice({
 
       recognitionRef.current = recognition;
       setListening(true);
-      recognition.start();
+
+      void openVoiceAudioPipeline()
+        .then(async (pipeline) => {
+          if (!pipeline || !recognitionRef.current) return;
+          audioPipelineRef.current = pipeline;
+
+          const vad = await createVoiceActivityDetector(pipeline.stream, {
+            onSpeechStart: startSttIfNeeded,
+            onSpeechEnd: () => {
+              if (sttStartedRef.current) {
+                recognitionRef.current?.stop();
+              }
+            },
+          });
+
+          if (!recognitionRef.current) return;
+
+          if (vad) {
+            vadRef.current = vad;
+            vad.start();
+            return;
+          }
+
+          // VAD unavailable — fall back to immediate STT (legacy path).
+          startSttIfNeeded();
+        })
+        .catch(() => {
+          if (recognitionRef.current) {
+            startSttIfNeeded();
+          }
+        });
+
       return true;
     },
     [enabled, supported, language, menuLanguage, stopListening, teardownAudioPipeline]
