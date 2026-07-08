@@ -1,4 +1,7 @@
-import { runPostSessionEval } from "@/lib/denis/eval/continuous-eval-loop";
+import {
+  runPostSessionEval,
+  runPromptEvolutionShadow,
+} from "@/lib/denis/eval/continuous-eval-loop";
 import type { DenisTimelineRow } from "@/lib/denis/platform/timeline-types";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -109,4 +112,24 @@ export async function handleSessionEval(
       .filter((row) => row.kind !== "reinforcement")
       .map((row) => row.kind),
   });
+
+  // Shadow-only: pools this session's learnings for prompt-evolution A/B
+  // review. Never affects the live guest prompt — see runPromptEvolutionShadow's
+  // own docstring. Isolated from the eval above (already succeeded/persisted).
+  if (session.locationId) {
+    const evolutionStatus = await runPromptEvolutionShadow({
+      locationId: session.locationId,
+      sessionLearnings: result.learnings,
+    });
+
+    if (evolutionStatus?.ready) {
+      logger.info("Denis prompt-evolution shadow status updated", {
+        locationId: session.locationId,
+        learningCount: evolutionStatus.learningCount,
+        winner: evolutionStatus.winner,
+        confidence: evolutionStatus.confidence,
+        eligibleForFounderReview: evolutionStatus.eligibleForFounderReview,
+      });
+    }
+  }
 }

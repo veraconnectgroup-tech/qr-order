@@ -4,13 +4,33 @@
  * Pure, read-only config — no DB access, no runtime state (commit-checklist
  * §4: in-memory state is a bug on serverless).
  *
- * SCOPE NOTE: ADR-045's S1 session calls for inventorying every
- * Denis-relevant table across the whole app (station truth, rhythm priors,
- * outcome learning, audit journals, etc.) — a large, separate initiative
- * with its own session-prompt tracking (docs/architecture/ADR-045-session-prompts.md).
- * This file seeds the registry with the one table this station-voice
- * work actually touches; it does not claim full ADR-045 S1 coverage.
- * Extending coverage to the rest of the app is that session's job, not this one.
+ * ADR-045 S1 coverage: every table under src/lib/denis/** that accumulates
+ * over time and needs a tier/retention/PII judgment is registered here.
+ * Deliberately excluded (by ADR-045 §6 anti-goal — no scope creep):
+ * - Core commerce tables with their own lifecycle (orders, order_items,
+ *   table_sessions, commerce_preorders) — not "memory" in ADR-045's sense.
+ * - Org/billing ledgers (ai_credits, org_billing_events, ...) — financial
+ *   infrastructure, correctly permanent, not conversational/operational memory.
+ * - Pure computed/derived state with no dedicated table (fold/session state,
+ *   copilot snapshots, watcher state, anti-spam cooldowns — all folded live
+ *   from other already-registered tables, e.g. denis_timeline).
+ * - denis_ab_experiments / denis_ab_session_assignments — product
+ *   experimentation lifecycle, not memory tiering.
+ * - Guest personal memory (denis_guest_memory, guest_loyalty_profiles, ...)
+ *   — ADR-045 §2 explicitly keeps this OUT of the 4-tier model ("device-bound
+ *   guest memory, never Restaurant tier"). It has its own expires_at/opt-out
+ *   mechanism (src/lib/guest/denis-guest-memory-store.ts) — real gap there
+ *   (expiry is checked lazily, never swept by a cron) is ADR-045 S3 territory,
+ *   tracked separately, not registered here.
+ * - denis_relationship_signals — migrated but genuinely dead code, nothing
+ *   reads or writes it. Left idle, not registered.
+ *
+ * Known open gap, not a bug to silently fix: denis_timeline has no retention
+ * policy anywhere (not even a declared-but-unenforced one) despite being the
+ * backbone of the eval flywheel and carrying guest-turn-derived payloads.
+ * Registered below with retentionDays: null and dayClose: "keep" — an
+ * honest "not yet decided" rather than an invented policy, since any sweep
+ * here needs an explicit call on how long the flywheel/audit trail needs it.
  */
 
 export type MemoryTier = "live" | "shift" | "restaurant" | "audit";
@@ -20,7 +40,7 @@ export type DayCloseBehavior = "close" | "rollup" | "keep" | "delete" | "anonymi
 export type MemoryRegistryEntry = {
   table: string;
   tier: MemoryTier;
-  /** Days after which this tier's data should be swept. null = indefinite (audit). */
+  /** Days after which this tier's data should be swept. null = indefinite (audit) or not yet decided (see notes). */
   retentionDays: number | null;
   dayClose: DayCloseBehavior;
   pii: boolean;
@@ -28,6 +48,7 @@ export type MemoryRegistryEntry = {
 };
 
 const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
+  // --- shift tier: open -> Day Close ---
   {
     table: "station_questions",
     tier: "shift",
@@ -44,9 +65,153 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "close",
     pii: false,
     notes:
-      "Per-question voice conversation log (kitchen/bar). Only meaningful for the shift it happened in. dayClose is 'close', wired in day-close.ts via expireStationQuestionTurns() — deletes turns older than retentionDays for this location's questions (ADR-045 S3, first table only; not full S1 app-wide coverage).",
+      "Per-question voice conversation log (kitchen/bar). Only meaningful for the shift it happened in. Wired in day-close.ts via expireStationQuestionTurns() — deletes turns older than retentionDays for this location's questions.",
+  },
+  {
+    table: "table_bus_obligations",
+    tier: "shift",
+    retentionDays: 1,
+    dayClose: "close",
+    pii: false,
+    notes:
+      "Waiter 'bus this table' obligation after payment (paid_at -> bussed_at). Same-service lifecycle as station_questions — not yet wired into Day Close, falls through to 'skipped' until a real sweep is built.",
+  },
+  {
+    table: "denis_staff_table_hints",
+    tier: "shift",
+    retentionDays: 1,
+    dayClose: "delete",
+    pii: true,
+    notes:
+      "Free-text staff note pinned to a table — the ADR's own canonical example ('table 8 is nervous'). Already has an expires_at column and index, but nothing sweeps expired rows today. Free text may reference a specific guest situation — treat as PII. Not yet wired into Day Close.",
+  },
+  {
+    table: "waiter_calls",
+    tier: "shift",
+    retentionDays: 1,
+    dayClose: "close",
+    pii: false,
+    notes:
+      "Guest-initiated waiter call. Same-service signal, no cross-day meaning. Not yet wired into Day Close.",
+  },
+  {
+    table: "denis_schedules",
+    tier: "shift",
+    retentionDays: 1,
+    dayClose: "delete",
+    pii: false,
+    notes:
+      "Anticipation job queue (e.g. dessert-nudge wake). Rows aren't deleted after completed/cancelled today — accumulates. Not yet wired into Day Close.",
+  },
+  {
+    table: "denis_timeline",
+    tier: "shift",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: true,
+    notes:
+      "Append-only per-session event log (proactive offers, order facts, station answers, agentic shadow traces). ADR-045 §3 names this as shift ('today's portion') but nothing splits or expires anything — it grows forever today. Payloads can carry guest-turn-derived content. Deliberately left retentionDays: null / dayClose: 'keep' rather than inventing a sweep: the eval flywheel reads across weeks and this may double as audit-adjacent evidence — needs an explicit product/compliance decision before any row is ever deleted here.",
+  },
+
+  // --- restaurant tier: permanent, restaurant-level, never personal ---
+  {
+    table: "location_rhythm_priors",
+    tier: "restaurant",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "ADR-042 rhythm priors — one row per location, EWMA slot priors + learned_basket_pairs. Aggregates only, no raw guest data. Own rollup job (ADR-042) already maintains it; Day Close doesn't touch it.",
+  },
+  {
+    table: "denis_learned_edges",
+    tier: "restaurant",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "Admin-approval queue for VKG pairing candidates (edge_type: pairs_with = discovered pairing, upsell_after = ADR-039 nudge-outcome learning). Product-id pairs + stats only. Permanent until admin approves/rejects — correctly durable.",
+  },
+  {
+    table: "experience_analytics_daily",
+    tier: "restaurant",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "Daily rollup (one row per location+date): nudge impressions/conversions, session revenue, experience score. Aggregate only, accumulates by design.",
+  },
+  {
+    table: "upsell_rules",
+    tier: "restaurant",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "Active upsell rule config per location — the applied output of an approved denis_learned_edges row. Config, not a log.",
+  },
+
+  // --- audit tier: long-lived, never casually deleted ---
+  {
+    table: "order_events",
+    tier: "audit",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "Order-level append-only mutation log. This IS the ADR-044 §4.1 'one journal' target (extension of this existing table, not a separate one). Intentionally permanent — GoBD.",
+  },
+  {
+    table: "denis_day_closes",
+    tier: "audit",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "Idempotency + proof record for each location's Day Close run. This table IS the audit record of ADR-045 S2 itself.",
+  },
+  {
+    table: "denis_audit_entries",
+    tier: "audit",
+    retentionDays: 365,
+    dayClose: "keep",
+    pii: true,
+    notes:
+      "CRITICAL GAP, not a retention problem: this table and its reader (src/lib/admin/load-denis-audit-trail.ts) exist, and buildAuditEntry() (src/lib/denis/compliance/audit-trail.ts) constructs the right shape (guest_input_hash, decision_path, allergy_detail, expires_at) — but nothing in the codebase actually calls it and inserts. This table is always empty today. It looks like the intended Denis-specific compliance/allergy audit journal and isn't wired to anything. Needs explicit product/compliance sign-off on what should be logged before building a writer — flagged, not silently fixed here.",
+  },
+  {
+    table: "commerce_experience_events",
+    tier: "audit",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "ADR-014 commerce spine command/event log, append-only outbox-style. Feeds experience_analytics_daily rollup.",
+  },
+  {
+    table: "ai_order_events",
+    tier: "audit",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: false,
+    notes:
+      "Per-AI-session order lifecycle log (draft_updated, submit_requested, order_created, ...). Audit trail for the AI ordering flow specifically.",
+  },
+
+  // --- live tier: seconds-minutes, already enforced elsewhere ---
+  {
+    table: "denis_turn_traces",
+    tier: "live",
+    retentionDays: 7,
+    dayClose: "keep",
+    pii: true,
+    notes:
+      "Full per-turn execution trace (tier, tokens, latency) — GDPR-sensitive per its own code comment. Already deleted on a 7-day cron in src/app/api/cron/cleanup/route.ts (DATA_RETENTION.turnTraces). Registered here for completeness only — Day Close does not duplicate this, the existing cron already owns it.",
   },
 ];
+
+/** Exposed for the registry's own invariant tests only — not a runtime API. */
+export const MEMORY_REGISTRY_FOR_TESTS = MEMORY_REGISTRY;
 
 export function getMemoryLevel(table: string): MemoryTier | null {
   return MEMORY_REGISTRY.find((entry) => entry.table === table)?.tier ?? null;

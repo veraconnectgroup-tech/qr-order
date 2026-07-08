@@ -13,6 +13,13 @@ import {
 } from "@/lib/denis/eval/prompt-evolver";
 import { runDenisScenario } from "@/lib/denis/eval/run-scenario";
 import { loadProductionEdgeCases } from "@/lib/denis/eval/fixtures/production-edge-case-store";
+import {
+  appendAccumulatedLearnings,
+  loadAccumulatedLearnings,
+  persistPromptEvolutionStatus,
+  statusFromAbResult,
+  type PromptEvolutionStatus,
+} from "@/lib/denis/eval/prompt-evolution-store";
 import type { DenisEvalScenario, EvalSuiteReport } from "@/lib/denis/eval/types";
 import {
   extractConversationMessages,
@@ -354,4 +361,53 @@ export async function runPostSessionEval(input: {
   await appendProductionEdgeCasesFromLearnings(learnings);
 
   return result;
+}
+
+/**
+ * Prompt-evolution flywheel, run in shadow mode after a session's own eval
+ * is already scored (reuses that session's learnings — does not re-score or
+ * re-persist the session, avoiding double-counting in the weekly bucket).
+ *
+ * Pools learnings across sessions for this location (Redis, prompt-evolution-store.ts),
+ * and once enough have accumulated, generates + A/B-evaluates a candidate
+ * evolved prompt section against production edge cases. The result is only
+ * ever persisted as a *status* for admin review — nothing here touches the
+ * live system prompt. Never throws — a failure here must never affect the
+ * (already-succeeded) session eval it runs after.
+ */
+export async function runPromptEvolutionShadow(input: {
+  locationId: string;
+  sessionLearnings: ExtractedLearning[];
+}): Promise<PromptEvolutionStatus | null> {
+  try {
+    const previous = await loadAccumulatedLearnings(input.locationId);
+    const allLearnings = [...previous, ...input.sessionLearnings];
+
+    const evolvedSection = generateEvolvedPromptSection(allLearnings);
+    let abResult: PromptAbEvalResult | null = null;
+
+    if (evolvedSection) {
+      const edgeScenarios = await loadProductionEdgeCases();
+      abResult = evaluatePromptAbTest({
+        baselineSection: "",
+        evolvedSection,
+        learnings: allLearnings,
+        edgeScenarios,
+      });
+    }
+
+    await appendAccumulatedLearnings(input.locationId, input.sessionLearnings);
+
+    const status = statusFromAbResult({
+      locationId: input.locationId,
+      learningCount: allLearnings.length,
+      abResult,
+      evolvedSection,
+    });
+    await persistPromptEvolutionStatus(status);
+    return status;
+  } catch (error) {
+    logRedisDegradation("denis.eval.prompt_evolution.shadow", error);
+    return null;
+  }
 }

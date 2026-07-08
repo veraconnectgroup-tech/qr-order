@@ -126,7 +126,17 @@ describe("runDenisDayClose", () => {
     // via expireStationQuestionTurns() — must show up as processed, not skipped.
     expect(result.summary.expiredStationQuestionTurns).toBe(1);
     expect(result.summary.processed).toContain("station_question_turns");
-    expect(result.summary.skipped).toHaveLength(0);
+    // Other shift-tier entries (ADR-045 S1 inventory) are registered but not
+    // yet wired into Day Close — must show up as honestly skipped, never
+    // silently dropped or falsely claimed as processed.
+    expect(result.summary.skipped).toEqual(
+      expect.arrayContaining([
+        "table_bus_obligations:close",
+        "denis_staff_table_hints:delete",
+        "waiter_calls:close",
+        "denis_schedules:delete",
+      ])
+    );
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].table).toBe("denis_day_closes");
