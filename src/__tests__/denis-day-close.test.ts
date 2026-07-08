@@ -61,6 +61,12 @@ function buildAdmin(input: {
             }),
           }),
         }),
+        select: () => ({
+          eq: async () => ({
+            data: input.openQuestions.map((q) => ({ id: q.id })),
+            error: null,
+          }),
+        }),
       };
     }
 
@@ -68,6 +74,21 @@ function buildAdmin(input: {
       return {
         select: () => ({
           eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+        }),
+      };
+    }
+
+    if (table === "station_question_turns") {
+      return {
+        delete: () => ({
+          in: () => ({
+            lt: () => ({
+              select: async () => ({
+                data: input.openQuestions.map((q) => ({ id: `${q.id}-turn` })),
+                error: null,
+              }),
+            }),
+          }),
         }),
       };
     }
@@ -101,9 +122,11 @@ describe("runDenisDayClose", () => {
     expect(result.alreadyClosed).toBe(false);
     expect(result.summary.expiredStationQuestions).toBe(1);
     expect(result.summary.processed).toContain("station_questions");
-    // station_question_turns is registered (dayClose: "close") but has no
-    // wired handler yet — must show up as skipped, never falsely "processed".
-    expect(result.summary.skipped).toContain("station_question_turns:close");
+    // station_question_turns is registered (dayClose: "close") and now wired
+    // via expireStationQuestionTurns() — must show up as processed, not skipped.
+    expect(result.summary.expiredStationQuestionTurns).toBe(1);
+    expect(result.summary.processed).toContain("station_question_turns");
+    expect(result.summary.skipped).toHaveLength(0);
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].table).toBe("denis_day_closes");
@@ -117,9 +140,10 @@ describe("runDenisDayClose", () => {
     const { admin, inserted, updated } = buildAdmin({
       existingDayClose: {
         summary: {
-          processed: ["station_questions"],
-          skipped: ["station_question_turns:close"],
+          processed: ["station_questions", "station_question_turns"],
+          skipped: [],
           expiredStationQuestions: 1,
+          expiredStationQuestionTurns: 1,
         },
       },
       openQuestions: [{ id: "q1", location_id: "loc-1", station: "kitchen" }],

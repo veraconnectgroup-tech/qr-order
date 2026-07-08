@@ -64,6 +64,66 @@ describe("learning-extractor", () => {
     expect(learnings.some((row) => row.kind === "waiter_failure")).toBe(true);
     expect(learnings.some((row) => row.kind === "mismatch")).toBe(true);
   });
+
+  it("extracts tool_loop_issue from an agentic.shadow_trace round-cap hit", () => {
+    const timeline: DenisTimelineRow[] = [
+      {
+        id: "1",
+        ai_session_id: "ai-1",
+        seq: 1,
+        event_type: "agentic.shadow_trace",
+        trace_id: "trace-1",
+        context_hash: null,
+        created_at: "2026-06-01T12:01:00.000Z",
+        payload: {
+          rounds: 3,
+          hitRoundCap: true,
+          toolsCalled: ["check_kitchen_status"],
+          toolErrors: [],
+          finalContentChars: 120,
+        },
+      },
+    ];
+
+    const learnings = extractSessionLearnings({
+      sessionId: "sess-shadow",
+      messages: badSessionMessages(),
+      timeline,
+    });
+
+    const issue = learnings.find((row) => row.kind === "tool_loop_issue");
+    expect(issue).toBeTruthy();
+    expect(issue?.denisResponse).toContain("round cap");
+  });
+
+  it("does not extract tool_loop_issue when the shadow loop had no errors and stayed under cap", () => {
+    const timeline: DenisTimelineRow[] = [
+      {
+        id: "1",
+        ai_session_id: "ai-1",
+        seq: 1,
+        event_type: "agentic.shadow_trace",
+        trace_id: "trace-1",
+        context_hash: null,
+        created_at: "2026-06-01T12:01:00.000Z",
+        payload: {
+          rounds: 1,
+          hitRoundCap: false,
+          toolsCalled: [],
+          toolErrors: [],
+          finalContentChars: 80,
+        },
+      },
+    ];
+
+    const learnings = extractSessionLearnings({
+      sessionId: "sess-shadow-clean",
+      messages: [],
+      timeline,
+    });
+
+    expect(learnings.some((row) => row.kind === "tool_loop_issue")).toBe(false);
+  });
 });
 
 describe("continuous-eval-loop", () => {

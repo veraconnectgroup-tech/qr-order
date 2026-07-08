@@ -225,6 +225,8 @@ export async function buildWeeklyQualityReport(
           return "Shorten confirmations and mirror guest wording before cart mutations.";
         case "waiter_failure":
           return "Offer human handoff earlier when guest repeats the same request.";
+        case "tool_loop_issue":
+          return "Investigate agentic tool-loop round-cap hits / tool errors in shadow traces before widening canary.";
         default:
           return "Review recent session transcripts for recurring failure patterns.";
       }

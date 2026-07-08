@@ -44,7 +44,7 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "close",
     pii: false,
     notes:
-      "Per-question voice conversation log (kitchen/bar). Only meaningful for the shift it happened in. dayClose is declared 'close' but NOT YET WIRED in day-close.ts — falls through to the registry's 'skipped' bucket today. Real turn-log closing (delete/archive) is retention-enforcement scope (ADR-045 S3), not built here — do not claim this table is processed until it actually is.",
+      "Per-question voice conversation log (kitchen/bar). Only meaningful for the shift it happened in. dayClose is 'close', wired in day-close.ts via expireStationQuestionTurns() — deletes turns older than retentionDays for this location's questions (ADR-045 S3, first table only; not full S1 app-wide coverage).",
   },
 ];
 

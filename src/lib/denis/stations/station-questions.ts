@@ -315,6 +315,55 @@ export async function expireStationQuestions(
   return expired.length;
 }
 
+/**
+ * Retention sweep for the per-question voice conversation log (ADR-045 S3,
+ * memory-registry.ts's "shift" tier, retentionDays: 1). Deletes turns older
+ * than the retention window for this location's questions — independent of
+ * question status, since a turn's own age is what matters here, not whether
+ * its parent question is still open.
+ */
+export async function expireStationQuestionTurns(
+  admin: SupabaseClient,
+  input: { locationId: string; retentionDays: number }
+): Promise<number> {
+  const cutoff = new Date(
+    Date.now() - input.retentionDays * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data: questionRows, error: questionError } = await admin
+    .from("station_questions")
+    .select("id")
+    .eq("location_id", input.locationId);
+
+  if (questionError) {
+    logger.warn("expireStationQuestionTurns question lookup failed", {
+      locationId: input.locationId,
+      error: questionError.message,
+    });
+    return 0;
+  }
+
+  const questionIds = (questionRows ?? []).map((row) => (row as { id: string }).id);
+  if (questionIds.length === 0) return 0;
+
+  const { data: deletedRows, error } = await admin
+    .from("station_question_turns")
+    .delete()
+    .in("station_question_id", questionIds)
+    .lt("created_at", cutoff)
+    .select("id");
+
+  if (error) {
+    logger.warn("expireStationQuestionTurns delete failed", {
+      locationId: input.locationId,
+      error: error.message,
+    });
+    return 0;
+  }
+
+  return deletedRows?.length ?? 0;
+}
+
 export type { FreshStationAnswer, StationQuestionAnswerValue };
 export {
   cachedStationAnswerGuestMessage,

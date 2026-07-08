@@ -10,13 +10,17 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { entriesForDayClose } from "@/lib/denis/memory/memory-registry";
-import { expireStationQuestions } from "@/lib/denis/stations/station-questions";
+import {
+  expireStationQuestionTurns,
+  expireStationQuestions,
+} from "@/lib/denis/stations/station-questions";
 import { logger } from "@/lib/logger";
 
 export type DayCloseSummary = {
   processed: string[];
   skipped: string[];
   expiredStationQuestions: number;
+  expiredStationQuestionTurns: number;
 };
 
 export type RunDenisDayCloseResult = {
@@ -58,6 +62,7 @@ export async function runDenisDayClose(
     processed: [],
     skipped: [],
     expiredStationQuestions: 0,
+    expiredStationQuestionTurns: 0,
   };
 
   for (const entry of entriesForDayClose()) {
@@ -70,10 +75,20 @@ export async function runDenisDayClose(
       continue;
     }
 
+    if (entry.dayClose === "close" && entry.table === "station_question_turns") {
+      summary.expiredStationQuestionTurns += await expireStationQuestionTurns(admin, {
+        locationId: input.locationId,
+        retentionDays: entry.retentionDays ?? 1,
+      });
+      summary.processed.push(entry.table);
+      continue;
+    }
+
     // rollup: ADR-042 rhythm rollup runs on its own schedule — Day Close
     // doesn't duplicate it. delete/anonymize: no registry entries yet
-    // (ADR-045 S3 scope). Anything else falling through has no wired
-    // handler — recorded as skipped rather than silently ignored.
+    // (ADR-045 S3 scope beyond station_question_turns). Anything else
+    // falling through has no wired handler — recorded as skipped rather
+    // than silently ignored.
     summary.skipped.push(`${entry.table}:${entry.dayClose}`);
   }
 

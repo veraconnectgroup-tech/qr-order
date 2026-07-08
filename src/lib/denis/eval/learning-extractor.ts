@@ -16,7 +16,8 @@ export type SessionLearningKind =
   | "mismatch"
   | "correction"
   | "waiter_failure"
-  | "reinforcement";
+  | "reinforcement"
+  | "tool_loop_issue";
 
 export type ExtractedLearning = {
   id: string;
@@ -312,6 +313,37 @@ export function extractSessionLearnings(input: {
         confidence: 0.78,
       });
     }
+  }
+
+  for (const event of timeline) {
+    if (event.event_type !== "agentic.shadow_trace") continue;
+    const payload = event.payload as {
+      hitRoundCap?: boolean;
+      toolErrors?: unknown[];
+      toolsCalled?: unknown[];
+    } | null;
+    const hitRoundCap = payload?.hitRoundCap === true;
+    const toolErrorCount = payload?.toolErrors?.length ?? 0;
+    if (!hitRoundCap && toolErrorCount === 0) continue;
+
+    const priorGuest = [...messages]
+      .reverse()
+      .find((row) => row.role === "guest" && row.at <= event.created_at);
+
+    const reason = hitRoundCap
+      ? "hit round cap"
+      : `${toolErrorCount} tool error(s)`;
+
+    learnings.push({
+      id: learningId(input.sessionId, "tool_loop_issue", learnings.length),
+      kind: "tool_loop_issue",
+      guestMessage: priorGuest?.text ?? "(shadow tool loop)",
+      denisResponse: `agentic shadow loop ${reason}`,
+      sessionId: input.sessionId,
+      locationId: input.locationId,
+      capturedAt: event.created_at,
+      confidence: 0.95,
+    });
   }
 
   return learnings;
