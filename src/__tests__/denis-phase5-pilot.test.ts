@@ -8,7 +8,7 @@ import {
 } from "@/lib/denis/config/resolve-intervention-enforce-ready";
 
 describe("Phase 5 pilot enforce wiring", () => {
-  it("Skyline pilot patch stays in shadow until mental model enforce is enabled", () => {
+  it("Table OS pilot ships UPDS enforce with IJS shadow and full guardrails", () => {
     const config = mergeConciergeConfig(
       CONCIERGE_PLATFORM_DEFAULTS,
       null,
@@ -16,11 +16,13 @@ describe("Phase 5 pilot enforce wiring", () => {
     );
 
     expect(TABLE_OS_PILOT_CONFIG_PATCH.intervention?.mode).toBe("shadow");
-    expect(TABLE_OS_PILOT_CONFIG_PATCH.mentalModel?.mode).toBe("shadow");
+    expect(TABLE_OS_PILOT_CONFIG_PATCH.mentalModel?.mode).toBe("enforce");
     expect(TABLE_OS_PILOT_CONFIG_PATCH.proactive?.offerEnrich).toBe(true);
-    expect(getInterventionEnforceViolations(config)).toEqual([
-      "mentalModel.mode must be enforce",
-    ]);
-    expect(isInterventionEnforceReady(config)).toBe(false);
+    expect(TABLE_OS_PILOT_CONFIG_PATCH.ops?.agenticToolLoop?.legacySingleCallFallback).toBe(
+      false
+    );
+    expect(TABLE_OS_PILOT_CONFIG_PATCH.ops?.lossPrevention?.enabled).toBe(true);
+    expect(getInterventionEnforceViolations(config)).toEqual([]);
+    expect(isInterventionEnforceReady(config)).toBe(true);
   });
 });
