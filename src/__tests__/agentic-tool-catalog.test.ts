@@ -24,7 +24,7 @@ describe("READ_ONLY_TOOL_CATALOG", () => {
     } as unknown as DenisTurnContext;
 
     const result = await READ_ONLY_TOOL_CATALOG.check_kitchen_status.execute(
-      { admin: {} as never, ctx },
+      { admin: {} as never, ctx, dryRun: true },
       {}
     );
 
@@ -39,7 +39,7 @@ describe("READ_ONLY_TOOL_CATALOG", () => {
   it("check_kitchen_status reports known:false when there is no station data", async () => {
     const ctx = { locationId: "loc_1" } as unknown as DenisTurnContext;
     const result = await READ_ONLY_TOOL_CATALOG.check_kitchen_status.execute(
-      { admin: {} as never, ctx },
+      { admin: {} as never, ctx, dryRun: true },
       {}
     );
     expect(result).toEqual({ known: false });
@@ -57,7 +57,7 @@ describe("READ_ONLY_TOOL_CATALOG", () => {
     } as unknown as DenisTurnContext;
 
     const result = await READ_ONLY_TOOL_CATALOG.check_station_stress.execute(
-      { admin: {} as never, ctx },
+      { admin: {} as never, ctx, dryRun: true },
       { station: "bar" }
     );
 
@@ -73,7 +73,7 @@ describe("READ_ONLY_TOOL_CATALOG", () => {
   it("check_bill reports known:false when there is no session", async () => {
     const ctx = { locationId: "loc_1" } as unknown as DenisTurnContext;
     const result = await READ_ONLY_TOOL_CATALOG.check_bill.execute(
-      { admin: {} as never, ctx },
+      { admin: {} as never, ctx, dryRun: true },
       {}
     );
     expect(result).toEqual({ known: false });

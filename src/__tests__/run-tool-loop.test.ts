@@ -53,7 +53,7 @@ describe("runToolLoop", () => {
 
     const result = await runToolLoop({
       messages: [{ role: "user", content: "hi" }],
-      executorInput: { admin: {} as never, ctx: baseCtx },
+      executorInput: { admin: {} as never, ctx: baseCtx, dryRun: true },
       maxRounds: 3,
     });
 
@@ -83,7 +83,7 @@ describe("runToolLoop", () => {
 
     const result = await runToolLoop({
       messages: [{ role: "user", content: "where is my food" }],
-      executorInput: { admin: {} as never, ctx },
+      executorInput: { admin: {} as never, ctx, dryRun: true },
       maxRounds: 3,
     });
 
@@ -118,7 +118,7 @@ describe("runToolLoop", () => {
 
     const result = await runToolLoop({
       messages: [{ role: "user", content: "hi" }],
-      executorInput: { admin: {} as never, ctx: baseCtx },
+      executorInput: { admin: {} as never, ctx: baseCtx, dryRun: true },
       maxRounds: 2,
     });
 
@@ -137,7 +137,7 @@ describe("runToolLoop", () => {
 
     const result = await runToolLoop({
       messages: [{ role: "user", content: "hi" }],
-      executorInput: { admin: {} as never, ctx: baseCtx },
+      executorInput: { admin: {} as never, ctx: baseCtx, dryRun: true },
       maxRounds: 3,
     });
 
@@ -167,7 +167,11 @@ describe("runToolLoop", () => {
 
     const result = await runToolLoop({
       messages: [{ role: "user", content: "what's my bill" }],
-      executorInput: { admin: throwingAdmin as never, ctx: ctxWithSession },
+      executorInput: {
+        admin: throwingAdmin as never,
+        ctx: ctxWithSession,
+        dryRun: true,
+      },
       maxRounds: 3,
     });
 

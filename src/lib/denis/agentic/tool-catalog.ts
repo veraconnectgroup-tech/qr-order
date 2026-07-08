@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import type { OpenAiToolDefinition } from "@/lib/ai/types";
 import type { DenisTurnContext } from "@/lib/denis/runtime/turn-types";
 import { loadVenueInventorySnapshot } from "@/lib/denis/intelligence/load-venue-inventory";
@@ -17,19 +18,45 @@ import { loadSessionPaymentBeliefs } from "@/lib/sessions/request-session-paymen
  * through the existing src/lib/denis/acl/ executors, not this file.
  */
 
-export type AgenticToolName =
+export type ReadOnlyToolName =
   | "check_kitchen_status"
   | "check_station_stress"
   | "check_stock"
   | "check_bill";
 
+export type SideEffectingToolName =
+  | "add_to_order"
+  | "call_waiter"
+  | "request_payment";
+
+export type AgenticToolName = ReadOnlyToolName | SideEffectingToolName;
+
 export type AgenticToolExecutorInput = {
   admin: SupabaseClient;
   ctx: DenisTurnContext;
+  /**
+   * ADR-049 §4.3 — side-effecting tools MUST check this first and never
+   * call the real ACL executor when true. Read-only tools ignore it.
+   * Defaults to true at the type level's call sites are expected to set
+   * this explicitly, never rely on an implicit default.
+   */
+  dryRun: boolean;
+  /** Only used by add_to_order — resolved catalog for expectedUnitPrice lookup. */
+  catalog?: AiCatalog;
+  /** Guest-facing identifiers ACL executors need but DenisTurnContext doesn't carry. */
+  session?: {
+    aiSessionId: string;
+    sessionToken?: string;
+    tableToken: string;
+    deviceFingerprint: string;
+    deviceToken?: string;
+  };
 };
 
 export type AgenticToolDefinition = {
   definition: OpenAiToolDefinition;
+  /** ADR-049 §4.1/§4.3 — side-effecting tools route through src/lib/denis/acl/ and respect dryRun; read-only tools do neither. */
+  sideEffecting: boolean;
   execute: (
     input: AgenticToolExecutorInput,
     args: Record<string, unknown>
@@ -43,6 +70,7 @@ const checkKitchenStatus: AgenticToolDefinition = {
       "Check the kitchen's current backlog and stress level for this venue right now.",
     parameters: { type: "object", properties: {}, required: [] },
   },
+  sideEffecting: false,
   execute: async ({ ctx }) => {
     const kitchen = ctx.venueOps?.stationStress?.find(
       (station) => station.station === "kitchen"
@@ -74,6 +102,7 @@ const checkStationStress: AgenticToolDefinition = {
       required: ["station"],
     },
   },
+  sideEffecting: false,
   execute: async ({ ctx }, args) => {
     const station = typeof args.station === "string" ? args.station : null;
     const match = station
@@ -97,6 +126,7 @@ const checkStock: AgenticToolDefinition = {
       "Check current stock/availability for menu items at this venue.",
     parameters: { type: "object", properties: {}, required: [] },
   },
+  sideEffecting: false,
   execute: async ({ admin, ctx }) => {
     const snapshot = await loadVenueInventorySnapshot(admin, {
       locationId: ctx.locationId,
@@ -115,6 +145,7 @@ const checkBill: AgenticToolDefinition = {
       "Check the current bill and amount due for this guest's table session.",
     parameters: { type: "object", properties: {}, required: [] },
   },
+  sideEffecting: false,
   execute: async ({ admin, ctx }) => {
     const sessionId = ctx.tableSessionState?.session.id;
     if (!sessionId) return { known: false };
@@ -129,7 +160,7 @@ const checkBill: AgenticToolDefinition = {
 };
 
 export const READ_ONLY_TOOL_CATALOG: Record<
-  AgenticToolName,
+  ReadOnlyToolName,
   AgenticToolDefinition
 > = {
   check_kitchen_status: checkKitchenStatus,

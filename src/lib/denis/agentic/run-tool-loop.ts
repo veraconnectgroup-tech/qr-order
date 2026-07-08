@@ -2,11 +2,13 @@ import { callAgenticToolTurn } from "@/lib/denis/runtime/perceive/call-agentic-t
 import type { OpenAiChatMessage } from "@/lib/ai/types";
 import {
   READ_ONLY_TOOL_CATALOG,
-  listReadOnlyToolDefinitions,
+  type AgenticToolDefinition,
   type AgenticToolExecutorInput,
   type AgenticToolName,
 } from "@/lib/denis/agentic/tool-catalog";
 import { logger } from "@/lib/logger";
+
+type ToolCatalog = Partial<Record<AgenticToolName, AgenticToolDefinition>>;
 
 export type ToolCallTrace = {
   name: string;
@@ -27,25 +29,28 @@ export type ToolLoopResult = {
   hitRoundCap: boolean;
 };
 
-function isKnownTool(name: string): name is AgenticToolName {
-  return name in READ_ONLY_TOOL_CATALOG;
-}
-
 /**
  * ADR-049 — bounded LLM-proposes/tool-executes loop. Round-capped by
  * design (never unbounded); a tool that errors or times out becomes a
  * first-class result the model sees, never a silently swallowed failure
  * the model could hallucinate success over.
+ *
+ * Defaults to the read-only catalog only — P1's existing shadow wiring
+ * keeps behaving exactly as before. Pass a wider catalog (e.g. merging
+ * in SIDE_EFFECTING_TOOL_CATALOG) explicitly to opt in; executorInput.dryRun
+ * is the caller's responsibility to set correctly either way (ADR-049 §4.3).
  */
 export async function runToolLoop(input: {
   messages: OpenAiChatMessage[];
   executorInput: AgenticToolExecutorInput;
   maxRounds: number;
   model?: string;
+  toolCatalog?: ToolCatalog;
 }): Promise<ToolLoopResult> {
   const messages = [...input.messages];
   const rounds: ToolLoopRoundTrace[] = [];
-  const toolDefinitions = listReadOnlyToolDefinitions();
+  const catalog: ToolCatalog = input.toolCatalog ?? READ_ONLY_TOOL_CATALOG;
+  const toolDefinitions = Object.values(catalog).map((tool) => tool!.definition);
 
   for (let round = 1; round <= input.maxRounds; round++) {
     const result = await callAgenticToolTurn(messages, {
@@ -65,8 +70,9 @@ export async function runToolLoop(input: {
     for (const call of result.toolCalls) {
       let toolResultPayload: unknown;
       let errorMessage: string | undefined;
+      const tool = catalog[call.name as AgenticToolName];
 
-      if (!isKnownTool(call.name)) {
+      if (!tool) {
         errorMessage = `unknown_tool:${call.name}`;
         toolResultPayload = { error: errorMessage };
       } else {
@@ -75,10 +81,7 @@ export async function runToolLoop(input: {
             string,
             unknown
           >;
-          toolResultPayload = await READ_ONLY_TOOL_CATALOG[call.name].execute(
-            input.executorInput,
-            args
-          );
+          toolResultPayload = await tool.execute(input.executorInput, args);
         } catch (error) {
           errorMessage =
             error instanceof Error ? error.message : String(error);

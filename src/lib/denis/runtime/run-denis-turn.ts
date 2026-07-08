@@ -851,7 +851,7 @@ async function runTdePerceive(input: {
         },
         { role: "user", content: input.body.message },
       ],
-      executorInput: { admin, ctx: input.ctx },
+      executorInput: { admin, ctx: input.ctx, dryRun: true },
       maxRounds: agenticConfig.maxRounds,
     })
       .then((result) => {
