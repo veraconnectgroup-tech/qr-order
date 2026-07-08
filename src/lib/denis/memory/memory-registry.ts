@@ -29,13 +29,22 @@ export type MemoryRegistryEntry = {
 
 const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
   {
+    table: "station_questions",
+    tier: "shift",
+    retentionDays: 1,
+    dayClose: "close",
+    pii: false,
+    notes:
+      "Per-station open question tracker (kitchen/bar ETA asks). Open rows past shift end should never carry into the next day — Day Close expires them (status -> 'expired', reason 'day_close'), the same status transition normal SLA TTL expiry already uses.",
+  },
+  {
     table: "station_question_turns",
     tier: "shift",
     retentionDays: 1,
     dayClose: "close",
     pii: false,
     notes:
-      "Per-question voice conversation log (kitchen/bar). Only meaningful for the shift it happened in — discarded once the question resolves/expires or the shift closes, never carried into the next day.",
+      "Per-question voice conversation log (kitchen/bar). Only meaningful for the shift it happened in. dayClose is declared 'close' but NOT YET WIRED in day-close.ts — falls through to the registry's 'skipped' bucket today. Real turn-log closing (delete/archive) is retention-enforcement scope (ADR-045 S3), not built here — do not claim this table is processed until it actually is.",
   },
 ];
 

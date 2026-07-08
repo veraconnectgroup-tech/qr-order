@@ -61,7 +61,7 @@ export async function runDenisDayClose(
   };
 
   for (const entry of entriesForDayClose()) {
-    if (entry.dayClose === "close" && entry.table === "station_question_turns") {
+    if (entry.dayClose === "close" && entry.table === "station_questions") {
       summary.expiredStationQuestions += await expireStationQuestions(admin, {
         locationId: input.locationId,
         reason: "day_close",

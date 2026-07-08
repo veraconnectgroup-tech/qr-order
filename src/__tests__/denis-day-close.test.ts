@@ -100,7 +100,10 @@ describe("runDenisDayClose", () => {
 
     expect(result.alreadyClosed).toBe(false);
     expect(result.summary.expiredStationQuestions).toBe(1);
-    expect(result.summary.processed).toContain("station_question_turns");
+    expect(result.summary.processed).toContain("station_questions");
+    // station_question_turns is registered (dayClose: "close") but has no
+    // wired handler yet — must show up as skipped, never falsely "processed".
+    expect(result.summary.skipped).toContain("station_question_turns:close");
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].table).toBe("denis_day_closes");
@@ -113,7 +116,11 @@ describe("runDenisDayClose", () => {
   it("is a no-op on a repeat call for the same location+date", async () => {
     const { admin, inserted, updated } = buildAdmin({
       existingDayClose: {
-        summary: { processed: ["station_question_turns"], skipped: [], expiredStationQuestions: 1 },
+        summary: {
+          processed: ["station_questions"],
+          skipped: ["station_question_turns:close"],
+          expiredStationQuestions: 1,
+        },
       },
       openQuestions: [{ id: "q1", location_id: "loc-1", station: "kitchen" }],
     });
