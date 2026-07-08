@@ -58,8 +58,9 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
   `stations/`.
 
 ### A2 — Agresivniji noise suppression za industrijsku buku
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Cursor Agent (Composer) — 2026-07-08 17:26
+- Napomena: Dodat `industrial-noise-profile.ts` (Wiener + flatness spektralna supresija) i `openIndustrialVoiceAudioPipeline()` u voice-audio-config; postojeći sala default (`openVoiceAudioPipeline`) nije diran.
 - Fajlovi: izmena `src/lib/denis/surfaces/voice/voice-audio-config.ts`, novi
   `src/lib/denis/surfaces/voice/industrial-noise-profile.ts`, test
 - Zadatak: dodati drugi audio profil pored postojećeg band-pass/noise-gate —
@@ -111,6 +112,7 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
 | Datum | Agent | Zadatak | Opis |
 |---|---|---|---|
 | 2026-07-08 | Cursor Agent (Composer) | A1 | VAD modul (energy+ZCR) + integracija u use-denis-voice — STT starta tek posle potvrde govora |
+| 2026-07-08 | Cursor Agent (Composer) | A2 | Industrial noise profil + openIndustrialVoiceAudioPipeline (spektralna supresija, sala default netaknut) |
 
 ---
 
