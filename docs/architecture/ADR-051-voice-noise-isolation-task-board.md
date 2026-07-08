@@ -97,8 +97,9 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
 ## Sekcija B — Zavisi od sekcije A (pokrenuti tek kad je A ZAVRŠENO I TESTIRANO)
 
 ### B1 — Tri audio režima po tipu stanice (sala / kuhinja / industrijska buka)
-- Status: TODO (blokirano dok A1–A4 nisu ZAVRŠENO I TESTIRANO)
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Cursor Agent (Composer) — 2026-07-08 18:23
+- Napomena: `resolveVoiceAudioProfile` + `openVoiceAudioPipelineForEnvironment` povezuju A1–A4; sala=guest wake+mild, kitchen=wake+industrial, bar=push-to-talk+industrial; integrisano u use-denis-voice, ai-concierge-chat i denis-question-strip.
 - Fajlovi: izmena `src/lib/denis/surfaces/voice/voice-audio-config.ts`,
   `src/lib/denis/stations/station-voice-context.ts`, config tip po stanici
 - Zadatak: povezati A1 (VAD) + A2 (noise profil) + A3 (wake word) + A4
@@ -117,6 +118,7 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
 | 2026-07-08 | Cursor Agent (Composer) | A2 | Industrial noise profil + openIndustrialVoiceAudioPipeline (spektralna supresija, sala default netaknut) |
 | 2026-07-08 | Cursor Agent (Composer) | A3 | Wake word detektor (Hej Denise) + requireWakeWord opcija u use-denis-voice |
 | 2026-07-08 | Cursor Agent (Composer) | A4 | Push-to-talk režim — VoiceInputMode + hold dugme na kuhinja/šank strip-u |
+| 2026-07-08 | Cursor Agent (Composer) | B1 | Tri audio režima (sala/kitchen/industrial) — centralni profile resolver + integracija |
 
 ---
 

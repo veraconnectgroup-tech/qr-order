@@ -17,6 +17,56 @@ export type VoiceAudioPipeline = {
   teardown: () => void;
 };
 
+export type VoiceAudioEnvironment = "sala" | "kitchen" | "industrial";
+
+export const VOICE_AUDIO_ENVIRONMENTS = [
+  "sala",
+  "kitchen",
+  "industrial",
+] as const satisfies readonly VoiceAudioEnvironment[];
+
+export type VoiceAudioProfileConfig = {
+  environment: VoiceAudioEnvironment;
+  inputMode: "wake-word" | "push-to-talk";
+  useIndustrialNoiseProfile: boolean;
+};
+
+/** Maps ADR-051 B1 regimes: sala / kuhinja / industrijska buka. */
+export function resolveVoiceAudioProfile(
+  environment: VoiceAudioEnvironment
+): VoiceAudioProfileConfig {
+  switch (environment) {
+    case "sala":
+      return {
+        environment,
+        inputMode: "wake-word",
+        useIndustrialNoiseProfile: false,
+      };
+    case "kitchen":
+      return {
+        environment,
+        inputMode: "wake-word",
+        useIndustrialNoiseProfile: true,
+      };
+    case "industrial":
+      return {
+        environment,
+        inputMode: "push-to-talk",
+        useIndustrialNoiseProfile: true,
+      };
+  }
+}
+
+export async function openVoiceAudioPipelineForEnvironment(
+  environment: VoiceAudioEnvironment
+): Promise<VoiceAudioPipeline | null> {
+  const profile = resolveVoiceAudioProfile(environment);
+  if (profile.useIndustrialNoiseProfile) {
+    return openIndustrialVoiceAudioPipeline();
+  }
+  return openVoiceAudioPipeline();
+}
+
 /** Build filtered mic graph for level metering (Web Speech API uses its own capture). */
 export async function openVoiceAudioPipeline(): Promise<VoiceAudioPipeline | null> {
   if (typeof window === "undefined") return null;

@@ -48,10 +48,10 @@ describe("station voice conversation", () => {
     expect(line).not.toMatch(/recite samo broj minuta/i);
   });
 
-  it("resolves station voice input mode for kitchen/bar", () => {
-    expect(resolveStationVoiceInputMode("kitchen")).toBe("push-to-talk");
+  it("resolves station voice input mode for kitchen vs bar", () => {
+    expect(resolveStationVoiceInputMode("kitchen")).toBe("wake-word");
     expect(resolveStationVoiceInputMode("bar")).toBe("push-to-talk");
-    expect(isPushToTalkMode(resolveStationVoiceInputMode("kitchen"))).toBe(true);
+    expect(isPushToTalkMode(resolveStationVoiceInputMode("bar"))).toBe(true);
     expect(isWakeWordMode("wake-word")).toBe(true);
     expect(isPushToTalkMode("wake-word")).toBe(false);
   });

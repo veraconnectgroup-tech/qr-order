@@ -917,6 +917,7 @@ export function AiConciergeChat({
     menuLanguage: menuLocale,
     autoSpeak: voiceTtsEnabled,
     sessionToken: sessionToken ?? token,
+    audioEnvironment: "sala",
   });
 
   const tChat = useCallback(

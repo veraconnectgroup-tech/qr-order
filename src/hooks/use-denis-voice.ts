@@ -9,6 +9,9 @@ import {
 } from "@/lib/denis/surfaces/voice/voice-activity-detector";
 import {
   openVoiceAudioPipeline,
+  openVoiceAudioPipelineForEnvironment,
+  resolveVoiceAudioProfile,
+  type VoiceAudioEnvironment,
   type VoiceAudioPipeline,
 } from "@/lib/denis/surfaces/voice/voice-audio-config";
 import {
@@ -77,6 +80,8 @@ export type UseDenisVoiceOptions = {
   requireWakeWord?: boolean;
   /** Sala: omit. Station noisy fallback: push-to-talk. Overrides requireWakeWord when set. */
   inputMode?: VoiceInputMode;
+  /** ADR-051 B1 — sala / kitchen / industrial selects pipeline + input mode together. */
+  audioEnvironment?: VoiceAudioEnvironment;
 };
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -111,10 +116,19 @@ export function useDenisVoice({
   sessionToken,
   requireWakeWord = false,
   inputMode,
+  audioEnvironment,
 }: UseDenisVoiceOptions) {
-  const pushToTalkMode = inputMode === "push-to-talk";
+  const environmentProfile = audioEnvironment
+    ? resolveVoiceAudioProfile(audioEnvironment)
+    : null;
+  const resolvedInputMode = environmentProfile?.inputMode ?? inputMode;
+  const pushToTalkMode = resolvedInputMode === "push-to-talk";
   const effectiveRequireWakeWord =
-    !pushToTalkMode && (requireWakeWord || inputMode === "wake-word");
+    !pushToTalkMode &&
+    (requireWakeWord ||
+      resolvedInputMode === "wake-word" ||
+      audioEnvironment === "sala" ||
+      audioEnvironment === "kitchen");
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -371,7 +385,10 @@ export function useDenisVoice({
       recognitionRef.current = recognition;
       setListening(true);
 
-      void openVoiceAudioPipeline()
+      void (audioEnvironment
+        ? openVoiceAudioPipelineForEnvironment(audioEnvironment)
+        : openVoiceAudioPipeline()
+      )
         .then(async (pipeline) => {
           if (!pipeline || !recognitionRef.current) return;
           audioPipelineRef.current = pipeline;
@@ -409,6 +426,7 @@ export function useDenisVoice({
       menuLanguage,
       requireWakeWord,
       inputMode,
+      audioEnvironment,
       pushToTalkMode,
       effectiveRequireWakeWord,
       stopListening,
@@ -431,5 +449,6 @@ export function useDenisVoice({
     speak,
     isVoiceTranscriptConfident,
     pushToTalkMode,
+    audioEnvironment: audioEnvironment ?? null,
   };
 }

@@ -18,6 +18,7 @@ import {
 import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-context";
 import {
   isPushToTalkMode,
+  resolveStationVoiceAudioEnvironment,
   resolveStationVoiceInputMode,
 } from "@/lib/denis/stations/station-voice-context";
 import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
@@ -108,17 +109,18 @@ export function DenisQuestionStrip({
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
-  const { speak, activate, voicePrimed, speaking, listen } =
+  const { speak, activate, voicePrimed, speaking } =
     useDenisStationVoice(locationId);
   const voiceInputMode = resolveStationVoiceInputMode(station);
+  const stationAudioEnvironment = resolveStationVoiceAudioEnvironment(station);
   const pushToTalkEnabled = isPushToTalkMode(voiceInputMode);
-  const pushToTalkVoice = useDenisVoice({
-    enabled: voicePrimed && pushToTalkEnabled,
+  const stationVoiceCapture = useDenisVoice({
+    enabled: voicePrimed,
     language: "sr",
     menuLanguage: "sr",
     autoSpeak: false,
     sessionToken: locationId,
-    inputMode: "push-to-talk",
+    audioEnvironment: stationAudioEnvironment,
   });
   const staffReplyHandlerRef = useRef<
     ((transcript: string) => void) | null
@@ -324,7 +326,13 @@ export function DenisQuestionStrip({
         staffReplyHandlerRef.current = onTranscript;
         return;
       }
-      window.setTimeout(() => listen(onTranscript), LISTEN_AFTER_SPEAK_MS);
+      window.setTimeout(() => {
+        stationVoiceCapture.startListening((result) => {
+          if (result.ok && result.transcript.trim()) {
+            onTranscript(result.transcript);
+          }
+        });
+      }, LISTEN_AFTER_SPEAK_MS);
     };
 
     const resolveLocally = (trimmed: string): boolean => {
@@ -459,7 +467,6 @@ export function DenisQuestionStrip({
     active,
     now,
     speak,
-    listen,
     handleAnswer,
     station,
     voicePrimed,
@@ -477,7 +484,7 @@ export function DenisQuestionStrip({
         aria-label="Drži za govor"
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId);
-          pushToTalkVoice.startListening((result) => {
+          stationVoiceCapture.startListening((result) => {
             if (!result.ok || !result.transcript.trim()) return;
             staffReplyHandlerRef.current?.(result.transcript);
           });
@@ -486,18 +493,18 @@ export function DenisQuestionStrip({
           if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
           }
-          pushToTalkVoice.stopListening();
+          stationVoiceCapture.stopListening();
         }}
         onPointerCancel={() => {
-          pushToTalkVoice.stopListening();
+          stationVoiceCapture.stopListening();
         }}
         className={`min-h-12 min-w-48 touch-target rounded-full border px-6 text-sm font-semibold transition ${
-          pushToTalkVoice.listening
+          stationVoiceCapture.listening
             ? "border-orange-400 bg-orange-500/30 text-orange-100"
             : "border-orange-500/50 bg-orange-500/15 text-orange-200 hover:bg-orange-500/25"
         }`}
       >
-        {pushToTalkVoice.listening ? "Slušam…" : "Drži za odgovor"}
+        {stationVoiceCapture.listening ? "Slušam…" : "Drži za odgovor"}
       </button>
     ) : null;
 
