@@ -7,6 +7,7 @@ describe("retrieveOperationalContextEvidence", () => {
     const ctx: GuestTurnOperationalContext = {
       stations: { kitchen: null, bar: null },
       guestFrustration: null,
+      oldestWaitMinutes: null,
       correlatedNote: null,
     };
     expect(retrieveOperationalContextEvidence(ctx)).toBe("");
@@ -21,6 +22,7 @@ describe("retrieveOperationalContextEvidence", () => {
     const ctx: GuestTurnOperationalContext = {
       stations: { kitchen: null, bar: null },
       guestFrustration: { level: "mild", signals: [] },
+      oldestWaitMinutes: null,
       correlatedNote: "kitchen (busy) is running behind while this guest's frustration reads mild.",
     };
     const result = retrieveOperationalContextEvidence(ctx);

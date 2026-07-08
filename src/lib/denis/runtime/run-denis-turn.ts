@@ -838,6 +838,7 @@ async function runTdePerceive(input: {
           assembleGuestTurnOperationalContext({
             venueOps: input.ctx.venueOps,
             mental: input.ctx.tableSessionState?.mental,
+            orders: input.ctx.tableSessionState?.commerce.orders,
           })
         )
       : null;
