@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   runContinuousEvalLoop,
+  runPromptEvolutionShadow,
   scoreSessionQuality,
   SESSION_QUALITY_ANOMALY_THRESHOLD,
 } from "@/lib/denis/eval/continuous-eval-loop";
@@ -203,6 +204,31 @@ describe("prompt-evolver", () => {
       )
     ).toBe(true);
     expect(canAutoDeployPromptEvolution(result, false)).toBe(false);
+  });
+});
+
+describe("runPromptEvolutionShadow", () => {
+  it("is not ready when fewer than the threshold of learnings have accumulated", async () => {
+    const status = await runPromptEvolutionShadow({
+      locationId: "loc-shadow-1",
+      sessionLearnings: buildSyntheticLearnings(3),
+    });
+
+    expect(status).not.toBeNull();
+    expect(status?.ready).toBe(false);
+    expect(status?.evolvedSection).toBeNull();
+  });
+
+  it("never throws and produces an A/B result once enough learnings accumulate in one call", async () => {
+    const status = await runPromptEvolutionShadow({
+      locationId: "loc-shadow-2",
+      sessionLearnings: buildSyntheticLearnings(PROMPT_LEARNING_THRESHOLD),
+    });
+
+    expect(status).not.toBeNull();
+    expect(status?.ready).toBe(true);
+    expect(status?.evolvedSection).toContain("Auto-evolved session learnings");
+    expect(status?.winner).not.toBeNull();
   });
 });
 
