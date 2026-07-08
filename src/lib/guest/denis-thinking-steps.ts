@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isGuestAllergyRelatedMessage } from "@/lib/denis/cognition/safety/allergy-guard";
 import {
   classifyGuestRecoveryIntent,
   isGuestPauseMessage,
@@ -12,6 +11,9 @@ import type { TranslationKey } from "@/lib/i18n/translations";
 export const DENIS_THINKING_STEP_MS = 2400;
 export const MAX_DENIS_THINKING_STEPS = 2;
 
+/** Honest fallback while server preview is in flight — never guess work we are not doing. */
+export const DENIS_THINKING_WAIT_KEY: TranslationKey = "ai.chat.thinking.quick";
+
 export type DenisThinkingContext =
   | "menu"
   | "order"
@@ -20,21 +22,6 @@ export type DenisThinkingContext =
   | "waiter"
   | "pause"
   | "general";
-
-export type DenisThinkingPersonalization = {
-  isReturningGuest?: boolean;
-  isLargeOrder?: boolean;
-};
-
-const THINKING_STEPS: Record<DenisThinkingContext, TranslationKey[]> = {
-  menu: ["ai.chat.thinking.menu", "ai.chat.thinking.recommend"],
-  order: ["ai.chat.thinking.menu", "ai.chat.thinking.order"],
-  status: ["ai.chat.thinking.status"],
-  payment: ["ai.chat.thinking.payment"],
-  waiter: ["ai.chat.thinking.waiter"],
-  pause: ["ai.chat.thinking.pause"],
-  general: ["ai.chat.thinking.social", "ai.chat.thinking.llm"],
-};
 
 export function capDenisThinkingStepKeys(
   keys: TranslationKey[]
@@ -53,57 +40,6 @@ export function resolveDenisThinkingContext(message: string): DenisThinkingConte
   if (intent === "waiter") return "waiter";
   if (intent === "order") return "order";
   return "general";
-}
-
-function resolvePersonalizedStepKey(
-  context: DenisThinkingContext,
-  message: string,
-  personalization?: DenisThinkingPersonalization
-): TranslationKey | null {
-  if (
-    isGuestAllergyRelatedMessage(message) &&
-    context !== "pause" &&
-    context !== "status" &&
-    context !== "payment" &&
-    context !== "waiter"
-  ) {
-    return "ai.chat.thinking.allergy";
-  }
-
-  if (!personalization) return null;
-
-  if (personalization.isLargeOrder && context === "order") {
-    return "ai.chat.thinking.largeOrder";
-  }
-
-  if (personalization.isReturningGuest && context === "menu") {
-    return "ai.chat.thinking.favorites";
-  }
-
-  return null;
-}
-
-export function resolveDenisThinkingStepKeys(
-  message: string,
-  personalization?: DenisThinkingPersonalization
-): TranslationKey[] {
-  const context = resolveDenisThinkingContext(message);
-  const base = [...THINKING_STEPS[context]];
-  const personalized = resolvePersonalizedStepKey(
-    context,
-    message,
-    personalization
-  );
-
-  if (personalized) {
-    const tail =
-      personalized === "ai.chat.thinking.allergy" && context === "general"
-        ? THINKING_STEPS.menu.filter((key) => key !== personalized)
-        : base.filter((key) => key !== personalized);
-    return capDenisThinkingStepKeys([personalized, ...tail]);
-  }
-
-  return capDenisThinkingStepKeys(base);
 }
 
 export function useRotatingThinkingLabel(

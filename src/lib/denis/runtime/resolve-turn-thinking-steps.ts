@@ -1,7 +1,13 @@
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 import { isGuestAllergyRelatedMessage } from "@/lib/denis/cognition/safety/allergy-guard";
 import type { ReflexTurnResult } from "@/lib/denis/kernel/reflex-plan";
+import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-types";
 import type { TranslationKey } from "@/lib/i18n/translations";
+
+export type TurnThinkingContextSignals = {
+  guestMemory?: GuestMemoryProjection | null;
+  cartLineCount?: number;
+};
 
 export const MAX_TURN_THINKING_STEPS = 2;
 
@@ -178,4 +184,57 @@ export function resolveTurnThinkingStepKeys(
         "ai.chat.thinking.recommend",
       ]);
   }
+}
+
+const MENU_STEP_KEYS = new Set<TranslationKey>([
+  "ai.chat.thinking.menu",
+  "ai.chat.thinking.recommend",
+]);
+
+function isMenuRelatedPlan(keys: TranslationKey[], turnPlan: TurnPlan): boolean {
+  if (keys.some((key) => MENU_STEP_KEYS.has(key))) return true;
+  return (
+    turnPlan.reason === "vague_recommend" ||
+    turnPlan.kind === "slot_extract" ||
+    turnPlan.kind === "relational_perceive"
+  );
+}
+
+function guestMemoryHasPersonalization(
+  memory: GuestMemoryProjection | null | undefined
+): boolean {
+  if (!memory?.hasMemoryConsent) return false;
+  return (
+    (memory.favoriteItems?.length ?? 0) > 0 ||
+    (memory.lastVisitItemNames?.length ?? 0) > 0 ||
+    memory.visitCount > 1
+  );
+}
+
+/** Add steps only when turn context proves that work will run. */
+export function enrichTurnThinkingStepKeys(
+  keys: TranslationKey[],
+  turnPlan: TurnPlan,
+  signals: TurnThinkingContextSignals = {}
+): TranslationKey[] {
+  const enriched = [...keys];
+
+  if (
+    guestMemoryHasPersonalization(signals.guestMemory) &&
+    isMenuRelatedPlan(keys, turnPlan) &&
+    !enriched.includes("ai.chat.thinking.favorites")
+  ) {
+    enriched.unshift("ai.chat.thinking.favorites");
+  }
+
+  const cartLines = signals.cartLineCount ?? 0;
+  if (
+    cartLines >= 4 &&
+    enriched.some((key) => key === "ai.chat.thinking.order") &&
+    !enriched.includes("ai.chat.thinking.largeOrder")
+  ) {
+    enriched.unshift("ai.chat.thinking.largeOrder");
+  }
+
+  return capTurnThinkingStepKeys(enriched);
 }

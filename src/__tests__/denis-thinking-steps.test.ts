@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   capDenisThinkingStepKeys,
   DENIS_THINKING_STEP_MS,
+  DENIS_THINKING_WAIT_KEY,
   MAX_DENIS_THINKING_STEPS,
   resolveDenisThinkingContext,
-  resolveDenisThinkingStepKeys,
 } from "@/lib/guest/denis-thinking-steps";
+import {
+  enrichTurnThinkingStepKeys,
+  resolveTurnThinkingStepKeys,
+} from "@/lib/denis/runtime/resolve-turn-thinking-steps";
 import {
   isGuestPauseMessage,
   isMenuBrowseMessage,
@@ -16,35 +20,19 @@ describe("denis-thinking-steps", () => {
     expect(resolveDenisThinkingContext("sta imate")).toBe("menu");
     expect(resolveDenisThinkingContext("Šta imate na meniju?")).toBe("menu");
     expect(isMenuBrowseMessage("preporuči mi pivo")).toBe(true);
-    expect(resolveDenisThinkingStepKeys("preporuči mi pivo")).toEqual([
-      "ai.chat.thinking.menu",
-      "ai.chat.thinking.recommend",
-    ]);
   });
 
   it("maps payment intent", () => {
     expect(resolveDenisThinkingContext("hoću da platim")).toBe("payment");
-    expect(resolveDenisThinkingStepKeys("Mogu li da platim?")).toEqual([
-      "ai.chat.thinking.payment",
-    ]);
   });
 
   it("maps pause phrases", () => {
     expect(resolveDenisThinkingContext("dođi za 5 min")).toBe("pause");
     expect(isGuestPauseMessage("nisam još")).toBe(true);
-    expect(resolveDenisThinkingStepKeys("dođi za 5 min")).toEqual([
-      "ai.chat.thinking.pause",
-    ]);
   });
 
-  it("maps status and order intents", () => {
-    expect(resolveDenisThinkingStepKeys("Kad stiže moj burger?")).toEqual([
-      "ai.chat.thinking.status",
-    ]);
-    expect(resolveDenisThinkingStepKeys("Hoću dva piva")).toEqual([
-      "ai.chat.thinking.menu",
-      "ai.chat.thinking.order",
-    ]);
+  it("uses honest wait key until server preview arrives", () => {
+    expect(DENIS_THINKING_WAIT_KEY).toBe("ai.chat.thinking.quick");
   });
 
   it("caps thinking steps at two", () => {
@@ -58,36 +46,103 @@ describe("denis-thinking-steps", () => {
     ).toEqual(["ai.chat.thinking.menu", "ai.chat.thinking.recommend"]);
   });
 
-  it("uses personalized steps for returning guests and allergy questions", () => {
+  it("uses 2.4s step rotation interval", () => {
+    expect(DENIS_THINKING_STEP_MS).toBe(2400);
+  });
+});
+
+describe("server turn thinking steps", () => {
+  it("maps status intent from turn plan", () => {
     expect(
-      resolveDenisThinkingStepKeys("sta imate", {
-        isReturningGuest: true,
+      resolveTurnThinkingStepKeys({
+        kind: "template_tell",
+        requiresLlm: false,
+        suppressUpsell: false,
+        reason: "commerce.status.open_order",
       })
-    ).toEqual([
-      "ai.chat.thinking.favorites",
-      "ai.chat.thinking.menu",
-    ]);
+    ).toEqual(["ai.chat.thinking.status"]);
+  });
 
-    expect(resolveDenisThinkingStepKeys("Hoću dva piva")).toEqual([
-      "ai.chat.thinking.menu",
-      "ai.chat.thinking.order",
-    ]);
+  it("adds favorites only when guest memory is loaded for a menu turn", () => {
+    const keys = enrichTurnThinkingStepKeys(
+      ["ai.chat.thinking.menu", "ai.chat.thinking.recommend"],
+      {
+        kind: "relational_perceive",
+        requiresLlm: true,
+        suppressUpsell: false,
+        reason: "vague_recommend",
+      },
+      {
+        guestMemory: {
+          allergies: [],
+          favoriteItems: ["Aperol Spritz"],
+          language: "sr",
+          favoriteProductIds: [],
+          allergySheetIds: [],
+          allergyLabels: [],
+          preferredLanguage: "sr",
+          visitCount: 3,
+          lastVisitItemNames: ["Aperol Spritz"],
+          lastVisit: "2026-01-01",
+          lastVisitAt: "2026-01-01",
+          avgSpend: 24,
+          mood: null,
+          hasMemoryConsent: true,
+        },
+      }
+    );
 
-    expect(
-      resolveDenisThinkingStepKeys("Da li imate nešto bez lešnika?")
-    ).toEqual(["ai.chat.thinking.allergy", "ai.chat.thinking.menu"]);
+    expect(keys[0]).toBe("ai.chat.thinking.favorites");
+    expect(keys).toHaveLength(2);
+  });
 
-    expect(
-      resolveDenisThinkingStepKeys("Hoću dva piva", {
-        isLargeOrder: true,
-      })
-    ).toEqual([
-      "ai.chat.thinking.largeOrder",
+  it("does not add favorites without memory consent", () => {
+    const keys = enrichTurnThinkingStepKeys(
+      ["ai.chat.thinking.menu", "ai.chat.thinking.recommend"],
+      {
+        kind: "relational_perceive",
+        requiresLlm: true,
+        suppressUpsell: false,
+        reason: "vague_recommend",
+      },
+      {
+        guestMemory: {
+          allergies: [],
+          favoriteItems: ["Aperol Spritz"],
+          language: "sr",
+          favoriteProductIds: [],
+          allergySheetIds: [],
+          allergyLabels: [],
+          preferredLanguage: "sr",
+          visitCount: 3,
+          lastVisitItemNames: [],
+          lastVisit: null,
+          lastVisitAt: null,
+          avgSpend: null,
+          mood: null,
+          hasMemoryConsent: false,
+        },
+      }
+    );
+
+    expect(keys).toEqual([
       "ai.chat.thinking.menu",
+      "ai.chat.thinking.recommend",
     ]);
   });
 
-  it("uses 2.4s step rotation interval", () => {
-    expect(DENIS_THINKING_STEP_MS).toBe(2400);
+  it("adds allergy step only when message mentions allergens", () => {
+    expect(
+      resolveTurnThinkingStepKeys(
+        {
+          kind: "relational_perceive",
+          requiresLlm: true,
+          suppressUpsell: false,
+          reason: "conversation.pure_social",
+        },
+        null,
+        "Da li imate nešto bez lešnika?"
+      )
+    ).toEqual(["ai.chat.thinking.allergy", "ai.chat.thinking.menu"]);
   });
 });

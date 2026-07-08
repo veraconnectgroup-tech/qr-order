@@ -4,7 +4,10 @@ import { decideTurnPlan } from "@/lib/denis/cognition/tde";
 import { tForAiGuestLanguage } from "@/lib/ai/guest-language";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { buildDenisTurnContext } from "@/lib/denis/runtime/build-turn-context";
-import { resolveTurnThinkingStepKeys } from "@/lib/denis/runtime/resolve-turn-thinking-steps";
+import {
+  enrichTurnThinkingStepKeys,
+  resolveTurnThinkingStepKeys,
+} from "@/lib/denis/runtime/resolve-turn-thinking-steps";
 import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -62,11 +65,18 @@ export async function runDenisThinkingPreview(
     message: parsed.data.message,
   });
 
-  const stepKeys = resolveTurnThinkingStepKeys(
+  const baseStepKeys = resolveTurnThinkingStepKeys(
     turnPlan,
     reflexTurn,
     parsed.data.message
   );
+  const cartLineCount =
+    (ctx.aiCartState?.draft.items?.length ?? 0) +
+    (ctx.manualCartDraft?.items?.length ?? 0);
+  const stepKeys = enrichTurnThinkingStepKeys(baseStepKeys, turnPlan, {
+    guestMemory: ctx.guestMemory,
+    cartLineCount,
+  });
   const language = parsed.data.language;
   const steps = stepKeys.map((key) => tForAiGuestLanguage(key, language));
 

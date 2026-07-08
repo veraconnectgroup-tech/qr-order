@@ -99,7 +99,7 @@ import {
 } from "@/lib/guest/denis-signal-client";
 import {
   MAX_DENIS_THINKING_STEPS,
-  resolveDenisThinkingStepKeys,
+  DENIS_THINKING_WAIT_KEY,
   useRotatingThinkingLabel,
 } from "@/lib/guest/denis-thinking-steps";
 import { transcriptEntriesToChatMessages } from "@/lib/guest/view-transcript-bootstrap";
@@ -926,34 +926,13 @@ export function AiConciergeChat({
     [chatLanguage]
   );
 
-  const thinkingPersonalization = useMemo(
-    () => ({
-      isReturningGuest:
-        (guestProfile?.visitHistory?.length ?? 0) > 0 ||
-        (guestProfile?.favorites?.length ?? 0) > 0 ||
-        guestProfile?.lastVisitAt != null,
-      isLargeOrder:
-        cartItems.reduce((sum, item) => sum + item.quantity, 0) >= 4 ||
-        cartItems.length >= 3,
-    }),
-    [guestProfile, cartItems]
-  );
-
   const thinkingSteps = useMemo(() => {
     if (serverThinkingSteps.length > 0) {
       return serverThinkingSteps.slice(0, MAX_DENIS_THINKING_STEPS);
     }
-    if (!pendingThinkingMessage) return [];
-    return resolveDenisThinkingStepKeys(
-      pendingThinkingMessage,
-      thinkingPersonalization
-    ).map((key) => tChat(key));
-  }, [
-    serverThinkingSteps,
-    pendingThinkingMessage,
-    thinkingPersonalization,
-    tChat,
-  ]);
+    if (!pendingThinkingMessage || !isTyping) return [];
+    return [tChat(DENIS_THINKING_WAIT_KEY)];
+  }, [serverThinkingSteps, pendingThinkingMessage, isTyping, tChat]);
 
   const thinkingHeadline = useRotatingThinkingLabel(thinkingSteps, isTyping);
 
