@@ -1,5 +1,9 @@
 import { callAgenticToolTurn } from "@/lib/denis/runtime/perceive/call-agentic-tool-turn";
-import type { OpenAiChatMessage } from "@/lib/ai/types";
+import type {
+  OpenAiCallResult,
+  OpenAiChatMessage,
+  OpenAiToolDefinition,
+} from "@/lib/ai/types";
 import {
   READ_ONLY_TOOL_CATALOG,
   type AgenticToolDefinition,
@@ -9,6 +13,16 @@ import {
 import { logger } from "@/lib/logger";
 
 type ToolCatalog = Partial<Record<AgenticToolName, AgenticToolDefinition>>;
+
+/** Model transport for one loop round — injectable so evals/tests can script rounds deterministically (no network). */
+export type ToolLoopModelCall = (
+  messages: OpenAiChatMessage[],
+  options: {
+    model?: string;
+    tools: OpenAiToolDefinition[];
+    toolChoice?: "auto" | "none";
+  }
+) => Promise<OpenAiCallResult>;
 
 export type ToolCallTrace = {
   name: string;
@@ -46,14 +60,17 @@ export async function runToolLoop(input: {
   maxRounds: number;
   model?: string;
   toolCatalog?: ToolCatalog;
+  /** Eval/test injection point — defaults to the real OpenAI call. */
+  callModel?: ToolLoopModelCall;
 }): Promise<ToolLoopResult> {
   const messages = [...input.messages];
   const rounds: ToolLoopRoundTrace[] = [];
   const catalog: ToolCatalog = input.toolCatalog ?? READ_ONLY_TOOL_CATALOG;
   const toolDefinitions = Object.values(catalog).map((tool) => tool!.definition);
+  const callModel = input.callModel ?? callAgenticToolTurn;
 
   for (let round = 1; round <= input.maxRounds; round++) {
-    const result = await callAgenticToolTurn(messages, {
+    const result = await callModel(messages, {
       model: input.model,
       tools: toolDefinitions,
       toolChoice: "auto",

@@ -52,6 +52,10 @@ import { VENUE_SIM_SESSION_TARGET } from "@/lib/denis/eval/fixtures/venue-sim/de
 import {
   WAITER_PARITY_MIN_PASS_RATE,
 } from "@/lib/denis/eval/run-waiter-parity";
+import {
+  formatToolUseEvalReport,
+  runToolUseEvalSuite,
+} from "@/lib/denis/eval/run-tool-use-fixture";
 
 describe("Denis eval fixtures M10", () => {
   it("runs full eval suite green", () => {
@@ -356,6 +360,17 @@ describe("Denis guest loyalty eval", () => {
     }
     expect(report.ok).toBe(true);
     expect(report.scenarioCount).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("Denis agentic tool-use eval (ADR-049 P3 gate)", () => {
+  it("tool-use scenario suite passes — required before any location leaves shadow", async () => {
+    const report = await runToolUseEvalSuite();
+    if (!report.ok) {
+      console.error(formatToolUseEvalReport(report));
+    }
+    expect(report.ok).toBe(true);
+    expect(report.total).toBeGreaterThanOrEqual(7);
   });
 });
 
