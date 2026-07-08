@@ -27,6 +27,12 @@ import {
   withStripeCircuit,
 } from "@/lib/stripe/with-stripe-circuit";
 import { clampTipAmount } from "@/lib/orders/tips";
+import { assertTotalPreserved } from "@/lib/loss-prevention/assert-total-preserved";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import {
+  loadSessionPaymentSnapshot,
+  sessionHasPaymentActivity,
+} from "@/lib/loss-prevention/session-payment-snapshot";
 
 const querySchema = z.object({
   sessionToken: zSessionToken(),
@@ -426,6 +432,35 @@ export const POST = withErrorHandler(
     return apiError("Split total exceeds order amount.", 400);
   }
 
+  if (parsed.data.mode === "equal") {
+    const remaining = roundMoney(orderTotal - existingTotals.amount);
+    const newAmount = roundMoney(
+      newSplits.reduce((sum, split) => sum + split.amount, 0)
+    );
+    const preserved = assertTotalPreserved(remaining, newAmount, "Split");
+    if (!preserved.ok) {
+      return apiError(preserved.error, preserved.status);
+    }
+  } else {
+    const selectedTotal = roundMoney(
+      newSplits[0]?.items?.reduce((sum, id) => {
+        const item = ctx.items.find((row) => row.id === id);
+        return sum + Number(item?.total ?? 0);
+      }, 0) ?? 0
+    );
+    const preserved = assertTotalPreserved(
+      selectedTotal,
+      newSplits[0]?.amount ?? 0,
+      "Split items"
+    );
+    if (!preserved.ok) {
+      return apiError(preserved.error, preserved.status);
+    }
+  }
+
+  const sessionSnapshot = await loadSessionPaymentSnapshot(admin, ctx.session.id);
+  const paymentActivity = sessionHasPaymentActivity(sessionSnapshot);
+
   const createdSplits: SplitPaymentRow[] = [];
 
   for (const split of newSplits) {
@@ -492,6 +527,25 @@ export const POST = withErrorHandler(
     .eq("id", orderId);
 
   const allSplits = [...ctx.splits, ...createdSplits];
+
+  await recordSensitiveAction(admin, {
+    orderId,
+    sessionId: ctx.session.id,
+    action: "split",
+    targetType: "order",
+    targetId: orderId,
+    actorType: "guest",
+    actorId: ctx.session.id,
+    context: {
+      mode: parsed.data.mode,
+      orderTotal,
+      splitTotal: projected.amount,
+      splitCount: allSplits.length,
+      paymentActivity,
+    },
+    riskFlag: paymentActivity,
+  });
+
   let enriched;
   try {
     enriched = await attachClientSecrets(allSplits, ctx.org.stripe_account_id!);

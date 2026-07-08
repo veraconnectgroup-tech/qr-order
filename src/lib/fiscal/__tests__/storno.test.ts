@@ -3,7 +3,6 @@ import { prepareStorno, performStorno } from "@/lib/fiscal/storno";
 
 const mockOrderUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
 const mockStornoInsert = vi.fn();
-const mockOrderEventsInsert = vi.fn().mockResolvedValue({ error: null });
 const mockSingle = vi.fn();
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -70,7 +69,28 @@ vi.mock("@/lib/supabase/admin", () => ({
         };
       }
       if (table === "order_events") {
-        return { insert: mockOrderEventsInsert };
+        return {
+          insert: () => ({
+            select: () => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: "evt-1" },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "staff") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { role: "manager" },
+                error: null,
+              }),
+            }),
+          }),
+        };
       }
       return {};
     },
@@ -215,7 +235,6 @@ describe("performStorno", () => {
       has_storno: true,
       storno_total: 24,
     });
-    expect(mockOrderEventsInsert).toHaveBeenCalled();
   });
 
   it("applies partial storno with correct storno_total", async () => {

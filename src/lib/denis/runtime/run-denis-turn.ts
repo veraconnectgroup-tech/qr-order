@@ -23,6 +23,16 @@ import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn
 import { assembleGuestTurnOperationalContext } from "@/lib/denis/cognition/context/assemble-operational-context";
 import { retrieveOperationalContextEvidence } from "@/lib/denis/cognition/context/retrievers/operational-context-evidence";
 import { runToolLoop } from "@/lib/denis/agentic/run-tool-loop";
+import {
+  buildAgenticLivePerceiveResponse,
+  runAgenticLiveTurn,
+} from "@/lib/denis/agentic/run-agentic-live-turn";
+import { resolveAgenticTurnPolicy } from "@/lib/denis/agentic/resolve-agentic-turn-policy";
+import {
+  buildAuditEntry,
+  persistDenisAuditEntry,
+} from "@/lib/denis/compliance/persist-denis-audit-entry";
+import { deriveGuestMemoryToken } from "@/lib/guest/denis-guest-memory-token";
 import { loadVenueManifestsForLocation } from "@/lib/denis/cognition/manifest/load-venue-manifests";
 import { loadTurnPlaybookBlock } from "@/lib/denis/cognition/manifest/resolve-playbook-pack";
 import { resolveContextAwareness } from "@/lib/denis/intelligence/resolve-context-awareness";
@@ -728,11 +738,15 @@ async function runTdePerceive(input: {
   );
 
   let catalog: MenuRagCatalog | null = null;
+  let aiCatalog: Awaited<ReturnType<typeof getCachedMenuForLocation>> | null =
+    null;
   try {
     const menuPayload = await getCachedMenuForLocation(input.body.locationId);
     catalog = menuPayload.catalog ?? null;
+    aiCatalog = menuPayload;
   } catch {
     catalog = null;
+    aiCatalog = null;
   }
 
   let menuRagEmbeddings = null;
@@ -828,21 +842,15 @@ async function runTdePerceive(input: {
         )
       : null;
 
-  // ADR-049 P1 — agentic tool-use loop, shadow-only. Fires and logs a
-  // trace of what the loop WOULD have answered/checked; never awaited on
-  // the critical path and never allowed to affect the real guest response
-  // in P1 (that's P4+, gated separately behind eval + founder review).
   const agenticConfig = input.ctx.config.ops.agenticToolLoop;
-  if (
-    agenticConfig.enabled &&
-    isInCanaryCohort(operationalContextCohortKey, agenticConfig.canaryPercent)
-  ) {
+  const agenticPolicy = resolveAgenticTurnPolicy(
+    input.ctx.config,
+    operationalContextCohortKey
+  );
+
+  if (agenticPolicy.mode === "shadow") {
     const admin = createAdminClient();
     void runToolLoop({
-      // Minimal shadow harness — not the full production evidence prompt
-      // (that lives in planEvidence/buildSituationPack below). Enough to
-      // validate the loop mechanism against real venue data without
-      // duplicating the whole prompt-building pipeline for a shadow run.
       messages: [
         {
           role: "system",
@@ -869,10 +877,6 @@ async function runTdePerceive(input: {
           hitRoundCap: result.hitRoundCap,
           toolsCalled,
         });
-        // Persist to the session timeline so the continuous-eval flywheel
-        // (session.eval outbox -> learning extractor) can see shadow-loop
-        // behavior alongside the turns it already mines — a log line alone
-        // is invisible to that loop.
         if (input.ctx.aiSessionId) {
           await appendDenisTimelineEvent(admin, {
             aiSessionId: input.ctx.aiSessionId,
@@ -926,6 +930,74 @@ async function runTdePerceive(input: {
     perceiveMode,
     beliefs: tdeBeliefs,
   });
+
+  if (agenticPolicy.mode === "live" && turnPlan.requiresLlm) {
+    const admin = createAdminClient();
+    const liveResult = await runAgenticLiveTurn({
+      admin,
+      ctx: input.ctx,
+      body: input.body,
+      evidence,
+      transcript: transcriptForTurn,
+      maxRounds: agenticConfig.maxRounds,
+      model: modelRoute.model,
+      catalog: aiCatalog,
+      aiSessionId: input.ctx.aiSessionId,
+    });
+
+    if (liveResult.ok) {
+      if (input.ctx.aiSessionId) {
+        await appendDenisTimelineEvent(admin, {
+          aiSessionId: input.ctx.aiSessionId,
+          eventType: "agentic.live_trace",
+          payload: {
+            rounds: liveResult.rounds,
+            hitRoundCap: liveResult.hitRoundCap,
+            toolsCalled: liveResult.toolsCalled,
+          },
+        });
+      }
+
+      return {
+        response: buildAgenticLivePerceiveResponse({
+          message: liveResult.message,
+          sessionId: input.ctx.aiSessionId,
+          language: input.body.language,
+        }),
+        turnPlan,
+        llmUsed: true,
+        planKind: turnPlan.kind,
+        tier: profile.tier,
+        modelTier: modelRoute.modelTier,
+        model: modelRoute.model,
+        complexityScore: modelRoute.complexity.score,
+        evidencePointers: [...evidence.pointers],
+      };
+    }
+
+    if (!agenticPolicy.legacySingleCallFallback) {
+      return {
+        response: buildAgenticLivePerceiveResponse({
+          message: defaultGuestChatFallback(input.body.language),
+          sessionId: input.ctx.aiSessionId,
+          language: input.body.language,
+        }),
+        turnPlan,
+        llmUsed: false,
+        planKind: turnPlan.kind,
+        tier: profile.tier,
+        modelTier: modelRoute.modelTier,
+        model: modelRoute.model,
+        complexityScore: modelRoute.complexity.score,
+        evidencePointers: evidence.pointers,
+      };
+    }
+
+    logger.warn("agentic live turn failed — falling back to single-call perceive", {
+      locationId: input.body.locationId,
+      error: liveResult.error,
+    });
+  }
 
   const response = await perceiveGuestChatTurn(input.body, {
     turnPlan,
@@ -1884,6 +1956,39 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       })
     );
   }
+
+  void persistDenisAuditEntry(admin, {
+    orgId: orgResult.data.orgId,
+    locationId: parsed.data.locationId,
+    tableSessionId: ctx.tableSessionState?.session.id ?? null,
+    guestTokenHash:
+      parsed.data.deviceFingerprint &&
+      parsed.data.deviceFingerprint.length >= 8
+        ? deriveGuestMemoryToken(
+            parsed.data.locationId,
+            parsed.data.deviceFingerprint
+          )
+        : null,
+    entry: buildAuditEntry({
+      traceId,
+      sessionId: timelineAiSessionId ?? parsed.data.sessionId ?? "unknown",
+      guestMessage: parsed.data.message,
+      denisResponse: guestMessage ?? "",
+      turnPlan: {
+        kind: perceiveResult.turnPlan.kind,
+        reason: perceiveResult.turnPlan.reason,
+      },
+      tier: perceiveResult.tier,
+      llmUsed: perceiveResult.llmUsed,
+      model: perceiveResult.model ?? perceiveResult.modelTier ?? "unknown",
+      latencyMs: Math.round(timings.totalMs ?? 0),
+      allergyGuard: null,
+      orderSubmitted: Boolean(turnSubmitOutcome.orderId),
+      creditsCost: creditsCharged,
+      guestMemoryUsed: Boolean(ctx.guestMemory?.hasMemoryConsent),
+      evidencePointers: perceiveResult.evidencePointers,
+    }),
+  }).catch(() => undefined);
 
   logDenisTurnObservability({
     traceId,

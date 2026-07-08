@@ -9,6 +9,12 @@
  * (location_id, business_date) row in denis_day_closes.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  closeOpenBusObligationsForLocation,
+  closeOpenWaiterCallsForLocation,
+  deleteShiftStaffTableHintsForLocation,
+  purgeDenisSchedulesForDayClose,
+} from "@/lib/denis/memory/day-close-sweeps";
 import { entriesForDayClose } from "@/lib/denis/memory/memory-registry";
 import {
   expireStationQuestionTurns,
@@ -21,6 +27,11 @@ export type DayCloseSummary = {
   skipped: string[];
   expiredStationQuestions: number;
   expiredStationQuestionTurns: number;
+  cancelledBusObligations: number;
+  resolvedWaiterCalls: number;
+  deletedStaffTableHints: number;
+  cancelledSchedules: number;
+  deletedSchedules: number;
 };
 
 export type RunDenisDayCloseResult = {
@@ -63,6 +74,11 @@ export async function runDenisDayClose(
     skipped: [],
     expiredStationQuestions: 0,
     expiredStationQuestionTurns: 0,
+    cancelledBusObligations: 0,
+    resolvedWaiterCalls: 0,
+    deletedStaffTableHints: 0,
+    cancelledSchedules: 0,
+    deletedSchedules: 0,
   };
 
   for (const entry of entriesForDayClose()) {
@@ -84,11 +100,48 @@ export async function runDenisDayClose(
       continue;
     }
 
+    if (entry.dayClose === "close" && entry.table === "table_bus_obligations") {
+      summary.cancelledBusObligations += await closeOpenBusObligationsForLocation(
+        admin,
+        input.locationId
+      );
+      summary.processed.push(entry.table);
+      continue;
+    }
+
+    if (entry.dayClose === "close" && entry.table === "waiter_calls") {
+      summary.resolvedWaiterCalls += await closeOpenWaiterCallsForLocation(
+        admin,
+        input.locationId
+      );
+      summary.processed.push(entry.table);
+      continue;
+    }
+
+    if (entry.dayClose === "delete" && entry.table === "denis_staff_table_hints") {
+      summary.deletedStaffTableHints += await deleteShiftStaffTableHintsForLocation(
+        admin,
+        input.locationId
+      );
+      summary.processed.push(entry.table);
+      continue;
+    }
+
+    if (entry.dayClose === "delete" && entry.table === "denis_schedules") {
+      const scheduleResult = await purgeDenisSchedulesForDayClose(
+        admin,
+        input.locationId
+      );
+      summary.cancelledSchedules += scheduleResult.cancelled;
+      summary.deletedSchedules += scheduleResult.deleted;
+      summary.processed.push(entry.table);
+      continue;
+    }
+
     // rollup: ADR-042 rhythm rollup runs on its own schedule — Day Close
-    // doesn't duplicate it. delete/anonymize: no registry entries yet
-    // (ADR-045 S3 scope beyond station_question_turns). Anything else
-    // falling through has no wired handler — recorded as skipped rather
-    // than silently ignored.
+    // doesn't duplicate it. denis_timeline: explicit keep (no policy yet).
+    // Anything else falling through has no wired handler — recorded as
+    // skipped rather than silently ignored.
     summary.skipped.push(`${entry.table}:${entry.dayClose}`);
   }
 

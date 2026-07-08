@@ -6,6 +6,11 @@ import {
   type BuildDenisShiftRecapInput,
   type DenisShiftRecap,
 } from "@/lib/admin/denis-shift-report";
+import {
+  buildSuspiciousDigest,
+  type SuspiciousDigest,
+} from "@/lib/loss-prevention/build-suspicious-digest";
+import type { OpenSuspiciousFlag } from "@/lib/loss-prevention/load-open-suspicious-flags";
 
 export type DailyReportProductRollupRow = {
   name: string;
@@ -66,6 +71,12 @@ export type DailyReport = {
     };
     highlights: string[];
     issues: string[];
+    /** ADR-044 — owner suspicious digest (neutral tone). */
+    lossPrevention: {
+      lines: string[];
+      totalFlags: number;
+      overflow: number;
+    };
     denisShift: DenisShiftRecap;
     /** Per-day product rollup for weekly owner report (S14). */
     productRollup: DailyReportProductRollupRow[];
@@ -91,6 +102,8 @@ export type BuildDailyReportInput = {
   newGuestSessions: number;
   denisShift?: BuildDenisShiftRecapInput;
   productRollup?: DailyReportProductRollupRow[];
+  suspiciousFlags?: OpenSuspiciousFlag[];
+  suspiciousDigestMaxItems?: number;
 };
 
 export function aggregateProductRollupFromItems(
@@ -280,6 +293,11 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
     ? buildDenisShiftRecap(input.denisShift)
     : emptyDenisShiftRecap(input.prepTimeAvgMinutes);
 
+  const suspiciousDigest: SuspiciousDigest = buildSuspiciousDigest(
+    input.suspiciousFlags ?? [],
+    input.suspiciousDigestMaxItems ?? 10
+  );
+
   return {
     date: input.date,
     venueName: input.venueName,
@@ -313,6 +331,11 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
       },
       highlights,
       issues,
+      lossPrevention: {
+        lines: suspiciousDigest.lines,
+        totalFlags: suspiciousDigest.totalFlags,
+        overflow: suspiciousDigest.overflow,
+      },
       denisShift,
       productRollup: input.productRollup ?? [],
     },
@@ -562,6 +585,16 @@ export function formatDailyReportDigest(report: DailyReport): DailyReportDigest 
       ? [`✅ HIGHLIGHT: ${s.highlights.join(" · ")}`]
       : []),
     ...(s.issues.length ? [`⚠️ ZA SUTRA: ${s.issues.join(" · ")}`] : []),
+    ...(s.lossPrevention.lines.length
+      ? [
+          "",
+          `🔍 ZA PROVERU (${s.lossPrevention.totalFlags}):`,
+          ...s.lossPrevention.lines.map((line) => `• ${line}`),
+          ...(s.lossPrevention.overflow > 0
+            ? [`… još ${s.lossPrevention.overflow} u dashboardu`]
+            : []),
+        ]
+      : []),
     "",
     "Detalji: Admin → Denis Insights",
   ]

@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { logger } from "@/lib/logger";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { orgIdForLocation } from "@/lib/webhooks/org-context";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
 
 export type OrderForRefund = {
   id: string;
@@ -123,6 +124,22 @@ export async function processRefund(
     amount: refundAmount,
     reason,
   } as never);
+
+  await recordSensitiveAction(admin, {
+    orderId: order.id,
+    action: "refund",
+    targetType: "payment",
+    targetId: order.id,
+    actorStaffId: staffId,
+    reason,
+    context: {
+      amount: refundAmount,
+      refundId: refund.id,
+      full: isFullRefund,
+      paymentMethod: order.payment_method,
+    },
+    idempotencyKey: `refund:${refund.id}`,
+  });
 
   logger.info("Order refunded", {
     orderId: order.id,

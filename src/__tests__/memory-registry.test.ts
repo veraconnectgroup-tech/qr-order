@@ -47,13 +47,12 @@ describe("memory-registry", () => {
     }
   });
 
-  it("only lets audit/restaurant-tier (permanent by design) or explicitly-undecided entries have a null retention", () => {
+  it("only lets audit/restaurant-tier (permanent by design) have a null retention", () => {
     for (const entry of MEMORY_REGISTRY_FOR_TESTS) {
       if (entry.retentionDays == null && entry.tier !== "audit" && entry.tier !== "restaurant") {
-        // The one deliberate exception: denis_timeline has no policy yet by
-        // design (see memory-registry.ts's module docstring) — anything else
-        // claiming "no retention" outside audit/restaurant should be caught here.
-        expect(entry.table).toBe("denis_timeline");
+        throw new Error(
+          `Unexpected null retention on ${entry.table} (${entry.tier}) — set retentionDays or move to audit/restaurant tier`
+        );
       }
     }
   });

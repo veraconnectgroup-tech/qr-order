@@ -11,6 +11,8 @@ export type DenisRolloutPresetId =
   | "denis_kernel_ordering"
   | "denis_full_shadow_act"
   | "denis_act_submit_pilot"
+  | "agentic_canary_5"
+  | "agentic_live_canary_5"
   | "table_os_pilot";
 
 export type DenisRolloutPreset = {
@@ -138,6 +140,53 @@ export const DENIS_ROLLOUT_PRESETS: DenisRolloutPreset[] = [
       },
       memory: { returnGuestEnabled: false },
       surfaces: { voiceEnabled: false },
+    },
+  },
+  {
+    id: "agentic_canary_5",
+    label: "Agentic loop — shadow 5%",
+    description:
+      "ADR-049 P4 pilot: agentic tool loop runs in shadow for ~5% of sessions. Guests still see single-call perceive until shadowOnly is disabled in config.",
+    patch: {
+      version: 1,
+      rollout: { mode: "canary", canaryPercent: 10 },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: { slotExtractEnabled: true, ...SHADOW_SAFE_ACT },
+      ops: {
+        agenticToolLoop: {
+          enabled: true,
+          shadowOnly: true,
+          canaryPercent: 5,
+          maxRounds: 3,
+          legacySingleCallFallback: true,
+        },
+      },
+    },
+  },
+  {
+    id: "agentic_live_canary_5",
+    label: "Agentic loop — live 5%",
+    description:
+      "ADR-049 P4: live agentic tool loop for ~5% cohort; legacy single-call fallback remains on if the loop fails.",
+    patch: {
+      version: 1,
+      rollout: { mode: "denis_only" },
+      llm: { narrateWithLlm: true, slotExtractWithLlm: false },
+      ordering: {
+        slotExtractEnabled: true,
+        actLayerEnabled: true,
+        actDryRun: false,
+        actSubmitEnabled: true,
+      },
+      ops: {
+        agenticToolLoop: {
+          enabled: true,
+          shadowOnly: false,
+          canaryPercent: 5,
+          maxRounds: 3,
+          legacySingleCallFallback: true,
+        },
+      },
     },
   },
   {

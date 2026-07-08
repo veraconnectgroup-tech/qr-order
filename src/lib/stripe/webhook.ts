@@ -11,6 +11,8 @@ import { roundMoney } from "@/lib/tax/vat";
 import { getCurrentTraceId } from "@/lib/resilience/trace.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toJson } from "@/lib/supabase/json";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import { evaluateFailedPaymentPaidMismatch } from "@/lib/loss-prevention/payment-guardrails";
 import type { Json } from "@/types/database";
 
 const PROCESSING_STALE_MS = 30_000;
@@ -197,6 +199,46 @@ async function processStripeWebhookEvent(
           .eq("id", pi.metadata.split_payment_id);
         break;
       }
+
+      const { data: existingOrder } = await admin
+        .from("orders")
+        .select("id, payment_status, session_id")
+        .eq("stripe_payment_intent_id", pi.id)
+        .maybeSingle();
+
+      const orderRow = existingOrder as {
+        id: string;
+        payment_status: string;
+        session_id: string | null;
+      } | null;
+
+      if (orderRow) {
+        const mismatch = evaluateFailedPaymentPaidMismatch({
+          webhookStatus: "failed",
+          orderPaymentStatus: orderRow.payment_status,
+        });
+
+        if (!mismatch.allowed) {
+          await recordSensitiveAction(admin, {
+            orderId: orderRow.id,
+            sessionId: orderRow.session_id,
+            action: "payment_mismatch",
+            targetType: "payment",
+            targetId: orderRow.id,
+            actorType: "system",
+            reason: mismatch.error ?? "Payment failed but order marked paid",
+            riskFlag: true,
+            context: {
+              paymentIntentId: pi.id,
+              orderPaymentStatus: orderRow.payment_status,
+              webhookStatus: "failed",
+            },
+            idempotencyKey: `payment-failed-mismatch:${pi.id}`,
+          });
+          break;
+        }
+      }
+
       await admin
         .from("orders")
         .update({ payment_status: "failed", status: "rejected" })

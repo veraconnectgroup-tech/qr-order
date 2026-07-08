@@ -324,6 +324,76 @@ function checkOpenAiBoundary(report: ComplianceReport): void {
   }
 }
 
+/** ADR-045 §4.4 — guest turn paths must not read audit-tier stores. */
+export const ADR045_GUEST_TURN_FORBIDDEN_IMPORTS = [
+  "@/lib/admin/load-denis-audit-trail",
+  "@/lib/denis/compliance/audit-trail",
+] as const;
+
+const ADR045_GUEST_TURN_PATH_PREFIXES = [
+  "src/lib/denis/runtime/",
+  "src/lib/denis/cognition/perceive/",
+  "src/lib/ai/",
+] as const;
+
+const ADR045_GUEST_TURN_PATH_ALLOWLIST = new Set([
+  "src/lib/denis/runtime/act/persist-ai-session-after-order-submit.ts",
+]);
+
+function isAdr045GuestTurnPath(normalized: string): boolean {
+  if (!ADR045_GUEST_TURN_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+    return false;
+  }
+  if (normalized.startsWith("src/lib/ai/") && normalized.includes("/admin/")) {
+    return false;
+  }
+  return true;
+}
+
+function checkAdr045GuestTurnAuditBoundary(report: ComplianceReport): void {
+  const srcRoot = join(REPO_ROOT, "src");
+  for (const file of walkTsFiles(srcRoot)) {
+    const normalized = rel(file);
+    if (!isAdr045GuestTurnPath(normalized)) continue;
+    if (ADR045_GUEST_TURN_PATH_ALLOWLIST.has(normalized)) continue;
+
+    const content = readFileSync(file, "utf8");
+    for (const forbidden of ADR045_GUEST_TURN_FORBIDDEN_IMPORTS) {
+      if (content.includes(`from "${forbidden}"`) || content.includes(`from '${forbidden}'`)) {
+        pushIssue(report, {
+          severity: "error",
+          code: "ADR045-GUEST-AUDIT",
+          message: `Guest turn path must not import audit store (${forbidden}) — ADR-045 §4.4`,
+          file: normalized,
+        });
+      }
+    }
+  }
+}
+
+/** ADR-045 §4.4 — restaurant learning must not load raw guest memory rows. */
+function checkAdr045LearningPiiBoundary(report: ComplianceReport): void {
+  const learningRoot = join(REPO_ROOT, "src/lib/denis/learning");
+  for (const file of walkTsFiles(learningRoot)) {
+    const normalized = rel(file);
+    if (normalized.includes("/guest-memory/")) continue;
+
+    const content = readFileSync(file, "utf8");
+    if (
+      content.includes('from "@/lib/guest/denis-guest-memory-store"') ||
+      content.includes("from '@/lib/guest/denis-guest-memory-store'")
+    ) {
+      pushIssue(report, {
+        severity: "error",
+        code: "ADR045-LEARNING-PII",
+        message:
+          "Restaurant learning must not import denis-guest-memory-store outside guest-memory/ — ADR-045 §4.4",
+        file: normalized,
+      });
+    }
+  }
+}
+
 /** Run all Denis architecture compliance checks. */
 export function runDenisArchitectureCompliance(): ComplianceReport {
   const report: ComplianceReport = {
@@ -341,6 +411,8 @@ export function runDenisArchitectureCompliance(): ComplianceReport {
   checkChatServiceLineBudget(report);
   checkOpenAiBoundary(report);
   checkProactiveDecisionSpine(report);
+  checkAdr045GuestTurnAuditBoundary(report);
+  checkAdr045LearningPiiBoundary(report);
 
   report.ok = report.errors.length === 0;
   return report;

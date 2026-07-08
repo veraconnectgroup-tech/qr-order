@@ -7,6 +7,11 @@ import { signFiscalJournalStorno } from "@/lib/fiscal/runtime/sign-journal-trans
 import { mapFiscalPaymentType } from "@/lib/fiscal/runtime/map-fiscal-payment-type";
 import { logger } from "@/lib/logger";
 import { processRefund } from "@/lib/stripe/refund";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import {
+  evaluateCashRefundGuard,
+  isCashPaymentMethod,
+} from "@/lib/loss-prevention/cash-risk";
 import type { Json } from "@/types/database";
 
 /** System actor for webhook/POS storno when no staff UUID is available. */
@@ -106,6 +111,27 @@ export async function prepareStorno(
   }
 
   const row = parseStornoOrderRow(order);
+
+  if (
+    isCashPaymentMethod(row.payment_method) &&
+    req.performedBy !== FISCAL_STORNO_SYSTEM_ACTOR
+  ) {
+    const { data: staff } = await admin
+      .from("staff")
+      .select("role")
+      .eq("id", req.performedBy)
+      .maybeSingle();
+
+    const cashGuard = evaluateCashRefundGuard({
+      paymentMethod: row.payment_method,
+      reason: req.reason,
+      actorRole: (staff as { role: string } | null)?.role ?? "staff",
+    });
+
+    if (!cashGuard.allowed) {
+      return { error: cashGuard.error, code: cashGuard.status };
+    }
+  }
 
   if (!row.tse_signature) {
     return {
@@ -362,17 +388,20 @@ export async function performStorno(
     }
   }
 
-  await admin.from("order_events").insert({
-    order_id: order.id,
-    event_type: "storno",
-    payload: {
+  await recordSensitiveAction(admin, {
+    orderId: order.id,
+    action: "refund",
+    targetType: "order",
+    targetId: order.id,
+    actorStaffId: req.performedBy,
+    reason: req.reason,
+    context: {
       storno_id: stornoId,
       amount: stornoAmount,
       type: stornoType,
-      reason: req.reason,
+      fiscal: true,
     },
-    actor_type: "staff",
-    actor_id: req.performedBy,
+    idempotencyKey: `storno:${stornoId}`,
   });
 
   logger.info("Order storno completed", {

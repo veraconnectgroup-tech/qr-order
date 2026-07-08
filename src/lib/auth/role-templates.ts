@@ -59,6 +59,7 @@ const MANAGER_PERMISSIONS: readonly PermissionKey[] = [
   "payments.refund",
   "surface.admin.access",
   "denis.ops.read",
+  "audit.suspicious.view",
 ];
 
 /** Default permission bundles — versioned in code (ADR-024 §5). */

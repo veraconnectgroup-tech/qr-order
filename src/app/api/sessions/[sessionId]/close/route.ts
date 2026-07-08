@@ -5,7 +5,16 @@ import { closeTableSession } from "@/lib/sessions/session-devices";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { zOrderNotesOptional } from "@/lib/security/zod-fields";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import { evaluateSessionCloseBalance } from "@/lib/loss-prevention/payment-guardrails";
+import { loadSessionPaymentSnapshot } from "@/lib/loss-prevention/session-payment-snapshot";
+import { z } from "zod";
 import type { Staff } from "@/types";
+
+const closeSchema = z.object({
+  closeReason: zOrderNotesOptional(),
+});
 
 async function loadStaff(): Promise<Staff | null> {
   const supabase = await createServerClient();
@@ -73,7 +82,44 @@ export const POST = withErrorHandler(
       return apiError("Unauthorized.", 403);
     }
 
+    let closeReason: string | null = null;
+    try {
+      const body = await req.json();
+      const parsed = closeSchema.safeParse(body);
+      if (parsed.success) {
+        closeReason = parsed.data.closeReason ?? null;
+      }
+    } catch {
+      // Body optional — manual close without JSON is allowed when balance is zero.
+    }
+
+    const snapshot = await loadSessionPaymentSnapshot(admin, sessionId);
+    const openBalance = snapshot?.openBalance ?? 0;
+    const balanceCheck = evaluateSessionCloseBalance({
+      openBalance,
+      reason: closeReason,
+    });
+
+    if (!balanceCheck.allowed) {
+      return apiError(balanceCheck.error ?? "Cannot close session.", balanceCheck.status ?? 400);
+    }
+
     await closeTableSession(admin, sessionId);
+
+    if (balanceCheck.riskFlag) {
+      await recordSensitiveAction(admin, {
+        sessionId,
+        action: "session_close",
+        targetType: "session",
+        targetId: sessionId,
+        actorStaffId: staff.id,
+        reason: closeReason,
+        riskFlag: true,
+        context: {
+          openBalance,
+        },
+      });
+    }
 
     return apiSuccess({ closed: true });
   }

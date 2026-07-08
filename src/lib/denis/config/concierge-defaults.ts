@@ -138,6 +138,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       shadowOnly: true,
       canaryPercent: 0,
       maxRounds: 3,
+      legacySingleCallFallback: true,
     },
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
@@ -185,6 +186,18 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     tableTurnaround: {
       enabled: false,
       busSlaMinutes: 8,
+    },
+    lossPrevention: {
+      enabled: false,
+      voidLadderEnabled: false,
+      transferInvariantsEnabled: false,
+      paymentGuardrailsEnabled: false,
+      cashRiskEnabled: false,
+      discountPatternsEnabled: false,
+      suspiciousReportEnabled: false,
+      discountDeviationMultiplier: 2,
+      digestMaxItems: 10,
+      cashSessionOpenMinutes: 120,
     },
   },
   learning: {

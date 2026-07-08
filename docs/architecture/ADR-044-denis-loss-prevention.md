@@ -1,6 +1,6 @@
 # ADR-044 — Denis Owner Control & Loss Prevention (Denis čuva kuću)
 
-**Status:** Approved · **Datum:** 2026-07-01
+**Status:** Implemented · **Datum:** 2026-07-01
 **Sesije:** [ADR-044-session-prompts.md](./ADR-044-session-prompts.md)
 **Prethodi:** ADR-043 (station truth + host/revenue) — **ADR-044 kreće tek posle ADR-043 S7 "go"** (guardrails čitaju station istinu i timeline).
 

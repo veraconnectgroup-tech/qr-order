@@ -16,6 +16,12 @@ import { createServerClient } from "@/lib/supabase/server";
 import { dispatchOrgWebhook } from "@/lib/webhooks/dispatch";
 import { emitDenisSessionCompleted } from "@/lib/webhooks/emit-denis-session-events";
 import { logger } from "@/lib/logger";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import {
+  evaluateCashPaidWithoutFiscal,
+  isCashPaymentMethod,
+  locationRequiresFiscalReceipt,
+} from "@/lib/loss-prevention/cash-risk";
 import type { Staff } from "@/types";
 
 type SessionOrderRow = {
@@ -293,7 +299,9 @@ export const POST = withErrorHandler(
 
     const { data: unpaidRaw, error: unpaidError } = await admin
       .from("orders")
-      .select("id, total, tip_amount, payment_status, payment_method, is_split")
+      .select(
+        "id, total, tip_amount, payment_status, payment_method, is_split, tse_signature"
+      )
       .eq("session_id", sessionId)
       .neq("payment_status", "paid")
       .not("status", "in", '("rejected","cancelled")');
@@ -310,6 +318,7 @@ export const POST = withErrorHandler(
         payment_status: string;
         payment_method: string;
         is_split: boolean;
+        tse_signature: string | null;
       }>) ?? [];
 
     if (unpaidOrders.some((order) => order.is_split)) {
@@ -321,6 +330,10 @@ export const POST = withErrorHandler(
 
     const traceId = getCurrentTraceId() ?? crypto.randomUUID();
     const inPersonMethods = new Set(["at_bar", "card_at_table"]);
+    const fiscalRequired = await locationRequiresFiscalReceipt(
+      admin,
+      session.location_id
+    );
 
     if (unpaidOrders.length > 0) {
       const { error: methodError } = await admin
@@ -378,6 +391,37 @@ export const POST = withErrorHandler(
 
       if (paidError) {
         return apiError(paidError.message, 500);
+      }
+
+      for (const order of unpaidOrders) {
+        const settledTotal =
+          Number(order.total) + Number(order.tip_amount ?? 0);
+        const cashRisk = evaluateCashPaidWithoutFiscal({
+          paymentMethod,
+          tseSignature: order.tse_signature,
+          fiscalRequired,
+        });
+
+        await recordSensitiveAction(admin, {
+          orderId: order.id,
+          sessionId,
+          action: isCashPaymentMethod(paymentMethod)
+            ? "payment_mismatch"
+            : "manager_override",
+          targetType: "order",
+          targetId: order.id,
+          actorStaffId: staff.id,
+          reason: cashRisk.reason,
+          riskFlag: cashRisk.riskFlag,
+          context: {
+            paymentMethod,
+            amount: settledTotal,
+            fiscalRequired,
+            tseSignature: order.tse_signature,
+            settleType: "session_bill",
+          },
+          idempotencyKey: `settle:${order.id}:${paymentMethod}`,
+        });
       }
     }
 

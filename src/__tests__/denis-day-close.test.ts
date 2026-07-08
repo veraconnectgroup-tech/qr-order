@@ -9,7 +9,8 @@ function buildAdmin(input: {
   openQuestions: OpenQuestion[];
 }) {
   const inserted: Array<{ table: string; row: Record<string, unknown> }> = [];
-  const updated: Array<{ status: string }> = [];
+  const updated: Array<{ table: string; status: string }> = [];
+  const deleted: Array<{ table: string; count: number }> = [];
 
   const from = (table: string) => {
     if (table === "denis_day_closes") {
@@ -37,7 +38,7 @@ function buildAdmin(input: {
           eq: () => ({
             eq: () => ({
               select: async () => {
-                updated.push(patch);
+                updated.push({ table, status: patch.status });
                 return {
                   data: input.openQuestions.map((q) => ({
                     ...q,
@@ -93,6 +94,61 @@ function buildAdmin(input: {
       };
     }
 
+    if (
+      table === "table_bus_obligations" ||
+      table === "waiter_calls"
+    ) {
+      return {
+        update: (patch: Record<string, unknown>) => ({
+          eq: () => ({
+            eq: () => ({
+              select: async () => {
+                updated.push({ table, status: String(patch.status ?? "updated") });
+                return { data: [{ id: `${table}-1` }], error: null };
+              },
+            }),
+            in: () => ({
+              select: async () => {
+                updated.push({ table, status: String(patch.status ?? "updated") });
+                return { data: [{ id: `${table}-1` }], error: null };
+              },
+            }),
+          }),
+        }),
+      };
+    }
+
+    if (table === "denis_staff_table_hints" || table === "denis_schedules") {
+      return {
+        update: (patch: Record<string, unknown>) => ({
+          eq: () => ({
+            in: () => ({
+              select: async () => {
+                updated.push({ table, status: String(patch.status ?? "updated") });
+                return { data: [{ id: `${table}-1` }], error: null };
+              },
+            }),
+          }),
+        }),
+        delete: () => ({
+          eq: () => ({
+            is: () => ({
+              select: async () => {
+                deleted.push({ table, count: 1 });
+                return { data: [{ id: `${table}-1` }], error: null };
+              },
+            }),
+            in: () => ({
+              select: async () => {
+                deleted.push({ table, count: 1 });
+                return { data: [{ id: `${table}-1` }], error: null };
+              },
+            }),
+          }),
+        }),
+      };
+    }
+
     throw new Error(`unexpected table ${table}`);
   };
 
@@ -100,6 +156,7 @@ function buildAdmin(input: {
     admin: { from } as unknown as SupabaseClient,
     inserted,
     updated,
+    deleted,
   };
 }
 
@@ -108,7 +165,7 @@ vi.mock("@/lib/denis/notifications/dispatch-staff-notification", () => ({
 }));
 
 describe("runDenisDayClose", () => {
-  it("expires open station_questions with reason day_close and records the day close row", async () => {
+  it("closes all shift-tier registry entries and records the day close row", async () => {
     const { admin, inserted } = buildAdmin({
       existingDayClose: null,
       openQuestions: [{ id: "q1", location_id: "loc-1", station: "kitchen" }],
@@ -121,22 +178,23 @@ describe("runDenisDayClose", () => {
 
     expect(result.alreadyClosed).toBe(false);
     expect(result.summary.expiredStationQuestions).toBe(1);
-    expect(result.summary.processed).toContain("station_questions");
-    // station_question_turns is registered (dayClose: "close") and now wired
-    // via expireStationQuestionTurns() — must show up as processed, not skipped.
     expect(result.summary.expiredStationQuestionTurns).toBe(1);
-    expect(result.summary.processed).toContain("station_question_turns");
-    // Other shift-tier entries (ADR-045 S1 inventory) are registered but not
-    // yet wired into Day Close — must show up as honestly skipped, never
-    // silently dropped or falsely claimed as processed.
-    expect(result.summary.skipped).toEqual(
+    expect(result.summary.cancelledBusObligations).toBe(1);
+    expect(result.summary.resolvedWaiterCalls).toBe(1);
+    expect(result.summary.deletedStaffTableHints).toBe(1);
+    expect(result.summary.cancelledSchedules).toBe(1);
+    expect(result.summary.deletedSchedules).toBe(1);
+    expect(result.summary.processed).toEqual(
       expect.arrayContaining([
-        "table_bus_obligations:close",
-        "denis_staff_table_hints:delete",
-        "waiter_calls:close",
-        "denis_schedules:delete",
+        "station_questions",
+        "station_question_turns",
+        "table_bus_obligations",
+        "denis_staff_table_hints",
+        "waiter_calls",
+        "denis_schedules",
       ])
     );
+    expect(result.summary.skipped).toEqual([]);
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].table).toBe("denis_day_closes");
@@ -154,6 +212,11 @@ describe("runDenisDayClose", () => {
           skipped: [],
           expiredStationQuestions: 1,
           expiredStationQuestionTurns: 1,
+          cancelledBusObligations: 0,
+          resolvedWaiterCalls: 0,
+          deletedStaffTableHints: 0,
+          cancelledSchedules: 0,
+          deletedSchedules: 0,
         },
       },
       openQuestions: [{ id: "q1", location_id: "loc-1", station: "kitchen" }],

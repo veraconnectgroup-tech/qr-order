@@ -28,6 +28,7 @@ import {
 } from "@/lib/denis/config/prep-time-priors";
 import { loadDenisHealthMetrics } from "@/lib/denis/monitoring";
 import type { FeedbackRow } from "@/lib/denis/platform/feedback-intelligence";
+import { loadOpenSuspiciousFlags } from "@/lib/loss-prevention/load-open-suspicious-flags";
 import { loadLocationFeedbackRows } from "@/lib/denis/platform/load-location-feedback-rows";
 import {
   loadEightySixEventsForRange,
@@ -634,6 +635,11 @@ export async function loadDailyReportForLocation(
       }
     ).organization?.currency ?? "RSD";
 
+  const suspiciousFlags = await loadOpenSuspiciousFlags(admin, input.locationId, {
+    sinceIso: range.from,
+    limit: 50,
+  });
+
   return buildDailyReport({
     date,
     venueName: (location as { name: string }).name,
@@ -653,5 +659,6 @@ export async function loadDailyReportForLocation(
     newGuestSessions: guestCounts.newGuests,
     denisShift,
     productRollup,
+    suspiciousFlags,
   });
 }

@@ -74,7 +74,7 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "close",
     pii: false,
     notes:
-      "Waiter 'bus this table' obligation after payment (paid_at -> bussed_at). Same-service lifecycle as station_questions — not yet wired into Day Close, falls through to 'skipped' until a real sweep is built.",
+      "Waiter 'bus this table' obligation after payment (paid_at -> bussed_at). Same-service lifecycle as station_questions — Day Close cancels open rows (status -> 'cancelled').",
   },
   {
     table: "denis_staff_table_hints",
@@ -83,7 +83,7 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "delete",
     pii: true,
     notes:
-      "Free-text staff note pinned to a table — the ADR's own canonical example ('table 8 is nervous'). Already has an expires_at column and index, but nothing sweeps expired rows today. Free text may reference a specific guest situation — treat as PII. Not yet wired into Day Close.",
+      "Free-text staff note pinned to a table — the ADR's own canonical example ('table 8 is nervous'). Day Close deletes all active hints for the location (shift-tier, no cross-day carry).",
   },
   {
     table: "waiter_calls",
@@ -92,7 +92,7 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "close",
     pii: false,
     notes:
-      "Guest-initiated waiter call. Same-service signal, no cross-day meaning. Not yet wired into Day Close.",
+      "Guest-initiated waiter call. Same-service signal, no cross-day meaning. Day Close resolves pending/acknowledged calls.",
   },
   {
     table: "denis_schedules",
@@ -101,16 +101,16 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "delete",
     pii: false,
     notes:
-      "Anticipation job queue (e.g. dessert-nudge wake). Rows aren't deleted after completed/cancelled today — accumulates. Not yet wired into Day Close.",
+      "Anticipation job queue (e.g. dessert-nudge wake). Day Close cancels pending/processing rows and purges completed/cancelled rows for the location.",
   },
   {
     table: "denis_timeline",
     tier: "shift",
-    retentionDays: null,
+    retentionDays: 90,
     dayClose: "keep",
     pii: true,
     notes:
-      "Append-only per-session event log (proactive offers, order facts, station answers, agentic shadow traces). ADR-045 §3 names this as shift ('today's portion') but nothing splits or expires anything — it grows forever today. Payloads can carry guest-turn-derived content. Deliberately left retentionDays: null / dayClose: 'keep' rather than inventing a sweep: the eval flywheel reads across weeks and this may double as audit-adjacent evidence — needs an explicit product/compliance decision before any row is ever deleted here.",
+      "Append-only per-session event log. 90-day retention balances eval flywheel needs (ADR-019 continuous eval) with GDPR shift-tier cleanup — Day Close keeps rows (rollup reads today); retention job deletes events older than 90 days.",
   },
 
   // --- restaurant tier: permanent, restaurant-level, never personal ---
@@ -177,7 +177,7 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     dayClose: "keep",
     pii: true,
     notes:
-      "CRITICAL GAP, not a retention problem: this table and its reader (src/lib/admin/load-denis-audit-trail.ts) exist, and buildAuditEntry() (src/lib/denis/compliance/audit-trail.ts) constructs the right shape (guest_input_hash, decision_path, allergy_detail, expires_at) — but nothing in the codebase actually calls it and inserts. This table is always empty today. It looks like the intended Denis-specific compliance/allergy audit journal and isn't wired to anything. Needs explicit product/compliance sign-off on what should be logged before building a writer — flagged, not silently fixed here.",
+      "Denis per-turn compliance audit journal — writer wired in run-denis-turn.ts via persistDenisAuditEntry(). Guest input is SHA-256 hashed; allergy rows retain 180d, others 30d per auditRetentionDays().",
   },
   {
     table: "commerce_experience_events",

@@ -19,6 +19,7 @@ export type PermissionKey =
   | "payments.refund"
   | "analytics.read"
   | "denis.ops.read"
+  | "audit.suspicious.view"
   // Administration (§4.2)
   | "menu.read"
   | "menu.edit"
@@ -131,6 +132,11 @@ export const PERMISSION_CATALOG: Record<PermissionKey, PermissionMeta> = {
     domain: "operations",
     label: "Denis ops",
     description: "Denis ops / copilot panel",
+  },
+  "audit.suspicious.view": {
+    domain: "operations",
+    label: "Suspicious activity review",
+    description: "Owner/manager loss-prevention flags and daily digest (ADR-044)",
   },
   "menu.read": {
     domain: "administration",

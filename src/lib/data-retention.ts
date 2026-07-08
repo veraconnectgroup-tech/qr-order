@@ -25,6 +25,10 @@ export const DATA_RETENTION = {
     days: 365,
     note: "1 year — compliance minimum",
   },
+  orderEvents: {
+    days: 730,
+    note: "2 years — sensitive action journal (ADR-044 / GoBD context)",
+  },
 } as const;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;

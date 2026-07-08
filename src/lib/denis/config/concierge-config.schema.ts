@@ -318,6 +318,33 @@ const ConciergeTableTurnaroundSchema = z
     busSlaMinutes: 8,
   });
 
+/** ADR-044 — loss prevention guardrails (journal always on; flags gated by config). */
+const ConciergeLossPreventionSchema = z
+  .object({
+    enabled: z.boolean(),
+    voidLadderEnabled: z.boolean(),
+    transferInvariantsEnabled: z.boolean(),
+    paymentGuardrailsEnabled: z.boolean(),
+    cashRiskEnabled: z.boolean(),
+    discountPatternsEnabled: z.boolean(),
+    suspiciousReportEnabled: z.boolean(),
+    discountDeviationMultiplier: z.number().min(1).max(10),
+    digestMaxItems: z.number().int().min(1).max(50),
+    cashSessionOpenMinutes: z.number().int().min(30).max(480),
+  })
+  .default({
+    enabled: false,
+    voidLadderEnabled: false,
+    transferInvariantsEnabled: false,
+    paymentGuardrailsEnabled: false,
+    cashRiskEnabled: false,
+    discountPatternsEnabled: false,
+    suspiciousReportEnabled: false,
+    discountDeviationMultiplier: 2,
+    digestMaxItems: 10,
+    cashSessionOpenMinutes: 120,
+  });
+
 /**
  * ADR-049 — bounded LLM-proposes/tool-executes loop (kitchen/stock/bill
  * checks mid-conversation). P1 scope: read-only tools only, shadowOnly
@@ -331,12 +358,15 @@ const ConciergeAgenticToolLoopSchema = z
     shadowOnly: z.boolean(),
     canaryPercent: z.number().int().min(0).max(100),
     maxRounds: z.number().int().min(1).max(6),
+    /** P5 — when false at 100% canary, legacy single-call perceive is skipped for the cohort. */
+    legacySingleCallFallback: z.boolean(),
   })
   .default({
     enabled: false,
     shadowOnly: true,
     canaryPercent: 0,
     maxRounds: 3,
+    legacySingleCallFallback: true,
   });
 
 const ConciergeOpsSchema = z.object({
@@ -368,6 +398,8 @@ const ConciergeOpsSchema = z.object({
   serviceRecovery: ConciergeServiceRecoverySchema,
   /** ADR-043 S13 — table turnaround after payment (bus obligation). */
   tableTurnaround: ConciergeTableTurnaroundSchema,
+  /** ADR-044 — owner loss prevention guardrails + suspicious digest. */
+  lossPrevention: ConciergeLossPreventionSchema,
 });
 
 const ConciergeLearningSchema = z.object({

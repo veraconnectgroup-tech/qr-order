@@ -13,6 +13,7 @@ import type {
 import { sanitizeOrderNotes } from "@/lib/security/sanitize";
 import { findOrderByIdempotencyKey } from "@/lib/orders/idempotency";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -92,6 +93,27 @@ export async function persistOrder(
   }
 
   const rpcResult = data as CreateGuestOrderRpcResult;
+
+  if (!rpcResult.already_existed && pricing.discountAmount > 0) {
+    await recordSensitiveAction(admin, {
+      orderId: rpcResult.order_id,
+      sessionId: sessionIdForMode(draft),
+      action: "discount",
+      targetType: "order",
+      targetId: rpcResult.order_id,
+      actorType: "guest",
+      reason: pricing.promoCodeId ? "promo_code" : "discount",
+      context: {
+        discountAmount: pricing.discountAmount,
+        promoCodeId: pricing.promoCodeId,
+        subtotal: pricing.subtotal,
+        finalTotal: pricing.finalTotal,
+      },
+      idempotencyKey: pricing.promoCodeId
+        ? `discount:${rpcResult.order_id}:${pricing.promoCodeId}`
+        : `discount:${rpcResult.order_id}`,
+    });
+  }
 
   if (rpcResult.already_existed && idempotencyKey) {
     const existing = await findOrderByIdempotencyKey(admin, idempotencyKey);

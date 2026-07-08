@@ -3,9 +3,9 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { verifyAiGuestContext } from "@/lib/ai/verify-guest-context";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import {
-  deleteGuestMemory,
   loadGuestMemoryProjection,
 } from "@/lib/guest/denis-guest-memory-store";
+import { forgetGuestCompletely } from "@/lib/denis/memory/forget-guest";
 import { withRateLimitByKey } from "@/lib/rate-limit";
 import { zSessionToken, zUuid } from "@/lib/security/zod-fields";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -72,11 +72,11 @@ export const DELETE = withErrorHandler(
       return apiError("Guest memory is not enabled.", 403);
     }
 
-    const ok = await deleteGuestMemory(admin, {
+    const forgetResult = await forgetGuestCompletely(admin, {
       locationId: parsed.data.locationId,
       deviceFingerprint: parsed.data.deviceFingerprint,
     });
 
-    return apiSuccess({ deleted: ok });
+    return apiSuccess({ deleted: forgetResult.memoryDeleted, ...forgetResult });
   }
 );

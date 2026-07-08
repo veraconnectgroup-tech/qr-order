@@ -1,6 +1,8 @@
 
 import { z } from "zod";
 import { auditLog } from "@/lib/audit/log";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import { evaluateVoidLadder } from "@/lib/loss-prevention/evaluate-void-ladder";
 import { safeJsonParse } from "@/lib/api/safe-json";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { apiError, apiSuccess } from "@/lib/api-response";
@@ -364,6 +366,32 @@ export const PATCH = withErrorHandler(
       access.order.payment_method !== "card_terminal" &&
       access.order.payment_method !== "unset";
 
+    let voidLadder:
+      | ReturnType<typeof evaluateVoidLadder>
+      | null = null;
+
+    if (status === "rejected" || status === "cancelled") {
+      const { data: stationRows } = await admin
+        .from("order_station_states")
+        .select("station, status")
+        .eq("order_id", orderId);
+
+      voidLadder = evaluateVoidLadder({
+        orderStatus: access.order.status,
+        paymentStatus: access.order.payment_status,
+        reason: rejectionReason,
+        actorRole: access.staff.role,
+        stationStates: (stationRows ?? []) as Array<{
+          station: string;
+          status: string;
+        }>,
+      });
+
+      if (!voidLadder.allowed) {
+        return apiError(voidLadder.error, voidLadder.status);
+      }
+    }
+
     if (status === "rejected") {
       updates.rejection_reason = rejectionReason ?? null;
 
@@ -493,6 +521,28 @@ export const PATCH = withErrorHandler(
         order_id: orderId,
         status,
       });
+
+      if (voidLadder?.allowed) {
+        await recordSensitiveAction(admin, {
+          orderId,
+          sessionId: access.order.session_id,
+          action: "void",
+          targetType: "order",
+          targetId: orderId,
+          actorStaffId: access.staff.id,
+          reason: rejectionReason ?? null,
+          approvedByStaffId: voidLadder.requiresManager
+            ? access.staff.id
+            : null,
+          riskFlag:
+            voidLadder.phase === "served" && !rejectionReason?.trim(),
+          context: {
+            voidPhase: voidLadder.phase,
+            previousStatus: access.order.status,
+            newStatus: status,
+          },
+        });
+      }
     }
 
     if (access.order.session_id) {

@@ -2,6 +2,8 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { DATA_RETENTION, retentionCutoffIso } from "@/lib/data-retention";
+import { runMemoryRetentionSweep } from "@/lib/denis/memory/memory-retention";
+import { sweepOpenCashSessions } from "@/lib/loss-prevention/sweep-open-cash-sessions";
 import { logger } from "@/lib/logger";
 import { closeTableSession } from "@/lib/sessions/session-devices";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -90,15 +92,51 @@ export const GET = withErrorHandler("cron-cleanup-get", async (req, _ctx) => {
     return apiError("Turn trace cleanup failed", 500);
   }
 
+  let memoryRetentionSummary = null as Awaited<
+    ReturnType<typeof runMemoryRetentionSweep>
+  > | null;
+
+  let cashSessionSweep = { scanned: 0, flagged: 0 };
+
+  try {
+    memoryRetentionSummary = await runMemoryRetentionSweep(admin, now);
+  } catch (retentionError) {
+    logger.error("Memory retention sweep failed", {
+      error:
+        retentionError instanceof Error
+          ? retentionError.message
+          : String(retentionError),
+    });
+    return apiError("Memory retention sweep failed", 500);
+  }
+
+  try {
+    cashSessionSweep = await sweepOpenCashSessions(admin, {
+      openMinutesThreshold: 120,
+      now,
+    });
+  } catch (cashSweepError) {
+    logger.error("Open cash session sweep failed", {
+      error:
+        cashSweepError instanceof Error
+          ? cashSweepError.message
+          : String(cashSweepError),
+    });
+  }
+
   logger.info("Cron cleanup completed", {
     sessionsClosed,
     webhookCutoff,
     traceCutoff,
+    memoryRetention: memoryRetentionSummary.processed,
+    cashSessionSweep,
   });
 
   return apiSuccess({
     sessionsClosed,
     webhookEventsPurgedBefore: webhookCutoff,
     turnTracesPurgedBefore: traceCutoff,
+    memoryRetention: memoryRetentionSummary,
+    cashSessionSweep,
   });
 });

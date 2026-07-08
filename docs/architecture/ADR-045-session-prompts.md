@@ -24,11 +24,11 @@
 
 | Sesija | Status | Ključni fajlovi |
 |--------|--------|-----------------|
-| **S1 — Memory registar + mapa** | ⬜ | |
-| **S2 — Day Close pipeline** | ✅ | `src/lib/denis/memory/day-close.ts`, `src/app/api/cron/daily-closing/route.ts`, `src/lib/denis/stations/station-questions.ts`, `supabase/migrations/00160_denis_day_closes.sql`, `src/types/database.ts` |
-| **S3 — Retencija izvršna + zaboravi me** | ⬜ | |
-| **S4 — Granice čitanja** | ⬜ | |
-| **S5 — Pilot + verifikacija** | ⬜ | |
+| **S1 — Memory registar + mapa** | ✅ | `src/lib/denis/memory/memory-registry.ts`, `src/__tests__/memory-registry.test.ts` |
+| **S2 — Day Close pipeline** | ✅ | `src/lib/denis/memory/day-close.ts`, `src/lib/denis/memory/day-close-sweeps.ts`, `src/app/api/cron/daily-closing/route.ts` |
+| **S3 — Retencija izvršna + zaboravi me** | ✅ | `src/lib/denis/memory/memory-retention.ts`, `src/lib/denis/memory/forget-guest.ts`, `src/app/api/cron/cleanup/route.ts` |
+| **S4 — Granice čitanja** | ✅ | `src/lib/denis/architecture/compliance.ts` (ADR045-* checks), `src/__tests__/memory-reading-boundaries.test.ts` |
+| **S5 — Pilot + verifikacija** | ✅ | `src/__tests__/adr-045-pilot.test.ts`, `src/__tests__/denis-day-close.test.ts`, `src/__tests__/memory-retention.test.ts`, `src/__tests__/forget-guest.test.ts` |
 
 ---
 

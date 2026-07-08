@@ -16,6 +16,10 @@ import {
 } from "@/hooks/use-realtime-waiter-calls";
 import { useStaffNotifications } from "@/hooks/use-staff-notifications";
 import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts";
+import {
+  resolveSuspiciousFlagAction,
+  useSuspiciousFlags,
+} from "@/hooks/use-suspicious-flags";
 import { remindWaiterForReadyStationAction } from "@/lib/dashboard/operations-actions";
 import {
   DEFAULT_READY_STUCK_MINUTES,
@@ -123,7 +127,14 @@ function ActionLink({
 }
 
 export function OperationsCenter() {
-  const { locationId, staffName, aiConciergeEnabled } = useDashboard();
+  const { locationId, staffName, aiConciergeEnabled, staffRole } =
+    useDashboard();
+  const canViewSuspicious = staffRole === "owner" || staffRole === "manager";
+  const {
+    flags: suspiciousFlags,
+    loading: suspiciousLoading,
+    refresh: refreshSuspicious,
+  } = useSuspiciousFlags(canViewSuspicious);
   const { notifications, loading: notifLoading, refresh: refreshNotifs } =
     useStaffNotifications();
   const { data: copilot, loading: copilotLoading } = useDenisStaffCopilot();
@@ -183,7 +194,22 @@ export function OperationsCenter() {
     questions.length > 0 ||
     readyStuck.length > 0 ||
     riskTables.length > 0 ||
-    pendingCalls.length > 0;
+    pendingCalls.length > 0 ||
+    suspiciousFlags.length > 0;
+
+  function resolveSuspicious(eventId: string, outcome: "ok" | "problem") {
+    startTransition(async () => {
+      const result = await resolveSuspiciousFlagAction(eventId, outcome);
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        outcome === "ok" ? "Označeno: u redu" : "Označeno: problem"
+      );
+      await refreshSuspicious();
+    });
+  }
 
   function markNotificationResolved(id: string) {
     startTransition(async () => {
@@ -401,6 +427,58 @@ export function OperationsCenter() {
       {questionsLoading && (
         <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
       )}
+
+      {canViewSuspicious && suspiciousLoading && (
+        <Skeleton className="h-32 rounded-xl bg-dash-surface-raised" />
+      )}
+      {canViewSuspicious && !suspiciousLoading && suspiciousFlags.length > 0 && (
+        <SectionShell
+          tone="neutral"
+          title="Za proveru"
+          count={suspiciousFlags.length}
+        >
+          {suspiciousFlags.map((flag) => (
+            <article
+              key={flag.id}
+              className="rounded-lg border border-dash-border bg-dash-surface/60 p-4"
+            >
+              <p className="text-sm font-medium text-dash-text">{flag.copy}</p>
+              <p className="mt-1 text-xs text-dash-text-muted">
+                {flag.tableName ? `${flag.tableName} · ` : ""}
+                {flag.orderNumber != null ? `#${flag.orderNumber} · ` : ""}
+                {new Date(flag.createdAt).toLocaleTimeString("de-DE", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {flag.orderId ? (
+                  <ActionLink href={`/dashboard/orders?order=${flag.orderId}`}>
+                    Pogledaj timeline
+                  </ActionLink>
+                ) : (
+                  <ActionLink href="/dashboard/history">Pogledaj istoriju</ActionLink>
+                )}
+                <ActionButton
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => resolveSuspicious(flag.id, "ok")}
+                >
+                  Označi: u redu
+                </ActionButton>
+                <ActionButton
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => resolveSuspicious(flag.id, "problem")}
+                >
+                  Označi: problem
+                </ActionButton>
+              </div>
+            </article>
+          ))}
+        </SectionShell>
+      )}
+
       {!questionsLoading && questions.length > 0 && (
         <SectionShell
           tone="orange"

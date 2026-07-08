@@ -4,6 +4,12 @@ import { logger } from "@/lib/logger";
 import { sanitizeOrderNotes } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { migrateSessionOnTransfer } from "@/lib/tables/migrate-session-on-transfer";
+import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
+import { assertTotalPreserved } from "@/lib/loss-prevention/assert-total-preserved";
+import {
+  loadSessionPaymentSnapshot,
+  sessionHasPaymentActivity,
+} from "@/lib/loss-prevention/session-payment-snapshot";
 
 export type TransferOrdersInput = {
   fromTableId: string;
@@ -90,7 +96,7 @@ export async function transferOrders(
 
   const { data: orders, error: ordersError } = await admin
     .from("orders")
-    .select("id, table_id, session_id, status")
+    .select("id, table_id, session_id, status, total")
     .eq("location_id", locationId)
     .in("id", orderIds);
 
@@ -103,6 +109,7 @@ export async function transferOrders(
     table_id: string | null;
     session_id: string | null;
     status: string;
+    total: number;
   }>;
 
   if (rows.length !== orderIds.length) {
@@ -138,6 +145,30 @@ export async function transferOrders(
     (fromSession as { id: string } | null)?.id ??
     rows.find((o) => o.session_id)?.session_id ??
     null;
+
+  const transferTotalBefore = rows.reduce(
+    (sum, order) => sum + Number(order.total),
+    0
+  );
+  const preserved = assertTotalPreserved(
+    transferTotalBefore,
+    transferTotalBefore,
+    "Transfer"
+  );
+  if (!preserved.ok) {
+    return { error: preserved.error, status: preserved.status };
+  }
+
+  const fromPaymentSnapshot = fromSessionId
+    ? await loadSessionPaymentSnapshot(admin, fromSessionId)
+    : null;
+  const paymentActivity = sessionHasPaymentActivity(fromPaymentSnapshot);
+  if (paymentActivity && !note) {
+    return {
+      error: "Reason is required when transferring after payment activity.",
+      status: 400,
+    };
+  }
 
   const sessionResult = input.toSessionId
     ? { sessionId: input.toSessionId }
@@ -183,6 +214,37 @@ export async function transferOrders(
     return { error: "Transfer audit could not be saved.", status: 500 };
   }
 
+  const transferAction =
+    transferType === "full" && input.orderIds.length === 0 ? "merge" : "transfer";
+  const fromTableName = (fromTable as { name: string }).name;
+  const toTableName = (toTable as { name: string }).name;
+
+  for (const order of rows) {
+    await recordSensitiveAction(admin, {
+      orderId: order.id,
+      sessionId: toSessionId,
+      action: transferAction,
+      targetType: "order",
+      targetId: order.id,
+      actorStaffId: staffId,
+      reason: note,
+      riskFlag: paymentActivity,
+      context: {
+        fromTableId,
+        toTableId,
+        fromTableName,
+        toTableName,
+        fromSessionId,
+        toSessionId,
+        transferType,
+        totalBefore: Number(order.total),
+        totalAfter: Number(order.total),
+        paymentActivity,
+      },
+      idempotencyKey: `transfer:${order.id}:${toSessionId}:${Date.now()}`,
+    });
+  }
+
   await migrateSessionOnTransfer({
     admin,
     locationId,
@@ -212,8 +274,6 @@ export async function transferOrders(
       await closeTableSession(admin, fromSessionId);
     }
   }
-
-  const toTableName = (toTable as { name: string }).name;
 
   logger.info("Table transfer completed", {
     fromTableId,

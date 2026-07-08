@@ -471,13 +471,24 @@ type Tables = {
   };
   order_events: {
     id: string;
-    order_id: string;
+    order_id: string | null;
+    session_id: string | null;
     event_type: string;
     payload: Json;
     idempotency_key: string | null;
     actor_type: string | null;
     actor_id: string | null;
     created_at: string;
+    sensitive_action: string | null;
+    target_type: string | null;
+    target_id: string | null;
+    reason: string | null;
+    approved_by_staff_id: string | null;
+    risk_flag: boolean;
+    context: Json;
+    resolved_at: string | null;
+    resolved_outcome: string | null;
+    resolved_by_staff_id: string | null;
   };
   outbox_events: {
     id: string;

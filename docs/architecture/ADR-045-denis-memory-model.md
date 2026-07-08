@@ -1,6 +1,6 @@
 # ADR-045 — Denis Multi-Memory Model
 
-**Status:** Approved · **Datum:** 2026-07-01
+**Status:** Implemented · **Datum:** 2026-07-01
 **Sesije:** [ADR-045-session-prompts.md](./ADR-045-session-prompts.md)
 **Redosled:** posle ADR-043 (station truth + host/revenue) i ADR-044 (loss prevention) — memorija klasifikuje ono što oni proizvode.
 
