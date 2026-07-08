@@ -1,6 +1,29 @@
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
 import type { StationQuestionStation } from "@/lib/denis/stations/question-triggers";
 
+/** How staff/guest arms mic capture — wired per station in ADR-051 B1. */
+export type VoiceInputMode = "wake-word" | "push-to-talk";
+
+export const VOICE_INPUT_MODES = ["wake-word", "push-to-talk"] as const satisfies readonly VoiceInputMode[];
+
+export function isPushToTalkMode(mode: VoiceInputMode): boolean {
+  return mode === "push-to-talk";
+}
+
+export function isWakeWordMode(mode: VoiceInputMode): boolean {
+  return mode === "wake-word";
+}
+
+/**
+ * Station voice default until B1 maps sala/kuhinja/industrija.
+ * Kitchen/bar expose push-to-talk as the noisy-environment fallback.
+ */
+export function resolveStationVoiceInputMode(
+  station: StationQuestionStation
+): VoiceInputMode {
+  return station === "kitchen" || station === "bar" ? "push-to-talk" : "wake-word";
+}
+
 export type StationVoiceTurn = {
   role: "denis" | "staff";
   text: string;

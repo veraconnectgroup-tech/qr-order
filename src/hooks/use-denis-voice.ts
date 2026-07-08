@@ -22,6 +22,7 @@ import {
   stripWakePhrasePrefix,
   type WakeWordDetector,
 } from "@/lib/denis/surfaces/voice/wake-word-detector";
+import type { VoiceInputMode } from "@/lib/denis/stations/station-voice-context";
 
 type BrowserSpeechRecognitionResult = {
   transcript?: string;
@@ -74,6 +75,8 @@ export type UseDenisVoiceOptions = {
   sessionToken?: string | null;
   /** When true, VAD+STT arm only after local "Hej Denise" wake detection. */
   requireWakeWord?: boolean;
+  /** Sala: omit. Station noisy fallback: push-to-talk. Overrides requireWakeWord when set. */
+  inputMode?: VoiceInputMode;
 };
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -107,7 +110,11 @@ export function useDenisVoice({
   playbookTone = "friendly",
   sessionToken,
   requireWakeWord = false,
+  inputMode,
 }: UseDenisVoiceOptions) {
+  const pushToTalkMode = inputMode === "push-to-talk";
+  const effectiveRequireWakeWord =
+    !pushToTalkMode && (requireWakeWord || inputMode === "wake-word");
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -247,7 +254,7 @@ export function useDenisVoice({
 
       const startSttIfNeeded = () => {
         if (sttStartedRef.current || !recognitionRef.current) return;
-        if (requireWakeWord && !wakeWordRef.current?.hasDetectedWakeWord()) {
+        if (effectiveRequireWakeWord && !wakeWordRef.current?.hasDetectedWakeWord()) {
           return;
         }
         sttStartedRef.current = true;
@@ -295,7 +302,7 @@ export function useDenisVoice({
           return;
         }
 
-        if (requireWakeWord) {
+        if (effectiveRequireWakeWord) {
           const wakeConfirmed =
             wakeWordRef.current?.hasDetectedWakeWord() ||
             isWakePhraseMatch(transcript);
@@ -314,7 +321,7 @@ export function useDenisVoice({
           }
         }
 
-        if (!vadRef.current?.hasConfirmedSpeech() && !requireWakeWord) {
+        if (!vadRef.current?.hasConfirmedSpeech() && !effectiveRequireWakeWord && !pushToTalkMode) {
           onResultRef.current?.({
             ok: false,
             reason: "noise_gate",
@@ -369,7 +376,7 @@ export function useDenisVoice({
           if (!pipeline || !recognitionRef.current) return;
           audioPipelineRef.current = pipeline;
 
-          if (requireWakeWord) {
+          if (effectiveRequireWakeWord) {
             const wake = await createWakeWordDetector(pipeline.stream, {
               onWakeWordDetected: () => {
                 void armCommandCapture(pipeline);
@@ -401,6 +408,9 @@ export function useDenisVoice({
       language,
       menuLanguage,
       requireWakeWord,
+      inputMode,
+      pushToTalkMode,
+      effectiveRequireWakeWord,
       stopListening,
       teardownAudioPipeline,
     ]
@@ -420,5 +430,6 @@ export function useDenisVoice({
     stopListening,
     speak,
     isVoiceTranscriptConfident,
+    pushToTalkMode,
   };
 }

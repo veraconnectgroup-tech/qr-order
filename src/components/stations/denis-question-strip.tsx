@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
 import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
+import { useDenisVoice } from "@/hooks/use-denis-voice";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
 import {
   classifyStationVoiceReply,
@@ -15,6 +16,10 @@ import {
   resolveStationVoiceConversationTurn,
 } from "@/lib/denis/stations/station-voice-conversation";
 import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-context";
+import {
+  isPushToTalkMode,
+  resolveStationVoiceInputMode,
+} from "@/lib/denis/stations/station-voice-context";
 import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
 import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
 import type { DenisVoiceTone } from "@/hooks/use-denis-station-voice";
@@ -105,6 +110,19 @@ export function DenisQuestionStrip({
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const { speak, activate, voicePrimed, speaking, listen } =
     useDenisStationVoice(locationId);
+  const voiceInputMode = resolveStationVoiceInputMode(station);
+  const pushToTalkEnabled = isPushToTalkMode(voiceInputMode);
+  const pushToTalkVoice = useDenisVoice({
+    enabled: voicePrimed && pushToTalkEnabled,
+    language: "sr",
+    menuLanguage: "sr",
+    autoSpeak: false,
+    sessionToken: locationId,
+    inputMode: "push-to-talk",
+  });
+  const staffReplyHandlerRef = useRef<
+    ((transcript: string) => void) | null
+  >(null);
   const spokenTiersRef = useRef<Set<string>>(new Set());
   const priorTurnsRef = useRef<Array<{ role: "denis" | "staff"; text: string }>>(
     []
@@ -302,6 +320,10 @@ export function DenisQuestionStrip({
     };
 
     const listenForReply = (onTranscript: (transcript: string) => void) => {
+      if (pushToTalkEnabled) {
+        staffReplyHandlerRef.current = onTranscript;
+        return;
+      }
       window.setTimeout(() => listen(onTranscript), LISTEN_AFTER_SPEAK_MS);
     };
 
@@ -444,7 +466,40 @@ export function DenisQuestionStrip({
     speaking,
     turnsHydrated,
     persistTurn,
+    pushToTalkEnabled,
   ]);
+
+  const pushToTalkButton =
+    pushToTalkEnabled && voicePrimed ? (
+      <button
+        type="button"
+        disabled={speaking || busy}
+        aria-label="Drži za govor"
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          pushToTalkVoice.startListening((result) => {
+            if (!result.ok || !result.transcript.trim()) return;
+            staffReplyHandlerRef.current?.(result.transcript);
+          });
+        }}
+        onPointerUp={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+          pushToTalkVoice.stopListening();
+        }}
+        onPointerCancel={() => {
+          pushToTalkVoice.stopListening();
+        }}
+        className={`min-h-12 min-w-48 touch-target rounded-full border px-6 text-sm font-semibold transition ${
+          pushToTalkVoice.listening
+            ? "border-orange-400 bg-orange-500/30 text-orange-100"
+            : "border-orange-500/50 bg-orange-500/15 text-orange-200 hover:bg-orange-500/25"
+        }`}
+      >
+        {pushToTalkVoice.listening ? "Slušam…" : "Drži za odgovor"}
+      </button>
+    ) : null;
 
   const activateButton = voicePrimed ? null : (
     <button
@@ -512,6 +567,7 @@ export function DenisQuestionStrip({
         </button>
 
         {activateButton}
+        {pushToTalkButton}
         <DenisVoicePresenceOrb
           size={220}
           moodIntensity={urgencyRatio}

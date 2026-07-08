@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { parseStationQuestionContext } from "@/lib/denis/stations/station-voice-context";
 import {
+  isPushToTalkMode,
+  isWakeWordMode,
+  resolveStationVoiceInputMode,
+} from "@/lib/denis/stations/station-voice-context";
+import {
   buildStationVoiceClarifyLine,
   resolveStationVoiceConversationTurn,
 } from "@/lib/denis/stations/station-voice-conversation";
@@ -41,5 +46,13 @@ describe("station voice conversation", () => {
     expect(line).toContain("Sto Table 2");
     expect(line).toContain("bon broj 3");
     expect(line).not.toMatch(/recite samo broj minuta/i);
+  });
+
+  it("resolves station voice input mode for kitchen/bar", () => {
+    expect(resolveStationVoiceInputMode("kitchen")).toBe("push-to-talk");
+    expect(resolveStationVoiceInputMode("bar")).toBe("push-to-talk");
+    expect(isPushToTalkMode(resolveStationVoiceInputMode("kitchen"))).toBe(true);
+    expect(isWakeWordMode("wake-word")).toBe(true);
+    expect(isPushToTalkMode("wake-word")).toBe(false);
   });
 });

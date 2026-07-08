@@ -81,8 +81,9 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
   audio graph) — koordiniši sa agentom na A1 pre nego što diraš isti hook.
 
 ### A4 — Push-to-talk režim po stanici
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Cursor Agent (Composer) — 2026-07-08 18:09
+- Napomena: Dodat `VoiceInputMode` u station-voice-context; `use-denis-voice` podržava `inputMode: "push-to-talk"`; kuhinja/šank dobijaju dugme "Drži za odgovor" u denis-question-strip umesto auto-listen.
 - Fajlovi: izmena `src/lib/denis/stations/station-voice-context.ts`, izmena
   `src/hooks/use-denis-voice.ts`, novi tip `VoiceInputMode` (`"wake-word"` |
   `"push-to-talk"`), UI dugme u komponenti koja renderuje kuhinjski/šank
@@ -115,6 +116,7 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
 | 2026-07-08 | Cursor Agent (Composer) | A1 | VAD modul (energy+ZCR) + integracija u use-denis-voice — STT starta tek posle potvrde govora |
 | 2026-07-08 | Cursor Agent (Composer) | A2 | Industrial noise profil + openIndustrialVoiceAudioPipeline (spektralna supresija, sala default netaknut) |
 | 2026-07-08 | Cursor Agent (Composer) | A3 | Wake word detektor (Hej Denise) + requireWakeWord opcija u use-denis-voice |
+| 2026-07-08 | Cursor Agent (Composer) | A4 | Push-to-talk režim — VoiceInputMode + hold dugme na kuhinja/šank strip-u |
 
 ---
 
