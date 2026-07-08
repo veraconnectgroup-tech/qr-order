@@ -854,15 +854,38 @@ async function runTdePerceive(input: {
       executorInput: { admin, ctx: input.ctx, dryRun: true },
       maxRounds: agenticConfig.maxRounds,
     })
-      .then((result) => {
+      .then(async (result) => {
+        const toolsCalled = result.rounds.flatMap((round) =>
+          round.toolCalls.map((call) => call.name)
+        );
+        const toolErrors = result.rounds.flatMap((round) =>
+          round.toolCalls.flatMap((call) =>
+            call.error ? [{ tool: call.name, error: call.error }] : []
+          )
+        );
         logger.info("agentic tool loop shadow trace", {
           locationId: input.body.locationId,
           rounds: result.rounds.length,
           hitRoundCap: result.hitRoundCap,
-          toolsCalled: result.rounds.flatMap((round) =>
-            round.toolCalls.map((call) => call.name)
-          ),
+          toolsCalled,
         });
+        // Persist to the session timeline so the continuous-eval flywheel
+        // (session.eval outbox -> learning extractor) can see shadow-loop
+        // behavior alongside the turns it already mines — a log line alone
+        // is invisible to that loop.
+        if (input.ctx.aiSessionId) {
+          await appendDenisTimelineEvent(admin, {
+            aiSessionId: input.ctx.aiSessionId,
+            eventType: "agentic.shadow_trace",
+            payload: {
+              rounds: result.rounds.length,
+              hitRoundCap: result.hitRoundCap,
+              toolsCalled,
+              toolErrors,
+              finalContentChars: result.finalContent.length,
+            },
+          });
+        }
       })
       .catch((error) => {
         logger.warn("agentic tool loop shadow failed", {
