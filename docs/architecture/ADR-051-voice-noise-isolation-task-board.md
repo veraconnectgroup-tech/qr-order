@@ -70,8 +70,9 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
   za salu.
 
 ### A3 — Wake word ("Hej Denise")
-- Status: TODO
-- Agent: —
+- Status: ZAVRŠENO I TESTIRANO
+- Agent: Cursor Agent (Composer) — 2026-07-08 17:45
+- Napomena: Dodat `wake-word-detector.ts` (akustični template + transcript aliasi); `use-denis-voice` podržava `requireWakeWord` — VAD+STT se aktivira tek posle wake fraze, sala default ostaje nepromenjen.
 - Fajlovi: novi `src/lib/denis/surfaces/voice/wake-word-detector.ts`, izmena
   `src/hooks/use-denis-voice.ts`, test
 - Zadatak: Denis ne sme stalno da šalje audio na STT. Dodati lokalnu wake-word
@@ -113,6 +114,7 @@ Svaki zadatak ima polje `Status` i `Agent`. Dozvoljene vrednosti:
 |---|---|---|---|
 | 2026-07-08 | Cursor Agent (Composer) | A1 | VAD modul (energy+ZCR) + integracija u use-denis-voice — STT starta tek posle potvrde govora |
 | 2026-07-08 | Cursor Agent (Composer) | A2 | Industrial noise profil + openIndustrialVoiceAudioPipeline (spektralna supresija, sala default netaknut) |
+| 2026-07-08 | Cursor Agent (Composer) | A3 | Wake word detektor (Hej Denise) + requireWakeWord opcija u use-denis-voice |
 
 ---
 

@@ -16,6 +16,12 @@ import {
   shouldRetryVoiceCapture,
 } from "@/lib/denis/surfaces/voice/voice-confidence";
 import { resolveVoiceTtsProfile } from "@/lib/denis/surfaces/voice/voice-tts-profile";
+import {
+  createWakeWordDetector,
+  isWakePhraseMatch,
+  stripWakePhrasePrefix,
+  type WakeWordDetector,
+} from "@/lib/denis/surfaces/voice/wake-word-detector";
 
 type BrowserSpeechRecognitionResult = {
   transcript?: string;
@@ -66,6 +72,8 @@ export type UseDenisVoiceOptions = {
   playbookTone?: VenuePlaybookTone | null;
   /** Rate-limit key for the server TTS call — falls back to browser TTS without it. */
   sessionToken?: string | null;
+  /** When true, VAD+STT arm only after local "Hej Denise" wake detection. */
+  requireWakeWord?: boolean;
 };
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -98,12 +106,14 @@ export function useDenisVoice({
   autoSpeak,
   playbookTone = "friendly",
   sessionToken,
+  requireWakeWord = false,
 }: UseDenisVoiceOptions) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const audioPipelineRef = useRef<VoiceAudioPipeline | null>(null);
   const vadRef = useRef<VoiceActivityDetector | null>(null);
+  const wakeWordRef = useRef<WakeWordDetector | null>(null);
   const sttStartedRef = useRef(false);
   const onResultRef = useRef<((result: VoiceCaptureResult) => void) | null>(
     null
@@ -117,6 +127,8 @@ export function useDenisVoice({
   const teardownAudioPipeline = useCallback(() => {
     vadRef.current?.teardown();
     vadRef.current = null;
+    wakeWordRef.current?.teardown();
+    wakeWordRef.current = null;
     audioPipelineRef.current?.teardown();
     audioPipelineRef.current = null;
     sttStartedRef.current = false;
@@ -124,6 +136,7 @@ export function useDenisVoice({
 
   const stopListening = useCallback((options?: { silent?: boolean }) => {
     const hadConfirmedSpeech = vadRef.current?.hasConfirmedSpeech() ?? false;
+    const hadWakeWord = wakeWordRef.current?.hasDetectedWakeWord() ?? false;
     const sttWasStarted = sttStartedRef.current;
 
     if (sttWasStarted && recognitionRef.current) {
@@ -134,12 +147,14 @@ export function useDenisVoice({
 
     recognitionRef.current = null;
     vadRef.current?.pause();
+    wakeWordRef.current?.pause();
     teardownAudioPipeline();
     setListening(false);
 
     if (
       !options?.silent &&
       !hadConfirmedSpeech &&
+      !hadWakeWord &&
       onResultRef.current
     ) {
       onResultRef.current({ ok: false, reason: "no_speech" });
@@ -232,6 +247,9 @@ export function useDenisVoice({
 
       const startSttIfNeeded = () => {
         if (sttStartedRef.current || !recognitionRef.current) return;
+        if (requireWakeWord && !wakeWordRef.current?.hasDetectedWakeWord()) {
+          return;
+        }
         sttStartedRef.current = true;
         try {
           recognitionRef.current.start();
@@ -240,13 +258,36 @@ export function useDenisVoice({
         }
       };
 
+      const armCommandCapture = async (pipeline: VoiceAudioPipeline) => {
+        if (!recognitionRef.current) return;
+
+        const vad = await createVoiceActivityDetector(pipeline.stream, {
+          onSpeechStart: startSttIfNeeded,
+          onSpeechEnd: () => {
+            if (sttStartedRef.current) {
+              recognitionRef.current?.stop();
+            }
+          },
+        });
+
+        if (!recognitionRef.current) return;
+
+        if (vad) {
+          vadRef.current = vad;
+          vad.start();
+          return;
+        }
+
+        startSttIfNeeded();
+      };
+
       recognition.onresult = (event) => {
         const results = event.results as SpeechRecognitionResultList;
         const lastIndex = results.length - 1;
         const result = results[lastIndex];
         if (!result?.isFinal) return;
 
-        const transcript = result[0]?.transcript?.trim() ?? "";
+        let transcript = result[0]?.transcript?.trim() ?? "";
         const confidence = result[0]?.confidence ?? null;
 
         if (!transcript) {
@@ -254,7 +295,26 @@ export function useDenisVoice({
           return;
         }
 
-        if (!vadRef.current?.hasConfirmedSpeech()) {
+        if (requireWakeWord) {
+          const wakeConfirmed =
+            wakeWordRef.current?.hasDetectedWakeWord() ||
+            isWakePhraseMatch(transcript);
+          if (!wakeConfirmed) {
+            onResultRef.current?.({
+              ok: false,
+              reason: "noise_gate",
+              confidence,
+            });
+            return;
+          }
+          transcript = stripWakePhrasePrefix(transcript);
+          if (!transcript) {
+            onResultRef.current?.({ ok: false, reason: "no_speech", confidence });
+            return;
+          }
+        }
+
+        if (!vadRef.current?.hasConfirmedSpeech() && !requireWakeWord) {
           onResultRef.current?.({
             ok: false,
             reason: "noise_gate",
@@ -309,25 +369,23 @@ export function useDenisVoice({
           if (!pipeline || !recognitionRef.current) return;
           audioPipelineRef.current = pipeline;
 
-          const vad = await createVoiceActivityDetector(pipeline.stream, {
-            onSpeechStart: startSttIfNeeded,
-            onSpeechEnd: () => {
-              if (sttStartedRef.current) {
-                recognitionRef.current?.stop();
-              }
-            },
-          });
+          if (requireWakeWord) {
+            const wake = await createWakeWordDetector(pipeline.stream, {
+              onWakeWordDetected: () => {
+                void armCommandCapture(pipeline);
+              },
+            });
 
-          if (!recognitionRef.current) return;
+            if (!recognitionRef.current) return;
 
-          if (vad) {
-            vadRef.current = vad;
-            vad.start();
-            return;
+            if (wake) {
+              wakeWordRef.current = wake;
+              wake.start();
+              return;
+            }
           }
 
-          // VAD unavailable — fall back to immediate STT (legacy path).
-          startSttIfNeeded();
+          await armCommandCapture(pipeline);
         })
         .catch(() => {
           if (recognitionRef.current) {
@@ -337,7 +395,15 @@ export function useDenisVoice({
 
       return true;
     },
-    [enabled, supported, language, menuLanguage, stopListening, teardownAudioPipeline]
+    [
+      enabled,
+      supported,
+      language,
+      menuLanguage,
+      requireWakeWord,
+      stopListening,
+      teardownAudioPipeline,
+    ]
   );
 
   useEffect(() => {
