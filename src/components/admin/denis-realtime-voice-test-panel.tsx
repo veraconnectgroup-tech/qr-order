@@ -8,18 +8,27 @@ import {
   isRealtimeWebRTCSupported,
   type DenisRealtimeConnection,
 } from "@/lib/denis/surfaces/voice/realtime-webrtc-connection";
+import { attachRealtimeToolCallRelay } from "@/lib/denis/surfaces/voice/realtime-tool-call-relay";
 
 /**
- * Phase 2.8 step 1 connectivity smoke test — NOT the real station-voice
- * flow (that stays on classify/interpret/TTS until the eval gate passes,
- * see the architecture plan). This just proves the WebRTC transport works
- * end to end: mint a token, connect, hear Denis speak one line.
+ * Phase 2.3+ real station-voice Realtime conversation (kitchen/bar staff
+ * <-> Denis, two-way, tool-calling wired to answerStationQuestion). Phase
+ * 2.8 step 1 was a one-line connectivity smoke test; this is the first
+ * real slice. Still admin-only/manual-question-id for now — not yet on
+ * the actual kitchen/bar station screens (that's the rollout step, gated
+ * behind an eval pass per the architecture plan, not done here).
  */
 export function DenisRealtimeVoiceTestPanel() {
   const [questionId, setQuestionId] = useState("");
   const [status, setStatus] = useState("idle");
+  const [log, setLog] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const connectionRef = useRef<DenisRealtimeConnection | null>(null);
+  const relayCleanupRef = useRef<(() => void) | null>(null);
+
+  function appendLog(line: string) {
+    setLog((prev) => [...prev.slice(-19), line]);
+  }
 
   async function handleConnect() {
     if (!isRealtimeWebRTCSupported()) {
@@ -32,6 +41,7 @@ export function DenisRealtimeVoiceTestPanel() {
     }
 
     setBusy(true);
+    setLog([]);
     setStatus("Requesting ephemeral token...");
     try {
       const tokenRes = await fetch("/api/denis/station-voice/realtime-token", {
@@ -51,28 +61,42 @@ export function DenisRealtimeVoiceTestPanel() {
       );
       connectionRef.current = connection;
 
+      relayCleanupRef.current = attachRealtimeToolCallRelay(connection, {
+        executeToolUrl: "/api/denis/station-voice/execute-tool",
+        extraBody: { questionId: tokenJson.data.questionId },
+        onToolCall: (name, args) =>
+          appendLog(`→ Denis called ${name}(${JSON.stringify(args)})`),
+        onToolResult: (name, result) =>
+          appendLog(`← ${name} result: ${JSON.stringify(result)}`),
+        onError: (error) =>
+          appendLog(
+            `⚠ tool relay error: ${error instanceof Error ? error.message : String(error)}`
+          ),
+      });
+
       connection.dataChannel.addEventListener("open", () => {
-        setStatus("Connected — asking Denis to speak a test line...");
-        connection.dataChannel.send(
-          JSON.stringify({
-            type: "response.create",
-            response: {
-              output_modalities: ["audio"],
-              instructions:
-                "Say exactly, in Serbian: 'Zdravo, ja sam Denis. Ovo je test glasa uživo.'",
-            },
-          })
-        );
+        setStatus("Connected — listening. Speak to Denis.");
+        connection.dataChannel.send(JSON.stringify({ type: "response.create" }));
       });
 
       connection.dataChannel.addEventListener("message", (event) => {
         try {
-          const data = JSON.parse(event.data) as { type?: string };
+          const data = JSON.parse(event.data) as {
+            type?: string;
+            response?: { output?: Array<{ type?: string }> };
+          };
           if (data.type === "response.done") {
-            setStatus("response.done received — did you hear Denis speak?");
+            const resolved = (data.response?.output ?? []).some(
+              (item) => item.type === "function_call"
+            );
+            setStatus(
+              resolved
+                ? "Denis resolved the question — call should be wrapping up."
+                : "Denis replied — still listening."
+            );
           }
           if (data.type === "error") {
-            setStatus(`Server error event: ${event.data}`);
+            appendLog(`⚠ server error event: ${event.data}`);
           }
         } catch {
           // ignore — non-JSON or unrelated event
@@ -88,6 +112,8 @@ export function DenisRealtimeVoiceTestPanel() {
   }
 
   function handleDisconnect() {
+    relayCleanupRef.current?.();
+    relayCleanupRef.current = null;
     connectionRef.current?.close();
     connectionRef.current = null;
     setStatus("Disconnected.");
@@ -95,8 +121,8 @@ export function DenisRealtimeVoiceTestPanel() {
 
   return (
     <AdminPanel
-      title="Denis Realtime voice — connectivity test"
-      description="Phase 2.8 step 1 smoke test only. Requires a real open station question at this location and a configured OPENAI_API_KEY."
+      title="Denis Realtime voice — station conversation"
+      description="Two-way test: connect, speak naturally, Denis calls resolve_station_question when your answer is clear. Requires a real open station question at this location and a configured OPENAI_API_KEY."
     >
       <AdminPanelSection>
         <div className="space-y-3">
@@ -115,6 +141,11 @@ export function DenisRealtimeVoiceTestPanel() {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">{status}</p>
+          {log.length > 0 && (
+            <pre className="max-h-48 overflow-y-auto rounded bg-muted p-2 text-xs">
+              {log.join("\n")}
+            </pre>
+          )}
         </div>
       </AdminPanelSection>
     </AdminPanel>
