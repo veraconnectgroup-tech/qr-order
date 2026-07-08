@@ -118,6 +118,8 @@ export type BuildSystemPromptInput = {
   timezone?: string;
   /** Featured menu item for humor / memory hooks. */
   featuredProductName?: string | null;
+  /** ADR-045 Restaurant tier — owner/staff-authored durable house knowledge. */
+  restaurantKnowledgeBlock?: string | null;
 };
 
 export type OpenAiChatMessage = {

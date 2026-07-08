@@ -18,6 +18,7 @@ import { DenisAbandonmentPreventionPanel } from "@/components/admin/denis-abando
 import { DenisVenueRhythmPanel } from "@/components/admin/denis-venue-rhythm-panel";
 import { DenisVenueKnowledgePanel } from "@/components/admin/denis-venue-knowledge-panel";
 import { loadVenueKnowledgeAdminSnapshot } from "@/lib/admin/load-venue-knowledge-admin";
+import { DenisRestaurantKnowledgePanel } from "@/components/admin/denis-restaurant-knowledge-panel";
 import { DenisProactiveSettingsPanel } from "@/components/admin/denis-proactive-settings-panel";
 import { DenisThresholdOptimizationPanel } from "@/components/admin/denis-threshold-optimization-panel";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -88,6 +89,7 @@ export default async function DenisInsightsAdminPage() {
       <DenisThresholdOptimizationPanel snapshot={thresholdOpt} />
       <DenisVenueRhythmPanel snapshot={venueRhythm} />
       <DenisVenueKnowledgePanel snapshot={venueKnowledge} />
+      <DenisRestaurantKnowledgePanel />
       <DenisLearnedEdgesManager
         edges={edges}
         productNames={productNames}

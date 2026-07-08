@@ -7,12 +7,17 @@ import {
 } from "@/lib/denis/agentic/owner-voice-tool-catalog";
 import type { StaffCopilotSnapshot } from "@/lib/denis/venue/copilot/types";
 
-const { loadStaffCopilotSnapshotMock } = vi.hoisted(() => ({
+const { loadStaffCopilotSnapshotMock, addRestaurantKnowledgeMock } = vi.hoisted(() => ({
   loadStaffCopilotSnapshotMock: vi.fn(),
+  addRestaurantKnowledgeMock: vi.fn(),
 }));
 
 vi.mock("@/lib/denis/venue/copilot/load-staff-copilot-snapshot", () => ({
   loadStaffCopilotSnapshot: loadStaffCopilotSnapshotMock,
+}));
+
+vi.mock("@/lib/denis/knowledge/restaurant-knowledge-store", () => ({
+  addRestaurantKnowledge: addRestaurantKnowledgeMock,
 }));
 
 function buildSnapshot(overrides: Partial<StaffCopilotSnapshot> = {}): StaffCopilotSnapshot {
@@ -80,6 +85,7 @@ describe("owner-voice-tool-catalog", () => {
     const result = (await executeOwnerVoiceTool("get_venue_status", {
       admin: {} as SupabaseClient,
       locationId: "loc-1",
+      staffId: "staff-1",
       staffRole: "owner",
     })) as {
       kdsStress: string;
@@ -100,5 +106,52 @@ describe("owner-voice-tool-catalog", () => {
       tableName: "Sto 4",
       guestWaitMinutes: 22,
     });
+  });
+
+  it("lists remember_restaurant_knowledge as a tool definition", () => {
+    const tools = listOwnerVoiceToolDefinitions();
+    expect(
+      tools.some((tool) => tool.name === "remember_restaurant_knowledge")
+    ).toBe(true);
+  });
+
+  it("saves what the owner said to remember, tagged as owner_voice", async () => {
+    addRestaurantKnowledgeMock.mockResolvedValue({ ok: true, id: "k1" });
+
+    const result = await executeOwnerVoiceTool(
+      "remember_restaurant_knowledge",
+      {
+        admin: {} as SupabaseClient,
+        locationId: "loc-1",
+        staffId: "staff-1",
+        staffRole: "owner",
+      },
+      { text: "We don't do substitutions on the tasting menu." }
+    );
+
+    expect(addRestaurantKnowledgeMock).toHaveBeenCalledWith(expect.anything(), {
+      locationId: "loc-1",
+      text: "We don't do substitutions on the tasting menu.",
+      source: "owner_voice",
+      createdByStaffId: "staff-1",
+    });
+    expect(result).toEqual({ ok: true, id: "k1" });
+  });
+
+  it("rejects an empty remember_restaurant_knowledge call without touching the store", async () => {
+    addRestaurantKnowledgeMock.mockClear();
+    const result = await executeOwnerVoiceTool(
+      "remember_restaurant_knowledge",
+      {
+        admin: {} as SupabaseClient,
+        locationId: "loc-1",
+        staffId: "staff-1",
+        staffRole: "owner",
+      },
+      { text: "   " }
+    );
+
+    expect(result).toEqual({ ok: false, error: "empty_text" });
+    expect(addRestaurantKnowledgeMock).not.toHaveBeenCalled();
   });
 });

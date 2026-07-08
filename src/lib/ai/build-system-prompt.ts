@@ -235,6 +235,10 @@ function buildPromptSituationPack(input: BuildSystemPromptInput): string {
     lines.push(input.playbookContext.trim());
   }
 
+  if (input.restaurantKnowledgeBlock?.trim()) {
+    lines.push(input.restaurantKnowledgeBlock.trim());
+  }
+
   if (input.promoContext?.trim()) {
     lines.push(input.promoContext.trim());
   }

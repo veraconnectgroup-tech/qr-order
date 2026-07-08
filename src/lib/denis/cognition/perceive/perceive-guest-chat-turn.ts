@@ -22,6 +22,7 @@ import {
 } from "@/lib/ai/catalog/catalog-search";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
+import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { moderateGuestInput, shieldGracefulGuestMessage } from "@/lib/ai/moderation";
 import { formatDraftForPrompt } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
@@ -495,6 +496,9 @@ export async function perceiveGuestChatTurn(
         playbookContext:
           opts.evidence?.playbookBlock ??
           (await getPlaybookPromptBlock(orgId, input.locationId)),
+        restaurantKnowledgeBlock: await loadRestaurantKnowledgeBlock(
+          input.locationId
+        ),
         evidenceBlock: pipelineEvidenceBlock || null,
         omitFullMenu: opts.evidence?.omitFullMenu ?? false,
         persona: conciergeConfig.persona,

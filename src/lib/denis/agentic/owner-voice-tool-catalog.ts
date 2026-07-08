@@ -1,31 +1,42 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OpenAiToolDefinition } from "@/lib/ai/types";
+import { addRestaurantKnowledge } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { loadStaffCopilotSnapshot } from "@/lib/denis/venue/copilot/load-staff-copilot-snapshot";
 
 /**
- * Read-only tool catalog for the owner/manager voice conversation surface
- * (distinct from the guest-turn agentic catalog in tool-catalog.ts, which
- * is scoped to a single table session — an owner asking "how's the kitchen"
- * has no table in play, they want the venue-wide picture).
+ * Tool catalog for the owner/manager voice conversation surface (distinct
+ * from the guest-turn agentic catalog in tool-catalog.ts, which is scoped
+ * to a single table session — an owner asking "how's the kitchen" has no
+ * table in play, they want the venue-wide picture).
  *
- * Deliberately one rich tool rather than many granular ones: fewer Realtime
- * round-trips, and loadStaffCopilotSnapshot already computes everything an
- * owner would plausibly ask about in one already-cached call (8s TTL).
+ * get_venue_status is deliberately one rich tool rather than many granular
+ * ones: fewer Realtime round-trips, and loadStaffCopilotSnapshot already
+ * computes everything an owner would plausibly ask about in one
+ * already-cached call (8s TTL).
  *
- * No side-effecting tools here — this surface only answers questions.
+ * remember_restaurant_knowledge is the one side-effecting tool here — the
+ * owner telling Denis a durable fact/rule by voice ("zapamti da...") is the
+ * spoken equivalent of the admin text-entry panel (restaurant-knowledge-store.ts),
+ * same store, same guest-turn reach, tagged source: "owner_voice".
  */
 
-export type OwnerVoiceToolName = "get_venue_status";
+export type OwnerVoiceToolName =
+  | "get_venue_status"
+  | "remember_restaurant_knowledge";
 
 export type OwnerVoiceToolExecutorInput = {
   admin: SupabaseClient;
   locationId: string;
+  staffId: string;
   staffRole: string;
 };
 
 export type OwnerVoiceToolDefinition = {
   definition: OpenAiToolDefinition;
-  execute: (input: OwnerVoiceToolExecutorInput) => Promise<unknown>;
+  execute: (
+    input: OwnerVoiceToolExecutorInput,
+    args: Record<string, unknown>
+  ) => Promise<unknown>;
 };
 
 const getVenueStatus: OwnerVoiceToolDefinition = {
@@ -58,8 +69,39 @@ const getVenueStatus: OwnerVoiceToolDefinition = {
   },
 };
 
+const rememberRestaurantKnowledge: OwnerVoiceToolDefinition = {
+  definition: {
+    name: "remember_restaurant_knowledge",
+    description:
+      "Call this when the owner or manager tells you something you should always know going forward — a rule, a fact about the restaurant, a standing instruction. Only call it for things meant to be remembered permanently, not one-off requests. Confirm back what you saved in one short sentence.",
+    parameters: {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+          description:
+            "The fact or rule to remember, written as a short, clear standalone sentence (not a transcript of what they said).",
+        },
+      },
+      required: ["text"],
+    },
+  },
+  execute: async ({ admin, locationId, staffId }, args) => {
+    const text = typeof args.text === "string" ? args.text : "";
+    if (!text.trim()) return { ok: false, error: "empty_text" };
+
+    return addRestaurantKnowledge(admin, {
+      locationId,
+      text,
+      source: "owner_voice",
+      createdByStaffId: staffId,
+    });
+  },
+};
+
 const OWNER_VOICE_TOOL_CATALOG: Record<OwnerVoiceToolName, OwnerVoiceToolDefinition> = {
   get_venue_status: getVenueStatus,
+  remember_restaurant_knowledge: rememberRestaurantKnowledge,
 };
 
 export function listOwnerVoiceToolDefinitions(): OpenAiToolDefinition[] {
@@ -72,7 +114,8 @@ export function isOwnerVoiceToolName(name: string): name is OwnerVoiceToolName {
 
 export async function executeOwnerVoiceTool(
   name: OwnerVoiceToolName,
-  input: OwnerVoiceToolExecutorInput
+  input: OwnerVoiceToolExecutorInput,
+  args: Record<string, unknown> = {}
 ): Promise<unknown> {
-  return OWNER_VOICE_TOOL_CATALOG[name].execute(input);
+  return OWNER_VOICE_TOOL_CATALOG[name].execute(input, args);
 }

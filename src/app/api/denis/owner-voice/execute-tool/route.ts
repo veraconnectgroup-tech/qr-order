@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
   toolName: z.string().min(1).max(80),
+  args: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -43,11 +44,16 @@ export const POST = withErrorHandler(
     }
 
     const admin = createAdminClient();
-    const result = await executeOwnerVoiceTool(parsed.data.toolName, {
-      admin,
-      locationId,
-      staffRole: staff.role,
-    });
+    const result = await executeOwnerVoiceTool(
+      parsed.data.toolName,
+      {
+        admin,
+        locationId,
+        staffId: staff.id,
+        staffRole: staff.role,
+      },
+      parsed.data.args ?? {}
+    );
 
     return apiSuccess({ result });
   }

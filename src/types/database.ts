@@ -880,6 +880,15 @@ type Tables = {
     summary: Record<string, unknown>;
     closed_at: string;
   };
+  denis_restaurant_knowledge: {
+    id: string;
+    location_id: string;
+    text: string;
+    source: "admin_text" | "owner_voice";
+    created_by_staff_id: string | null;
+    created_at: string;
+    archived_at: string | null;
+  };
   denis_relationship_signals: {
     id: string;
     location_id: string;

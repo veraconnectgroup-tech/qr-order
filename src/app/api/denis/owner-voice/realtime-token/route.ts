@@ -15,15 +15,16 @@ const OWNER_VOICE_INSTRUCTIONS =
   "You are Denis, talking directly with the restaurant owner or manager — not a guest, not kitchen/bar staff. " +
   "They may ask how service is going, whether the kitchen is behind, or which tables need attention. " +
   "Always call get_venue_status before answering any question about current state — never guess or answer from a stale assumption. " +
+  "If they tell you something to remember permanently — a rule, a standing fact about the restaurant — call remember_restaurant_knowledge and confirm back in one short sentence what you saved. " +
   "If a tool call fails, say so honestly. Keep answers brief and direct, like a floor manager giving a quick verbal update. " +
   "Reply in Serbian unless the owner speaks another language first.";
 
 /**
  * Owner/manager-facing Realtime voice conversation — mints an ephemeral
  * WebRTC token (same transport already proven in the station-voice
- * connectivity test) with venue-status tools configured server-side, so
- * the browser client can never inject its own tool definitions.
- * Read-only only: no side-effecting tools on this surface.
+ * connectivity test) with tools configured server-side, so the browser
+ * client can never inject its own tool definitions. One side-effecting
+ * tool (remember_restaurant_knowledge) — everything else is read-only.
  */
 export const POST = withErrorHandler(
   "denis-owner-voice-realtime-token-post",

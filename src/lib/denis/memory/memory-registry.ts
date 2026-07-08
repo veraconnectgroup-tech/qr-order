@@ -150,6 +150,15 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
     notes:
       "Active upsell rule config per location — the applied output of an approved denis_learned_edges row. Config, not a log.",
   },
+  {
+    table: "denis_restaurant_knowledge",
+    tier: "restaurant",
+    retentionDays: null,
+    dayClose: "keep",
+    pii: true,
+    notes:
+      "Owner/staff-authored free-text house knowledge (rules, facts, style) — the one Restaurant-tier thing that has to be typed or said by a human, not inferred from order data. Soft-deleted (archived_at), never hard-deleted by Day Close. Free text may name specific people — treat as PII.",
+  },
 
   // --- audit tier: long-lived, never casually deleted ---
   {
