@@ -6,6 +6,7 @@ import { AiOpenAiError } from "@/lib/ai/openai-client";
 import { resolveDenisVoiceInstructions } from "@/lib/ai/denis-voice-instructions";
 import { listStationVoiceToolDefinitions } from "@/lib/denis/agentic/station-voice-realtime-tool-catalog";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { loadStationVoiceSnapshot } from "@/lib/denis/venue/floor/load-station-voice-snapshot";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
@@ -34,6 +35,7 @@ function buildStationVoiceInstructions(input: {
   message: string;
   urgencyRatio: number;
   venueChaosRatio: number;
+  restaurantKnowledgeBlock: string | null;
 }): string {
   const stationLabel = input.station === "kitchen" ? "kuhinjom" : "šankom";
   const persona = resolveDenisVoiceInstructions({
@@ -50,6 +52,7 @@ function buildStationVoiceInstructions(input: {
     "Call resolve_station_question the moment their answer is genuinely clear — never on a vague reply, ask one brief natural follow-up instead of guessing.",
     "If they start talking while you're mid-sentence, stop immediately and listen — don't talk over them.",
     "Speak Serbian — staff speak Serbian, don't switch language based on accent or background noise.",
+    ...(input.restaurantKnowledgeBlock ? ["", input.restaurantKnowledgeBlock] : []),
   ].join("\n");
 }
 
@@ -154,11 +157,10 @@ export const POST = withErrorHandler(
 
     const apiKey = process.env.OPENAI_API_KEY!.trim();
 
-    const snapshot = await loadStationVoiceSnapshot(
-      admin,
-      questionRow.location_id,
-      questionRow.station
-    );
+    const [snapshot, restaurantKnowledgeBlock] = await Promise.all([
+      loadStationVoiceSnapshot(admin, questionRow.location_id, questionRow.station),
+      loadRestaurantKnowledgeBlock(questionRow.location_id),
+    ]);
     const urgencyRatio = resolveUrgencyRatio(
       questionRow.asked_at,
       questionRow.expires_at,
@@ -181,6 +183,7 @@ export const POST = withErrorHandler(
             message: questionRow.message,
             urgencyRatio,
             venueChaosRatio: snapshot.venueChaosRatio,
+            restaurantKnowledgeBlock,
           }),
           tools: listStationVoiceToolDefinitions().map((tool) => ({
             type: "function",

@@ -3,6 +3,8 @@ import { isOpenAiConfigured } from "@/lib/ai/config";
 import { callOpenAiChat } from "@/lib/ai/openai-client";
 import type { OpenAiChatMessage } from "@/lib/ai/types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
+import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
+import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import type { StationVoiceReply } from "@/lib/denis/stations/classify-station-voice-reply";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
 import type { StationQuestionStation } from "@/lib/denis/stations/question-triggers";
@@ -63,6 +65,7 @@ function buildStaffVoiceMessages(input: {
   context: StationVoiceQuestionContext;
   staffTranscript: string;
   priorTurns: StationVoiceTurn[];
+  restaurantKnowledgeBlock: string | null;
 }): OpenAiChatMessage[] {
   const history =
     input.priorTurns.length > 0
@@ -75,21 +78,25 @@ function buildStaffVoiceMessages(input: {
           .join("\n")
       : "(još nema razgovora)";
 
+  // Same canonical identity as every other Denis surface (ADR-050) — one
+  // brain, not a separate hand-written description per fallback tier.
+  const systemPrompt = [
+    buildDenisPersonaBlock(),
+    "",
+    `Ti si Denis, AI konobar koji zove ${stationLabel(input.context.station)} zbog gosta koji čeka.`,
+    "Govoriš srpski, prirodno i ljubazno — kao kolega u smeni, ne robot sa menijem komandi.",
+    "Vodiš kratak razgovor: ako te osoblje pita koji sto, bon ili šta tačno treba — odgovori konkretno iz konteksta, pa nastavi da pitaš za status.",
+    "Nikad ne reci samo 'recite broj minuta' bez konteksta — uvek uključi sto/bon ako ih imaš.",
+    questionTypeHint(input.context.questionType),
+    "Kada imaš jasan status, resolved=true i postavi answer (+ etaMinutes ako je eta).",
+    "Inače resolved=false, odgovori prirodnim govorom (speak) i continueListening=true.",
+    "Max 2–3 kratke rečenice u speak.",
+    'JSON only: {"speak":"...","resolved":false,"answer":null,"etaMinutes":null,"continueListening":true}',
+    ...(input.restaurantKnowledgeBlock ? ["", input.restaurantKnowledgeBlock] : []),
+  ].join("\n");
+
   return [
-    {
-      role: "system",
-      content: [
-        `Ti si Denis, AI konobar koji zove ${stationLabel(input.context.station)} zbog gosta koji čeka.`,
-        "Govoriš srpski, prirodno i ljubazno — kao kolega u smeni, ne robot sa menijem komandi.",
-        "Vodiš kratak razgovor: ako te osoblje pita koji sto, bon ili šta tačno treba — odgovori konkretno iz konteksta, pa nastavi da pitaš za status.",
-        "Nikad ne reci samo 'recite broj minuta' bez konteksta — uvek uključi sto/bon ako ih imaš.",
-        questionTypeHint(input.context.questionType),
-        "Kada imaš jasan status, resolved=true i postavi answer (+ etaMinutes ako je eta).",
-        "Inače resolved=false, odgovori prirodnim govorom (speak) i continueListening=true.",
-        "Max 2–3 kratke rečenice u speak.",
-        'JSON only: {"speak":"...","resolved":false,"answer":null,"etaMinutes":null,"continueListening":true}',
-      ].join(" "),
-    },
+    { role: "system", content: systemPrompt },
     {
       role: "user",
       content: [
@@ -145,6 +152,7 @@ export async function perceiveStationVoiceTurnFromLlm(
     context: StationVoiceQuestionContext;
     staffTranscript: string;
     priorTurns: StationVoiceTurn[];
+    locationId: string;
   },
   config: ConciergeConfig
 ): Promise<StationVoiceTurnResult | null> {
@@ -156,11 +164,15 @@ export async function perceiveStationVoiceTurnFromLlm(
     undefined;
 
   try {
+    const restaurantKnowledgeBlock = await loadRestaurantKnowledgeBlock(
+      input.locationId
+    );
     const result = await callOpenAiChat(
       buildStaffVoiceMessages({
         context: input.context,
         staffTranscript: input.staffTranscript,
         priorTurns: input.priorTurns,
+        restaurantKnowledgeBlock,
       }),
       { model }
     );

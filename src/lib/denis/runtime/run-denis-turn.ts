@@ -7,6 +7,7 @@ import {
   screenOutput,
 } from "@/lib/ai/prompt-shield";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
+import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
 import {
   perceiveGuestChatTurn,
@@ -855,8 +856,11 @@ async function runTdePerceive(input: {
       messages: [
         {
           role: "system",
-          content:
-            "You are Denis, a restaurant AI colleague. Use the available tools to check real venue state before answering. Answer briefly, in the guest's language.",
+          content: [
+            buildDenisPersonaBlock(),
+            "",
+            "Use the available tools to check real venue state before answering. Answer briefly, in the guest's language.",
+          ].join("\n"),
         },
         { role: "user", content: input.body.message },
       ],

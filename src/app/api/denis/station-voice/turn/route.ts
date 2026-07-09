@@ -156,6 +156,7 @@ export const POST = withErrorHandler(
         tableName: tableRel?.name ?? null,
         orderNumber: orderRel?.order_number ?? null,
         waitMinutes,
+        locationId: questionRow.location_id,
       },
       config
     );

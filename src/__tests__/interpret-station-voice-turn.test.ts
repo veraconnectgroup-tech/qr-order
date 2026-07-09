@@ -12,6 +12,7 @@ describe("interpretStationVoiceTurn", () => {
         station: "kitchen",
         staffTranscript: "još pet minuta",
         priorTurns: [],
+        locationId: "loc-1",
       },
       CONCIERGE_PLATFORM_DEFAULTS
     );
@@ -29,6 +30,7 @@ describe("interpretStationVoiceTurn", () => {
         station: "kitchen",
         staffTranscript: "ne znam sta da kazem mozda sutra",
         priorTurns: [],
+        locationId: "loc-1",
       },
       CONCIERGE_PLATFORM_DEFAULTS
     );
@@ -49,6 +51,7 @@ describe("interpretStationVoiceTurn", () => {
         station: "bar",
         staffTranscript: "koji sto pricas",
         priorTurns: [],
+        locationId: "loc-1",
       },
       CONCIERGE_PLATFORM_DEFAULTS
     );

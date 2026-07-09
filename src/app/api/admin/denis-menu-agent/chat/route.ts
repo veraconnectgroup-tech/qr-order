@@ -6,6 +6,7 @@ import { callOpenAiChat } from "@/lib/ai/openai-client";
 import type { OpenAiChatMessage } from "@/lib/ai/types";
 import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
+import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { loadMenuAgentContextBlock } from "@/lib/denis/menu-agent/load-menu-agent-context";
 import {
   listMenuAgentToolDefinitions,
@@ -68,7 +69,10 @@ export const POST = withErrorHandler(
     }
 
     const admin = createAdminClient();
-    const menuContext = await loadMenuAgentContextBlock(admin, locationId);
+    const [menuContext, restaurantKnowledgeBlock] = await Promise.all([
+      loadMenuAgentContextBlock(admin, locationId),
+      loadRestaurantKnowledgeBlock(locationId),
+    ]);
 
     const systemPrompt = [
       buildDenisPersonaBlock(),
@@ -76,6 +80,7 @@ export const POST = withErrorHandler(
       MENU_AGENT_SYSTEM_PROMPT_PREFIX,
       "",
       menuContext,
+      ...(restaurantKnowledgeBlock ? ["", restaurantKnowledgeBlock] : []),
     ].join("\n");
 
     const messages: OpenAiChatMessage[] = [

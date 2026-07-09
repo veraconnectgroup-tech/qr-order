@@ -55,6 +55,7 @@ export async function interpretStationVoiceTurn(
     tableName?: string | null;
     orderNumber?: number | null;
     waitMinutes?: number | null;
+    locationId: string;
   },
   config: ConciergeConfig
 ): Promise<StationVoiceTurnResult> {
@@ -78,7 +79,12 @@ export async function interpretStationVoiceTurn(
   if (conversational) return conversational;
 
   const llmTurn = await perceiveStationVoiceTurnFromLlm(
-    { context, staffTranscript: transcript, priorTurns: input.priorTurns },
+    {
+      context,
+      staffTranscript: transcript,
+      priorTurns: input.priorTurns,
+      locationId: input.locationId,
+    },
     config
   );
   if (llmTurn) return llmTurn;
