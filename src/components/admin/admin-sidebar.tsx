@@ -54,6 +54,7 @@ const marketingItems = [
   { href: "/admin/loyalty", label: "Loyalty", icon: Star },
   { href: "/admin/retention", label: "Retention", icon: Users },
   { href: "/admin/denis-insights", label: "Denis Insights", icon: DenisNavIcon },
+  { href: "/admin/denis-menu-agent", label: "Denis Menu Agent", icon: DenisNavIcon },
   { href: "/admin/denis", label: "Denis Config", icon: DenisNavIcon },
   { href: "/admin/ab-experiments", label: "A/B Experiments", icon: DenisNavIcon },
   { href: "/admin/events", label: "Events", icon: PartyPopper },
