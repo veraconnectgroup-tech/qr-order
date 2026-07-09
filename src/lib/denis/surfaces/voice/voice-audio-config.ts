@@ -162,17 +162,27 @@ export async function openIndustrialVoiceAudioPipeline(): Promise<VoiceAudioPipe
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
 
+  // Band-pass + compression previously dead-ended into the analyser only —
+  // getSignalLevel() was computed but the RAW input stream was returned to
+  // callers (VAD, wake-word detection), so none of this processing ever
+  // reached what staff's voice was actually captured through. Routing
+  // through a MediaStreamAudioDestinationNode makes `stream` the real
+  // processed output, so every existing consumer of pipeline.stream
+  // benefits without any changes on their end.
+  const destination = ctx.createMediaStreamDestination();
+
   source.connect(highpass);
   highpass.connect(lowpass);
   lowpass.connect(compressor);
   compressor.connect(analyser);
+  compressor.connect(destination);
 
   const timeSamples = new Uint8Array(analyser.fftSize);
   const frequencyData = new Uint8Array(analyser.frequencyBinCount);
   const spectralState = createIndustrialSpectralState(analyser.frequencyBinCount);
 
   return {
-    stream,
+    stream: destination.stream,
     getSignalLevel: () => {
       analyser.getByteFrequencyData(frequencyData);
       analyser.getByteTimeDomainData(timeSamples);
@@ -189,6 +199,7 @@ export async function openIndustrialVoiceAudioPipeline(): Promise<VoiceAudioPipe
       lowpass.disconnect();
       compressor.disconnect();
       analyser.disconnect();
+      destination.disconnect();
       void ctx.close();
       for (const track of stream.getTracks()) {
         track.stop();
