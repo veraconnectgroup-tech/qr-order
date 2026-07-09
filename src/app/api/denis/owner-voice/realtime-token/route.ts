@@ -3,9 +3,8 @@ import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { isOpenAiConfigured } from "@/lib/ai/config";
 import { AiOpenAiError } from "@/lib/ai/openai-client";
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
-import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
+import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
 import { listOwnerVoiceToolDefinitions } from "@/lib/denis/agentic/owner-voice-tool-catalog";
-import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 
 /** Same model/voice choice as the station-voice Realtime path — see that route's own note. */
@@ -14,17 +13,17 @@ const REALTIME_VOICE = "alloy";
 const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
 /**
- * Same canonical identity as every other surface (buildDenisPersonaBlock,
- * ADR-050) — this used to be a separate hand-written description, which
- * meant a persona update elsewhere would silently never reach the owner.
- * One brain, not a parallel one per surface.
+ * Identity + restaurant knowledge come from assembleDenisBrainContext —
+ * this used to be a separate hand-written description, which meant a
+ * persona update elsewhere would silently never reach the owner. One
+ * brain, not a parallel one per surface.
  */
 const OWNER_VOICE_CONTEXT =
   "You're talking directly with the restaurant owner or manager — not a guest, not kitchen/bar staff. " +
   "They may ask how service is going, whether the kitchen is behind, or which tables need attention. " +
   "Always call get_venue_status before answering any question about current state — never guess or answer from a stale assumption. " +
   "If they tell you something to remember permanently — a rule, a standing fact about the restaurant — call remember_restaurant_knowledge and confirm back in one short sentence what you saved. " +
-  "Before asking the owner to repeat something, check the knowledge below — they may have already told you. " +
+  "Before asking the owner to repeat something, check the restaurant knowledge context you've already been given — they may have already told you. " +
   "If a tool call fails, say so honestly. Keep answers brief and direct, like a floor manager giving a quick verbal update. " +
   "Reply in Serbian unless the owner speaks another language first.";
 
@@ -52,13 +51,8 @@ export const POST = withErrorHandler(
     }
 
     const apiKey = process.env.OPENAI_API_KEY!.trim();
-    const restaurantKnowledgeBlock = await loadRestaurantKnowledgeBlock(locationId);
-    const instructions = [
-      buildDenisPersonaBlock(),
-      "",
-      OWNER_VOICE_CONTEXT,
-      ...(restaurantKnowledgeBlock ? ["", restaurantKnowledgeBlock] : []),
-    ].join("\n");
+    const brainContext = await assembleDenisBrainContext(locationId);
+    const instructions = [brainContext, "", OWNER_VOICE_CONTEXT].join("\n");
 
     const res = await fetch(REALTIME_CLIENT_SECRETS_URL, {
       method: "POST",

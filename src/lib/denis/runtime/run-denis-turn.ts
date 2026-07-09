@@ -7,7 +7,7 @@ import {
   screenOutput,
 } from "@/lib/ai/prompt-shield";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
-import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
+import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
 import {
   perceiveGuestChatTurn,
@@ -852,12 +852,15 @@ async function runTdePerceive(input: {
 
   if (agenticPolicy.mode === "shadow") {
     const admin = createAdminClient();
+    const agenticBrainContext = await assembleDenisBrainContext(
+      input.body.locationId
+    );
     void runToolLoop({
       messages: [
         {
           role: "system",
           content: [
-            buildDenisPersonaBlock(),
+            agenticBrainContext,
             "",
             "Use the available tools to check real venue state before answering. Answer briefly, in the guest's language.",
           ].join("\n"),

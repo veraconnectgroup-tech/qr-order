@@ -3,8 +3,7 @@ import { isOpenAiConfigured } from "@/lib/ai/config";
 import { callOpenAiChat } from "@/lib/ai/openai-client";
 import type { OpenAiChatMessage } from "@/lib/ai/types";
 import type { ConciergeConfig } from "@/lib/denis/config/concierge-config.schema";
-import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
-import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
+import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
 import type { StationVoiceReply } from "@/lib/denis/stations/classify-station-voice-reply";
 import type { StationQuestionRow } from "@/lib/denis/stations/station-questions";
 import type { StationQuestionStation } from "@/lib/denis/stations/question-triggers";
@@ -65,7 +64,7 @@ function buildStaffVoiceMessages(input: {
   context: StationVoiceQuestionContext;
   staffTranscript: string;
   priorTurns: StationVoiceTurn[];
-  restaurantKnowledgeBlock: string | null;
+  brainContext: string;
 }): OpenAiChatMessage[] {
   const history =
     input.priorTurns.length > 0
@@ -78,10 +77,8 @@ function buildStaffVoiceMessages(input: {
           .join("\n")
       : "(još nema razgovora)";
 
-  // Same canonical identity as every other Denis surface (ADR-050) — one
-  // brain, not a separate hand-written description per fallback tier.
   const systemPrompt = [
-    buildDenisPersonaBlock(),
+    input.brainContext,
     "",
     `Ti si Denis, AI konobar koji zove ${stationLabel(input.context.station)} zbog gosta koji čeka.`,
     "Govoriš srpski, prirodno i ljubazno — kao kolega u smeni, ne robot sa menijem komandi.",
@@ -92,7 +89,6 @@ function buildStaffVoiceMessages(input: {
     "Inače resolved=false, odgovori prirodnim govorom (speak) i continueListening=true.",
     "Max 2–3 kratke rečenice u speak.",
     'JSON only: {"speak":"...","resolved":false,"answer":null,"etaMinutes":null,"continueListening":true}',
-    ...(input.restaurantKnowledgeBlock ? ["", input.restaurantKnowledgeBlock] : []),
   ].join("\n");
 
   return [
@@ -164,15 +160,13 @@ export async function perceiveStationVoiceTurnFromLlm(
     undefined;
 
   try {
-    const restaurantKnowledgeBlock = await loadRestaurantKnowledgeBlock(
-      input.locationId
-    );
+    const brainContext = await assembleDenisBrainContext(input.locationId);
     const result = await callOpenAiChat(
       buildStaffVoiceMessages({
         context: input.context,
         staffTranscript: input.staffTranscript,
         priorTurns: input.priorTurns,
-        restaurantKnowledgeBlock,
+        brainContext,
       }),
       { model }
     );
