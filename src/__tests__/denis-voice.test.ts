@@ -21,17 +21,17 @@ import {
 describe("Denis M18 voice surface", () => {
   const tableToken = "abc123def456ghi789jkl012mno345pq";
 
-  it("platform defaults enable guest + staff voice", () => {
+  it("platform defaults enable staff voice, guest voice input stays off until verified", () => {
     expect(() =>
       ConciergeConfigSchema.parse(CONCIERGE_PLATFORM_DEFAULTS)
     ).not.toThrow();
-    expect(CONCIERGE_PLATFORM_DEFAULTS.surfaces.voiceEnabled).toBe(true);
+    expect(CONCIERGE_PLATFORM_DEFAULTS.surfaces.voiceEnabled).toBe(false);
     expect(CONCIERGE_PLATFORM_DEFAULTS.surfaces.voiceStaffEnabled).toBe(true);
     expect(CONCIERGE_PLATFORM_DEFAULTS.surfaces.voiceTtsEnabled).toBe(true);
   });
 
-  it("Table OS pilot enables voice", () => {
-    expect(TABLE_OS_PILOT_CONFIG_PATCH.surfaces!.voiceEnabled).toBe(true);
+  it("Table OS pilot enables staff voice, guest voice input stays off until verified", () => {
+    expect(TABLE_OS_PILOT_CONFIG_PATCH.surfaces!.voiceEnabled).toBe(false);
     expect(TABLE_OS_PILOT_CONFIG_PATCH.surfaces!.voiceStaffEnabled).toBe(true);
     expect(TABLE_OS_PILOT_CONFIG_PATCH.surfaces!.voiceTtsEnabled).toBe(true);
   });

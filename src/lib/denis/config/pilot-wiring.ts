@@ -20,7 +20,8 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
   },
   memory: { returnGuestEnabled: true },
   surfaces: {
-    voiceEnabled: true,
+    // See concierge-defaults.ts — guest voice input off until verified.
+    voiceEnabled: false,
     voiceTtsEnabled: true,
     voiceStaffEnabled: true,
   },

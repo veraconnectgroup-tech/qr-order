@@ -218,7 +218,10 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     consentPromptTemplate: null,
   },
   surfaces: {
-    voiceEnabled: true,
+    // Guest voice INPUT (mic/STT) off by default — not tested/verified
+    // enough yet (real bugs found in the wake-word/push-to-talk layer this
+    // session). Priority is kitchen/bar (voiceStaffEnabled) first.
+    voiceEnabled: false,
     voiceTtsEnabled: true,
     voiceStaffEnabled: true,
   },

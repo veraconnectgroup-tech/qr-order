@@ -282,6 +282,16 @@ export function useDenisVoice({
       const armCommandCapture = async (pipeline: VoiceAudioPipeline) => {
         if (!recognitionRef.current) return;
 
+        // Push-to-talk means the button press IS the speech signal — gating
+        // STT start behind VAD's energy-ratio onSpeechStart defeats the
+        // point in the loud environment this mode exists for (if ambient
+        // noise never lets VAD confirm speech, holding the button does
+        // nothing and release produces a silent no_speech failure).
+        if (pushToTalkMode) {
+          startSttIfNeeded();
+          return;
+        }
+
         const vad = await createVoiceActivityDetector(pipeline.stream, {
           onSpeechStart: startSttIfNeeded,
           onSpeechEnd: () => {

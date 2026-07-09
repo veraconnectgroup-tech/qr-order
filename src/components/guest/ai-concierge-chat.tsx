@@ -917,7 +917,16 @@ export function AiConciergeChat({
     menuLanguage: menuLocale,
     autoSpeak: voiceTtsEnabled,
     sessionToken: sessionToken ?? token,
-    audioEnvironment: "sala",
+    // ADR-051 B1 added audioEnvironment: "sala" here, which silently
+    // requires guests to say "Hej Denise" before voice input is captured
+    // (resolveVoiceAudioProfile("sala") sets inputMode: "wake-word").
+    // No guest-facing UI was added to explain this, and the wake-word
+    // detector (wake-word-detector.ts) is a coarse RMS-envelope match with
+    // no phonetic matching — real false-positive/false-negative risk.
+    // "sala"'s noise pipeline is also identical to the default
+    // (useIndustrialNoiseProfile: false), so this added zero audio-quality
+    // benefit — only the wake-word gate. Omitted until the detector is
+    // proven reliable and the UI actually explains the requirement.
   });
 
   const tChat = useCallback(
