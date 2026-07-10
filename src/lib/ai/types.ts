@@ -120,6 +120,8 @@ export type BuildSystemPromptInput = {
   featuredProductName?: string | null;
   /** ADR-045 Restaurant tier — owner/staff-authored durable house knowledge. */
   restaurantKnowledgeBlock?: string | null;
+  /** Prompt-evolution flywheel — rules learned from this location's own real guest turns, once the A/B gate clears confidence. */
+  evolvedLearningsBlock?: string | null;
 };
 
 export type OpenAiChatMessage = {

@@ -4,11 +4,13 @@
  * evolution decision needs learnings pooled across many sessions per
  * location (PROMPT_LEARNING_THRESHOLD) — this is that pool.
  *
- * Shadow-only by construction: this module only ever stores a *status*
- * (ready/winner/confidence/evolved section) for admin review. Nothing here
- * writes to a live prompt — applying an evolved section to buildSystemPrompt
- * is a separate, not-yet-built decision that requires explicit founder
- * review of real evolved-prompt diffs first.
+ * loadEvolvedLearningsBlock feeds buildSystemPrompt (via
+ * evolvedLearningsBlock in perceive-guest-chat-turn.ts) on every real guest
+ * turn — no longer shadow-only. Still gated by the same statistical bar
+ * this module already computed (winner === "B" at >= 95% confidence,
+ * eligibleForFounderReview): a fresh location with no accumulated
+ * learnings, or one that hasn't cleared that bar yet, gets nothing added,
+ * so this can't affect a venue before it has real evidence behind it.
  */
 import type { ExtractedLearning } from "@/lib/denis/eval/learning-extractor";
 import type { PromptAbEvalResult } from "@/lib/denis/eval/prompt-evolver";
@@ -106,6 +108,17 @@ export async function loadPromptEvolutionStatus(
     logRedisDegradation("denis.eval.prompt_evolution.read", error);
     return null;
   }
+}
+
+/** Evolved section for this location's live prompt — null unless it's actually cleared the confidence bar, never a half-confident guess. */
+export async function loadEvolvedLearningsBlock(
+  locationId: string
+): Promise<string | null> {
+  const status = await loadPromptEvolutionStatus(locationId);
+  if (!status?.eligibleForFounderReview || !status.evolvedSection?.trim()) {
+    return null;
+  }
+  return status.evolvedSection.trim();
 }
 
 export function statusFromAbResult(input: {
