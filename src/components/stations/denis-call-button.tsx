@@ -1,13 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
 import {
   connectDenisRealtimeVoice,
   isRealtimeWebRTCSupported,
   type DenisRealtimeConnection,
 } from "@/lib/denis/surfaces/voice/realtime-webrtc-connection";
 import { attachRealtimeToolCallRelay } from "@/lib/denis/surfaces/voice/realtime-tool-call-relay";
-import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
+
+// WebGL/Canvas is browser-only — never render on the server.
+const DenisVoiceOrb = dynamic(
+  () => import("@/components/denis-voice-orb").then((m) => m.DenisVoiceOrb),
+  { ssr: false }
+);
 
 type CallState = "idle" | "connecting" | "connected" | "error";
 
@@ -31,8 +37,38 @@ export function DenisCallButton({
   const [statusText, setStatusText] = useState("");
   const connectionRef = useRef<DenisRealtimeConnection | null>(null);
   const relayCleanupRef = useRef<(() => void) | null>(null);
+  // Denis's own voice, not the staff mic — this is what the orb should
+  // visibly pulse with during a call, same real-audio rule as the orb's
+  // guest-facing surface (no timer-driven fake motion).
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  const supported = isRealtimeWebRTCSupported();
+  // Starts false so the first client render matches the server-rendered
+  // markup (window/RTCPeerConnection don't exist during SSR) — flips true
+  // after mount, same hydration-mismatch fix as useMicAudioLevel's
+  // `supported` check.
+  const [supported, setSupported] = useState(false);
+  useEffect(() => {
+    setSupported(isRealtimeWebRTCSupported());
+  }, []);
+
+  function attachRemoteStreamAnalyser(stream: MediaStream) {
+    const AudioContextCtor =
+      window.AudioContext ??
+      (window as Window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const ctx = new AudioContextCtor();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.55;
+    source.connect(analyser);
+
+    audioContextRef.current = ctx;
+    analyserRef.current = analyser;
+  }
 
   async function handleCall() {
     setState("connecting");
@@ -46,12 +82,13 @@ export function DenisCallButton({
       const tokenJson = await tokenRes.json();
       if (!tokenRes.ok) {
         setState("error");
-        setStatusText(tokenJson.error ?? "Poziv nije uspeo.");
+        setStatusText(tokenJson.error?.message ?? "Poziv nije uspeo.");
         return;
       }
 
       const connection = await connectDenisRealtimeVoice(
-        tokenJson.data.clientSecret
+        tokenJson.data.clientSecret,
+        { onRemoteStream: attachRemoteStreamAnalyser }
       );
       connectionRef.current = connection;
 
@@ -81,6 +118,9 @@ export function DenisCallButton({
     relayCleanupRef.current = null;
     connectionRef.current?.close();
     connectionRef.current = null;
+    analyserRef.current = null;
+    void audioContextRef.current?.close();
+    audioContextRef.current = null;
     setState("idle");
     setStatusText("");
   }
@@ -120,7 +160,7 @@ export function DenisCallButton({
           ×
         </button>
 
-        <DenisVoicePresenceOrb size={220} moodIntensity={0} speaking={false} />
+        <DenisVoiceOrb size={220} analyserRef={analyserRef} />
 
         <p className="text-sm text-white/80">{statusText}</p>
 

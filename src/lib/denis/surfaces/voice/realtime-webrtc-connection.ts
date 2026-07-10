@@ -24,14 +24,17 @@ export function isRealtimeWebRTCSupported(): boolean {
  * SDP offer posted to /v1/realtime/calls, remote answer applied.
  */
 export async function connectDenisRealtimeVoice(
-  clientSecret: string
+  clientSecret: string,
+  options?: { onRemoteStream?: (stream: MediaStream) => void }
 ): Promise<DenisRealtimeConnection> {
   const peerConnection = new RTCPeerConnection();
 
   const remoteAudio = new Audio();
   remoteAudio.autoplay = true;
   peerConnection.ontrack = (event) => {
-    remoteAudio.srcObject = event.streams[0] ?? null;
+    const stream = event.streams[0] ?? null;
+    remoteAudio.srcObject = stream;
+    if (stream) options?.onRemoteStream?.(stream);
   };
 
   const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
