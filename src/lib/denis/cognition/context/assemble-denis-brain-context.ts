@@ -1,5 +1,6 @@
 import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
 import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
+import { loadIntegrationsAwarenessBlock } from "@/lib/integrations/registry";
 
 /**
  * THE single entry point for "things Denis should always know, on every
@@ -31,12 +32,14 @@ import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-k
 export async function assembleDenisBrainContext(
   locationId: string
 ): Promise<string> {
-  const restaurantKnowledgeBlock = await loadRestaurantKnowledgeBlock(
-    locationId
-  );
+  const [restaurantKnowledgeBlock, integrationsBlock] = await Promise.all([
+    loadRestaurantKnowledgeBlock(locationId),
+    loadIntegrationsAwarenessBlock(locationId),
+  ]);
 
   return [
     buildDenisPersonaBlock(),
     ...(restaurantKnowledgeBlock ? ["", restaurantKnowledgeBlock] : []),
+    ...(integrationsBlock ? ["", integrationsBlock] : []),
   ].join("\n");
 }
