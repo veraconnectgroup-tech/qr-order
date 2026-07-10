@@ -14,7 +14,8 @@ export type StaffNotificationType =
   | "staff_training"
   | "inventory_running_low"
   | "inventory_will_run_out"
-  | "inventory_just_ran_out";
+  | "inventory_just_ran_out"
+  | "denis_relay";
 
 export type StaffNotificationPriority = "low" | "medium" | "high" | "urgent";
 
@@ -76,6 +77,7 @@ const PRIORITY_BY_TYPE: Record<StaffNotificationType, StaffNotificationPriority>
   long_wait: "medium",
   waiter_call: "medium",
   high_value_order: "medium",
+  denis_relay: "medium",
   vip_guest: "low",
 };
 

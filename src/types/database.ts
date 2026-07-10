@@ -873,6 +873,21 @@ type Tables = {
     text: string;
     created_at: string;
   };
+  denis_station_relay_messages: {
+    id: string;
+    location_id: string;
+    from_station: "kitchen" | "bar";
+    to_station: "kitchen" | "bar";
+    message: string;
+    status: "open" | "answered" | "expired" | "cancelled";
+    reply: string | null;
+    requested_by: string | null;
+    replied_by: string | null;
+    asked_at: string;
+    replied_at: string | null;
+    expires_at: string;
+    origin_notified_at: string | null;
+  };
   denis_day_closes: {
     id: string;
     location_id: string;

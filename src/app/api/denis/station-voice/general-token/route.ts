@@ -23,10 +23,16 @@ const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_s
 
 function buildStationGeneralVoiceInstructions(station: "kitchen" | "bar"): string {
   const stationLabel = station === "kitchen" ? "kuhinje" : "šanka";
+  const otherStationLabel = station === "kitchen" ? "bar" : "kuhinju";
   return [
     `You're talking with staff from the ${stationLabel} — they called YOU this time (not the other way around), so there's no specific pending question to resolve.`,
     "They may ask how service is going, whether the kitchen is behind, or which tables need attention.",
     "Always call get_venue_status before answering any question about current state — never guess or answer from a stale assumption.",
+    // Explicit per the founder's own framing: activating this call is
+    // permission for Denis to actually act, not just answer questions —
+    // he should use notify_station/notify_manager on his own initiative
+    // when he judges it's warranted, not only when explicitly told to.
+    `Being activated means you have real latitude here — if staff asks you to relay something to ${otherStationLabel} or to the manager, use notify_station or notify_manager right away. And if you judge on your own, from what's said in this conversation, that the other station or the manager should know something, don't wait to be asked — use those tools yourself.`,
     "Keep answers brief and direct, like a colleague giving a quick verbal update.",
     "Speak Serbian — staff speak Serbian, don't switch language based on accent or background noise.",
   ].join("\n");

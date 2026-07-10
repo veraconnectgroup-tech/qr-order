@@ -13,6 +13,7 @@ import { createServerClient } from "@/lib/supabase/server";
 const schema = z.object({
   toolName: z.string().min(1).max(80),
   locationId: z.string().uuid(),
+  station: z.enum(["kitchen", "bar"]),
   args: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -83,11 +84,18 @@ export const POST = withErrorHandler(
       return apiError("Unauthorized.", 401);
     }
 
-    const result = await executeStationGeneralVoiceTool(parsed.data.toolName, {
-      admin,
-      locationId: parsed.data.locationId,
-      staffRole: staffRow.role,
-    });
+    const result = await executeStationGeneralVoiceTool(
+      parsed.data.toolName,
+      {
+        admin,
+        locationId: parsed.data.locationId,
+        orgId: staffRow.org_id,
+        staffId: staffRow.id,
+        staffRole: staffRow.role,
+        station: parsed.data.station,
+      },
+      parsed.data.args ?? {}
+    );
 
     return apiSuccess({ result });
   }

@@ -94,7 +94,7 @@ export function DenisCallButton({
 
       relayCleanupRef.current = attachRealtimeToolCallRelay(connection, {
         executeToolUrl: "/api/denis/station-voice/general-execute-tool",
-        extraBody: { locationId },
+        extraBody: { locationId, station },
       });
 
       connection.dataChannel.addEventListener("open", () => {

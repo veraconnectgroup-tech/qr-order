@@ -14,6 +14,7 @@ export type RealtimeTable =
   | "denis_party_devices"
   | "denis_timeline"
   | "station_questions"
+  | "denis_station_relay_messages"
   | "order_station_states"
   | "table_bus_obligations";
 

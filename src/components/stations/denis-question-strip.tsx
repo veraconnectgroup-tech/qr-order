@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
+import { useStationRelayMessages } from "@/hooks/use-station-relay-messages";
 import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
 import { useDenisVoice } from "@/hooks/use-denis-voice";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
@@ -106,6 +107,13 @@ export function DenisQuestionStrip({
     locationId,
     station
   );
+  const {
+    incoming: relayIncoming,
+    undeliveredReplies: relayUndeliveredReplies,
+    answerRelay,
+    acknowledgeDelivery: acknowledgeRelayDelivery,
+  } = useStationRelayMessages(locationId, station);
+  const spokenRelayIdsRef = useRef<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
@@ -476,6 +484,52 @@ export function DenisQuestionStrip({
     pushToTalkEnabled,
   ]);
 
+  // Relay messages (from "Pozovi Denisa" at the other station, or Denis's
+  // own initiative) — much simpler than the question flow above: speak,
+  // capture one free-text reply (no keyword classification, no resolved
+  // enum), done. Delivering an answered reply back to whichever station
+  // originally asked takes priority over speaking a fresh incoming one.
+  useEffect(() => {
+    if (!voicePrimed || speaking) return;
+
+    const replyToDeliver = relayUndeliveredReplies.find(
+      (row) => !spokenRelayIdsRef.current.has(`reply:${row.id}`)
+    );
+    if (replyToDeliver) {
+      spokenRelayIdsRef.current.add(`reply:${replyToDeliver.id}`);
+      const askerLabel = replyToDeliver.from_station === "kitchen" ? "Kuhinja" : "Bar";
+      speak(`${askerLabel} pita — odgovor stigao: ${replyToDeliver.reply}`, () => {
+        void acknowledgeRelayDelivery(replyToDeliver.id);
+      });
+      return;
+    }
+
+    const incomingToSpeak = relayIncoming.find(
+      (row) => !spokenRelayIdsRef.current.has(`ask:${row.id}`)
+    );
+    if (!incomingToSpeak) return;
+    spokenRelayIdsRef.current.add(`ask:${incomingToSpeak.id}`);
+
+    speak(incomingToSpeak.message, () => {
+      window.setTimeout(() => {
+        stationVoiceCapture.startListening((result) => {
+          if (result.ok && result.transcript.trim()) {
+            void answerRelay(incomingToSpeak.id, result.transcript.trim());
+          }
+        });
+      }, LISTEN_AFTER_SPEAK_MS);
+    });
+  }, [
+    voicePrimed,
+    speaking,
+    relayIncoming,
+    relayUndeliveredReplies,
+    speak,
+    answerRelay,
+    acknowledgeRelayDelivery,
+    stationVoiceCapture,
+  ]);
+
   const pushToTalkButton =
     pushToTalkEnabled && voicePrimed ? (
       <button
@@ -518,37 +572,26 @@ export function DenisQuestionStrip({
     </button>
   );
 
-  if (!active) {
-    return activateButton ? (
-      <div className="flex justify-center">{activateButton}</div>
-    ) : null;
-  }
+  // Relay activity (incoming message to speak/answer, or a reply to
+  // deliver back) keeps the orb overlay up even with no active order
+  // question — it's a separate reason for Denis to have the floor.
+  const hasRelayActivity =
+    relayIncoming.length > 0 || relayUndeliveredReplies.length > 0;
 
-  const remaining = secondsLeft(active.expires_at, now);
-  if (remaining <= 0) {
-    return activateButton ? (
-      <div className="flex justify-center">{activateButton}</div>
-    ) : null;
-  }
+  const remaining = active ? secondsLeft(active.expires_at, now) : 0;
+  const activeWaitMinutes = active ? extractWaitMinutes(active.message) : null;
+  const urgencyRatio = active
+    ? resolveUrgencyRatio(active.asked_at, active.expires_at, now, activeWaitMinutes)
+    : 0;
+  const urgency = active
+    ? resolveUrgency(active.asked_at, active.expires_at, now, activeWaitMinutes)
+    : "normal";
+  const dismissKey = active ? `${active.id}:${urgency}` : null;
+  const dismissed = dismissKey != null && dismissedKey === dismissKey;
 
-  const activeWaitMinutes = extractWaitMinutes(active.message);
-  const urgencyRatio = resolveUrgencyRatio(
-    active.asked_at,
-    active.expires_at,
-    now,
-    activeWaitMinutes
-  );
-  const urgency = resolveUrgency(
-    active.asked_at,
-    active.expires_at,
-    now,
-    activeWaitMinutes
-  );
+  const showActiveQuestion = Boolean(active) && remaining > 0 && !dismissed;
 
-  const dismissKey = `${active.id}:${urgency}`;
-  const dismissed = dismissedKey === dismissKey;
-
-  if (dismissed) {
+  if (!showActiveQuestion && !hasRelayActivity) {
     return activateButton ? (
       <div className="flex justify-center">{activateButton}</div>
     ) : null;
@@ -564,14 +607,16 @@ export function DenisQuestionStrip({
         aria-hidden
       />
       <div className="relative flex h-full flex-col items-center justify-center gap-8 p-4">
-        <button
-          type="button"
-          onClick={() => setDismissedKey(dismissKey)}
-          aria-label="Dismiss"
-          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-white/80 hover:bg-white/20"
-        >
-          ×
-        </button>
+        {showActiveQuestion && dismissKey && (
+          <button
+            type="button"
+            onClick={() => setDismissedKey(dismissKey)}
+            aria-label="Dismiss"
+            className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-white/80 hover:bg-white/20"
+          >
+            ×
+          </button>
+        )}
 
         {activateButton}
         {pushToTalkButton}
