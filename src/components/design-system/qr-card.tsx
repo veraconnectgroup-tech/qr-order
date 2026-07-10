@@ -1,4 +1,4 @@
-import type { ComponentProps, ElementType } from "react";
+import { createElement, type ComponentProps, type ElementType } from "react";
 import { cn } from "@/lib/utils";
 
 type QrCardVariant = "default" | "muted";
@@ -32,18 +32,22 @@ export function QrCard<T extends ElementType = "div">({
 }: QrCardProps<T>) {
   const Component = as ?? "div";
 
-  return (
-    <Component
-      className={cn(
+  // createElement, not JSX, for the polymorphic "as" element — JSX's
+  // LibraryManagedAttributes checking can't verify props against an
+  // arbitrary generic T (a known TS limitation), and createElement's
+  // looser overload accepts it without losing runtime behavior.
+  return createElement(
+    Component,
+    {
+      className: cn(
         "rounded-xl border border-border shadow-[var(--shadow-card)]",
         variantClasses[variant],
         paddingClasses[padding],
         className
-      )}
-      {...props}
-    >
-      {children}
-    </Component>
+      ),
+      ...props,
+    },
+    children
   );
 }
 
