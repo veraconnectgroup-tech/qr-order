@@ -10,6 +10,7 @@ import {
   completeCommitment,
   createCommitment,
 } from "@/lib/denis/stations/denis-commitments";
+import { logActivity } from "@/lib/denis/stations/denis-activity-log";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -187,6 +188,16 @@ export async function executeStationGeneralVoiceTool(
       requestedByStaffId: input.staffId,
     });
 
+    if (result.created) {
+      void logActivity(input.admin, {
+        locationId: input.locationId,
+        station: input.station,
+        staffId: input.staffId,
+        action: "notify_station",
+        summary: `Prosledio poruku ka ${otherStation(input.station) === "kitchen" ? "kuhinji" : "baru"}: ${message}`,
+      });
+    }
+
     return result.created
       ? { ok: true, relayId: result.relay.id }
       : { ok: false, error: result.reason };
@@ -201,6 +212,14 @@ export async function executeStationGeneralVoiceTool(
       locationId: input.locationId,
       type: "denis_relay",
       message,
+    });
+
+    void logActivity(input.admin, {
+      locationId: input.locationId,
+      station: input.station,
+      staffId: input.staffId,
+      action: "notify_manager",
+      summary: `Poslao obaveštenje šefici: ${message}`,
     });
 
     return { ok: true, delivered };
@@ -221,6 +240,16 @@ export async function executeStationGeneralVoiceTool(
       promisedToStaffId: input.staffId,
     });
 
+    if (result.created) {
+      void logActivity(input.admin, {
+        locationId: input.locationId,
+        station: input.station,
+        staffId: input.staffId,
+        action: "remember_commitment",
+        summary: `Obećao (do ${dueDate}): ${text}`,
+      });
+    }
+
     return result.created
       ? { ok: true, commitmentId: result.commitment.id }
       : { ok: false, error: result.reason };
@@ -232,5 +261,14 @@ export async function executeStationGeneralVoiceTool(
   if (!commitmentId) return { ok: false, error: "invalid_input" };
 
   const ok = await completeCommitment(input.admin, { commitmentId });
+  if (ok) {
+    void logActivity(input.admin, {
+      locationId: input.locationId,
+      station: input.station,
+      staffId: input.staffId,
+      action: "complete_commitment",
+      summary: `Završio obavezu (${commitmentId}).`,
+    });
+  }
   return { ok };
 }

@@ -10,6 +10,10 @@ import {
   listDueCommitments,
   type DenisCommitmentRow,
 } from "@/lib/denis/stations/denis-commitments";
+import {
+  listRecentActivity,
+  type DenisActivityLogRow,
+} from "@/lib/denis/stations/denis-activity-log";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -41,11 +45,22 @@ function buildDueCommitmentsBlock(
   ].join("\n");
 }
 
+function buildRecentActivityBlock(activity: DenisActivityLogRow[]): string | null {
+  if (activity.length === 0) return null;
+  const lines = activity.map((row) => `- ${row.summary}`);
+  return [
+    "WHAT YOU'VE ACTUALLY BEEN DOING TODAY (last few hours):",
+    ...lines,
+    "Use this to stay consistent — don't repeat something you already did, and reference it naturally if it's relevant to what's being asked now.",
+  ].join("\n");
+}
+
 function buildStationGeneralVoiceInstructions(input: {
   station: "kitchen" | "bar";
   callerName: string;
   today: string;
   dueCommitmentsBlock: string | null;
+  recentActivityBlock: string | null;
 }): string {
   const stationLabel = input.station === "kitchen" ? "kuhinje" : "šanka";
   const otherStationLabel = input.station === "kitchen" ? "bar" : "kuhinju";
@@ -67,6 +82,7 @@ function buildStationGeneralVoiceInstructions(input: {
     "Keep answers brief and direct, like a colleague giving a quick verbal update.",
     "Speak Serbian — staff speak Serbian, don't switch language based on accent or background noise.",
     ...(input.dueCommitmentsBlock ? ["", input.dueCommitmentsBlock] : []),
+    ...(input.recentActivityBlock ? ["", input.recentActivityBlock] : []),
   ].join("\n");
 }
 
@@ -147,9 +163,10 @@ export const POST = withErrorHandler(
 
     const apiKey = process.env.OPENAI_API_KEY!.trim();
     const today = new Date().toISOString().slice(0, 10);
-    const [brainContext, dueCommitments] = await Promise.all([
+    const [brainContext, dueCommitments, recentActivity] = await Promise.all([
       assembleDenisBrainContext(parsed.data.locationId),
       listDueCommitments(admin, { locationId: parsed.data.locationId, today }),
+      listRecentActivity(admin, { locationId: parsed.data.locationId }),
     ]);
     const instructions = [
       brainContext,
@@ -159,6 +176,7 @@ export const POST = withErrorHandler(
         callerName: staffRow.name,
         today,
         dueCommitmentsBlock: buildDueCommitmentsBlock(today, dueCommitments),
+        recentActivityBlock: buildRecentActivityBlock(recentActivity),
       }),
     ].join("\n");
 

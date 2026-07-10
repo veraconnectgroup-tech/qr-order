@@ -873,6 +873,15 @@ type Tables = {
     text: string;
     created_at: string;
   };
+  denis_activity_log: {
+    id: string;
+    location_id: string;
+    station: "kitchen" | "bar" | null;
+    staff_id: string | null;
+    action: string;
+    summary: string;
+    created_at: string;
+  };
   denis_commitments: {
     id: string;
     location_id: string;
