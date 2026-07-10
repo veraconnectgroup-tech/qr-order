@@ -61,6 +61,7 @@ import {
 } from "@/lib/pos/provisional-display";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { DenisCallButton } from "@/components/stations/denis-call-button";
 import { EightySixPanel } from "@/components/stations/eighty-six-panel";
 import { KdsConnectionBadge, kdsSecondsSinceUpdate } from "@/components/dashboard/kds-connection-badge";
 import { useConnectionStatus } from "@/hooks/use-connection-status";
@@ -703,6 +704,9 @@ export function KdsBoard() {
 
       <div className="empty:hidden px-4 pt-3">
         <DenisQuestionStrip locationId={locationId} station="kitchen" />
+        <div className="mt-2 flex justify-center">
+          <DenisCallButton locationId={locationId} station="kitchen" />
+        </div>
         <div className="mt-3 max-w-md">
           <EightySixPanel locationId={locationId} station="kitchen" />
         </div>

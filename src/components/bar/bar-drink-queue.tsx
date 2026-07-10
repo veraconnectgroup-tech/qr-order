@@ -6,6 +6,7 @@ import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useBarOrders } from "@/hooks/use-bar-orders";
 import { BarOrderRow } from "@/components/bar/bar-order-row";
 import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { DenisCallButton } from "@/components/stations/denis-call-button";
 import { EightySixPanel } from "@/components/stations/eighty-six-panel";
 import { SoundEnableBanner } from "@/components/dashboard/sound-enable-banner";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,9 @@ export function BarDrinkQueue() {
       <SoundEnableBanner />
 
       <DenisQuestionStrip locationId={locationId} station="bar" />
+      <div className="flex justify-center">
+        <DenisCallButton locationId={locationId} station="bar" />
+      </div>
 
       <EightySixPanel locationId={locationId} station="bar" />
 

@@ -30,6 +30,7 @@ import { isProvisionalKdsOrder } from "@/lib/pos/provisional-display";
 import { useSoundAlert } from "@/hooks/use-sound-alert";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DenisQuestionStrip } from "@/components/stations/denis-question-strip";
+import { DenisCallButton } from "@/components/stations/denis-call-button";
 import { EightySixPanel } from "@/components/stations/eighty-six-panel";
 import { KitchenHeader } from "@/components/dashboard/kitchen-header";
 import { RejectOrderDialog } from "@/components/dashboard/reject-order-dialog";
@@ -396,6 +397,9 @@ export function KitchenBoard() {
 
       <div className="empty:hidden px-4 pt-3">
         <DenisQuestionStrip locationId={locationId} station="kitchen" />
+        <div className="mt-2 flex justify-center">
+          <DenisCallButton locationId={locationId} station="kitchen" />
+        </div>
         <div className="mt-3">
           <EightySixPanel locationId={locationId} station="kitchen" />
         </div>
