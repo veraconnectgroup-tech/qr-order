@@ -30,7 +30,11 @@ const CONTENT_SECURITY_POLICY = [
   // 'self', which does not permit blob:, so playback was silently blocked.
   "media-src 'self' blob:",
   "font-src 'self'",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.sentry.io https://*.upstash.io",
+  // Denis's voice orb ("Pozovi Denisa" / Realtime station-voice) connects
+  // WebRTC directly browser-to-OpenAI (per OpenAI's own guidance) — the SDP
+  // offer/answer exchange is a real fetch() to api.openai.com from the
+  // client, which connect-src was blocking outright ("Failed to fetch").
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.sentry.io https://*.upstash.io https://api.openai.com",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
   "object-src 'none'",
   "base-uri 'self'",
