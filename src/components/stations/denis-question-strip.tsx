@@ -117,7 +117,7 @@ export function DenisQuestionStrip({
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
-  const { speak, activate, voicePrimed, speaking } =
+  const { speak, activate, deactivate, voicePrimed, speaking } =
     useDenisStationVoice(locationId);
   const voiceInputMode = resolveStationVoiceInputMode(station);
   const stationAudioEnvironment = resolveStationVoiceAudioEnvironment(station);
@@ -572,6 +572,19 @@ export function DenisQuestionStrip({
     </button>
   );
 
+  // Symmetric off switch — without this, once activated there was no way
+  // to stop him reacting/speaking on his own (and burning TTS calls) short
+  // of reloading the page.
+  const deactivateButton = voicePrimed ? (
+    <button
+      type="button"
+      onClick={deactivate}
+      className="min-h-11 rounded-full border border-white/20 bg-white/5 px-4 text-sm font-semibold text-white/70 hover:bg-white/10"
+    >
+      Deaktiviraj Denisa 🔇
+    </button>
+  ) : null;
+
   // Relay activity (incoming message to speak/answer, or a reply to
   // deliver back) keeps the orb overlay up even with no active order
   // question — it's a separate reason for Denis to have the floor.
@@ -592,8 +605,13 @@ export function DenisQuestionStrip({
   const showActiveQuestion = Boolean(active) && remaining > 0 && !dismissed;
 
   if (!showActiveQuestion && !hasRelayActivity) {
-    return activateButton ? (
-      <div className="flex justify-center">{activateButton}</div>
+    if (activateButton) {
+      return <div className="flex justify-center">{activateButton}</div>;
+    }
+    // Idle but primed — still show the off switch, otherwise there's no
+    // way to deactivate short of reloading the page.
+    return deactivateButton ? (
+      <div className="flex justify-center">{deactivateButton}</div>
     ) : null;
   }
 
@@ -619,6 +637,7 @@ export function DenisQuestionStrip({
         )}
 
         {activateButton}
+        {deactivateButton}
         {pushToTalkButton}
         <DenisVoicePresenceOrb
           size={220}

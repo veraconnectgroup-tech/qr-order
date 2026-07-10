@@ -338,6 +338,12 @@ export function useDenisStationVoice(locationId: string) {
     playText(ACTIVATION_LINE);
   }, [enable, playText]);
 
+  /** Explicit user tap — stops him reacting/speaking on his own until re-activated, so an idle station isn't silently burning TTS calls. */
+  const deactivate = useCallback(() => {
+    stopListening();
+    setPrimed(false);
+  }, [stopListening]);
+
   return {
     voiceEnabled: enabled,
     voicePrimed: primed,
@@ -345,6 +351,7 @@ export function useDenisStationVoice(locationId: string) {
     listening,
     speak,
     activate,
+    deactivate,
     listen,
     stopListening,
   };
