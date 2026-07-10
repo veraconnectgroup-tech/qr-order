@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type MicAudioLevelController = {
   /** Live analyser — callers read it every render frame (e.g. inside a
@@ -28,11 +28,15 @@ export function useMicAudioLevel(): MicAudioLevelController {
   const ctxRef = useRef<AudioContext | null>(null);
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Starts false so the first client render matches the server-rendered
+  // markup (window/navigator don't exist during SSR) — flips true after
+  // mount instead of being computed inline, which was causing a hydration
+  // mismatch (server always rendered the "unsupported" branch).
+  const [supported, setSupported] = useState(false);
 
-  const supported =
-    typeof window !== "undefined" &&
-    typeof navigator !== "undefined" &&
-    typeof navigator.mediaDevices?.getUserMedia === "function";
+  useEffect(() => {
+    setSupported(typeof navigator.mediaDevices?.getUserMedia === "function");
+  }, []);
 
   const start = useCallback(async () => {
     if (!supported || active) return;
