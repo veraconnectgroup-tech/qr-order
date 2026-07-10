@@ -873,6 +873,17 @@ type Tables = {
     text: string;
     created_at: string;
   };
+  denis_commitments: {
+    id: string;
+    location_id: string;
+    text: string;
+    due_date: string;
+    status: "open" | "done" | "cancelled";
+    station: "kitchen" | "bar" | null;
+    promised_to_staff_id: string | null;
+    created_at: string;
+    completed_at: string | null;
+  };
   denis_station_relay_messages: {
     id: string;
     location_id: string;

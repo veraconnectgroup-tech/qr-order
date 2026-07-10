@@ -6,6 +6,10 @@ import { AiOpenAiError } from "@/lib/ai/openai-client";
 import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
 import { listStationGeneralVoiceToolDefinitions } from "@/lib/denis/agentic/station-general-voice-tool-catalog";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import {
+  listDueCommitments,
+  type DenisCommitmentRow,
+} from "@/lib/denis/stations/denis-commitments";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/security/sanitize";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,11 +25,32 @@ const REALTIME_MODEL = "gpt-realtime-mini";
 const REALTIME_VOICE = "alloy";
 const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
-function buildStationGeneralVoiceInstructions(station: "kitchen" | "bar"): string {
-  const stationLabel = station === "kitchen" ? "kuhinje" : "šanka";
-  const otherStationLabel = station === "kitchen" ? "bar" : "kuhinju";
+function buildDueCommitmentsBlock(
+  today: string,
+  commitments: DenisCommitmentRow[]
+): string | null {
+  if (commitments.length === 0) return null;
+  const lines = commitments.map((c) => {
+    const overdue = c.due_date < today ? " (OVERDUE)" : "";
+    return `- [${c.id}] due ${c.due_date}${overdue}: ${c.text}`;
+  });
   return [
-    `You're talking with staff from the ${stationLabel} — they called YOU this time (not the other way around), so there's no specific pending question to resolve.`,
+    "THINGS YOU PREVIOUSLY PROMISED THAT ARE DUE NOW:",
+    ...lines,
+    "Bring these up yourself early in this conversation if they're relevant to who you're talking to — don't wait to be asked whether you remembered. Call complete_commitment once you've actually handled one.",
+  ].join("\n");
+}
+
+function buildStationGeneralVoiceInstructions(input: {
+  station: "kitchen" | "bar";
+  callerName: string;
+  today: string;
+  dueCommitmentsBlock: string | null;
+}): string {
+  const stationLabel = input.station === "kitchen" ? "kuhinje" : "šanka";
+  const otherStationLabel = input.station === "kitchen" ? "bar" : "kuhinju";
+  return [
+    `You're talking with ${input.callerName}, from the ${stationLabel} — they called YOU this time (not the other way around), so there's no specific pending question to resolve. Use their name naturally in conversation, like you would with a real colleague — not every sentence, but don't talk like you don't know who you're talking to.`,
     "They may ask how service is going, whether the kitchen is behind, or which tables need attention.",
     "Always call get_venue_status before answering any question about current state — never guess or answer from a stale assumption.",
     // Explicit per the founder's own framing: activating this call is
@@ -33,8 +58,15 @@ function buildStationGeneralVoiceInstructions(station: "kitchen" | "bar"): strin
     // he should use notify_station/notify_manager on his own initiative
     // when he judges it's warranted, not only when explicitly told to.
     `Being activated means you have real latitude here — if staff asks you to relay something to ${otherStationLabel} or to the manager, use notify_station or notify_manager right away. And if you judge on your own, from what's said in this conversation, that the other station or the manager should know something, don't wait to be asked — use those tools yourself.`,
+    // The founder's explicit example: asked to relay a request to a busy
+    // station, a real colleague reacts to what he actually sees, not just
+    // forwards the message like a machine. This is what makes him read as
+    // a person and not a dispatcher script.
+    `Before relaying a request to the other station, check get_venue_status and actually react to what you see — if they're slammed, say so honestly, with real hesitation ("uf, ima poprilično posla tamo, idem da pitam ali nemoj da se čudiš ako malo potraje") instead of just agreeing and forwarding it silently. If they're calm, no need to make a thing of it. React like someone who actually knows what's going on at the venue, not a message-forwarding robot.`,
+    `Today's date is ${input.today}. If you promise to do something later (not right now, in this same call) — "javicu sutra", "proveravam prekosutra" — call remember_commitment immediately with the due date resolved to an actual YYYY-MM-DD date, don't just say it and forget it.`,
     "Keep answers brief and direct, like a colleague giving a quick verbal update.",
     "Speak Serbian — staff speak Serbian, don't switch language based on accent or background noise.",
+    ...(input.dueCommitmentsBlock ? ["", input.dueCommitmentsBlock] : []),
   ].join("\n");
 }
 
@@ -67,7 +99,7 @@ export const POST = withErrorHandler(
 
     const { data: staff } = await supabase
       .from("staff")
-      .select("id, org_id, location_id, role")
+      .select("id, org_id, location_id, role, name")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .is("deleted_at", null)
@@ -82,6 +114,7 @@ export const POST = withErrorHandler(
       org_id: string;
       location_id: string | null;
       role: string;
+      name: string;
     };
 
     if (!isUuid(parsed.data.locationId)) {
@@ -113,11 +146,20 @@ export const POST = withErrorHandler(
     }
 
     const apiKey = process.env.OPENAI_API_KEY!.trim();
-    const brainContext = await assembleDenisBrainContext(parsed.data.locationId);
+    const today = new Date().toISOString().slice(0, 10);
+    const [brainContext, dueCommitments] = await Promise.all([
+      assembleDenisBrainContext(parsed.data.locationId),
+      listDueCommitments(admin, { locationId: parsed.data.locationId, today }),
+    ]);
     const instructions = [
       brainContext,
       "",
-      buildStationGeneralVoiceInstructions(parsed.data.station),
+      buildStationGeneralVoiceInstructions({
+        station: parsed.data.station,
+        callerName: staffRow.name,
+        today,
+        dueCommitmentsBlock: buildDueCommitmentsBlock(today, dueCommitments),
+      }),
     ].join("\n");
 
     const res = await fetch(REALTIME_CLIENT_SECRETS_URL, {

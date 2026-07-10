@@ -6,6 +6,10 @@ import {
   type RelayStation,
 } from "@/lib/denis/stations/station-relay-messages";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
+import {
+  completeCommitment,
+  createCommitment,
+} from "@/lib/denis/stations/denis-commitments";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -28,7 +32,9 @@ import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-st
 export type StationGeneralVoiceToolName =
   | "get_venue_status"
   | "notify_station"
-  | "notify_manager";
+  | "notify_manager"
+  | "remember_commitment"
+  | "complete_commitment";
 
 export type StationGeneralVoiceToolExecutorInput = {
   admin: SupabaseClient;
@@ -83,8 +89,51 @@ const notifyManager: OpenAiToolDefinition = {
   },
 };
 
+const rememberCommitment: OpenAiToolDefinition = {
+  name: "remember_commitment",
+  description:
+    "Call this the moment you promise staff you'll do something later — 'javicu sutra', 'proveravam prekosutra', anything with a real timeframe, not something you're doing right now in this same call. You'll be reminded automatically once it's due — you don't need to be asked again.",
+  parameters: {
+    type: "object",
+    properties: {
+      text: {
+        type: "string",
+        description: "What you promised, written as a short standalone reminder to yourself.",
+      },
+      dueDate: {
+        type: "string",
+        description:
+          "The date you promised to do this, as YYYY-MM-DD — resolve relative terms like 'sutra' or 'prekosutra' yourself using today's date from your instructions.",
+      },
+    },
+    required: ["text", "dueDate"],
+  },
+};
+
+const completeCommitmentTool: OpenAiToolDefinition = {
+  name: "complete_commitment",
+  description:
+    "Call this once you've actually done something you previously promised (it will have been listed for you at the start of this conversation if it was due). Mark it done so you don't bring it up again.",
+  parameters: {
+    type: "object",
+    properties: {
+      commitmentId: {
+        type: "string",
+        description: "The id of the commitment, from the list you were given at the start of this conversation.",
+      },
+    },
+    required: ["commitmentId"],
+  },
+};
+
 export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[] {
-  return [getVenueStatus, notifyStation, notifyManager];
+  return [
+    getVenueStatus,
+    notifyStation,
+    notifyManager,
+    rememberCommitment,
+    completeCommitmentTool,
+  ];
 }
 
 export function isStationGeneralVoiceToolName(
@@ -93,7 +142,9 @@ export function isStationGeneralVoiceToolName(
   return (
     name === "get_venue_status" ||
     name === "notify_station" ||
-    name === "notify_manager"
+    name === "notify_manager" ||
+    name === "remember_commitment" ||
+    name === "complete_commitment"
   );
 }
 
@@ -141,16 +192,45 @@ export async function executeStationGeneralVoiceTool(
       : { ok: false, error: result.reason };
   }
 
-  // notify_manager
-  const message = typeof args.message === "string" ? args.message.trim() : "";
-  if (!message) return { ok: false, error: "empty_message" };
+  if (name === "notify_manager") {
+    const message = typeof args.message === "string" ? args.message.trim() : "";
+    if (!message) return { ok: false, error: "empty_message" };
 
-  const { delivered } = await dispatchStaffNotification({
-    orgId: input.orgId,
-    locationId: input.locationId,
-    type: "denis_relay",
-    message,
-  });
+    const { delivered } = await dispatchStaffNotification({
+      orgId: input.orgId,
+      locationId: input.locationId,
+      type: "denis_relay",
+      message,
+    });
 
-  return { ok: true, delivered };
+    return { ok: true, delivered };
+  }
+
+  if (name === "remember_commitment") {
+    const text = typeof args.text === "string" ? args.text.trim() : "";
+    const dueDate = typeof args.dueDate === "string" ? args.dueDate.trim() : "";
+    if (!text || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      return { ok: false, error: "invalid_input" };
+    }
+
+    const result = await createCommitment(input.admin, {
+      locationId: input.locationId,
+      text,
+      dueDate,
+      station: input.station,
+      promisedToStaffId: input.staffId,
+    });
+
+    return result.created
+      ? { ok: true, commitmentId: result.commitment.id }
+      : { ok: false, error: result.reason };
+  }
+
+  // complete_commitment
+  const commitmentId =
+    typeof args.commitmentId === "string" ? args.commitmentId : "";
+  if (!commitmentId) return { ok: false, error: "invalid_input" };
+
+  const ok = await completeCommitment(input.admin, { commitmentId });
+  return { ok };
 }
