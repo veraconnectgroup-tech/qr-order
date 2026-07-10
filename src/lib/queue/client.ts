@@ -1,8 +1,13 @@
 import { Client } from "@upstash/qstash";
 
 const token = process.env.QSTASH_TOKEN;
+// Regional QStash (e.g. US_EAST_1) requires the matching regional base URL —
+// the token won't authenticate against the default global endpoint otherwise.
+const baseUrl = process.env.QSTASH_URL;
 
-export const qstash = token ? new Client({ token }) : null;
+export const qstash = token
+  ? new Client(baseUrl ? { token, baseUrl } : { token })
+  : null;
 
 function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
