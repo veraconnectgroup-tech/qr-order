@@ -26,7 +26,8 @@ const schema = z.object({
 
 /** Same model/voice choice as the other Realtime station-voice path. */
 const REALTIME_MODEL = "gpt-realtime-mini";
-const REALTIME_VOICE = "alloy";
+/** Denis is male; echo reads as male across OpenAI's voice set (alloy reads closer to neutral/female). */
+const REALTIME_VOICE = "echo";
 const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
 function buildDueCommitmentsBlock(
@@ -65,7 +66,12 @@ function buildStationGeneralVoiceInstructions(input: {
   const stationLabel = input.station === "kitchen" ? "kuhinje" : "šanka";
   const otherStationLabel = input.station === "kitchen" ? "bar" : "kuhinju";
   return [
-    `You're talking with ${input.callerName}, from the ${stationLabel} — they called YOU this time (not the other way around), so there's no specific pending question to resolve. Use their name naturally in conversation, like you would with a real colleague — not every sentence, but don't talk like you don't know who you're talking to.`,
+    // Blunt and unambiguous on purpose — the shared persona block above
+    // this is generic ("a real colleague on the floor") because it's also
+    // used for guest-facing turns, so it alone doesn't rule out him
+    // slipping into guest-service mode here. State plainly what this call
+    // actually is before anything else.
+    `This is an internal staff call — NOT a guest. You're talking with ${input.callerName}, from the ${stationLabel}, a real colleague — they called YOU this time (not the other way around), so there's no specific pending question to resolve. Use their name naturally in conversation, like you would with a real colleague — not every sentence, but don't talk like you don't know who you're talking to.`,
     "They may ask how service is going, whether the kitchen is behind, or which tables need attention.",
     "Always call get_venue_status before answering any question about current state — never guess or answer from a stale assumption.",
     // Explicit per the founder's own framing: activating this call is

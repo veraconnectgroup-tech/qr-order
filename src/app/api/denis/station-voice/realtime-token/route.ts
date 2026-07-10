@@ -19,8 +19,8 @@ const schema = z.object({
 
 /** Realtime model — see resolve-station-voice-snapshot.ts / ADR notes for why mini over the full model by default. */
 const REALTIME_MODEL = "gpt-realtime-mini";
-/** Same brand voice as the existing TTS path (openai-tts.ts) — still valid on Realtime models. */
-const REALTIME_VOICE = "alloy";
+/** Same brand voice as the existing TTS path (openai-tts.ts) — still valid on Realtime models. Denis is male; echo reads as male across OpenAI's voice set (alloy reads closer to neutral/female). */
+const REALTIME_VOICE = "echo";
 const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
 /** Same formula as resolveUrgencyRatio in denis-question-strip.tsx — kept server-side rather than importing a "use client" component. */

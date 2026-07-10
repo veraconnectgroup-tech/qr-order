@@ -5,8 +5,8 @@ const OPENAI_TTS_URL =
   process.env.OPENAI_TTS_API_URL?.trim() ||
   "https://api.openai.com/v1/audio/speech";
 
-/** Fixed brand voice — consistent across every guest device (browser TTS varies per OS/browser). */
-const DENIS_TTS_VOICE = "alloy";
+/** Fixed brand voice — consistent across every guest device (browser TTS varies per OS/browser). Denis is male; echo reads as male across OpenAI's voice set (alloy reads closer to neutral/female). */
+const DENIS_TTS_VOICE = "echo";
 /** gpt-4o-mini-tts supports a natural-language `instructions` field for delivery/tone — same
  * voice identity every time, only how it's spoken shifts (e.g. calmer vs. more urgent). */
 const DENIS_TTS_MODEL = "gpt-4o-mini-tts";

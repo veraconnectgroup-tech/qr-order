@@ -9,7 +9,8 @@ import { withStaffRateLimit } from "@/lib/rate-limit";
 
 /** Same model/voice choice as the station-voice Realtime path — see that route's own note. */
 const REALTIME_MODEL = "gpt-realtime-mini";
-const REALTIME_VOICE = "alloy";
+/** Denis is male; echo reads as male across OpenAI's voice set (alloy reads closer to neutral/female). */
+const REALTIME_VOICE = "echo";
 const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
 /**
