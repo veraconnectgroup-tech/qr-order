@@ -105,6 +105,11 @@ function formatGuestPrefsSituation(
   if (mood) {
     lines.push(`- guest_mood: "${mood}"`);
   }
+  if (prefs.formality === "informal") {
+    lines.push(
+      `- address_style: this guest asked you to drop formal address — use "ti" (or the equivalent informal register in whatever language you're replying in) with THEM for the rest of this session only, never restaurant-wide. A real dose of respect stays regardless — dropping "vi" is not dropping respect.`
+    );
+  }
   return lines;
 }
 

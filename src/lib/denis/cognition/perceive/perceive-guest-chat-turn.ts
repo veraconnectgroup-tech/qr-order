@@ -7,6 +7,7 @@ import {
   resolveAiPromptLanguage,
 } from "@/lib/ai/config";
 import { resolveStickyGuestLanguage } from "@/lib/ai/guest-language";
+import { detectGuestFormalityDropRequest } from "@/lib/ai/guest-formality";
 import { defaultGuestChatFallback } from "@/lib/denis/cognition/tde/template-utterance";
 import {
   runPostSkillPipeline,
@@ -91,13 +92,14 @@ function parseGuestPreferences(value: unknown): AiGuestPreferences {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { allergies: [], mood: "" };
   }
-  const row = value as { allergies?: unknown; mood?: unknown };
+  const row = value as { allergies?: unknown; mood?: unknown; formality?: unknown };
   const allergies = Array.isArray(row.allergies)
     ? row.allergies.filter((item): item is string => typeof item === "string")
     : [];
   return {
     allergies,
     mood: typeof row.mood === "string" ? row.mood : "",
+    ...(row.formality === "informal" ? { formality: "informal" as const } : {}),
   };
 }
 
@@ -407,10 +409,20 @@ export async function perceiveGuestChatTurn(
     return apiError("Session message limit reached.", 410);
   }
 
-  const guestPrefs =
+  const guestPrefs: AiGuestPreferences =
     sessionRow?.guest_preferences ??
     input.preferences ??
     ({ allergies: [], mood: "" } satisfies AiGuestPreferences);
+
+  // Once dropped, stays dropped for the rest of this table visit — never
+  // re-checked back to formal mid-session, never restaurant-wide, never
+  // persisted past `ai_sessions` (this row dies with the table session).
+  if (
+    guestPrefs.formality !== "informal" &&
+    detectGuestFormalityDropRequest(input.message)
+  ) {
+    guestPrefs.formality = "informal";
+  }
 
   const language = resolveStickyGuestLanguage(
     input.message,

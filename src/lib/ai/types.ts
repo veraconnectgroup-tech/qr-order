@@ -7,6 +7,8 @@ import type { GuestMemoryProjection } from "@/lib/denis/platform/guest-memory-ty
 export type AiGuestPreferences = {
   allergies: string[];
   mood: string;
+  /** Per-session only — this guest asked Denis to drop "vi" for "ti". Never restaurant-wide, never persists past this table visit. */
+  formality?: "formal" | "informal";
 };
 
 export type AiProductSummary = {
