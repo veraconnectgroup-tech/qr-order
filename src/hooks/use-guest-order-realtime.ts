@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   REALTIME_FALLBACK_POLL_MS,
+  REALTIME_SSE_RECONNECT_MAX_MS,
   REALTIME_SSE_RECONNECT_MS,
 } from "@/lib/constants";
 import type { RealtimeMode } from "@/hooks/use-postgres-realtime";
@@ -50,6 +51,7 @@ export function useGuestOrderRealtime<T extends GuestOrderStreamPayload>({
     let pollId: ReturnType<typeof setInterval> | null = null;
     let source: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempts = 0;
 
     const stopPolling = () => {
       if (pollId) {
@@ -87,6 +89,7 @@ export function useGuestOrderRealtime<T extends GuestOrderStreamPayload>({
       );
 
       source.onopen = () => {
+        reconnectAttempts = 0;
         setMode("live");
         stopPolling();
       };
@@ -105,7 +108,15 @@ export function useGuestOrderRealtime<T extends GuestOrderStreamPayload>({
         source = null;
         startPolling();
         if (!cancelled) {
-          reconnectTimer = setTimeout(connect, REALTIME_SSE_RECONNECT_MS);
+          // Exponential backoff, capped — a single flaky connection must
+          // never turn into a reconnect-every-second loop that piles up
+          // server-side Realtime channels faster than they can close.
+          const delay = Math.min(
+            REALTIME_SSE_RECONNECT_MS * 2 ** reconnectAttempts,
+            REALTIME_SSE_RECONNECT_MAX_MS
+          );
+          reconnectAttempts += 1;
+          reconnectTimer = setTimeout(connect, delay);
         }
       };
     };

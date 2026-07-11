@@ -59,8 +59,11 @@ export const REALTIME_STALE_LIVE_MS = 90_000;
 /** Watchdog interval for stale live detection. */
 export const REALTIME_WATCHDOG_MS = 30_000;
 
-/** Guest Denis view SSE reconnect delay. */
+/** Guest Denis view SSE reconnect delay (base for exponential backoff). */
 export const REALTIME_SSE_RECONNECT_MS = 1_000;
+
+/** Cap on SSE reconnect backoff — never hammer the server every second forever. */
+export const REALTIME_SSE_RECONNECT_MAX_MS = 30_000;
 
 /** Guest Denis view poll — fallback only when SSE disconnected (ADR-019-E / F6). */
 export const GUEST_VIEW_FALLBACK_POLL_MS = 30_000;

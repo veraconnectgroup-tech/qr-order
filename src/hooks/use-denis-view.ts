@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { GUEST_VIEW_FALLBACK_POLL_MS, REALTIME_SSE_RECONNECT_MS } from "@/lib/constants";
+import {
+  GUEST_VIEW_FALLBACK_POLL_MS,
+  REALTIME_SSE_RECONNECT_MAX_MS,
+  REALTIME_SSE_RECONNECT_MS,
+} from "@/lib/constants";
 import { fetchDenisView } from "@/lib/guest/denis-view-client";
 import type { TableSessionView } from "@/lib/denis/loop/view-types";
 import { tableSessionViewToScene } from "@/lib/denis/loop/view-to-scene";
@@ -78,6 +82,7 @@ export function useDenisView({
     let source: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
+    let reconnectAttempts = 0;
 
     const handleVersionMessage = (event: MessageEvent<string>) => {
       try {
@@ -106,14 +111,22 @@ export function useDenisView({
         `/api/denis/view/stream?${params.toString()}`
       );
 
-      source.onopen = () => setSseConnected(true);
+      source.onopen = () => {
+        reconnectAttempts = 0;
+        setSseConnected(true);
+      };
       source.onmessage = handleVersionMessage;
       source.onerror = () => {
         setSseConnected(false);
         source?.close();
         source = null;
         if (!disposed) {
-          reconnectTimer = setTimeout(connect, SSE_RECONNECT_MS);
+          const delay = Math.min(
+            SSE_RECONNECT_MS * 2 ** reconnectAttempts,
+            REALTIME_SSE_RECONNECT_MAX_MS
+          );
+          reconnectAttempts += 1;
+          reconnectTimer = setTimeout(connect, delay);
         }
       };
     };

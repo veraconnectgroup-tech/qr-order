@@ -87,7 +87,7 @@ export const GET = withErrorHandler(
           try {
             controller.enqueue(data);
           } catch {
-            closed = true;
+            closeStream();
           }
         }
 
