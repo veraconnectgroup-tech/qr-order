@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
 import { useStationRelayMessages } from "@/hooks/use-station-relay-messages";
@@ -23,10 +24,17 @@ import {
   resolveStationVoiceInputMode,
 } from "@/lib/denis/stations/station-voice-context";
 import type { StationVoiceTurnResult } from "@/lib/denis/stations/station-voice-context";
-import { DenisVoicePresenceOrb } from "@/components/design-system/denis-voice-presence-orb";
 import type { DenisVoiceTone } from "@/hooks/use-denis-station-voice";
 import { resolveInteractionTone } from "@/lib/denis/cognition/personality/staff-relationship-engine";
 import { resolveConversationRespectSignal } from "@/lib/denis/cognition/personality/resolve-conversation-respect-signal";
+
+// WebGL/Canvas is browser-only — never render on the server. Same orb
+// component as the "Pozovi Denisa" call button — one Denis, same look,
+// whether he called you or you called him.
+const DenisVoiceOrb = dynamic(
+  () => import("@/components/denis-voice-orb").then((m) => m.DenisVoiceOrb),
+  { ssr: false }
+);
 
 function secondsLeft(expiresAt: string, now: number): number {
   return Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000));
@@ -593,9 +601,6 @@ export function DenisQuestionStrip({
 
   const remaining = active ? secondsLeft(active.expires_at, now) : 0;
   const activeWaitMinutes = active ? extractWaitMinutes(active.message) : null;
-  const urgencyRatio = active
-    ? resolveUrgencyRatio(active.asked_at, active.expires_at, now, activeWaitMinutes)
-    : 0;
   const urgency = active
     ? resolveUrgency(active.asked_at, active.expires_at, now, activeWaitMinutes)
     : "normal";
@@ -639,11 +644,7 @@ export function DenisQuestionStrip({
         {activateButton}
         {deactivateButton}
         {pushToTalkButton}
-        <DenisVoicePresenceOrb
-          size={220}
-          moodIntensity={urgencyRatio}
-          speaking={speaking}
-        />
+        <DenisVoiceOrb size={220} />
       </div>
     </div>
   );
