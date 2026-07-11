@@ -140,6 +140,11 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       maxRounds: 3,
       legacySingleCallFallback: true,
     },
+    guestConduct: {
+      enabled: false,
+      shadowOnly: true,
+      canaryPercent: 0,
+    },
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
     stationQuestions: {

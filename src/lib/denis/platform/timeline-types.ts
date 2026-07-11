@@ -262,6 +262,18 @@ export type DenisTimelineEventPayload =
       sessionFlagged: boolean;
       traceId?: string | null;
     }
+  | {
+      /** Guest Conduct Policy Engine MVP-1 — see resolve-guest-conduct-policy.ts. */
+      type: "conduct.policy_decision";
+      tier: "none" | "warn_1" | "warn_2" | "handoff";
+      offenseDetectedThisTurn: boolean;
+      totalOffenseCount: number;
+      haltSensitiveActions: boolean;
+      notifyStaff: boolean;
+      reason: string;
+      /** true while the ladder is shadow-only — decision was logged, never shown to the guest. */
+      shadowOnly: boolean;
+    }
   | Record<string, unknown>;
 
 export type DenisTimelineEventType =
@@ -294,7 +306,8 @@ export type DenisTimelineEventType =
   | "learning.price_resistance"
   | "learning.allergy_coverage"
   | "learning.language_unsupported"
-  | "security.blocked";
+  | "security.blocked"
+  | "conduct.policy_decision";
 
 export type DenisTimelineRow = {
   id: string;

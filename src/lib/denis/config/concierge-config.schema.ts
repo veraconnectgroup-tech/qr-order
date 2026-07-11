@@ -369,6 +369,25 @@ const ConciergeAgenticToolLoopSchema = z
     legacySingleCallFallback: true,
   });
 
+/**
+ * Guest Conduct Policy Engine (MVP-1) — deterministic warning ladder for
+ * rudeness/insults directed at Denis himself, never for service frustration
+ * (frustration-recovery.ts already owns that). shadowOnly=true means the
+ * ladder runs and logs its decision to denis_timeline but never overrides
+ * the guest-visible reply — same shape as agenticToolLoop's own gate.
+ */
+const ConciergeGuestConductSchema = z
+  .object({
+    enabled: z.boolean(),
+    shadowOnly: z.boolean(),
+    canaryPercent: z.number().int().min(0).max(100),
+  })
+  .default({
+    enabled: false,
+    shadowOnly: true,
+    canaryPercent: 0,
+  });
+
 const ConciergeOpsSchema = z.object({
   staffHintsEnabled: z.boolean(),
   rushSkipUpsell: z.boolean(),
@@ -385,6 +404,8 @@ const ConciergeOpsSchema = z.object({
   unifiedOperationalContextCanaryPercent: z.number().int().min(0).max(100).default(0),
   /** ADR-049 — Denis's agentic tool-use loop (kitchen/stock/bill checks mid-conversation). */
   agenticToolLoop: ConciergeAgenticToolLoopSchema,
+  /** Guest Conduct Policy Engine MVP-1 — rudeness-to-Denis warning ladder. */
+  guestConduct: ConciergeGuestConductSchema,
   autoRushEnabled: z.boolean(),
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
   stationQuestions: ConciergeStationQuestionsSchema,

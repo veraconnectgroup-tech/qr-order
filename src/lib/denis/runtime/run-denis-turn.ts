@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai/prompt-shield";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
+import { runGuestConductShadowCheck } from "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check";
 import { applyStructuredPerceptionOrdering } from "@/lib/denis/runtime/perceive/apply-structured-perception-ordering";
 import {
   perceiveGuestChatTurn,
@@ -1238,6 +1239,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     input.channel === "voice" ? "voice" : "chat";
   const perceptionChannel: PerceptionChannel =
     input.channel === "voice" ? "voice.transcript" : "chat.message";
+
+  // MVP-1/2 — shadow-only logging, never touches the guest-visible reply.
+  // See resolve-guest-conduct-policy.ts and run-guest-conduct-shadow-check.ts.
+  await runGuestConductShadowCheck(admin, {
+    aiSessionId: chatAiSessionId ?? null,
+    message: parsed.data.message,
+    guestConductConfig: ctx.config.ops.guestConduct,
+    traceId,
+  });
 
   const reflexTurn = planTurnWithReflex({
     config: ctx.config,
