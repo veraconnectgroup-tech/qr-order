@@ -4,6 +4,32 @@ import { isGuestSettlingMessage } from "@/lib/denis/cognition/tde/semantic-inten
 import type { GuestIntent } from "@/lib/denis/platform/timeline-types";
 
 /**
+ * 2026-07-12 — this whole file is T0: a deterministic reflex tier that
+ * runs BEFORE the turn's LLM call, by architectural design, so a
+ * safety-critical action (call the waiter, ask for the bill) can fire
+ * instantly instead of waiting on an LLM round-trip. This is NOT the
+ * same pattern as the regex this session already removed from
+ * category-order-logic.ts/order-flow.ts (Phases 1-2) — those ran AFTER
+ * an LLM call had already happened this turn, so reusing that call's
+ * own structured understanding was free. Here there IS no LLM output
+ * yet to prefer: adding one would mean a NEW LLM call before every
+ * single guest message, trading away T0's whole reason to exist.
+ *
+ * perceiveTableGuestCommand() already treats `structuredIntent` (an
+ * explicit UI action — a button tap, not free text) as authoritative
+ * over all of this file's regex when present. For free-text messages,
+ * these patterns are a FAST TRIGGER for the obvious, unambiguous
+ * phrasings only — reflex-plan.ts's own comment confirms firing T0
+ * here never skips the real LLM comprehension turn for this message
+ * (`usedT0` "enriches skill pipeline, does not skip LLM for comprehend
+ * turns"): genuine understanding, in whatever language the guest used,
+ * still happens right after, same as any other turn. A guest whose
+ * phrasing this regex misses simply doesn't get the instant reflex —
+ * they still get a correct, LLM-understood response, just without the
+ * fast-path.
+ */
+
+/**
  * Concrete menu-item nouns only — deliberately NOT the broad request-verb
  * heuristics from isOrderPlacementMessage (e.g. "želim"/"daj" match almost
  * any request, including "želim da platim", and would false-positive here).

@@ -898,6 +898,13 @@ function decideTurnPlanInner(input: DecideTurnPlanInput): TurnPlan {
   const goalPlan = planForTopGoal(input.reflex.plan.topGoal, suppressUpsell);
   if (goalPlan) return goalPlan;
 
+  // T0 fast-path only (2026-07-12, see perceive-table-guest-command.ts's
+  // file-level docstring for the full reasoning) — this is a
+  // deterministic pre-LLM check, not an attempt at understanding. A
+  // phrasing this regex misses just falls through to the real LLM turn
+  // below, which reaches the same honest "no open order" conclusion
+  // (via commerce.order_not_sent.complaint above), just without the
+  // instant template.
   const trimmedMessage = input.message.trim();
   if (
     (isOrderCancelMessage(trimmedMessage) ||
