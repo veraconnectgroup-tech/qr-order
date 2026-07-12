@@ -41,6 +41,17 @@ const PROVIDER_LABELS: Record<PosProvider, string> = {
   custom: "Custom",
 };
 
+// Deliverect is a generic router — it never tells us which real POS sits
+// behind it. Without this, Denis falls back to the most conservative
+// capability assumptions (see pos-capability-matrix.ts) even for a
+// restaurant that's actually on a well-documented system like Toast.
+const DELIVERECT_POS_VENDOR_LABELS: Record<string, string> = {
+  toast: "Toast",
+  lightspeed: "Lightspeed",
+  orderbird: "orderbird",
+  unknown: "Unbekannt / anderes System",
+};
+
 function statusBadge(status: PosIntegrationRow["status"]) {
   if (status === "connected") {
     return (
@@ -75,6 +86,7 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
   const [provider, setProvider] = useState<PosProvider>("deliverect");
   const [apiKey, setApiKey] = useState("");
   const [channelLinkId, setChannelLinkId] = useState("");
+  const [posVendor, setPosVendor] = useState("unknown");
   const [externalLocationId, setExternalLocationId] = useState("");
   const [pending, setPending] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -112,6 +124,7 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
     setApiKey("");
     setChannelLinkId("");
     setExternalLocationId("");
+    setPosVendor("unknown");
     setDialogOpen(true);
   }
 
@@ -126,6 +139,9 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
     const config: Record<string, unknown> = { api_key: apiKey.trim() };
     if (provider === "deliverect") {
       config.channel_link_id = channelLinkId.trim();
+      if (posVendor !== "unknown") {
+        config.pos_vendor = posVendor;
+      }
     }
 
     const result = await connectPosIntegration(
@@ -225,6 +241,21 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
                       Externe Standort-ID: {row.external_location_id}
                     </p>
                   )}
+                  {row.provider === "deliverect" &&
+                    (() => {
+                      const cfg = (row.config ?? {}) as Record<string, unknown>;
+                      const vendor =
+                        typeof cfg.pos_vendor === "string"
+                          ? cfg.pos_vendor
+                          : "unknown";
+                      return (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Kassensystem:{" "}
+                          {DELIVERECT_POS_VENDOR_LABELS[vendor] ??
+                            DELIVERECT_POS_VENDOR_LABELS.unknown}
+                        </p>
+                      );
+                    })()}
                   <p className="mt-1 text-xs text-muted-foreground/70">
                     Letzte Sync: {formatSyncAt(row.last_sync_at)}
                   </p>
@@ -341,6 +372,30 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
                   onChange={(e) => setChannelLinkId(e.target.value)}
                   placeholder="Deliverect channelLinkId"
                 />
+              </div>
+            )}
+            {provider === "deliverect" && (
+              <div className="space-y-2">
+                <Label htmlFor="posVendor">Zugrunde liegendes Kassensystem</Label>
+                <Select value={posVendor} onValueChange={setPosVendor}>
+                  <SelectTrigger id="posVendor">
+                    <SelectValue placeholder="System wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(DELIVERECT_POS_VENDOR_LABELS).map(
+                      ([id, label]) => (
+                        <SelectItem key={id} value={id}>
+                          {label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Deliverect selbst teilt uns nicht mit, welches Kassensystem
+                  dahinter läuft — Denis braucht diese Angabe, um zu wissen,
+                  was er einem Gast ehrlich versprechen darf.
+                </p>
               </div>
             )}
           </div>

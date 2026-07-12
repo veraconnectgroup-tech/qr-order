@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { loadRestaurantKnowledgeBlockMock, loadIntegrationsAwarenessBlockMock } =
-  vi.hoisted(() => ({
-    loadRestaurantKnowledgeBlockMock: vi.fn(),
-    loadIntegrationsAwarenessBlockMock: vi.fn(),
-  }));
+const {
+  loadRestaurantKnowledgeBlockMock,
+  loadIntegrationsAwarenessBlockMock,
+  loadCapabilityAwarenessBlockMock,
+} = vi.hoisted(() => ({
+  loadRestaurantKnowledgeBlockMock: vi.fn(),
+  loadIntegrationsAwarenessBlockMock: vi.fn(),
+  loadCapabilityAwarenessBlockMock: vi.fn(),
+}));
 
 vi.mock("@/lib/denis/knowledge/restaurant-knowledge-store", () => ({
   loadRestaurantKnowledgeBlock: loadRestaurantKnowledgeBlockMock,
@@ -12,12 +16,14 @@ vi.mock("@/lib/denis/knowledge/restaurant-knowledge-store", () => ({
 
 vi.mock("@/lib/integrations/registry", () => ({
   loadIntegrationsAwarenessBlock: loadIntegrationsAwarenessBlockMock,
+  loadCapabilityAwarenessBlock: loadCapabilityAwarenessBlockMock,
 }));
 
 describe("assembleDenisBrainContext", () => {
   it("returns just the persona block when there is no restaurant knowledge", async () => {
     loadRestaurantKnowledgeBlockMock.mockResolvedValue(null);
     loadIntegrationsAwarenessBlockMock.mockResolvedValue(null);
+    loadCapabilityAwarenessBlockMock.mockResolvedValue(null);
     const { assembleDenisBrainContext } = await import(
       "@/lib/denis/cognition/context/assemble-denis-brain-context"
     );
@@ -33,6 +39,7 @@ describe("assembleDenisBrainContext", () => {
       "RESTAURANT KNOWLEDGE (things the owner/staff told you to always know):\n- No substitutions on the tasting menu."
     );
     loadIntegrationsAwarenessBlockMock.mockResolvedValue(null);
+    loadCapabilityAwarenessBlockMock.mockResolvedValue(null);
     const { assembleDenisBrainContext } = await import(
       "@/lib/denis/cognition/context/assemble-denis-brain-context"
     );
@@ -49,6 +56,7 @@ describe("assembleDenisBrainContext", () => {
     loadIntegrationsAwarenessBlockMock.mockResolvedValue(
       "CONNECTED SYSTEMS YOU CAN ACTUALLY USE:\n- Deliverect (point of sale)"
     );
+    loadCapabilityAwarenessBlockMock.mockResolvedValue(null);
     const { assembleDenisBrainContext } = await import(
       "@/lib/denis/cognition/context/assemble-denis-brain-context"
     );
@@ -58,5 +66,22 @@ describe("assembleDenisBrainContext", () => {
     expect(context).toContain("CONNECTED SYSTEMS YOU CAN ACTUALLY USE");
     expect(context).toContain("Deliverect");
     expect(loadIntegrationsAwarenessBlockMock).toHaveBeenCalledWith("loc-1");
+  });
+
+  it("appends the POS capability awareness block when present", async () => {
+    loadRestaurantKnowledgeBlockMock.mockResolvedValue(null);
+    loadIntegrationsAwarenessBlockMock.mockResolvedValue(null);
+    loadCapabilityAwarenessBlockMock.mockResolvedValue(
+      "POS CAPABILITIES — what you may actually promise a guest:\nYou CANNOT (say so honestly, never claim otherwise):\n- closing a bill in the POS — NOT possible today; be honest, say a staff member must handle it"
+    );
+    const { assembleDenisBrainContext } = await import(
+      "@/lib/denis/cognition/context/assemble-denis-brain-context"
+    );
+
+    const context = await assembleDenisBrainContext("loc-1");
+
+    expect(context).toContain("POS CAPABILITIES");
+    expect(context).toContain("closing a bill in the POS");
+    expect(loadCapabilityAwarenessBlockMock).toHaveBeenCalledWith("loc-1");
   });
 });

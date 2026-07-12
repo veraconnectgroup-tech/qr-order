@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getPosAdapter } from "@/lib/pos/adapter-registry";
 import { SkeletonPosAdapter } from "@/lib/pos/adapters/skeleton-adapter";
+import {
+  resolvePosCapabilities,
+  type PosCapabilities,
+  type PosVendor,
+} from "@/lib/integrations/pos-capability-matrix";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
 
@@ -181,3 +186,116 @@ const CATEGORY_LABEL_EN: Record<ConnectorCategory, string> = {
   payment: "payment",
   accounting: "accounting",
 };
+
+function resolvePosVendor(row: PosIntegrationRow | undefined): PosVendor {
+  if (!row) return "unknown";
+
+  // Non-Deliverect providers map straight to their own vendor name once a
+  // direct adapter exists — today only Deliverect is builtInCode, so this
+  // branch is forward-looking, not yet reachable in production.
+  if (row.provider === "orderbird" || row.provider === "lightspeed") {
+    return row.provider;
+  }
+
+  if (row.provider !== "deliverect") return "unknown";
+
+  // Deliverect is generic — the underlying POS it's actually configured
+  // against isn't something Deliverect's own API tells us, so an admin
+  // must record it when connecting. Absent that, we stay on the
+  // conservative baseline rather than guessing which POS is behind it.
+  const config = (row.config ?? {}) as Record<string, unknown>;
+  const vendor = typeof config.pos_vendor === "string" ? config.pos_vendor : "";
+  if (vendor === "toast" || vendor === "lightspeed" || vendor === "orderbird") {
+    return vendor;
+  }
+  return "unknown";
+}
+
+/**
+ * What Denis is actually allowed to promise a guest for this location's
+ * connected POS — see pos-capability-matrix.ts for the sourced, labeled
+ * data this reads from. Returns the conservative baseline (mostly
+ * not_confirmed) when no POS is connected or its vendor is unrecorded —
+ * never invents a capability.
+ */
+export async function getCapabilities(
+  admin: SupabaseClient,
+  locationId: string
+): Promise<PosCapabilities> {
+  const { data } = await admin
+    .from("pos_integrations")
+    .select("*")
+    .eq("location_id", locationId)
+    .eq("status", "connected")
+    .maybeSingle();
+
+  const vendor = resolvePosVendor((data ?? undefined) as PosIntegrationRow | undefined);
+  return resolvePosCapabilities(vendor);
+}
+
+const CAPABILITY_LABEL_EN: Record<
+  keyof PosCapabilities,
+  string
+> = {
+  dineInOrder: "sending a dine-in order to the POS",
+  prepaidFlag: "marking an order already-paid",
+  tableIdRealRouting: "routing an order to the exact table on the POS screen",
+  readOpenBill: "reading a bill a staff member already started",
+  appendToOpenBill: "adding items to a bill already open in the POS",
+  externalTenderOnOpenBill: "marking an existing open bill as paid",
+  closeBill: "closing a bill in the POS",
+  splitBill: "splitting a bill between guests",
+  customPaymentMethodLabel: "labeling online payments distinctly in POS reports",
+  tips: "sending a tip through to the POS",
+  floorPlanApi: "seeing the real-time visual floor plan",
+};
+
+/**
+ * Capability-aware honesty block for Denis's brain context — tells him,
+ * per connected POS, exactly what he may promise a guest and what he must
+ * defer to staff for. Complements loadIntegrationsAwarenessBlock (which
+ * only says WHAT is connected); this says what that connection can
+ * actually DO. Only surfaces the capabilities Denis needs to reason about
+ * guest-facing promises — not every internal row.
+ */
+export async function loadCapabilityAwarenessBlock(
+  locationId: string
+): Promise<string | null> {
+  const admin = createAdminClient();
+  const capabilities = await getCapabilities(admin, locationId);
+
+  const guestFacingKeys: (keyof PosCapabilities)[] = [
+    "readOpenBill",
+    "appendToOpenBill",
+    "externalTenderOnOpenBill",
+    "closeBill",
+    "splitBill",
+    "tips",
+  ];
+
+  const canDo: string[] = [];
+  const cannotDo: string[] = [];
+
+  for (const key of guestFacingKeys) {
+    const entry = capabilities[key];
+    const label = CAPABILITY_LABEL_EN[key];
+    if (entry.status === "confirmed") {
+      canDo.push(`- ${label}`);
+    } else if (entry.status === "not_supported" || entry.status === "not_confirmed") {
+      cannotDo.push(`- ${label} — NOT possible today; be honest, say a staff member must handle it`);
+    }
+    // pos_dependent entries are deliberately omitted here — too uncertain
+    // to state as a flat yes/no to a guest; treat as "cannot promise."
+  }
+
+  if (canDo.length === 0 && cannotDo.length === 0) return null;
+
+  const lines = ["POS CAPABILITIES — what you may actually promise a guest:"];
+  if (canDo.length) lines.push("You CAN:", ...canDo);
+  if (cannotDo.length) lines.push("You CANNOT (say so honestly, never claim otherwise):", ...cannotDo);
+  lines.push(
+    "If a guest asks for something in the CANNOT list — e.g. paying at the end after ordering with staff — tell them plainly a staff member needs to help, don't imply you'll handle it."
+  );
+
+  return lines.join("\n");
+}
