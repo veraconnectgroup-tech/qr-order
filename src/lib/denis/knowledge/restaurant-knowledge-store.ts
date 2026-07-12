@@ -45,6 +45,7 @@ export async function loadActiveRestaurantKnowledge(
     .from("denis_restaurant_knowledge")
     .select("id, text, source, created_at")
     .eq("location_id", locationId)
+    .eq("status", "confirmed")
     .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_ACTIVE_ENTRIES);

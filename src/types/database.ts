@@ -923,6 +923,42 @@ type Tables = {
     created_by_staff_id: string | null;
     created_at: string;
     archived_at: string | null;
+    status: "proposed" | "pending_confirmation" | "confirmed" | "rejected" | "expired";
+    scope: "permanent" | "one_time";
+    proposed_by_staff_id: string | null;
+    confirmed_by_staff_id: string | null;
+    confirmed_at: string | null;
+    source_ai_session_id: string | null;
+    source_mission_id: string | null;
+    pending_expires_at: string | null;
+  };
+  denis_missions: {
+    id: string;
+    org_id: string;
+    location_id: string;
+    kind:
+      | "guest_conduct_handoff"
+      | "rule_confirmation_needed"
+      | "kitchen_question"
+      | "bar_question"
+      | "custom";
+    status: "open" | "completed" | "cancelled";
+    assigned_staff_id: string | null;
+    assigned_role: "waiter" | "kitchen" | "bar" | "manager" | null;
+    table_id: string | null;
+    ai_session_id: string | null;
+    title: string;
+    summary: string;
+    payload: Json;
+    priority: "normal" | "urgent";
+    sla_minutes: number | null;
+    reminder_sent_at: string | null;
+    escalated_at: string | null;
+    completed_at: string | null;
+    completed_by: string | null;
+    cancelled_at: string | null;
+    cancel_reason: string | null;
+    created_at: string;
   };
   denis_relationship_signals: {
     id: string;
