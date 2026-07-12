@@ -124,3 +124,32 @@ export function resolveConfirmationRequired(
 ): boolean {
   return level === "financial" || level === "destructive";
 }
+
+/**
+ * Single source of truth for generated method names — shared by
+ * adapter-generator.ts and contract-test-generator.ts so the two can
+ * never drift apart and produce a test file that calls a method the
+ * adapter doesn't have (or vice versa).
+ */
+const METHOD_NAME_BY_CAPABILITY: Record<DenisCapability, string> = {
+  "menu.read": "getMenu",
+  "product.availability.read": "getAvailability",
+  "order.create": "createOrder",
+  "order.update": "updateOrder",
+  "order.cancel": "cancelOrder",
+  "order.status.read": "getOrderStatus",
+  "table.list": "getTables",
+  "table.status.read": "getTableStatus",
+  "floor_plan.read": "getFloorPlan",
+  "bill.read": "getBill",
+  "bill.append_items": "addItemsToBill",
+  "bill.apply_payment": "applyPayment",
+  "bill.close": "closeBill",
+  "payment.refund": "refundPayment",
+  "reservation.availability.read": "getReservationAvailability",
+  "reservation.create": "createReservation",
+};
+
+export function resolveAdapterMethodName(capability: DenisCapability): string {
+  return METHOD_NAME_BY_CAPABILITY[capability];
+}

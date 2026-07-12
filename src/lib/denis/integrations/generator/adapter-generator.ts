@@ -2,8 +2,8 @@ import type { ParsedApiSpec } from "@/lib/denis/integrations/parsers/parsed-api-
 import type {
   CapabilityManifest,
   CapabilityRecord,
-  DenisCapability,
 } from "@/lib/denis/integrations/capabilities/denis-capability-types";
+import { resolveAdapterMethodName } from "@/lib/denis/integrations/capabilities/denis-capability-types";
 
 /**
  * ADR-052 §F — deterministic, template-based TypeScript codegen. Only
@@ -15,25 +15,6 @@ import type {
  * lands (draft DB row, generated/ workspace folder) — this module never
  * writes to disk.
  */
-
-const METHOD_NAME_BY_CAPABILITY: Record<DenisCapability, string> = {
-  "menu.read": "getMenu",
-  "product.availability.read": "getAvailability",
-  "order.create": "createOrder",
-  "order.update": "updateOrder",
-  "order.cancel": "cancelOrder",
-  "order.status.read": "getOrderStatus",
-  "table.list": "getTables",
-  "table.status.read": "getTableStatus",
-  "floor_plan.read": "getFloorPlan",
-  "bill.read": "getBill",
-  "bill.append_items": "addItemsToBill",
-  "bill.apply_payment": "applyPayment",
-  "bill.close": "closeBill",
-  "payment.refund": "refundPayment",
-  "reservation.availability.read": "getReservationAvailability",
-  "reservation.create": "createReservation",
-};
 
 function toPascalCase(name: string): string {
   return name
@@ -122,7 +103,7 @@ function renderMethod(
   record: CapabilityRecord,
   endpoint: { method: string; path: string }
 ): string {
-  const methodName = METHOD_NAME_BY_CAPABILITY[record.capability];
+  const methodName = resolveAdapterMethodName(record.capability);
   const hasBody = ["POST", "PUT", "PATCH"].includes(endpoint.method);
 
   return [
