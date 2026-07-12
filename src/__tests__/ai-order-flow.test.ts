@@ -7,7 +7,6 @@ import {
   isGuestDoneOrdering,
   isGuestFinalConfirm,
   sanitizeFalseOrderClaimMessage,
-  shouldHandleOrderFlowWithoutLlm,
 } from "@/lib/ai/ordering/order-flow";
 import { pendingSlotKindFromDraft } from "@/lib/ai/ordering/pending-slot-kind";
 
@@ -41,18 +40,6 @@ describe("order-flow guards", () => {
     expect(isGuestDoneOrdering("ne to je sve")).toBe(true);
     expect(isGuestDoneOrdering("to je sve nista drugo hvala")).toBe(true);
     expect(isGuestDoneOrdering("samo to")).toBe(true);
-  });
-
-  it("skips LLM for done-ordering when cart has items", () => {
-    const draft = {
-      ...draftWithCola(),
-      flow: { foodUpsellAsked: true },
-    };
-
-    expect(shouldHandleOrderFlowWithoutLlm("ne to je sve", draft)).toBe(true);
-    expect(shouldHandleOrderFlowWithoutLlm("ne to je sve", emptyOrderDraft())).toBe(
-      false
-    );
   });
 
   it("after drink added asks food once", () => {
@@ -211,6 +198,54 @@ describe("order-flow guards", () => {
 
     expect(result.submitOrder).toBe(false);
     expect(result.message).toContain("Da li je to sve");
+  });
+
+  it("prefers the LLM's own guestFinalConfirm field over regex when both are present (2026-07-12 regex purge)", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { foodUpsellAsked: true, awaitingFinalConfirm: true },
+    };
+
+    // "da bre stani" doesn't match the regex fallback's affirmative
+    // pattern at all — but the LLM's own understanding says the guest
+    // is confirming (e.g. a phrasing/language the word list can't cover).
+    const result = finalizeOrderFlow({
+      userMessage: "da bre stani",
+      draft,
+      llmMessage: "",
+      llmSubmitOrder: false,
+      cartActionsThisTurn: 0,
+      language: "sr",
+      guestFinalConfirm: true,
+    });
+
+    expect(result.submitOrder).toBe(true);
+  });
+
+  it("an explicit guestDecliningMore:false from the LLM overrides what the regex fallback would have guessed", () => {
+    const draft = {
+      ...draftWithCola(),
+      flow: { foodUpsellAsked: true, awaitingFinalConfirm: true },
+    };
+
+    // "ne hvala" alone WOULD match the regex fallback's decline pattern
+    // (proven by the "detects decline phrases" test above) — but the
+    // LLM's own structured field says it's NOT actually a decline this
+    // time, and its judgment wins; the regex is never consulted when the
+    // field is present.
+    expect(isGuestDecliningMore("ne hvala")).toBe(true);
+
+    const result = finalizeOrderFlow({
+      userMessage: "ne hvala",
+      draft,
+      llmMessage: "",
+      llmSubmitOrder: true,
+      cartActionsThisTurn: 0,
+      language: "sr",
+      guestDecliningMore: false,
+    });
+
+    expect(result.submitOrder).toBe(true);
   });
 
   it("blocks false order claim when cart is empty", () => {

@@ -54,6 +54,13 @@ function confirmOrderMessage(draft: AiOrderDraft, lang: MenuLanguage): string {
   return [recapQuestion(lang), ...lines].join("\n");
 }
 
+/**
+ * REFLEX/OUTAGE-ONLY FALLBACK (2026-07-12) — finalizeOrderFlow() only
+ * calls this when no real LLM turn happened this call (guestDecliningMore
+ * wasn't provided). A real guest turn always goes through the LLM's own
+ * structured guestDecliningMore field instead — never this word list,
+ * which can't cover every language/phrasing a guest might use.
+ */
 export function isGuestDecliningMore(message: string): boolean {
   const text = normalizeMessage(message);
   if (isGuestAbandoningOrder(message)) return false;
@@ -68,7 +75,11 @@ export function isGuestDecliningMore(message: string): boolean {
   );
 }
 
-/** Guest backs out of the whole order — clear cart, do not repeat recap. */
+/**
+ * REFLEX/OUTAGE-ONLY FALLBACK (2026-07-12) — see isGuestDecliningMore's
+ * docstring. Guest backs out of the whole order — clear cart, do not
+ * repeat recap.
+ */
 export function isGuestAbandoningOrder(message: string): boolean {
   const text = normalizeMessage(message);
   return (
@@ -81,6 +92,10 @@ export function isGuestAbandoningOrder(message: string): boolean {
   );
 }
 
+/**
+ * REFLEX/OUTAGE-ONLY FALLBACK (2026-07-12) — see isGuestDecliningMore's
+ * docstring.
+ */
 export function isGuestDoneOrdering(message: string): boolean {
   const text = normalizeMessage(message);
   return (
@@ -95,24 +110,10 @@ export function isGuestDoneOrdering(message: string): boolean {
   );
 }
 
-/** Flow-control replies — handle without LLM when cart already has items. */
-export function shouldHandleOrderFlowWithoutLlm(
-  message: string,
-  draft: AiOrderDraft
-): boolean {
-  if (draft.items.length === 0 || draft.pending) return false;
-
-  if (isGuestDoneOrdering(message)) return true;
-
-  // At recap, confirm goes through LLM comprehend — not regex skip (ADR-030).
-
-  if (draft.flow?.foodUpsellAsked && isGuestDecliningMore(message)) {
-    return true;
-  }
-
-  return false;
-}
-
+/**
+ * REFLEX/OUTAGE-ONLY FALLBACK (2026-07-12) — see isGuestDecliningMore's
+ * docstring.
+ */
 export function isGuestFinalConfirm(message: string): boolean {
   const text = normalizeMessage(message);
   return (
@@ -228,6 +229,14 @@ export type OrderFlowResult = {
 
 /**
  * Deterministic guardrails: finish the order in a short path — no endless questions.
+ *
+ * guestDecliningMore/guestAbandoningOrder/guestDoneOrdering/guestFinalConfirm
+ * are the LLM's own understanding of this turn (2026-07-12 regex purge) —
+ * present on every call that followed a real LLM turn (apply-order-comprehend.ts).
+ * When absent (resolve-pending-slot-act.ts's reflex pending-slot resolution,
+ * which deliberately makes no LLM call at all for latency), this falls back
+ * to the regex functions below — an outage/reflex-only fallback, never a
+ * substitute for real understanding when an LLM turn actually happened.
  */
 export function finalizeOrderFlow(input: {
   userMessage: string;
@@ -236,6 +245,10 @@ export function finalizeOrderFlow(input: {
   llmSubmitOrder: boolean;
   cartActionsThisTurn: number;
   language?: string;
+  guestDecliningMore?: boolean;
+  guestAbandoningOrder?: boolean;
+  guestDoneOrdering?: boolean;
+  guestFinalConfirm?: boolean;
 }): OrderFlowResult {
   const lang = resolveMenuLanguage(input.language);
   const draft: AiOrderDraft = {
@@ -245,6 +258,15 @@ export function finalizeOrderFlow(input: {
   const flow = draft.flow!;
   const hasCartLines = draft.items.length > 0;
   const summary = summarizeDraftOrder(draft);
+
+  const decliningMore =
+    input.guestDecliningMore ?? isGuestDecliningMore(input.userMessage);
+  const abandoningOrder =
+    input.guestAbandoningOrder ?? isGuestAbandoningOrder(input.userMessage);
+  const doneOrdering =
+    input.guestDoneOrdering ?? isGuestDoneOrdering(input.userMessage);
+  const finalConfirm =
+    input.guestFinalConfirm ?? isGuestFinalConfirm(input.userMessage);
 
   if (!hasCartLines && !draft.pending) {
     return {
@@ -261,8 +283,8 @@ export function finalizeOrderFlow(input: {
     if (
       isDrinksOnly(draft) &&
       !flow.awaitingFinalConfirm &&
-      !isGuestDoneOrdering(input.userMessage) &&
-      !isGuestFinalConfirm(input.userMessage)
+      !doneOrdering &&
+      !finalConfirm
     ) {
       return {
         draft,
@@ -274,11 +296,7 @@ export function finalizeOrderFlow(input: {
 
     flow.awaitingFinalConfirm = true;
 
-    if (
-      !draft.pending &&
-      (isGuestDoneOrdering(input.userMessage) ||
-        isGuestFinalConfirm(input.userMessage))
-    ) {
+    if (!draft.pending && (doneOrdering || finalConfirm)) {
       return {
         draft,
         message: sendOrderMessage(lang),
@@ -298,8 +316,7 @@ export function finalizeOrderFlow(input: {
   if (
     !flow.awaitingFinalConfirm &&
     hasCartLines &&
-    (isGuestDecliningMore(input.userMessage) ||
-      isGuestDoneOrdering(input.userMessage))
+    (decliningMore || doneOrdering)
   ) {
     flow.foodUpsellAsked = true;
     flow.awaitingFinalConfirm = true;
@@ -312,7 +329,7 @@ export function finalizeOrderFlow(input: {
   }
 
   if (flow.awaitingFinalConfirm) {
-    if (isGuestAbandoningOrder(input.userMessage)) {
+    if (abandoningOrder) {
       return {
         draft: emptyOrderDraft(),
         message: abandonOrderMessage(lang),
@@ -321,14 +338,12 @@ export function finalizeOrderFlow(input: {
       };
     }
 
-    const declining = isGuestDecliningMore(input.userMessage);
-    const comprehendSubmit = input.llmSubmitOrder && !declining;
+    const comprehendSubmit = input.llmSubmitOrder && !decliningMore;
     const fastPathSubmit =
       !input.llmSubmitOrder &&
-      !declining &&
+      !decliningMore &&
       !draft.pending &&
-      (isGuestFinalConfirm(input.userMessage) ||
-        isGuestDoneOrdering(input.userMessage));
+      (finalConfirm || doneOrdering);
 
     if ((comprehendSubmit || fastPathSubmit) && !draft.pending) {
       return {
@@ -339,7 +354,7 @@ export function finalizeOrderFlow(input: {
       };
     }
 
-    if (declining) {
+    if (decliningMore) {
       flow.awaitingFinalConfirm = false;
       return {
         draft,

@@ -63,6 +63,10 @@ export function applyOrderComprehend(
     llmSubmitOrder: input.structured.submitOrder,
     cartActionsThisTurn,
     language: input.language,
+    guestDecliningMore: input.structured.guestDecliningMore,
+    guestAbandoningOrder: input.structured.guestAbandoningOrder,
+    guestDoneOrdering: input.structured.guestDoneOrdering,
+    guestFinalConfirm: input.structured.guestFinalConfirm,
   });
   workingDraft = flowResult.draft;
 

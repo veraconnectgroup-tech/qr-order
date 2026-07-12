@@ -66,6 +66,20 @@ export type AiStructuredResponse = {
   turnInterpretation?: TurnInterpretation;
   /** True when the guest wants to see more menu options/suggestions — replaces guestAskedForSuggestions/isLikelyBrowseQuery regex (2026-07-12 regex purge), the LLM's own call on the same turn, no extra cost. */
   wantsMoreOptions?: boolean;
+  /**
+   * Order-flow signals — 2026-07-12 regex purge of order-flow.ts's
+   * isGuestDecliningMore/isGuestAbandoningOrder/isGuestDoneOrdering/
+   * isGuestFinalConfirm. The LLM's own understanding of this turn, same
+   * call, no extra cost. finalizeOrderFlow() prefers these when present;
+   * the regex versions remain ONLY as a fallback for the one call site
+   * with no LLM turn at all (resolve-pending-slot-act.ts's reflex
+   * pending-slot resolution — a deliberately non-LLM path for latency,
+   * not a guest-language understanding step being skipped).
+   */
+  guestDecliningMore?: boolean;
+  guestAbandoningOrder?: boolean;
+  guestDoneOrdering?: boolean;
+  guestFinalConfirm?: boolean;
   structuredPerception?: Partial<AiStructuredResponse> & {
     intent?: AiConciergeIntent | string;
     submitOrder?: boolean;

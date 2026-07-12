@@ -338,6 +338,10 @@ Menu & JSON output:
 - Use productId exactly as shown in menu [square brackets]. Follow LANGUAGE POLICY for guest-facing message text.
 - quickReplies: always []. recommendations: [] unless guest explicitly asks to browse the full menu.
 - wantsMoreOptions: true if the guest wants to see options/what's available (in any language/phrasing) rather than chatting or giving a direct order — this widens what gets shown, so judge it yourself, don't rely on specific keywords.
+- guestDecliningMore: true if the guest is saying no to adding anything further right now (any language/phrasing of "no thanks").
+- guestAbandoningOrder: true if the guest is backing out of the WHOLE order, not just declining one more item (any phrasing of "cancel that"/"never mind"/"changed my mind").
+- guestDoneOrdering: true if the guest signals they're finished adding items ("that's all", "nothing else", etc., any language).
+- guestFinalConfirm: true if the guest is giving final confirmation to actually submit the order (a clear "yes"/"send it", any language) — never true for an ambiguous or partial reply.
 - No medical or legal advice.${orderingSection}
 
 VKG (Venue Knowledge Graph — verified facts in SITUATION PACK):
@@ -382,6 +386,10 @@ function outputFormatBlock(): string {
   "submitOrder": false,
   "message": "message to guest",
   "wantsMoreOptions": false,
+  "guestDecliningMore": false,
+  "guestAbandoningOrder": false,
+  "guestDoneOrdering": false,
+  "guestFinalConfirm": false,
   "turnInterpretation": {
     "sentiment": "neutral|positive|frustrated|confused",
     "mealStage": "pre_order|ordering|waiting|eating|dessert|paying|null",
