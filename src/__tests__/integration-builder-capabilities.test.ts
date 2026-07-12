@@ -287,7 +287,81 @@ describe("generateAdapterSource", () => {
     ]);
     const source = generateAdapterSource(spec, manifest);
     expect(source).toContain("async getOrderStatus(");
-    expect(source).toContain("${input.id}");
+    expect(source).toContain('encodeURIComponent(String(input["id"]))');
+  });
+
+  it("wraps a malicious path segment as an inert JSON-escaped string, never a raw template literal (template injection)", () => {
+    const maliciousPath = '/orders`); process.exit(1); const x=(`';
+    const evilSpec: ParsedApiSpec = {
+      ...spec,
+      endpoints: [
+        {
+          method: "GET",
+          path: maliciousPath,
+          operationId: null,
+          summary: null,
+          description: null,
+          requestExample: null,
+          responseExample: null,
+          tags: [],
+        },
+      ],
+    };
+    const manifest = mapCapabilities("acme", [
+      {
+        capability: "order.status.read",
+        status: "supported",
+        endpoint: `GET ${maliciousPath}`,
+        quotedSpan: "GET .../orders...",
+        source: "heuristic",
+        confidence: 0.75,
+      },
+    ]);
+    const source = generateAdapterSource(evilSpec, manifest);
+    // The whole path — backticks and all — must appear as a single
+    // JSON-escaped argument to string concatenation, never spliced raw
+    // into a template literal (the pre-fix vulnerability).
+    expect(source).toContain(`fetch(this.baseUrl + ${JSON.stringify(maliciousPath)}`);
+    expect(source).not.toContain("fetch(`");
+  });
+
+  it("never lets a malicious path break out of the generated doc comment", () => {
+    const maliciousPath = "/orders*/ export const pwned = 1; /*";
+    const evilSpec: ParsedApiSpec = {
+      ...spec,
+      endpoints: [
+        {
+          method: "GET",
+          path: maliciousPath,
+          operationId: null,
+          summary: null,
+          description: null,
+          requestExample: null,
+          responseExample: null,
+          tags: [],
+        },
+      ],
+    };
+    const manifest = mapCapabilities("acme", [
+      {
+        capability: "order.status.read",
+        status: "supported",
+        endpoint: `GET ${maliciousPath}`,
+        quotedSpan: "GET /orders",
+        source: "heuristic",
+        confidence: 0.75,
+      },
+    ]);
+    const source = generateAdapterSource(evilSpec, manifest);
+    const docCommentLine = source
+      .split("\n")
+      .find((line) => line.includes("order.status.read"));
+    // The doc-comment line must still be a single comment — the closer
+    // can appear (harmless, sanitized to "* /") but never followed by
+    // real top-level code on the very next characters within that line.
+    expect(docCommentLine).not.toContain("*/ export const pwned");
+    expect(docCommentLine).toContain("* / export const pwned");
+    expect(docCommentLine?.trim().endsWith("*/")).toBe(true);
   });
 
   it("marks the file as an unreviewed AI-generated draft", () => {

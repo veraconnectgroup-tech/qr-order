@@ -99,6 +99,35 @@ function renderAuthHeadersMethod(spec: ParsedApiSpec): string {
   ].join("\n");
 }
 
+/**
+ * A source document's path/summary/etc. are attacker-controllable (a
+ * malicious OpenAPI/Postman upload) — never splice them into generated
+ * source as raw template-literal or comment text. Every literal segment
+ * goes through JSON.stringify (always produces a safely escaped JS
+ * string literal, whatever the input contains); every path param goes
+ * through bracket notation with a JSON.stringify'd key, never a raw
+ * `input.<name>` property access, so a param named e.g. `x"]; evil(); //`
+ * can't break out into real code either.
+ */
+function renderPathExpression(path: string): string {
+  const parts: string[] = [];
+  let lastIndex = 0;
+  for (const match of path.matchAll(/\{([^}]+)\}/g)) {
+    const literal = path.slice(lastIndex, match.index);
+    if (literal) parts.push(JSON.stringify(literal));
+    parts.push(`encodeURIComponent(String(input[${JSON.stringify(match[1])}]))`);
+    lastIndex = (match.index ?? 0) + match[0].length;
+  }
+  const trailing = path.slice(lastIndex);
+  if (trailing || parts.length === 0) parts.push(JSON.stringify(trailing));
+  return ["this.baseUrl", ...parts].join(" + ");
+}
+
+/** Strips a sequence that could close a `/** ... *​/` doc comment early. */
+function sanitizeForComment(text: string): string {
+  return text.replace(/\*\//g, "* /").replace(/[\r\n]+/g, " ");
+}
+
 function renderMethod(
   record: CapabilityRecord,
   endpoint: { method: string; path: string }
@@ -107,9 +136,9 @@ function renderMethod(
   const hasBody = ["POST", "PUT", "PATCH"].includes(endpoint.method);
 
   return [
-    `  /** ${record.capability} — ${endpoint.method} ${endpoint.path}. Source: ${JSON.stringify(record.quotedSpan)}. */`,
+    `  /** ${record.capability} — ${endpoint.method} ${sanitizeForComment(endpoint.path)}. Source: ${JSON.stringify(record.quotedSpan)}. */`,
     `  async ${methodName}(input: Record<string, unknown>, config: Record<string, unknown>): Promise<Result<unknown>> {`,
-    `    const response = await fetch(\`\${this.baseUrl}${endpoint.path.replace(/\{[^}]+\}/g, (m) => `\${input.${m.slice(1, -1)}}`)}\`, {`,
+    `    const response = await fetch(${renderPathExpression(endpoint.path)}, {`,
     `      method: ${JSON.stringify(endpoint.method)},`,
     `      headers: { "Content-Type": "application/json", ...this.authHeaders(config) },`,
     hasBody ? "      body: JSON.stringify(input)," : "",
