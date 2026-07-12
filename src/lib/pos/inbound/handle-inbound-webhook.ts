@@ -14,7 +14,7 @@ import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
-type IntegrationRow = {
+export type IntegrationRow = {
   id: string;
   location_id: string;
   provider: PosProvider;
@@ -22,7 +22,7 @@ type IntegrationRow = {
   config: Json;
 };
 
-async function loadIntegration(
+export async function loadIntegration(
   integrationId: string
 ): Promise<IntegrationRow | null> {
   const admin = createAdminClient();
