@@ -158,6 +158,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       maxOpenPerStation: 3,
       expirySeconds: 90,
       meteredByCredits: false,
+      escalateToBarEnabled: false,
     },
     stationAwareTell: false,
     tableTempo: {

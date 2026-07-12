@@ -217,6 +217,20 @@ const ConciergeStationQuestionsSchema = z
      * it currently requires an aiSessionId station voice doesn't have.
      */
     meteredByCredits: z.boolean().default(false),
+    /**
+     * Proactive kitchen→bar escalation: when a kitchen question expires
+     * unanswered, Denis opens the SAME question at the bar station
+     * (asked_by: "denis") instead of going straight to a manager
+     * notification. Reuses the existing station-voice speak-when-primed
+     * mechanism — no new call/autoplay infrastructure needed, since bar
+     * staff activate Denis once per shift and he stays primed (founder's
+     * own framing: "aktivira se jednom, i onda je to to"). Defaults off
+     * — opt in per location once the founder is ready to pilot it, same
+     * canary discipline as every other rollout this session. One hop
+     * only (kitchen→bar, never bar→kitchen, never a second escalation on
+     * top of an escalation) — see escalate-kitchen-question-to-bar.ts.
+     */
+    escalateToBarEnabled: z.boolean().default(false),
   })
   .default({
     enabled: false,
@@ -228,6 +242,7 @@ const ConciergeStationQuestionsSchema = z
     maxOpenPerStation: 3,
     expirySeconds: 90,
     meteredByCredits: false,
+    escalateToBarEnabled: false,
   });
 
 const ConciergeTableTempoSchema = z

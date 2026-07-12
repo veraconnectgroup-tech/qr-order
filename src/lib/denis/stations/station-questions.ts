@@ -3,6 +3,8 @@ import type {
   ConciergeConfig,
   ConciergeStationQuestions,
 } from "@/lib/denis/config/concierge-config.schema";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { escalateKitchenQuestionToBar } from "@/lib/denis/stations/escalate-kitchen-question-to-bar";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
@@ -60,6 +62,28 @@ export type CreateStationQuestionInput = {
 };
 
 const CLOSED_ORDER_STATUSES = ["delivered", "cancelled", "rejected"];
+
+/**
+ * expireStationQuestions is a cron-invoked, per-location sweep with no
+ * caller-supplied config — degrade to "no escalation this tick" on any
+ * config-load failure rather than let it take down the whole expiry
+ * sweep (same degrade-gracefully posture as the Redis helpers elsewhere
+ * in this codebase).
+ */
+async function loadStationQuestionsConfigSafely(
+  locationId: string
+): Promise<ConciergeStationQuestions | null> {
+  try {
+    const config = await loadConciergeConfigForLocation(locationId);
+    return config.ops.stationQuestions;
+  } catch (error) {
+    logger.warn("loadStationQuestionsConfigSafely failed", {
+      locationId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
 
 /**
  * Create a question card with anti-spam guardrails:
@@ -286,28 +310,37 @@ export async function expireStationQuestions(
   }
 
   const expired = (expiredRows ?? []) as StationQuestionRow[];
+  const stationConfig =
+    expired.length > 0 ? await loadStationQuestionsConfigSafely(input.locationId) : null;
 
   for (const question of expired) {
     const context = await loadQuestionContext(admin, question);
-    const stationLabel = question.station === "kitchen" ? "Kuhinja" : "Bar";
-    const bon =
-      context?.orderNumber != null ? ` · Bon #${context.orderNumber}` : "";
 
-    await dispatchStaffNotification({
-      orgId: context?.orgId,
-      locationId: question.location_id,
-      type: "denis_escalation",
-      tableId: question.table_id ?? undefined,
-      tableName: context?.tableName ?? undefined,
-      message: `${stationLabel} ne odgovara na Denis pitanje${bon} — proveri stanicu.`,
-      actionUrl: question.station === "kitchen" ? "/kitchen" : "/bar",
-    }).catch(() => undefined);
+    const escalation = stationConfig
+      ? await escalateKitchenQuestionToBar(admin, question, stationConfig)
+      : null;
+
+    if (!escalation?.escalated) {
+      const stationLabel = question.station === "kitchen" ? "Kuhinja" : "Bar";
+      const bon =
+        context?.orderNumber != null ? ` · Bon #${context.orderNumber}` : "";
+
+      await dispatchStaffNotification({
+        orgId: context?.orgId,
+        locationId: question.location_id,
+        type: "denis_escalation",
+        tableId: question.table_id ?? undefined,
+        tableName: context?.tableName ?? undefined,
+        message: `${stationLabel} ne odgovara na Denis pitanje${bon} — proveri stanicu.`,
+        actionUrl: question.station === "kitchen" ? "/kitchen" : "/bar",
+      }).catch(() => undefined);
+    }
 
     await appendQuestionTimelineEvent(
       admin,
       question,
       "station.question.expired",
-      { reason },
+      { reason, escalatedToBar: escalation?.escalated ?? false },
       context
     );
   }
