@@ -26,7 +26,7 @@ Ovo dupliranje je OK i dokumentovano u samom `assemble-denis-brain-context.ts` �
 | Denis Menu Agent chat (admin) | `api/admin/denis-menu-agent/chat/route.ts` | `assembleDenisBrainContext` | DA | DA |
 | Station-voice LLM fallback (T2, po pitanju) | `station-voice-turn-llm.ts` | `assembleDenisBrainContext` | DA | DA |
 | Agentic tool-use loop — **SAMO shadow put** | `run-denis-turn.ts` (`agenticPolicy.mode === "shadow"` grana) | `assembleDenisBrainContext` | DA | DA (ali nikad ne stiže do gosta — shadow, ne pravi odgovor) |
-| **Gostov chat/glas — pravi, živi odgovor** | `perceive-guest-chat-turn.ts` → `buildSystemPrompt` | `buildPersonaIdentityBlock`/`buildPersonalityBlock` + `loadRestaurantKnowledgeBlock` direktno | **NE** | **NE — potvrđen P0 propust, popravka u toku** |
+| Gostov chat/glas — pravi, živi odgovor | `perceive-guest-chat-turn.ts` → `buildSystemPrompt` | `buildPersonaIdentityBlock`/`buildPersonalityBlock` + `loadRestaurantKnowledgeBlock` direktno | NE (i dalje — integrations awareness nije deo ovog popravljanog kruga, samo capability) | DA — **P0 propust popravljen** (`capabilityAwarenessBlock` polje na `BuildSystemPromptInput`, ulazi u situation pack isto kao `restaurantKnowledgeBlock`) |
 | Station-voice Realtime, po konkretnom pitanju | `api/denis/station-voice/realtime-token/route.ts` | `resolveDenisVoiceInstructions` (ton-senčena persona) + `loadRestaurantKnowledgeBlock` direktno | NE | NE (nije još proglašeno propustom — Denis ovde zove OSOBLJE, ne obrnuto; manje kritično, ali vredi preispitati kad P0 bude gotov) |
 
 ---

@@ -248,6 +248,10 @@ function buildPromptSituationPack(input: BuildSystemPromptInput): string {
     lines.push(input.evolvedLearningsBlock.trim());
   }
 
+  if (input.capabilityAwarenessBlock?.trim()) {
+    lines.push(input.capabilityAwarenessBlock.trim());
+  }
+
   if (input.promoContext?.trim()) {
     lines.push(input.promoContext.trim());
   }

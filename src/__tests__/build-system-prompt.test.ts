@@ -56,6 +56,22 @@ describe("buildSystemPrompt token budget", () => {
     expect(prompt).not.toContain("EVIDENCE:");
   });
 
+  it("includes POS capability awareness in situation pack when present", () => {
+    const prompt = buildSystemPrompt({
+      ...BASE_INPUT,
+      capabilityAwarenessBlock:
+        "POS CAPABILITIES — what you may actually promise a guest:\nYou CANNOT (say so honestly, never claim otherwise):\n- closing a bill in the POS — NOT possible today; be honest, say a staff member must handle it",
+    });
+
+    expect(prompt).toContain("POS CAPABILITIES");
+    expect(prompt).toContain("closing a bill in the POS");
+  });
+
+  it("omits capability awareness from situation pack when absent", () => {
+    const prompt = buildSystemPrompt(BASE_INPUT);
+    expect(prompt).not.toContain("POS CAPABILITIES");
+  });
+
   it("includes promo context in situation pack", () => {
     const prompt = buildSystemPrompt({
       ...BASE_INPUT,
