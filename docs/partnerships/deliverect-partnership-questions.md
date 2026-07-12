@@ -1,7 +1,8 @@
-# Email draft — Deliverect Partnership / Developer Team
+# Partnership inquiry — Deliverect
 
-**To:** Deliverect Partnerships (partnerships@deliverect.com — verify current contact before sending)
-**Subject:** Partnership & API questions — digital ordering platform evaluating Deliverect integration
+**Important:** Deliverect has no public partnership email address — `partnerships@deliverect.com` bounces (confirmed 2026-07-12). The only official channel for this is their **"Become a Partner" web form**: https://www.deliverect.com/en/become-a-partner — typical response time is around 14 business days. Submit the message below through that form (or its free-text/message field). Other channels they list are live chat and WhatsApp for general support, and the Developer Hub (developers.deliverect.com) for docs — neither is a substitute for the partner form for this kind of inquiry.
+
+**Subject / heading to use on the form (if it asks for one):** Partnership & API questions — digital ordering platform evaluating Deliverect integration
 
 ---
 
