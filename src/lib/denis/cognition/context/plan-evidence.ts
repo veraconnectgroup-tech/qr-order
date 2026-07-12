@@ -8,7 +8,12 @@ import {
   retrieveMenuEvidence,
 } from "@/lib/denis/cognition/context/retrievers/menu-rag";
 import type { MenuRagCatalog, MenuRagEmbeddingIndex } from "@/lib/denis/cognition/context/menu-rag-types";
-import { buildOrderComprehendHint } from "@/lib/ai/ordering/category-order-logic";
+import {
+  isMenuKnowledgeQuestion,
+  menuKnowledgeHint,
+  resolveOrderSizeHint,
+} from "@/lib/ai/ordering/category-order-logic";
+import type { OrderSizeIntentAssessment } from "@/lib/ai/ordering/order-size-intent-types";
 import { retrieveTranscriptWindowEvidence } from "@/lib/denis/cognition/context/retrievers/transcript-window";
 import { retrieveVenueOpsEvidence } from "@/lib/denis/cognition/context/retrievers/venue-ops-evidence";
 import type { VenueManifestCapabilities } from "@/lib/denis/cognition/manifest/venue-manifest.schema";
@@ -89,6 +94,8 @@ export type PlanEvidenceInput = {
   crossDeviceBlock?: string | null;
   contextAwareness?: ContextAwarenessSnapshot | null;
   guestStatusSection?: string | null;
+  /** LLM's own structured perception of size/product-category intent (assess-order-size-intent.ts) — replaces a regex/word-list approach the founder rejected (see order-size-intent-types.ts). */
+  orderSizeIntentAssessment?: OrderSizeIntentAssessment | null;
 };
 
 export function guestTurnNeedsMenuContext(
@@ -188,11 +195,15 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     );
 
     if (input.catalog && Object.keys(input.catalog).length > 0) {
-      const comprehendHint = buildOrderComprehendHint(
-        input.guestMessage,
-        input.catalog
-      );
-      if (comprehendHint) blocks.push(comprehendHint);
+      if (isMenuKnowledgeQuestion(input.guestMessage)) {
+        blocks.push(menuKnowledgeHint());
+      } else {
+        const comprehendHint = resolveOrderSizeHint(
+          input.orderSizeIntentAssessment ?? null,
+          input.catalog
+        );
+        if (comprehendHint) blocks.push(comprehendHint);
+      }
     }
 
     if (

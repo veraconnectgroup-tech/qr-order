@@ -21,6 +21,7 @@ import {
   planEvidence,
   type TurnEvidencePack,
 } from "@/lib/denis/cognition/context/plan-evidence";
+import { assessOrderSizeIntent } from "@/lib/denis/cognition/perceive/assess-order-size-intent";
 import { loadTurnVkgPairingBlock } from "@/lib/denis/cognition/context/load-turn-vkg-pairings";
 import { assembleGuestTurnOperationalContext } from "@/lib/denis/cognition/context/assemble-operational-context";
 import { retrieveOperationalContextEvidence } from "@/lib/denis/cognition/context/retrievers/operational-context-evidence";
@@ -793,36 +794,45 @@ async function runTdePerceive(input: {
       turnPlan.kind === "relational_perceive" ||
       turnPlan.kind === "narrate_paraphrase");
 
-  const [vkgPairingBlock, playbookBlock, contextAwareness] = await Promise.all([
-    loadTurnVkgPairingBlock({
-      locationId: input.body.locationId,
-      config: input.ctx.config,
-      state: input.ctx.tableSessionState,
-      reflexTurn: input.reflexTurn,
-      guestAllergens: input.body.preferences?.allergies,
-      guestMessage: input.body.message,
-      turnPlan,
-      unavailableProductIds: input.ctx.venueOps?.unavailableProductIds ?? [],
-      popularProductIds:
-        input.ctx.rhythmContext?.topProducts.flatMap((row) =>
-          row.productId ? [row.productId] : []
-        ) ?? [],
-    }),
-    wantsPlaybook
-      ? loadTurnPlaybookBlock({
-          orgId: input.orgId,
-          locationId: input.body.locationId,
-          playbookPackId: effective.playbookPackId,
-          customPlaybookPack: effective.customPlaybookPack,
-        }).catch(() => null)
-      : Promise.resolve(null),
-    resolveContextAwareness({
-      locationId: input.body.locationId,
-      intelligence: input.ctx.config.intelligence,
-      language: input.body.language,
-      venueEventConfig: input.ctx.venueOps?.eventConfig,
-    }).catch(() => null),
-  ]);
+  const [vkgPairingBlock, playbookBlock, contextAwareness, orderSizeIntentAssessment] =
+    await Promise.all([
+      loadTurnVkgPairingBlock({
+        locationId: input.body.locationId,
+        config: input.ctx.config,
+        state: input.ctx.tableSessionState,
+        reflexTurn: input.reflexTurn,
+        guestAllergens: input.body.preferences?.allergies,
+        guestMessage: input.body.message,
+        turnPlan,
+        unavailableProductIds: input.ctx.venueOps?.unavailableProductIds ?? [],
+        popularProductIds:
+          input.ctx.rhythmContext?.topProducts.flatMap((row) =>
+            row.productId ? [row.productId] : []
+          ) ?? [],
+      }),
+      wantsPlaybook
+        ? loadTurnPlaybookBlock({
+            orgId: input.orgId,
+            locationId: input.body.locationId,
+            playbookPackId: effective.playbookPackId,
+            customPlaybookPack: effective.customPlaybookPack,
+          }).catch(() => null)
+        : Promise.resolve(null),
+      resolveContextAwareness({
+        locationId: input.body.locationId,
+        intelligence: input.ctx.config.intelligence,
+        language: input.body.language,
+        venueEventConfig: input.ctx.venueOps?.eventConfig,
+      }).catch(() => null),
+      // 2026-07-12 — real LLM understanding of size/product-category intent
+      // ("veliko pivo", "veliko Pilsner", in any language), replacing a
+      // regex/word-list approach the founder explicitly rejected (see
+      // order-size-intent-types.ts docstring). Only worth asking when
+      // there's a real catalog to resolve against.
+      catalog && Object.keys(catalog).length > 0
+        ? assessOrderSizeIntent(input.body.message).catch(() => null)
+        : Promise.resolve(null),
+    ]);
 
   // ADR-048 §III — correlated kitchen/bar-busy + guest-frustration note.
   // Instant kill switch per location plus a guest-cohort canary ramp so
@@ -930,6 +940,7 @@ async function runTdePerceive(input: {
     contextAwareness,
     guestStatusSection,
     operationalContextBlock,
+    orderSizeIntentAssessment,
   });
 
   const modelRoute = resolveAdaptiveModelRoute({
