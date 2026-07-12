@@ -263,10 +263,20 @@ export type DenisTimelineEventPayload =
       traceId?: string | null;
     }
   | {
-      /** Guest Conduct Policy Engine MVP-1 — see resolve-guest-conduct-policy.ts. */
+      /** Guest Conduct Policy Engine MVP-1/3 — see resolve-guest-conduct-policy.ts. */
       type: "conduct.policy_decision";
       tier: "none" | "warn_1" | "warn_2" | "handoff";
+      /** Final combined signal (regex OR LLM) that actually drove the tier. */
       offenseDetectedThisTurn: boolean;
+      /** What abuse-protection.ts's regex alone would have found — diff against offenseDetectedThisTurn to see what the LLM step (MVP-3) adds. */
+      regexOnlyOffenseDetected: boolean;
+      /** null when the heuristic pre-filter skipped the LLM call, OpenAI is unconfigured, or the call/parse failed. */
+      llmAssessment: {
+        toneTowardDenis: "respectful" | "curt" | "mild_insult" | "severe_insult" | "threat";
+        directedAt: "denis" | "service" | "unclear";
+        confidence: number;
+        quotedSpan: string;
+      } | null;
       totalOffenseCount: number;
       haltSensitiveActions: boolean;
       notifyStaff: boolean;
