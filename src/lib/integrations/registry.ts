@@ -35,6 +35,14 @@ export type ConnectorDefinition = {
   /** True once a real adapter exists in code (not a skeleton stub) — independent of whether any location has actually connected it. */
   builtInCode: boolean;
   description: string;
+  /**
+   * ADR-052 Phase 0 extension point — browser-automation connectors (no
+   * real API, Playwright-driven) are a structurally different kind and
+   * must never be treated as a real PosAdapter. Absent means "api", the
+   * only kind that exists in this catalog today — no existing entry
+   * needs updating for this field to be meaningful.
+   */
+  integrationKind?: "api" | "browser_automation";
 };
 
 export const CONNECTOR_CATALOG: ConnectorDefinition[] = [

@@ -960,6 +960,79 @@ type Tables = {
     cancel_reason: string | null;
     created_at: string;
   };
+  integration_providers: {
+    id: string;
+    name: string;
+    category: "pos" | "delivery" | "reservation" | "payment" | "accounting";
+    integration_kind: "api" | "browser_automation";
+    status: "not_built" | "not_connected" | "connected";
+    created_at: string;
+  };
+  integration_documents: {
+    id: string;
+    provider_id: string;
+    doc_type: "openapi" | "postman" | "pdf" | "html" | "text";
+    raw_content: string | null;
+    storage_url: string | null;
+    uploaded_by_staff_id: string | null;
+    uploaded_at: string;
+    parse_status: "uploaded" | "parsed" | "failed";
+  };
+  integration_capabilities: {
+    id: string;
+    provider_id: string;
+    capability: string;
+    status:
+      | "supported"
+      | "supported_with_limitations"
+      | "unsupported"
+      | "requires_direct_integration"
+      | "requires_human_operation"
+      | "unknown"
+      | "experimental";
+    endpoint: string | null;
+    required_permissions: string[];
+    side_effect_level: "none" | "mutating" | "financial" | "destructive";
+    confirmation_required: boolean;
+    idempotency_support: "native" | "denis_managed" | "none";
+    rate_limits: Json | null;
+    known_limitations: string[];
+    quoted_span: string | null;
+    test_status: "untested" | "mock_tested" | "sandbox_tested" | "contract_verified";
+    certification_status:
+      | "draft"
+      | "generated"
+      | "sandbox_verified"
+      | "human_reviewed"
+      | "canary"
+      | "certified"
+      | "disabled";
+    created_at: string;
+  };
+  integration_adapters: {
+    id: string;
+    provider_id: string;
+    current_version_id: string | null;
+    kind: "api" | "browser_automation";
+    file_path: string | null;
+    created_at: string;
+  };
+  integration_adapter_versions: {
+    id: string;
+    adapter_id: string;
+    version_number: number;
+    generated_code: string;
+    generated_at: string;
+    generated_by: "ai" | "human_patch";
+    status:
+      | "draft"
+      | "generated"
+      | "sandbox_verified"
+      | "human_reviewed"
+      | "canary"
+      | "certified"
+      | "disabled";
+  };
   denis_relationship_signals: {
     id: string;
     location_id: string;
