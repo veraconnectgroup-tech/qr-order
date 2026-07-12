@@ -110,23 +110,45 @@ export function buildOrderComprehendHint(
     ].join("\n");
   }
 
-  if (!isGenericBeerCategoryOrder(trimmed) || !messageImpliesServeSize(trimmed)) {
+  if (!isGenericBeerCategoryOrder(trimmed)) {
     return null;
   }
 
   const beers = findBeerLikeProducts(catalog);
   if (beers.length < 2) return null;
 
-  const presets = unionVolumePresets(beers);
-  const inferred = inferServeSizeFromPresets(trimmed, presets);
-  if (!inferred) return null;
-
   const names = beers.map((b) => b.name).join(" | ");
+
+  if (messageImpliesServeSize(trimmed)) {
+    const presets = unionVolumePresets(beers);
+    const inferred = inferServeSizeFromPresets(trimmed, presets);
+    if (inferred) {
+      return [
+        "ORDER COMPREHENSION HINT:",
+        `- Guest said: "${trimmed}"`,
+        `- Size ALREADY implied (veliko/large → largest on menu): ${inferred} — do NOT ask 0.3L vs 0.5L again.`,
+        `- ONLY ask which product: ${names}`,
+        `- When guest picks, proposedItems MUST include serveSize "${inferred}".`,
+      ].join("\n");
+    }
+  }
+
+  /**
+   * Founder-reported bug (2026-07-12): "jedno pivo" — no size word at
+   * all — used to get NO hint whatsoever (the function only handled the
+   * size-already-implied case), leaving the LLM to zero-shot recognize
+   * the category, invent-or-guess real product names, AND ask for size,
+   * with nothing forcing it to actually do all three. This is the far
+   * more common phrasing than "jedno VELIKO pivo" — a guest states a
+   * size less often than not. Ground the model in the REAL beer list
+   * every time, sized or not, so it never guesses/hallucinates a product
+   * name that isn't on this menu.
+   */
   return [
     "ORDER COMPREHENSION HINT:",
-    `- Guest said: "${trimmed}"`,
-    `- Size ALREADY implied (veliko/large → largest on menu): ${inferred} — do NOT ask 0.3L vs 0.5L again.`,
-    `- ONLY ask which product: ${names}`,
-    `- When guest picks, proposedItems MUST include serveSize "${inferred}".`,
+    `- Guest said: "${trimmed}" — generic beer request, no size stated.`,
+    `- Real beers on this menu, exactly as named — never invent one not in this list: ${names}`,
+    `- Ask which beer AND what size, in ONE question — do not guess a product.`,
+    `- intent "clarify" until both product and size are known; proposedItems stays empty until then.`,
   ].join("\n");
 }

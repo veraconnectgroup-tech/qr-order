@@ -67,6 +67,28 @@ describe("category-order-logic", () => {
     expect(hint).toMatch(/do NOT ask 0\.3L vs 0\.5L/i);
   });
 
+  it("builds a hint grounding the real beer names even with no size stated (2026-07-12 bug: bare 'jedno pivo' got no hint at all)", () => {
+    const hint = buildOrderComprehendHint("jedno pivo", catalog);
+    expect(hint).not.toBeNull();
+    expect(hint).toContain("Pilsner");
+    expect(hint).toContain("Weizen Schneider");
+    expect(hint).toMatch(/ask which beer and what size/i);
+    expect(hint).toMatch(/never invent/i);
+  });
+
+  it("still asks for size when a size word is present but can't be mapped to an actual preset", () => {
+    // "ogromno" isn't a recognized size word this venue's presets can resolve —
+    // must still ground the model in real names rather than return nothing.
+    const hint = buildOrderComprehendHint("jedno ogromno pivo", catalog);
+    expect(hint).not.toBeNull();
+    expect(hint).toContain("Pilsner");
+  });
+
+  it("returns null when fewer than 2 real beers exist to disambiguate between", () => {
+    const oneBeer = { [beer("p-pils", "Pilsner").id]: beer("p-pils", "Pilsner") };
+    expect(buildOrderComprehendHint("jedno pivo", oneBeer)).toBeNull();
+  });
+
   it("builds menu knowledge hint for Weizen questions", () => {
     const hint = buildOrderComprehendHint(
       "sta je Weizen, kakvo je to pivo?",
