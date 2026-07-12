@@ -64,6 +64,8 @@ export type AiStructuredResponse = {
   creditsRemaining?: number;
   /** L3 guest understanding — sentiment, preferences, modifications (regex purge). */
   turnInterpretation?: TurnInterpretation;
+  /** True when the guest wants to see more menu options/suggestions — replaces guestAskedForSuggestions/isLikelyBrowseQuery regex (2026-07-12 regex purge), the LLM's own call on the same turn, no extra cost. */
+  wantsMoreOptions?: boolean;
   structuredPerception?: Partial<AiStructuredResponse> & {
     intent?: AiConciergeIntent | string;
     submitOrder?: boolean;

@@ -337,6 +337,7 @@ Menu & JSON output:
 - Max ${max} recommendations per turn; max ${maxBrowse} only when guest explicitly asks to browse the full menu.
 - Use productId exactly as shown in menu [square brackets]. Follow LANGUAGE POLICY for guest-facing message text.
 - quickReplies: always []. recommendations: [] unless guest explicitly asks to browse the full menu.
+- wantsMoreOptions: true if the guest wants to see options/what's available (in any language/phrasing) rather than chatting or giving a direct order — this widens what gets shown, so judge it yourself, don't rely on specific keywords.
 - No medical or legal advice.${orderingSection}
 
 VKG (Venue Knowledge Graph — verified facts in SITUATION PACK):
@@ -380,6 +381,7 @@ function outputFormatBlock(): string {
   "quickReplies": [],
   "submitOrder": false,
   "message": "message to guest",
+  "wantsMoreOptions": false,
   "turnInterpretation": {
     "sentiment": "neutral|positive|frustrated|confused",
     "mealStage": "pre_order|ordering|waiting|eating|dessert|paying|null",

@@ -9,59 +9,6 @@ import type { AiChatRecommendation } from "@/lib/ai/parse-response";
 import type { AiProductSummary } from "@/lib/ai/types";
 import { formatPrice } from "@/lib/format";
 
-function normalizeText(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
-}
-
-function tokenize(query: string) {
-  return normalizeText(query)
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((token) => token.length >= 2);
-}
-
-const ORDER_VERB_PATTERN =
-  /po[šs]alji|naru[čc]i|potvrdi|checkout|place\s+order|bestell|senden|confirm|zatvori/i;
-
-const ORDER_INTENT_PATTERN =
-  /\b(jedan|jedna|jedno|one|two|dva|tri|three|ho[ćc]u|hocu|want|give\s+me|can\s+i\s+get|mo[žz]e|molim|\d+\s*x)\b/i;
-
-const EXPLICIT_BROWSE_PATTERN =
-  /sta\s+(imamo|imate|nudite)|šta\s+(imamo|imate|nudite)|what\s+do\s+you\s+have|show\s+me|predlo[žz]|preporu[čc]|recommend|suggest|surprise|koje\s+|which\s+|options|izbor|imamo\s+li|do\s+you\s+have/i;
-
-const QUICK_REPLY_ANSWER_PATTERN =
-  /^(regular|small|large|medium|mini|classic|0\.3l?|0\.5l?|33cl|50cl)$/i;
-
-export function guestAskedForSuggestions(message: string): boolean {
-  const trimmed = message.trim();
-  if (!trimmed) return false;
-  if (ORDER_INTENT_PATTERN.test(trimmed)) return false;
-  if (EXPLICIT_BROWSE_PATTERN.test(trimmed)) return true;
-  const tokens = tokenize(trimmed);
-  return tokens.length === 1 && isLikelyBrowseQuery(trimmed);
-}
-
-export function isLikelyBrowseQuery(message: string) {
-  const trimmed = message.trim();
-  if (!trimmed || trimmed.length > 100) return false;
-  if (ORDER_VERB_PATTERN.test(trimmed)) return false;
-  if (ORDER_INTENT_PATTERN.test(trimmed)) return false;
-  if (/^\d[\d.,]*\s*(l|ml|cl)?$/i.test(trimmed)) return false;
-  if (QUICK_REPLY_ANSWER_PATTERN.test(trimmed)) return false;
-  return true;
-}
-
-export function isExplicitBrowseQuery(message: string): boolean {
-  return guestAskedForSuggestions(message) && isLikelyBrowseQuery(message);
-}
-
-/** @deprecated Use isExplicitBrowseQuery */
-export function isSimpleBrowseQuery(message: string): boolean {
-  return isExplicitBrowseQuery(message);
-}
-
 export type CatalogSearchOptions = {
   maxResults?: number;
   learnedCorrections?: TypoCorrectionMap;

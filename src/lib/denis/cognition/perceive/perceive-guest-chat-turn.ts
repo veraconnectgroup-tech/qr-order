@@ -16,8 +16,6 @@ import {
 } from "@/lib/denis/kernel/skill-pipeline";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 import {
-  guestAskedForSuggestions,
-  isLikelyBrowseQuery,
   mergeBrowseRecommendations,
   searchCatalogProducts,
 } from "@/lib/ai/catalog/catalog-search";
@@ -642,11 +640,15 @@ export async function perceiveGuestChatTurn(
     ? structured
     : undefined;
 
-  const guestWantsSuggestions = guestAskedForSuggestions(input.message);
+  // 2026-07-12 regex purge — guestAskedForSuggestions/isLikelyBrowseQuery
+  // (regex against the guest's raw message) replaced by the LLM's own
+  // wantsMoreOptions field on the SAME structured response already
+  // produced this turn — no extra call, no fixed keyword list, works in
+  // whatever language the guest actually wrote in.
+  const guestWantsSuggestions = structured.wantsMoreOptions ?? false;
   const shouldEnrichBrowse =
     !skipLlm &&
     guestWantsSuggestions &&
-    isLikelyBrowseQuery(input.message) &&
     browseMatches.length >= 2 &&
     !orderDraft.pending &&
     structured.intent !== "clarify" &&
