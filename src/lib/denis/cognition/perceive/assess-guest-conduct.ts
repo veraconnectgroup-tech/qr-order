@@ -15,6 +15,12 @@ import {
  * regex layer still exists, but only as an outage-only fallback in
  * run-guest-conduct-shadow-check.ts — never a co-equal detector, never a
  * gate in front of this function.
+ *
+ * Lives under cognition/perceive/ (not cognition/policy/, where the rest of
+ * the conduct-ladder machinery lives) because it's the only piece that
+ * actually calls the OpenAI client — src/lib/denis/architecture/compliance.ts's
+ * checkOpenAiBoundary restricts that to runtime/narrate/, runtime/perceive/,
+ * and cognition/perceive/ only. The policy layer stays pure decision logic.
  */
 function buildAssessmentMessages(
   guestMessage: string,

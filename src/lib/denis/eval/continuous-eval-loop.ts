@@ -16,10 +16,12 @@ import { loadProductionEdgeCases } from "@/lib/denis/eval/fixtures/production-ed
 import {
   appendAccumulatedLearnings,
   loadAccumulatedLearnings,
-  persistPromptEvolutionStatus,
   statusFromAbResult,
-  type PromptEvolutionStatus,
 } from "@/lib/denis/eval/prompt-evolution-store";
+import {
+  persistPromptEvolutionStatus,
+  type PromptEvolutionStatus,
+} from "@/lib/denis/knowledge/evolved-learnings-store";
 import type { DenisEvalScenario, EvalSuiteReport } from "@/lib/denis/eval/types";
 import {
   extractConversationMessages,

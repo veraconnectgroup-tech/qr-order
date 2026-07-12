@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { detectAbuseSignals } from "@/lib/denis/security/abuse-protection";
 import { isInCanaryCohort } from "@/lib/denis/config/rollout";
-import { assessGuestConduct } from "@/lib/denis/cognition/policy/assess-guest-conduct";
+import { assessGuestConduct } from "@/lib/denis/cognition/perceive/assess-guest-conduct";
 import {
   loadGuestConductTracker,
   saveGuestConductTracker,

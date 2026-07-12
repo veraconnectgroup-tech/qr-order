@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
-import { loadPromptEvolutionStatus } from "@/lib/denis/eval/prompt-evolution-store";
+import { loadPromptEvolutionStatus } from "@/lib/denis/knowledge/evolved-learnings-store";
 import { withStaffRateLimit } from "@/lib/rate-limit";
 
 /**

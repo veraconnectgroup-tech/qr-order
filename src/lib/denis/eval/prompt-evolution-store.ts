@@ -1,19 +1,21 @@
 /**
- * Redis-backed accumulator + status store for the prompt-evolution flywheel
+ * Redis-backed accumulator for the prompt-evolution flywheel
  * (prompt-evolver.ts). Learnings are computed per-session but the A/B
  * evolution decision needs learnings pooled across many sessions per
  * location (PROMPT_LEARNING_THRESHOLD) — this is that pool.
  *
- * loadEvolvedLearningsBlock feeds buildSystemPrompt (via
- * evolvedLearningsBlock in perceive-guest-chat-turn.ts) on every real guest
- * turn — no longer shadow-only. Still gated by the same statistical bar
- * this module already computed (winner === "B" at >= 95% confidence,
- * eligibleForFounderReview): a fresh location with no accumulated
- * learnings, or one that hasn't cleared that bar yet, gets nothing added,
- * so this can't affect a venue before it has real evidence behind it.
+ * The read/persist side of the flywheel's *status* (including
+ * loadEvolvedLearningsBlock, which feeds buildSystemPrompt on every real
+ * guest turn) lives in @/lib/denis/knowledge/evolved-learnings-store.ts —
+ * split out (2026-07-12) because the "cognition" layer that reads it
+ * (perceive-guest-chat-turn.ts) is not allowed to import "eval"
+ * (src/lib/denis/layers.ts's DENIS_IMPORT_MATRIX). This file keeps only
+ * the accumulation side, which needs eval-specific types
+ * (ExtractedLearning, PromptAbEvalResult) and stays eval-only.
  */
 import type { ExtractedLearning } from "@/lib/denis/eval/learning-extractor";
 import type { PromptAbEvalResult } from "@/lib/denis/eval/prompt-evolver";
+import type { PromptEvolutionStatus } from "@/lib/denis/knowledge/evolved-learnings-store";
 import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
 
 const LEARNINGS_TTL_SEC = 60 * 24 * 3_600;
@@ -21,10 +23,6 @@ const MAX_ACCUMULATED_LEARNINGS = 300;
 
 function learningsKey(locationId: string): string {
   return `denis:eval:prompt-learnings:${locationId}`;
-}
-
-function statusKey(locationId: string): string {
-  return `denis:eval:prompt-evolution:${locationId}`;
 }
 
 export async function loadAccumulatedLearnings(
@@ -65,60 +63,6 @@ export async function appendAccumulatedLearnings(
   } catch (error) {
     logRedisDegradation("denis.eval.prompt_learnings.append", error);
   }
-}
-
-export type PromptEvolutionStatus = {
-  locationId: string;
-  ready: boolean;
-  learningCount: number;
-  winner: "A" | "B" | "inconclusive" | null;
-  confidence: number | null;
-  lift: number | null;
-  recommendation: string | null;
-  evolvedSection: string | null;
-  /** Mirrors canAutoDeployPromptEvolution's own gate — always false here, shadow only. */
-  eligibleForFounderReview: boolean;
-  updatedAt: string;
-};
-
-export async function persistPromptEvolutionStatus(
-  status: PromptEvolutionStatus
-): Promise<void> {
-  const redis = getRedisClient();
-  if (!redis) return;
-
-  try {
-    await redis.set(statusKey(status.locationId), status, {
-      ex: LEARNINGS_TTL_SEC,
-    });
-  } catch (error) {
-    logRedisDegradation("denis.eval.prompt_evolution.persist", error);
-  }
-}
-
-export async function loadPromptEvolutionStatus(
-  locationId: string
-): Promise<PromptEvolutionStatus | null> {
-  const redis = getRedisClient();
-  if (!redis) return null;
-
-  try {
-    return await redis.get<PromptEvolutionStatus>(statusKey(locationId));
-  } catch (error) {
-    logRedisDegradation("denis.eval.prompt_evolution.read", error);
-    return null;
-  }
-}
-
-/** Evolved section for this location's live prompt — null unless it's actually cleared the confidence bar, never a half-confident guess. */
-export async function loadEvolvedLearningsBlock(
-  locationId: string
-): Promise<string | null> {
-  const status = await loadPromptEvolutionStatus(locationId);
-  if (!status?.eligibleForFounderReview || !status.evolvedSection?.trim()) {
-    return null;
-  }
-  return status.evolvedSection.trim();
 }
 
 export function statusFromAbResult(input: {

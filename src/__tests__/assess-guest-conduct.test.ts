@@ -25,7 +25,7 @@ describe("assessGuestConduct", () => {
       isOpenAiConfigured: () => true,
     }));
     const { assessGuestConduct } = await import(
-      "@/lib/denis/cognition/policy/assess-guest-conduct"
+      "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
     const { callOpenAiChat } = await import("@/lib/ai/openai-client");
 
@@ -54,7 +54,7 @@ describe("assessGuestConduct", () => {
       isOpenAiConfigured: () => true,
     }));
     const { assessGuestConduct } = await import(
-      "@/lib/denis/cognition/policy/assess-guest-conduct"
+      "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
 
     const result = await assessGuestConduct({ message: "glup si Denise" });
@@ -72,7 +72,7 @@ describe("assessGuestConduct", () => {
       isOpenAiConfigured: () => false,
     }));
     const { assessGuestConduct } = await import(
-      "@/lib/denis/cognition/policy/assess-guest-conduct"
+      "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
     const { callOpenAiChat } = await import("@/lib/ai/openai-client");
 
@@ -96,7 +96,7 @@ describe("assessGuestConduct", () => {
       isOpenAiConfigured: () => true,
     }));
     const { assessGuestConduct } = await import(
-      "@/lib/denis/cognition/policy/assess-guest-conduct"
+      "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
 
     const result = await assessGuestConduct({ message: "glup si" });
@@ -112,7 +112,7 @@ describe("assessGuestConduct", () => {
       isOpenAiConfigured: () => true,
     }));
     const { assessGuestConduct } = await import(
-      "@/lib/denis/cognition/policy/assess-guest-conduct"
+      "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
 
     const result = await assessGuestConduct({ message: "bilo šta" });

@@ -39,7 +39,7 @@ describe("runGuestConductShadowCheck", () => {
     vi.doMock("@/lib/denis/security/abuse-protection", () => ({
       detectAbuseSignals: () => ["offensive_content"],
     }));
-    vi.doMock("@/lib/denis/cognition/policy/assess-guest-conduct", () => ({
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
       assessGuestConduct: vi.fn().mockResolvedValue({
         toneTowardDenis: "respectful",
         directedAt: "unclear",
@@ -70,7 +70,7 @@ describe("runGuestConductShadowCheck", () => {
     vi.doMock("@/lib/denis/security/abuse-protection", () => ({
       detectAbuseSignals: () => ["offensive_content"],
     }));
-    vi.doMock("@/lib/denis/cognition/policy/assess-guest-conduct", () => ({
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
       assessGuestConduct: vi.fn().mockResolvedValue(null),
     }));
     const { runGuestConductShadowCheck } = await import(
@@ -95,7 +95,7 @@ describe("runGuestConductShadowCheck", () => {
     vi.doMock("@/lib/denis/security/abuse-protection", () => ({
       detectAbuseSignals: () => [],
     }));
-    vi.doMock("@/lib/denis/cognition/policy/assess-guest-conduct", () => ({
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
       assessGuestConduct: vi.fn().mockResolvedValue({
         toneTowardDenis: "severe_insult",
         directedAt: "service",
@@ -124,14 +124,14 @@ describe("runGuestConductShadowCheck", () => {
     vi.doMock("@/lib/denis/security/abuse-protection", () => ({
       detectAbuseSignals: () => ["offensive_content"],
     }));
-    vi.doMock("@/lib/denis/cognition/policy/assess-guest-conduct", () => ({
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
       assessGuestConduct: vi.fn(),
     }));
     const { runGuestConductShadowCheck } = await import(
       "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check"
     );
     const { assessGuestConduct } = await import(
-      "@/lib/denis/cognition/policy/assess-guest-conduct"
+      "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
 
     await runGuestConductShadowCheck(fakeAdmin, {
