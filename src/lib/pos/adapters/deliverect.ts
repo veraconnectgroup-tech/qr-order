@@ -45,7 +45,13 @@ export class DeliverectAdapter implements PosAdapter {
       channelLinkId: channel_link_id,
       channelOrderId: payload.orderId,
       channelOrderDisplayId: `#${String(payload.orderNumber).padStart(3, "0")}`,
-      orderType: 2,
+      // This platform is dine-in only (QR at the table) — always eat-in,
+      // never delivery/pickup. See docs.deliverect.com "Create Orders for
+      // Eat-in With a Table Number" — table is a free-text note unless the
+      // POS adapter returns real table IDs (not all do; see the Denis AI ×
+      // Deliverect feasibility report, Scenario A/D).
+      orderType: 3,
+      table: payload.tableName,
       channel: 19,
       payment: {
         amount: totalCents,

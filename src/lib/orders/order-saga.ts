@@ -64,6 +64,28 @@ function buildPaymentCompletionEvents(
 
   // fiscal.tse_sign is enqueued by runFiscalPipeline → finalize_fiscal_sale RPC
 
+  // "Pay first" locations skip the create-time POS push (see
+  // build-outbox-events.ts) and push exactly once, here, now that payment
+  // is confirmed — sent as already-paid (Deliverect prepaid/eat-in flow).
+  if (ctx.posPushOnPayment && ctx.posIntegration) {
+    events.push({
+      aggregate_id: ctx.orderId,
+      domain: "fulfillment",
+      event_type: "fulfill.push_pos",
+      payload: {
+        orderId: ctx.orderId,
+        locationId: ctx.locationId,
+        orgId: ctx.orgId,
+        orderNumber: ctx.orderNumber,
+        tableName: ctx.tableName,
+        total: ctx.total,
+        paymentState: "PAID",
+        provider: ctx.posIntegration.provider,
+        posIntegrationId: ctx.posIntegration.id,
+      },
+    });
+  }
+
   if (
     resolveFiscalBehavior(ctx.posIntegration) !== "standalone" &&
     guestEmail

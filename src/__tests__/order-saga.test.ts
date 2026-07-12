@@ -6,6 +6,10 @@ function buildPaymentCompletionEvents(ctx: OrderOutboxContext) {
   const events: Array<{ event_type: string }> = [];
   const guestEmail = ctx.guestEmail ?? null;
 
+  if (ctx.posPushOnPayment && ctx.posIntegration) {
+    events.push({ event_type: "fulfill.push_pos" });
+  }
+
   if (
     resolveFiscalBehavior(ctx.posIntegration) !== "standalone" &&
     guestEmail
@@ -32,6 +36,7 @@ describe("order saga deferrable steps", () => {
     paymentStatus: "paid",
     guestEmail: "guest@example.com",
     posIntegration: null,
+    posPushOnPayment: false,
     cloudPrinters: [],
     activeWebhooks: [],
   };
@@ -67,5 +72,35 @@ describe("order saga deferrable steps", () => {
     expect(events.map((event) => event.event_type)).toEqual([
       "fiscal.send_receipt",
     ]);
+  });
+
+  it("pushes to POS on payment confirmation for pay-first locations", () => {
+    const events = buildPaymentCompletionEvents({
+      ...baseCtx,
+      posPushOnPayment: true,
+      posIntegration: {
+        id: "pos-1",
+        provider: "deliverect",
+        status: "connected",
+      },
+    });
+    expect(events.map((event) => event.event_type)).toContain(
+      "fulfill.push_pos"
+    );
+  });
+
+  it("does not push to POS on payment confirmation for pay-later (default) locations", () => {
+    const events = buildPaymentCompletionEvents({
+      ...baseCtx,
+      posPushOnPayment: false,
+      posIntegration: {
+        id: "pos-1",
+        provider: "deliverect",
+        status: "connected",
+      },
+    });
+    expect(events.map((event) => event.event_type)).not.toContain(
+      "fulfill.push_pos"
+    );
   });
 });

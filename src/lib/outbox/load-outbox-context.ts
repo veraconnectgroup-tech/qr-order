@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import type {
   CloudPrinterContext,
   OrderOutboxContext,
@@ -110,11 +111,13 @@ export async function loadOrderOutboxContext(
     orderSource?: string;
   }
 ): Promise<OrderOutboxContext> {
-  const [posIntegration, activeWebhooks, cloudPrinters] = await Promise.all([
-    loadPosIntegration(admin, input.locationId),
-    loadActiveWebhooks(admin, input.orgId),
-    Promise.resolve(loadCloudPrinters(admin, input.locationId)),
-  ]);
+  const [posIntegration, activeWebhooks, cloudPrinters, conciergeConfig] =
+    await Promise.all([
+      loadPosIntegration(admin, input.locationId),
+      loadActiveWebhooks(admin, input.orgId),
+      Promise.resolve(loadCloudPrinters(admin, input.locationId)),
+      loadConciergeConfigForLocation(input.locationId),
+    ]);
 
   return {
     orderId: input.orderId,
@@ -127,6 +130,7 @@ export async function loadOrderOutboxContext(
     guestEmail: input.guestEmail,
     orderSource: input.orderSource,
     posIntegration,
+    posPushOnPayment: conciergeConfig.ops.posPushOnPayment,
     cloudPrinters,
     activeWebhooks,
   };

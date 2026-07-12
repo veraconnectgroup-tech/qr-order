@@ -33,8 +33,16 @@ export function buildOutboxEvents(
     },
   ];
 
+  // "Pay first" locations hold the POS push until order-saga.ts confirms
+  // payment (Deliverect prepaid/eat-in flow) — pushing an unpaid order here
+  // would defeat the whole point of that flow and could double-push once
+  // payment lands.
+  const holdForPayment =
+    ctx.posPushOnPayment && ctx.paymentStatus !== "paid";
   const shouldPushToPos =
-    ctx.posIntegration?.status === "connected" && ctx.orderSource !== "pos";
+    ctx.posIntegration?.status === "connected" &&
+    ctx.orderSource !== "pos" &&
+    !holdForPayment;
 
   if (shouldPushToPos && ctx.posIntegration) {
     events.push({

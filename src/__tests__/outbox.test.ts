@@ -26,6 +26,7 @@ function baseContext(
     total: 19.9,
     paymentStatus: "pending",
     posIntegration: null,
+    posPushOnPayment: false,
     cloudPrinters: [],
     activeWebhooks: [],
     ...overrides,
@@ -83,6 +84,40 @@ describe("buildOutboxEvents", () => {
 
     const posEvent = events.find((e) => e.event_type === "fulfill.push_pos");
     expect(posEvent?.payload.paymentState).toBe("PAID");
+  });
+
+  it("holds fulfill.push_pos at create time for pay-first locations until payment confirms", () => {
+    const events = buildOutboxEvents(
+      baseContext({
+        posIntegration: {
+          id: "pos-1",
+          provider: "deliverect",
+          status: "connected",
+        },
+        posPushOnPayment: true,
+        paymentStatus: "pending",
+      }),
+      "created"
+    );
+
+    expect(events.map((e) => e.event_type)).not.toContain("fulfill.push_pos");
+  });
+
+  it("still pushes at create time for pay-first locations if somehow already paid", () => {
+    const events = buildOutboxEvents(
+      baseContext({
+        posIntegration: {
+          id: "pos-1",
+          provider: "deliverect",
+          status: "connected",
+        },
+        posPushOnPayment: true,
+        paymentStatus: "paid",
+      }),
+      "created"
+    );
+
+    expect(events.map((e) => e.event_type)).toContain("fulfill.push_pos");
   });
 
   it("adds integration.webhook per active webhook config", () => {

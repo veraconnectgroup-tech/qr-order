@@ -82,6 +82,8 @@ export type OrderOutboxContext = {
   guestEmail?: string | null;
   orderSource?: string;
   posIntegration: PosIntegrationContext | null;
+  /** Location chose "pay first" — hold the POS push until payment is confirmed, see order-saga.ts. */
+  posPushOnPayment: boolean;
   cloudPrinters: CloudPrinterContext[];
   activeWebhooks: WebhookContext[];
 };

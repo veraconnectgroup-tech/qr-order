@@ -194,6 +194,7 @@ describe("POS inbound anti-loop", () => {
         total: 10,
         paymentStatus: "pending",
         orderSource: "pos",
+        posPushOnPayment: false,
         posIntegration: {
           id: "pi-1",
           provider: "deliverect",

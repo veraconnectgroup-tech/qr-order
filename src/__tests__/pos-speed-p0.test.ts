@@ -14,6 +14,7 @@ function baseContext(
     total: 19.9,
     paymentStatus: "pending",
     posIntegration: null,
+    posPushOnPayment: false,
     cloudPrinters: [],
     activeWebhooks: [],
     orderSource: "staff",
