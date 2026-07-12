@@ -2,9 +2,6 @@ import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
 import { searchCatalogWithFuzzyOutcome } from "@/lib/ai/catalog/catalog-search";
 import type { OrderSizeIntentAssessment } from "@/lib/ai/ordering/order-size-intent-types";
 
-const MENU_KNOWLEDGE_PATTERN =
-  /\b(sta\s+je|šta\s+je|sta\s+su|šta\s+su|kakv[oa]\s+je|kakv[oa]\s+su|what\s+is|what\s+kind|what\s+type|tell\s+me\s+about|objasni|explain|opisi|opis|describe|reci\s+mi\s+o)\b/i;
-
 const GENERIC_ORDER_TOKENS = new Set([
   "pivo",
   "piva",
@@ -42,19 +39,6 @@ const GENERIC_ORDER_TOKENS = new Set([
   "moze",
   "može",
 ]);
-
-/**
- * 2026-07-12 — deliberately still regex, unlike the rest of this file
- * post-rewrite. Menu-info "what is X" detection is a separate, lower-
- * stakes concern from size/category order comprehension (the actual
- * reported bug) — a false negative here just means a missed shortcut,
- * not a guest getting a wrong/redundant answer to an order. Left as a
- * known candidate for the same LLM-perceive treatment later, not done
- * now to keep this fix scoped to what was actually reported broken.
- */
-export function isMenuKnowledgeQuestion(message: string): boolean {
-  return MENU_KNOWLEDGE_PATTERN.test(message.trim());
-}
 
 /** Used by order-message-backfill.ts for cart-segment scoring — unrelated to order-comprehension hints, left as-is. */
 export function isGenericCategorySegment(segment: string): boolean {
@@ -209,6 +193,10 @@ export function resolveOrderSizeHint(
   catalog: Record<string, AiCatalogProduct>
 ): string | null {
   if (!assessment) return null;
+
+  if (assessment.isMenuKnowledgeQuestion) {
+    return menuKnowledgeHint();
+  }
 
   if (assessment.namesSpecificProduct) {
     return namedProductHint(assessment, catalog);

@@ -3,7 +3,6 @@ import type { AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
 import type { OrderSizeIntentAssessment } from "@/lib/ai/ordering/order-size-intent-types";
 import {
   isGenericCategorySegment,
-  isMenuKnowledgeQuestion,
   menuKnowledgeHint,
   resolveOrderSizeHint,
 } from "@/lib/ai/ordering/category-order-logic";
@@ -37,6 +36,7 @@ function assessment(
   overrides: Partial<OrderSizeIntentAssessment>
 ): OrderSizeIntentAssessment {
   return {
+    isMenuKnowledgeQuestion: false,
     namesSpecificProduct: false,
     productNameGuess: null,
     isGenericDrinkRequest: false,
@@ -169,12 +169,18 @@ describe("resolveOrderSizeHint — driven by LLM perception, not regex", () => {
   });
 });
 
-describe("isMenuKnowledgeQuestion / menuKnowledgeHint", () => {
-  it("detects menu knowledge questions", () => {
-    expect(isMenuKnowledgeQuestion("sta je to Weizen, kakvo je to pivo?")).toBe(
-      true
+describe("menu knowledge questions — driven by the LLM's own perception, not regex", () => {
+  it("returns the menu knowledge hint when the LLM perceives a knowledge question, regardless of other fields", () => {
+    const hint = resolveOrderSizeHint(
+      assessment({
+        isMenuKnowledgeQuestion: true,
+        isGenericDrinkRequest: true,
+        genericCategoryGuess: "beer",
+        quotedSpan: "sta je to Weizen, kakvo je to pivo?",
+      }),
+      catalog
     );
-    expect(isMenuKnowledgeQuestion("jedno pivo")).toBe(false);
+    expect(hint).toContain("MENU KNOWLEDGE HINT");
   });
 
   it("builds a static menu knowledge hint", () => {

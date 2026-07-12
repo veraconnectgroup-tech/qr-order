@@ -18,14 +18,15 @@ import {
  */
 function buildAssessmentMessages(message: string): OpenAiChatMessage[] {
   const system = [
-    "You classify ONE restaurant guest's chat message for two things: (1) does it name a specific menu item, or ask generically for a category (e.g. \"a beer\", \"some wine\") without naming one? (2) does it express a size preference — bigger or smaller than default — in ANY language or phrasing (not just English/Serbian/German words you might expect)?",
-    "You understand many languages — use your own judgment on size words, not a fixed list. A guest might write in any language, with typos, slang, or grammatical variation.",
+    "You classify ONE restaurant guest's chat message for three things: (1) are they asking what an item IS/means, not trying to order at all (e.g. \"what's a Weizen\", \"is that spicy\")? (2) does it name a specific menu item, or ask generically for a category (e.g. \"a beer\", \"some wine\") without naming one? (3) does it express a size preference — bigger or smaller than default — in ANY language or phrasing (not just English/Serbian/German words you might expect)?",
+    "You understand many languages — use your own judgment on size words and question phrasing, not a fixed list. A guest might write in any language, with typos, slang, or grammatical variation.",
+    "isMenuKnowledgeQuestion: true only if they're asking ABOUT an item (what/how/does-it-contain), not ordering it.",
     "namesSpecificProduct + productNameGuess: true and the item name (best guess, however they wrote it) if ONE specific item is named. Otherwise false and null.",
     "isGenericDrinkRequest + genericCategoryGuess: true and a short English category label (beer, wine, juice, coffee, soda, water, cocktail, etc.) if they asked for a drink category generically. Otherwise false and null.",
     "sizePreference: \"larger\" or \"smaller\" if any size preference is expressed (in any language/wording), otherwise \"unspecified\". Never guess a preference that isn't there.",
     "confidence: your own calibration, 0 to 1 — be honest.",
     "quotedSpan: the exact substring that justified your answer.",
-    'JSON only: {"namesSpecificProduct":false,"productNameGuess":null,"isGenericDrinkRequest":true,"genericCategoryGuess":"beer","sizePreference":"unspecified","confidence":0.9,"quotedSpan":"..."}',
+    'JSON only: {"isMenuKnowledgeQuestion":false,"namesSpecificProduct":false,"productNameGuess":null,"isGenericDrinkRequest":true,"genericCategoryGuess":"beer","sizePreference":"unspecified","confidence":0.9,"quotedSpan":"..."}',
   ].join("\n");
 
   return [

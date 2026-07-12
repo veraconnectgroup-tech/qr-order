@@ -8,11 +8,7 @@ import {
   retrieveMenuEvidence,
 } from "@/lib/denis/cognition/context/retrievers/menu-rag";
 import type { MenuRagCatalog, MenuRagEmbeddingIndex } from "@/lib/denis/cognition/context/menu-rag-types";
-import {
-  isMenuKnowledgeQuestion,
-  menuKnowledgeHint,
-  resolveOrderSizeHint,
-} from "@/lib/ai/ordering/category-order-logic";
+import { resolveOrderSizeHint } from "@/lib/ai/ordering/category-order-logic";
 import type { OrderSizeIntentAssessment } from "@/lib/ai/ordering/order-size-intent-types";
 import { retrieveTranscriptWindowEvidence } from "@/lib/denis/cognition/context/retrievers/transcript-window";
 import { retrieveVenueOpsEvidence } from "@/lib/denis/cognition/context/retrievers/venue-ops-evidence";
@@ -195,15 +191,11 @@ export function planEvidence(input: PlanEvidenceInput): TurnEvidencePack {
     );
 
     if (input.catalog && Object.keys(input.catalog).length > 0) {
-      if (isMenuKnowledgeQuestion(input.guestMessage)) {
-        blocks.push(menuKnowledgeHint());
-      } else {
-        const comprehendHint = resolveOrderSizeHint(
-          input.orderSizeIntentAssessment ?? null,
-          input.catalog
-        );
-        if (comprehendHint) blocks.push(comprehendHint);
-      }
+      const comprehendHint = resolveOrderSizeHint(
+        input.orderSizeIntentAssessment ?? null,
+        input.catalog
+      );
+      if (comprehendHint) blocks.push(comprehendHint);
     }
 
     if (

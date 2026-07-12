@@ -10,6 +10,7 @@ describe("assessOrderSizeIntent", () => {
     vi.doMock("@/lib/ai/openai-client", () => ({
       callOpenAiChat: vi.fn().mockResolvedValue({
         content: JSON.stringify({
+          isMenuKnowledgeQuestion: false,
           namesSpecificProduct: false,
           productNameGuess: null,
           isGenericDrinkRequest: true,
@@ -39,6 +40,7 @@ describe("assessOrderSizeIntent", () => {
     vi.doMock("@/lib/ai/openai-client", () => ({
       callOpenAiChat: vi.fn().mockResolvedValue({
         content: JSON.stringify({
+          isMenuKnowledgeQuestion: false,
           namesSpecificProduct: true,
           productNameGuess: "Pilsner",
           isGenericDrinkRequest: false,
@@ -63,6 +65,35 @@ describe("assessOrderSizeIntent", () => {
     expect(result?.namesSpecificProduct).toBe(true);
     expect(result?.productNameGuess).toBe("Pilsner");
     expect(result?.sizePreference).toBe("larger");
+  });
+
+  it("returns a parsed assessment for a menu knowledge question (replaces MENU_KNOWLEDGE_PATTERN regex)", async () => {
+    vi.doMock("@/lib/ai/openai-client", () => ({
+      callOpenAiChat: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          isMenuKnowledgeQuestion: true,
+          namesSpecificProduct: false,
+          productNameGuess: null,
+          isGenericDrinkRequest: false,
+          genericCategoryGuess: null,
+          sizePreference: "unspecified",
+          confidence: 0.92,
+          quotedSpan: "sta je to Weizen?",
+        }),
+        tokensUsed: 10,
+        promptTokens: 5,
+        completionTokens: 5,
+        model: "test",
+      }),
+    }));
+    vi.doMock("@/lib/ai/config", () => ({ isOpenAiConfigured: () => true }));
+    const { assessOrderSizeIntent } = await import(
+      "@/lib/denis/cognition/perceive/assess-order-size-intent"
+    );
+
+    const result = await assessOrderSizeIntent("sta je to Weizen?");
+
+    expect(result?.isMenuKnowledgeQuestion).toBe(true);
   });
 
   it("returns null when OpenAI is not configured", async () => {

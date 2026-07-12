@@ -16,6 +16,8 @@ import { z } from "zod";
  * gate), never trusting a raw guessed product name directly.
  */
 export const OrderSizeIntentAssessmentSchema = z.object({
+  /** True when the guest is asking what an item IS/means — not trying to order at all (replaces MENU_KNOWLEDGE_PATTERN regex, 2026-07-12). */
+  isMenuKnowledgeQuestion: z.boolean(),
   /** True when the guest named (or clearly implied) one specific menu item, not a category. */
   namesSpecificProduct: z.boolean(),
   /** Guest's product name, normalized to how it'd likely appear on a menu — null if generic/unclear. */
