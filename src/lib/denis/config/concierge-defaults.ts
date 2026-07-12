@@ -141,10 +141,11 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       legacySingleCallFallback: true,
     },
     guestConduct: {
-      enabled: false,
+      enabled: true,
       shadowOnly: true,
-      canaryPercent: 0,
+      canaryPercent: 100,
     },
+    posPushOnPayment: false,
     autoRushEnabled: false,
     autoRushBacklogMinutes: 20,
     stationQuestions: {

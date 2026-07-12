@@ -406,6 +406,15 @@ const ConciergeOpsSchema = z.object({
   agenticToolLoop: ConciergeAgenticToolLoopSchema,
   /** Guest Conduct Policy Engine MVP-1 — rudeness-to-Denis warning ladder. */
   guestConduct: ConciergeGuestConductSchema,
+  /**
+   * Restaurant-level choice: push QR orders to the connected POS immediately
+   * on creation (default, existing behavior — order arrives unpaid, guest
+   * pays in person or later), or hold the push until Stripe confirms
+   * payment, then push once as already-paid (Deliverect prepaid/eat-in
+   * flow — see the Denis AI × Deliverect feasibility report). Off by
+   * default so no existing restaurant's live order flow changes silently.
+   */
+  posPushOnPayment: z.boolean().default(false),
   autoRushEnabled: z.boolean(),
   autoRushBacklogMinutes: z.number().int().min(5).max(120),
   stationQuestions: ConciergeStationQuestionsSchema,
