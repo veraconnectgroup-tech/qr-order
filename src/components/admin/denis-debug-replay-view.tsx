@@ -9,7 +9,7 @@ import type { DenisSessionReplay } from "@/lib/admin/denis-session-replay";
 import type { DenisSessionDebugGraph } from "@/lib/denis/kernel/session-debug-graph";
 import { cn } from "@/lib/utils";
 
-type Tab = "timeline" | "why" | "mental" | "proactive" | "graph";
+type Tab = "conversation" | "timeline" | "why" | "mental" | "proactive" | "graph";
 
 export function DenisDebugReplayView({
   sessionId,
@@ -18,9 +18,10 @@ export function DenisDebugReplayView({
   sessionId: string;
   replay: DenisSessionReplay & { graph: DenisSessionDebugGraph };
 }) {
-  const [tab, setTab] = useState<Tab>("timeline");
+  const [tab, setTab] = useState<Tab>("conversation");
 
   const tabs: Array<{ id: Tab; label: string }> = [
+    { id: "conversation", label: "Conversation" },
     { id: "timeline", label: "Timeline replay" },
     { id: "why", label: "Why Denis said X" },
     { id: "mental", label: "Mental model" },
@@ -66,6 +67,9 @@ export function DenisDebugReplayView({
         ))}
       </nav>
 
+      {tab === "conversation" ? (
+        <ConversationView turns={replay.turnExplanations} />
+      ) : null}
       {tab === "timeline" ? <TimelineReplay events={replay.timeline} /> : null}
       {tab === "why" ? <WhyDenisSaid turns={replay.turnExplanations} /> : null}
       {tab === "mental" ? (
@@ -78,6 +82,63 @@ export function DenisDebugReplayView({
         <DenisDebugGraphView sessionId={sessionId} graph={replay.graph} />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * 2026-07-12 — the rest of this file (Timeline/Why/Mental/Proactive/Graph)
+ * is deeply technical, built for debugging beliefs/plans/events. Nothing
+ * here read as a normal back-and-forth conversation, so scanning a
+ * session for "did this actually go well" meant reading raw event rows.
+ * This tab uses the SAME data (turnExplanations already carries
+ * guestText/response, no new fetching) rendered as plain chat bubbles.
+ */
+function ConversationView({
+  turns,
+}: {
+  turns: DenisSessionReplay["turnExplanations"];
+}) {
+  if (!turns.length) {
+    return (
+      <QrCard className="p-4">
+        <p className="text-sm text-muted-foreground">
+          No traced turns in this session.
+        </p>
+      </QrCard>
+    );
+  }
+
+  return (
+    <QrCard className="p-4">
+      <QrCardTitle className="mb-3 text-base">
+        Conversation ({turns.length} turn{turns.length === 1 ? "" : "s"})
+      </QrCardTitle>
+      <div className="max-h-[36rem] space-y-3 overflow-auto">
+        {turns.map((turn) => (
+          <div key={turn.traceId} className="space-y-1.5">
+            {turn.guestText ? (
+              <div className="flex justify-end">
+                <p className="max-w-[80%] rounded-2xl rounded-tr-sm bg-muted px-3 py-2 text-sm text-foreground">
+                  {turn.guestText}
+                </p>
+              </div>
+            ) : null}
+            {turn.response ? (
+              <div className="flex items-start justify-start gap-2">
+                <p className="max-w-[80%] rounded-2xl rounded-tl-sm bg-[var(--qr-ember)]/10 px-3 py-2 text-sm text-foreground">
+                  {turn.response}
+                </p>
+              </div>
+            ) : null}
+            {!turn.guestText && !turn.response ? (
+              <p className="text-xs italic text-muted-foreground">
+                (no text captured for this turn — {turn.traceId})
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </QrCard>
   );
 }
 

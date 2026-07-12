@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { DenisDebugSessionRow } from "@/lib/admin/denis-debug";
 
 function formatWhen(iso: string): string {
@@ -11,6 +11,47 @@ function formatWhen(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+const ISSUE_KIND_LABEL: Record<string, string> = {
+  mismatch: "Mismatch",
+  correction: "Guest corrected",
+  waiter_failure: "Waiter miss",
+  tool_loop_issue: "Tool issue",
+};
+
+function QualityBadge({
+  qualityFlag,
+}: {
+  qualityFlag: DenisDebugSessionRow["qualityFlag"];
+}) {
+  if (!qualityFlag) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  const flagged = qualityFlag.anomaly || qualityFlag.issueKinds.length > 0;
+  if (!flagged) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="size-3.5" />
+        {qualityFlag.overall}/100
+      </span>
+    );
+  }
+
+  const labels = qualityFlag.issueKinds
+    .map((kind) => ISSUE_KIND_LABEL[kind] ?? kind)
+    .join(", ");
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400"
+      title={labels || "Anomaly detected"}
+    >
+      <AlertTriangle className="size-3.5" />
+      {qualityFlag.overall}/100{labels ? ` — ${labels}` : ""}
+    </span>
+  );
 }
 
 export function DenisDebugSessionList({
@@ -36,6 +77,7 @@ export function DenisDebugSessionList({
             <th className="px-4 py-3">Table</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Lang</th>
+            <th className="px-4 py-3">Quality</th>
             <th className="px-4 py-3">Timeline</th>
             <th className="px-4 py-3 text-right">Debug</th>
           </tr>
@@ -54,6 +96,9 @@ export function DenisDebugSessionList({
               </td>
               <td className="px-4 py-3 uppercase text-muted-foreground">
                 {session.language}
+              </td>
+              <td className="px-4 py-3">
+                <QualityBadge qualityFlag={session.qualityFlag} />
               </td>
               <td className="px-4 py-3">
                 <span className="inline-flex items-center gap-1 text-muted-foreground">

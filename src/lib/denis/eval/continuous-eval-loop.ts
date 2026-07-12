@@ -169,6 +169,29 @@ export async function persistSessionEvalResult(
   }
 }
 
+/**
+ * 2026-07-12 — the writer side of this key already existed
+ * (persistSessionEvalResult, wired to every real guest session via
+ * session-eval.ts's outbox handler); nothing read it back per-session
+ * until now. Lets the admin-facing session list/replay surface the
+ * SAME mismatch/correction/waiter_failure learnings already computed
+ * post-session, instead of only ever seeing them folded into the
+ * weekly aggregate report.
+ */
+export async function loadSessionEvalResult(
+  sessionId: string
+): Promise<SessionEvalResult | null> {
+  const redis = getRedisClient();
+  if (!redis) return null;
+
+  try {
+    return await redis.get<SessionEvalResult>(sessionEvalKey(sessionId));
+  } catch (error) {
+    logRedisDegradation("denis.session_eval.read", error);
+    return null;
+  }
+}
+
 export async function buildWeeklyQualityReport(
   referenceDate = new Date()
 ): Promise<WeeklyQualityReport> {

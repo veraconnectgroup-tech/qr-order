@@ -12,6 +12,8 @@ import {
 import {
   computeSessionConversationQuality,
 } from "@/lib/admin/denis-session-replay";
+import { loadSessionEvalResult } from "@/lib/denis/eval/continuous-eval-loop";
+import type { ExtractedLearning } from "@/lib/denis/eval/learning-extractor";
 import { loadDenisTimeline } from "@/lib/denis/platform/append-timeline-event";
 import type { TurnTrace } from "@/lib/denis/runtime/turn-trace";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -24,6 +26,12 @@ export type DenisDebugSessionRow = {
   language: string;
   createdAt: string;
   timelineEventCount: number;
+  /** From the post-session eval flywheel (loadSessionEvalResult) — null when eval hasn't run yet for this session (Redis miss or too recent). */
+  qualityFlag: {
+    overall: number;
+    anomaly: boolean;
+    issueKinds: ExtractedLearning["kind"][];
+  } | null;
 };
 
 type DenisDebugSessionQueryRow = {
@@ -80,15 +88,50 @@ export async function listDenisDebugSessions(
     );
   }
 
-  return rows.map((session) => ({
-    id: session.id,
-    tableId: session.table_id,
-    tableName: tableNameFromRelation(session.tables),
-    status: session.status,
-    language: session.language,
-    createdAt: session.created_at,
-    timelineEventCount: countBySession.get(session.id) ?? 0,
-  }));
+  const evalResults = await Promise.all(
+    sessionIds.map((id) => loadSessionEvalResult(id))
+  );
+  const evalBySession = new Map(
+    sessionIds.map((id, index) => [id, evalResults[index]])
+  );
+
+  const withQuality = rows.map((session) => {
+    const evalResult = evalBySession.get(session.id) ?? null;
+    return {
+      id: session.id,
+      tableId: session.table_id,
+      tableName: tableNameFromRelation(session.tables),
+      status: session.status,
+      language: session.language,
+      createdAt: session.created_at,
+      timelineEventCount: countBySession.get(session.id) ?? 0,
+      qualityFlag: evalResult
+        ? {
+            overall: evalResult.scores.overall,
+            anomaly: evalResult.anomaly,
+            issueKinds: [
+              ...new Set(
+                evalResult.learnings
+                  .map((learning) => learning.kind)
+                  .filter((kind) => kind !== "reinforcement")
+              ),
+            ],
+          }
+        : null,
+    };
+  });
+
+  // Flagged sessions (anomaly or a real learning kind extracted) float to
+  // the top so staff can jump straight to what needs a look, instead of
+  // reading every session in chronological order to find the bad ones.
+  const isFlagged = (row: (typeof withQuality)[number]) =>
+    Boolean(row.qualityFlag?.anomaly || (row.qualityFlag?.issueKinds.length ?? 0) > 0);
+
+  return [...withQuality].sort((a, b) => {
+    const flagDelta = Number(isFlagged(b)) - Number(isFlagged(a));
+    if (flagDelta !== 0) return flagDelta;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
 }
 
 export async function loadDenisSessionDebugGraph(
