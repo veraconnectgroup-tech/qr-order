@@ -89,6 +89,14 @@ export const CONNECTOR_CATALOG: ConnectorDefinition[] = [
     description:
       "Reservations — requires a formal OpenTable partner agreement before any code integration is possible.",
   },
+  {
+    id: "stripe",
+    name: "Stripe",
+    category: "payment",
+    builtInCode: true,
+    description:
+      "Online guest payment via Stripe Connect — real per-org onboarding status, not just whether the code exists.",
+  },
 ];
 
 export type ConnectorState = "connected" | "not_connected" | "not_built";
@@ -124,6 +132,50 @@ function resolvePosState(
   };
 }
 
+/**
+ * Stripe isn't in pos_integrations — onboarding lives on organizations
+ * (stripe_onboarded) and the online-payment toggle lives per-location
+ * (locations.payment_online_enabled). Both must be true for Denis to
+ * honestly say online payment works here — an org that finished Stripe
+ * Connect but has this specific location's online payment switched off
+ * is NOT "connected" from a guest's point of view.
+ */
+async function resolveStripeState(
+  admin: SupabaseClient,
+  locationId: string
+): Promise<Pick<ConnectorStatus, "state" | "healthy" | "lastError">> {
+  const { data: location } = await admin
+    .from("locations")
+    .select("org_id, payment_online_enabled")
+    .eq("id", locationId)
+    .maybeSingle();
+
+  if (!location) return { state: "not_connected", healthy: null, lastError: null };
+
+  const row = location as { org_id: string; payment_online_enabled: boolean };
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("stripe_onboarded")
+    .eq("id", row.org_id)
+    .maybeSingle();
+
+  const stripeOnboarded = (org as { stripe_onboarded: boolean } | null)
+    ?.stripe_onboarded;
+
+  if (!stripeOnboarded) {
+    return { state: "not_connected", healthy: null, lastError: null };
+  }
+  if (!row.payment_online_enabled) {
+    return {
+      state: "not_connected",
+      healthy: null,
+      lastError: "Stripe onboarded, but online payment is switched off for this location.",
+    };
+  }
+  return { state: "connected", healthy: true, lastError: null };
+}
+
 /** Every connector's real status for this location — the one truthful source both the admin UI and Denis's own context read from. */
 export async function resolveConnectorStatuses(
   admin: SupabaseClient,
@@ -138,10 +190,16 @@ export async function resolveConnectorStatuses(
     ((data ?? []) as PosIntegrationRow[]).map((row) => [row.provider, row])
   );
 
-  return CONNECTOR_CATALOG.map((def) => {
+  const stripeStatus = await resolveStripeState(admin, locationId);
+
+  return Promise.all(CONNECTOR_CATALOG.map(async (def) => {
+    if (def.id === "stripe") {
+      return { ...def, ...stripeStatus };
+    }
     if (def.category !== "pos") {
-      // Non-POS categories (delivery, reservation, ...) have no built
-      // adapter/table yet — always honest "not built" until one exists.
+      // Non-POS, non-Stripe categories (delivery, reservation, ...) have
+      // no built adapter/table yet — always honest "not built" until one
+      // exists.
       return { ...def, state: "not_built", healthy: null, lastError: null };
     }
     const { state, healthy, lastError } = resolvePosState(
@@ -149,7 +207,7 @@ export async function resolveConnectorStatuses(
       posRows.get(def.id)
     );
     return { ...def, state, healthy, lastError };
-  });
+  }));
 }
 
 /**
