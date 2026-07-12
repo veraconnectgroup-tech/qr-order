@@ -126,6 +126,8 @@ export type BuildSystemPromptInput = {
   evolvedLearningsBlock?: string | null;
   /** What Denis may honestly promise a guest for this location's connected POS — see pos-capability-matrix.ts. Guest chat's own copy of what assembleDenisBrainContext already gives owner/station-voice/menu-agent. */
   capabilityAwarenessBlock?: string | null;
+  /** General "what systems are actually connected" list — loadIntegrationsAwarenessBlock in registry.ts. Guest chat's own copy of the same block assembleDenisBrainContext already gives owner/station-voice/menu-agent. */
+  integrationsAwarenessBlock?: string | null;
 };
 
 export type OpenAiChatMessage = {

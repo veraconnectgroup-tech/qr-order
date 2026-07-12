@@ -72,6 +72,22 @@ describe("buildSystemPrompt token budget", () => {
     expect(prompt).not.toContain("POS CAPABILITIES");
   });
 
+  it("includes the connected-systems awareness block in situation pack when present", () => {
+    const prompt = buildSystemPrompt({
+      ...BASE_INPUT,
+      integrationsAwarenessBlock:
+        "CONNECTED SYSTEMS YOU CAN ACTUALLY USE:\n- Deliverect (point of sale)\nAnything not listed here is NOT connected — say so honestly if asked, never guess or assume a capability exists.",
+    });
+
+    expect(prompt).toContain("CONNECTED SYSTEMS YOU CAN ACTUALLY USE");
+    expect(prompt).toContain("Deliverect");
+  });
+
+  it("omits connected-systems awareness from situation pack when absent", () => {
+    const prompt = buildSystemPrompt(BASE_INPUT);
+    expect(prompt).not.toContain("CONNECTED SYSTEMS YOU CAN ACTUALLY USE");
+  });
+
   it("includes promo context in situation pack", () => {
     const prompt = buildSystemPrompt({
       ...BASE_INPUT,

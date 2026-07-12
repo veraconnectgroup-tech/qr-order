@@ -25,7 +25,10 @@ import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { getPlaybookPromptBlock } from "@/lib/ai/playbook/load-playbook";
 import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { loadEvolvedLearningsBlock } from "@/lib/denis/knowledge/evolved-learnings-store";
-import { loadCapabilityAwarenessBlock } from "@/lib/integrations/registry";
+import {
+  loadCapabilityAwarenessBlock,
+  loadIntegrationsAwarenessBlock,
+} from "@/lib/integrations/registry";
 import { moderateGuestInput, shieldGracefulGuestMessage } from "@/lib/ai/moderation";
 import { formatDraftForPrompt } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
@@ -517,6 +520,9 @@ export async function perceiveGuestChatTurn(
           input.locationId
         ),
         capabilityAwarenessBlock: await loadCapabilityAwarenessBlock(
+          input.locationId
+        ),
+        integrationsAwarenessBlock: await loadIntegrationsAwarenessBlock(
           input.locationId
         ),
         evidenceBlock: pipelineEvidenceBlock || null,

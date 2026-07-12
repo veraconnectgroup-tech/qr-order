@@ -4,30 +4,38 @@
 
 **Pravilo održavanja:** ažuriraj SAMO kad se stvarno promeni ko šta čita (nov poziv `assembleDenisBrainContext`, nov blok u `build-system-prompt.ts`, itd.) — ne posle svakog zadatka. Ako ikad posumnjaš da je zastareo, PROVERI u kodu (grep za pozivaoce funkcije), ne veruj ovom fajlu naslepo — ovo je mapa za brzu orijentaciju, ne izvor istine. Izvor istine je uvek živi kod.
 
-**Poslednja stvarna provera:** 2026-07-12, direktnim grep-om kroz `src/` (ne iz sećanja).
+**Poslednja stvarna provera:** 2026-07-12 (drugi put istog dana), direktnim grep-om kroz `src/` (ne iz sećanja).
 
 ---
 
 ## Dva odvojena "mozga" — namerno, ne greškom
 
-1. **`assembleDenisBrainContext(locationId)`** (`src/lib/denis/cognition/context/assemble-denis-brain-context.ts`) — persona + restoransko znanje + integrations awareness + **POS capability awareness**. Jedna funkcija, jedan poziv po površini.
+1. **`assembleDenisBrainContext(locationId)`** (`src/lib/denis/cognition/context/assemble-denis-brain-context.ts`) — persona + restoransko znanje + integrations awareness + **PUNA POS capability slika** (`loadFullCapabilityAwarenessBlock` — svih 11 ključeva iz pos-capability-matrix.ts, sa statusom i izvornom napomenom, ne samo gost-bezbedni podskup).
 2. **`buildSystemPrompt(...)`** (`src/lib/ai/build-system-prompt.ts`) — bogatiji, gost-specifičan persona sistem (`buildPersonaIdentityBlock`/`buildPersonalityBlock` — ton/humor/kultura/raspoloženje gosta), plus restoransko znanje pozvano DIREKTNO (ne kroz #1). Namerno odvojeno jer gost treba adaptivniju personu nego osoblje.
 
 Ovo dupliranje je OK i dokumentovano u samom `assemble-denis-brain-context.ts` — problem nastaje samo kad nešto NOVO (kao integrations/capability awareness) uđe u #1 a zaboravi se da li i #2 treba da ga ima.
+
+**Bitna asimetrija, namerna:** gost dobija `loadCapabilityAwarenessBlock` (6-key gost-bezbedni podskup: samo confirmed/not_supported/not_confirmed, pos_dependent namerno izostavljen — prevrtljivo za flat gost-obećanje). Osoblje (owner/station/menu-agent) dobija `loadFullCapabilityAwarenessBlock` (svih 11 ključeva, uključujući pos_dependent, sa izvornom napomenom) — vlasnik/menadžer sme da nosi "zavisi od POS-a" nijansu, gost ne sme dobiti obećanje na osnovu nje.
 
 ---
 
 ## Tabela površina (stvarno stanje, 2026-07-12)
 
-| Površina | Fajl | Persona/znanje | Integrations awareness | POS capability awareness |
+| Površina | Fajl | Persona/znanje | Integrations awareness (šta je POVEZANO) | POS capability awareness (šta ta veza tačno MOŽE) |
 |---|---|---|---|---|
-| Owner-voice Realtime poziv | `api/denis/owner-voice/realtime-token/route.ts` | `assembleDenisBrainContext` | DA | DA |
-| Station-voice opšti poziv ("Pozovi Denisa") | `api/denis/station-voice/general-token/route.ts` | `assembleDenisBrainContext` | DA | DA |
-| Denis Menu Agent chat (admin) | `api/admin/denis-menu-agent/chat/route.ts` | `assembleDenisBrainContext` | DA | DA |
-| Station-voice LLM fallback (T2, po pitanju) | `station-voice-turn-llm.ts` | `assembleDenisBrainContext` | DA | DA |
-| Agentic tool-use loop — **SAMO shadow put** | `run-denis-turn.ts` (`agenticPolicy.mode === "shadow"` grana) | `assembleDenisBrainContext` | DA | DA (ali nikad ne stiže do gosta — shadow, ne pravi odgovor) |
-| Gostov chat/glas — pravi, živi odgovor | `perceive-guest-chat-turn.ts` → `buildSystemPrompt` | `buildPersonaIdentityBlock`/`buildPersonalityBlock` + `loadRestaurantKnowledgeBlock` direktno | NE (i dalje — integrations awareness nije deo ovog popravljanog kruga, samo capability) | DA — **P0 propust popravljen** (`capabilityAwarenessBlock` polje na `BuildSystemPromptInput`, ulazi u situation pack isto kao `restaurantKnowledgeBlock`) |
-| Station-voice Realtime, po konkretnom pitanju | `api/denis/station-voice/realtime-token/route.ts` | `resolveDenisVoiceInstructions` (ton-senčena persona) + `loadRestaurantKnowledgeBlock` direktno | NE | NE (nije još proglašeno propustom — Denis ovde zove OSOBLJE, ne obrnuto; manje kritično, ali vredi preispitati kad P0 bude gotov) |
+| Owner-voice Realtime poziv | `api/denis/owner-voice/realtime-token/route.ts` | `assembleDenisBrainContext` | DA | DA — **PUNA slika** (svih 11 ključeva) |
+| Station-voice opšti poziv ("Pozovi Denisa") | `api/denis/station-voice/general-token/route.ts` | `assembleDenisBrainContext` | DA | DA — **PUNA slika** |
+| Denis Menu Agent chat (admin) | `api/admin/denis-menu-agent/chat/route.ts` | `assembleDenisBrainContext` | DA | DA — **PUNA slika** |
+| Station-voice LLM fallback (T2, po pitanju) | `station-voice-turn-llm.ts` | `assembleDenisBrainContext` | DA | DA — **PUNA slika** |
+| Agentic tool-use loop — **shadow svuda OSIM jedne pilot lokacije** | `run-denis-turn.ts` (`agenticPolicy.mode === "shadow"` ili `"live"` samo za `SKYLINE_PILOT_LOCATION_ID`) | `assembleDenisBrainContext` | DA | DA — **PUNA slika**, ali van pilot lokacije nikad ne stiže do gosta (shadow, ne pravi odgovor) |
+| Gostov chat/glas — pravi, živi odgovor | `perceive-guest-chat-turn.ts` → `buildSystemPrompt` | `buildPersonaIdentityBlock`/`buildPersonalityBlock` + `loadRestaurantKnowledgeBlock` direktno | **DA — popravljeno** (`integrationsAwarenessBlock` polje, isti obrazac kao `capabilityAwarenessBlock`) | DA — gost-bezbedni 6-key podskup (namerno uži od osoblja, videti gore) |
+| Station-voice Realtime, po konkretnom pitanju | `api/denis/station-voice/realtime-token/route.ts` | `resolveDenisVoiceInstructions` (ton-senčena persona) + `loadRestaurantKnowledgeBlock` direktno | NE | NE (nije još proglašeno propustom — Denis ovde zove OSOBLJE, ne obrnuto; manje kritično) |
+
+---
+
+## Poznati, još neodrađeni propust (otkriven 2026-07-12, nije još popravljen)
+
+**Denis nema promptnu svest o postojanju order.cancel / order.modify.request** — ovo je stvarna, radna, DB-backed sposobnost (`executeDenisGuestOrderCancel`, `executeDenisOrderModifyRequest`, R4 risk class, `SKILL_REGISTRY` u `skill-registry.ts`), ali se pokreće ISKLJUČIVO preko determinističkog reflex sloja (`reflex-plan.ts`), nikad preko LLM razumevanja — ni `assembleDenisBrainContext` ni `build-system-prompt.ts` je nigde ne pominju. Ako gost formuliše zahtev za otkazivanje na način koji reflex ne prepoznaje, Denis nema šansu da sam shvati da ta opcija uopšte postoji. Sledeći kandidat za popravku kad se na to vratimo.
 
 ---
 

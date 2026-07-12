@@ -252,6 +252,10 @@ function buildPromptSituationPack(input: BuildSystemPromptInput): string {
     lines.push(input.capabilityAwarenessBlock.trim());
   }
 
+  if (input.integrationsAwarenessBlock?.trim()) {
+    lines.push(input.integrationsAwarenessBlock.trim());
+  }
+
   if (input.promoContext?.trim()) {
     lines.push(input.promoContext.trim());
   }

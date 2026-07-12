@@ -1,7 +1,7 @@
 import { buildDenisPersonaBlock } from "@/lib/denis/cognition/personality/denis-persona-block";
 import { loadRestaurantKnowledgeBlock } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import {
-  loadCapabilityAwarenessBlock,
+  loadFullCapabilityAwarenessBlock,
   loadIntegrationsAwarenessBlock,
 } from "@/lib/integrations/registry";
 
@@ -39,7 +39,7 @@ export async function assembleDenisBrainContext(
     await Promise.all([
       loadRestaurantKnowledgeBlock(locationId),
       loadIntegrationsAwarenessBlock(locationId),
-      loadCapabilityAwarenessBlock(locationId),
+      loadFullCapabilityAwarenessBlock(locationId),
     ]);
 
   return [

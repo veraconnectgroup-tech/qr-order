@@ -365,3 +365,36 @@ export async function loadCapabilityAwarenessBlock(
 
   return lines.join("\n");
 }
+
+/**
+ * Staff/owner-facing counterpart to loadCapabilityAwarenessBlock — the
+ * COMPLETE researched picture (all 11 pos-capability-matrix.ts keys,
+ * every status including pos_dependent, plus the sourced note behind
+ * each one — e.g. Deliverect's own "not all POS systems currently
+ * return the table IDs" caveat), not the guest-safe 6-key subset that
+ * function deliberately narrows to. An owner or manager asking Denis
+ * "what exactly can Deliverect actually do for us" needs the honest
+ * full answer, nuance included — staff can hold "it depends," a guest
+ * promise can't. Only emitted when a POS is actually connected; a venue
+ * with nothing connected has nothing to detail.
+ */
+export async function loadFullCapabilityAwarenessBlock(
+  locationId: string
+): Promise<string | null> {
+  const admin = createAdminClient();
+  const statuses = await resolveConnectorStatuses(admin, locationId);
+  const hasConnectedPos = statuses.some(
+    (s) => s.category === "pos" && s.state === "connected"
+  );
+  if (!hasConnectedPos) return null;
+
+  const capabilities = await getCapabilities(admin, locationId);
+  const lines = ["CONNECTED POS — FULL CAPABILITY DETAIL (for your own reasoning, not a script to recite):"];
+
+  for (const key of Object.keys(CAPABILITY_LABEL_EN) as (keyof PosCapabilities)[]) {
+    const entry = capabilities[key];
+    lines.push(`- ${CAPABILITY_LABEL_EN[key]}: ${entry.status} — ${entry.note}`);
+  }
+
+  return lines.join("\n");
+}
