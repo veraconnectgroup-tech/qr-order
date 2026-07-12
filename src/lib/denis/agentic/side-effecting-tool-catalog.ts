@@ -1,6 +1,8 @@
 import { executeDenisOrderCommand } from "@/lib/denis/acl/execute-denis-order-command";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
 import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
+import { executeDenisGuestOrderCancel } from "@/lib/denis/acl/execute-denis-guest-order-cancel";
+import { executeDenisOrderModifyRequest } from "@/lib/denis/acl/execute-denis-order-modify-request";
 import type { SelectablePaymentMethod } from "@/lib/payment-methods";
 import type {
   AgenticToolDefinition,
@@ -174,11 +176,74 @@ const requestPayment: AgenticToolDefinition = {
   },
 };
 
+/**
+ * 2026-07-12 audit finding — order.cancel/order.modify.request were real,
+ * working ACL executors (M23) that Denis had zero prompt-level awareness
+ * of and no LLM-reachable way to invoke — only a deterministic reflex
+ * layer (reflex-plan.ts) could trigger them. Wiring the SAME executors
+ * here gives Denis actual tool-calling access to them, gated by the same
+ * dryRun/shadow rules as every other side-effecting tool — the reflex
+ * path is unchanged and stays the fast, deterministic first line for the
+ * phrasings it already catches.
+ */
+const cancelOrder: AgenticToolDefinition = {
+  definition: {
+    name: "cancel_order",
+    description:
+      "Cancel the guest's current pending order. Only works before the kitchen has accepted it — check the result to see whether it actually cancelled or a staff member needs to help instead.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+  sideEffecting: true,
+  execute: async (input) => {
+    if (input.dryRun) {
+      return { ok: true, dryRun: true, wouldCall: "executeDenisGuestOrderCancel" };
+    }
+
+    if (!input.session) {
+      return { ok: false, error: "missing_execution_context" };
+    }
+
+    return executeDenisGuestOrderCancel(input.admin, {
+      tableId: input.ctx.tableSessionState?.table.id ?? "",
+      locationId: input.ctx.locationId,
+      sessionToken: input.session.sessionToken ?? "",
+    });
+  },
+};
+
+const requestOrderModification: AgenticToolDefinition = {
+  definition: {
+    name: "request_order_modification",
+    description:
+      "Guest wants to change an order they already submitted (add/remove/replace items). Cancels it so they can reorder if the kitchen hasn't started yet; otherwise calls a waiter to handle the change in person.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+  sideEffecting: true,
+  execute: async (input) => {
+    if (input.dryRun) {
+      return { ok: true, dryRun: true, wouldCall: "executeDenisOrderModifyRequest" };
+    }
+
+    if (!input.session) {
+      return { ok: false, error: "missing_execution_context" };
+    }
+
+    return executeDenisOrderModifyRequest(input.admin, {
+      tableId: input.ctx.tableSessionState?.table.id ?? "",
+      locationId: input.ctx.locationId,
+      tableToken: input.session.tableToken,
+      sessionToken: input.session.sessionToken ?? "",
+    });
+  },
+};
+
 export const SIDE_EFFECTING_TOOL_CATALOG: Record<
   SideEffectingToolName,
   AgenticToolDefinition
 > = {
   add_to_order: addToOrder,
   call_waiter: callWaiter,
+  cancel_order: cancelOrder,
+  request_order_modification: requestOrderModification,
   request_payment: requestPayment,
 };

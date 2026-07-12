@@ -27,7 +27,9 @@ export type ReadOnlyToolName =
 export type SideEffectingToolName =
   | "add_to_order"
   | "call_waiter"
-  | "request_payment";
+  | "request_payment"
+  | "cancel_order"
+  | "request_order_modification";
 
 export type AgenticToolName = ReadOnlyToolName | SideEffectingToolName;
 

@@ -33,9 +33,15 @@ Ovo dupliranje je OK i dokumentovano u samom `assemble-denis-brain-context.ts` �
 
 ---
 
-## Poznati, još neodrađeni propust (otkriven 2026-07-12, nije još popravljen)
+## Popravljeno 2026-07-12 (treći put istog dana): order.cancel / order.modify.request
 
-**Denis nema promptnu svest o postojanju order.cancel / order.modify.request** — ovo je stvarna, radna, DB-backed sposobnost (`executeDenisGuestOrderCancel`, `executeDenisOrderModifyRequest`, R4 risk class, `SKILL_REGISTRY` u `skill-registry.ts`), ali se pokreće ISKLJUČIVO preko determinističkog reflex sloja (`reflex-plan.ts`), nikad preko LLM razumevanja — ni `assembleDenisBrainContext` ni `build-system-prompt.ts` je nigde ne pominju. Ako gost formuliše zahtev za otkazivanje na način koji reflex ne prepoznaje, Denis nema šansu da sam shvati da ta opcija uopšte postoji. Sledeći kandidat za popravku kad se na to vratimo.
+Ranije: Denis nije imao promptnu svest o postojanju otkazivanja/izmene porudžbine — samo deterministički reflex sloj (`reflex-plan.ts`) je mogao da je pokrene, nikad LLM razumevanje.
+
+Sad:
+- **Svest (gost):** `build-system-prompt.ts`'s `platformContractBlock()` ima novu stalnu liniju ("CANCEL/CHANGE: ...") — gost-facing Denis sad zna da otkazivanje/izmena postoji i pod kojim uslovom (pre nego kuhinja prihvati), bez obzira da li agentic tool loop radi uživo za tu lokaciju.
+- **Mogućnost da rukuje (svuda gde agentic tool loop uopšte radi):** dva nova side-effecting tool-a u `side-effecting-tool-catalog.ts` — `cancel_order` (`executeDenisGuestOrderCancel`) i `request_order_modification` (`executeDenisOrderModifyRequest`) — ISTI ACL executor-i koje i reflex sloj koristi, isto `dryRun`/shadow gate-ovanje kao svaki drugi side-effecting tool (ADR-049 §4.3). Reflex sloj ostaje netaknut, i dalje prva, brza linija za formulacije koje već hvata.
+
+Van dosega ove popravke (namerno): agentic tool loop je i dalje shadow-only svuda osim pilot lokacije (vidi tabelu iznad) — ova popravka daje Denisu SVEST svuda i MOGUĆNOST tamo gde je tool loop uživo, ne menja rollout status samog tool loop-a.
 
 ---
 

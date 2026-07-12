@@ -36,6 +36,12 @@ describe("buildSystemPrompt token budget", () => {
     ]);
   });
 
+  it("always tells Denis he can help cancel/change an already-submitted order", () => {
+    const prompt = buildSystemPrompt(BASE_INPUT);
+    expect(prompt).toContain("CANCEL/CHANGE:");
+    expect(prompt).toContain("before the kitchen accepts it");
+  });
+
   it("merges dynamic context into situation_pack", () => {
     const prompt = buildSystemPrompt({
       ...BASE_INPUT,
