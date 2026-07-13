@@ -10,6 +10,7 @@ import {
 } from "@/lib/ai/ordering/order-message-backfill";
 import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
+import { EMPTY_TURN_INTERPRETATION } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 
 function mockCatalog(): AiCatalog {
   const kisela = {
@@ -331,6 +332,67 @@ describe("order message backfill", () => {
     );
     expect(result.meta.needsDrinkClarify).toBe(true);
     expect(result.cartActions).toHaveLength(0);
+  });
+
+  it("uses real LLM turnInterpretation for plain modifiers the regex fallback can't see", () => {
+    // synthesizeTurnInterpretationFromRouter only ever derives "X umesto Y"
+    // swaps from regex — a plain modifier like "bez luka" is invisible to it.
+    // Passing the LLM's own turnInterpretation must surface it.
+    const catalog = mockCatalog();
+    const interpretation = {
+      ...EMPTY_TURN_INTERPRETATION,
+      preferences: ["bez luka"],
+    };
+    const result = backfillDraftFromOrderMessage(
+      emptyOrderDraft(),
+      catalog,
+      "Beef burger bez luka",
+      { interpretation }
+    );
+    expect(result.draft.items).toHaveLength(1);
+    expect(result.draft.items[0]?.notes).toMatch(/bez luka/i);
+  });
+
+  it("maybeBackfillOrderDraft threads real interpretation through for the current message", () => {
+    const catalog = mockCatalog();
+    const interpretation = {
+      ...EMPTY_TURN_INTERPRETATION,
+      preferences: ["bez luka"],
+    };
+    const result = maybeBackfillOrderDraft(
+      emptyOrderDraft(),
+      catalog,
+      "Beef burger bez luka",
+      [],
+      interpretation
+    );
+    expect(result.draft.items).toHaveLength(1);
+    expect(result.draft.items[0]?.notes).toMatch(/bez luka/i);
+  });
+
+  it("does not misapply current-turn interpretation to a reconstructed prior message on confirm", () => {
+    const catalog = mockCatalog();
+    // This interpretation belongs to the CURRENT turn's text ("da"), not the
+    // prior order message being reconstructed — must not leak across.
+    const interpretation = {
+      ...EMPTY_TURN_INTERPRETATION,
+      preferences: ["bez luka"],
+    };
+    const result = maybeBackfillOrderDraft(
+      emptyOrderDraft(),
+      catalog,
+      "da",
+      [
+        {
+          role: "user",
+          content: "Beef burger",
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      interpretation
+    );
+    expect(result.draft.items).toHaveLength(1);
+    expect(result.draft.items[0]?.notes ?? "").not.toMatch(/bez luka/i);
   });
 
   it("appendOrderGapClarify adds drink question to recap", () => {

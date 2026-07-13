@@ -8,6 +8,7 @@ import { maybeBackfillOrderDraft } from "@/lib/ai/ordering/order-message-backfil
 import { processOrderingTurn } from "@/lib/ai/ordering/ordering-turn";
 import type { AiOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { AiStructuredResponse } from "@/lib/ai/types";
+import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 
 export type ApplyOrderComprehendInput = {
   userMessage: string;
@@ -46,11 +47,17 @@ export function applyOrderComprehend(
 
   let workingDraft = orderingResult.draft;
 
+  const interpretation = extractTurnInterpretation({
+    structured: input.structured,
+    guestMessage: input.userMessage,
+  });
+
   const postOrderBackfill = maybeBackfillOrderDraft(
     workingDraft,
     input.catalog,
     input.userMessage,
-    input.priorMessages
+    input.priorMessages,
+    interpretation
   );
   workingDraft = postOrderBackfill.draft;
   const cartActionsThisTurn =

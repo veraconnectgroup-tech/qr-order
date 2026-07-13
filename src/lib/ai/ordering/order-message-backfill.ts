@@ -303,7 +303,10 @@ function messageNeedsDrinkClarify(message: string, segments: string[]): boolean 
 }
 
 /** Parse gaps from guest line even when cart already has items (LLM path). */
-export function extractOrderMessageMeta(message: string): OrderBackfillMeta {
+export function extractOrderMessageMeta(
+  message: string,
+  interpretation?: TurnInterpretation | null
+): OrderBackfillMeta {
   const text = message.trim();
   if (!text || !isOrderPlacementMessage(text)) {
     return emptyBackfillMeta();
@@ -311,10 +314,11 @@ export function extractOrderMessageMeta(message: string): OrderBackfillMeta {
 
   const segments = splitOrderMessageSegments(text);
   let substitution: GuestSubstitutionRequest | null = null;
-  const interpretation = extractTurnInterpretation({ guestMessage: text, llmUsed: false });
+  const resolvedInterpretation =
+    interpretation ?? extractTurnInterpretation({ guestMessage: text, llmUsed: false });
 
   for (const segment of segments) {
-    const parsed = parseGuestSubstitution(segment, interpretation);
+    const parsed = parseGuestSubstitution(segment, resolvedInterpretation);
     if (parsed && !substitution) {
       substitution = parsed;
     }
@@ -394,6 +398,9 @@ export function findLastNonConfirmUserMessage(
 
 /**
  * When the LLM recaps an order but omits proposedItems, rebuild draft from catalog search.
+ * `options.interpretation` should be the LLM's own turnInterpretation for `message`
+ * when available (genuine understanding) — only falls back to router/regex synthesis
+ * (extractTurnInterpretation's llmUsed:false path) when none was produced this turn.
  */
 export function backfillDraftFromOrderMessage(
   draft: AiOrderDraft,
@@ -409,11 +416,11 @@ export function backfillDraftFromOrderMessage(
   cartActions: ValidatedCartAction[];
   meta: OrderBackfillMeta;
 } {
-  const metaFromMessage = extractOrderMessageMeta(message);
   const additive = options?.additive === true;
   const interpretation =
     options?.interpretation ??
     extractTurnInterpretation({ guestMessage: message, llmUsed: false });
+  const metaFromMessage = extractOrderMessageMeta(message, interpretation);
   if (draft.pending) {
     return { draft, cartActions: [], meta: metaFromMessage };
   }
@@ -556,11 +563,19 @@ export function backfillTypedDrinkAddition(
   };
 }
 
+/**
+ * `interpretation` should be the current turn's real LLM turnInterpretation
+ * (from AiStructuredResponse) — only applied when reconstructing from
+ * `userMessage` itself, never when reconstructing an older message from
+ * `priorMessages` (that message has its own, different interpretation we
+ * don't have without deeper timeline lookup — a separate follow-up).
+ */
 export function maybeBackfillOrderDraft(
   draft: AiOrderDraft,
   catalog: AiCatalog,
   userMessage: string,
-  priorMessages: ChatHistoryMessage[]
+  priorMessages: ChatHistoryMessage[],
+  interpretation?: TurnInterpretation | null
 ): {
   draft: AiOrderDraft;
   cartActions: ValidatedCartAction[];
@@ -574,21 +589,29 @@ export function maybeBackfillOrderDraft(
       ? userMessage
       : null;
 
+  // Real LLM turnInterpretation is for the CURRENT guest message only — when
+  // confirming, source is a past message from priorMessages, so it doesn't apply.
+  const liveInterpretation = confirming ? null : (interpretation ?? null);
+
   if (!source) {
     return {
       draft,
       cartActions: [],
-      meta: extractOrderMessageMeta(userMessage),
+      meta: extractOrderMessageMeta(userMessage, liveInterpretation),
     };
   }
 
   const backfill = backfillDraftFromOrderMessage(draft, catalog, source, {
     requirePlacementPattern: !confirming,
+    interpretation: liveInterpretation,
   });
 
   return {
     ...backfill,
-    meta: mergeOrderBackfillMeta(backfill.meta, extractOrderMessageMeta(source)),
+    meta: mergeOrderBackfillMeta(
+      backfill.meta,
+      extractOrderMessageMeta(source, liveInterpretation)
+    ),
   };
 }
 
