@@ -37,6 +37,8 @@ import {
   type ParsedOrderSegment,
 } from "@/lib/denis/cognition/conversation/parse-group-order";
 import { applyGuestCartMutations } from "@/lib/denis/cognition/conversation/apply-guest-cart-mutations";
+import { assessOrderSegments } from "@/lib/denis/cognition/perceive/assess-order-segments";
+import type { OrderSegmentsAssessment } from "@/lib/ai/ordering/order-segments-types";
 
 const ORDER_PREFIX =
   /^(daj\s+mi|daj|ho[ćc]u|hocu|mo[žz]e|želim|zelim|give\s+me|i\s+want|can\s+i\s+get|molim(\s+te)?|please|i\s+need)\s+/i;
@@ -130,6 +132,51 @@ function parsedSegmentsFromMessage(message: string): ParsedOrderSegment[] {
   }
 
   return splitGroupOrderSegments(message);
+}
+
+type ResolvedOrderSegment = ParsedOrderSegment & {
+  isGenericCategory: boolean;
+  modifierText: string | null;
+};
+
+/** Regex fallback only — used when assessOrderSegments is unavailable/fails this turn. */
+function resolvedSegmentsFromRegexFallback(message: string): ResolvedOrderSegment[] {
+  return parsedSegmentsFromMessage(message).map((segment) => {
+    const segmentText = segment.productText;
+    const isGenericCategory =
+      isGenericBeerSegment(segmentText) ||
+      (GENERIC_BEER_INLINE.test(segmentText) && !TYPED_DRINK_PATTERN.test(segmentText));
+    return { ...segment, isGenericCategory, modifierText: null };
+  });
+}
+
+function resolvedSegmentsFromAssessment(
+  assessment: OrderSegmentsAssessment
+): ResolvedOrderSegment[] {
+  return assessment.segments.map((segment) => ({
+    persona: segment.personaHint ? segment.personaHint.trim().toLowerCase() : null,
+    productText:
+      segment.productNameGuess ?? segment.categoryGuess ?? segment.quotedSpan,
+    quantity: segment.quantity,
+    isGenericCategory: segment.isGenericCategory,
+    modifierText: segment.modifierText,
+  }));
+}
+
+/**
+ * Genuine LLM segmentation (assessOrderSegments) when available and it found
+ * the message to be an order — regex split/generic-category detection only
+ * as the graceful-degradation fallback when the LLM call is unavailable or
+ * failed this turn. See order-segments-types.ts for the full reasoning.
+ */
+function resolveOrderSegments(
+  message: string,
+  assessment: OrderSegmentsAssessment | null
+): ResolvedOrderSegment[] {
+  if (assessment && assessment.isOrderPlacement && assessment.segments.length > 0) {
+    return resolvedSegmentsFromAssessment(assessment);
+  }
+  return resolvedSegmentsFromRegexFallback(message);
 }
 
 function scoreSegmentMatch(segment: string, product: AiCatalogProduct): number {
@@ -243,14 +290,21 @@ function segmentLineKey(productId: string, notes: string): string {
 function segmentToProposedItem(
   segment: ParsedOrderSegment | string,
   catalog: AiCatalog,
-  interpretation?: TurnInterpretation | null
+  interpretation?: TurnInterpretation | null,
+  modifierTextOverride?: string | null
 ): { item: AiProposedItem | null; substitution: GuestSubstitutionRequest | null } {
   const parsed: ParsedOrderSegment =
     typeof segment === "string" ? parseOrderSegment(segment) : segment;
 
   const rawSegment = parsed.productText;
-  const modifierNotes = parseGuestModifiers(rawSegment, interpretation);
-  const productSegment = stripGuestModifierPhrase(rawSegment, interpretation);
+  // modifierTextOverride is per-segment from real LLM segmentation — more
+  // precise than interpretation's whole-message modifiers when available.
+  const modifierNotes = modifierTextOverride
+    ? [modifierTextOverride]
+    : parseGuestModifiers(rawSegment, interpretation);
+  const productSegment = modifierTextOverride
+    ? rawSegment
+    : stripGuestModifierPhrase(rawSegment, interpretation);
   const substitution = parseGuestSubstitution(productSegment, interpretation);
   const product = pickProductForSegment(productSegment, catalog.catalog);
   if (!product) {
@@ -302,32 +356,81 @@ function messageNeedsDrinkClarify(message: string, segments: string[]): boolean 
   return GENERIC_BEER_INLINE.test(text);
 }
 
-/** Parse gaps from guest line even when cart already has items (LLM path). */
-export function extractOrderMessageMeta(
+/**
+ * Sync, regex-only variant of extractOrderMessageMeta — for callers that
+ * cannot go async (e.g. assess-waiter-obligation.ts's proactive gap
+ * detection, a secondary signal, not the core order-capture path, which
+ * uses the real LLM-based async version below).
+ */
+export function extractOrderMessageMetaSync(
   message: string,
   interpretation?: TurnInterpretation | null
 ): OrderBackfillMeta {
   const text = message.trim();
-  if (!text || !isOrderPlacementMessage(text)) {
-    return emptyBackfillMeta();
-  }
+  if (!text || !isOrderPlacementMessage(text)) return emptyBackfillMeta();
 
-  const segments = splitOrderMessageSegments(text);
+  const segments = resolvedSegmentsFromRegexFallback(text);
   let substitution: GuestSubstitutionRequest | null = null;
   const resolvedInterpretation =
     interpretation ?? extractTurnInterpretation({ guestMessage: text, llmUsed: false });
 
   for (const segment of segments) {
-    const parsed = parseGuestSubstitution(segment, resolvedInterpretation);
+    const parsed = parseGuestSubstitution(segment.productText, resolvedInterpretation);
+    if (parsed && !substitution) substitution = parsed;
+  }
+
+  const needsDrinkClarify =
+    segments.some((segment) => segment.isGenericCategory) ||
+    messageNeedsDrinkClarify(
+      text,
+      segments.map((segment) => segment.productText)
+    );
+
+  return { substitution, needsDrinkClarify };
+}
+
+/**
+ * Parse gaps from guest line even when cart already has items (LLM path).
+ * `assessment` should be a pre-fetched OrderSegmentsAssessment when the
+ * caller already has one this turn (avoids a duplicate LLM call) — pass
+ * `undefined` to let this function fetch its own, or `null` to force the
+ * regex fallback (e.g. non-LLM fast-path callers).
+ */
+export async function extractOrderMessageMeta(
+  message: string,
+  interpretation?: TurnInterpretation | null,
+  assessment?: OrderSegmentsAssessment | null
+): Promise<OrderBackfillMeta> {
+  const text = message.trim();
+  if (!text) return emptyBackfillMeta();
+
+  const resolvedAssessment =
+    assessment !== undefined ? assessment : await assessOrderSegments(text);
+  const isPlacement = resolvedAssessment
+    ? resolvedAssessment.isOrderPlacement
+    : isOrderPlacementMessage(text);
+  if (!isPlacement) return emptyBackfillMeta();
+
+  const segments = resolveOrderSegments(text, resolvedAssessment);
+  let substitution: GuestSubstitutionRequest | null = null;
+  const resolvedInterpretation =
+    interpretation ?? extractTurnInterpretation({ guestMessage: text, llmUsed: false });
+
+  for (const segment of segments) {
+    const parsed = parseGuestSubstitution(segment.productText, resolvedInterpretation);
     if (parsed && !substitution) {
       substitution = parsed;
     }
   }
 
-  return {
-    substitution,
-    needsDrinkClarify: messageNeedsDrinkClarify(text, segments),
-  };
+  const needsDrinkClarify =
+    segments.some((segment) => segment.isGenericCategory) ||
+    messageNeedsDrinkClarify(
+      text,
+      segments.map((segment) => segment.productText)
+    );
+
+  return { substitution, needsDrinkClarify };
 }
 
 export function draftHasDrinkInCart(draft: AiOrderDraft): boolean {
@@ -401,8 +504,12 @@ export function findLastNonConfirmUserMessage(
  * `options.interpretation` should be the LLM's own turnInterpretation for `message`
  * when available (genuine understanding) — only falls back to router/regex synthesis
  * (extractTurnInterpretation's llmUsed:false path) when none was produced this turn.
+ * `options.segmentsAssessment` should be a pre-fetched OrderSegmentsAssessment when
+ * the caller already has one (avoids a duplicate LLM call); pass `null` to force the
+ * regex fallback (e.g. non-LLM fast-path callers); omit to let this function fetch
+ * its own via assessOrderSegments.
  */
-export function backfillDraftFromOrderMessage(
+export async function backfillDraftFromOrderMessage(
   draft: AiOrderDraft,
   catalog: AiCatalog,
   message: string,
@@ -410,26 +517,39 @@ export function backfillDraftFromOrderMessage(
     requirePlacementPattern?: boolean;
     additive?: boolean;
     interpretation?: TurnInterpretation | null;
+    segmentsAssessment?: OrderSegmentsAssessment | null;
   }
-): {
+): Promise<{
   draft: AiOrderDraft;
   cartActions: ValidatedCartAction[];
   meta: OrderBackfillMeta;
-} {
+}> {
   const additive = options?.additive === true;
+  if (draft.pending) {
+    return { draft, cartActions: [], meta: emptyBackfillMeta() };
+  }
+  if (!additive && draft.items.length > 0) {
+    return { draft, cartActions: [], meta: emptyBackfillMeta() };
+  }
+
   const interpretation =
     options?.interpretation ??
     extractTurnInterpretation({ guestMessage: message, llmUsed: false });
-  const metaFromMessage = extractOrderMessageMeta(message, interpretation);
-  if (draft.pending) {
-    return { draft, cartActions: [], meta: metaFromMessage };
-  }
-  if (!additive && draft.items.length > 0) {
-    return { draft, cartActions: [], meta: metaFromMessage };
-  }
+  const assessment =
+    options?.segmentsAssessment !== undefined
+      ? options.segmentsAssessment
+      : await assessOrderSegments(message);
+
   const requirePlacementPattern = options?.requirePlacementPattern ?? true;
-  if (requirePlacementPattern && !isOrderPlacementMessage(message)) {
-    return { draft, cartActions: [], meta: metaFromMessage };
+  const isPlacement = assessment
+    ? assessment.isOrderPlacement
+    : isOrderPlacementMessage(message);
+  if (requirePlacementPattern && !isPlacement) {
+    return {
+      draft,
+      cartActions: [],
+      meta: await extractOrderMessageMeta(message, interpretation, assessment),
+    };
   }
 
   const mutation = applyGuestCartMutations(draft, catalog, message);
@@ -438,11 +558,11 @@ export function backfillDraftFromOrderMessage(
     return {
       draft,
       cartActions: mutation.cartActions,
-      meta: metaFromMessage,
+      meta: await extractOrderMessageMeta(message, interpretation, assessment),
     };
   }
 
-  const segments = parsedSegmentsFromMessage(message);
+  const segments = resolveOrderSegments(message, assessment);
   const proposed: AiProposedItem[] = [];
   const usedLineKeys = new Set(
     draft.items.map((line) => segmentLineKey(line.productId, line.notes ?? ""))
@@ -451,17 +571,17 @@ export function backfillDraftFromOrderMessage(
   let needsDrinkClarify = false;
 
   for (const segment of segments) {
-    const segmentText = segment.productText;
-    if (
-      isGenericBeerSegment(segmentText) ||
-      (GENERIC_BEER_INLINE.test(segmentText) &&
-        !TYPED_DRINK_PATTERN.test(segmentText))
-    ) {
+    if (segment.isGenericCategory) {
       needsDrinkClarify = true;
       continue;
     }
 
-    const parsed = segmentToProposedItem(segment, catalog, interpretation);
+    const parsed = segmentToProposedItem(
+      segment,
+      catalog,
+      interpretation,
+      segment.modifierText
+    );
     if (parsed.substitution && !substitution) {
       substitution = parsed.substitution;
     }
@@ -569,48 +689,74 @@ export function backfillTypedDrinkAddition(
  * `userMessage` itself, never when reconstructing an older message from
  * `priorMessages` (that message has its own, different interpretation we
  * don't have without deeper timeline lookup — a separate follow-up).
+ *
+ * `skipLlmSegmentation: true` forces the regex fallback for segment
+ * splitting/order-placement detection instead of calling assessOrderSegments
+ * — a narrow, documented performance exception for non-LLM template-turn
+ * callers (same T0-reflex-style tradeoff as perceive-table-guest-command.ts),
+ * never a default. Omit it (or pass false) for real guest-turn callers.
  */
-export function maybeBackfillOrderDraft(
+export async function maybeBackfillOrderDraft(
   draft: AiOrderDraft,
   catalog: AiCatalog,
   userMessage: string,
   priorMessages: ChatHistoryMessage[],
-  interpretation?: TurnInterpretation | null
-): {
+  interpretation?: TurnInterpretation | null,
+  options?: { skipLlmSegmentation?: boolean }
+): Promise<{
   draft: AiOrderDraft;
   cartActions: ValidatedCartAction[];
   meta: OrderBackfillMeta;
-} {
+}> {
   const confirming = isGuestFinalConfirm(userMessage);
+  const skipLlm = options?.skipLlmSegmentation === true;
+
+  // Real LLM turnInterpretation/segmentation is for the CURRENT guest
+  // message only — when confirming, source is a past message from
+  // priorMessages, so neither applies there.
+  const liveInterpretation = confirming ? null : (interpretation ?? null);
+  const liveAssessment =
+    confirming || skipLlm ? null : await assessOrderSegments(userMessage);
+
   const source = confirming
     ? (findLastOrderPlacementUserMessage(priorMessages) ??
       findLastNonConfirmUserMessage(priorMessages))
-    : isOrderPlacementMessage(userMessage)
+    : (liveAssessment
+        ? liveAssessment.isOrderPlacement
+        : isOrderPlacementMessage(userMessage))
       ? userMessage
       : null;
 
-  // Real LLM turnInterpretation is for the CURRENT guest message only — when
-  // confirming, source is a past message from priorMessages, so it doesn't apply.
-  const liveInterpretation = confirming ? null : (interpretation ?? null);
-
   if (!source) {
+    // userMessage itself — liveAssessment already covers it (null when
+    // confirming/skipLlm, since a confirm text is never order-placement).
     return {
       draft,
       cartActions: [],
-      meta: extractOrderMessageMeta(userMessage, liveInterpretation),
+      meta: await extractOrderMessageMeta(userMessage, liveInterpretation, liveAssessment),
     };
   }
 
-  const backfill = backfillDraftFromOrderMessage(draft, catalog, source, {
+  // When confirming, `source` is a DIFFERENT (historical) message than
+  // userMessage — segmentation is a pure function of text (unlike
+  // turnInterpretation), so fetch it fresh for `source` rather than reusing
+  // liveAssessment (which was computed for userMessage's confirm text).
+  // When not confirming, source === userMessage — reuse liveAssessment.
+  const sourceAssessment = confirming
+    ? (skipLlm ? null : await assessOrderSegments(source))
+    : liveAssessment;
+
+  const backfill = await backfillDraftFromOrderMessage(draft, catalog, source, {
     requirePlacementPattern: !confirming,
     interpretation: liveInterpretation,
+    segmentsAssessment: sourceAssessment,
   });
 
   return {
     ...backfill,
     meta: mergeOrderBackfillMeta(
       backfill.meta,
-      extractOrderMessageMeta(source, liveInterpretation)
+      await extractOrderMessageMeta(source, liveInterpretation, sourceAssessment)
     ),
   };
 }

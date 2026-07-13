@@ -286,11 +286,17 @@ async function maybeBackfillPlacementCart(input: {
         }))
       : [];
 
-    const backfill = maybeBackfillOrderDraft(
+    // Non-LLM template-turn fast path — no main comprehension call ran this
+    // turn, so there's no fresh turnInterpretation/LLM budget to spend here.
+    // Same narrow, documented perf exception as T0 reflex; the live guest-turn
+    // path (apply-order-comprehend.ts) always uses real LLM segmentation.
+    const backfill = await maybeBackfillOrderDraft(
       cartDraftToAiOrderDraft(input.cartDraft),
       catalog,
       input.userMessage,
-      priorMessages
+      priorMessages,
+      null,
+      { skipLlmSegmentation: true }
     );
 
     if (backfill.draft.items.length === 0) {

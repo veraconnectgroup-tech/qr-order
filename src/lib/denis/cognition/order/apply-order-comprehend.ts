@@ -22,7 +22,7 @@ export type ApplyOrderComprehendInput = {
 
 export type ApplyOrderComprehendResult = {
   draft: AiOrderDraft;
-  cartActions: ReturnType<typeof processOrderingTurn>["cartActions"];
+  cartActions: Awaited<ReturnType<typeof processOrderingTurn>>["cartActions"];
   quickReplies: string[];
   intent: AiStructuredResponse["intent"];
   submitOrder: boolean;
@@ -33,10 +33,10 @@ export type ApplyOrderComprehendResult = {
  * ADR-034-A.1 — canonical post-LLM order comprehend (cart + submit intent).
  * Gap/substitution/drink clarify → cognition/waiter only (enforceWaiterTell + DECIDE).
  */
-export function applyOrderComprehend(
+export async function applyOrderComprehend(
   input: ApplyOrderComprehendInput
-): ApplyOrderComprehendResult {
-  const orderingResult = processOrderingTurn({
+): Promise<ApplyOrderComprehendResult> {
+  const orderingResult = await processOrderingTurn({
     userMessage: input.userMessage,
     allowOrdering: input.allowOrdering,
     orderDraftRaw: input.orderDraft,
@@ -52,7 +52,7 @@ export function applyOrderComprehend(
     guestMessage: input.userMessage,
   });
 
-  const postOrderBackfill = maybeBackfillOrderDraft(
+  const postOrderBackfill = await maybeBackfillOrderDraft(
     workingDraft,
     input.catalog,
     input.userMessage,

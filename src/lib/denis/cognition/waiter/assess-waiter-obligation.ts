@@ -7,7 +7,7 @@ import type { DenisCartLine } from "@/lib/denis/kernel/cart-projection";
 import type { PendingSlotKind } from "@/lib/denis/platform/pending-slot-types";
 import type { TranscriptEntry } from "@/lib/denis/loop/view-types";
 import {
-  extractOrderMessageMeta,
+  extractOrderMessageMetaSync,
   isOrderPlacementMessage,
 } from "@/lib/ai/ordering/order-message-backfill";
 import {
@@ -192,7 +192,7 @@ function mergeMessageMeta(messages: Array<string | null | undefined>) {
   for (const raw of messages) {
     const text = raw?.trim();
     if (!text || !isOrderPlacementMessage(text)) continue;
-    const meta = extractOrderMessageMeta(text);
+    const meta = extractOrderMessageMetaSync(text);
     if (meta.substitution && !substitution) substitution = meta.substitution;
     if (meta.needsDrinkClarify) needsDrinkClarify = true;
   }

@@ -134,11 +134,13 @@ export async function maybeBackfillPlacementCart(input: {
         }))
       : [];
 
-    const backfill = maybeBackfillOrderDraft(
+    const backfill = await maybeBackfillOrderDraft(
       cartDraftToAiOrderDraft(input.cartDraft),
       catalog,
       input.userMessage,
-      priorMessages
+      priorMessages,
+      null,
+      { skipLlmSegmentation: true }
     );
 
     if (backfill.draft.items.length === 0) {

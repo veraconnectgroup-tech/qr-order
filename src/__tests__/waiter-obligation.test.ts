@@ -15,7 +15,7 @@ import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
 import { buildViewLayers } from "@/lib/denis/loop/project-view-layers";
 import { buildFoldMeta } from "@/lib/denis/loop/compute-truth-hash";
 import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
-import { extractOrderMessageMeta } from "@/lib/ai/ordering/order-message-backfill";
+import { extractOrderMessageMetaSync } from "@/lib/ai/ordering/order-message-backfill";
 import type { TableSessionState } from "@/lib/denis/loop/types";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import {
@@ -153,7 +153,7 @@ describe("waiter obligation (ADR-032)", () => {
   });
 
   it("generic pivo in cart keeps drink_unspecified gap (eval/live parity)", () => {
-    const meta = extractOrderMessageMeta("moze jedno pivo i beef burger");
+    const meta = extractOrderMessageMetaSync("moze jedno pivo i beef burger");
     expect(meta.needsDrinkClarify).toBe(true);
 
     const cartLines = [

@@ -11,6 +11,7 @@ import {
 import { finalizeOrderFlow } from "@/lib/ai/ordering/order-flow";
 import type { AiCatalog } from "@/lib/ai/catalog/catalog-types";
 import { EMPTY_TURN_INTERPRETATION } from "@/lib/denis/cognition/tde/turn-interpretation-types";
+import type { OrderSegmentsAssessment } from "@/lib/ai/ordering/order-segments-types";
 
 function mockCatalog(): AiCatalog {
   const kisela = {
@@ -164,7 +165,7 @@ describe("order message backfill", () => {
     expect(isOrderPlacementMessage("da")).toBe(false);
   });
 
-  it("adds new lines to an existing draft (additive backfill)", () => {
+  it("adds new lines to an existing draft (additive backfill)", async () => {
     const catalog = mockCatalog();
     const existing = {
       ...emptyOrderDraft(),
@@ -182,7 +183,7 @@ describe("order message backfill", () => {
         },
       ],
     };
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       existing,
       catalog,
       "dodaj pileci burger i jedan cevap",
@@ -192,9 +193,9 @@ describe("order message backfill", () => {
     expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("backfills beer + tea combo without explicit i connector", () => {
+  it("backfills beer + tea combo without explicit i connector", async () => {
     const catalog = mockCatalog();
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
       "veliki pils zeleni caj molim te"
@@ -203,9 +204,9 @@ describe("order message backfill", () => {
     expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("does not backfill generic jedno veliko pivo to a random beer", () => {
+  it("does not backfill generic jedno veliko pivo to a random beer", async () => {
     const catalog = mockCatalog();
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
       "jedno veliko pivo"
@@ -214,9 +215,9 @@ describe("order message backfill", () => {
     expect(result.draft.items).toHaveLength(0);
   });
 
-  it("backfills draft from catalog search", () => {
+  it("backfills draft from catalog search", async () => {
     const catalog = mockCatalog();
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
       "Daj mi kiselu malu, Pilsner 0.5 i beef burger sa pomfritom"
@@ -225,9 +226,9 @@ describe("order message backfill", () => {
     expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("maybeBackfill uses prior user message on da", () => {
+  it("maybeBackfill uses prior user message on da", async () => {
     const catalog = mockCatalog();
-    const result = maybeBackfillOrderDraft(
+    const result = await maybeBackfillOrderDraft(
       emptyOrderDraft(),
       catalog,
       "da",
@@ -242,9 +243,9 @@ describe("order message backfill", () => {
     expect(result.draft.items.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("maybeBackfill on da recovers bare product name (Pilsner)", () => {
+  it("maybeBackfill on da recovers bare product name (Pilsner)", async () => {
     const catalog = mockCatalog();
-    const result = maybeBackfillOrderDraft(
+    const result = await maybeBackfillOrderDraft(
       emptyOrderDraft(),
       catalog,
       "Da",
@@ -265,9 +266,9 @@ describe("order message backfill", () => {
     expect(result.draft.items[0]?.productName).toMatch(/Pilsner/i);
   });
 
-  it("finalizeOrderFlow submits when awaiting confirm and draft has items", () => {
+  it("finalizeOrderFlow submits when awaiting confirm and draft has items", async () => {
     const catalog = mockCatalog();
-    const backfill = maybeBackfillOrderDraft(emptyOrderDraft(), catalog, "da", [
+    const backfill = await maybeBackfillOrderDraft(emptyOrderDraft(), catalog, "da", [
       {
         role: "user",
         content: "Pilsner 0,3l",
@@ -301,12 +302,12 @@ describe("order message backfill", () => {
     expect(result.submitOrder).toBe(false);
   });
 
-  it("extractOrderMessageMeta flags generic pivo in compact line", () => {
-    const meta = extractOrderMessageMeta("moze jedno pivo beef burger sa");
+  it("extractOrderMessageMeta flags generic pivo in compact line", async () => {
+    const meta = await extractOrderMessageMeta("moze jedno pivo beef burger sa");
     expect(meta.needsDrinkClarify).toBe(true);
   });
 
-  it("maybeBackfill keeps drink clarify meta when cart already has items", () => {
+  it("maybeBackfill keeps drink clarify meta when cart already has items", async () => {
     const catalog = mockCatalog();
     const draft = {
       ...emptyOrderDraft(),
@@ -324,7 +325,7 @@ describe("order message backfill", () => {
         },
       ],
     };
-    const result = maybeBackfillOrderDraft(
+    const result = await maybeBackfillOrderDraft(
       draft,
       catalog,
       "moze jedno pivo beef burger sa",
@@ -334,7 +335,7 @@ describe("order message backfill", () => {
     expect(result.cartActions).toHaveLength(0);
   });
 
-  it("uses real LLM turnInterpretation for plain modifiers the regex fallback can't see", () => {
+  it("uses real LLM turnInterpretation for plain modifiers the regex fallback can't see", async () => {
     // synthesizeTurnInterpretationFromRouter only ever derives "X umesto Y"
     // swaps from regex — a plain modifier like "bez luka" is invisible to it.
     // Passing the LLM's own turnInterpretation must surface it.
@@ -343,7 +344,7 @@ describe("order message backfill", () => {
       ...EMPTY_TURN_INTERPRETATION,
       preferences: ["bez luka"],
     };
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
       "Beef burger bez luka",
@@ -353,13 +354,13 @@ describe("order message backfill", () => {
     expect(result.draft.items[0]?.notes).toMatch(/bez luka/i);
   });
 
-  it("maybeBackfillOrderDraft threads real interpretation through for the current message", () => {
+  it("maybeBackfillOrderDraft threads real interpretation through for the current message", async () => {
     const catalog = mockCatalog();
     const interpretation = {
       ...EMPTY_TURN_INTERPRETATION,
       preferences: ["bez luka"],
     };
-    const result = maybeBackfillOrderDraft(
+    const result = await maybeBackfillOrderDraft(
       emptyOrderDraft(),
       catalog,
       "Beef burger bez luka",
@@ -370,7 +371,7 @@ describe("order message backfill", () => {
     expect(result.draft.items[0]?.notes).toMatch(/bez luka/i);
   });
 
-  it("does not misapply current-turn interpretation to a reconstructed prior message on confirm", () => {
+  it("does not misapply current-turn interpretation to a reconstructed prior message on confirm", async () => {
     const catalog = mockCatalog();
     // This interpretation belongs to the CURRENT turn's text ("da"), not the
     // prior order message being reconstructed — must not leak across.
@@ -378,7 +379,7 @@ describe("order message backfill", () => {
       ...EMPTY_TURN_INTERPRETATION,
       preferences: ["bez luka"],
     };
-    const result = maybeBackfillOrderDraft(
+    const result = await maybeBackfillOrderDraft(
       emptyOrderDraft(),
       catalog,
       "da",
@@ -393,6 +394,48 @@ describe("order message backfill", () => {
     );
     expect(result.draft.items).toHaveLength(1);
     expect(result.draft.items[0]?.notes ?? "").not.toMatch(/bez luka/i);
+  });
+
+  it("regex fallback asks for clarification on bare generic pivo (no assessment)", async () => {
+    const catalog = mockCatalog();
+    const result = await backfillDraftFromOrderMessage(
+      emptyOrderDraft(),
+      catalog,
+      "pivo",
+      { segmentsAssessment: null }
+    );
+    expect(result.draft.items).toHaveLength(0);
+    expect(result.meta.needsDrinkClarify).toBe(true);
+  });
+
+  it("real LLM segmentation resolves a specific product where the regex fallback would ask for clarification", async () => {
+    // "pivo" alone is generic to the regex fallback (isGenericBeerSegment) and
+    // never resolves — a real LLM segment assessment can know from context
+    // which product the guest meant and resolve it directly.
+    const catalog = mockCatalog();
+    const assessment: OrderSegmentsAssessment = {
+      isOrderPlacement: true,
+      segments: [
+        {
+          quotedSpan: "pivo",
+          quantity: 1,
+          personaHint: null,
+          productNameGuess: "Pilsner 0,3L",
+          isGenericCategory: false,
+          categoryGuess: null,
+          modifierText: null,
+        },
+      ],
+      confidence: 0.9,
+    };
+    const result = await backfillDraftFromOrderMessage(
+      emptyOrderDraft(),
+      catalog,
+      "pivo",
+      { segmentsAssessment: assessment }
+    );
+    expect(result.draft.items).toHaveLength(1);
+    expect(result.draft.items[0]?.productName).toMatch(/Pilsner/i);
   });
 
   it("appendOrderGapClarify adds drink question to recap", () => {

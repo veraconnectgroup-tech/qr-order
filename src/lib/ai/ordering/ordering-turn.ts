@@ -50,14 +50,14 @@ function confirmationForActions(actions: ValidatedCartAction[]) {
   return summary;
 }
 
-export function processOrderingTurn(input: {
+export async function processOrderingTurn(input: {
   userMessage: string;
   allowOrdering: boolean;
   orderDraftRaw: unknown;
   catalog: AiCatalog;
   structured?: AiStructuredResponse;
   language?: string;
-}): OrderingTurnResult {
+}): Promise<OrderingTurnResult> {
   let draft = initDraftFromStorage(input.orderDraftRaw);
 
   if (!input.allowOrdering) {
@@ -167,7 +167,7 @@ export function processOrderingTurn(input: {
     );
     draft = mutation.draft;
 
-    const backfill = backfillDraftFromOrderMessage(
+    const backfill = await backfillDraftFromOrderMessage(
       draft,
       input.catalog,
       input.userMessage,

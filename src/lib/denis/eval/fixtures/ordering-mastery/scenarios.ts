@@ -263,9 +263,9 @@ export const ORDERING_MASTERY_SCENARIOS: OrderingMasteryScenario[] = [
   },
 ];
 
-export function runOrderingMasteryScenario(
+export async function runOrderingMasteryScenario(
   scenario: OrderingMasteryScenario
-): { passed: boolean; errors: string[] } {
+): Promise<{ passed: boolean; errors: string[] }> {
   const errors: string[] = [];
   const catalog = {
     menuText: "",
@@ -333,7 +333,12 @@ export function runOrderingMasteryScenario(
     scenario.expect.personaNotes ||
     scenario.expect.modifierNotesIncludes
   ) {
-    const result = backfillDraftFromOrderMessage(
+    // These scenarios pin the deterministic regex-fallback layer's exact
+    // segment/quantity/persona/modifier behavior — segmentsAssessment:null
+    // forces that path so the eval stays reproducible, not dependent on a
+    // live network LLM call (the real assessOrderSegments path is covered
+    // separately, not by these fixtures).
+    const result = await backfillDraftFromOrderMessage(
       scenario.priorDraft ?? emptyOrderDraft(),
       catalog,
       scenario.message,
@@ -342,6 +347,7 @@ export function runOrderingMasteryScenario(
         interpretation: scenario.interpretation
           ? normalizeTurnInterpretation(scenario.interpretation)
           : undefined,
+        segmentsAssessment: null,
       }
     );
 
@@ -398,15 +404,17 @@ export function runOrderingMasteryScenario(
   return { passed: errors.length === 0, errors };
 }
 
-export function runOrderingMasterySuite(): {
+export async function runOrderingMasterySuite(): Promise<{
   ok: boolean;
   scenarioCount: number;
   results: Array<{ id: string; passed: boolean; errors: string[] }>;
-} {
-  const results = ORDERING_MASTERY_SCENARIOS.map((scenario) => {
-    const outcome = runOrderingMasteryScenario(scenario);
-    return { id: scenario.id, ...outcome };
-  });
+}> {
+  const results = await Promise.all(
+    ORDERING_MASTERY_SCENARIOS.map(async (scenario) => {
+      const outcome = await runOrderingMasteryScenario(scenario);
+      return { id: scenario.id, ...outcome };
+    })
+  );
   return {
     ok: results.every((row) => row.passed),
     scenarioCount: results.length,

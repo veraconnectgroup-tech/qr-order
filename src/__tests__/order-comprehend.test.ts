@@ -29,7 +29,7 @@ const catalog: AiCatalog = {
 };
 
 describe("applyOrderComprehend (ADR-034-A.1)", () => {
-  it("applies proposed items without gap patching (waiter owns gaps)", () => {
+  it("applies proposed items without gap patching (waiter owns gaps)", async () => {
     const structured: AiStructuredResponse = {
       intent: "order",
       recommendations: [],
@@ -47,7 +47,7 @@ describe("applyOrderComprehend (ADR-034-A.1)", () => {
       message: "Added espresso.",
     };
 
-    const result = applyOrderComprehend({
+    const result = await applyOrderComprehend({
       userMessage: "one espresso please",
       allowOrdering: true,
       orderDraft: initDraftFromStorage(null),

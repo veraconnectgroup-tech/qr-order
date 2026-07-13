@@ -27,7 +27,7 @@ export type ApplyStructuredPerceptionOrderingInput = {
 
 export type ApplyStructuredPerceptionOrderingResult = {
   message: string;
-  cartActions: ReturnType<typeof applyOrderComprehend>["cartActions"];
+  cartActions: Awaited<ReturnType<typeof applyOrderComprehend>>["cartActions"];
   quickReplies: string[];
   intent: string;
   submitOrder: boolean;
@@ -70,7 +70,7 @@ export async function applyStructuredPerceptionOrdering(
         await loadDenisTimeline(input.admin, input.sessionId)
       );
 
-    const kernel = applyOrderComprehend({
+    const kernel = await applyOrderComprehend({
       userMessage: input.userMessage,
       allowOrdering: true,
       orderDraft: initDraftFromStorage(sessionRow.order_draft),

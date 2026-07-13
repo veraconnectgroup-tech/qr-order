@@ -78,11 +78,11 @@ describe("guest substitution", () => {
     expect(msg).toMatch(/Pilsner|Weizen/i);
   });
 
-  it("backfills burger with note and flags generic beer", () => {
+  it("backfills burger with note and flags generic beer", async () => {
     const interpretation = normalizeTurnInterpretation({
       modifications: [{ swap: { from: "pomfrit", to: "kartoffel salata" } }],
     });
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       mockCatalog(),
       "jedno pivo, veliki beef burger sa kartoffel salatom umesto pomfrita",

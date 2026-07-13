@@ -228,9 +228,9 @@ describe("conversation mastery — guest substitution & modifiers", () => {
     expect(parseGuestSubstitution("Beef burger ali bez luka", interpretation)).toBeNull();
   });
 
-  it("backfills burger with modifier note", () => {
+  it("backfills burger with modifier note", async () => {
     const catalog = burgerCatalog();
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       catalog,
       "Beef burger ali bez luka",
@@ -329,7 +329,7 @@ describe("conversation mastery — guest substitution & modifiers", () => {
 });
 
 describe("conversation mastery — multi-turn ordering", () => {
-  it("builds correct cart across 3 turns (burger → beef → pilsner)", () => {
+  it("builds correct cart across 3 turns (burger → beef → pilsner)", async () => {
     const catalog = burgerCatalog();
 
     const turn1 = foldConversationModel({
@@ -348,14 +348,14 @@ describe("conversation mastery — multi-turn ordering", () => {
     expect(turn1.awaiting).toBe("recommendation_pick");
 
     let draft = emptyOrderDraft();
-    const turn2 = backfillDraftFromOrderMessage(draft, catalog, "Beef", {
+    const turn2 = await backfillDraftFromOrderMessage(draft, catalog, "Beef", {
       requirePlacementPattern: false,
     });
     draft = turn2.draft;
     expect(draft.items).toHaveLength(1);
     expect(draft.items[0]?.productName).toMatch(/Beef/i);
 
-    const turn3 = backfillDraftFromOrderMessage(draft, catalog, "Pilsner", {
+    const turn3 = await backfillDraftFromOrderMessage(draft, catalog, "Pilsner", {
       requirePlacementPattern: false,
       additive: true,
     });
@@ -481,9 +481,9 @@ describe("conversation mastery — decideTurnPlan wiring", () => {
     expect(plan.reason).toBe("conversation.awaiting_pick.comprehend");
   });
 
-  it("maybeBackfill on da uses prior order lines from transcript", () => {
+  it("maybeBackfill on da uses prior order lines from transcript", async () => {
     const catalog = burgerCatalog();
-    const result = maybeBackfillOrderDraft(emptyOrderDraft(), catalog, "da", [
+    const result = await maybeBackfillOrderDraft(emptyOrderDraft(), catalog, "da", [
       {
         role: "user",
         content: "Beef burger i Pilsner",
@@ -505,8 +505,8 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
     };
   }
 
-  it("group order → 4 item-units across 3 lines with personas", () => {
-    const result = backfillDraftFromOrderMessage(
+  it("group order → 4 item-units across 3 lines with personas", async () => {
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       masteryCatalog(),
       "Za mene burger, za ženu salatu, i za decu dva sladoleda",
@@ -530,9 +530,9 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
     );
   });
 
-  it('parses "dva" as quantity 2', () => {
+  it('parses "dva" as quantity 2', async () => {
     expect(parseLeadingOrderQuantity("dva sladoleda")?.quantity).toBe(2);
-    const result = backfillDraftFromOrderMessage(
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       masteryCatalog(),
       "dva sladoleda",
@@ -576,8 +576,8 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
     expect(next.items[0]?.productName).toMatch(/Weißbier/i);
   });
 
-  it("stacks burger modifiers in notes", () => {
-    const result = backfillDraftFromOrderMessage(
+  it("stacks burger modifiers in notes", async () => {
+    const result = await backfillDraftFromOrderMessage(
       emptyOrderDraft(),
       masteryCatalog(),
       "Burger bez luka, sa extra sirom, medium rare",
@@ -619,8 +619,8 @@ describe("conversation mastery — Prompt 86 ordering pipeline", () => {
     expect(segments.some((row) => /schnitzel/i.test(row.productText))).toBe(true);
   });
 
-  it("ordering mastery eval fixtures pass", () => {
-    const report = runOrderingMasterySuite();
+  it("ordering mastery eval fixtures pass", async () => {
+    const report = await runOrderingMasterySuite();
     if (!report.ok) {
       console.error(JSON.stringify(report.results.filter((r) => !r.passed), null, 2));
     }
