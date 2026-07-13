@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LogOut,
   Palette,
+  Plug,
 } from "lucide-react";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/platform/orgs", label: "Organizations", icon: Building2 },
   { href: "/platform/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/platform/denis-eval", label: "Denis eval", icon: FlaskConical },
+  { href: "/platform/integrations", label: "Integrations", icon: Plug },
   { href: "/platform/design-system", label: "Design system", icon: Palette },
   { href: "/dashboard/orders", label: "Staff dashboard", icon: BarChart3 },
 ];

@@ -1033,6 +1033,16 @@ type Tables = {
       | "certified"
       | "disabled";
   };
+  integration_approval_requests: {
+    id: string;
+    adapter_version_id: string;
+    requested_by_staff_id: string | null;
+    requested_at: string;
+    decision: "pending" | "approved" | "rejected";
+    reviewed_by_staff_id: string | null;
+    reviewed_at: string | null;
+    review_notes: string | null;
+  };
   denis_relationship_signals: {
     id: string;
     location_id: string;
