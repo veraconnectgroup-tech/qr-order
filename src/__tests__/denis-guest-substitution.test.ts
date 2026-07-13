@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildSubstitutionNegotiationMessage,
   isGenericBeerSegment,
+  parseGuestRemoval,
   parseGuestSubstitution,
 } from "@/lib/denis/cognition/conversation/guest-substitution";
 import { backfillDraftFromOrderMessage } from "@/lib/ai/ordering/order-message-backfill";
 import { emptyOrderDraft } from "@/lib/ai/ordering/draft-types";
 import type { AiCatalog, AiCatalogProduct } from "@/lib/ai/catalog/catalog-types";
 import { normalizeTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
+import { EMPTY_TURN_INTERPRETATION } from "@/lib/denis/cognition/tde/turn-interpretation-types";
 
 function mockCatalog(): AiCatalog {
   const burger: AiCatalogProduct = {
@@ -93,5 +95,28 @@ describe("guest substitution", () => {
     expect(result.draft.items[0]?.notes).toBe("");
     expect(result.meta.needsDrinkClarify).toBe(true);
     expect(result.meta.substitution).not.toBeNull();
+  });
+
+  it("parseGuestRemoval reads cancelItem from real LLM turnInterpretation", () => {
+    // The router-fallback regex only recognizes a fixed set of phrasings
+    // ("odustani od", "cancel", "ukloni"...) — a real LLM interpretation can
+    // recognize a removal request phrased in an entirely different way.
+    const interpretation = {
+      ...EMPTY_TURN_INTERPRETATION,
+      modifications: [{ cancelItem: "Pilsner" }],
+    };
+    const result = parseGuestRemoval("scratch the beer, actually", interpretation);
+    expect(result?.target).toBe("Pilsner");
+  });
+
+  it("parseGuestRemoval falls back to router regex when no real interpretation given", () => {
+    const result = parseGuestRemoval("Odustani od Pilsnera");
+    expect(result?.target).toMatch(/Pilsnera/i);
+  });
+
+  it("parseGuestRemoval returns null when interpretation has no cancelItem", () => {
+    const interpretation = { ...EMPTY_TURN_INTERPRETATION };
+    const result = parseGuestRemoval("hvala puno", interpretation);
+    expect(result).toBeNull();
   });
 });

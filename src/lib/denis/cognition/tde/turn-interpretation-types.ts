@@ -18,10 +18,13 @@ export type GuestMealStage =
 
 export type TurnModification = {
   swap?: { from: string; to: string };
+  /** Ingredient-level removal WITHIN an item (e.g. "bez luka") — not a cart line. */
   remove?: string;
   add?: string;
   modifier?: string;
   cooking?: string;
+  /** Guest wants to cancel/remove a WHOLE cart line (e.g. "odustani od pilsnera"). */
+  cancelItem?: string;
 };
 
 export type TurnInterpretation = {

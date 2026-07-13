@@ -17,6 +17,7 @@ import {
   unavailableItemsGuestNote,
 } from "@/lib/ai/ordering/proposed-item-guard";
 import { applyGuestCartMutations, isMidOrderCartSwapMessage } from "@/lib/denis/cognition/conversation/apply-guest-cart-mutations";
+import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 import type {
   AiOrderDraft,
   ValidatedCartAction,
@@ -154,16 +155,24 @@ export async function processOrderingTurn(input: {
     }
   }
 
+  const turnInterpretation = input.structured
+    ? extractTurnInterpretation({
+        structured: input.structured,
+        guestMessage: input.userMessage,
+      })
+    : null;
+
   if (
     cartActions.length === 0 &&
     !draft.pending &&
     (isOrderPlacementMessage(input.userMessage) ||
-      isMidOrderCartSwapMessage(input.userMessage))
+      isMidOrderCartSwapMessage(input.userMessage, turnInterpretation))
   ) {
     const mutation = applyGuestCartMutations(
       draft,
       input.catalog,
-      input.userMessage
+      input.userMessage,
+      turnInterpretation
     );
     draft = mutation.draft;
 
@@ -171,7 +180,10 @@ export async function processOrderingTurn(input: {
       draft,
       input.catalog,
       input.userMessage,
-      { additive: draft.items.length > 0 && !mutation.swapped && !mutation.removed }
+      {
+        additive: draft.items.length > 0 && !mutation.swapped && !mutation.removed,
+        interpretation: turnInterpretation,
+      }
     );
     draft = backfill.draft;
     cartActions = backfill.cartActions;

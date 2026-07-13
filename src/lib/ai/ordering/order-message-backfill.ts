@@ -552,7 +552,7 @@ export async function backfillDraftFromOrderMessage(
     };
   }
 
-  const mutation = applyGuestCartMutations(draft, catalog, message);
+  const mutation = applyGuestCartMutations(draft, catalog, message, interpretation);
   draft = mutation.draft;
   if (mutation.swapped || mutation.removed) {
     return {

@@ -393,7 +393,7 @@ function outputFormatBlock(): string {
   "turnInterpretation": {
     "sentiment": "neutral|positive|frustrated|confused",
     "mealStage": "pre_order|ordering|waiting|eating|dessert|paying|null",
-    "modifications": [{ "swap": {"from":"", "to":""}, "remove": "", "add": "", "modifier": "", "cooking": "" }],
+    "modifications": [{ "swap": {"from":"", "to":""}, "remove": "", "add": "", "modifier": "", "cooking": "", "cancelItem": "" }],
     "preferences": ["bez luka", "vegan"],
     "followUpMinutes": null,
     "partySize": null,

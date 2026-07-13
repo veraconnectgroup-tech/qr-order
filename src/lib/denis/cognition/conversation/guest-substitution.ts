@@ -178,28 +178,32 @@ export function parseGuestCartSwap(
   };
 }
 
-export function parseGuestRemoval(message: string): GuestRemovalRequest | null {
-  const text = message.trim();
-  if (!text || text.length > 160) return null;
-
-  const patterns: Array<{ regex: RegExp; group: number }> = [
-    { regex: /\b(?:odustani|odustanem)\s+(?:od|from)\s+(.+)/i, group: 1 },
-    { regex: /\b(?:cancel|storniraj|ukloni|remove|obri[sš]i)\s+(.+)/i, group: 1 },
-    {
-      regex: /\bne\s+(?:treba|želim|zelim|ho[cć]u|hocu)\s+(.+)/i,
-      group: 1,
-    },
-  ];
-
-  for (const { regex, group } of patterns) {
-    const match = text.match(regex);
-    const target = match?.[group]?.trim();
+function removalFromInterpretation(
+  interpretation: TurnInterpretation
+): GuestRemovalRequest | null {
+  for (const mod of interpretation.modifications) {
+    const target = mod.cancelItem?.trim();
     if (target && target.length >= 2) {
-      return { target, rawPhrase: match![0] };
+      return { target, rawPhrase: target };
     }
   }
-
   return null;
+}
+
+/**
+ * Guest wants a whole cart line cancelled ("odustani od Pilsnera", "cancel
+ * the fries"). Genuine LLM understanding via turnInterpretation.modifications
+ * (cancelItem) — regex only survives as extract-turn-interpretation.ts's
+ * router fallback for turns with no real LLM output this turn, same
+ * documented tradeoff as swapModificationFromText there.
+ */
+export function parseGuestRemoval(
+  message: string,
+  interpretation?: TurnInterpretation | null
+): GuestRemovalRequest | null {
+  const text = message.trim();
+  if (!text || text.length > 160) return null;
+  return removalFromInterpretation(resolveInterpretation(text, interpretation));
 }
 
 function lineMatchesTarget(lineName: string, query: string): boolean {

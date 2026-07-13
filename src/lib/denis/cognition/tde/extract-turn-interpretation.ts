@@ -114,6 +114,24 @@ function swapModificationFromText(text: string): TurnModification | null {
   return { swap: { from: insteadOf, to: requested } };
 }
 
+const CANCEL_ITEM_PATTERNS: Array<{ regex: RegExp; group: number }> = [
+  { regex: /\b(?:odustani|odustanem)\s+(?:od|from)\s+(.+)/i, group: 1 },
+  { regex: /\b(?:cancel|storniraj|ukloni|remove|obri[sš]i)\s+(.+)/i, group: 1 },
+  { regex: /\bne\s+(?:treba|želim|zelim|ho[cć]u|hocu)\s+(.+)/i, group: 1 },
+];
+
+/** Deterministic cart-line-cancel detection when LLM interpretation is unavailable. */
+function cancelItemModificationFromText(text: string): TurnModification | null {
+  for (const { regex, group } of CANCEL_ITEM_PATTERNS) {
+    const match = text.match(regex);
+    const target = match?.[group]?.trim();
+    if (target && target.length >= 2) {
+      return { cancelItem: target };
+    }
+  }
+  return null;
+}
+
 /** Router fallback when LLM did not return turnInterpretation (T0/T1 / template turns). */
 export function synthesizeTurnInterpretationFromRouter(
   guestMessage: string
@@ -125,12 +143,16 @@ export function synthesizeTurnInterpretationFromRouter(
   const intent = route.intent;
   const followUpMinutes = followUpMinutesFromFormat(text);
   const swap = swapModificationFromText(text);
+  const cancelItem = swap ? null : cancelItemModificationFromText(text);
+  const modifications: TurnModification[] = [];
+  if (swap) modifications.push(swap);
+  if (cancelItem) modifications.push(cancelItem);
 
   return {
     ...EMPTY_TURN_INTERPRETATION,
     sentiment: sentimentFromRouterIntent(intent),
     mealStage: mealStageFromRouterIntent(intent),
-    modifications: swap ? [swap] : [],
+    modifications,
     followUpMinutes,
   };
 }
