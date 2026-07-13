@@ -1257,12 +1257,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const perceptionChannel: PerceptionChannel =
     input.channel === "voice" ? "voice.transcript" : "chat.message";
 
-  // MVP-1/2 — shadow-only logging, never touches the guest-visible reply.
-  // See resolve-guest-conduct-policy.ts and run-guest-conduct-shadow-check.ts.
+  // MVP-1/2/3 — shadow-only logging, never touches the guest-visible reply.
+  // MVP-4 (mission/notification on handoff) only fires for real when
+  // guestConductConfig.shadowOnly is false — see run-guest-conduct-shadow-check.ts.
   await runGuestConductShadowCheck(admin, {
     aiSessionId: chatAiSessionId ?? null,
     message: parsed.data.message,
     guestConductConfig: ctx.config.ops.guestConduct,
+    orgId: orgResult.data.orgId,
+    locationId: ctx.locationId,
+    tableId: parsed.data.tableId,
     traceId,
   });
 

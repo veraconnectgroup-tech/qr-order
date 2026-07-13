@@ -8,6 +8,8 @@ import {
 } from "@/lib/denis/cognition/policy/guest-conduct-tracker-store";
 import { resolveGuestConductPolicy } from "@/lib/denis/cognition/policy/resolve-guest-conduct-policy";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
+import { createMission } from "@/lib/denis/missions/create-mission";
+import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 
 /**
  * MVP-1/2/3 (Architecture Proposal §16 steps 1-3) — pure logging side
@@ -29,8 +31,67 @@ import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-e
  * already owned elsewhere) and never to service frustration
  * (frustration-recovery.ts's territory) — per the founder's own explicit
  * scope decision: this ladder is only for rudeness directed at Denis.
+ *
+ * MVP-4 (Architecture Proposal §16 step 4) — a handoff-tier decision now
+ * creates a real denis_missions row + staff notification, but ONLY when
+ * `guestConductConfig.shadowOnly` is false. While shadowOnly (today's
+ * default), this only ever LOGS `wouldCreateMission` — the ladder itself
+ * hasn't been cleared for live guest impact yet (step 5), and a staff
+ * mission/notification is exactly the kind of real-world side effect that
+ * shadow mode exists to hold back. createMission's own idempotency guard
+ * (one open mission per ai_session_id+kind) makes it safe to call this
+ * every turn the tier stays at "handoff", not just on the transition turn.
  */
 const MIN_CONFIDENCE_TO_ACT = 0.55;
+
+async function maybeCreateHandoffMission(
+  admin: SupabaseClient,
+  input: {
+    aiSessionId: string;
+    orgId: string | null;
+    locationId: string | null;
+    tableId: string | null;
+    tier: string;
+    shadowOnly: boolean;
+    traceId?: string;
+  }
+): Promise<{ wouldCreateMission: boolean; missionId: string | null }> {
+  if (input.tier !== "handoff") return { wouldCreateMission: false, missionId: null };
+  if (!input.orgId || !input.locationId) {
+    return { wouldCreateMission: true, missionId: null };
+  }
+  if (input.shadowOnly) {
+    return { wouldCreateMission: true, missionId: null };
+  }
+
+  const result = await createMission(admin, {
+    kind: "guest_conduct_handoff",
+    orgId: input.orgId,
+    locationId: input.locationId,
+    tableId: input.tableId,
+    aiSessionId: input.aiSessionId,
+    priority: "urgent",
+    title: "Guest conduct handoff",
+    summary:
+      "Denis's guest-conduct ladder reached handoff — a colleague should take over this conversation.",
+  });
+
+  if (!result.created) {
+    return { wouldCreateMission: true, missionId: null };
+  }
+
+  await dispatchStaffNotification({
+    orgId: input.orgId,
+    locationId: input.locationId,
+    type: "denis_escalation",
+    priorityOverride: "urgent",
+    tableId: input.tableId ?? undefined,
+    message: "Denis need pomoć — gost je bio uporno neljubazan, preuzmite razgovor.",
+    actionUrl: input.tableId ? `/waiter/tables/${input.tableId}` : "/dashboard/denis",
+  }).catch(() => undefined);
+
+  return { wouldCreateMission: true, missionId: result.mission.id };
+}
 
 export async function runGuestConductShadowCheck(
   admin: SupabaseClient,
@@ -39,6 +100,9 @@ export async function runGuestConductShadowCheck(
     message: string;
     recentTranscript?: string[];
     guestConductConfig: { enabled: boolean; shadowOnly: boolean; canaryPercent: number };
+    orgId?: string | null;
+    locationId?: string | null;
+    tableId?: string | null;
     traceId?: string;
   }
 ): Promise<void> {
@@ -76,6 +140,16 @@ export async function runGuestConductShadowCheck(
   });
   await saveGuestConductTracker(nextTracker);
 
+  const missionOutcome = await maybeCreateHandoffMission(admin, {
+    aiSessionId: input.aiSessionId,
+    orgId: input.orgId ?? null,
+    locationId: input.locationId ?? null,
+    tableId: input.tableId ?? null,
+    tier: decision.tier,
+    shadowOnly: input.guestConductConfig.shadowOnly,
+    traceId: input.traceId,
+  });
+
   await appendDenisTimelineEvent(admin, {
     aiSessionId: input.aiSessionId,
     eventType: "conduct.policy_decision",
@@ -91,6 +165,8 @@ export async function runGuestConductShadowCheck(
       notifyStaff: decision.notifyStaff,
       reason: decision.auditReason,
       shadowOnly: input.guestConductConfig.shadowOnly,
+      wouldCreateMission: missionOutcome.wouldCreateMission,
+      missionId: missionOutcome.missionId,
     },
   });
 }

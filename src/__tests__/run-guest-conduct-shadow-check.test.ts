@@ -120,6 +120,126 @@ describe("runGuestConductShadowCheck", () => {
     expect(payload.offenseDetectedThisTurn).toBe(false);
   });
 
+  it("creates a real mission and notifies staff when tier reaches handoff and shadowOnly is false", async () => {
+    vi.doMock("@/lib/denis/security/abuse-protection", () => ({
+      detectAbuseSignals: () => ["offensive_content"],
+    }));
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
+      assessGuestConduct: vi.fn().mockResolvedValue({
+        toneTowardDenis: "severe_insult",
+        directedAt: "denis",
+        confidence: 0.9,
+        quotedSpan: "you are useless",
+      }),
+    }));
+    vi.doMock("@/lib/denis/cognition/policy/guest-conduct-tracker-store", () => ({
+      loadGuestConductTracker: vi.fn().mockResolvedValue({
+        aiSessionId: "session-1",
+        tier: "warn_2",
+        totalOffenseCount: 2,
+        respectfulStreak: 0,
+        tierSince: Date.now(),
+      }),
+      saveGuestConductTracker: saveTrackerMock,
+    }));
+    const createMissionMock = vi.fn().mockResolvedValue({
+      created: true,
+      mission: { id: "mission-1" },
+    });
+    vi.doMock("@/lib/denis/missions/create-mission", () => ({
+      createMission: createMissionMock,
+    }));
+    const dispatchMock = vi.fn().mockResolvedValue({ delivered: true });
+    vi.doMock("@/lib/denis/notifications/dispatch-staff-notification", () => ({
+      dispatchStaffNotification: dispatchMock,
+    }));
+    const { runGuestConductShadowCheck } = await import(
+      "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check"
+    );
+
+    await runGuestConductShadowCheck(fakeAdmin, {
+      aiSessionId: "session-1",
+      message: "you are useless",
+      guestConductConfig: { enabled: true, shadowOnly: false, canaryPercent: 100 },
+      orgId: "org-1",
+      locationId: "loc-1",
+      tableId: "table-1",
+    });
+
+    expect(createMissionMock).toHaveBeenCalledWith(
+      fakeAdmin,
+      expect.objectContaining({
+        kind: "guest_conduct_handoff",
+        orgId: "org-1",
+        locationId: "loc-1",
+        aiSessionId: "session-1",
+      })
+    );
+    expect(dispatchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "denis_escalation", tableId: "table-1" })
+    );
+    const payload = appendMock.mock.calls[0]?.[1]?.payload as Record<
+      string,
+      unknown
+    >;
+    expect(payload.tier).toBe("handoff");
+    expect(payload.wouldCreateMission).toBe(true);
+    expect(payload.missionId).toBe("mission-1");
+  });
+
+  it("only logs wouldCreateMission while shadowOnly, never calls createMission", async () => {
+    vi.doMock("@/lib/denis/security/abuse-protection", () => ({
+      detectAbuseSignals: () => ["offensive_content"],
+    }));
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
+      assessGuestConduct: vi.fn().mockResolvedValue({
+        toneTowardDenis: "severe_insult",
+        directedAt: "denis",
+        confidence: 0.9,
+        quotedSpan: "you are useless",
+      }),
+    }));
+    vi.doMock("@/lib/denis/cognition/policy/guest-conduct-tracker-store", () => ({
+      loadGuestConductTracker: vi.fn().mockResolvedValue({
+        aiSessionId: "session-1",
+        tier: "warn_2",
+        totalOffenseCount: 2,
+        respectfulStreak: 0,
+        tierSince: Date.now(),
+      }),
+      saveGuestConductTracker: saveTrackerMock,
+    }));
+    const createMissionMock = vi.fn();
+    vi.doMock("@/lib/denis/missions/create-mission", () => ({
+      createMission: createMissionMock,
+    }));
+    const dispatchMock = vi.fn();
+    vi.doMock("@/lib/denis/notifications/dispatch-staff-notification", () => ({
+      dispatchStaffNotification: dispatchMock,
+    }));
+    const { runGuestConductShadowCheck } = await import(
+      "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check"
+    );
+
+    await runGuestConductShadowCheck(fakeAdmin, {
+      aiSessionId: "session-1",
+      message: "you are useless",
+      guestConductConfig: enabledConfig,
+      orgId: "org-1",
+      locationId: "loc-1",
+    });
+
+    expect(createMissionMock).not.toHaveBeenCalled();
+    expect(dispatchMock).not.toHaveBeenCalled();
+    const payload = appendMock.mock.calls[0]?.[1]?.payload as Record<
+      string,
+      unknown
+    >;
+    expect(payload.tier).toBe("handoff");
+    expect(payload.wouldCreateMission).toBe(true);
+    expect(payload.missionId).toBeNull();
+  });
+
   it("does nothing when guestConduct is disabled", async () => {
     vi.doMock("@/lib/denis/security/abuse-protection", () => ({
       detectAbuseSignals: () => ["offensive_content"],
