@@ -1033,6 +1033,23 @@ type Tables = {
       | "certified"
       | "disabled";
   };
+  integration_credentials: {
+    id: string;
+    provider_id: string;
+    location_id: string;
+    environment: "sandbox" | "production";
+    credential_type:
+      | "api_key"
+      | "basic_auth"
+      | "oauth2_client_credentials"
+      | "bearer_token"
+      | "hmac_secret"
+      | "webhook_secret"
+      | "mtls_cert";
+    encrypted_value: string;
+    created_by_staff_id: string | null;
+    created_at: string;
+  };
   integration_approval_requests: {
     id: string;
     adapter_version_id: string;

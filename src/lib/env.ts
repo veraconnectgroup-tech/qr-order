@@ -15,4 +15,7 @@ export const env = {
   },
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
   cronSecret: process.env.CRON_SECRET,
+  get integrationCredentialsEncryptionKey() {
+    return isServer ? requireEnv("INTEGRATION_CREDENTIALS_ENCRYPTION_KEY") : "";
+  },
 } as const;
