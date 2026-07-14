@@ -1,4 +1,4 @@
-import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { loadConciergeConfigForSession } from "@/lib/denis/runtime/load-concierge-config-for-session";
 import { ensureSharedAiSessionForTableSession } from "@/lib/denis/loop/ensure-shared-ai-session";
 import { foldTableSessionState } from "@/lib/denis/loop/fold-table-session-state";
 import { mapFoldToTurnContext } from "@/lib/denis/runtime/map-fold-to-turn-context";
@@ -22,7 +22,13 @@ export async function buildDenisTurnContext(
   admin: SupabaseClient,
   input: DenisChatBody
 ): Promise<DenisTurnContext> {
-  const config = await loadConciergeConfigForLocation(input.locationId);
+  // M1 — apply any running live A/B experiment's config override for this
+  // session. Gracefully degrades to the plain location config when no
+  // sessionToken or no running experiment exists (see live-ab-store.ts).
+  const config = await loadConciergeConfigForSession(admin, {
+    locationId: input.locationId,
+    sessionToken: input.sessionToken,
+  });
 
   const guestTableSessionToken = resolveGuestTableSessionLookupToken(input);
 
