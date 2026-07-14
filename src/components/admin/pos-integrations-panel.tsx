@@ -41,6 +41,12 @@ const PROVIDER_LABELS: Record<PosProvider, string> = {
   custom: "Custom",
 };
 
+// Kept in sync with adapter-registry.ts's isPosAdapterBuilt — deliverect is
+// the only provider with a real (non-skeleton) adapter today. This is a
+// UX pre-check only; connectPosIntegration enforces the same rule
+// server-side regardless of what this list says.
+const AVAILABLE_POS_PROVIDERS: PosProvider[] = ["deliverect"];
+
 // Deliverect is a generic router — it never tells us which real POS sits
 // behind it. Without this, Denis falls back to the most conservative
 // capability assumptions (see pos-capability-matrix.ts) even for a
@@ -334,11 +340,15 @@ export function PosIntegrationsPanel({ locationId }: { locationId: string }) {
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(PROVIDER_LABELS) as PosProvider[]).map(
-                    (id) => (
-                      <SelectItem key={id} value={id}>
-                        {PROVIDER_LABELS[id]}
-                      </SelectItem>
-                    )
+                    (id) => {
+                      const available = AVAILABLE_POS_PROVIDERS.includes(id);
+                      return (
+                        <SelectItem key={id} value={id} disabled={!available}>
+                          {PROVIDER_LABELS[id]}
+                          {available ? "" : " (uskoro)"}
+                        </SelectItem>
+                      );
+                    }
                   )}
                 </SelectContent>
               </Select>

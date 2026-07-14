@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getPosAdapter } from "@/lib/pos/adapter-registry";
-import { SkeletonPosAdapter } from "@/lib/pos/adapters/skeleton-adapter";
+import { isPosAdapterBuilt } from "@/lib/pos/adapter-registry";
 import {
   resolvePosCapabilities,
   type PosCapabilities,
@@ -123,11 +122,7 @@ function resolvePosState(
   def: ConnectorDefinition,
   row: PosIntegrationRow | undefined
 ): Pick<ConnectorStatus, "state" | "healthy" | "lastError"> {
-  if (!def.builtInCode) {
-    return { state: "not_built", healthy: null, lastError: null };
-  }
-  const adapter = getPosAdapter(def.id);
-  if (!adapter || adapter instanceof SkeletonPosAdapter) {
+  if (!def.builtInCode || !isPosAdapterBuilt(def.id)) {
     return { state: "not_built", healthy: null, lastError: null };
   }
   if (!row || row.status === "disconnected") {

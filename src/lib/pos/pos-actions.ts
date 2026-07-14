@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/session";
 import { auditLog } from "@/lib/audit/log";
 import { notifyOwnersPosDisconnected } from "@/lib/fiscal/notify-pos-disconnect";
+import { isPosAdapterBuilt } from "@/lib/pos/adapter-registry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/types/database";
 
@@ -116,6 +117,18 @@ export async function connectPosIntegration(
   }
 
   await assertLocationAccess(parsed.data.locationId, staff.org_id);
+
+  // Same honesty check registry.ts's resolvePosState already applies on
+  // the read side (what Denis/the /admin/denis-integrations matrix
+  // reports) — previously never enforced here, so an admin could "connect"
+  // a provider with zero working adapter and this form would happily mark
+  // pos_integrations.status: "connected" even though every real order
+  // push would silently fail forever.
+  if (!isPosAdapterBuilt(parsed.data.provider)) {
+    return {
+      error: `${parsed.data.provider} nije još implementiran — obratite se podršci pre povezivanja.`,
+    };
+  }
 
   const existingSecret =
     typeof parsed.data.config.webhook_secret === "string"
