@@ -6,6 +6,7 @@ import { callOpenAiChat } from "@/lib/ai/openai-client";
 import type { OpenAiChatMessage } from "@/lib/ai/types";
 import { getStaffLocationId, requireAdmin } from "@/lib/auth/session";
 import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
+import { maybeProposeRuleFromAnswer } from "@/lib/denis/cognition/policy/maybe-propose-rule-from-answer";
 import { loadMenuAgentContextBlock } from "@/lib/denis/menu-agent/load-menu-agent-context";
 import {
   listMenuAgentToolDefinitions,
@@ -68,6 +69,15 @@ export const POST = withErrorHandler(
     }
 
     const admin = createAdminClient();
+
+    // Fire-and-forget — a secondary side-channel, never allowed to add
+    // latency to the owner's chat turn. See maybe-propose-rule-from-answer.ts.
+    void maybeProposeRuleFromAnswer(admin, {
+      locationId,
+      answerText: parsed.data.message,
+      staffId: staff.id,
+    }).catch(() => undefined);
+
     const [menuContext, brainContext] = await Promise.all([
       loadMenuAgentContextBlock(admin, locationId),
       assembleDenisBrainContext(locationId),

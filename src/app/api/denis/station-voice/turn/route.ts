@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import { maybeProposeRuleFromAnswer } from "@/lib/denis/cognition/policy/maybe-propose-rule-from-answer";
 import { interpretStationVoiceTurn } from "@/lib/denis/stations/interpret-station-voice-turn";
 import {
   appendStationQuestionTurn,
@@ -160,6 +161,14 @@ export const POST = withErrorHandler(
       },
       config
     );
+
+    // Fire-and-forget — a real-time voice conversation must never wait on
+    // this secondary side-channel. See maybe-propose-rule-from-answer.ts.
+    void maybeProposeRuleFromAnswer(admin, {
+      locationId: questionRow.location_id,
+      answerText: parsed.data.transcript,
+      staffId: staffRow.id,
+    }).catch(() => undefined);
 
     await appendStationQuestionTurn(
       admin,
