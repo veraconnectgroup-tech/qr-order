@@ -28,6 +28,8 @@ import {
   runStationQuestionTriggersForSession,
 } from "@/lib/denis/stations/station-questions";
 import { escalateAllOverdueBusTableObligations } from "@/lib/denis/cognition/waiter/bus-table-obligation";
+import { escalateAllOverdueMissions } from "@/lib/denis/missions/escalate-overdue-missions";
+import { expireOverduePendingRestaurantKnowledge } from "@/lib/denis/knowledge/restaurant-knowledge-store";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
 import {
   appendDenisTimelineEvent,
@@ -377,6 +379,26 @@ export async function runSessionWatcherTick(
   } catch (busError) {
     logger.warn("bus table escalation failed", {
       error: busError instanceof Error ? busError.message : String(busError),
+    });
+  }
+
+  try {
+    await escalateAllOverdueMissions(admin);
+  } catch (missionError) {
+    logger.warn("mission escalation failed", {
+      error:
+        missionError instanceof Error ? missionError.message : String(missionError),
+    });
+  }
+
+  try {
+    await expireOverduePendingRestaurantKnowledge(admin);
+  } catch (expireRuleError) {
+    logger.warn("restaurant knowledge proposal expiry failed", {
+      error:
+        expireRuleError instanceof Error
+          ? expireRuleError.message
+          : String(expireRuleError),
     });
   }
 
