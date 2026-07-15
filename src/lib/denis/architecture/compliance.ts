@@ -43,7 +43,6 @@ const PERCEIVE_GUEST_CHAT_TURN_FN_IMPORT_RE =
   /import\s+(?:type\s+)?\{[^}]*\bperceiveGuestChatTurn\b/;
 const PERCEIVE_GUEST_CHAT_TURN_ALLOWED_CALLERS = new Set([
   "src/lib/denis/runtime/run-denis-turn.ts",
-  "src/lib/denis/runtime/phases/run-tde-perceive.ts",
 ]);
 const CREATE_ORDER_IMPORT_RE = /from\s+["']@\/lib\/orders\/create-order["']/;
 
