@@ -53,6 +53,8 @@ export type WaiterUiKey =
   | "table.busTitle"
   | "table.busCta"
   | "table.busWaitSuffix"
+  | "table.missionTitle"
+  | "table.missionCta"
   | "session.since"
   | "calls.pending"
   | "calls.empty"
@@ -117,6 +119,8 @@ const en: Table = {
   "table.busTitle": "Bus table {table} — guests paid",
   "table.busCta": "Table cleared",
   "table.busWaitSuffix": "min since payment",
+  "table.missionTitle": "Denis needs help at {table}",
+  "table.missionCta": "Mark handled",
   "session.since": "Session since {time}",
   "calls.pending": "{count} pending",
   "calls.empty": "No waiter calls",
@@ -181,6 +185,8 @@ const de: Table = {
   "table.busTitle": "Tisch {table} abräumen — bezahlt",
   "table.busCta": "Abgeräumt",
   "table.busWaitSuffix": "Min seit Zahlung",
+  "table.missionTitle": "Denis braucht Hilfe an Tisch {table}",
+  "table.missionCta": "Als erledigt markieren",
   "session.since": "Sitzung seit {time}",
   "calls.pending": "{count} offen",
   "calls.empty": "Keine Kellnerrufe",
@@ -243,6 +249,8 @@ const sr: Table = {
   "table.busTitle": "Raspremi sto {table} — gosti platili",
   "table.busCta": "Raspremljeno",
   "table.busWaitSuffix": "min od plaćanja",
+  "table.missionTitle": "Denisu treba pomoć za sto {table}",
+  "table.missionCta": "Označi kao rešeno",
   "session.since": "Sesija od {time}",
   "calls.pending": "{count} otvorenih",
   "calls.empty": "Nema poziva konobara",

@@ -36,7 +36,9 @@ import { WaiterTableBillSheet } from "@/components/waiter/waiter-table-bill-shee
 import { WaiterQuickActions } from "@/components/waiter/waiter-quick-actions";
 import { WaiterTableSessionDenis } from "@/components/waiter/waiter-table-session-denis";
 import { WaiterBusTableBanner } from "@/components/waiter/waiter-bus-table-banner";
+import { WaiterMissionBanner } from "@/components/waiter/waiter-mission-banner";
 import { useTableBusObligation } from "@/hooks/use-table-bus-obligations";
+import { useTableMission } from "@/hooks/use-table-mission";
 import { usePullToRefresh } from "@/components/waiter/use-pull-to-refresh";
 import { useWaiterI18n } from "@/hooks/use-waiter-i18n";
 import { dateFnsLocaleForMenu } from "@/lib/i18n/date-fns-locale";
@@ -95,6 +97,7 @@ export function WaiterTableDetail({ tableId }: Props) {
     obligation: busObligation,
     refetch: refetchBusObligation,
   } = useTableBusObligation(tableId);
+  const { mission, refetch: refetchMission } = useTableMission(tableId);
 
   const canUpdateStatus = !["kitchen"].includes(staffRole);
 
@@ -270,6 +273,17 @@ export function WaiterTableDetail({ tableId }: Props) {
           {tableStatusLabel(visualStatus, t)}
         </p>
       </div>
+
+      {mission && (
+        <WaiterMissionBanner
+          mission={mission}
+          onCompleted={() => void refetchMission()}
+          labels={{
+            title: t("table.missionTitle").replace("{table}", table.name),
+            cta: t("table.missionCta"),
+          }}
+        />
+      )}
 
       {busObligation && (
         <WaiterBusTableBanner

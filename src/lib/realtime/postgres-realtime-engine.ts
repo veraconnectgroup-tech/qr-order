@@ -16,7 +16,8 @@ export type RealtimeTable =
   | "station_questions"
   | "denis_station_relay_messages"
   | "order_station_states"
-  | "table_bus_obligations";
+  | "table_bus_obligations"
+  | "denis_missions";
 
 export type RealtimeSubscriber = {
   onChange: () => void;
