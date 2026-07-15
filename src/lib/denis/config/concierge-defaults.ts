@@ -159,6 +159,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       expirySeconds: 90,
       meteredByCredits: false,
       escalateToBarEnabled: false,
+      handsFreeWakeWordEnabled: false,
     },
     stationAwareTell: false,
     tableTempo: {

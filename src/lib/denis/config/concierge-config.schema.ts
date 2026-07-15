@@ -231,6 +231,17 @@ const ConciergeStationQuestionsSchema = z
      * top of an escalation) — see escalate-kitchen-question-to-bar.ts.
      */
     escalateToBarEnabled: z.boolean().default(false),
+    /**
+     * ADR-053 P1 — hands-free station voice: the station tablet keeps a
+     * local-only mic pipeline armed (industrial noise profile → VAD →
+     * wake-word), and a detected "hej Denise" opens the SAME WebRTC
+     * Realtime session the "Pozovi Denisa" button opens. All audio
+     * processing before the wake word stays on-device — nothing is sent
+     * anywhere until it fires (ADR-053 §4 privacy boundary). Defaults
+     * off: enable per location only after the founder's real-device P0
+     * verification, same rollout discipline as escalateToBarEnabled.
+     */
+    handsFreeWakeWordEnabled: z.boolean().default(false),
   })
   .default({
     enabled: false,
@@ -243,6 +254,7 @@ const ConciergeStationQuestionsSchema = z
     expirySeconds: 90,
     meteredByCredits: false,
     escalateToBarEnabled: false,
+    handsFreeWakeWordEnabled: false,
   });
 
 const ConciergeTableTempoSchema = z

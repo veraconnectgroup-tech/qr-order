@@ -8,6 +8,11 @@ import {
   type DenisRealtimeConnection,
 } from "@/lib/denis/surfaces/voice/realtime-webrtc-connection";
 import { attachRealtimeToolCallRelay } from "@/lib/denis/surfaces/voice/realtime-tool-call-relay";
+import {
+  isStationEarSupported,
+  shouldArmStationEar,
+  useDenisStationEar,
+} from "@/hooks/use-denis-station-ear";
 
 // WebGL/Canvas is browser-only — never render on the server.
 const DenisVoiceOrb = dynamic(
@@ -51,6 +56,42 @@ export function DenisCallButton({
   useEffect(() => {
     setSupported(isRealtimeWebRTCSupported());
   }, []);
+
+  // ADR-053 P1 — hands-free: per-location flag fetched once; when on, the
+  // local wake-word ear runs while idle and a detected "hej Denise" starts
+  // the same call the button starts. Disarmed the moment a call is in
+  // flight so the ear never re-triggers over an active session.
+  const [handsFreeEnabled, setHandsFreeEnabled] = useState(false);
+  useEffect(() => {
+    if (!supported) return;
+    let cancelled = false;
+    fetch(
+      `/api/denis/station-voice/hands-free?locationId=${encodeURIComponent(locationId)}`
+    )
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data?: { handsFreeWakeWordEnabled?: boolean };
+        };
+        if (!cancelled && json.data?.handsFreeWakeWordEnabled) {
+          setHandsFreeEnabled(true);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [supported, locationId]);
+
+  const earArmed = shouldArmStationEar({
+    handsFreeEnabled,
+    browserSupported: supported && isStationEarSupported(),
+    callActive: state !== "idle" && state !== "error",
+  });
+  const { state: earState } = useDenisStationEar({
+    enabled: earArmed,
+    onWakeWord: () => void handleCall(),
+  });
 
   function attachRemoteStreamAnalyser(stream: MediaStream) {
     const AudioContextCtor =
@@ -137,6 +178,13 @@ export function DenisCallButton({
         >
           Pozovi Denisa 📞
         </button>
+        {earState === "listening" ? (
+          // ADR-053 §6 — the ear must be visibly announced whenever it's
+          // armed; staff should never wonder whether the mic is live.
+          <p className="text-xs text-orange-200/70">
+            🎙️ Denis sluša — reci „hej Denise"
+          </p>
+        ) : null}
         {state === "error" && statusText ? (
           <p className="text-xs text-red-300">{statusText}</p>
         ) : null}
