@@ -10,7 +10,11 @@ import {
 } from "@/lib/denis/commerce/loyalty/guest-level";
 
 type LoyaltyApiProfile = LoyaltyProfileView & {
-  levelUpEvent?: { newLevel: GuestLevelId; celebrationMessage: string } | null;
+  levelUpEvent?: {
+    newLevel: GuestLevelId;
+    celebrationMessage: string;
+    rewardLabels?: string[];
+  } | null;
 };
 
 export function useGuestLoyalty(input: {
@@ -23,6 +27,7 @@ export function useGuestLoyalty(input: {
   const [celebration, setCelebration] = useState<{
     newLevel: GuestLevelId;
     message: string;
+    rewardLabels?: string[];
   } | null>(null);
   const seenLevelRef = useRef<GuestLevelId | null>(null);
 
@@ -55,9 +60,14 @@ export function useGuestLoyalty(input: {
           totalSpent: next.totalSpent,
         });
         if (event) {
+          const rewardLabels =
+            next.levelUpEvent?.newLevel === event.newLevel
+              ? next.levelUpEvent.rewardLabels
+              : undefined;
           setCelebration({
             newLevel: event.newLevel,
             message: event.celebrationMessage,
+            rewardLabels,
           });
         }
       }

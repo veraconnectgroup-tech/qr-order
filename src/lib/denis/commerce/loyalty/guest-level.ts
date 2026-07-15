@@ -100,6 +100,7 @@ export type LevelUpEvent = {
   previousLevel: GuestLevelId;
   newLevel: GuestLevelId;
   celebrationMessage: string;
+  rewardLabels?: string[];
 };
 
 export function resolveGuestLevel(input: GuestLevelInput): GuestLevelDefinition {
@@ -212,6 +213,34 @@ export function buildLevelUpNudge(input: GuestLevelInput, language?: string): st
   }
   const visitWord = visits === 1 ? "poseta" : "posete";
   return `Još ${visits} ${visitWord} do ${target} statusa!`;
+}
+
+export type LoyaltyRewardEntry = {
+  rewardType: string;
+  rewardValue: string;
+};
+
+export function formatLoyaltyRewardLabel(
+  reward: LoyaltyRewardEntry,
+  language?: string
+): string {
+  const lang = (language ?? "sr").slice(0, 2);
+  switch (reward.rewardType) {
+    case "waitlist_priority":
+      return lang === "en"
+        ? `Waitlist priority ${reward.rewardValue}`
+        : `Prioritet na listi čekanja ${reward.rewardValue}`;
+    case "free_dessert":
+      return lang === "en" ? "Free dessert (monthly)" : "Poklon dezert (mesečno)";
+    case "secret_menu":
+      return lang === "en" ? "Secret menu access" : "Pristup tajnom meniju";
+    case "monthly_surprise":
+      return lang === "en" ? "Monthly surprise" : "Mesečno iznenađenje";
+    case "exclusive_events":
+      return lang === "en" ? "Exclusive event invites" : "Pozivnice za ekskluzivne događaje";
+    default:
+      return `${reward.rewardType}: ${reward.rewardValue}`;
+  }
 }
 
 export function buildDenisToneGuide(level: GuestLevelDefinition): string {

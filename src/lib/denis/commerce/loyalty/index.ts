@@ -5,6 +5,7 @@ export {
   buildNextLevelProgress,
   buildReturningGuestGreeting,
   detectLevelUp,
+  formatLoyaltyRewardLabel,
   resolveGuestLevel,
   resolveWaitlistPriorityBoost,
   type GuestLevelDefinition,
@@ -12,6 +13,7 @@ export {
   type GuestLevelInput,
   type GuestLevelKey,
   type LevelUpEvent,
+  type LoyaltyRewardEntry,
   type NextLevelProgress,
 } from "@/lib/denis/commerce/loyalty/guest-level";
 

@@ -241,6 +241,39 @@ export async function recordLoyaltyRedeem(
   return { ok: true, profile: updated!, discountEuros: result.discountEuros };
 }
 
+export async function loadLoyaltyRewardsForLevel(
+  admin: SupabaseClient,
+  locationId: string,
+  level: GuestLevelId
+): Promise<{ rewardType: string; rewardValue: string }[]> {
+  const { data } = await admin
+    .from("loyalty_rewards" as never)
+    .select("location_id, reward_type, reward_value")
+    .eq("level", level)
+    .eq("is_active", true)
+    .or(`location_id.eq.${locationId},location_id.is.null`);
+
+  const rows = (data ?? []) as {
+    location_id: string | null;
+    reward_type: string;
+    reward_value: string;
+  }[];
+
+  const byType = new Map<string, { rewardType: string; rewardValue: string }>();
+  for (const row of rows) {
+    const existing = byType.get(row.reward_type);
+    const isLocationSpecific = row.location_id === locationId;
+    if (!existing || isLocationSpecific) {
+      byType.set(row.reward_type, {
+        rewardType: row.reward_type,
+        rewardValue: row.reward_value,
+      });
+    }
+  }
+
+  return Array.from(byType.values());
+}
+
 export async function loadLoyaltyProfilesForLocation(
   admin: SupabaseClient,
   locationId: string,

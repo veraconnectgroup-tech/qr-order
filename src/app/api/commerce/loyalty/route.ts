@@ -5,12 +5,15 @@ import {
   buildReferralShareUrl,
   REDEEM_POINTS_COST,
 } from "@/lib/denis/commerce/loyalty";
+import { formatLoyaltyRewardLabel } from "@/lib/denis/commerce/loyalty/guest-level";
 import {
   loadLoyaltyProfile,
   loadLoyaltyProfilesForLocation,
+  loadLoyaltyRewardsForLevel,
   recordLoyaltyEarn,
   recordLoyaltyRedeem,
   upsertLoyaltyProfile,
+  type LoyaltyProfileView,
 } from "@/lib/denis/commerce/loyalty/loyalty-store";
 import {
   applyReferralFirstOrderBonuses,
@@ -69,6 +72,29 @@ const postSchema = z.discriminatedUnion("action", [
   syncSchema,
 ]);
 
+async function withLevelUpRewardLabels(
+  admin: ReturnType<typeof createAdminClient>,
+  locationId: string,
+  profile: LoyaltyProfileView
+): Promise<LoyaltyProfileView> {
+  if (!profile.levelUpEvent) return profile;
+
+  const rewards = await loadLoyaltyRewardsForLevel(
+    admin,
+    locationId,
+    profile.levelUpEvent.newLevel
+  );
+  if (rewards.length === 0) return profile;
+
+  return {
+    ...profile,
+    levelUpEvent: {
+      ...profile.levelUpEvent,
+      rewardLabels: rewards.map((reward) => formatLoyaltyRewardLabel(reward)),
+    },
+  };
+}
+
 export const GET = withErrorHandler("commerce-loyalty-get", async (req) => {
   const limited = await withRateLimit(req, "default");
   if (limited) return limited;
@@ -99,7 +125,9 @@ export const GET = withErrorHandler("commerce-loyalty-get", async (req) => {
 
   const profile = await loadLoyaltyProfile(admin, locationId, guestToken);
   return apiSuccess({
-    profile,
+    profile: profile
+      ? await withLevelUpRewardLabels(admin, locationId, profile)
+      : profile,
     redeemCost: REDEEM_POINTS_COST,
   });
 });
@@ -125,7 +153,9 @@ export const POST = withErrorHandler("commerce-loyalty-post", async (req) => {
       totalSpent: body.totalSpent,
       points: body.points,
     });
-    return apiSuccess({ profile });
+    return apiSuccess({
+      profile: await withLevelUpRewardLabels(admin, body.locationId, profile),
+    });
   }
 
   if (body.action === "earn") {
@@ -165,7 +195,7 @@ export const POST = withErrorHandler("commerce-loyalty-post", async (req) => {
     }
 
     return apiSuccess({
-      profile: updated,
+      profile: await withLevelUpRewardLabels(admin, body.locationId, updated),
       earned: earned + referralBonus.referredBonusPoints,
       referralBonus,
     });

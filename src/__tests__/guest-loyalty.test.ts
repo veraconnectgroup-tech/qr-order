@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSituationPack } from "@/lib/denis/cognition/context/build-situation-pack";
 import { beliefGraph } from "@/lib/denis/cognition/beliefs/belief-types";
 import {
@@ -7,6 +8,7 @@ import {
   detectLevelUp,
   detectStreak,
   earnPointsFromOrder,
+  formatLoyaltyRewardLabel,
   redeemPoints,
   resolveGuestLevel,
   resolveWaitlistPriorityBoost,
@@ -14,6 +16,7 @@ import {
   REDEEM_EURO_VALUE,
   REDEEM_POINTS_COST,
 } from "@/lib/denis/commerce/loyalty";
+import { loadLoyaltyRewardsForLevel } from "@/lib/denis/commerce/loyalty/loyalty-store";
 
 describe("guest-level", () => {
   it("resolves level 2 Regular after 3 visits", () => {
@@ -146,5 +149,61 @@ describe("Denis loyalty integration", () => {
     });
     expect(block).toContain("level_up_celebration: YES");
     expect(block).toContain("confetti");
+  });
+});
+
+describe("loyalty_rewards lookup", () => {
+  it("formatLoyaltyRewardLabel produces a human label for known reward types", () => {
+    expect(
+      formatLoyaltyRewardLabel({ rewardType: "free_dessert", rewardValue: "monthly" })
+    ).toContain("dezert");
+    expect(
+      formatLoyaltyRewardLabel(
+        { rewardType: "waitlist_priority", rewardValue: "+3" },
+        "en"
+      )
+    ).toBe("Waitlist priority +3");
+  });
+
+  it("formatLoyaltyRewardLabel falls back to raw type:value for unknown reward types", () => {
+    expect(
+      formatLoyaltyRewardLabel({ rewardType: "custom_thing", rewardValue: "xyz" })
+    ).toBe("custom_thing: xyz");
+  });
+
+  it("loadLoyaltyRewardsForLevel prefers a location-specific row over the platform default", async () => {
+    const or = vi.fn().mockResolvedValue({
+      data: [
+        { location_id: null, reward_type: "free_dessert", reward_value: "monthly" },
+        { location_id: "loc-1", reward_type: "free_dessert", reward_value: "weekly" },
+        { location_id: null, reward_type: "secret_menu", reward_value: "access" },
+      ],
+      error: null,
+    });
+    const eq2 = vi.fn(() => ({ or }));
+    const eq1 = vi.fn(() => ({ eq: eq2 }));
+    const select = vi.fn(() => ({ eq: eq1 }));
+    const admin = { from: () => ({ select }) } as unknown as SupabaseClient;
+
+    const rewards = await loadLoyaltyRewardsForLevel(admin, "loc-1", 3);
+
+    expect(rewards).toEqual(
+      expect.arrayContaining([
+        { rewardType: "free_dessert", rewardValue: "weekly" },
+        { rewardType: "secret_menu", rewardValue: "access" },
+      ])
+    );
+    expect(rewards).toHaveLength(2);
+  });
+
+  it("loadLoyaltyRewardsForLevel returns an empty array when the query errors", async () => {
+    const or = vi.fn().mockResolvedValue({ data: null, error: { message: "db down" } });
+    const eq2 = vi.fn(() => ({ or }));
+    const eq1 = vi.fn(() => ({ eq: eq2 }));
+    const select = vi.fn(() => ({ eq: eq1 }));
+    const admin = { from: () => ({ select }) } as unknown as SupabaseClient;
+
+    const rewards = await loadLoyaltyRewardsForLevel(admin, "loc-1", 3);
+    expect(rewards).toEqual([]);
   });
 });

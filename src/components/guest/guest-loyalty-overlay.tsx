@@ -47,6 +47,7 @@ export function GuestLoyaltyOverlay({
         <LevelUpCelebration
           newLevel={celebration.newLevel}
           message={celebration.message}
+          rewardLabels={celebration.rewardLabels}
           onDismiss={dismissCelebration}
         />
       ) : null}

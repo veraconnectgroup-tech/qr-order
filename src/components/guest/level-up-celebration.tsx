@@ -8,6 +8,7 @@ import type { GuestLevelId } from "@/lib/denis/commerce/loyalty/guest-level";
 type Props = {
   newLevel: GuestLevelId;
   message: string;
+  rewardLabels?: string[];
   onDismiss: () => void;
   className?: string;
 };
@@ -44,6 +45,7 @@ function ConfettiBurst() {
 export function LevelUpCelebration({
   newLevel,
   message,
+  rewardLabels,
   onDismiss,
   className,
 }: Props) {
@@ -74,6 +76,13 @@ export function LevelUpCelebration({
         <div className="relative flex flex-col items-center gap-3 text-center">
           <LoyaltyBadge level={newLevel} showLabel={false} className="text-base" />
           <p className="text-lg font-semibold text-zinc-50">{message}</p>
+          {rewardLabels && rewardLabels.length > 0 ? (
+            <ul className="space-y-1 text-sm text-zinc-300">
+              {rewardLabels.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+          ) : null}
           <button
             type="button"
             onClick={() => {
