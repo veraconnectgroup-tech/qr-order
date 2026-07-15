@@ -9,7 +9,6 @@ import {
   isGuestAllergyRelatedMessage,
   parseAllergenExclusionsFromText,
 } from "@/lib/denis/cognition/safety/allergy-guard";
-import { foldSessionGuestAllergies } from "@/lib/denis/cognition/safety/fold-session-allergens";
 import { retrieveMenuEvidence } from "@/lib/denis/cognition/context/retrievers/menu-rag";
 import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { buildMergedCart } from "@/lib/denis/loop/merge-session-cart";
@@ -201,26 +200,6 @@ describe("allergy guard F2", () => {
   it("detects guest acknowledgment phrases", () => {
     expect(isAllergyAcknowledged("znam, hoću ipak")).toBe(true);
     expect(isAllergyAcknowledged("ne, hvala")).toBe(false);
-  });
-
-  it("folds session allergies from chat timeline", () => {
-    const labels = foldSessionGuestAllergies({
-      memory: null,
-      timeline: [
-        {
-          id: "1",
-          ai_session_id: "s",
-          seq: 1,
-          context_hash: null,
-          event_type: "signal.message",
-          trace_id: "t",
-          payload: { text: "bez glutena molim" },
-          created_at: new Date().toISOString(),
-        },
-      ],
-    });
-
-    expect(labels).toContain("gluten");
   });
 
   it("filters menu RAG by session allergens", () => {

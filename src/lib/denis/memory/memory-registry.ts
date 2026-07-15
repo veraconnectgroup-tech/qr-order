@@ -19,9 +19,10 @@
  * - Guest personal memory (denis_guest_memory, guest_loyalty_profiles, ...)
  *   — ADR-045 §2 explicitly keeps this OUT of the 4-tier model ("device-bound
  *   guest memory, never Restaurant tier"). It has its own expires_at/opt-out
- *   mechanism (src/lib/guest/denis-guest-memory-store.ts) — real gap there
- *   (expiry is checked lazily, never swept by a cron) is ADR-045 S3 territory,
- *   tracked separately, not registered here.
+ *   mechanism (src/lib/guest/denis-guest-memory-store.ts), swept via
+ *   sweepExpiredGuestMemory() in memory-retention.ts's cron sweep — not
+ *   registered here since it's outside the 4-tier model, not because it's
+ *   unswept.
  * - denis_relationship_signals — migrated but genuinely dead code, nothing
  *   reads or writes it. Left idle, not registered.
  *

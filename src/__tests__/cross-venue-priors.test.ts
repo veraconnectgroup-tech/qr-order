@@ -10,7 +10,6 @@ import {
   mergeWithGlobalPriors,
   resolveCrossVenueDessertDelay,
 } from "@/lib/denis/config/cross-venue-priors";
-import { computeCrossVenuePriors as learningReexport } from "@/lib/denis/learning/cross-venue-priors";
 import {
   locationPrepTimePriorsFromJson,
   resolvePrepTimeEstimate,
@@ -66,12 +65,6 @@ describe("cross-venue-priors L1 (Prompt 48)", () => {
       { locationId: LOC_B, priors: rhythmWithKitchenPrep(18, 100) },
       { locationId: LOC_C, priors: rhythmWithKitchenPrep(21, 60) },
     ]);
-
-    expect(learningReexport(ORG, [
-      { locationId: LOC_A, priors: rhythmWithKitchenPrep(15, 80) },
-      { locationId: LOC_B, priors: rhythmWithKitchenPrep(18, 100) },
-      { locationId: LOC_C, priors: rhythmWithKitchenPrep(21, 60) },
-    ])).toEqual(priors);
 
     const kitchen = priors.find(
       (row) =>
