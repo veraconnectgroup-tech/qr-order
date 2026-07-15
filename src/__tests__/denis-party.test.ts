@@ -6,7 +6,7 @@ import {
   resolveCartConflict,
 } from "@/lib/denis/kernel/conflict";
 import { resolveSharedAiSessionId } from "@/lib/denis/venue/party";
-import { mergePeerManualDraft } from "@/lib/denis/runtime/adapters/map-party-manual";
+import { mergePeerManualDraft } from "@/lib/denis/loop/adapters/merge-peer-manual";
 import type { PartyDeviceRow } from "@/lib/denis/venue/party/types";
 
 function line(
