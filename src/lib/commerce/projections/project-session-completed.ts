@@ -23,7 +23,7 @@ export async function projectSessionCompletedToCommerce(
   const { data: session, error: sessionError } = await admin
     .from("table_sessions")
     .select(
-      "id, location_id, opened_at, closed_at, bill_status, status, guest_token, guest_device_id"
+      "id, location_id, opened_at, closed_at, bill_status, status, guest_token, guest_device_id, session_token"
     )
     .eq("id", input.sessionId)
     .maybeSingle();
@@ -45,6 +45,7 @@ export async function projectSessionCompletedToCommerce(
     status: string;
     guest_token: string | null;
     guest_device_id: string | null;
+    session_token: string;
   };
 
   if (sessionRow.status !== "closed" || !sessionRow.closed_at) {
@@ -113,6 +114,14 @@ export async function projectSessionCompletedToCommerce(
     guestDeviceId: sessionRow.guest_device_id,
   });
 
+  const { data: offerConvertedEvents } = await admin
+    .from("commerce_experience_events" as never)
+    .select("id")
+    .eq("session_id", sessionRow.id)
+    .eq("event_type", COMMERCE_EVENT_TYPES.offerConverted)
+    .limit(1);
+  const upsellAccepted = (offerConvertedEvents ?? []).length > 0;
+
   const idempotencyKey = `vrp:session-completed:${sessionRow.id}`;
 
   await finalizeCommerceExperienceCommand(admin, {
@@ -134,6 +143,8 @@ export async function projectSessionCompletedToCommerce(
       topProducts: facts.topProducts,
       servicePeriod: facts.servicePeriod,
       closedAt: facts.closedAt,
+      sessionToken: sessionRow.session_token,
+      upsellAccepted,
     },
     idempotencyKey,
     traceId: input.traceId,

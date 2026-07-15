@@ -6,6 +6,7 @@ import {
   type Experiment,
   type SessionMetrics,
 } from "@/lib/denis/experiments/live-ab";
+import { deriveLiveAbSessionMetrics } from "@/lib/denis/experiments/live-ab-store";
 
 const baseExperiment: Experiment = {
   id: "exp-dessert-timing",
@@ -32,6 +33,58 @@ function buildSessions(
     minutesToFirstOrder: index < convertedCount ? 12 : null,
   }));
 }
+
+describe("deriveLiveAbSessionMetrics", () => {
+  it("returns null when the session.completed payload has no sessionToken", () => {
+    expect(
+      deriveLiveAbSessionMetrics("loc-1", { revenue: 42 })
+    ).toBeNull();
+  });
+
+  it("converts revenue to cents and marks the session converted", () => {
+    const metrics = deriveLiveAbSessionMetrics("loc-1", {
+      sessionToken: "sess-abc",
+      revenue: 84.5,
+      firstOrderLagSeconds: 192,
+      upsellAccepted: true,
+    });
+
+    expect(metrics).toEqual({
+      locationId: "loc-1",
+      sessionToken: "sess-abc",
+      converted: true,
+      orderValueCents: 8450,
+      upsellAccepted: true,
+      minutesToFirstOrder: 3.2,
+    });
+  });
+
+  it("marks a zero-revenue session as not converted, with null lag when absent", () => {
+    const metrics = deriveLiveAbSessionMetrics("loc-1", {
+      sessionToken: "sess-empty",
+      revenue: 0,
+    });
+
+    expect(metrics).toEqual({
+      locationId: "loc-1",
+      sessionToken: "sess-empty",
+      converted: false,
+      orderValueCents: 0,
+      upsellAccepted: false,
+      minutesToFirstOrder: null,
+    });
+  });
+
+  it("degrades non-numeric revenue to 0 rather than NaN", () => {
+    const metrics = deriveLiveAbSessionMetrics("loc-1", {
+      sessionToken: "sess-bad",
+      revenue: "not-a-number",
+    });
+
+    expect(metrics?.orderValueCents).toBe(0);
+    expect(metrics?.converted).toBe(false);
+  });
+});
 
 describe("assignSessionVariant", () => {
   it("assigns deterministically per session token", () => {

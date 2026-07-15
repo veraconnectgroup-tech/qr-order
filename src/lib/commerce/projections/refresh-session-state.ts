@@ -5,6 +5,10 @@ import { upsertAnticipationRollup } from "@/lib/commerce/projections/rollup-anti
 import { upsertVenueRhythmPriors } from "@/lib/commerce/projections/rollup-venue-rhythm-priors";
 import { upsertSessionCompletedDailyRollup } from "@/lib/commerce/projections/rollup-session-daily-analytics";
 import { upsertOfferUpsellDailyRollup } from "@/lib/commerce/projections/rollup-denis-roi-daily";
+import {
+  deriveLiveAbSessionMetrics,
+  recordLiveAbSessionMetrics,
+} from "@/lib/denis/experiments/live-ab-store";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -124,6 +128,11 @@ export async function refreshGuestSessionCommerceState(
       createdAt: row.created_at,
       payload: row.payload,
     });
+
+    const liveAbMetrics = deriveLiveAbSessionMetrics(row.location_id, row.payload);
+    if (liveAbMetrics) {
+      await recordLiveAbSessionMetrics(admin, liveAbMetrics);
+    }
   }
 
   const { error: upsertError } = await admin

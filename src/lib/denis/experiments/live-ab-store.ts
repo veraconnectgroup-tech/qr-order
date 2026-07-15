@@ -122,6 +122,41 @@ export async function resolveLiveAbConfigForSession(
   );
 }
 
+export type LiveAbSessionMetricsInput = {
+  locationId: string;
+  sessionToken: string;
+  converted: boolean;
+  orderValueCents: number;
+  upsellAccepted: boolean;
+  minutesToFirstOrder: number | null;
+};
+
+/** Pure extraction from a commerce.session.completed event payload (see project-session-completed.ts) — no DB access, directly testable. */
+export function deriveLiveAbSessionMetrics(
+  locationId: string,
+  payload: Record<string, unknown>
+): LiveAbSessionMetricsInput | null {
+  const sessionToken =
+    typeof payload.sessionToken === "string" ? payload.sessionToken.trim() : "";
+  if (!sessionToken) return null;
+
+  const revenue = Number(payload.revenue);
+  const firstOrderLagSeconds = Number(payload.firstOrderLagSeconds);
+
+  return {
+    locationId,
+    sessionToken,
+    converted: Number.isFinite(revenue) && revenue > 0,
+    orderValueCents: Number.isFinite(revenue)
+      ? Math.round(Math.max(0, revenue) * 100)
+      : 0,
+    upsellAccepted: payload.upsellAccepted === true,
+    minutesToFirstOrder: Number.isFinite(firstOrderLagSeconds)
+      ? firstOrderLagSeconds / 60
+      : null,
+  };
+}
+
 export async function recordLiveAbSessionMetrics(
   admin: SupabaseClient,
   input: {
