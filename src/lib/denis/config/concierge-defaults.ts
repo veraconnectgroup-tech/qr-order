@@ -134,9 +134,9 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     unifiedOperationalContextEnabled: false,
     unifiedOperationalContextCanaryPercent: 0,
     agenticToolLoop: {
-      enabled: false,
+      enabled: true,
       shadowOnly: true,
-      canaryPercent: 0,
+      canaryPercent: 100,
       maxRounds: 3,
       legacySingleCallFallback: true,
     },
