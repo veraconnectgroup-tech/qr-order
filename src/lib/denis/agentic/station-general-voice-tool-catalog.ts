@@ -22,6 +22,12 @@ import { createMission } from "@/lib/denis/missions/create-mission";
 import type { MissionAssignedRole, MissionRow } from "@/lib/denis/missions/mission-types";
 import { listDueCommitments } from "@/lib/denis/stations/denis-commitments";
 import { loadTodayEightySixItems } from "@/lib/products/eighty-six";
+import { resolveSpokenTable } from "@/lib/denis/stations/resolve-spoken-table";
+import {
+  assertRoleCanPatchStation,
+  patchStationStatus,
+  type StationStatus,
+} from "@/lib/orders/station-states";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -50,7 +56,8 @@ export type StationGeneralVoiceToolName =
   | "propose_eighty_six"
   | "confirm_eighty_six"
   | "create_mission"
-  | "read_open_items";
+  | "read_open_items"
+  | "mark_ready_call_runner";
 
 export type StationGeneralVoiceToolExecutorInput = {
   admin: SupabaseClient;
@@ -206,6 +213,22 @@ const createMissionTool: OpenAiToolDefinition = {
   },
 };
 
+const markReadyCallRunner: OpenAiToolDefinition = {
+  name: "mark_ready_call_runner",
+  description:
+    "ADR-053 M3 — staff calls out that a table's order is done ('spremno za sto dvanaest', 'gotov je sto pet'). Marks this station's part of that table's active orders as ready AND notifies the waiter to come pick it up — one call does both. Pass the table exactly as spoken ('sto dvanaest', 'terasa dva'); the server resolves it against real tables and tells you if it's ambiguous or has no active order. No spoken confirmation needed — this is low-risk and reversible — but always repeat back what happened ('Sto 12 spreman, zovem konobara').",
+  parameters: {
+    type: "object",
+    properties: {
+      tableRef: {
+        type: "string",
+        description: "The table reference exactly as staff spoke it.",
+      },
+    },
+    required: ["tableRef"],
+  },
+};
+
 const readOpenItems: OpenAiToolDefinition = {
   name: "read_open_items",
   description:
@@ -224,6 +247,7 @@ export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[]
     confirmEightySix,
     createMissionTool,
     readOpenItems,
+    markReadyCallRunner,
   ];
 }
 
@@ -236,6 +260,7 @@ export function isStationGeneralVoiceToolName(
     name === "notify_manager" ||
     name === "create_mission" ||
     name === "read_open_items" ||
+    name === "mark_ready_call_runner" ||
     name === "remember_commitment" ||
     name === "complete_commitment" ||
     name === "propose_eighty_six" ||
@@ -263,6 +288,183 @@ function eightySixProposalKey(locationId: string, station: RelayStation): string
  * Redis is unavailable — voice 86 refuses rather than degrading to an
  * unconfirmed destructive write (same posture as SecretsManager).
  */
+/**
+ * ADR-053 M3 — "spremno za sto dvanaest": resolve the spoken table, move
+ * this station's part of the table's active orders to ready (through the
+ * exact same role guard + patch RPC the on-screen boards use — voice is a
+ * new caller, never a looser path), then call the waiter to pick it up.
+ * A queued order walks queued→in_prep→ready, same two taps a cook would
+ * make on the panel. Deliberately no spoken-confirmation gate (per the
+ * ADR-053 §5 table): low-risk, reversible, and the runner arriving at the
+ * table is itself the correction loop.
+ */
+async function executeMarkReadyCallRunner(
+  input: StationGeneralVoiceToolExecutorInput,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const tableRef = typeof args.tableRef === "string" ? args.tableRef.trim() : "";
+  if (!tableRef) return { ok: false, error: "empty_table_ref" };
+
+  const { data: tableRows } = await input.admin
+    .from("tables")
+    .select("id, name")
+    .eq("location_id", input.locationId)
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .limit(300);
+
+  const resolution = resolveSpokenTable(
+    tableRef,
+    ((tableRows ?? []) as { id: string; name: string }[])
+  );
+
+  if (resolution.kind === "none") {
+    return {
+      ok: false,
+      error: "no_table_match",
+      sayToStaff: `Nisam našao sto "${tableRef}" — ponovi broj ili naziv stola.`,
+    };
+  }
+
+  if (resolution.kind === "ambiguous") {
+    return {
+      ok: false,
+      error: "ambiguous",
+      candidates: resolution.candidates.map((candidate) => candidate.name),
+      sayToStaff: `Na koji sto misliš — ${resolution.candidates
+        .map((candidate) => candidate.name)
+        .join(" ili ")}?`,
+    };
+  }
+
+  const table = resolution.table;
+
+  const { data: orderRows } = await input.admin
+    .from("orders")
+    .select("id, order_number, order_station_states(station, status)")
+    .eq("table_id", table.id)
+    .eq("location_id", input.locationId)
+    .in("status", ["accepted", "preparing"])
+    .order("created_at", { ascending: true })
+    .limit(5);
+
+  const orders = ((orderRows ?? []) as {
+    id: string;
+    order_number: number;
+    order_station_states:
+      | { station: string; status: StationStatus }[]
+      | { station: string; status: StationStatus }
+      | null;
+  }[]).map((row) => {
+    const states = Array.isArray(row.order_station_states)
+      ? row.order_station_states
+      : row.order_station_states
+        ? [row.order_station_states]
+        : [];
+    return {
+      id: row.id,
+      orderNumber: row.order_number,
+      stationStatus:
+        states.find((state) => state.station === input.station)?.status ?? null,
+    };
+  });
+
+  const actionable = orders.filter(
+    (order) =>
+      order.stationStatus === "queued" || order.stationStatus === "in_prep"
+  );
+
+  if (actionable.length === 0) {
+    const alreadyDone = orders.some(
+      (order) =>
+        order.stationStatus === "ready" || order.stationStatus === "picked_up"
+    );
+    return {
+      ok: false,
+      error: alreadyDone ? "already_ready" : "no_active_orders",
+      sayToStaff: alreadyDone
+        ? `Sto ${table.name} je već označen kao spreman na ovoj stanici.`
+        : `Nema aktivnih bonova za sto ${table.name} na ovoj stanici.`,
+    };
+  }
+
+  const marked: number[] = [];
+  const failed: { orderNumber: number; reason: string }[] = [];
+
+  for (const order of actionable) {
+    let current = order.stationStatus as StationStatus;
+    const steps: StationStatus[] =
+      current === "queued" ? ["in_prep", "ready"] : ["ready"];
+
+    let orderOk = true;
+    for (const next of steps) {
+      const roleCheck = assertRoleCanPatchStation({
+        role: input.staffRole as Parameters<
+          typeof assertRoleCanPatchStation
+        >[0]["role"],
+        station: input.station,
+        fromStatus: current,
+        toStatus: next,
+      });
+      if (!roleCheck.ok) {
+        failed.push({ orderNumber: order.orderNumber, reason: roleCheck.reason });
+        orderOk = false;
+        break;
+      }
+
+      const result = await patchStationStatus(input.admin, {
+        orderId: order.id,
+        station: input.station,
+        status: next,
+        staffId: input.staffId,
+      });
+      if (!result.ok) {
+        failed.push({
+          orderNumber: order.orderNumber,
+          reason: result.message ?? result.error,
+        });
+        orderOk = false;
+        break;
+      }
+      current = next;
+    }
+    if (orderOk) marked.push(order.orderNumber);
+  }
+
+  if (marked.length === 0) {
+    return { ok: false, error: "patch_failed", failed };
+  }
+
+  const { delivered } = await dispatchStaffNotification({
+    orgId: input.orgId,
+    locationId: input.locationId,
+    type: "waiter_call",
+    message: `Denis: Sto ${table.name} — spremno za iznošenje (${
+      input.station === "kitchen" ? "kuhinja" : "bar"
+    }, bon ${marked.map((n) => `#${n}`).join(", ")}).`,
+    tableId: table.id,
+    tableName: table.name,
+  });
+
+  void logActivity(input.admin, {
+    locationId: input.locationId,
+    station: input.station,
+    staffId: input.staffId,
+    action: "mark_ready_call_runner",
+    summary: `Označio spremno za sto ${table.name} (bon ${marked
+      .map((n) => `#${n}`)
+      .join(", ")}) i pozvao konobara.`,
+  });
+
+  return {
+    ok: true,
+    tableName: table.name,
+    markedOrderNumbers: marked,
+    runnerNotified: delivered,
+    failed: failed.length > 0 ? failed : undefined,
+  };
+}
+
 async function executeProposeEightySix(
   input: StationGeneralVoiceToolExecutorInput,
   args: Record<string, unknown>
@@ -454,6 +656,10 @@ export async function executeStationGeneralVoiceTool(
 
   if (name === "confirm_eighty_six") {
     return executeConfirmEightySix(input, args);
+  }
+
+  if (name === "mark_ready_call_runner") {
+    return executeMarkReadyCallRunner(input, args);
   }
 
   if (name === "read_open_items") {
