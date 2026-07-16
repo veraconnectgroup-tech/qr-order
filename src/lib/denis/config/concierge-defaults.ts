@@ -131,8 +131,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
     rushSkipUpsell: true,
     kdsStressSkipUpsell: true,
     floorGraphEnabled: false,
-    unifiedOperationalContextEnabled: false,
-    unifiedOperationalContextCanaryPercent: 0,
+    unifiedOperationalContextEnabled: true,
+    unifiedOperationalContextCanaryPercent: 10,
     agenticToolLoop: {
       enabled: true,
       shadowOnly: true,
@@ -160,6 +160,8 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       meteredByCredits: false,
       escalateToBarEnabled: false,
       handsFreeWakeWordEnabled: false,
+      slaPreWarnEnabled: false,
+      slaPreWarnMinutes: 5,
     },
     stationAwareTell: false,
     tableTempo: {

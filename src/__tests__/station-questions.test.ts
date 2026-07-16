@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildStationQuestionMessage,
   evaluateStationQuestionTriggers,
+  resolveSlaPreWarnGapMinutes,
   stationForOrder,
   type StationTriggerOrder,
 } from "@/lib/denis/stations/question-triggers";
@@ -199,6 +200,93 @@ describe("evaluateStationQuestionTriggers", () => {
   });
 });
 
+describe("evaluateStationQuestionTriggers — SLA pre-warn (ADR-053 M5)", () => {
+  const preWarnConfig = { ...config, slaPreWarnEnabled: true };
+
+  it("stays silent inside the pre-warn window when the flag is off (default)", () => {
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [order({ createdAt: minutesAgo(8) })],
+      config,
+      now: NOW,
+    });
+
+    expect(candidates).toHaveLength(0);
+  });
+
+  it("fires a softer sla_approaching question inside the pre-warn window when enabled", () => {
+    // foodSlaMinutes=12, cooldownMinutes=4 -> gap clamps to 5 -> window [7, 12)
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [order({ createdAt: minutesAgo(8) })],
+      config: preWarnConfig,
+      now: NOW,
+    });
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({
+      station: "kitchen",
+      questionType: "eta",
+      sourceEvent: "sla_approaching",
+      waitMinutes: 8,
+    });
+  });
+
+  it("still stays silent well before the pre-warn window even when enabled", () => {
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [order({ createdAt: minutesAgo(3) })],
+      config: preWarnConfig,
+      now: NOW,
+    });
+
+    expect(candidates).toHaveLength(0);
+  });
+
+  it("fires the real sla_breach, not a pre-warn, once the SLA actually breaches", () => {
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [order({ createdAt: minutesAgo(15) })],
+      config: preWarnConfig,
+      now: NOW,
+    });
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ sourceEvent: "sla_breach" });
+  });
+
+  it("pre-warns bar-only drink orders the same way", () => {
+    const candidates = evaluateStationQuestionTriggers({
+      orders: [
+        order({
+          createdAt: minutesAgo(3),
+          hasKitchenItems: false,
+          hasDrinkItems: true,
+        }),
+      ],
+      config: preWarnConfig,
+      now: NOW,
+    });
+
+    // drinkSlaMinutes=4, cooldownMinutes=4 -> gap clamps to 5 -> window [-1, 4) i.e. from minute 0
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({
+      station: "bar",
+      sourceEvent: "sla_approaching",
+    });
+  });
+});
+
+describe("resolveSlaPreWarnGapMinutes", () => {
+  it("uses the configured gap when it already exceeds the cooldown", () => {
+    expect(
+      resolveSlaPreWarnGapMinutes({ slaPreWarnMinutes: 8, cooldownMinutes: 4 })
+    ).toBe(8);
+  });
+
+  it("clamps up to cooldownMinutes + 1 so a pre-warn can never swallow the real breach", () => {
+    expect(
+      resolveSlaPreWarnGapMinutes({ slaPreWarnMinutes: 2, cooldownMinutes: 4 })
+    ).toBe(5);
+  });
+});
+
 describe("stationForOrder", () => {
   it("prefers kitchen for mixed orders", () => {
     expect(
@@ -236,5 +324,27 @@ describe("buildStationQuestionMessage", () => {
 
     expect(message).toContain("Sto 7");
     expect(message).not.toContain("#");
+  });
+
+  it("uses softer pre-warn phrasing for sla_approaching, not the breach copy", () => {
+    const preWarn = buildStationQuestionMessage({
+      questionType: "eta",
+      station: "kitchen",
+      tableName: "15",
+      orderNumber: 15,
+      waitMinutes: 8,
+      sourceEvent: "sla_approaching",
+    });
+    const breach = buildStationQuestionMessage({
+      questionType: "eta",
+      station: "kitchen",
+      tableName: "15",
+      orderNumber: 15,
+      waitMinutes: 8,
+      sourceEvent: "sla_breach",
+    });
+
+    expect(preWarn).not.toBe(breach);
+    expect(preWarn).toContain("bliži se rok");
   });
 });

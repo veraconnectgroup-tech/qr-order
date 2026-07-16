@@ -206,6 +206,21 @@ const ConciergeStationQuestionsSchema = z
     maxOpenPerStation: z.number().int().min(1).max(10).default(3),
     expirySeconds: z.number().int().min(30).max(600).default(90),
     /**
+     * ADR-053 M5 — proactive SLA pre-warning: Denis asks a softer "heads
+     * up" question slaPreWarnMinutes before foodSlaMinutes/drinkSlaMinutes
+     * would actually breach, instead of only ever speaking up after the
+     * SLA is already blown. Reuses the exact same station_questions
+     * mechanism as a real sla_breach question (same "eta" type, same
+     * anti-spam/cooldown guardrails) — just an earlier trigger and softer
+     * phrasing, no new table. The effective gap is clamped in
+     * question-triggers.ts to always exceed cooldownMinutes, so a
+     * pre-warn question's cooldown can never swallow the real breach
+     * question that should follow it. Defaults off; enable per location
+     * once the founder has heard it land right at least once.
+     */
+    slaPreWarnEnabled: z.boolean().default(false),
+    slaPreWarnMinutes: z.number().int().min(1).max(15).default(5),
+    /**
      * Explicit decision (not a silent default): station voice is internal
      * staff-coordination — talking to kitchen/bar — not guest-billed AI
      * usage, so it does NOT burn ai_credits by default. Guest ordering
@@ -255,6 +270,8 @@ const ConciergeStationQuestionsSchema = z
     meteredByCredits: false,
     escalateToBarEnabled: false,
     handsFreeWakeWordEnabled: false,
+    slaPreWarnEnabled: false,
+    slaPreWarnMinutes: 5,
   });
 
 const ConciergeTableTempoSchema = z

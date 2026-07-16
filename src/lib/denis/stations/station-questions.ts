@@ -491,6 +491,7 @@ export async function runStationQuestionTriggersForSession(
         tableName: input.tableName,
         orderNumber: candidate.orderNumber,
         waitMinutes: candidate.waitMinutes,
+        sourceEvent: candidate.sourceEvent,
       }),
       askedBy: "denis",
       sourceEvent: candidate.sourceEvent,

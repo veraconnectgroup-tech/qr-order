@@ -11,6 +11,7 @@ export type StationQuestionType =
 export type StationQuestionSourceEvent =
   | "guest_ask"
   | "sla_breach"
+  | "sla_approaching"
   | "manager"
   | "mixed_conflict"
   | "pending_too_long"
@@ -57,6 +58,36 @@ export function stationForOrder(order: {
   hasDrinkItems: boolean;
 }): StationQuestionStation {
   return order.hasKitchenItems ? "kitchen" : "bar";
+}
+
+/**
+ * ADR-053 M5 — the pre-warn gap must exceed cooldownMinutes, or the
+ * pre-warn question's own cooldown could still be active when the real
+ * SLA breach should fire, silently swallowing it. Clamped here rather
+ * than at the schema level so a saved config can't end up in a state
+ * where the two features fight each other.
+ *
+ * Known tuning edge case: with a tight drinkSlaMinutes (default 4) close
+ * to or below cooldownMinutes+1 (default 5), the clamp can make the
+ * pre-warn window cover the entire pre-breach period for drink orders —
+ * i.e. pre-warn fires immediately instead of shortly before the SLA. A
+ * location enabling this for bar should raise drinkSlaMinutes or lower
+ * cooldownMinutes if that's not the feel they want.
+ */
+export function resolveSlaPreWarnGapMinutes(
+  config: Pick<ConciergeStationQuestions, "slaPreWarnMinutes" | "cooldownMinutes">
+): number {
+  return Math.max(config.slaPreWarnMinutes, config.cooldownMinutes + 1);
+}
+
+function isApproachingSla(
+  waitMinutes: number,
+  slaMinutes: number,
+  preWarnGapMinutes: number
+): boolean {
+  return (
+    waitMinutes >= slaMinutes - preWarnGapMinutes && waitMinutes < slaMinutes
+  );
 }
 
 /** Skip watcher questions when station status already answers them (ADR-043 S3). */
@@ -177,6 +208,29 @@ export function evaluateStationQuestionTriggers(input: {
         continue;
       }
 
+      // Pre-warn only for a plain kitchen order — mixed orders keep the
+      // existing mixed_conflict handling below unchanged, kept narrow on
+      // purpose rather than layering pre-warn onto that already-subtle case.
+      if (
+        input.config.slaPreWarnEnabled &&
+        order.hasKitchenItems &&
+        !order.hasDrinkItems &&
+        isApproachingSla(
+          wait,
+          input.config.foodSlaMinutes,
+          resolveSlaPreWarnGapMinutes(input.config)
+        )
+      ) {
+        pushCandidate(candidates, order, {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          station: "kitchen",
+          questionType: "eta",
+          sourceEvent: "sla_approaching",
+          waitMinutes: wait,
+        });
+      }
+
       if (order.hasDrinkItems && wait >= input.config.drinkSlaMinutes) {
         if (order.hasKitchenItems) {
           const barStatus = order.barStation?.status;
@@ -204,6 +258,24 @@ export function evaluateStationQuestionTriggers(input: {
             waitMinutes: wait,
           });
         }
+      } else if (
+        input.config.slaPreWarnEnabled &&
+        order.hasDrinkItems &&
+        !order.hasKitchenItems &&
+        isApproachingSla(
+          wait,
+          input.config.drinkSlaMinutes,
+          resolveSlaPreWarnGapMinutes(input.config)
+        )
+      ) {
+        pushCandidate(candidates, order, {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          station: "bar",
+          questionType: "eta",
+          sourceEvent: "sla_approaching",
+          waitMinutes: wait,
+        });
       }
 
       pushReadyPickupCandidates({ order, config: input.config, now, candidates });
@@ -245,9 +317,17 @@ export function buildStationQuestionMessage(input: {
   tableName: string;
   orderNumber: number | null;
   waitMinutes: number;
+  sourceEvent?: StationQuestionSourceEvent;
 }): string {
   const bon = input.orderNumber != null ? `Bon #${input.orderNumber}` : "Bon";
   const table = `Sto ${input.tableName}`;
+
+  // ADR-053 M5 — same "eta" question type as a real breach, deliberately
+  // softer tone: a heads-up before the SLA is blown reads very differently
+  // out loud than "you're already late."
+  if (input.questionType === "eta" && input.sourceEvent === "sla_approaching") {
+    return `${table} · ${bon} — gost čeka ${input.waitMinutes} min, bliži se rok. Koliko još treba?`;
+  }
 
   switch (input.questionType) {
     case "pending_accept":

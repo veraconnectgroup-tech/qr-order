@@ -25,6 +25,8 @@ const BASE_CONFIG: ConciergeStationQuestions = {
   meteredByCredits: false,
   escalateToBarEnabled: true,
   handsFreeWakeWordEnabled: false,
+  slaPreWarnEnabled: false,
+  slaPreWarnMinutes: 5,
 };
 
 const KITCHEN_QUESTION = {
