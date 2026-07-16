@@ -11,6 +11,13 @@ import {
   createCommitment,
 } from "@/lib/denis/stations/denis-commitments";
 import { logActivity } from "@/lib/denis/stations/denis-activity-log";
+import { resolveSpokenProduct } from "@/lib/denis/stations/resolve-spoken-product";
+import {
+  assertRoleCanSetProductAvailability,
+  loadProductForAvailability,
+  setProductAvailabilityTx,
+} from "@/lib/products/eighty-six";
+import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -35,7 +42,9 @@ export type StationGeneralVoiceToolName =
   | "notify_station"
   | "notify_manager"
   | "remember_commitment"
-  | "complete_commitment";
+  | "complete_commitment"
+  | "propose_eighty_six"
+  | "confirm_eighty_six";
 
 export type StationGeneralVoiceToolExecutorInput = {
   admin: SupabaseClient;
@@ -127,6 +136,44 @@ const completeCommitmentTool: OpenAiToolDefinition = {
   },
 };
 
+const proposeEightySix: OpenAiToolDefinition = {
+  name: "propose_eighty_six",
+  description:
+    "ADR-053 M1 — staff tells you an item is gone ('skini lososa, nema ga više') or back ('vrati lososa'). Call this FIRST with what you heard: it resolves the spoken name against the real menu and returns the exact product. Then read the resolved name back out loud and ask for confirmation ('Skidam Losos sa menija — potvrdi?'). Nothing changes on the menu until confirm_eighty_six — and that call is rejected server-side unless this one happened first, so never skip this step.",
+  parameters: {
+    type: "object",
+    properties: {
+      productName: {
+        type: "string",
+        description: "The product name exactly as staff spoke it, in their words.",
+      },
+      action: {
+        type: "string",
+        enum: ["remove", "restore"],
+        description:
+          "remove = take it off the menu (86), restore = bring it back.",
+      },
+    },
+    required: ["productName", "action"],
+  },
+};
+
+const confirmEightySix: OpenAiToolDefinition = {
+  name: "confirm_eighty_six",
+  description:
+    "Call ONLY after propose_eighty_six succeeded AND staff explicitly confirmed out loud ('da', 'važi', 'tako je'). Executes the menu change for real — guests stop seeing the item immediately (or see it again on restore). If staff says no or corrects you, call propose_eighty_six again with the corrected name instead.",
+  parameters: {
+    type: "object",
+    properties: {
+      productId: {
+        type: "string",
+        description: "The productId returned by propose_eighty_six.",
+      },
+    },
+    required: ["productId"],
+  },
+};
+
 export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[] {
   return [
     getVenueStatus,
@@ -134,6 +181,8 @@ export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[]
     notifyManager,
     rememberCommitment,
     completeCommitmentTool,
+    proposeEightySix,
+    confirmEightySix,
   ];
 }
 
@@ -145,8 +194,210 @@ export function isStationGeneralVoiceToolName(
     name === "notify_station" ||
     name === "notify_manager" ||
     name === "remember_commitment" ||
-    name === "complete_commitment"
+    name === "complete_commitment" ||
+    name === "propose_eighty_six" ||
+    name === "confirm_eighty_six"
   );
+}
+
+type EightySixProposal = {
+  productId: string;
+  productName: string;
+  action: "remove" | "restore";
+};
+
+const EIGHTY_SIX_PROPOSAL_TTL_SEC = 120;
+
+function eightySixProposalKey(locationId: string, station: RelayStation): string {
+  return `denis:86:proposal:${locationId}:${station}`;
+}
+
+/**
+ * ADR-053 §5/§6 — the spoken-confirmation gate is deterministic, not a
+ * prompt instruction: confirm_eighty_six only executes when a matching
+ * propose_eighty_six proposal exists in Redis (single-shot, 120s TTL).
+ * The LLM physically cannot skip the read-back step. Fail-closed when
+ * Redis is unavailable — voice 86 refuses rather than degrading to an
+ * unconfirmed destructive write (same posture as SecretsManager).
+ */
+async function executeProposeEightySix(
+  input: StationGeneralVoiceToolExecutorInput,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const spokenName =
+    typeof args.productName === "string" ? args.productName.trim() : "";
+  const action = args.action === "restore" ? "restore" : "remove";
+  if (!spokenName) return { ok: false, error: "empty_product_name" };
+
+  const redis = getRedisClient();
+  if (!redis) {
+    return {
+      ok: false,
+      error: "confirmation_unavailable",
+      sayToStaff:
+        "Ne mogu bezbedno da potvrdim izmenu menija glasom trenutno — skini ga ručno preko 86 liste na ekranu.",
+    };
+  }
+
+  const { data: rows } = await input.admin
+    .from("products")
+    .select("id, name, is_available")
+    .eq("location_id", input.locationId)
+    .is("deleted_at", null)
+    .limit(500);
+
+  const candidates = ((rows ?? []) as {
+    id: string;
+    name: string;
+    is_available: boolean;
+  }[]).filter((row) =>
+    action === "remove" ? row.is_available : !row.is_available
+  );
+
+  const resolution = resolveSpokenProduct(spokenName, candidates);
+
+  if (resolution.kind === "none") {
+    return {
+      ok: false,
+      error: "no_match",
+      sayToStaff: `Nisam našao "${spokenName}" među ${action === "remove" ? "dostupnim" : "skinutim"} artiklima — ponovi tačan naziv sa menija.`,
+    };
+  }
+
+  if (resolution.kind === "ambiguous") {
+    return {
+      ok: false,
+      error: "ambiguous",
+      candidates: resolution.candidates.map((candidate) => candidate.name),
+      sayToStaff: `Nisam siguran na koji artikal misliš — ${resolution.candidates
+        .map((candidate) => candidate.name)
+        .join(" ili ")}?`,
+    };
+  }
+
+  const product = await loadProductForAvailability(
+    input.admin,
+    resolution.product.id
+  );
+  if (!product || product.location_id !== input.locationId) {
+    return { ok: false, error: "product_not_found" };
+  }
+
+  const roleCheck = assertRoleCanSetProductAvailability({
+    role: input.staffRole,
+    menuSection: product.menu_section,
+    makingUnavailable: action === "remove",
+  });
+  if (!roleCheck.ok) {
+    return { ok: false, error: "role_not_allowed", reason: roleCheck.reason };
+  }
+
+  const proposal: EightySixProposal = {
+    productId: product.id,
+    productName: product.name,
+    action,
+  };
+
+  try {
+    await redis.set(
+      eightySixProposalKey(input.locationId, input.station),
+      proposal,
+      { ex: EIGHTY_SIX_PROPOSAL_TTL_SEC }
+    );
+  } catch (error) {
+    logRedisDegradation("denis.station.86.propose", error);
+    return { ok: false, error: "confirmation_unavailable" };
+  }
+
+  return {
+    ok: true,
+    productId: product.id,
+    resolvedName: product.name,
+    action,
+    requiresSpokenConfirmation: true,
+    sayToStaff:
+      action === "remove"
+        ? `Skidam ${product.name} sa menija — potvrdi?`
+        : `Vraćam ${product.name} na meni — potvrdi?`,
+  };
+}
+
+async function executeConfirmEightySix(
+  input: StationGeneralVoiceToolExecutorInput,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const productId = typeof args.productId === "string" ? args.productId : "";
+  if (!productId) return { ok: false, error: "invalid_input" };
+
+  const redis = getRedisClient();
+  if (!redis) return { ok: false, error: "confirmation_unavailable" };
+
+  const key = eightySixProposalKey(input.locationId, input.station);
+  let proposal: EightySixProposal | null = null;
+  try {
+    proposal = await redis.get<EightySixProposal>(key);
+  } catch (error) {
+    logRedisDegradation("denis.station.86.confirm", error);
+    return { ok: false, error: "confirmation_unavailable" };
+  }
+
+  if (!proposal || proposal.productId !== productId) {
+    return {
+      ok: false,
+      error: "no_pending_proposal",
+      sayToStaff:
+        "Nemam predlog za potvrdu — reci mi ponovo šta da skinem ili vratim.",
+    };
+  }
+
+  const product = await loadProductForAvailability(input.admin, productId);
+  if (!product || product.location_id !== input.locationId) {
+    return { ok: false, error: "product_not_found" };
+  }
+
+  const roleCheck = assertRoleCanSetProductAvailability({
+    role: input.staffRole,
+    menuSection: product.menu_section,
+    makingUnavailable: proposal.action === "remove",
+  });
+  if (!roleCheck.ok) {
+    return { ok: false, error: "role_not_allowed", reason: roleCheck.reason };
+  }
+
+  const result = await setProductAvailabilityTx(input.admin, {
+    product,
+    available: proposal.action === "restore",
+    orgId: input.orgId,
+    staffUserId: input.staffId,
+  });
+
+  try {
+    await redis.del(key);
+  } catch (error) {
+    logRedisDegradation("denis.station.86.confirm.cleanup", error);
+  }
+
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  void logActivity(input.admin, {
+    locationId: input.locationId,
+    station: input.station,
+    staffId: input.staffId,
+    action: proposal.action === "remove" ? "eighty_six" : "restore_product",
+    summary:
+      proposal.action === "remove"
+        ? `Skinuo ${product.name} sa menija (glasom).`
+        : `Vratio ${product.name} na meni (glasom).`,
+  });
+
+  return {
+    ok: true,
+    changed: result.changed,
+    productName: product.name,
+    action: proposal.action,
+  };
 }
 
 export async function executeStationGeneralVoiceTool(
@@ -154,6 +405,14 @@ export async function executeStationGeneralVoiceTool(
   input: StationGeneralVoiceToolExecutorInput,
   args: Record<string, unknown> = {}
 ): Promise<unknown> {
+  if (name === "propose_eighty_six") {
+    return executeProposeEightySix(input, args);
+  }
+
+  if (name === "confirm_eighty_six") {
+    return executeConfirmEightySix(input, args);
+  }
+
   if (name === "get_venue_status") {
     const snapshot = await loadStaffCopilotSnapshot(input.admin, {
       locationId: input.locationId,
