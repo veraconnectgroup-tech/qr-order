@@ -221,6 +221,13 @@ const ConciergeStationQuestionsSchema = z
     slaPreWarnEnabled: z.boolean().default(false),
     slaPreWarnMinutes: z.number().int().min(1).max(15).default(5),
     /**
+     * ADR-053 M6 — Denis reads new bons aloud at the station as they
+     * arrive ("Bon #41, sto 5: dva ćevapa"), hands stay free. Real value
+     * varies by kitchen (small pass: gold; loud/large: noise) — genuinely
+     * opt-in, defaults off.
+     */
+    readBonsAloudEnabled: z.boolean().default(false),
+    /**
      * Explicit decision (not a silent default): station voice is internal
      * staff-coordination — talking to kitchen/bar — not guest-billed AI
      * usage, so it does NOT burn ai_credits by default. Guest ordering
@@ -272,6 +279,7 @@ const ConciergeStationQuestionsSchema = z
     handsFreeWakeWordEnabled: false,
     slaPreWarnEnabled: false,
     slaPreWarnMinutes: 5,
+    readBonsAloudEnabled: false,
   });
 
 const ConciergeTableTempoSchema = z

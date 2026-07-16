@@ -162,6 +162,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       handsFreeWakeWordEnabled: false,
       slaPreWarnEnabled: false,
       slaPreWarnMinutes: 5,
+      readBonsAloudEnabled: false,
     },
     stationAwareTell: false,
     tableTempo: {

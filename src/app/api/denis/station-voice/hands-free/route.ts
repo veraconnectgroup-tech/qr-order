@@ -69,6 +69,11 @@ export const GET = withErrorHandler(
       handsFreeWakeWordEnabled:
         config.surfaces.voiceStaffEnabled &&
         config.ops.stationQuestions.handsFreeWakeWordEnabled,
+      // ADR-053 M6 — same station-voice config lookup, one extra field
+      // rather than a second round-trip endpoint.
+      readBonsAloudEnabled:
+        config.surfaces.voiceStaffEnabled &&
+        config.ops.stationQuestions.readBonsAloudEnabled,
     });
   }
 );

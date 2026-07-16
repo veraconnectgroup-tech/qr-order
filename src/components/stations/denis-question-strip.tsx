@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStationQuestions } from "@/hooks/use-station-questions";
 import { useStationRelayMessages } from "@/hooks/use-station-relay-messages";
+import { useDenisNewOrderAnnouncements } from "@/hooks/use-denis-new-order-announcements";
 import { useDenisStationVoice } from "@/hooks/use-denis-station-voice";
 import { useDenisVoice } from "@/hooks/use-denis-voice";
 import { resolveStationVoiceLine } from "@/components/stations/denis-station-voice-script";
@@ -122,6 +123,40 @@ export function DenisQuestionStrip({
     acknowledgeDelivery: acknowledgeRelayDelivery,
   } = useStationRelayMessages(locationId, station);
   const spokenRelayIdsRef = useRef<Set<string>>(new Set());
+  // ADR-053 M6 — opt-in per location, fetched once from the same
+  // station-voice config lookup denis-call-button.tsx already uses.
+  const [readBonsAloudEnabled, setReadBonsAloudEnabled] = useState(false);
+  useEffect(() => {
+    if (!locationId) return;
+    let cancelled = false;
+    fetch(
+      `/api/denis/station-voice/hands-free?locationId=${encodeURIComponent(locationId)}`
+    )
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data?: { readBonsAloudEnabled?: boolean };
+        };
+        if (!cancelled && json.data?.readBonsAloudEnabled) {
+          setReadBonsAloudEnabled(true);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [locationId]);
+  const pendingAnnouncementsRef = useRef<string[]>([]);
+  const [announcementTick, setAnnouncementTick] = useState(0);
+  useDenisNewOrderAnnouncements({
+    locationId,
+    station,
+    enabled: readBonsAloudEnabled,
+    onAnnouncement: useCallback((text: string) => {
+      pendingAnnouncementsRef.current.push(text);
+      setAnnouncementTick((tick) => tick + 1);
+    }, []),
+  });
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
@@ -537,6 +572,16 @@ export function DenisQuestionStrip({
     acknowledgeRelayDelivery,
     stationVoiceCapture,
   ]);
+
+  // ADR-053 M6 — lowest-priority speech: a fresh bon reads out only once
+  // Denis has nothing more pressing (an active question, a relay message)
+  // queued, and never expects or opens a listen window afterward.
+  useEffect(() => {
+    if (!voicePrimed || speaking) return;
+    const next = pendingAnnouncementsRef.current.shift();
+    if (!next) return;
+    speak(next);
+  }, [voicePrimed, speaking, speak, announcementTick]);
 
   const pushToTalkButton =
     pushToTalkEnabled && voicePrimed ? (
