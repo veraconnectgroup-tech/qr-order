@@ -19,7 +19,9 @@ import {
 } from "@/lib/products/eighty-six";
 import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
 import { createMission } from "@/lib/denis/missions/create-mission";
-import type { MissionAssignedRole } from "@/lib/denis/missions/mission-types";
+import type { MissionAssignedRole, MissionRow } from "@/lib/denis/missions/mission-types";
+import { listDueCommitments } from "@/lib/denis/stations/denis-commitments";
+import { loadTodayEightySixItems } from "@/lib/products/eighty-six";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -47,7 +49,8 @@ export type StationGeneralVoiceToolName =
   | "complete_commitment"
   | "propose_eighty_six"
   | "confirm_eighty_six"
-  | "create_mission";
+  | "create_mission"
+  | "read_open_items";
 
 export type StationGeneralVoiceToolExecutorInput = {
   admin: SupabaseClient;
@@ -203,6 +206,13 @@ const createMissionTool: OpenAiToolDefinition = {
   },
 };
 
+const readOpenItems: OpenAiToolDefinition = {
+  name: "read_open_items",
+  description:
+    "ADR-053 M8 — the end-of-shift rundown. Staff asks 'šta je ostalo otvoreno?', 'šta nismo završili?', or anything about open tasks / your unfinished promises / what's still 86'd. Returns three lists: open staff missions, your own commitments that are due, and products currently off the menu today. Read the result back naturally and briefly — group it, don't recite raw rows, and if everything is clear say so plainly.",
+  parameters: { type: "object", properties: {}, required: [] },
+};
+
 export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[] {
   return [
     getVenueStatus,
@@ -213,6 +223,7 @@ export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[]
     proposeEightySix,
     confirmEightySix,
     createMissionTool,
+    readOpenItems,
   ];
 }
 
@@ -224,6 +235,7 @@ export function isStationGeneralVoiceToolName(
     name === "notify_station" ||
     name === "notify_manager" ||
     name === "create_mission" ||
+    name === "read_open_items" ||
     name === "remember_commitment" ||
     name === "complete_commitment" ||
     name === "propose_eighty_six" ||
@@ -442,6 +454,59 @@ export async function executeStationGeneralVoiceTool(
 
   if (name === "confirm_eighty_six") {
     return executeConfirmEightySix(input, args);
+  }
+
+  if (name === "read_open_items") {
+    const today = new Date().toISOString().slice(0, 10);
+    const dayStart = `${today}T00:00:00.000Z`;
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+    const [missionsResult, dueCommitments, eightySixed] = await Promise.all([
+      input.admin
+        .from("denis_missions")
+        .select("title, assigned_role, priority, created_at")
+        .eq("location_id", input.locationId)
+        .eq("status", "open")
+        .order("created_at", { ascending: true })
+        .limit(20),
+      listDueCommitments(input.admin, {
+        locationId: input.locationId,
+        today,
+      }),
+      loadTodayEightySixItems(input.admin, {
+        orgId: input.orgId,
+        locationId: input.locationId,
+        from: dayStart,
+        to: dayEnd.toISOString(),
+        station: input.station,
+      }),
+    ]);
+
+    const missions = ((missionsResult.data ?? []) as Pick<
+      MissionRow,
+      "title" | "assigned_role" | "priority" | "created_at"
+    >[]).map((mission) => ({
+      title: mission.title,
+      forRole: mission.assigned_role,
+      urgent: mission.priority === "urgent",
+    }));
+
+    return {
+      openMissions: missions,
+      myDueCommitments: dueCommitments.map((commitment) => ({
+        text: commitment.text,
+        dueDate: commitment.due_date,
+        overdue: commitment.due_date < today,
+      })),
+      currentlyEightySixed: eightySixed
+        .filter((item) => !item.isAvailable)
+        .map((item) => item.productName),
+      allClear:
+        missions.length === 0 &&
+        dueCommitments.length === 0 &&
+        eightySixed.every((item) => item.isAvailable),
+    };
   }
 
   if (name === "get_venue_status") {
