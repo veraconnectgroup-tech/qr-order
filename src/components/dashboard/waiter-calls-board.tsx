@@ -81,6 +81,12 @@ function PendingCallCard({
         </p>
       </div>
 
+      {call.reason && (
+        <p className="mt-2 rounded-lg bg-dash-surface-raised/60 px-3 py-2 text-sm text-dash-text-secondary">
+          {t("calls.reasonLabel", { reason: call.reason })}
+        </p>
+      )}
+
       <div className="mt-4 flex gap-3">
         <button
           type="button"

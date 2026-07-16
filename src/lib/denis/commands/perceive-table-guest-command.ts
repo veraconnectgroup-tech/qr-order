@@ -38,11 +38,25 @@ const MENTIONS_MENU_ITEM =
   /\b(pivo|pils|pilsner|lager|radler|beer|bier|burger|kisel|kisela|cola|pizza|steak|salat|sendvič|sendvic|vino|wine|wein|kafa|coffee|espresso|limunada|sok|juice|čaj|caj|tea|tee|cevap|ćevap|pile[cć]i)\b/i;
 
 export type TableGuestCommand =
-  | { type: "WAITER.REQUEST" }
+  | { type: "WAITER.REQUEST"; reason?: string }
   | { type: "BILL.REQUEST" }
   | { type: "BILL.SET_METHOD"; method: SelectablePaymentMethod }
   | { type: "ORDER.CANCEL" }
   | { type: "ORDER.MODIFY" };
+
+/**
+ * The founder's own directive: when Denis can't do something himself, he
+ * must hand off with what's actually needed, not a context-free ping.
+ * The guest's own words already say why — no LLM call needed to find
+ * that out, so this stays inside T0 (instant, deterministic). Capped to
+ * match the reason column's own length guard.
+ */
+const REASON_MAX_LENGTH = 500;
+
+function extractHandoffReason(message: string): string | undefined {
+  const trimmed = message.trim();
+  return trimmed ? trimmed.slice(0, REASON_MAX_LENGTH) : undefined;
+}
 
 function normalize(message: string): string {
   return message.trim().toLowerCase().replace(/\s+/g, " ");
@@ -260,7 +274,10 @@ export function perceiveTableGuestCommand(input: {
     if (normalize(input.message).includes(normalized)) {
       if (/waiter|konobar|kellner/.test(normalized)) {
         return {
-          command: { type: "WAITER.REQUEST" },
+          command: {
+            type: "WAITER.REQUEST",
+            reason: extractHandoffReason(input.message),
+          },
           intent: "HANDOFF_WAITER",
           paymentMethod: null,
         };
@@ -270,7 +287,10 @@ export function perceiveTableGuestCommand(input: {
 
   if (isHandoffWaiterMessage(input.message)) {
     return {
-      command: { type: "WAITER.REQUEST" },
+      command: {
+        type: "WAITER.REQUEST",
+        reason: extractHandoffReason(input.message),
+      },
       intent: "HANDOFF_WAITER",
       paymentMethod: null,
     };

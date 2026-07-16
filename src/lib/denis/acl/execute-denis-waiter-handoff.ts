@@ -14,6 +14,8 @@ export async function executeDenisWaiterHandoff(
     locationId: string;
     tableToken: string;
     sessionToken?: string | null;
+    /** Guest's own words when Denis detected the request from free text — never fabricated. */
+    reason?: string | null;
   }
 ): Promise<ExecuteDenisWaiterHandoffResult> {
   const ctx = await resolveWaiterCallContext(admin, {
@@ -38,6 +40,7 @@ export async function executeDenisWaiterHandoff(
     table_id: tableId,
     location_id: locationId,
     session_id: sessionId,
+    reason: input.reason?.trim() || null,
   });
 
   if (error) {

@@ -62,7 +62,8 @@ export type WaiterUiKey =
   | "calls.dismiss"
   | "calls.onMyWay"
   | "calls.handled"
-  | "calls.handledBy";
+  | "calls.handledBy"
+  | "calls.reasonLabel";
 
 type Table = Record<WaiterUiKey, string>;
 
@@ -129,6 +130,7 @@ const en: Table = {
   "calls.onMyWay": "On my way ({name})",
   "calls.handled": "Handled",
   "calls.handledBy": "Handled by {name} · {time}",
+  "calls.reasonLabel": "Guest said: {reason}",
 };
 
 const de: Table = {
@@ -195,6 +197,7 @@ const de: Table = {
   "calls.onMyWay": "Unterwegs ({name})",
   "calls.handled": "Erledigt",
   "calls.handledBy": "Erledigt von {name} · {time}",
+  "calls.reasonLabel": "Gast sagt: {reason}",
 };
 
 const sr: Table = {
@@ -259,6 +262,7 @@ const sr: Table = {
   "calls.onMyWay": "Na putu ({name})",
   "calls.handled": "Obrađeno",
   "calls.handledBy": "Obrađio {name} · {time}",
+  "calls.reasonLabel": "Gost kaže: {reason}",
 };
 
 const hr: Table = { ...sr };

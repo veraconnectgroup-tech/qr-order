@@ -169,6 +169,7 @@ export async function applyFrustrationRecoveryEscalation(
       locationId: input.locationId,
       tableToken: input.sessionToken,
       sessionToken: input.sessionToken,
+      reason: hintText,
     });
     waiterHandoff = result.ok;
   }

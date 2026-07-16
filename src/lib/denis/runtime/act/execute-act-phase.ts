@@ -106,6 +106,10 @@ export async function executeActPhase(
       cartDraft: input.cartDraft,
       catalog: input.catalog,
       handoffPaymentMethod: input.reflexTurn.handoffPaymentMethod,
+      handoffReason:
+        input.reflexTurn.handoffCommand?.type === "WAITER.REQUEST"
+          ? (input.reflexTurn.handoffCommand.reason ?? null)
+          : null,
     });
     results.push(result);
   }

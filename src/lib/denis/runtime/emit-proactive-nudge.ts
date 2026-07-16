@@ -75,6 +75,7 @@ async function maybeExecuteAttentionHandoff(
     locationId: input.locationId,
     tableToken: input.state.table.token,
     sessionToken: input.sessionToken,
+    reason: "Denis: gost nije dobio pažnju neko vreme — proaktivan poziv.",
   });
 
   if (!handoff.ok) {

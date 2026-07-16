@@ -601,6 +601,7 @@ type Tables = {
     created_at: string;
     acknowledged_at: string | null;
     resolved_at: string | null;
+    reason: string | null;
   };
   daily_order_counters: {
     id: string;

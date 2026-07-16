@@ -445,6 +445,7 @@ async function runHandoffAclFallback(
       locationId: input.parsed.locationId,
       tableToken: input.parsed.sessionToken,
       sessionToken,
+      reason: cmd.reason ?? null,
     });
     const actPhase: ActPhaseResult = {
       enabled: true,

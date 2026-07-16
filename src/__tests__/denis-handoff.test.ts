@@ -53,6 +53,33 @@ describe("perceiveTableGuestCommand M28", () => {
     });
     expect(perceived?.command.type).toBe("WAITER.REQUEST");
   });
+
+  it("carries the guest's own words as reason on free-text detection — 'find a way' directive", () => {
+    const perceived = perceiveTableGuestCommand({
+      message: "Treba mi konobar, hoću da promenim porudžbinu",
+    });
+    expect(perceived?.command).toEqual({
+      type: "WAITER.REQUEST",
+      reason: "Treba mi konobar, hoću da promenim porudžbinu",
+    });
+  });
+
+  it("a chip tap carries no reason — nothing more to relay than the button press itself", () => {
+    const perceived = perceiveTableGuestCommand({
+      message: "ignored",
+      structuredIntent: "HANDOFF_WAITER",
+    });
+    expect(perceived?.command).toEqual({ type: "WAITER.REQUEST" });
+  });
+
+  it("caps an unusually long message to the reason column's own length guard", () => {
+    const longMessage = `treba mi konobar ${"x".repeat(600)}`;
+    const perceived = perceiveTableGuestCommand({ message: longMessage });
+    expect(perceived?.command.type).toBe("WAITER.REQUEST");
+    if (perceived?.command.type === "WAITER.REQUEST") {
+      expect(perceived.command.reason?.length).toBeLessThanOrEqual(500);
+    }
+  });
 });
 
 describe("planTurnWithReflex handoff M28", () => {

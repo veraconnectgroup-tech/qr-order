@@ -33,6 +33,8 @@ export type ExecuteSkillContext = {
   cartDraft?: DenisCartDraft;
   catalog?: AiCatalog;
   handoffPaymentMethod?: SelectablePaymentMethod | null;
+  /** Guest's own words when Denis detected the waiter request from free text — never fabricated. */
+  handoffReason?: string | null;
 };
 
 export async function executePlannedSkill(
@@ -68,6 +70,7 @@ export async function executePlannedSkill(
       locationId: ctx.locationId,
       tableToken: ctx.tableToken,
       sessionToken: ctx.sessionToken,
+      reason: ctx.handoffReason ?? null,
     });
 
     if (!result.ok) {
