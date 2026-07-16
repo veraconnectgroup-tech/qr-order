@@ -33,6 +33,8 @@ export type VenueOpsBeliefs = {
   unavailableProductIds: string[];
   unavailableProductNames?: string[];
   staffHint: StaffTableHint | null;
+  /** ADR-053 M2 — spoken location-wide delay ("roštilj kasni 10 min"), ephemeral (Redis TTL). */
+  delayNote?: { area: string; minutes: number } | null;
   stationStress?: StationStress[];
   /** Kitchen Mind Link — live per-station queue snapshot. */
   kitchenLoad?: KitchenLoadSnapshot | null;

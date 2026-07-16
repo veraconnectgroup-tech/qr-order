@@ -28,6 +28,7 @@ import {
   patchStationStatus,
   type StationStatus,
 } from "@/lib/orders/station-states";
+import { setVenueDelayNote } from "@/lib/denis/venue/ops/venue-delay-note";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -57,7 +58,9 @@ export type StationGeneralVoiceToolName =
   | "confirm_eighty_six"
   | "create_mission"
   | "read_open_items"
-  | "mark_ready_call_runner";
+  | "mark_ready_call_runner"
+  | "propose_delay"
+  | "confirm_delay";
 
 export type StationGeneralVoiceToolExecutorInput = {
   admin: SupabaseClient;
@@ -229,6 +232,36 @@ const markReadyCallRunner: OpenAiToolDefinition = {
   },
 };
 
+const proposeDelay: OpenAiToolDefinition = {
+  name: "propose_delay",
+  description:
+    "ADR-053 M2 — staff announces something is running behind ('roštilj kasni deset minuta', 'desert kasni'). Call this FIRST with the area and minutes as spoken; then read it back and wait for an explicit spoken yes before confirm_delay. Once confirmed, guests with affected items hear the real timeline from Denis and waiters get notified — so a misheard number matters. confirm_delay is rejected server-side without this step.",
+  parameters: {
+    type: "object",
+    properties: {
+      area: {
+        type: "string",
+        description:
+          "What's delayed, as spoken — 'roštilj', 'deserti', 'topla kuhinja'.",
+      },
+      minutes: {
+        type: "integer",
+        minimum: 1,
+        maximum: 60,
+        description: "How many minutes behind, as spoken.",
+      },
+    },
+    required: ["area", "minutes"],
+  },
+};
+
+const confirmDelay: OpenAiToolDefinition = {
+  name: "confirm_delay",
+  description:
+    "Call ONLY after propose_delay succeeded AND staff confirmed out loud. Publishes the delay: Denis starts telling affected guests the real timeline and waiters are notified. If staff corrects you, call propose_delay again instead.",
+  parameters: { type: "object", properties: {}, required: [] },
+};
+
 const readOpenItems: OpenAiToolDefinition = {
   name: "read_open_items",
   description:
@@ -248,6 +281,8 @@ export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[]
     createMissionTool,
     readOpenItems,
     markReadyCallRunner,
+    proposeDelay,
+    confirmDelay,
   ];
 }
 
@@ -261,6 +296,8 @@ export function isStationGeneralVoiceToolName(
     name === "create_mission" ||
     name === "read_open_items" ||
     name === "mark_ready_call_runner" ||
+    name === "propose_delay" ||
+    name === "confirm_delay" ||
     name === "remember_commitment" ||
     name === "complete_commitment" ||
     name === "propose_eighty_six" ||
@@ -465,6 +502,120 @@ async function executeMarkReadyCallRunner(
   };
 }
 
+type DelayProposal = { area: string; minutes: number };
+
+const DELAY_PROPOSAL_TTL_SEC = 120;
+
+function delayProposalKey(locationId: string, station: RelayStation): string {
+  return `denis:delay:proposal:${locationId}:${station}`;
+}
+
+/**
+ * ADR-053 M2 — same deterministic propose/confirm shape as voice 86: a
+ * misheard "petnaest" vs "pet" changes what every affected guest is told,
+ * so the read-back gate is enforced server-side, fail-closed without
+ * Redis.
+ */
+async function executeProposeDelay(
+  input: StationGeneralVoiceToolExecutorInput,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const area = typeof args.area === "string" ? args.area.trim() : "";
+  const minutes = Number(args.minutes);
+  if (!area || !Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
+    return { ok: false, error: "invalid_input" };
+  }
+
+  const redis = getRedisClient();
+  if (!redis) {
+    return {
+      ok: false,
+      error: "confirmation_unavailable",
+      sayToStaff:
+        "Ne mogu bezbedno da objavim kašnjenje glasom trenutno — javi konobarima direktno.",
+    };
+  }
+
+  try {
+    await redis.set(
+      delayProposalKey(input.locationId, input.station),
+      { area, minutes } satisfies DelayProposal,
+      { ex: DELAY_PROPOSAL_TTL_SEC }
+    );
+  } catch (error) {
+    logRedisDegradation("denis.delay.propose", error);
+    return { ok: false, error: "confirmation_unavailable" };
+  }
+
+  return {
+    ok: true,
+    area,
+    minutes,
+    requiresSpokenConfirmation: true,
+    sayToStaff: `Objavljujem: ${area} kasni oko ${minutes} minuta — gosti sa tim stavkama dobijaju realno vreme. Potvrdi?`,
+  };
+}
+
+async function executeConfirmDelay(
+  input: StationGeneralVoiceToolExecutorInput
+): Promise<unknown> {
+  const redis = getRedisClient();
+  if (!redis) return { ok: false, error: "confirmation_unavailable" };
+
+  const key = delayProposalKey(input.locationId, input.station);
+  let proposal: DelayProposal | null = null;
+  try {
+    proposal = await redis.get<DelayProposal>(key);
+  } catch (error) {
+    logRedisDegradation("denis.delay.confirm", error);
+    return { ok: false, error: "confirmation_unavailable" };
+  }
+
+  if (!proposal?.area || !Number.isFinite(proposal.minutes)) {
+    return {
+      ok: false,
+      error: "no_pending_proposal",
+      sayToStaff:
+        "Nemam najavu za potvrdu — reci mi ponovo šta kasni i koliko.",
+    };
+  }
+
+  const stored = await setVenueDelayNote(input.locationId, proposal);
+  try {
+    await redis.del(key);
+  } catch (error) {
+    logRedisDegradation("denis.delay.confirm.cleanup", error);
+  }
+
+  if (!stored) {
+    return { ok: false, error: "store_failed" };
+  }
+
+  const { delivered } = await dispatchStaffNotification({
+    orgId: input.orgId,
+    locationId: input.locationId,
+    type: "denis_relay",
+    message: `Denis: ${
+      input.station === "kitchen" ? "kuhinja" : "bar"
+    } javlja — ${proposal.area} kasni ~${proposal.minutes} min. Gosti sa tim stavkama dobijaju realno vreme.`,
+  });
+
+  void logActivity(input.admin, {
+    locationId: input.locationId,
+    station: input.station,
+    staffId: input.staffId,
+    action: "announce_delay",
+    summary: `Objavio kašnjenje: ${proposal.area} ~${proposal.minutes} min.`,
+  });
+
+  return {
+    ok: true,
+    area: proposal.area,
+    minutes: proposal.minutes,
+    staffNotified: delivered,
+  };
+}
+
 async function executeProposeEightySix(
   input: StationGeneralVoiceToolExecutorInput,
   args: Record<string, unknown>
@@ -660,6 +811,14 @@ export async function executeStationGeneralVoiceTool(
 
   if (name === "mark_ready_call_runner") {
     return executeMarkReadyCallRunner(input, args);
+  }
+
+  if (name === "propose_delay") {
+    return executeProposeDelay(input, args);
+  }
+
+  if (name === "confirm_delay") {
+    return executeConfirmDelay(input);
   }
 
   if (name === "read_open_items") {

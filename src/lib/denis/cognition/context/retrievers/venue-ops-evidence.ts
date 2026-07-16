@@ -28,6 +28,12 @@ export function retrieveVenueOpsEvidence(
     lines.push(`Table hint: ${ops.staffHint.text}`);
   }
 
+  if (ops.delayNote) {
+    lines.push(
+      `Announced delay: ${ops.delayNote.area} is running ~${ops.delayNote.minutes} min behind (staff announced this out loud). If the guest has or wants affected items, give them the real timeline honestly — no empty reassurance.`
+    );
+  }
+
   if (ops.staffOnFloor != null) {
     lines.push(`Staff on floor: ${ops.staffOnFloor}`);
   }

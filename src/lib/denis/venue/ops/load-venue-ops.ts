@@ -8,6 +8,7 @@ import type {
   VenueOpsBeliefs,
   VenueOperatingMode,
 } from "@/lib/denis/venue/ops/types";
+import { getVenueDelayNote } from "@/lib/denis/venue/ops/venue-delay-note";
 
 type LocationOpsRow = {
   denis_operating_mode: VenueOperatingMode;
@@ -43,7 +44,7 @@ export async function loadVenueOpsBeliefs(
 
   const location = locationRow as LocationOpsRow | null;
 
-  const [{ data: unavailableRows }, { data: hintRow }, inventorySnapshot] =
+  const [{ data: unavailableRows }, { data: hintRow }, inventorySnapshot, delayNote] =
     await Promise.all([
       admin
         .from("products")
@@ -65,6 +66,7 @@ export async function loadVenueOpsBeliefs(
         locationId: input.locationId,
         timezone: location?.timezone,
       }),
+      getVenueDelayNote(input.locationId),
     ]);
 
   const unavailable = (unavailableRows ?? []) as UnavailableRow[];
@@ -101,6 +103,9 @@ export async function loadVenueOpsBeliefs(
     unavailableProductIds,
     unavailableProductNames,
     staffHint,
+    delayNote: delayNote
+      ? { area: delayNote.area, minutes: delayNote.minutes }
+      : null,
     eventConfig: location?.denis_event_config ?? null,
   };
 }
