@@ -100,6 +100,8 @@ function buildStationGeneralVoiceInstructions(input: {
     // also enforced server-side (confirm is rejected without a prior
     // propose), so this instruction is UX guidance, not the safety gate.
     "When staff tells you an item ran out ('nema više', 'skini to') or is back, use propose_eighty_six with the name as spoken, read the resolved name back and wait for an explicit spoken yes before calling confirm_eighty_six. Never claim the menu changed unless confirm_eighty_six returned ok — if it failed, say so honestly and point them to the 86 panel on the screen.",
+    // ADR-053 M4 — voice-driven tasks for someone not on this call.
+    "If staff asks you to make sure someone else does something later ('podseti Marka da donese led', 'neka konobar pokupi čaše sa stola 5') — someone who isn't part of this conversation — use create_mission with the right target role, not remember_commitment (that's only for things YOU promised) and not notify_station (that's a live relay to whoever's on the other station right now).",
     "Keep answers brief and direct, like a colleague giving a quick verbal update.",
     "Speak Serbian — staff speak Serbian, don't switch language based on accent or background noise.",
     ...(input.dueCommitmentsBlock ? ["", input.dueCommitmentsBlock] : []),

@@ -18,6 +18,8 @@ import {
   setProductAvailabilityTx,
 } from "@/lib/products/eighty-six";
 import { getRedisClient, logRedisDegradation } from "@/lib/redis/client";
+import { createMission } from "@/lib/denis/missions/create-mission";
+import type { MissionAssignedRole } from "@/lib/denis/missions/mission-types";
 
 /**
  * Tool catalog for kitchen/bar staff calling Denis on their own initiative
@@ -44,7 +46,8 @@ export type StationGeneralVoiceToolName =
   | "remember_commitment"
   | "complete_commitment"
   | "propose_eighty_six"
-  | "confirm_eighty_six";
+  | "confirm_eighty_six"
+  | "create_mission";
 
 export type StationGeneralVoiceToolExecutorInput = {
   admin: SupabaseClient;
@@ -174,6 +177,32 @@ const confirmEightySix: OpenAiToolDefinition = {
   },
 };
 
+const createMissionTool: OpenAiToolDefinition = {
+  name: "create_mission",
+  description:
+    "ADR-053 M4 — staff asks you to make sure someone does something that isn't a call between the two stations on this call ('podseti Marka da donese led', 'neka konobar pokupi čaše sa stola 5'). Creates a task the target role will see and can mark done. Different from remember_commitment (which is a promise YOU made) and notify_station (which is a live relay to the other station on THIS call) — use this for a task aimed at a person or role who isn't part of this conversation.",
+  parameters: {
+    type: "object",
+    properties: {
+      text: {
+        type: "string",
+        description:
+          "The task, written as a short clear instruction for whoever picks it up — include the person's name if one was mentioned.",
+      },
+      targetRole: {
+        type: "string",
+        enum: ["waiter", "kitchen", "bar", "manager"],
+        description: "Which role should see and handle this task.",
+      },
+      urgent: {
+        type: "boolean",
+        description: "True only if staff signaled this needs attention soon, not just 'whenever'.",
+      },
+    },
+    required: ["text", "targetRole"],
+  },
+};
+
 export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[] {
   return [
     getVenueStatus,
@@ -183,6 +212,7 @@ export function listStationGeneralVoiceToolDefinitions(): OpenAiToolDefinition[]
     completeCommitmentTool,
     proposeEightySix,
     confirmEightySix,
+    createMissionTool,
   ];
 }
 
@@ -193,6 +223,7 @@ export function isStationGeneralVoiceToolName(
     name === "get_venue_status" ||
     name === "notify_station" ||
     name === "notify_manager" ||
+    name === "create_mission" ||
     name === "remember_commitment" ||
     name === "complete_commitment" ||
     name === "propose_eighty_six" ||
@@ -482,6 +513,49 @@ export async function executeStationGeneralVoiceTool(
     });
 
     return { ok: true, delivered };
+  }
+
+  if (name === "create_mission") {
+    const text = typeof args.text === "string" ? args.text.trim() : "";
+    const targetRole = args.targetRole as MissionAssignedRole | undefined;
+    const validRoles: MissionAssignedRole[] = ["waiter", "kitchen", "bar", "manager"];
+    if (!text || !targetRole || !validRoles.includes(targetRole)) {
+      return { ok: false, error: "invalid_input" };
+    }
+
+    const urgent = args.urgent === true;
+    const result = await createMission(input.admin, {
+      kind: "custom",
+      orgId: input.orgId,
+      locationId: input.locationId,
+      title: text.slice(0, 120),
+      summary: text.slice(0, 1000),
+      assignedRole: targetRole,
+      priority: urgent ? "urgent" : "normal",
+      payload: { createdByVoice: true, station: input.station },
+    });
+
+    if (!result.created) {
+      return { ok: false, error: result.reason };
+    }
+
+    const { delivered } = await dispatchStaffNotification({
+      orgId: input.orgId,
+      locationId: input.locationId,
+      type: "denis_relay",
+      message: text,
+      priorityOverride: urgent ? "urgent" : undefined,
+    });
+
+    void logActivity(input.admin, {
+      locationId: input.locationId,
+      station: input.station,
+      staffId: input.staffId,
+      action: "create_mission",
+      summary: `Napravio zadatak za ${targetRole}: ${text}`,
+    });
+
+    return { ok: true, missionId: result.mission.id, delivered };
   }
 
   if (name === "remember_commitment") {
