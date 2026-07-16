@@ -102,6 +102,7 @@ const aiResponseSchema = z.object({
   guestAbandoningOrder: z.boolean().optional().default(false),
   guestDoneOrdering: z.boolean().optional().default(false),
   guestFinalConfirm: z.boolean().optional().default(false),
+  needsStaffHelp: z.string().trim().min(1).max(300).nullable().optional(),
 });
 
 export type AiChatRecommendation = {
@@ -163,6 +164,7 @@ export function parseAiStructuredResponse(
     guestAbandoningOrder: result.data.guestAbandoningOrder,
     guestDoneOrdering: result.data.guestDoneOrdering,
     guestFinalConfirm: result.data.guestFinalConfirm,
+    needsStaffHelp: result.data.needsStaffHelp ?? null,
     ...(result.data.turnInterpretation
       ? {
           turnInterpretation: normalizeTurnInterpretation(

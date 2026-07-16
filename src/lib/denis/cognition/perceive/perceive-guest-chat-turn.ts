@@ -770,6 +770,11 @@ export async function perceiveGuestChatTurn(
     creditsRemaining: (creditsRow as { balance: number } | null)?.balance ?? 0,
     creditsCharged: AI_CONFIG.creditsPerMessage,
     sessionId,
+    // Founder's "find a way" directive — top-level (not nested under
+    // structuredPerception, which only populates when allowOrdering) so
+    // the runtime layer can always see it and execute the ACL handoff
+    // (cognition/ may not import acl/ — see run-denis-turn.ts).
+    needsStaffHelp: structured.needsStaffHelp ?? null,
     ...(structuredPerception ? { structuredPerception } : {}),
   });
 }

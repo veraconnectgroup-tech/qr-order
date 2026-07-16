@@ -137,6 +137,10 @@ import {
 } from "@/lib/denis/runtime/act/commit-outcome-messages";
 import { executeDenisPaymentHandoff } from "@/lib/denis/acl/execute-denis-payment-handoff";
 import { executeDenisWaiterHandoff } from "@/lib/denis/acl/execute-denis-waiter-handoff";
+import {
+  NEEDS_STAFF_HELP_FAILURE_MESSAGE,
+  shouldEscalateNeedsStaffHelp,
+} from "@/lib/denis/runtime/resolve-needs-staff-help-escalation";
 import { persistAiSessionAfterOrderSubmit } from "@/lib/denis/runtime/act/persist-ai-session-after-order-submit";
 import {
   handoffActEnabled,
@@ -1079,6 +1083,8 @@ type PerceiveChatPayload = {
     creditsRemaining?: number;
     creditsCharged?: number;
     structuredPerception?: AiStructuredResponse;
+    /** Founder's "find a way" directive — LLM's own account of a capability gap. */
+    needsStaffHelp?: string | null;
   };
 };
 
@@ -1398,6 +1404,38 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
   if (!data) {
     return perceiveResponse;
+  }
+
+  // Founder's "find a way" directive — the LLM perceived a genuine
+  // capability gap (needsStaffHelp), cognition/ set it, runtime/ (here)
+  // is the only layer allowed to call acl/, so this is where it executes.
+  if (
+    shouldEscalateNeedsStaffHelp({
+      needsStaffHelp: data.needsStaffHelp,
+      handoffCommandType: reflexTurn.handoffCommand?.type ?? null,
+      waiterCallEnabled: ctx.config.handoff.waiterCall,
+      liveExecutionEnabled: ctx.config.handoff.liveExecution,
+      tableId: parsed.data.tableId,
+      locationId: parsed.data.locationId,
+    })
+  ) {
+    const staffHelp = await executeDenisWaiterHandoff(admin, {
+      tableId: parsed.data.tableId,
+      locationId: parsed.data.locationId,
+      tableToken: parsed.data.sessionToken,
+      sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
+      reason: data.needsStaffHelp,
+    });
+    if (!staffHelp.ok) {
+      // The LLM's own message may already claim staff is on it — that
+      // wasn't true yet when it wrote that. Never let an unconfirmed
+      // claim reach the guest (commit-outcome-messages.ts's same rule).
+      logger.warn("needsStaffHelp handoff failed", {
+        locationId: parsed.data.locationId,
+        error: staffHelp.error,
+      });
+      data.message = NEEDS_STAFF_HELP_FAILURE_MESSAGE;
+    }
   }
 
   const timelineAiSessionId = chatAiSessionId ?? data.sessionId ?? null;

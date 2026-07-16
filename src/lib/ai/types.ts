@@ -80,6 +80,16 @@ export type AiStructuredResponse = {
   guestAbandoningOrder?: boolean;
   guestDoneOrdering?: boolean;
   guestFinalConfirm?: boolean;
+  /**
+   * Founder's "find a way" directive — the guest asked for something
+   * Denis has no direct tool for (extra items, split bill, a discount,
+   * a table change, a complaint needing human judgment, a lost item).
+   * The LLM's own plain-language account of what's needed, or null when
+   * nothing beyond a normal reply is required. Denis never claims staff
+   * was notified until this actually executes — see
+   * perceive-guest-chat-turn.ts's escalation step.
+   */
+  needsStaffHelp?: string | null;
   structuredPerception?: Partial<AiStructuredResponse> & {
     intent?: AiConciergeIntent | string;
     submitOrder?: boolean;
