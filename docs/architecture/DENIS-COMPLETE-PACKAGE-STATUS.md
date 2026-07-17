@@ -23,6 +23,25 @@ Test svita posle svega ovoga: **415 fajlova / 2.754 testa, zeleno.** tsc: 0 gre�
 
 ---
 
+## DEO 0.5 — Supabase ispad (17.07) + "probudi sve" runda
+
+**Incident:** Supabase organizacija je pala u "Services restricted" (402 na sve) zbog **Realtime Connection Count Exceeded** — 3.761 istovremenih konekcija naspram limita od 200 (1.881%!), egres 107% (sporedni faktor). Pravi uzrok: `/api/orders/[orderId]/stream` je otvarao pravi Supabase Realtime kanal iz serverless funkcije bez `maxDuration` — platforma je često ubijala funkciju pre nego što je stigla da zatvori kanal, ostavljajući "obešene" konekcije. Ta ruta se učitava kod SVAKOG gosta odmah posle porudžbine, ceo obrok, sa auto-reconnect-om. **Popravljeno**: zamenjen pravim polling-om (isti obrazac kao `denis/view/stream`), nula Realtime kanala se otvara sa servera. Sporedno: slike proizvoda su se slale kao sirovi originali mimo Next.js optimizacije — popravljeno na 2 mesta.
+
+**Ovo NE vraća pristup koji je već blokiran** — samo sprečava ponavljanje. Pristup se vraća isključivo kroz Supabase Billing (nadogradnja plana ili čekanje reset perioda 25.07).
+
+**Dok se to čeka, "probudi sve što imamo" runda** (osnivačev direktan zahtev — sve što je izgrađeno a "spava" treba probuditi do kraja, i ubuduće nikad ostavljati stvari u tom stanju): sve DB-nezavisne stavke iz stare liste "2.C nedostaje potpuno" su završene:
+- Split-bill prevodi kompletni za SVIH 8 podržanih jezika (sr/hr/tr + ar/es/fr/it/ru) — uz usput uočenu i ispravljenu grešku u ruskom prevodu.
+- POS katalog (`CONNECTOR_CATALOG`) sad ispravno prikazuje `ready2order`/`custom` svuda.
+- Station-voice (M1-M8) dobio jedan zajednički admission-gate (`config.ops.stationQuestions.rollout`) za postepeno puštanje po lokaciji, umesto zauvek-po-flagu.
+- Agentic Tool Loop dobio eksplicitnu (ne tihu) odluku o naplati dodatnih rundi (`creditsPerExtraRound`, default 0 = bez premije, svesna odluka ne propust).
+- **SecretsManager admin UI** izgrađen (`/admin/integration-credentials`) — pgcrypto backend je postojao od migracije, sad ima i formu za unos.
+- **Integration Builder cevovod POVEZAN prvi put ikad** (`/admin/integration-builder`): nalepi OpenAPI/Postman dokument → parsira → LLM-assisted capability discovery → deterministički mapper → čekiraj šta generisati → nacrt TypeScript adaptera. Dokazano pravim smoke testom (ne mock) — realan OpenAPI spec je proizveo ispravan radni adapter kroz ceo lanac. DB perzistencija (integration_documents/capabilities/adapter_versions) SVESNO odložena dok Supabase ne proradi — ne može se testirati protiv žive baze sada.
+- Ispitano i zaključeno (ne kod): specifična obrada za "popust"/"promena stola" u `needsStaffHelp` nije potrebna — generička eskalacija je već ispravno ponašanje za oba, za razliku od split-bill slučaja gde je stvarno postojala ignorisana sposobnost.
+
+Sve što ostaje (B1-B8, C8 dole) je **blokirano isključivo na Supabase pristupu** — ne na nedostajućem kodu.
+
+---
+
 ## DEO 1 — ŠTA JE DODATO (isporučeno, testirano, commitovano)
 
 ### 1.1 Mozak — razumevanje gosta (regex purge, kompletno)
@@ -53,6 +72,8 @@ Celokupno razumevanje gostovog jezika prebačeno sa regex šablona na pravo LLM 
 ### 1.6 Integration Builder (ADR-052) — Denis gradi sopstvene integracije
 - Faze 0–5 izgrađene: OpenAPI/Postman parseri, capability mapper, adapter generator, contract test generator, SandboxRunner (mock-only), repair loop (max 3 runde), human review workflow, SecretsManager (pgcrypto, fail-closed).
 - DB šema (`integration_builder`, `integration_approval_requests`, `integration_credentials`) sad primenjena na živu bazu (bila je samo u repo-u do 17.07).
+- **Cevovod POVEZAN prvi put** (`/admin/integration-builder`, 17.07): parse → capability discovery → mapper → generator, sve u jednom stvarnom toku, dokazano smoke testom (pravi OpenAPI spec → ispravan generisan adapter). DB perzistencija koraka (dokument/capabilities/adapter_versions redovi) namerno odložena dok Supabase ne proradi.
+- **SecretsManager admin UI** (`/admin/integration-credentials`, 17.07): forma za unos + lista metapodataka, backend nepromenjen.
 
 ### 1.7 Univerzalni guest→osoblje handoff — "Denis mora da nađe način"
 - Reason-threading kroz SVE handoff putanje (T0 free-text, chip tap, frustration recovery, proaktivni nudge).
@@ -74,9 +95,10 @@ Celokupno razumevanje gostovog jezika prebačeno sa regex šablona na pravo LLM 
 
 | # | Šta | Status |
 |---|-----|--------|
-| A1 | ~~GitHub push~~ | **REŠENO** — sve na GitHub-u sem jednog svežeg commit-a (split-bill fix, 74adf432), čeka tvoju potvrdu za push kao i svaki put. |
+| A1 | ~~GitHub push~~ | **REŠENO** — commit-i se redovno pushuju uz tvoju potvrdu svaki put. |
 | A2 | ~~Migracije na živu bazu~~ | **REŠENO** — svih 6 primenjeno 17.07. |
 | A3 | **P0 test na pravom uređaju** | I DALJE ČEKA. `/admin/denis-realtime-voice-test` na tabletu u kuhinji — sat vremena tvog slušanja. Go/no-go za Realtime migraciju (jedini preostali veliki station-voice skok). |
+| A4 | **Supabase organizacija suspendovana (17.07)** | NOVO, NAJHITNIJE. "Services restricted" — Realtime Connection Count 1.881% preko limita + egres 107%. Root cause POPRAVLJEN u kodu (Deo 0.5), ali sam pristup se vraća SAMO kroz Supabase Billing (nadogradnja plana ili čekanje reset perioda 25.07 — Dashboard → Organization → Settings → Billing → "Resolve billing issues"). Dok ovo traje, SVE B/C stavke dole koje pominju bazu su blokirane. |
 
 ### 2.B IZGRAĐENO ALI UGAŠENO (čeka odluku o rollout-u, ne kod)
 
@@ -93,42 +115,38 @@ Celokupno razumevanje gostovog jezika prebačeno sa regex šablona na pravo LLM 
 
 ### 2.C NEDOSTAJE POTPUNO — kod koji treba napisati
 
+Sve DB-nezavisne stavke iz ove liste (bivši C1-C5, C10-C13, C15-C16) su završene 17.07 (Deo 0.5). Ostaje samo ono što stvarno zahteva A3 (uređaj) ili A4 (Supabase):
+
 **Station voice:**
-| # | Šta | Težina |
-|---|-----|--------|
-| C5 | Rollout config + srpski eval fixtures za station voice — uslov za Realtime | Srednje |
-| C6 | **Realtime migracija question strip-a** (posle A3): pitanja ulaze u isti kanal, stari TTS ostaje T3 fallback | Veliko |
-| C7 | Pun dvosmerni cross-station prenos Denisovim glasom (relay postoji, treba zatvoriti krug) | Srednje |
+| # | Šta | Težina | Blokirano na |
+|---|-----|--------|---------------|
+| C6 | **Realtime migracija question strip-a**: pitanja ulaze u isti kanal, stari TTS ostaje T3 fallback | Veliko | A3 |
+| C7 | Pun dvosmerni cross-station prenos Denisovim glasom (relay postoji, treba zatvoriti krug) | Srednje | Ništa — može se raditi odmah |
 
 **Guest-facing mozak:**
-| # | Šta | Težina |
-|---|-----|--------|
-| C8 | Prvi PRAVI A/B eksperiment od početka do kraja — dokaz da flywheel radi | Malo (operativno) |
-| C10 | Agentic loop metering odluka (`agenticToolLoopCreditsPerRound`) — eksplicitno, pre live canary-ja | Malo |
-| C15 | Specifična, prvoklasna obrada čestih `needsStaffHelp` slučajeva (popust, promena stola) — danas rade kroz generičku eskalaciju, ali ako se pokaže da je to prečest slučaj, vredi im dati posebnu putanju | Srednje |
+| # | Šta | Težina | Blokirano na |
+|---|-----|--------|---------------|
+| C8 | Prvi PRAVI A/B eksperiment od početka do kraja — dokaz da flywheel radi | Malo (operativno) | A4 |
 
 **Platforma / biznis:**
-| # | Šta | Težina |
-|---|-----|--------|
-| C11 | **Integration Builder: prvi pravi adapter end-to-end** — upload UI za dokumentaciju (`integration_documents` nema upload endpoint), pa ceo tok sa pravim OpenAPI fajlom. Sve faze postoje, ali NIJEDAN pravi adapter nikad nije prošao kroz njih — nedokazano | Srednje-veliko |
-| C12 | SecretsManager admin UI (unos sandbox/prod kredencijala) | Srednje |
-| C13 | POS: `ready2order`/`custom` u CONNECTOR_CATALOG (vidljivost), i odluka koji je sledeći pravi adapter posle Deliverect-a | Malo / poslovna odluka |
-| C14 | Denis ROI stranica — provera da li pokazuje pun ROI narativ sad kad se svi podaci skupljaju | Malo |
-| C16 | Split-bill prevodi za preostale jezike (ar/es/fr/it/ru) — dodati sr/hr/tr 17.07, ovih 5 i dalje pada na engleski fallback | Malo |
+| # | Šta | Težina | Blokirano na |
+|---|-----|--------|---------------|
+| C11b | Integration Builder: perzistencija (integration_documents/capabilities/adapter_versions redovi) + prvi pravi adapter kroz PRAVI vendor doc do kraja (upload UI+cevovod gotovi 17.07, ostaje samo DB deo + probni vendor) | Malo-srednje | A4 |
+| C14 | Denis ROI stranica — provera da li pokazuje pun ROI narativ sad kad se svi podaci skupljaju | Malo | A4 (treba prave podatke da se proceni) |
 
 **Dugoročno (svesno odloženo, ne za sad):**
-- Cross-visit identitet gosta (privacy odluka), `denis_relationship_signals` resurekcija, multi-venue learning na punoj snazi, browser-automation konektori, eksterni vault.
+- Cross-visit identitet gosta (privacy odluka), `denis_relationship_signals` resurekcija, multi-venue learning na punoj snazi, browser-automation konektori, eksterni vault, split-bill prevodi za jezike van trenutnih 8 (nisu ni tražena podrška za njih).
 
 ---
 
 ## DEO 3 — PREDLOG: REDOSLED DO "KOMPLETNOG PAKETA"
 
 ### Korak 0 — tvoje akcije
-1. **A3: P0 test na tabletu** — sat vremena, otključava ceo Realtime pravac. (Jedino preostalo iz Koraka 0.)
-2. Potvrdi push svežeg split-bill commit-a kad budeš spreman.
+1. **A4: reši Supabase naplatu** — nadogradi plan ili sačekaj reset 25.07. Bez ovoga NIŠTA od B1-B8/C8/C11b ne može da se pomeri, bez obzira koliko koda postoji.
+2. **A3: P0 test na tabletu** — sat vremena, otključava ceo Realtime pravac (C6).
 
 ### Korak 1 — Kuhinja/šank kompletan
-Svih 8 M-sposobnosti gotovo. Ostaje: C5 (eval fixtures + rollout config), pa B4/B5/B8 flip za pilot lokaciju čim A3 prođe.
+Svih 8 M-sposobnosti gotovo, admission-gate (C5) gotov. Ostaje: B4/B5/B8 flip za pilot lokaciju čim A3 i A4 prođu, C7 (cross-station prenos) može odmah.
 → **Rezultat: Denis u kuhinji ume da čuje, uradi, upozori, prenese i podnese izveštaj — pun kolega. Skoro tu.**
 
 ### Korak 2 — Gostov mozak na punoj snazi
