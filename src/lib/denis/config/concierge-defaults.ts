@@ -139,6 +139,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       canaryPercent: 100,
       maxRounds: 3,
       legacySingleCallFallback: true,
+      creditsPerExtraRound: 0,
     },
     guestConduct: {
       enabled: true,

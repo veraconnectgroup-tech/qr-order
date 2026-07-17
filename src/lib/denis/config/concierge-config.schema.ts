@@ -434,6 +434,24 @@ const ConciergeAgenticToolLoopSchema = z
     maxRounds: z.number().int().min(1).max(6),
     /** P5 — when false at 100% canary, legacy single-call perceive is skipped for the cohort. */
     legacySingleCallFallback: z.boolean(),
+    /**
+     * Explicit decision (not a silent default, mirrors the station-voice
+     * meteredByCredits precedent): does checking kitchen/stock/bill
+     * mid-conversation cost the venue more than a flat single-message
+     * turn? Zero means "no premium" — same flat creditsPerTurn() rate
+     * regardless of how many tool rounds a turn took, i.e. identical
+     * billing behavior to today. This is a real placeholder, not a
+     * finished decision: the loop is 100% shadowOnly today (ADR-049 P1/
+     * P2), so no real guest turn has ever been metered by round count —
+     * only once P4 (live canary) starts serving real guests does this
+     * number need to reflect an actual founder pricing call. Wire it in
+     * at src/lib/denis/runtime/run-denis-turn.ts's finalizeTurnMetering
+     * call as `creditsPerTurn() + extraRounds * creditsPerExtraRound`
+     * once that happens — extraRounds isn't threaded through yet because
+     * charging for shadow-mode rounds that never reached the guest would
+     * be wrong.
+     */
+    creditsPerExtraRound: z.number().min(0),
   })
   .default({
     enabled: false,
@@ -441,6 +459,7 @@ const ConciergeAgenticToolLoopSchema = z
     canaryPercent: 0,
     maxRounds: 3,
     legacySingleCallFallback: true,
+    creditsPerExtraRound: 0,
   });
 
 /**

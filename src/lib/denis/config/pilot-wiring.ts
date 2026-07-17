@@ -64,6 +64,7 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
       canaryPercent: 100,
       maxRounds: 3,
       legacySingleCallFallback: false,
+      creditsPerExtraRound: 0,
     },
     lossPrevention: {
       enabled: true,
