@@ -99,6 +99,22 @@ export function resolveUrgency(
 }
 
 /**
+ * The line Denis speaks when delivering an answered relay reply back to
+ * the station that originally asked. Must name whoever ANSWERED
+ * (to_station) — the row's from_station always equals the current
+ * station here (listUndeliveredRepliesForStation filters on it), so
+ * using from_station for the label would have Denis announce the
+ * asker's own station name while standing at it.
+ */
+export function buildRelayReplyDeliveryLine(row: {
+  to_station: "kitchen" | "bar";
+  reply: string | null;
+}): string {
+  const answererLabel = row.to_station === "kitchen" ? "Kuhinja" : "Bar";
+  return `Odgovor stigao od ${answererLabel}: ${row.reply ?? ""}`;
+}
+
+/**
  * Denis's voice presence — just the orb, full-screen and blurred behind,
  * while he has an unanswered question. Answering happens by voice
  * (walkie-talkie style, see useDenisStationVoice); the question text itself
@@ -176,6 +192,33 @@ export function DenisQuestionStrip({
   const staffReplyHandlerRef = useRef<
     ((transcript: string) => void) | null
   >(null);
+
+  /**
+   * Shared by the question-flow and relay-message effects — both must
+   * respect pushToTalkEnabled identically. Before this was extracted, the
+   * relay effect called stationVoiceCapture.startListening directly,
+   * bypassing push-to-talk entirely: on an industrial-environment station
+   * (push-to-talk, e.g. the bar per voice-audio-config.ts), pressing
+   * "Drži za odgovor" during a relay reply did nothing, because
+   * staffReplyHandlerRef was never populated for that path.
+   */
+  const listenForReply = useCallback(
+    (onTranscript: (transcript: string) => void) => {
+      if (pushToTalkEnabled) {
+        staffReplyHandlerRef.current = onTranscript;
+        return;
+      }
+      window.setTimeout(() => {
+        stationVoiceCapture.startListening((result) => {
+          if (result.ok && result.transcript.trim()) {
+            onTranscript(result.transcript);
+          }
+        });
+      }, LISTEN_AFTER_SPEAK_MS);
+    },
+    [pushToTalkEnabled, stationVoiceCapture]
+  );
+
   const spokenTiersRef = useRef<Set<string>>(new Set());
   const priorTurnsRef = useRef<Array<{ role: "denis" | "staff"; text: string }>>(
     []
@@ -372,20 +415,6 @@ export function DenisQuestionStrip({
       );
     };
 
-    const listenForReply = (onTranscript: (transcript: string) => void) => {
-      if (pushToTalkEnabled) {
-        staffReplyHandlerRef.current = onTranscript;
-        return;
-      }
-      window.setTimeout(() => {
-        stationVoiceCapture.startListening((result) => {
-          if (result.ok && result.transcript.trim()) {
-            onTranscript(result.transcript);
-          }
-        });
-      }, LISTEN_AFTER_SPEAK_MS);
-    };
-
     const resolveLocally = (trimmed: string): boolean => {
       if (isLikelyDenisEchoTranscript(trimmed)) return false;
       const reply = classifyStationVoiceReply(trimmed, questionType);
@@ -524,7 +553,7 @@ export function DenisQuestionStrip({
     speaking,
     turnsHydrated,
     persistTurn,
-    pushToTalkEnabled,
+    listenForReply,
   ]);
 
   // Relay messages (from "Pozovi Denisa" at the other station, or Denis's
@@ -540,8 +569,7 @@ export function DenisQuestionStrip({
     );
     if (replyToDeliver) {
       spokenRelayIdsRef.current.add(`reply:${replyToDeliver.id}`);
-      const askerLabel = replyToDeliver.from_station === "kitchen" ? "Kuhinja" : "Bar";
-      speak(`${askerLabel} pita — odgovor stigao: ${replyToDeliver.reply}`, () => {
+      speak(buildRelayReplyDeliveryLine(replyToDeliver), () => {
         void acknowledgeRelayDelivery(replyToDeliver.id);
       });
       return;
@@ -554,13 +582,9 @@ export function DenisQuestionStrip({
     spokenRelayIdsRef.current.add(`ask:${incomingToSpeak.id}`);
 
     speak(incomingToSpeak.message, () => {
-      window.setTimeout(() => {
-        stationVoiceCapture.startListening((result) => {
-          if (result.ok && result.transcript.trim()) {
-            void answerRelay(incomingToSpeak.id, result.transcript.trim());
-          }
-        });
-      }, LISTEN_AFTER_SPEAK_MS);
+      listenForReply((transcript) => {
+        void answerRelay(incomingToSpeak.id, transcript);
+      });
     });
   }, [
     voicePrimed,
@@ -570,7 +594,7 @@ export function DenisQuestionStrip({
     speak,
     answerRelay,
     acknowledgeRelayDelivery,
-    stationVoiceCapture,
+    listenForReply,
   ]);
 
   // ADR-053 M6 — lowest-priority speech: a fresh bon reads out only once
