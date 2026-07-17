@@ -4,10 +4,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DenisBrandMark } from "@/components/design-system/denis-brand-mark";
-import {
-  LandingLocaleSwitcher,
-  useLandingCopy,
-} from "@/components/landing/landing-locale-provider";
+import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -98,7 +95,6 @@ export function LandingNav() {
                 {link.label}
               </Link>
             ))}
-            <LandingLocaleSwitcher />
           </nav>
 
           <div className="flex items-center gap-2">
@@ -151,9 +147,6 @@ export function LandingNav() {
               )
             )}
           </nav>
-          <div className="px-6 pb-4">
-            <LandingLocaleSwitcher />
-          </div>
           <div className="px-6">
             <Button
               asChild
