@@ -115,6 +115,25 @@ export async function acknowledgeRelayDelivery(
   return !error;
 }
 
+/**
+ * Marks an unanswered relay as expired once the asking station has been
+ * told nobody replied — idempotent (only flips rows still 'open'), same
+ * shape as answerRelayMessage. No migration needed: 'expired' has been a
+ * valid status since 00163, this is the first caller to actually reach it.
+ */
+export async function expireRelayMessage(
+  admin: SupabaseClient,
+  input: { relayId: string }
+): Promise<boolean> {
+  const { error } = await admin
+    .from("denis_station_relay_messages")
+    .update({ status: "expired" })
+    .eq("id", input.relayId)
+    .eq("status", "open");
+
+  return !error;
+}
+
 export async function listOpenRelayMessagesForStation(
   admin: SupabaseClient,
   input: { locationId: string; station: RelayStation }

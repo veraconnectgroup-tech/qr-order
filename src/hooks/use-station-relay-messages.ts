@@ -23,6 +23,9 @@ export function useStationRelayMessages(
   const [undeliveredReplies, setUndeliveredReplies] = useState<
     DenisStationRelayMessageRow[]
   >([]);
+  const [expiredUnanswered, setExpiredUnanswered] = useState<
+    DenisStationRelayMessageRow[]
+  >([]);
 
   const fetchIncoming = useCallback(async () => {
     if (!locationId) return;
@@ -62,10 +65,31 @@ export function useStationRelayMessages(
     setUndeliveredReplies((data ?? []) as DenisStationRelayMessageRow[]);
   }, [locationId, station]);
 
+  /** Own asks that nobody answered before expires_at — otherwise a silent failure (row just drops out of the "open" queries forever). */
+  const fetchExpiredUnanswered = useCallback(async () => {
+    if (!locationId) return;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("denis_station_relay_messages")
+      .select("*")
+      .eq("location_id", locationId)
+      .eq("from_station", station)
+      .eq("status", "open")
+      .lte("expires_at", new Date().toISOString())
+      .order("asked_at", { ascending: true });
+
+    if (error) {
+      console.error("Relay expired fetch failed:", error.message);
+      return;
+    }
+    setExpiredUnanswered((data ?? []) as DenisStationRelayMessageRow[]);
+  }, [locationId, station]);
+
   const refetch = useCallback(() => {
     void fetchIncoming();
     void fetchUndeliveredReplies();
-  }, [fetchIncoming, fetchUndeliveredReplies]);
+    void fetchExpiredUnanswered();
+  }, [fetchIncoming, fetchUndeliveredReplies, fetchExpiredUnanswered]);
 
   useEffect(() => {
     if (!locationId) return;
@@ -111,5 +135,25 @@ export function useStationRelayMessages(
     []
   );
 
-  return { incoming, undeliveredReplies, answerRelay, acknowledgeDelivery, refetch };
+  const dismissExpired = useCallback(
+    async (relayId: string) => {
+      setExpiredUnanswered((prev) => prev.filter((row) => row.id !== relayId));
+      await fetch(`/api/denis/station-relay/${relayId}/expire`, {
+        method: "POST",
+      }).catch(() => {
+        // Best-effort — worst case it gets spoken again next poll.
+      });
+    },
+    []
+  );
+
+  return {
+    incoming,
+    undeliveredReplies,
+    expiredUnanswered,
+    answerRelay,
+    acknowledgeDelivery,
+    dismissExpired,
+    refetch,
+  };
 }

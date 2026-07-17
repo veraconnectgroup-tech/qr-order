@@ -135,8 +135,10 @@ export function DenisQuestionStrip({
   const {
     incoming: relayIncoming,
     undeliveredReplies: relayUndeliveredReplies,
+    expiredUnanswered: relayExpiredUnanswered,
     answerRelay,
     acknowledgeDelivery: acknowledgeRelayDelivery,
+    dismissExpired: dismissExpiredRelay,
   } = useStationRelayMessages(locationId, station);
   const spokenRelayIdsRef = useRef<Set<string>>(new Set());
   // ADR-053 M6 — opt-in per location, fetched once from the same
@@ -575,6 +577,21 @@ export function DenisQuestionStrip({
       return;
     }
 
+    // Own asks nobody answered before expires_at — without this, that
+    // row just silently drops out of the "open" queries forever and the
+    // asker never learns nobody replied.
+    const expiredToDeliver = relayExpiredUnanswered.find(
+      (row) => !spokenRelayIdsRef.current.has(`expired:${row.id}`)
+    );
+    if (expiredToDeliver) {
+      spokenRelayIdsRef.current.add(`expired:${expiredToDeliver.id}`);
+      const targetLabel = expiredToDeliver.to_station === "kitchen" ? "kuhinja" : "šank";
+      speak(`Niko nije odgovorio na poruku za ${targetLabel}.`, () => {
+        void dismissExpiredRelay(expiredToDeliver.id);
+      });
+      return;
+    }
+
     const incomingToSpeak = relayIncoming.find(
       (row) => !spokenRelayIdsRef.current.has(`ask:${row.id}`)
     );
@@ -591,9 +608,11 @@ export function DenisQuestionStrip({
     speaking,
     relayIncoming,
     relayUndeliveredReplies,
+    relayExpiredUnanswered,
     speak,
     answerRelay,
     acknowledgeRelayDelivery,
+    dismissExpiredRelay,
     listenForReply,
   ]);
 
@@ -666,7 +685,9 @@ export function DenisQuestionStrip({
   // deliver back) keeps the orb overlay up even with no active order
   // question — it's a separate reason for Denis to have the floor.
   const hasRelayActivity =
-    relayIncoming.length > 0 || relayUndeliveredReplies.length > 0;
+    relayIncoming.length > 0 ||
+    relayUndeliveredReplies.length > 0 ||
+    relayExpiredUnanswered.length > 0;
 
   const remaining = active ? secondsLeft(active.expires_at, now) : 0;
   const activeWaitMinutes = active ? extractWaitMinutes(active.message) : null;
