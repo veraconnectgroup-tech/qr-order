@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import Image from "next/image";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { useCart } from "@/hooks/use-cart";
@@ -156,11 +157,12 @@ export function ProductDetailSheet({
 
           {product.image_url ? (
             <div className="relative h-48 w-full sm:h-56">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={product.image_url}
                 alt={displayName}
-                className="size-full object-cover"
+                fill
+                sizes="100vw"
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useAppLocale } from "@/components/guest/app-locale-provider";
@@ -113,11 +114,12 @@ export function UpsellBar({
                 >
                   <div className="relative h-24 bg-gradient-to-br from-zinc-800 to-zinc-900">
                     {suggestion.product.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={suggestion.product.image_url}
                         alt={displayName}
-                        className="size-full object-cover"
+                        fill
+                        sizes="240px"
+                        className="object-cover"
                       />
                     ) : (
                       <div className="flex size-full items-center justify-center text-2xl font-bold text-zinc-700">
