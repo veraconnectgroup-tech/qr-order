@@ -11,8 +11,8 @@ import { DenisVoiceOrb } from "@/components/denis-voice-orb";
  */
 export function StationVoiceShowcase() {
   return (
-    <div className="mx-auto flex w-full max-w-[420px] justify-center rounded-[1.75rem] border border-[#e7ebf0] bg-white px-6 py-10 shadow-[0_36px_90px_-42px_rgba(22,20,14,0.32)] sm:px-8">
-      <DenisVoiceOrb size={200} />
+    <div className="mx-auto flex w-full max-w-[480px] justify-center rounded-[1.75rem] border border-white/[0.08] bg-[#09090b] px-6 py-14 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.85)] sm:px-8">
+      <DenisVoiceOrb size={280} />
     </div>
   );
 }
