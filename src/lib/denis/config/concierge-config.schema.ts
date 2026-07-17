@@ -264,6 +264,27 @@ const ConciergeStationQuestionsSchema = z
      * verification, same rollout discipline as escalateToBarEnabled.
      */
     handsFreeWakeWordEnabled: z.boolean().default(false),
+    /**
+     * ADR-053 rollout gate for the M1-M8 capability set as a whole
+     * (distinct from ConciergeRolloutSchema's legacy/shadow/canary/
+     * denis_only/simulation axis — that's the guest-path-vs-kernel ladder,
+     * a different concept). "off" behaves exactly like today: individual
+     * per-capability flags above (handsFreeWakeWordEnabled etc.) still
+     * gate independently. "shadow" is reserved for a future capability
+     * that needs a dry-run/log-only phase before going live — none of the
+     * M1-M8 set needs it today since each already ships behind its own
+     * default-false flag. "live" + canaryPercent lets a location be
+     * gradually admitted into station voice generally, cohort-keyed by
+     * locationId (isInCanaryCohort from rollout.ts, reused as-is), ahead
+     * of the Realtime migration (C6) needing a single admission gate to
+     * extend rather than one flag per capability forever.
+     */
+    rollout: z
+      .object({
+        mode: z.enum(["off", "shadow", "live"]).default("off"),
+        canaryPercent: z.number().int().min(0).max(100).default(0),
+      })
+      .default({ mode: "off", canaryPercent: 0 }),
   })
   .default({
     enabled: false,
@@ -280,6 +301,7 @@ const ConciergeStationQuestionsSchema = z
     slaPreWarnEnabled: false,
     slaPreWarnMinutes: 5,
     readBonsAloudEnabled: false,
+    rollout: { mode: "off", canaryPercent: 0 },
   });
 
 const ConciergeTableTempoSchema = z

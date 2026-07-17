@@ -28,6 +28,7 @@ const BASE_CONFIG: ConciergeStationQuestions = {
   slaPreWarnEnabled: false,
   slaPreWarnMinutes: 5,
   readBonsAloudEnabled: false,
+  rollout: { mode: "off", canaryPercent: 0 },
 };
 
 const KITCHEN_QUESTION = {

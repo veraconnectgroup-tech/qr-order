@@ -163,6 +163,7 @@ export const CONCIERGE_PLATFORM_DEFAULTS: ConciergeConfig = {
       slaPreWarnEnabled: false,
       slaPreWarnMinutes: 5,
       readBonsAloudEnabled: false,
+      rollout: { mode: "off", canaryPercent: 0 },
     },
     stationAwareTell: false,
     tableTempo: {
