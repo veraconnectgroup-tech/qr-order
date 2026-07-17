@@ -10,7 +10,22 @@ import { withRateLimit } from "@/lib/rate-limit";
 const ORDER_SELECT =
   "*, order_items(*, order_item_modifiers(*)), tables(name)";
 
-const MAX_STREAM_DURATION_MS = 5 * 60 * 1000;
+// Polling, not a Supabase Realtime channel: this route runs inside a
+// serverless function with no maxDuration guarantee that the platform
+// won't kill the invocation before a channel's cleanup code can run. A
+// channel opened per-request here orphaned a Realtime connection at
+// Supabase every time that happened, across every guest's whole order-
+// tracking session — the actual cause of the org's Realtime Connection
+// Count quota being blown ~19x over on 2026-07-17. Same safe pattern as
+// the sibling `denis/view/stream` route, which never had this problem.
+const POLL_INTERVAL_MS = 2_000;
+const MAX_STREAM_DURATION_MS = 55_000;
+
+export const maxDuration = 60;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function verifyGuestOrderAccess(orderId: string, sessionToken: string) {
   const admin = createAdminClient();
@@ -95,8 +110,7 @@ export const GET = withErrorHandler(
           if (closed) return;
           closed = true;
           clearInterval(heartbeat);
-          clearTimeout(maxDuration);
-          admin.removeChannel(channel);
+          clearTimeout(maxDurationTimer);
           try {
             controller.close();
           } catch {
@@ -129,35 +143,25 @@ export const GET = withErrorHandler(
 
         await sendOrder();
 
-        const channel = admin
-          .channel(`order-stream:${orderId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "orders",
-              filter: `id=eq.${orderId}`,
-            },
-            () => {
-              sendOrder().catch((error) => {
-                logger.warn("Order stream sendOrder failed", {
-                  orderId,
-                  error:
-                    error instanceof Error ? error.message : String(error),
-                });
-              });
-            }
-          )
-          .subscribe();
-
         const heartbeat = setInterval(() => {
           safeSend(encoder.encode(": ping\n\n"));
         }, 15000);
 
-        const maxDuration = setTimeout(closeStream, MAX_STREAM_DURATION_MS);
+        const maxDurationTimer = setTimeout(closeStream, MAX_STREAM_DURATION_MS);
 
         req.signal.addEventListener("abort", closeStream);
+
+        (async () => {
+          while (!closed) {
+            await sleep(POLL_INTERVAL_MS);
+            await sendOrder();
+          }
+        })().catch((error) => {
+          logger.warn("Order stream poll loop failed", {
+            orderId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
       },
     });
 
