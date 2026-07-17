@@ -82,6 +82,21 @@ export const CONNECTOR_CATALOG: ConnectorDefinition[] = [
     description: "US-focused POS — no adapter built yet.",
   },
   {
+    id: "ready2order",
+    name: "ready2order",
+    category: "pos",
+    builtInCode: false,
+    description: "Direct POS integration — selectable, not yet implemented.",
+  },
+  {
+    id: "custom",
+    name: "Custom / other",
+    category: "pos",
+    builtInCode: false,
+    description:
+      "Catch-all for a POS not in this list — never a real adapter until one is built for it specifically.",
+  },
+  {
     id: "wolt",
     name: "Wolt",
     category: "delivery",
