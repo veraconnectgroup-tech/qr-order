@@ -10,8 +10,7 @@ import {
 } from "lucide-react";
 import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureRow } from "@/components/landing/feature-row";
-import { KitchenShowcase } from "@/components/landing/kitchen-showcase";
-import { OrdersShowcase } from "@/components/landing/orders-showcase";
+import { StationVoiceShowcase } from "@/components/landing/station-voice-showcase";
 import { AiConciergeShowcase } from "@/components/landing/ai-concierge-showcase";
 import { DashboardScreenShowcase } from "@/components/landing/dashboard-screen-showcase";
 import { ShowcaseWindow } from "@/components/landing/showcase-frame";
@@ -336,9 +335,8 @@ export function LandingFeatures() {
         reverse={kitchen.reverse}
         scene="/landing/bg-kitchen-pass.jpg"
         visual={
-          <div className="mx-auto w-full max-w-[560px] space-y-5 drop-shadow-[0_36px_70px_rgba(22,20,14,0.28)]">
-            <KitchenShowcase />
-            <OrdersShowcase compact />
+          <div className="mx-auto w-full max-w-[560px] drop-shadow-[0_36px_70px_rgba(22,20,14,0.28)]">
+            <StationVoiceShowcase />
           </div>
         }
       />

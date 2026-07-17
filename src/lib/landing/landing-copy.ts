@@ -399,7 +399,7 @@ const copyEn: LandingCopy = {
   hero: {
     eyebrow: "Denis · AI Restaurant Co-worker",
     title: "Denis runs the shift",
-    titleAccent: " from QR to payment.",
+    titleAccent: " — so you can run the restaurant.",
     lead:
       "Guests order by QR. Staff, kitchen, and bar share the same truth. Denis spots what is stuck, who should act, and the next move for every open table.",
     cta: "Try for free",
@@ -434,13 +434,13 @@ const copyEn: LandingCopy = {
     },
     {
       id: "features-kitchen",
-      eyebrow: "Kitchen & bar sync",
-      title: "Bar and kitchen stay separate, but synchronized",
-      lead: "Denis knows when drinks are ready, food is still in prep, or the waiter has not picked up a completed station.",
+      eyebrow: "Hands-free in the kitchen",
+      title: "Denis hears the kitchen — no screen, no tap",
+      lead: "Staff ask out loud and Denis answers from what is actually happening on the pass, the bar queue, and every open ticket — hands stay free the whole shift.",
       bullets: [
-        "Per-station status for bar, kitchen, and service handoff",
-        "Ready-not-picked-up becomes visible before guests get frustrated",
-        "Precise status flows back to guests and staff",
+        "Wake-word listening on the station tablet — nothing sent anywhere until it hears you",
+        "Answers come from the live kitchen and bar board, never a guess",
+        "Delays and stuck stations get called out before a guest has to ask",
       ],
       reverse: true,
     },
