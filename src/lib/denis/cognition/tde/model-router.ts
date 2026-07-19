@@ -1,4 +1,8 @@
 import { AI_CONFIG } from "@/lib/ai/config";
+import {
+  ANTHROPIC_MODEL_PREFIX,
+  isAnthropicConfigured,
+} from "@/lib/ai/anthropic-client";
 import type { DenisModelTier, DenisPerceiveMode } from "@/lib/denis/cognition/runtime-profile-types";
 import type { DenisRuntimeResolvedProfile } from "@/lib/denis/cognition/runtime-profile-types";
 import {
@@ -8,10 +12,31 @@ import {
 import type { BeliefGraph } from "@/lib/denis/cognition/tde/turn-plan-types";
 import type { TurnPlan } from "@/lib/denis/cognition/tde/turn-plan-types";
 
+/**
+ * Extended tier's default target — Denis's hardest turns (group orders,
+ * conflicting requests, prompt-injection attempts) — now prefers Anthropic
+ * over a second call to the same OpenAI model "full" already uses. Set
+ * ANTHROPIC_API_KEY to activate; without it, this falls straight back to
+ * OPENAI_EXTENDED_MODEL/"full"'s model, exactly as before. The
+ * "provider:model" string convention (openai-client.ts's isAnthropicModel)
+ * is what makes adding a third provider later a one-line addition here,
+ * not a rewire of every call site that threads `model` as a plain string.
+ */
+function resolveExtendedModel(): string {
+  const envOverride = process.env.OPENAI_EXTENDED_MODEL?.trim();
+  if (envOverride) return envOverride;
+  if (isAnthropicConfigured()) {
+    return `${ANTHROPIC_MODEL_PREFIX}${
+      process.env.ANTHROPIC_EXTENDED_MODEL?.trim() || "claude-sonnet-5"
+    }`;
+  }
+  return "gpt-4.1";
+}
+
 export const MODEL_TIER_MODELS = {
   mini: "gpt-4.1-nano",
   full: "gpt-4.1",
-  extended: process.env.OPENAI_EXTENDED_MODEL?.trim() || "gpt-4.1",
+  extended: resolveExtendedModel(),
 } as const;
 
 export type { DenisModelTier };

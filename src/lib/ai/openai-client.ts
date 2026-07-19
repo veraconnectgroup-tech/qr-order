@@ -1,4 +1,8 @@
 import { AI_CONFIG, isOpenAiConfigured } from "@/lib/ai/config";
+import {
+  callAnthropicChat,
+  isAnthropicModel,
+} from "@/lib/ai/anthropic-client";
 import { StreamingJsonStringFieldExtractor } from "@/lib/ai/streaming-json-field-extractor";
 import type {
   OpenAiCallResult,
@@ -35,6 +39,31 @@ export class AiOpenAiError extends Error {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Reasoning-class models (o1/o3/o4-mini and successors) reject a custom
+ * `temperature` and use `max_completion_tokens` instead of `max_tokens`.
+ * OPENAI_EXTENDED_MODEL is meant to route Denis's hardest turns to one of
+ * these — without this check, setting it to a real reasoning model (rather
+ * than leaving it defaulted to the same model as "full") would 400 on
+ * every extended-tier call.
+ */
+function isReasoningModel(model: string): boolean {
+  return /^o\d/i.test(model) || /reasoning/i.test(model);
+}
+
+function applyModelParamCompat(
+  payload: Record<string, unknown>,
+  model: string,
+  maxTokens: number
+): void {
+  if (isReasoningModel(model)) {
+    delete payload.temperature;
+    payload.max_completion_tokens = maxTokens;
+  } else {
+    payload.max_tokens = maxTokens;
+  }
 }
 
 type ChatCompletionToolCall = {
@@ -107,7 +136,6 @@ async function callOpenAiOnce(
     model,
     messages: messages.map(toChatMessagePayload),
     temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
-    max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
     // ADR-049: json_object mode and tool-calling don't compose cleanly —
     // when a tool is called the model returns tool_calls, not JSON content.
     // Only force JSON mode when this call carries no tools.
@@ -115,6 +143,11 @@ async function callOpenAiOnce(
       ? {}
       : { response_format: { type: "json_object" } }),
   };
+  applyModelParamCompat(
+    bodyPayload,
+    model,
+    callOptions?.maxTokens ?? AI_CONFIG.maxTokens
+  );
 
   if (hasTools) {
     bodyPayload.tools = callOptions!.tools!.map((tool) => ({
@@ -267,10 +300,6 @@ export async function callOpenAiChat(
     toolChoice?: "auto" | "none";
   }
 ): Promise<OpenAiCallResult> {
-  if (!isOpenAiConfigured()) {
-    throw new AiOpenAiError("OpenAI is not configured.");
-  }
-
   const callOptions = options?.extendedThinking
     ? {
         temperature: 0.2,
@@ -278,6 +307,18 @@ export async function callOpenAiChat(
         ...options,
       }
     : options;
+
+  if (isAnthropicModel(callOptions?.model)) {
+    return callAnthropicChat(messages, {
+      model: callOptions!.model!,
+      temperature: callOptions?.temperature,
+      maxTokens: callOptions?.maxTokens,
+    });
+  }
+
+  if (!isOpenAiConfigured()) {
+    throw new AiOpenAiError("OpenAI is not configured.");
+  }
 
   return withCircuitBreaker(
     "openai",
@@ -308,11 +349,15 @@ async function callOpenAiOnceStreaming(
     model,
     messages,
     temperature: callOptions?.temperature ?? AI_CONFIG.temperature,
-    max_tokens: callOptions?.maxTokens ?? AI_CONFIG.maxTokens,
     response_format: { type: "json_object" },
     stream: true,
     stream_options: { include_usage: true },
   };
+  applyModelParamCompat(
+    bodyPayload,
+    model,
+    callOptions?.maxTokens ?? AI_CONFIG.maxTokens
+  );
 
   if (
     AI_CONFIG.promptCachingEnabled &&
@@ -428,10 +473,6 @@ export async function callOpenAiChatStreaming(
     promptCacheKey?: string;
   }
 ): Promise<OpenAiCallResult> {
-  if (!isOpenAiConfigured()) {
-    throw new AiOpenAiError("OpenAI is not configured.");
-  }
-
   const callOptions = options?.extendedThinking
     ? {
         temperature: 0.2,
@@ -439,6 +480,29 @@ export async function callOpenAiChatStreaming(
         ...options,
       }
     : options;
+
+  if (isAnthropicModel(callOptions?.model)) {
+    // No SSE parsing for Anthropic yet — call once and reveal the guest
+    // message in one shot rather than token-by-token. Correctness over
+    // streaming smoothness for this first cross-provider step; true
+    // streaming is a fast-follow, not a blocker for routing extended-tier
+    // turns to a stronger model today. Still extract just the `message`
+    // field (not the raw JSON blob) so the guest never sees structural
+    // JSON — same contract callers already rely on from the OpenAI path.
+    const result = await callAnthropicChat(messages, {
+      model: callOptions!.model!,
+      temperature: callOptions?.temperature,
+      maxTokens: callOptions?.maxTokens,
+    });
+    const extractor = new StreamingJsonStringFieldExtractor("message");
+    const revealed = extractor.push(result.content);
+    onMessageDelta(revealed || result.content);
+    return result;
+  }
+
+  if (!isOpenAiConfigured()) {
+    throw new AiOpenAiError("OpenAI is not configured.");
+  }
 
   return withCircuitBreaker(
     "openai",

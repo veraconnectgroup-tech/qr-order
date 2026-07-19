@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MODEL_ROUTER_COST_FIXTURES,
   MODEL_ROUTER_EVAL_FIXTURES,
@@ -116,5 +116,60 @@ describe("model-router", () => {
     expect(modelTierForScore(4, true)).toBe("mini");
     expect(modelTierForScore(7, true)).toBe("full");
     expect(modelTierForScore(10, true)).toBe("extended");
+  });
+});
+
+describe("extended tier model resolution — cross-provider routing", () => {
+  const ORIGINAL_ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  const ORIGINAL_ANTHROPIC_MODEL = process.env.ANTHROPIC_EXTENDED_MODEL;
+  const ORIGINAL_OPENAI_EXTENDED = process.env.OPENAI_EXTENDED_MODEL;
+
+  afterEach(() => {
+    vi.resetModules();
+    process.env.ANTHROPIC_API_KEY = ORIGINAL_ANTHROPIC_KEY;
+    process.env.ANTHROPIC_EXTENDED_MODEL = ORIGINAL_ANTHROPIC_MODEL;
+    process.env.OPENAI_EXTENDED_MODEL = ORIGINAL_OPENAI_EXTENDED;
+  });
+
+  it("prefers anthropic:claude-sonnet-5 when ANTHROPIC_API_KEY is set and no override", async () => {
+    vi.resetModules();
+    delete process.env.OPENAI_EXTENDED_MODEL;
+    delete process.env.ANTHROPIC_EXTENDED_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    const { MODEL_TIER_MODELS } = await import(
+      "@/lib/denis/cognition/tde/model-router"
+    );
+    expect(MODEL_TIER_MODELS.extended).toBe("anthropic:claude-sonnet-5");
+  });
+
+  it("respects ANTHROPIC_EXTENDED_MODEL override", async () => {
+    vi.resetModules();
+    delete process.env.OPENAI_EXTENDED_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.ANTHROPIC_EXTENDED_MODEL = "claude-opus-4-8";
+    const { MODEL_TIER_MODELS } = await import(
+      "@/lib/denis/cognition/tde/model-router"
+    );
+    expect(MODEL_TIER_MODELS.extended).toBe("anthropic:claude-opus-4-8");
+  });
+
+  it("falls back to gpt-4.1 when ANTHROPIC_API_KEY is absent", async () => {
+    vi.resetModules();
+    delete process.env.OPENAI_EXTENDED_MODEL;
+    delete process.env.ANTHROPIC_API_KEY;
+    const { MODEL_TIER_MODELS } = await import(
+      "@/lib/denis/cognition/tde/model-router"
+    );
+    expect(MODEL_TIER_MODELS.extended).toBe("gpt-4.1");
+  });
+
+  it("OPENAI_EXTENDED_MODEL override always wins, even with Anthropic configured", async () => {
+    vi.resetModules();
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.OPENAI_EXTENDED_MODEL = "o4-mini";
+    const { MODEL_TIER_MODELS } = await import(
+      "@/lib/denis/cognition/tde/model-router"
+    );
+    expect(MODEL_TIER_MODELS.extended).toBe("o4-mini");
   });
 });
