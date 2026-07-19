@@ -1,5 +1,5 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { moderateGuestInput, shieldGracefulGuestMessage } from "@/lib/ai/moderation";
+import { shieldGracefulGuestMessage } from "@/lib/ai/moderation";
 import {
   buildSecurityBlockedPayload,
   logShieldBlock,
@@ -69,15 +69,12 @@ import {
 import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
 import {
-  assertSufficientCredits,
   finalizeTurnMetering,
   maybeEnqueueLowBalanceAlert,
   refreshOrgAiOpsProjection,
-  resolveAiTurnOrg,
 } from "@/lib/denis/commercial";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
-import { createTurnTraceId } from "@/lib/denis/platform/timeline-types";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
 import { maybeAppendMentalModelUpdated } from "@/lib/denis/cognition/mental-model/append-mental-model-event";
 import { timelineToStoredMessages } from "@/lib/denis/loop/fold-transcript";
@@ -149,9 +146,9 @@ import {
 import { resolveActOrderChangeOutcome } from "@/lib/denis/runtime/act/resolve-act-order-change-outcome";
 import {
   elapsedMs,
-  emptyTurnTimings,
   logDenisTurnObservability,
 } from "@/lib/denis/runtime/turn-observability";
+import { validateTurnPreconditions } from "@/lib/denis/runtime/turn/validate-turn-preconditions";
 import {
   buildTurnTrace,
   scheduleTurnTraceWrite,
@@ -164,9 +161,7 @@ import type {
   DenisTurnRunInput,
 } from "@/lib/denis/runtime/turn-types";
 import { formatChatTurnApiResponse } from "@/lib/denis/surfaces/chat/format-turn-response";
-import { parseDenisChatBody } from "@/lib/denis/surfaces/chat/parse-chat-request";
 import { formatVoiceTurnApiResponse } from "@/lib/denis/surfaces/voice/format-voice-response";
-import { parseDenisVoiceBody } from "@/lib/denis/surfaces/voice/parse-voice-turn";
 import type {
   PerceptionChannel,
   TurnEnvelope,
@@ -362,62 +357,6 @@ function buildCommerceStatusSummary(orders: OrderFact[]): string | null {
     .join(", ");
 }
 
-async function handleInputShieldBlock(input: {
-  admin: ReturnType<typeof createAdminClient>;
-  message: string;
-  reason: string;
-  sessionId: string;
-  locationId: string;
-  tableId: string;
-  orgId: string;
-  traceId: string;
-}): Promise<Response> {
-  const shieldState = await recordShieldBlock(input.sessionId);
-  logShieldBlock("regex", input.reason, input.message, "input");
-
-  await appendDenisTimelineEvent(input.admin, {
-    aiSessionId: input.sessionId,
-    eventType: "security.blocked",
-    traceId: input.traceId,
-    payload: buildSecurityBlockedPayload({
-      direction: "input",
-      reason: input.reason,
-      layer: "regex",
-      preview: input.message,
-      blockCount: shieldState.blockCount,
-      sessionFlagged: shieldState.flagged,
-      traceId: input.traceId,
-    }),
-  });
-
-  if (shieldState.notifyStaff) {
-    void dispatchStaffNotification({
-      orgId: input.orgId,
-      locationId: input.locationId,
-      type: "denis_escalation",
-      message: `Denis prompt shield: ${shieldState.blockCount} blocked attempts at this table — session flagged.`,
-      tableId: input.tableId,
-      priorityOverride: "high",
-      playSound: true,
-    }).catch((error) => {
-      logger.warn("Prompt shield staff alert failed", {
-        sessionId: input.sessionId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
-  }
-
-  return apiSuccess({
-    message: shieldGracefulGuestMessage(),
-    recommendations: [],
-    cartActions: [],
-    quickReplies: [],
-    intent: "chat",
-    submitOrder: false,
-    sessionId: input.sessionId,
-  });
-}
-
 /** Direct ACL when act phase did not commit handoff (ADR-032 belt-and-suspenders). */
 async function runHandoffAclFallback(
   admin: ReturnType<typeof createAdminClient>,
@@ -523,12 +462,6 @@ function dedupeHandoffQuickReplies(
     out.push(trimmed);
   }
   return out.slice(0, 6);
-}
-
-function isSupportedTurnChannel(
-  channel: DenisTurnRunInput["channel"]
-): channel is "chat" | "voice" {
-  return channel === "chat" || channel === "voice";
 }
 
 function buildPendingSlotActPerceiveResult(
@@ -1092,60 +1025,21 @@ type PerceiveChatPayload = {
  * Denis PPAN+ entry — perceive → plan → act → tell → timeline (G4 single loop).
  */
 export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> {
-  if (!isSupportedTurnChannel(input.channel)) {
-    return apiError("Unsupported channel.", 400);
-  }
-
-  const parsed =
-    input.channel === "voice"
-      ? parseDenisVoiceBody(input.rawBody)
-      : parseDenisChatBody(input.rawBody);
-  if (!parsed.ok) {
-    return parsed.response;
-  }
-
-  const admin = createAdminClient();
-  const traceId = createTurnTraceId();
+  const preconditions = await validateTurnPreconditions(input);
+  if (!preconditions.ok) return preconditions.response;
+  const { admin, traceId, timings, parsed, orgId, creditBalanceAfter, channel } =
+    preconditions;
   const turnStarted = performance.now();
-  const timings = emptyTurnTimings();
   let shadowParityScore: number | undefined;
 
-  const orgResult = await resolveAiTurnOrg(admin, {
-    locationId: parsed.data.locationId,
-    tableId: parsed.data.tableId,
-    sessionToken: parsed.data.sessionToken,
-  });
-  if (!orgResult.ok) {
-    return apiError(orgResult.error, orgResult.status);
-  }
-
-  const creditCheck = await assertSufficientCredits(admin, orgResult.data.orgId);
-  if (!creditCheck.ok) {
-    return apiError("insufficient_credits", 402);
-  }
-
-  const inputModeration = moderateGuestInput(parsed.data.message);
-  if (!inputModeration.safe) {
-    return handleInputShieldBlock({
-      admin,
-      message: parsed.data.message,
-      reason: inputModeration.reason,
-      sessionId: parsed.data.sessionId ?? "",
-      locationId: parsed.data.locationId,
-      tableId: parsed.data.tableId,
-      orgId: orgResult.data.orgId,
-      traceId,
-    });
-  }
-
   const ctxStarted = performance.now();
-  let ctx = await buildDenisTurnContext(admin, parsed.data);
+  let ctx = await buildDenisTurnContext(admin, parsed);
   timings.contextMs = elapsedMs(ctxStarted);
 
   const chatAiSessionId = resolveCanonicalChatAiSessionId(
     ctx.config.party.mode,
     ctx.draftAiSessionId,
-    parsed.data.sessionId
+    parsed.sessionId
   );
 
   const earlyTimelineAiSessionId = chatAiSessionId ?? ctx.draftAiSessionId ?? null;
@@ -1153,8 +1047,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const earlyBackfill = await maybeBackfillPlacementCart({
       admin,
       timelineAiSessionId: earlyTimelineAiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
+      locationId: parsed.locationId,
+      userMessage: parsed.message,
       cartDraft: ctx.aiCartState.draft,
       timeline: ctx.tableSessionState.timeline,
     });
@@ -1186,9 +1080,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       const quickObligation = mergeTableSessionObligation({
         state: ctx.tableSessionState,
         source: "turn",
-        guestMessage: parsed.data.message,
+        guestMessage: parsed.message,
         cartLines: earlyBackfill.cartDraft.items,
-        language: parsed.data.language,
+        language: parsed.language,
       });
       if (quickObligation.canConfirm) {
         const tableSessionState = ctx.tableSessionState;
@@ -1213,14 +1107,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const perceiveBody =
     chatAiSessionId != null
-      ? { ...parsed.data, sessionId: chatAiSessionId }
-      : parsed.data;
+      ? { ...parsed, sessionId: chatAiSessionId }
+      : parsed;
 
   const beliefGraph = ctx.tableSessionState
     ? compileBeliefs({
         state: ctx.tableSessionState,
-        guestMessage: parsed.data.message,
-        sessionLanguage: parsed.data.language,
+        guestMessage: parsed.message,
+        sessionLanguage: parsed.language,
       })
     : null;
 
@@ -1255,14 +1149,14 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
   }
 
-  if (input.channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
+  if (channel === "voice" && !ctx.config.surfaces.voiceEnabled) {
     return apiError("Voice is not enabled for this location.", 403);
   }
 
   const timelineSurface: TurnEnvelope["surface"] =
-    input.channel === "voice" ? "voice" : "chat";
+    channel === "voice" ? "voice" : "chat";
   const perceptionChannel: PerceptionChannel =
-    input.channel === "voice" ? "voice.transcript" : "chat.message";
+    channel === "voice" ? "voice.transcript" : "chat.message";
 
   // MVP-1/2/3 — logging on every turn. MVP-4 (mission/notification on
   // handoff) and MVP-5 (warn_1 reminder actually reaching the guest, via
@@ -1271,25 +1165,25 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   // see run-guest-conduct-shadow-check.ts.
   const conductOutcome = await runGuestConductShadowCheck(admin, {
     aiSessionId: chatAiSessionId ?? null,
-    message: parsed.data.message,
+    message: parsed.message,
     guestConductConfig: ctx.config.ops.guestConduct,
-    orgId: orgResult.data.orgId,
+    orgId: orgId,
     locationId: ctx.locationId,
-    tableId: parsed.data.tableId,
+    tableId: parsed.tableId,
     traceId,
   });
 
   const reflexTurn = planTurnWithReflex({
     config: ctx.config,
-    message: parsed.data.message,
+    message: parsed.message,
     flowNodeId: ctx.flowNodeId,
     cartState: ctx.aiCartState,
     manualCartDraft: ctx.manualCartDraft,
     peerManualCartDraft: ctx.peerManualCartDraft,
     foodUpsellAsked: ctx.foodUpsellAsked,
     skipUpsell: ctx.opsEffects?.skipUpsell ?? false,
-    structuredIntent: parsed.data.structuredIntent,
-    handoffPaymentMethod: parsed.data.handoffPaymentMethod,
+    structuredIntent: parsed.structuredIntent,
+    handoffPaymentMethod: parsed.handoffPaymentMethod,
     pendingSlot: ctx.tableSessionState?.conversation.pendingSlot
       ? { kind: ctx.tableSessionState.conversation.pendingSlot }
       : null,
@@ -1302,8 +1196,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const slotExtract = shouldRunSlotExtract(ctx.config, reflexTurn)
     ? await extractOrderSlots({
-        utterance: parsed.data.message,
-        language: parsed.data.language,
+        utterance: parsed.message,
+        language: parsed.language,
         config: ctx.config,
       })
     : null;
@@ -1329,16 +1223,16 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const reorderPlan = decideTurnPlan({
       beliefs: beliefGraph,
       reflex: reflexTurn,
-      message: parsed.data.message,
+      message: parsed.message,
     });
     if (reorderPlan.reason !== "commerce.reorder.guest_request") return null;
 
     const reorderAct = await tryApplyGuestReorderAct({
       admin,
       sessionId: aiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
-      language: parsed.data.language,
+      locationId: parsed.locationId,
+      userMessage: parsed.message,
+      language: parsed.language,
       state: ctx.tableSessionState,
     });
     if (!reorderAct.resolved) return null;
@@ -1354,9 +1248,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const slotAct = await tryResolvePendingSlotAct({
       admin,
       sessionId: aiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
-      language: parsed.data.language,
+      locationId: parsed.locationId,
+      userMessage: parsed.message,
+      language: parsed.language,
       pendingSlot: pendingSlot ?? "serve_size",
     });
 
@@ -1375,7 +1269,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
           reflexTurn,
           beliefs: beliefGraph ?? { beliefs: [] },
           timelineEnabled,
-          orgId: orgResult.data.orgId,
+          orgId: orgId,
           onMessageDelta: input.onMessageDelta,
         }));
     }
@@ -1388,7 +1282,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         reflexTurn,
         beliefs: beliefGraph ?? { beliefs: [] },
         timelineEnabled,
-        orgId: orgResult.data.orgId,
+        orgId: orgId,
         onMessageDelta: input.onMessageDelta,
       }));
   }
@@ -1417,15 +1311,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       handoffCommandType: reflexTurn.handoffCommand?.type ?? null,
       waiterCallEnabled: ctx.config.handoff.waiterCall,
       liveExecutionEnabled: ctx.config.handoff.liveExecution,
-      tableId: parsed.data.tableId,
-      locationId: parsed.data.locationId,
+      tableId: parsed.tableId,
+      locationId: parsed.locationId,
     })
   ) {
     const staffHelp = await executeDenisWaiterHandoff(admin, {
-      tableId: parsed.data.tableId,
-      locationId: parsed.data.locationId,
-      tableToken: parsed.data.sessionToken,
-      sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
+      tableId: parsed.tableId,
+      locationId: parsed.locationId,
+      tableToken: parsed.sessionToken,
+      sessionToken: parsed.tableSessionToken ?? parsed.sessionToken,
       reason: data.needsStaffHelp,
     });
     if (!staffHelp.ok) {
@@ -1433,7 +1327,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       // wasn't true yet when it wrote that. Never let an unconfirmed
       // claim reach the guest (commit-outcome-messages.ts's same rule).
       logger.warn("needsStaffHelp handoff failed", {
-        locationId: parsed.data.locationId,
+        locationId: parsed.locationId,
         error: staffHelp.error,
       });
       data.message = NEEDS_STAFF_HELP_FAILURE_MESSAGE;
@@ -1486,9 +1380,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const ordered = await applyStructuredPerceptionOrdering({
       admin,
       sessionId: timelineAiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
-      language: parsed.data.language,
+      locationId: parsed.locationId,
+      userMessage: parsed.message,
+      language: parsed.language,
       structured: data.structuredPerception,
       timelineEnabled,
       fallbackDraft: cartDraftForAct,
@@ -1509,8 +1403,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const backfill = await maybeBackfillPlacementCart({
       admin,
       timelineAiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
+      locationId: parsed.locationId,
+      userMessage: parsed.message,
       cartDraft: cartDraftForAct,
       timeline: ctx.tableSessionState?.timeline,
     });
@@ -1532,9 +1426,9 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const retryAct = await tryResolvePendingSlotAct({
       admin,
       sessionId: timelineAiSessionId,
-      locationId: parsed.data.locationId,
-      userMessage: parsed.data.message,
-      language: parsed.data.language,
+      locationId: parsed.locationId,
+      userMessage: parsed.message,
+      language: parsed.language,
       pendingSlot: pendingSlot ?? "serve_size",
     });
 
@@ -1556,21 +1450,21 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     ? mergeTableSessionObligation({
         state: ctx.tableSessionState,
         source: "turn",
-        guestMessage: parsed.data.message,
+        guestMessage: parsed.message,
         cartLines: cartDraftForAct.items,
         pendingSlot:
           (pendingSlot as PendingSlotKind | null) ??
           ctx.tableSessionState.conversation.pendingSlot ??
           null,
-        language: parsed.data.language,
+        language: parsed.language,
         atRecap: ctx.flowNodeId === "recap" || ctx.flowNodeId === "submit",
       })
     : assessWaiterObligation({
-        guestMessage: parsed.data.message,
+        guestMessage: parsed.message,
         orderContextMessage: lastOrderPlacementFromTranscript([]),
         cartLines: cartDraftForAct.items,
         pendingSlot: (pendingSlot as PendingSlotKind | null) ?? null,
-        language: parsed.data.language,
+        language: parsed.language,
         atRecap: ctx.flowNodeId === "recap" || ctx.flowNodeId === "submit",
       });
 
@@ -1593,7 +1487,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const needsCatalog = actSubmitLive && legacyWantsSubmit;
     if (needsCatalog) {
       try {
-        catalog = await getCachedMenuForLocation(parsed.data.locationId);
+        catalog = await getCachedMenuForLocation(parsed.locationId);
       } catch {
         catalog = undefined;
       }
@@ -1604,12 +1498,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       config: ctx.config,
       reflexTurn,
       aiSessionId: timelineAiSessionId ?? undefined,
-      tableId: parsed.data.tableId,
-      locationId: parsed.data.locationId,
-      tableToken: parsed.data.sessionToken,
-      sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
-      deviceFingerprint: parsed.data.deviceFingerprint ?? undefined,
-      deviceToken: parsed.data.deviceToken ?? undefined,
+      tableId: parsed.tableId,
+      locationId: parsed.locationId,
+      tableToken: parsed.sessionToken,
+      sessionToken: parsed.tableSessionToken ?? parsed.sessionToken,
+      deviceFingerprint: parsed.deviceFingerprint ?? undefined,
+      deviceToken: parsed.deviceToken ?? undefined,
       cartDraft: cartDraftForAct,
       catalog,
       legacySubmitOrder: legacyWantsSubmit,
@@ -1630,11 +1524,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const unifiedStarted = performance.now();
     turnSubmitOutcome = await executeTurnOrderSubmit(admin, {
       aiSessionId: timelineAiSessionId,
-      locationId: parsed.data.locationId,
-      tableToken: parsed.data.sessionToken,
-      sessionToken: parsed.data.tableSessionToken ?? parsed.data.sessionToken,
-      deviceFingerprint: parsed.data.deviceFingerprint,
-      deviceToken: parsed.data.deviceToken,
+      locationId: parsed.locationId,
+      tableToken: parsed.sessionToken,
+      sessionToken: parsed.tableSessionToken ?? parsed.sessionToken,
+      deviceFingerprint: parsed.deviceFingerprint,
+      deviceToken: parsed.deviceToken,
       cartDraft: cartDraftForAct,
     });
     timings.actMs = (timings.actMs ?? 0) + elapsedMs(unifiedStarted);
@@ -1658,23 +1552,23 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const actHandoffOutcome = await runHandoffAclFallback(admin, {
     config: ctx.config,
     reflexTurn,
-    parsed: parsed.data,
-    language: parsed.data.language,
-    actHandoffOutcome: resolveActHandoffOutcome(actPhase, parsed.data.language),
+    parsed: parsed,
+    language: parsed.language,
+    actHandoffOutcome: resolveActHandoffOutcome(actPhase, parsed.language),
   });
   const actOrderChangeOutcome = resolveActOrderChangeOutcome(
     actPhase,
-    parsed.data.language
+    parsed.language
   );
 
   const guestUsesLegacy = resolveGuestLegacyPath(rollout.mode, {
-    cohortKey: parsed.data.sessionToken,
+    cohortKey: parsed.sessionToken,
     canaryPercent: ctx.config.rollout.canaryPercent,
   });
 
   const narrationFacts = buildNarrationFacts({
     config: ctx.config,
-    language: parsed.data.language,
+    language: parsed.language,
     reflexTurn,
     flowNodeId: ctx.flowNodeId,
     guestMemory: ctx.guestMemory,
@@ -1721,7 +1615,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       facts: narrationFacts,
       narration,
       legacyQuickReplies: data.quickReplies,
-      language: parsed.data.language,
+      language: parsed.language,
     }),
     actHandoffOutcome.quickReplies
   );
@@ -1744,7 +1638,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   if (turnSubmitOutcome.orderId) {
     guestMessage = orderSubmitSuccessMessage({
-      language: parsed.data.language,
+      language: parsed.language,
       orderNumber: turnSubmitOutcome.orderNumber,
       awaitingApproval: turnSubmitOutcome.awaitingApproval,
     });
@@ -1755,7 +1649,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     actSubmitLive &&
     !turnSubmitOutcome.attempted
   ) {
-    guestMessage = orderSubmitNotAttemptedMessage(parsed.data.language);
+    guestMessage = orderSubmitNotAttemptedMessage(parsed.language);
   }
 
   const hasOpenOrders = (ctx.tableSessionState?.commerce.orders ?? []).some(
@@ -1765,7 +1659,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     ? (guestMessage ?? "")
     : sanitizeGuestOrderHonesty({
         message: guestMessage ?? "",
-        language: parsed.data.language,
+        language: parsed.language,
         orderSubmitted: Boolean(turnSubmitOutcome.orderId),
         draft: cartDraftToAiOrderDraft(cartDraftForAct),
       });
@@ -1780,7 +1674,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     guestMessage = enforceWaiterTell({
       message: tellBase,
       obligation: waiterObligation,
-      language: parsed.data.language,
+      language: parsed.language,
       draft: cartDraftToAiOrderDraft(cartDraftForAct),
     });
   }
@@ -1793,7 +1687,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       guestMessage ?? "",
       "output"
     );
-    const shieldSessionId = timelineAiSessionId ?? parsed.data.sessionId;
+    const shieldSessionId = timelineAiSessionId ?? parsed.sessionId;
     const shieldState = await recordShieldBlock(shieldSessionId ?? "");
     if (timelineAiSessionId && kernelTimelineEnabled(rollout.mode)) {
       await appendDenisTimelineEvent(admin, {
@@ -1813,11 +1707,11 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     }
     if (shieldState.notifyStaff) {
       void dispatchStaffNotification({
-        orgId: orgResult.data.orgId,
-        locationId: parsed.data.locationId,
+        orgId: orgId,
+        locationId: parsed.locationId,
         type: "denis_escalation",
         message: `Denis output shield: ${shieldState.blockCount} blocked attempts at this table — session flagged.`,
-        tableId: parsed.data.tableId,
+        tableId: parsed.tableId,
         priorityOverride: "high",
         playSound: true,
       }).catch((error) => {
@@ -1887,15 +1781,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     const writeTurnTimeline = async () => {
       const turnInterpretation = extractTurnInterpretation({
         structured: data.structuredPerception,
-        guestMessage: parsed.data.message,
+        guestMessage: parsed.message,
         llmUsed: perceiveResult.llmUsed,
       });
 
       await persistDenisTurnTimeline(admin, {
         aiSessionId: timelineAiSessionId,
-        locationId: parsed.data.locationId,
+        locationId: parsed.locationId,
         traceId,
-        guestMessage: parsed.data.message,
+        guestMessage: parsed.message,
         assistantMessage: guestMessage,
         intent,
         intentTier: guestIntentTierFromReflex(reflexTurn.usedT0),
@@ -1906,12 +1800,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
         turnInterpretation,
       });
 
-      const followUp = guestFollowUpFromMessage(parsed.data.message);
+      const followUp = guestFollowUpFromMessage(parsed.message);
       if (followUp) {
         await persistGuestFollowUpRequest(admin, {
           aiSessionId: timelineAiSessionId,
           traceId,
-          guestMessage: parsed.data.message,
+          guestMessage: parsed.message,
           delaySeconds: followUp.delaySeconds,
         });
       }
@@ -1951,12 +1845,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       await maybeEmitTurnLearningSignals(admin, {
         aiSessionId: timelineAiSessionId,
         traceId,
-        locationId: parsed.data.locationId,
-        guestMessage: parsed.data.message,
+        locationId: parsed.locationId,
+        guestMessage: parsed.message,
         legacyIntent: data.intent ?? null,
         guestIntent: intent,
-        menuLanguage: parsed.data.language,
-        guestAllergens: parsed.data.preferences?.allergies,
+        menuLanguage: parsed.language,
+        guestAllergens: parsed.preferences?.allergies,
         cartChanged: cartChangedThisTurn,
         orderSubmitted: Boolean(turnSubmitOutcome.orderId),
       });
@@ -1977,13 +1871,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   let creditsRemaining =
-    data.creditsRemaining ?? creditCheck.balanceAfter;
+    data.creditsRemaining ?? creditBalanceAfter;
   const creditsCharged = data.creditsCharged ?? 0;
 
   if (timelineAiSessionId && creditsCharged > 0) {
     const meteringStarted = performance.now();
     const metering = await finalizeTurnMetering(admin, {
-      orgId: orgResult.data.orgId,
+      orgId: orgId,
       aiSessionId: timelineAiSessionId,
       traceId,
     });
@@ -1991,15 +1885,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     if (metering.ok) {
       creditsRemaining = metering.balanceAfter;
       await maybeEnqueueLowBalanceAlert(admin, {
-        orgId: orgResult.data.orgId,
-        locationId: parsed.data.locationId,
+        orgId: orgId,
+        locationId: parsed.locationId,
         balanceAfter: metering.balanceAfter,
         traceId,
       });
-      void refreshOrgAiOpsProjection(admin, orgResult.data.orgId).catch(
+      void refreshOrgAiOpsProjection(admin, orgId).catch(
         (error) => {
           logger.warn("Denis turn org_ai_ops refresh failed", {
-            orgId: orgResult.data.orgId,
+            orgId: orgId,
             traceId,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -2009,7 +1903,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       logger.error("Denis turn metering finalize failed", {
         traceId,
         aiSessionId: timelineAiSessionId,
-        orgId: orgResult.data.orgId,
+        orgId: orgId,
         code: metering.code,
       });
     }
@@ -2023,10 +1917,10 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       buildTurnTrace({
         traceId,
         aiSessionId: timelineAiSessionId,
-        locationId: parsed.data.locationId,
-        guestInput: parsed.data.message,
-        language: parsed.data.language,
-        orgId: orgResult.data.orgId,
+        locationId: parsed.locationId,
+        guestInput: parsed.message,
+        language: parsed.language,
+        orgId: orgId,
         creditsRemaining,
         contextMs: timings.contextMs ?? 0,
         legacyMs: timings.legacyMs ?? 0,
@@ -2049,21 +1943,21 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   }
 
   void persistDenisAuditEntry(admin, {
-    orgId: orgResult.data.orgId,
-    locationId: parsed.data.locationId,
+    orgId: orgId,
+    locationId: parsed.locationId,
     tableSessionId: ctx.tableSessionState?.session.id ?? null,
     guestTokenHash:
-      parsed.data.deviceFingerprint &&
-      parsed.data.deviceFingerprint.length >= 8
+      parsed.deviceFingerprint &&
+      parsed.deviceFingerprint.length >= 8
         ? deriveGuestMemoryToken(
-            parsed.data.locationId,
-            parsed.data.deviceFingerprint
+            parsed.locationId,
+            parsed.deviceFingerprint
           )
         : null,
     entry: buildAuditEntry({
       traceId,
-      sessionId: timelineAiSessionId ?? parsed.data.sessionId ?? "unknown",
-      guestMessage: parsed.data.message,
+      sessionId: timelineAiSessionId ?? parsed.sessionId ?? "unknown",
+      guestMessage: parsed.message,
       denisResponse: guestMessage ?? "",
       turnPlan: {
         kind: perceiveResult.turnPlan.kind,
@@ -2083,8 +1977,8 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   logDenisTurnObservability({
     traceId,
-    locationId: parsed.data.locationId,
-    channel: input.channel,
+    locationId: parsed.locationId,
+    channel: channel,
     rolloutMode: rollout.mode,
     guestUsesLegacy,
     narrationTier: narration.tier,
@@ -2131,7 +2025,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   const responseMeta = {
     traceId,
-    channel: input.channel,
+    channel: channel,
     flowNodeId: reflexTurn.plan.transition.toNodeId,
     topGoal: reflexTurn.plan.topGoal?.type ?? null,
     conflictPrompt: reflexTurn.conflict?.guestPrompt ?? null,
@@ -2151,13 +2045,13 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   };
 
   const tableSessionId = await resolveActiveTableSessionId(admin, {
-    tableId: parsed.data.tableId,
-    locationId: parsed.data.locationId,
-    sessionToken: resolveGuestTableSessionLookupToken(parsed.data),
+    tableId: parsed.tableId,
+    locationId: parsed.locationId,
+    sessionToken: resolveGuestTableSessionLookupToken(parsed),
   });
 
   if (tableSessionId) {
-    const menuCache = await getCachedMenuForLocation(parsed.data.locationId);
+    const menuCache = await getCachedMenuForLocation(parsed.locationId);
     const productNames: Record<string, string> = {};
     if (menuCache?.productMap) {
       for (const [id, product] of Object.entries(menuCache.productMap)) {
@@ -2197,7 +2091,7 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     });
   }
 
-  if (input.channel === "voice") {
+  if (channel === "voice") {
     return formatVoiceTurnApiResponse(responseData, responseMeta, {
       speakText: guestMessage,
       ttsRecommended: ctx.config.surfaces.voiceTtsEnabled,
