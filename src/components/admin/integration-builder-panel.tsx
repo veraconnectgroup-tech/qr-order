@@ -106,6 +106,10 @@ export function IntegrationBuilderPanel() {
       }
       setGeneratedCode(result.code);
       setStep("generated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Generisanje nije uspelo."
+      );
     } finally {
       setGenerating(false);
     }

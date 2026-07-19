@@ -98,6 +98,10 @@ export function IntegrationCredentialsPanel() {
       toast.success("Kredencijal sačuvan (šifrovan).");
       setValue("");
       await reload(providerId);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Čuvanje nije uspelo."
+      );
     } finally {
       setPending(false);
     }
@@ -112,6 +116,10 @@ export function IntegrationCredentialsPanel() {
         return;
       }
       setRows((prev) => prev.filter((row) => row.id !== id));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Brisanje nije uspelo."
+      );
     } finally {
       setBusyId(null);
     }
