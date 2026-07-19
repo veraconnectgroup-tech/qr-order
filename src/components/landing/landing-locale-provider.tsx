@@ -11,7 +11,6 @@ import {
 } from "react";
 import {
   landingCopy,
-  resolveLandingLocale,
   type LandingCopy,
   type LandingLocale,
   LANDING_LOCALES,
@@ -29,20 +28,18 @@ const LandingLocaleContext = createContext<LandingLocaleContextValue | null>(
 
 const STORAGE_KEY = "denis:landing-locale";
 
+/**
+ * Pinned to English only, on purpose: only copyEn has the current hero/
+ * feature copy (see the hero headline + station-voice feature row
+ * commits) — copyDe/copySr are stale. Removing LandingLocaleSwitcher
+ * from the nav (2ab576fc) didn't actually stop a visitor from landing
+ * on the stale translations anyway, since this function still
+ * auto-detected from navigator.language/localStorage/?lang= with no
+ * switcher left to get back to English — a real regression, not the
+ * intended fix. Re-enable auto-detect + the switcher once DE/SR copy is
+ * caught up to match EN.
+ */
 function readInitialLocale(): LandingLocale {
-  if (typeof window === "undefined") return "en";
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const fromQuery = params.get("lang");
-    if (fromQuery) return resolveLandingLocale(fromQuery);
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) return resolveLandingLocale(stored);
-  } catch {
-    /* ignore */
-  }
-  if (typeof navigator !== "undefined") {
-    return resolveLandingLocale(navigator.language);
-  }
   return "en";
 }
 

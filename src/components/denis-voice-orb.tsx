@@ -216,10 +216,10 @@ function Particles() {
         <bufferAttribute attach="attributes-size" args={[sizes, 1]} />
       </bufferGeometry>
       <pointsMaterial
-        color="#ff7a00"
-        size={0.018}
+        color="#ff9a2e"
+        size={0.022}
         transparent
-        opacity={0.72}
+        opacity={0.95}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />

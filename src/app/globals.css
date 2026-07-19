@@ -571,7 +571,9 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
   display: none;
 }
 
-/* Landing display face — Bricolage Grotesque, tighter and heavier than app-wide IBM Plex */
+/* Landing display face — falls back to the same IBM Plex Sans used app-wide
+   (--font-landing-display is no longer set — the previous Bricolage
+   Grotesque face read as too playful for a serious B2B product page). */
 .landing-page .font-display {
   font-family: var(--font-landing-display), var(--font-display), var(--font-sans),
     system-ui, sans-serif;
@@ -770,6 +772,77 @@ body:has(.guest-theme) [data-sonner-toaster][data-y-position="top"] {
 
 .landing-float {
   animation: landing-float 6s ease-in-out infinite;
+}
+
+/* Station-voice showcase: real metaball liquid — small liquid circles
+   that fully SEPARATE from the main circle, then travel back and MERGE
+   into it again, looping. Three earlier attempts missed this brief:
+   (1) a border-radius blob-morph animated one shape's OUTLINE, not
+   separate liquid masses; (2) a first goo-filter pass moved satellites
+   by only ~12-20px, well inside the SVG blur's reach, so they never
+   visually detached — always mid-fuse, reading as static "bubuljice"
+   (pimples) rather than liquid in motion; (3) dropping the goo filter
+   for particle-trail ejection lost the "merges back into the big
+   circle" half of the brief entirely. This version keeps the goo
+   filter (blur + alpha-sharpen, see the inline SVG <filter> in
+   station-voice-showcase.tsx) AND increases the travel distance to
+   40-70px — well beyond the blur radius — so each satellite genuinely
+   reads as a separate liquid blob at its outer point, then visibly
+   flows back and fuses into the main mass at 0%/100%. */
+@keyframes landing-liquid-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.landing-liquid-blob {
+  animation: landing-liquid-spin 70s linear infinite;
+}
+
+@keyframes landing-liquid-satellite {
+  0%, 100% {
+    transform: translate(0, 0) scale(0.75);
+  }
+  50% {
+    transform: translate(var(--sat-dx, 50px), var(--sat-dy, -50px)) scale(1);
+  }
+}
+
+.landing-liquid-satellite {
+  position: absolute;
+  border-radius: 9999px;
+  background: #000;
+  animation-name: landing-liquid-satellite;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  animation-iteration-count: infinite;
+}
+
+/* The main mass itself was reading as a rigid, static disc while only
+   the satellites moved — founder: "likvid mora da se manta" (the
+   liquid needs to sway too), then further: it shouldn't read as "just
+   a circle," it should look like a real water droplet floating in zero
+   gravity — visibly irregular/asymmetric at rest, not a circle with a
+   barely-perceptible wobble (that first, too-subtle 47-53% pass still
+   read as "just a circle"). Widened to a clearly-irregular-but-still-
+   round range, closer to the amplitude of an actual floating water
+   droplet's surface-tension wobble than a geometric blob-morph. */
+@keyframes landing-liquid-sway {
+  0%, 100% {
+    border-radius: 44% 56% 58% 42% / 54% 40% 60% 46%;
+  }
+  33% {
+    border-radius: 58% 42% 40% 60% / 42% 58% 40% 60%;
+  }
+  66% {
+    border-radius: 40% 60% 56% 44% / 60% 44% 56% 40%;
+  }
+}
+
+.landing-liquid-sway {
+  animation: landing-liquid-sway 9s ease-in-out infinite;
 }
 
 .landing-glow-border {

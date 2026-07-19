@@ -8,6 +8,7 @@ import { LandingHeroDenisDemo } from "@/components/landing/landing-hero-denis-de
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { Button } from "@/components/ui/button";
+import { DenisVoiceOrb } from "@/components/denis-voice-orb";
 
 /**
  * NIMT-style hero: copy first, product window second, atmosphere behind it.
@@ -33,6 +34,27 @@ export function LandingHero() {
         />
         <div className="landing-hero-wash absolute inset-0" />
       </div>
+
+      {/* Floating live-demo pill, retell-style corner placement — same
+          black-circle-with-particles orb visual as the kitchen feature
+          row (StationVoiceShowcase), shrunk down and reused here rather
+          than a second, separate visual built from scratch. Plain
+          circle here, not the liquid-blob morph — founder confirmed
+          only the black/particle color treatment needs to carry over,
+          not the animated shape (too small at this size to read well
+          anyway). */}
+      <Link
+        href="/skyline-lounge/demo-table-8"
+        className="group absolute bottom-5 right-5 z-20 flex items-center gap-3 rounded-2xl border border-black/10 bg-white/95 px-4 py-2.5 shadow-[0_18px_50px_-20px_rgba(22,20,14,0.35)] backdrop-blur transition-transform hover:-translate-y-0.5 sm:bottom-8 sm:right-8 sm:px-5 sm:py-3"
+      >
+        <span className="text-left text-[12px] font-semibold leading-tight text-[var(--lp-ink)] sm:text-[13px]">
+          {hero.ctaSecondary}
+        </span>
+        <span className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+          <span className="absolute inset-0 rounded-full bg-black" aria-hidden />
+          <DenisVoiceOrb size={44} />
+        </span>
+      </Link>
 
       <LandingContainer wide className="relative z-10 flex flex-1 flex-col">
         <HeroStagger className="mx-auto flex min-h-0 w-full max-w-[660px] flex-1 flex-col items-center justify-center pb-7 text-center sm:pb-8 lg:pb-10">

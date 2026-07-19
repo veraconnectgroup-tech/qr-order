@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
-import {
-  Inter,
-  IBM_Plex_Sans,
-  Bricolage_Grotesque,
-  Instrument_Serif,
-} from "next/font/google";
+import { Inter, IBM_Plex_Sans, Instrument_Serif } from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -20,13 +15,12 @@ const display = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
 });
 
-/* Landing-only display faces — premium grotesque + serif italic accent */
-const landingDisplay = Bricolage_Grotesque({
-  variable: "--font-landing-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
+/* Landing-only serif italic accent. Landing headlines otherwise fall
+   back to the same IBM Plex Sans as the rest of the app (globals.css
+   `.landing-page .font-display` rule) — the previous Bricolage
+   Grotesque display face read as too playful/unserious for a B2B
+   product page (founder feedback), so it's been dropped rather than
+   replaced with a third font. */
 const landingSerif = Instrument_Serif({
   variable: "--font-landing-serif",
   subsets: ["latin"],
@@ -88,7 +82,7 @@ export default function RootLayout({
   return (
     <html
       lang="de"
-      className={`${inter.variable} ${display.variable} ${landingDisplay.variable} ${landingSerif.variable} h-full antialiased`}
+      className={`${inter.variable} ${display.variable} ${landingSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <PwaRegister />

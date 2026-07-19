@@ -12,8 +12,7 @@ import { AnimateInView } from "@/components/landing/animate-in-view";
 import { FeatureRow } from "@/components/landing/feature-row";
 import { StationVoiceShowcase } from "@/components/landing/station-voice-showcase";
 import { AiConciergeShowcase } from "@/components/landing/ai-concierge-showcase";
-import { DashboardScreenShowcase } from "@/components/landing/dashboard-screen-showcase";
-import { ShowcaseWindow } from "@/components/landing/showcase-frame";
+import { StaffCoordinationSection } from "@/components/landing/staff-coordination-section";
 import { useLandingCopy } from "@/components/landing/landing-locale-provider";
 import { LandingContainer } from "@/components/landing/landing-primitives";
 import { cn } from "@/lib/utils";
@@ -333,35 +332,15 @@ export function LandingFeatures() {
         lead={kitchen.lead}
         bullets={kitchen.bullets}
         reverse={kitchen.reverse}
-        scene="/landing/bg-kitchen-pass.jpg"
-        visual={
-          <div className="mx-auto w-full max-w-[560px] drop-shadow-[0_36px_70px_rgba(22,20,14,0.28)]">
-            <StationVoiceShowcase />
-          </div>
-        }
+        visual={<StationVoiceShowcase />}
       />
 
-      <FeatureRow
+      <StaffCoordinationSection
         id={staff.id}
-        index={3}
         eyebrow={staff.eyebrow}
         title={staff.title}
         lead={staff.lead}
         bullets={staff.bullets}
-        scene="/landing/bg-dining-room.jpg"
-        visual={
-          <ShowcaseWindow
-            url="denis.app/dashboard/tables"
-            theme="light"
-            className="mx-auto w-full max-w-[600px] shadow-[0_36px_90px_-28px_rgba(22,20,14,0.5)]"
-          >
-            <DashboardScreenShowcase
-              screen="tables"
-              variant="feature"
-              theme="light"
-            />
-          </ShowcaseWindow>
-        }
       />
 
       <FeatureRow
