@@ -1264,10 +1264,12 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
   const perceptionChannel: PerceptionChannel =
     input.channel === "voice" ? "voice.transcript" : "chat.message";
 
-  // MVP-1/2/3 — shadow-only logging, never touches the guest-visible reply.
-  // MVP-4 (mission/notification on handoff) only fires for real when
-  // guestConductConfig.shadowOnly is false — see run-guest-conduct-shadow-check.ts.
-  await runGuestConductShadowCheck(admin, {
+  // MVP-1/2/3 — logging on every turn. MVP-4 (mission/notification on
+  // handoff) and MVP-5 (warn_1 reminder actually reaching the guest, via
+  // conductOutcome.overrideArmed applied after the output shield below)
+  // only fire for real when guestConductConfig.shadowOnly is false —
+  // see run-guest-conduct-shadow-check.ts.
+  const conductOutcome = await runGuestConductShadowCheck(admin, {
     aiSessionId: chatAiSessionId ?? null,
     message: parsed.data.message,
     guestConductConfig: ctx.config.ops.guestConduct,
@@ -1826,6 +1828,17 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       });
     }
     guestMessage = shieldGracefulGuestMessage();
+  }
+
+  // MVP-5 — guest-conduct warn_1 goes live: prepend the deterministic
+  // polite reminder to the reply (service continues, the boundary is
+  // stated). Armed only when shadowOnly is off AND the tier is warn_1 —
+  // warn_2/handoff overrides stay shadow-held until their own flip.
+  // Applied after the output shield so the shield never rewrites it away.
+  if (conductOutcome?.overrideArmed && conductOutcome.decision.guestMessageOverride) {
+    guestMessage = [conductOutcome.decision.guestMessageOverride, guestMessage ?? ""]
+      .join(" ")
+      .trim();
   }
 
   timings.narrateMs = elapsedMs(narrateStarted);

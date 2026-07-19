@@ -10,6 +10,7 @@ import { resolveGuestConductPolicy } from "@/lib/denis/cognition/policy/resolve-
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { createMission } from "@/lib/denis/missions/create-mission";
 import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-staff-notification";
+import type { PolicyDecision } from "@/lib/denis/cognition/policy/policy-decision-types";
 
 /**
  * MVP-1/2/3 (Architecture Proposal §16 steps 1-3) — pure logging side
@@ -41,6 +42,14 @@ import { dispatchStaffNotification } from "@/lib/denis/notifications/dispatch-st
  * shadow mode exists to hold back. createMission's own idempotency guard
  * (one open mission per ai_session_id+kind) makes it safe to call this
  * every turn the tier stays at "handoff", not just on the transition turn.
+ *
+ * MVP-5 (step 5, first live guest impact): the check now RETURNS its
+ * decision so the runtime can act on it. `overrideArmed` is true only for
+ * the warn_1 tier with shadowOnly off — the runtime prepends the polite
+ * deterministic reminder to the outgoing reply. warn_2/handoff message
+ * overrides stay shadow-held regardless of the flag (each needs its own
+ * explicit flip once warn_1 has earned trust); handoff's mission side is
+ * already separately gated above.
  */
 const MIN_CONFIDENCE_TO_ACT = 0.55;
 
@@ -93,6 +102,16 @@ async function maybeCreateHandoffMission(
   return { wouldCreateMission: true, missionId: result.mission.id };
 }
 
+export type GuestConductCheckOutcome = {
+  decision: PolicyDecision;
+  /**
+   * True only when the runtime should actually apply
+   * `decision.guestMessageOverride` to the outgoing reply: warn_1 tier,
+   * override text present, shadowOnly off. warn_2/handoff never arm here.
+   */
+  overrideArmed: boolean;
+};
+
 export async function runGuestConductShadowCheck(
   admin: SupabaseClient,
   input: {
@@ -105,10 +124,12 @@ export async function runGuestConductShadowCheck(
     tableId?: string | null;
     traceId?: string;
   }
-): Promise<void> {
-  if (!input.guestConductConfig.enabled) return;
-  if (!input.aiSessionId) return;
-  if (!isInCanaryCohort(input.aiSessionId, input.guestConductConfig.canaryPercent)) return;
+): Promise<GuestConductCheckOutcome | null> {
+  if (!input.guestConductConfig.enabled) return null;
+  if (!input.aiSessionId) return null;
+  if (!isInCanaryCohort(input.aiSessionId, input.guestConductConfig.canaryPercent)) {
+    return null;
+  }
 
   const [regexOnlyOffenseDetected, llmAssessment] = await Promise.all([
     Promise.resolve(
@@ -150,6 +171,11 @@ export async function runGuestConductShadowCheck(
     traceId: input.traceId,
   });
 
+  const overrideArmed =
+    !input.guestConductConfig.shadowOnly &&
+    decision.tier === "warn_1" &&
+    decision.guestMessageOverride != null;
+
   await appendDenisTimelineEvent(admin, {
     aiSessionId: input.aiSessionId,
     eventType: "conduct.policy_decision",
@@ -165,8 +191,11 @@ export async function runGuestConductShadowCheck(
       notifyStaff: decision.notifyStaff,
       reason: decision.auditReason,
       shadowOnly: input.guestConductConfig.shadowOnly,
+      overrideArmed,
       wouldCreateMission: missionOutcome.wouldCreateMission,
       missionId: missionOutcome.missionId,
     },
   });
+
+  return { decision, overrideArmed };
 }

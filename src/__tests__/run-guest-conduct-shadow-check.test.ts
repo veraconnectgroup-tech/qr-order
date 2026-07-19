@@ -240,6 +240,123 @@ describe("runGuestConductShadowCheck", () => {
     expect(payload.missionId).toBeNull();
   });
 
+  it("arms the warn_1 override only when shadowOnly is off (MVP-5)", async () => {
+    vi.doMock("@/lib/denis/cognition/policy/guest-conduct-tracker-store", () => ({
+      loadGuestConductTracker: vi.fn().mockResolvedValue({
+        aiSessionId: "session-1",
+        tier: "none",
+        totalOffenseCount: 0,
+        respectfulStreak: 0,
+        tierSince: Date.now(),
+      }),
+      saveGuestConductTracker: saveTrackerMock,
+    }));
+    vi.doMock("@/lib/denis/security/abuse-protection", () => ({
+      detectAbuseSignals: () => [],
+    }));
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
+      assessGuestConduct: vi.fn().mockResolvedValue({
+        toneTowardDenis: "mild_insult",
+        directedAt: "denis",
+        confidence: 0.8,
+        quotedSpan: "glup si",
+      }),
+    }));
+    const { runGuestConductShadowCheck } = await import(
+      "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check"
+    );
+
+    const outcome = await runGuestConductShadowCheck(fakeAdmin, {
+      aiSessionId: "session-1",
+      message: "glup si",
+      guestConductConfig: { enabled: true, shadowOnly: false, canaryPercent: 100 },
+    });
+
+    expect(outcome).not.toBeNull();
+    expect(outcome?.decision.tier).toBe("warn_1");
+    expect(outcome?.decision.guestMessageOverride).toBeTruthy();
+    expect(outcome?.overrideArmed).toBe(true);
+    const payload = appendMock.mock.calls[0]?.[1]?.payload as Record<
+      string,
+      unknown
+    >;
+    expect(payload.overrideArmed).toBe(true);
+  });
+
+  it("never arms the warn_1 override while shadowOnly, even when the tier fires", async () => {
+    vi.doMock("@/lib/denis/cognition/policy/guest-conduct-tracker-store", () => ({
+      loadGuestConductTracker: vi.fn().mockResolvedValue({
+        aiSessionId: "session-1",
+        tier: "none",
+        totalOffenseCount: 0,
+        respectfulStreak: 0,
+        tierSince: Date.now(),
+      }),
+      saveGuestConductTracker: saveTrackerMock,
+    }));
+    vi.doMock("@/lib/denis/security/abuse-protection", () => ({
+      detectAbuseSignals: () => [],
+    }));
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
+      assessGuestConduct: vi.fn().mockResolvedValue({
+        toneTowardDenis: "mild_insult",
+        directedAt: "denis",
+        confidence: 0.8,
+        quotedSpan: "glup si",
+      }),
+    }));
+    const { runGuestConductShadowCheck } = await import(
+      "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check"
+    );
+
+    const outcome = await runGuestConductShadowCheck(fakeAdmin, {
+      aiSessionId: "session-1",
+      message: "glup si",
+      guestConductConfig: enabledConfig,
+    });
+
+    expect(outcome?.decision.tier).toBe("warn_1");
+    expect(outcome?.decision.guestMessageOverride).toBeTruthy();
+    expect(outcome?.overrideArmed).toBe(false);
+  });
+
+  it("never arms the override for warn_2/handoff tiers even live — each needs its own flip", async () => {
+    vi.doMock("@/lib/denis/security/abuse-protection", () => ({
+      detectAbuseSignals: () => [],
+    }));
+    vi.doMock("@/lib/denis/cognition/perceive/assess-guest-conduct", () => ({
+      assessGuestConduct: vi.fn().mockResolvedValue({
+        toneTowardDenis: "severe_insult",
+        directedAt: "denis",
+        confidence: 0.9,
+        quotedSpan: "you are useless",
+      }),
+    }));
+    vi.doMock("@/lib/denis/cognition/policy/guest-conduct-tracker-store", () => ({
+      loadGuestConductTracker: vi.fn().mockResolvedValue({
+        aiSessionId: "session-1",
+        tier: "warn_1",
+        totalOffenseCount: 1,
+        respectfulStreak: 0,
+        tierSince: Date.now(),
+      }),
+      saveGuestConductTracker: saveTrackerMock,
+    }));
+    const { runGuestConductShadowCheck } = await import(
+      "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check"
+    );
+
+    const outcome = await runGuestConductShadowCheck(fakeAdmin, {
+      aiSessionId: "session-1",
+      message: "you are useless",
+      guestConductConfig: { enabled: true, shadowOnly: false, canaryPercent: 100 },
+    });
+
+    expect(outcome?.decision.tier).toBe("warn_2");
+    expect(outcome?.decision.guestMessageOverride).toBeTruthy();
+    expect(outcome?.overrideArmed).toBe(false);
+  });
+
   it("does nothing when guestConduct is disabled", async () => {
     vi.doMock("@/lib/denis/security/abuse-protection", () => ({
       detectAbuseSignals: () => ["offensive_content"],
@@ -254,12 +371,13 @@ describe("runGuestConductShadowCheck", () => {
       "@/lib/denis/cognition/perceive/assess-guest-conduct"
     );
 
-    await runGuestConductShadowCheck(fakeAdmin, {
+    const outcome = await runGuestConductShadowCheck(fakeAdmin, {
       aiSessionId: "session-1",
       message: "whatever",
       guestConductConfig: { enabled: false, shadowOnly: true, canaryPercent: 100 },
     });
 
+    expect(outcome).toBeNull();
     expect(assessGuestConduct).not.toHaveBeenCalled();
     expect(appendMock).not.toHaveBeenCalled();
   });

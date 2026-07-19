@@ -283,6 +283,8 @@ export type DenisTimelineEventPayload =
       reason: string;
       /** true while the ladder is shadow-only — decision was logged, never shown to the guest. */
       shadowOnly: boolean;
+      /** MVP-5 — true when the warn_1 reminder was actually applied to the outgoing guest reply (shadowOnly off, tier warn_1, override text present). */
+      overrideArmed: boolean;
       /** MVP-4 — true when tier="handoff" would trigger (or did trigger) a denis_missions row. */
       wouldCreateMission: boolean;
       /** Set only when a real mission was created (shadowOnly=false, org/location known). */
