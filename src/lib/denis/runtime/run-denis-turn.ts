@@ -1,11 +1,4 @@
 import { apiError, apiSuccess } from "@/lib/api-response";
-import { shieldGracefulGuestMessage } from "@/lib/ai/moderation";
-import {
-  buildSecurityBlockedPayload,
-  logShieldBlock,
-  recordShieldBlock,
-  screenOutput,
-} from "@/lib/ai/prompt-shield";
 import { getCachedMenuForLocation } from "@/lib/ai/menu-cache";
 import { assembleDenisBrainContext } from "@/lib/denis/cognition/context/assemble-denis-brain-context";
 import { runGuestConductShadowCheck } from "@/lib/denis/cognition/policy/run-guest-conduct-shadow-check";
@@ -149,6 +142,7 @@ import {
   logDenisTurnObservability,
 } from "@/lib/denis/runtime/turn-observability";
 import { validateTurnPreconditions } from "@/lib/denis/runtime/turn/validate-turn-preconditions";
+import { applyOutputSafety } from "@/lib/denis/runtime/turn/apply-output-safety";
 import {
   buildTurnTrace,
   scheduleTurnTraceWrite,
@@ -1679,61 +1673,19 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     });
   }
 
-  const outputShield = screenOutput(guestMessage ?? "");
-  if (!outputShield.safe) {
-    logShieldBlock(
-      outputShield.layer,
-      outputShield.reason ?? "output_leak",
-      guestMessage ?? "",
-      "output"
-    );
-    const shieldSessionId = timelineAiSessionId ?? parsed.sessionId;
-    const shieldState = await recordShieldBlock(shieldSessionId ?? "");
-    if (timelineAiSessionId && kernelTimelineEnabled(rollout.mode)) {
-      await appendDenisTimelineEvent(admin, {
-        aiSessionId: timelineAiSessionId,
-        eventType: "security.blocked",
-        traceId,
-        payload: buildSecurityBlockedPayload({
-          direction: "output",
-          reason: outputShield.reason ?? "output_leak",
-          layer: outputShield.layer,
-          preview: guestMessage ?? "",
-          blockCount: shieldState.blockCount,
-          sessionFlagged: shieldState.flagged,
-          traceId,
-        }),
-      });
-    }
-    if (shieldState.notifyStaff) {
-      void dispatchStaffNotification({
-        orgId: orgId,
-        locationId: parsed.locationId,
-        type: "denis_escalation",
-        message: `Denis output shield: ${shieldState.blockCount} blocked attempts at this table — session flagged.`,
-        tableId: parsed.tableId,
-        priorityOverride: "high",
-        playSound: true,
-      }).catch((error) => {
-        logger.warn("Prompt shield staff alert failed", {
-          sessionId: shieldSessionId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-    }
-    guestMessage = shieldGracefulGuestMessage();
-  }
-
-  // MVP-5 — guest-conduct warn_1 goes live: prepend the deterministic
-  // polite reminder to the reply (service continues, the boundary is
-  // stated). Armed only when shadowOnly is off AND the tier is warn_1 —
-  // warn_2/handoff overrides stay shadow-held until their own flip.
-  // Applied after the output shield so the shield never rewrites it away.
-  if (conductOutcome?.overrideArmed && conductOutcome.decision.guestMessageOverride) {
-    guestMessage = [conductOutcome.decision.guestMessageOverride, guestMessage ?? ""]
-      .join(" ")
-      .trim();
-  }
+  const outputSafety = await applyOutputSafety({
+    guestMessage,
+    admin,
+    traceId,
+    timelineAiSessionId,
+    sessionId: parsed.sessionId,
+    locationId: parsed.locationId,
+    tableId: parsed.tableId,
+    orgId,
+    rolloutMode: rollout.mode,
+    conductOutcome,
+  });
+  guestMessage = outputSafety.guestMessage;
 
   timings.narrateMs = elapsedMs(narrateStarted);
 
