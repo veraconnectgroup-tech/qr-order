@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auditLog } from "@/lib/audit/log";
 import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
 import { evaluateVoidLadder } from "@/lib/loss-prevention/evaluate-void-ladder";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { safeJsonParse } from "@/lib/api/safe-json";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { apiError, apiSuccess } from "@/lib/api-response";
@@ -371,24 +372,33 @@ export const PATCH = withErrorHandler(
       | null = null;
 
     if (status === "rejected" || status === "cancelled") {
-      const { data: stationRows } = await admin
-        .from("order_station_states")
-        .select("station, status")
-        .eq("order_id", orderId);
+      const config = await loadConciergeConfigForLocation(
+        access.order.location_id
+      );
+      const voidLadderEnabled =
+        config.ops.lossPrevention.enabled &&
+        config.ops.lossPrevention.voidLadderEnabled;
 
-      voidLadder = evaluateVoidLadder({
-        orderStatus: access.order.status,
-        paymentStatus: access.order.payment_status,
-        reason: rejectionReason,
-        actorRole: access.staff.role,
-        stationStates: (stationRows ?? []) as Array<{
-          station: string;
-          status: string;
-        }>,
-      });
+      if (voidLadderEnabled) {
+        const { data: stationRows } = await admin
+          .from("order_station_states")
+          .select("station, status")
+          .eq("order_id", orderId);
 
-      if (!voidLadder.allowed) {
-        return apiError(voidLadder.error, voidLadder.status);
+        voidLadder = evaluateVoidLadder({
+          orderStatus: access.order.status,
+          paymentStatus: access.order.payment_status,
+          reason: rejectionReason,
+          actorRole: access.staff.role,
+          stationStates: (stationRows ?? []) as Array<{
+            station: string;
+            status: string;
+          }>,
+        });
+
+        if (!voidLadder.allowed) {
+          return apiError(voidLadder.error, voidLadder.status);
+        }
       }
     }
 

@@ -10,6 +10,7 @@ import {
   loadSessionPaymentSnapshot,
   sessionHasPaymentActivity,
 } from "@/lib/loss-prevention/session-payment-snapshot";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 
 export type TransferOrdersInput = {
   fromTableId: string;
@@ -146,17 +147,24 @@ export async function transferOrders(
     rows.find((o) => o.session_id)?.session_id ??
     null;
 
-  const transferTotalBefore = rows.reduce(
-    (sum, order) => sum + Number(order.total),
-    0
-  );
-  const preserved = assertTotalPreserved(
-    transferTotalBefore,
-    transferTotalBefore,
-    "Transfer"
-  );
-  if (!preserved.ok) {
-    return { error: preserved.error, status: preserved.status };
+  const config = await loadConciergeConfigForLocation(locationId);
+  const transferInvariantsEnabled =
+    config.ops.lossPrevention.enabled &&
+    config.ops.lossPrevention.transferInvariantsEnabled;
+
+  if (transferInvariantsEnabled) {
+    const transferTotalBefore = rows.reduce(
+      (sum, order) => sum + Number(order.total),
+      0
+    );
+    const preserved = assertTotalPreserved(
+      transferTotalBefore,
+      transferTotalBefore,
+      "Transfer"
+    );
+    if (!preserved.ok) {
+      return { error: preserved.error, status: preserved.status };
+    }
   }
 
   const fromPaymentSnapshot = fromSessionId

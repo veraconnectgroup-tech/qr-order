@@ -9,6 +9,7 @@ import { zOrderNotesOptional } from "@/lib/security/zod-fields";
 import { recordSensitiveAction } from "@/lib/audit/record-sensitive-action";
 import { evaluateSessionCloseBalance } from "@/lib/loss-prevention/payment-guardrails";
 import { loadSessionPaymentSnapshot } from "@/lib/loss-prevention/session-payment-snapshot";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
 import { z } from "zod";
 import type { Staff } from "@/types";
 
@@ -93,12 +94,16 @@ export const POST = withErrorHandler(
       // Body optional — manual close without JSON is allowed when balance is zero.
     }
 
+    const config = await loadConciergeConfigForLocation(row.location_id);
+    const paymentGuardrailsEnabled =
+      config.ops.lossPrevention.enabled &&
+      config.ops.lossPrevention.paymentGuardrailsEnabled;
+
     const snapshot = await loadSessionPaymentSnapshot(admin, sessionId);
     const openBalance = snapshot?.openBalance ?? 0;
-    const balanceCheck = evaluateSessionCloseBalance({
-      openBalance,
-      reason: closeReason,
-    });
+    const balanceCheck = paymentGuardrailsEnabled
+      ? evaluateSessionCloseBalance({ openBalance, reason: closeReason })
+      : { allowed: true as const };
 
     if (!balanceCheck.allowed) {
       return apiError(balanceCheck.error ?? "Cannot close session.", balanceCheck.status ?? 400);
