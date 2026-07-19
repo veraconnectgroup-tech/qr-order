@@ -121,7 +121,7 @@ Sve DB-nezavisne stavke iz ove liste (bivši C1-C5, C10-C13, C15-C16) su završe
 | # | Šta | Težina | Blokirano na |
 |---|-----|--------|---------------|
 | C6 | **Realtime migracija question strip-a**: pitanja ulaze u isti kanal, stari TTS ostaje T3 fallback | Veliko | A3 |
-| C7 | Pun dvosmerni cross-station prenos Denisovim glasom (relay postoji, treba zatvoriti krug) | Srednje | Ništa — može se raditi odmah |
+| ~~C7~~ | ~~Pun dvosmerni cross-station prenos Denisovim glasom~~ | **ZAVRŠENO (19.07)** — `6ded65ab`/`a86a0203` su zatvorili krug: simetričan round-trip kuhinja↔šank (create → izgovori-na-cilju → uhvati-odgovor push-to-talk-svesno → izgovori-nazad sa ispravnim imenom stanice → potvrda → expiry-najava). Ostaje samo: nema live e2e testa celog kruga sa pravim realtime-om — verifikacija na uređaju kad A3 prođe. |
 
 **Guest-facing mozak:**
 | # | Šta | Težina | Blokirano na |
@@ -146,8 +146,8 @@ Sve DB-nezavisne stavke iz ove liste (bivši C1-C5, C10-C13, C15-C16) su završe
 2. **A3: P0 test na tabletu** — sat vremena, otključava ceo Realtime pravac (C6).
 
 ### Korak 1 — Kuhinja/šank kompletan
-Svih 8 M-sposobnosti gotovo, admission-gate (C5) gotov. Ostaje: B4/B5/B8 flip za pilot lokaciju čim A3 i A4 prođu, C7 (cross-station prenos) može odmah.
-→ **Rezultat: Denis u kuhinji ume da čuje, uradi, upozori, prenese i podnese izveštaj — pun kolega. Skoro tu.**
+Svih 8 M-sposobnosti gotovo, admission-gate (C5) gotov, C7 (cross-station prenos) gotov 19.07. Ostaje: B4/B5/B8 flip za pilot lokaciju čim A3 i A4 prođu.
+→ **Rezultat: Denis u kuhinji ume da čuje, uradi, upozori, prenese i podnese izveštaj — pun kolega. Kod strane, samo rollout odluke ostaju.**
 
 ### Korak 2 — Gostov mozak na punoj snazi
 1. B1: pregled shadow transkripta agentic loop-a → 5% live canary → 25% → 100%.
