@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from "@/lib/api-response";
 import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { processDenisSchedulerTick } from "@/lib/denis/runtime/process-scheduler-tick";
+import { checkAndCreateDueCommitmentMissions } from "@/lib/denis/stations/denis-commitments";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -24,7 +25,13 @@ export const GET = withErrorHandler("cron-denis-scheduler-get", async (req, _ctx
     limit: Number.isFinite(limit) ? limit : 50,
   });
 
-  logger.info("Denis scheduler tick completed", result);
+  // Denis's own follow-up on promises he made ("javicu sutra") — checked
+  // every tick regardless of whether anyone calls him back.
+  const commitments = await checkAndCreateDueCommitmentMissions(admin, {
+    today: new Date().toISOString().slice(0, 10),
+  });
 
-  return apiSuccess(result);
+  logger.info("Denis scheduler tick completed", { ...result, commitments });
+
+  return apiSuccess({ ...result, commitments });
 });
