@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -105,10 +106,29 @@ export function DenisRestaurantKnowledgePanel() {
   }
 
   async function handleDelete(id: string) {
+    const removed = entries?.find((entry) => entry.id === id) ?? null;
     setEntries((prev) => (prev ? prev.filter((entry) => entry.id !== id) : prev));
-    await fetch(`/api/admin/denis-restaurant-knowledge/${id}`, {
-      method: "DELETE",
-    }).catch(() => undefined);
+    try {
+      const res = await fetch(`/api/admin/denis-restaurant-knowledge/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("delete failed");
+    } catch {
+      toast.error(
+        "Brisanje nije uspelo — pravilo je i dalje aktivno kod Denisa."
+      );
+      if (removed) {
+        setEntries((prev) =>
+          prev
+            ? prev.some((entry) => entry.id === id)
+              ? prev
+              : [...prev, removed].sort((a, b) =>
+                  a.createdAt.localeCompare(b.createdAt)
+                )
+            : prev
+        );
+      }
+    }
   }
 
   return (
