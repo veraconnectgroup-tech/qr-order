@@ -153,7 +153,7 @@ function moderationErrorMessage(reason: string) {
 }
 
 function toOpenAiHistory(messages: StoredMessage[]): OpenAiChatMessage[] {
-  return messages.slice(-16).map((entry) => ({
+  return messages.slice(-40).map((entry) => ({
     role: entry.role,
     content: entry.content,
   }));

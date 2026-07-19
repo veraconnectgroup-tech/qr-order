@@ -38,7 +38,7 @@ export const AI_CONFIG = {
   /** Guest AI session max duration */
   sessionTimeoutMs: 60 * 60 * 1000,
   /** Max stored messages per AI session (user + assistant) */
-  maxMessagesPerSession: 30,
+  maxMessagesPerSession: 80,
   /** One extra OpenAI call when JSON parse fails */
   parseRetryAttempts: 1,
   /** @deprecated Use resolveAiGuestRetryMessage(language) — kept for tests/legacy. */

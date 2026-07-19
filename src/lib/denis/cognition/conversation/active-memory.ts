@@ -25,7 +25,7 @@ export type ActiveMemory = {
   guestPreferences: string[];
   openQuestions: string[];
   agreedFacts: string[];
-  /** Up to 5 semantic key facts — not raw transcript lines. */
+  /** Up to 8 semantic key facts — not raw transcript lines. */
   keyFacts: string[];
   /** Single-line semantic compression of older turns. */
   semanticSummary: string;
@@ -41,7 +41,7 @@ export type ActiveMemory = {
 
 type DialogueMessage = { role: "guest" | "denis"; text: string };
 
-const DEFAULT_MAX_ACTIVE_MEMORY_TOKENS = 500;
+const DEFAULT_MAX_ACTIVE_MEMORY_TOKENS = 1500;
 const DENIS_QUESTION_PATTERN = /\?|da\s+li|jeste\s+li|have\s+you|haben\s+sie|möchten\s+sie/i;
 
 const AGREED_ORDER_PATTERN =
@@ -111,7 +111,7 @@ function extractAgreedFacts(
     }
   }
 
-  return uniqueStrings(facts).slice(0, 6);
+  return uniqueStrings(facts).slice(0, 10);
 }
 
 function extractOpenQuestions(messages: DialogueMessage[]): string[] {
@@ -143,7 +143,7 @@ function extractOpenQuestions(messages: DialogueMessage[]): string[] {
     }
   }
 
-  return uniqueStrings(open).slice(0, 4);
+  return uniqueStrings(open).slice(0, 6);
 }
 
 function detectMoodShiftFromInterpretations(
@@ -266,7 +266,7 @@ function guestAskedAboutDessert(timeline: DenisTimelineRow[]): boolean {
   );
 }
 
-/** Semantic compression — 20 turns → ≤5 key facts, ~40 tokens narrative. */
+/** Semantic compression — 20 turns → ≤8 key facts, ~80 tokens narrative. */
 export function buildSemanticKeyFacts(input: {
   messages: DialogueMessage[];
   timeline: DenisTimelineRow[];
@@ -324,7 +324,7 @@ export function buildSemanticKeyFacts(input: {
     }
   }
 
-  const uniqueFacts = uniqueStrings(keyFacts).slice(0, 5);
+  const uniqueFacts = uniqueStrings(keyFacts).slice(0, 8);
   const narrativeParts: string[] = [];
 
   const orderFact = uniqueFacts.find((fact) => /^Gost traži/i.test(fact));
@@ -351,12 +351,12 @@ function trimToTokenBudget(input: ActiveMemory, maxTokens: number): ActiveMemory
 
   return {
     ...input,
-    guestPreferences: input.guestPreferences.slice(0, 4),
-    openQuestions: input.openQuestions.slice(0, 2),
-    agreedFacts: input.agreedFacts.slice(0, 3),
-    keyFacts: input.keyFacts.slice(0, 5),
-    semanticSummary: input.semanticSummary.slice(0, 120),
-    conversationSummary: input.conversationSummary.slice(0, 120),
+    guestPreferences: input.guestPreferences.slice(0, 8),
+    openQuestions: input.openQuestions.slice(0, 4),
+    agreedFacts: input.agreedFacts.slice(0, 6),
+    keyFacts: input.keyFacts.slice(0, 8),
+    semanticSummary: input.semanticSummary.slice(0, 300),
+    conversationSummary: input.conversationSummary.slice(0, 300),
   };
 }
 
