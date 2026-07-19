@@ -24,11 +24,23 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 
 ## 2. Layers → folders
 
+**This table was last accurate at M0–M27 (§3 below).** The 15 layer identifiers actually
+enforced today live in `src/lib/denis/layers.ts` (`DENIS_LAYERS` / `DENIS_IMPORT_MATRIX`) —
+treat that file as the source of truth if this table and the code ever disagree. As of this
+edit, six real layers were missing from this table entirely, `cognition/` being the largest
+folder in the whole `src/lib/denis/` tree (240+ files, 20+ subdirectories) and absent from
+the map that's supposed to tell you where new logic belongs.
+
 | Layer | ADR | Folder | Owns |
 |-------|-----|--------|------|
 | **L1 Platform** | ADR-003 | `src/lib/denis/platform/` | timeline, fold, Flow DSL, sense request schema |
 | **L2 Kernel** | ADR-004 | `src/lib/denis/kernel/` | beliefs, goals, VKG, conflict, correction, scheduler |
 | **L3 Venue OS** | ADR-005 §5 | `src/lib/denis/venue/` | floor graph, party, ops beliefs, staff copilot |
+| **Cognition** | — | `src/lib/denis/cognition/` | perceive, TDE, mental model, offer, proactive, policy, order, conversation, recovery, safety — the largest layer; most new guest-facing intelligence lands here |
+| **Loop** | — | `src/lib/denis/loop/` | view/state-folding — projects table-session + timeline state for a turn (not a "turn loop" despite the name) |
+| **Actor** | — | `src/lib/denis/actor/` | table-session actor primitives; imports nothing else in `denis/` |
+| **Commercial** | — | `src/lib/denis/commercial/` | org/credit resolution, metering |
+| **Ingress** | — | `src/lib/denis/ingress/` | inbound request normalization ahead of kernel |
 | **Runtime** | ADR-003 PPAN+ | `src/lib/denis/runtime/` | `runDenisTurn`, sense, narrate lint, shadow diff |
 | **L4 Surfaces** | ADR-005 §6 | `src/lib/denis/surfaces/` | chat API formatters (no business logic) |
 | **L5 Learning** | ADR-005 §7 | `src/lib/denis/learning/` | learned edges queue, guest memory |
@@ -36,6 +48,14 @@ Before writing Denis code, read ADR-005. Before merging, run **`pnpm verify:deni
 | **ACL** | ADR-003 §8 | `src/lib/denis/acl/` | `DenisOrderCommand` → Order Core only |
 | **Config** | ADR-002 §7 | `src/lib/denis/config/` | `ConciergeConfig`, merge, cache, rollout |
 | **Architecture** | — | `src/lib/denis/architecture/` | import-matrix compliance engine |
+
+Folders that exist under `src/lib/denis/` but aren't yet layer-classified in
+`layers.ts` (so `verify:denis` doesn't check their imports at all): `agentic/`,
+`commerce/`, `integrations/`, `intelligence/`, `missions/`, `monitoring/`,
+`notifications/`, `policy/`, `retention/`, `security/`, `staff/`, `stations/`,
+`menu-agent/`, `knowledge/`, `compliance/`, `catalog/`, `analytics/`,
+`experiments/`, `memory/`. Not necessarily a problem — but worth knowing the
+compliance gate has a blind spot here, not just a documentation one.
 
 ---
 
@@ -200,17 +220,36 @@ Legacy wrappers deleted at end of Phase D. Pilot gate: `denis_only` on one venue
 
 ## 6. Import matrix (enforced by `pnpm verify:denis`)
 
-| Importer ↓ / Import → | config | platform | kernel | venue | runtime | surfaces | acl | learning | eval |
-|-----------------------|--------|----------|--------|-------|---------|----------|-----|----------|------|
-| config | — | | | | | | | | |
-| platform | ✓ | — | | | | | | | |
-| kernel | ✓ | ✓ | — | | | | | | |
-| venue | ✓ | ✓ | ✓ | — | | | | | |
-| runtime | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | | |
-| surfaces | ✓ | | | | ✓ | — | | | |
-| acl | | | | | | | — | | |
-| learning | ✓ | ✓ | | | | | | — | |
-| eval | ✓ | ✓ | ✓ | | ✓ | | | | — |
+Generated from `DENIS_IMPORT_MATRIX` in `src/lib/denis/layers.ts` — the actual enforced
+contract for all 15 layers, not just the 9 this section previously listed.
+
+| Importer ↓ / Import → | config | platform | kernel | venue | commercial | loop | ingress | actor | runtime | surfaces | acl | learning | eval | cognition |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| config | — | | | | | | | | | | | | | |
+| platform | ✓ | — | | | | | | | | | | | | |
+| kernel | ✓ | ✓ | — | | | | | | | | | | | |
+| venue | ✓ | ✓ | ✓ | — | | | | | | | | | | |
+| commercial | ✓ | | | | — | | | | | | | | | |
+| loop | ✓ | ✓ | ✓ | ✓ | | — | | ✓ | | | | | | ✓ |
+| ingress | ✓ | ✓ | ✓ | | | | — | | | | | | | |
+| actor | | | | | | | | — | | | | | | |
+| runtime | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | | | ✓ |
+| surfaces | ✓ | | | | | | | | ✓ | — | | | | |
+| acl | | | | | | | | | | | — | | | |
+| learning | ✓ | ✓ | | | | | | | | | | — | | |
+| eval | ✓ | ✓ | ✓ | | | ✓ | | | ✓ | | | | — | ✓ |
+| cognition | ✓ | ✓ | ✓ | ✓ | | ✓ | | | | | | | | — |
+
+**Known, sanctioned cycle — not a documentation gap, a real open architectural debt:**
+`loop` → `cognition` (8 files import cognition/ from loop/) and `cognition` → `loop`
+(34 files import loop/ from cognition/) are BOTH permitted by the matrix above. This
+means the compliance checker (`checkDenisImportMatrix`) stays green while this cycle
+deepens — a genuine layering violation between the two largest subsystems is legalized
+rather than caught. ADR-036 independently flags a concrete symptom (`assessWaiterObligation`
+duplicated between the legacy bridge and `cognition/waiter/`). Fixing this means either
+moving `loop/`'s few cognition-dependent files into `cognition/` itself, or extracting
+the specific things `cognition/` needs from `loop/` into a lower layer both can depend on
+— not something to paper over by just widening the matrix further.
 
 **OpenAI (compliance):** allowed paths under `src/lib/denis/` are `runtime/narrate/` and `runtime/perceive/` only. Legacy OpenAI adapter: `src/lib/ai/execute-chat-turn.ts` (session + LLM; F8-4).
 
