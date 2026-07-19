@@ -95,9 +95,8 @@ import {
   kernelTimelineEnabled,
   resolveEffectiveRollout,
   resolveGuestLegacyPath,
-  shouldRunShadowDiff,
 } from "@/lib/denis/config/rollout";
-import { diffShadowTurn } from "@/lib/denis/runtime/shadow-diff";
+import { logShadowDiff } from "@/lib/denis/runtime/turn/log-shadow-diff";
 import {
   guestIntentTierFromReflex,
   resolveTurnIntent,
@@ -1689,34 +1688,27 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
 
   timings.narrateMs = elapsedMs(narrateStarted);
 
-  if (shouldRunShadowDiff(rollout.mode)) {
-    const shadowDiff = diffShadowTurn({
-      legacy: {
-        intent: data.intent,
-        message: data.message,
-        cartActionCount: data.cartActions?.length ?? 0,
-        submitOrder: data.submitOrder,
-      },
-      denis: {
-        topGoal: reflexTurn.plan.topGoal?.type ?? null,
-        flowNodeId: reflexTurn.plan.transition.toNodeId,
-        skillIds: reflexTurn.plan.skills.map((skill) => skill.id),
-        hasConflict: reflexTurn.conflict?.hasConflict ?? false,
-        lintPassed: narration.lintPassed,
-        intent: reflexTurn.reflex?.intent ?? null,
-        slotItemCount: slotExtract?.items.length ?? 0,
-      },
-    });
-    logger.info("Denis shadow diff", {
-      traceId,
-      rolloutMode: rollout.mode,
-      parityScore: shadowDiff.parityScore,
-      mismatches: shadowDiff.mismatches,
-      slotItemCount: slotExtract?.items.length ?? 0,
-      slotTier: slotExtract?.tier ?? null,
-    });
-    shadowParityScore = shadowDiff.parityScore;
-  }
+  const shadowDiffResult = logShadowDiff({
+    rolloutMode: rollout.mode,
+    traceId,
+    legacy: {
+      intent: data.intent,
+      message: data.message,
+      cartActionCount: data.cartActions?.length ?? 0,
+      submitOrder: data.submitOrder,
+    },
+    denis: {
+      topGoal: reflexTurn.plan.topGoal?.type ?? null,
+      flowNodeId: reflexTurn.plan.transition.toNodeId,
+      skillIds: reflexTurn.plan.skills.map((skill) => skill.id),
+      hasConflict: reflexTurn.conflict?.hasConflict ?? false,
+      lintPassed: narration.lintPassed,
+      intent: reflexTurn.reflex?.intent ?? null,
+    },
+    slotItemCount: slotExtract?.items.length ?? 0,
+    slotTier: slotExtract?.tier ?? null,
+  });
+  shadowParityScore = shadowDiffResult.shadowParityScore;
 
   const deferTimelineForReflexSubmit =
     Boolean(turnSubmitOutcome.orderId) &&
