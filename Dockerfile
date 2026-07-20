@@ -28,6 +28,26 @@ ENV NODE_ENV=production
 # peak usage — raise it explicitly. Needs the server's swap to back it on a
 # 4GB box; on CI with more real RAM this just goes unused.
 ENV NODE_OPTIONS=--max-old-space-size=3072
+
+# NEXT_PUBLIC_* vars are inlined into the client JS bundle at BUILD time,
+# not read from the container's runtime environment — env_file in
+# docker-compose only reaches server-side code. .dockerignore deliberately
+# excludes .env* from the build context (never bake a full secrets file
+# into an image layer), so these come in as individual --build-arg values
+# instead — pass only the public (non-secret, browser-visible-anyway) ones.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
 RUN pnpm build
 
 # ---- runtime: minimal, non-root ----

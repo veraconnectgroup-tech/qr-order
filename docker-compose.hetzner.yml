@@ -18,6 +18,14 @@
 services:
   qr-order:
     image: ghcr.io/veraconnectgroup-tech/qr-order:latest
+    # If ever building locally instead of pulling from ghcr.io, NEXT_PUBLIC_*
+    # values must be passed as build args (inlined into the client bundle at
+    # build time — env_file below only reaches server-side runtime code):
+    #   docker build \
+    #     --build-arg NEXT_PUBLIC_SUPABASE_URL="$SUPABASE_URL" \
+    #     --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+    #     --build-arg NEXT_PUBLIC_APP_URL="$APP_URL" \
+    #     -t qr-order:local .
     container_name: qr-order
     restart: unless-stopped
     env_file:
