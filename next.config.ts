@@ -84,6 +84,9 @@ const withPWA = require("next-pwa")({
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // Self-hosted deploy (Hetzner) — minimal production image/runtime, only
+  // the traced files server.js actually needs, not the full node_modules.
+  output: "standalone",
   // CI runs `pnpm type-check` + `pnpm lint` before deploy; on Vercel's 2-core/8GB
   // box TypeScript after webpack+PWA+Sentry can thrash until the 45min build limit.
   typescript: {
