@@ -392,6 +392,24 @@ const ConciergeTableTurnaroundSchema = z
     busSlaMinutes: 8,
   });
 
+/**
+ * Denis's own self-directed venue check — no guest message, no staff voice
+ * command, no fixed time-offset schedule triggers this; a periodic tick
+ * hands the venue's current state to an LLM and asks "does anything here
+ * deserve attention?" Off by default: unlike the simple on/off capability
+ * flags, this is a genuinely new, uncalibrated LLM-judgment mechanism with
+ * a real per-tick cost, and the same lesson that applied to mentalModel/
+ * intervention/rhythm applies here — verify the shadow signal is sane for
+ * a location before trusting it to create real staff-facing missions.
+ */
+const ConciergeSelfSurveySchema = z
+  .object({
+    enabled: z.boolean(),
+    /** Minimum minutes between surveys for the same location — avoids re-asking the LLM every cron tick. */
+    cooldownMinutes: z.number().int().min(5).max(180),
+  })
+  .default({ enabled: false, cooldownMinutes: 20 });
+
 /** ADR-044 — loss prevention guardrails (journal always on; flags gated by config). */
 const ConciergeLossPreventionSchema = z
   .object({
@@ -523,6 +541,8 @@ const ConciergeOpsSchema = z.object({
   tableTurnaround: ConciergeTableTurnaroundSchema,
   /** ADR-044 — owner loss prevention guardrails + suspicious digest. */
   lossPrevention: ConciergeLossPreventionSchema,
+  /** Denis's own self-directed venue check — see ConciergeSelfSurveySchema. */
+  selfSurvey: ConciergeSelfSurveySchema,
 });
 
 const ConciergeLearningSchema = z.object({

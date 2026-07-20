@@ -3,6 +3,7 @@ import { withCronRateLimit } from "@/lib/api-guard";
 import { withErrorHandler } from "@/lib/api/with-error-handler";
 import { processDenisSchedulerTick } from "@/lib/denis/runtime/process-scheduler-tick";
 import { checkAndCreateDueCommitmentMissions } from "@/lib/denis/stations/denis-commitments";
+import { runDenisSelfSurveyTick } from "@/lib/denis/runtime/run-denis-self-survey";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -31,7 +32,16 @@ export const GET = withErrorHandler("cron-denis-scheduler-get", async (req, _ctx
     today: new Date().toISOString().slice(0, 10),
   });
 
-  logger.info("Denis scheduler tick completed", { ...result, commitments });
+  // Denis's own self-directed venue check — off per location until
+  // ops.selfSurvey.enabled is flipped; each location's own cooldown
+  // (Redis-backed) keeps this from re-asking the LLM every 5-minute tick.
+  const selfSurvey = await runDenisSelfSurveyTick(admin);
 
-  return apiSuccess({ ...result, commitments });
+  logger.info("Denis scheduler tick completed", {
+    ...result,
+    commitments,
+    selfSurvey,
+  });
+
+  return apiSuccess({ ...result, commitments, selfSurvey });
 });
