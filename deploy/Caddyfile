@@ -1,0 +1,15 @@
+# Reverse proxy + automatic TLS (Let's Encrypt) for the self-hosted deploy.
+# Copy to /etc/caddy/Caddyfile on the server (or run via the caddy Docker
+# image with this file mounted) — replace the placeholder domain below with
+# the real one once DNS points at this server.
+
+your-domain.example.com {
+	reverse_proxy 127.0.0.1:3010
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+	}
+}
