@@ -192,38 +192,168 @@ function randomParticleLayout() {
     positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
     sizes[i] = Math.random() * 0.018 + 0.004;
   }
-  return { positions, sizes };
+
+  // Connection-line candidate list: a fixed subset of particle indices
+  // (not all 700 — checking every pair would be 700^2 ≈ 490k distance
+  // tests/frame) bucketed into a coarse spatial grid and sorted by cell,
+  // so entries near each other in this array are also near each other in
+  // space. The per-frame scan below then only compares each candidate to
+  // the next few array neighbors — a cheap stand-in for a real neighbor
+  // search that still finds mostly-real nearby pairs.
+  const subsetStep = Math.ceil(count / 260); // ~260 candidates out of 700
+  const cellSize = 0.5;
+  const candidates: number[] = [];
+  for (let i = 0; i < count; i += subsetStep) candidates.push(i);
+  candidates.sort((a, b) => {
+    const cellOf = (idx: number) => {
+      const ix = Math.floor(positions[idx * 3]! / cellSize) + 20;
+      const iy = Math.floor(positions[idx * 3 + 1]! / cellSize) + 20;
+      const iz = Math.floor(positions[idx * 3 + 2]! / cellSize) + 20;
+      return ix * 1600 + iy * 40 + iz;
+    };
+    return cellOf(a) - cellOf(b);
+  });
+  const connectSubset = new Int32Array(candidates);
+
+  return { positions, sizes, connectSubset };
 }
 
-function Particles() {
-  const points = useRef<THREE.Points>(null);
+// How many trailing neighbors (in the spatially-sorted candidate list)
+// each candidate particle is checked against per frame.
+const CONNECT_WINDOW = 10;
+// Hard cap on simultaneously-drawn lines — bounds the fixed-size buffer
+// regardless of state so a burst of close particles can't blow past it.
+const MAX_CONNECTIONS = 320;
+// Distance thresholds particles must be within to connect: tighter/sparser
+// at rest, wider/denser while Denis is actively speaking (uLevel → 1).
+const CONNECT_DISTANCE_IDLE = 0.3;
+const CONNECT_DISTANCE_ACTIVE = 0.62;
+const connectionColor = new THREE.Color("#ff9a2e");
+
+function ParticleField({
+  analyserRef,
+}: {
+  analyserRef?: React.RefObject<AnalyserNode | null>;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const lineGeometry = useRef<THREE.BufferGeometry>(null);
   // Lazy useState initializer — the correct home for impure one-time
   // computation (runs exactly once on mount, unlike useMemo which React
   // may discard/recompute and expects to stay pure; unlike a ref, it's
   // never touched during render after that).
-  const [{ positions, sizes }] = useState(randomParticleLayout);
+  const [{ positions, sizes, connectSubset }] = useState(randomParticleLayout);
+  const readLevel = useAudioLevelReader(analyserRef);
+
+  // Fixed-size buffers sized for MAX_CONNECTIONS lines — allocated once,
+  // partially filled each frame, never reallocated.
+  const [{ linePositions, lineColors }] = useState(() => ({
+    linePositions: new Float32Array(MAX_CONNECTIONS * 2 * 3),
+    lineColors: new Float32Array(MAX_CONNECTIONS * 2 * 3),
+  }));
 
   useFrame(({ clock }) => {
-    if (!points.current) return;
-    points.current.rotation.y = clock.elapsedTime * 0.08;
-    points.current.rotation.z = Math.sin(clock.elapsedTime * 0.2) * 0.08;
+    if (group.current) {
+      group.current.rotation.y = clock.elapsedTime * 0.08;
+      group.current.rotation.z = Math.sin(clock.elapsedTime * 0.2) * 0.08;
+    }
+
+    const geometry = lineGeometry.current;
+    if (!geometry) return;
+
+    const level = readLevel();
+    const maxDistance =
+      CONNECT_DISTANCE_IDLE + level * (CONNECT_DISTANCE_ACTIVE - CONNECT_DISTANCE_IDLE);
+    const maxDistanceSq = maxDistance * maxDistance;
+
+    let lineCount = 0;
+    for (let a = 0; a < connectSubset.length && lineCount < MAX_CONNECTIONS; a++) {
+      const ia = connectSubset[a]!;
+      const ax = positions[ia * 3]!;
+      const ay = positions[ia * 3 + 1]!;
+      const az = positions[ia * 3 + 2]!;
+      const window = Math.min(CONNECT_WINDOW, connectSubset.length - a - 1);
+      for (let w = 1; w <= window && lineCount < MAX_CONNECTIONS; w++) {
+        const ib = connectSubset[a + w]!;
+        const bx = positions[ib * 3]!;
+        const by = positions[ib * 3 + 1]!;
+        const bz = positions[ib * 3 + 2]!;
+        const dx = ax - bx;
+        const dy = ay - by;
+        const dz = az - bz;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        if (distSq >= maxDistanceSq) continue;
+
+        // Closer pairs read brighter; the active state also lifts the
+        // floor so connections stay visible even near the fade-out edge.
+        const dist = Math.sqrt(distSq);
+        const brightness = Math.min(1, (1 - dist / maxDistance) * 1.3 + level * 0.15);
+
+        const vBase = lineCount * 6;
+        linePositions[vBase] = ax;
+        linePositions[vBase + 1] = ay;
+        linePositions[vBase + 2] = az;
+        linePositions[vBase + 3] = bx;
+        linePositions[vBase + 4] = by;
+        linePositions[vBase + 5] = bz;
+
+        lineColors[vBase] = connectionColor.r * brightness;
+        lineColors[vBase + 1] = connectionColor.g * brightness;
+        lineColors[vBase + 2] = connectionColor.b * brightness;
+        lineColors[vBase + 3] = connectionColor.r * brightness;
+        lineColors[vBase + 4] = connectionColor.g * brightness;
+        lineColors[vBase + 5] = connectionColor.b * brightness;
+
+        lineCount++;
+      }
+    }
+
+    // Collapse unused slots via draw range instead of reallocating or
+    // zeroing the tail every frame.
+    geometry.setDrawRange(0, lineCount * 2);
+    const positionAttr = geometry.attributes.position as THREE.BufferAttribute;
+    const colorAttr = geometry.attributes.color as THREE.BufferAttribute;
+    positionAttr.needsUpdate = true;
+    colorAttr.needsUpdate = true;
   });
 
   return (
-    <points ref={points}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-size" args={[sizes, 1]} />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#ff9a2e"
-        size={0.022}
-        transparent
-        opacity={0.95}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </points>
+    <group ref={group}>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          <bufferAttribute attach="attributes-size" args={[sizes, 1]} />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#ff9a2e"
+          size={0.022}
+          transparent
+          opacity={0.95}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </points>
+      <lineSegments>
+        <bufferGeometry ref={lineGeometry}>
+          <bufferAttribute
+            attach="attributes-position"
+            args={[linePositions, 3]}
+            usage={THREE.DynamicDrawUsage}
+          />
+          <bufferAttribute
+            attach="attributes-color"
+            args={[lineColors, 3]}
+            usage={THREE.DynamicDrawUsage}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial
+          vertexColors
+          transparent
+          opacity={0.85}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </lineSegments>
+    </group>
   );
 }
 
@@ -246,7 +376,7 @@ function Scene({
       <ambientLight intensity={0.15} />
       <SlowSpin>
         <EnergyOrb analyserRef={analyserRef} />
-        <Particles />
+        <ParticleField analyserRef={analyserRef} />
       </SlowSpin>
       <EffectComposer>
         <Bloom intensity={0.5} luminanceThreshold={0.6} luminanceSmoothing={0.2} mipmapBlur />
