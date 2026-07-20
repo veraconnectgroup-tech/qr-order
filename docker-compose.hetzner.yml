@@ -1,0 +1,35 @@
+# Runs on the Hetzner server — never builds there (see Dockerfile header:
+# the box is too small to safely build under). Pulls the image GitHub
+# Actions already built and pushed to ghcr.io.
+#
+# Secrets: env_file points at /opt/qr-order/.env on the server — that file
+# is created directly on the server (nano/vim over your own SSH session),
+# never passed through chat, CI logs, or committed to this repo.
+#
+# IMPORTANT — no quotes in .env values. Docker's env_file format (unlike
+# shell .env parsing) does NOT strip surrounding quotes: KEY="value" is
+# read as the literal string `"value"`, quote characters included. A file
+# pulled via `vercel env pull` writes exactly that quoted format and will
+# silently break every client that validates its input (Supabase's URL
+# parser threw "Invalid supabaseUrl" on this exact issue during first
+# deploy). Before copying a pulled .env here, strip the quotes:
+#   sed -i -E 's/^([A-Z_]+)="(.*)"$/\1=\2/' .env
+
+services:
+  qr-order:
+    image: ghcr.io/veraconnectgroup-tech/qr-order:latest
+    container_name: qr-order
+    restart: unless-stopped
+    env_file:
+      - /opt/qr-order/.env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:3010:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
