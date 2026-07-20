@@ -30,6 +30,8 @@ import { loadDenisHealthMetrics } from "@/lib/denis/monitoring";
 import type { FeedbackRow } from "@/lib/denis/platform/feedback-intelligence";
 import { loadOpenSuspiciousFlags } from "@/lib/loss-prevention/load-open-suspicious-flags";
 import { loadLocationFeedbackRows } from "@/lib/denis/platform/load-location-feedback-rows";
+import { loadConciergeConfigForLocation } from "@/lib/denis/config/load-concierge-config";
+import type { SensitiveActionRow } from "@/lib/audit/sensitive-action-types";
 import {
   loadEightySixEventsForRange,
   type EightySixEvent,
@@ -428,6 +430,48 @@ async function loadDessertWindowStatsForDay(
   });
 }
 
+/**
+ * Sensitive-action rows (action="discount") for the report period, scoped to
+ * this location — ADR-044 S6. order_events has no location_id column, so we
+ * join through orders the same way loadOpenSuspiciousFlags does.
+ */
+async function loadDiscountActionRowsForRange(
+  admin: SupabaseClient,
+  locationId: string,
+  from: string,
+  to: string
+): Promise<SensitiveActionRow[]> {
+  const { data } = await admin
+    .from("order_events")
+    .select(
+      "id, order_id, session_id, event_type, payload, sensitive_action, target_type, target_id, reason, approved_by_staff_id, risk_flag, context, actor_type, actor_id, created_at, resolved_at, resolved_outcome, resolved_by_staff_id"
+    )
+    .eq("sensitive_action", "discount")
+    .gte("created_at", from)
+    .lt("created_at", to);
+
+  const rows = (data ?? []) as SensitiveActionRow[];
+  const orderIds = [
+    ...new Set(rows.map((row) => row.order_id).filter(Boolean)),
+  ] as string[];
+  if (!orderIds.length) return [];
+
+  const { data: orders } = await admin
+    .from("orders")
+    .select("id, location_id")
+    .in("id", orderIds);
+
+  const locationByOrder = new Map<string, string>();
+  for (const order of orders ?? []) {
+    const row = order as { id: string; location_id: string };
+    locationByOrder.set(row.id, row.location_id);
+  }
+
+  return rows.filter(
+    (row) => row.order_id != null && locationByOrder.get(row.order_id) === locationId
+  );
+}
+
 async function loadBusObligationsForRange(
   admin: SupabaseClient,
   locationId: string,
@@ -635,10 +679,24 @@ export async function loadDailyReportForLocation(
       }
     ).organization?.currency ?? "RSD";
 
-  const suspiciousFlags = await loadOpenSuspiciousFlags(admin, input.locationId, {
-    sinceIso: range.from,
-    limit: 50,
-  });
+  const config = await loadConciergeConfigForLocation(input.locationId);
+  const lossPrevention = config.ops.lossPrevention;
+
+  const suspiciousFlags = lossPrevention.enabled && lossPrevention.suspiciousReportEnabled
+    ? await loadOpenSuspiciousFlags(admin, input.locationId, {
+        sinceIso: range.from,
+        limit: 50,
+      })
+    : [];
+
+  const discountActionRows = lossPrevention.enabled && lossPrevention.discountPatternsEnabled
+    ? await loadDiscountActionRowsForRange(
+        admin,
+        input.locationId,
+        range.from,
+        range.to
+      )
+    : [];
 
   return buildDailyReport({
     date,
@@ -660,5 +718,12 @@ export async function loadDailyReportForLocation(
     denisShift,
     productRollup,
     suspiciousFlags,
+    discountActionRows,
+    lossPreventionConfig: {
+      enabled: lossPrevention.enabled,
+      suspiciousReportEnabled: lossPrevention.suspiciousReportEnabled,
+      discountPatternsEnabled: lossPrevention.discountPatternsEnabled,
+      discountDeviationMultiplier: lossPrevention.discountDeviationMultiplier,
+    },
   });
 }

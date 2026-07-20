@@ -11,6 +11,12 @@ import {
   type SuspiciousDigest,
 } from "@/lib/loss-prevention/build-suspicious-digest";
 import type { OpenSuspiciousFlag } from "@/lib/loss-prevention/load-open-suspicious-flags";
+import {
+  countDiscountsByStaff,
+  evaluateDiscountPattern,
+  type DiscountPatternResult,
+} from "@/lib/loss-prevention/discount-patterns";
+import type { SensitiveActionRow } from "@/lib/audit/sensitive-action-types";
 
 export type DailyReportProductRollupRow = {
   name: string;
@@ -77,6 +83,8 @@ export type DailyReport = {
       totalFlags: number;
       overflow: number;
     };
+    /** ADR-044 S6 — per-staff discount-rate deviation flags (report/monitoring signal only). */
+    discountPatternFlags: DiscountPatternResult[];
     denisShift: DenisShiftRecap;
     /** Per-day product rollup for weekly owner report (S14). */
     productRollup: DailyReportProductRollupRow[];
@@ -104,6 +112,15 @@ export type BuildDailyReportInput = {
   productRollup?: DailyReportProductRollupRow[];
   suspiciousFlags?: OpenSuspiciousFlag[];
   suspiciousDigestMaxItems?: number;
+  /** Sensitive-action rows (action="discount") for the report period, used to build discountPatternFlags. */
+  discountActionRows?: SensitiveActionRow[];
+  /** ADR-044 loss-prevention gates. Omitted (e.g. in older tests) preserves prior unconditional behavior. */
+  lossPreventionConfig?: {
+    enabled: boolean;
+    suspiciousReportEnabled: boolean;
+    discountPatternsEnabled: boolean;
+    discountDeviationMultiplier: number;
+  };
 };
 
 export function aggregateProductRollupFromItems(
@@ -262,6 +279,39 @@ function buildHighlightsAndIssues(input: BuildDailyReportInput): {
   };
 }
 
+/**
+ * Per-staff discount deviation flags for the report period — ADR-044 S6.
+ *
+ * Judgment call: there is no richer historical per-staff discount baseline
+ * wired up yet, so "location average" is approximated as this period's total
+ * discount count spread evenly across the staff who applied at least one
+ * discount (total / distinct staff). This is coarser than a rolling
+ * historical average but keeps the check honest with only in-period data —
+ * revisit if/when a longer-window baseline becomes available.
+ */
+function buildDiscountPatternFlags(
+  rows: SensitiveActionRow[],
+  deviationMultiplier: number | undefined
+): DiscountPatternResult[] {
+  const counts = countDiscountsByStaff(rows);
+  if (counts.size === 0) return [];
+
+  const totalDiscounts = [...counts.values()].reduce((sum, n) => sum + n, 0);
+  const locationAverage = totalDiscounts / counts.size;
+
+  const flagged: DiscountPatternResult[] = [];
+  for (const [staffId, discountCount] of counts) {
+    const result = evaluateDiscountPattern({
+      staffId,
+      discountCount,
+      locationAverage,
+      deviationMultiplier,
+    });
+    if (result.flagged) flagged.push(result);
+  }
+  return flagged;
+}
+
 export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
   const orderCount = input.orders.length;
   const revenueTotal = input.orders.reduce(
@@ -293,10 +343,27 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
     ? buildDenisShiftRecap(input.denisShift)
     : emptyDenisShiftRecap(input.prepTimeAvgMinutes);
 
-  const suspiciousDigest: SuspiciousDigest = buildSuspiciousDigest(
-    input.suspiciousFlags ?? [],
-    input.suspiciousDigestMaxItems ?? 10
-  );
+  const lossPreventionEnabled = input.lossPreventionConfig?.enabled ?? true;
+  const suspiciousReportEnabled =
+    input.lossPreventionConfig?.suspiciousReportEnabled ?? true;
+  const discountPatternsEnabled =
+    input.lossPreventionConfig?.discountPatternsEnabled ?? true;
+
+  const suspiciousDigest: SuspiciousDigest =
+    lossPreventionEnabled && suspiciousReportEnabled
+      ? buildSuspiciousDigest(
+          input.suspiciousFlags ?? [],
+          input.suspiciousDigestMaxItems ?? 10
+        )
+      : { totalFlags: 0, shown: 0, overflow: 0, sections: [], lines: [] };
+
+  const discountPatternFlags: DiscountPatternResult[] =
+    lossPreventionEnabled && discountPatternsEnabled
+      ? buildDiscountPatternFlags(
+          input.discountActionRows ?? [],
+          input.lossPreventionConfig?.discountDeviationMultiplier
+        )
+      : [];
 
   return {
     date: input.date,
@@ -336,6 +403,7 @@ export function buildDailyReport(input: BuildDailyReportInput): DailyReport {
         totalFlags: suspiciousDigest.totalFlags,
         overflow: suspiciousDigest.overflow,
       },
+      discountPatternFlags,
       denisShift,
       productRollup: input.productRollup ?? [],
     },
@@ -595,6 +663,16 @@ export function formatDailyReportDigest(report: DailyReport): DailyReportDigest 
             : []),
         ]
       : []),
+    ...(s.discountPatternFlags.length
+      ? [
+          "",
+          `🏷️ POPUST OBRAZAC (${s.discountPatternFlags.length}):`,
+          ...s.discountPatternFlags.map(
+            (flag) =>
+              `• ${flag.staffId}: ${flag.discountCount} popusta (prosek ${Math.round(flag.locationAverage * 10) / 10}, prag ${Math.round(flag.threshold * 10) / 10})`
+          ),
+        ]
+      : []),
     "",
     "Detalji: Admin → Denis Insights",
   ]
@@ -626,6 +704,7 @@ export function formatDailyReportDigest(report: DailyReport): DailyReportDigest 
         <li>Peak ${s.kitchen.peakHour} (${s.kitchen.peakOrderCount} narudžbi)</li>
       </ul>
       ${formatDenisShiftDigestHtml(s.denisShift, report.currencyLabel)}
+      ${s.discountPatternFlags.length ? `<p style="margin:0 0 8px;font-weight:600;">🏷️ Popust obrazac</p><ul style="margin:0 0 16px;padding-left:18px;">${s.discountPatternFlags.map((flag) => `<li>${flag.staffId}: ${flag.discountCount} popusta (prosek ${Math.round(flag.locationAverage * 10) / 10}, prag ${Math.round(flag.threshold * 10) / 10})</li>`).join("")}</ul>` : ""}
       ${s.highlights.length ? `<p style="margin:0 0 8px;padding:10px;background:#ecfdf5;border-radius:8px;">✅ ${s.highlights.join(" · ")}</p>` : ""}
       ${s.issues.length ? `<p style="margin:0;padding:10px;background:#fff7ed;border-radius:8px;">⚠️ ${s.issues.join(" · ")}</p>` : ""}
       <p style="margin:16px 0 0;color:#777;font-size:12px;">Admin → Denis Insights</p>
