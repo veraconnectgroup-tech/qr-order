@@ -14,11 +14,11 @@ const sampleFacts: NarrationFacts = {
 };
 
 describe("Denis M21 narrate-llm", () => {
-  it("defaults narrateWithLlm off", () => {
-    expect(CONCIERGE_PLATFORM_DEFAULTS.llm.narrateWithLlm).toBe(false);
+  it("narrateWithLlm on by default — denis_only rollout gets the real narrator", () => {
+    expect(CONCIERGE_PLATFORM_DEFAULTS.llm.narrateWithLlm).toBe(true);
     expect(
       shouldUseDenisNarration(CONCIERGE_PLATFORM_DEFAULTS, "denis_only")
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("enables Denis narrator only for denis_only + flag", () => {

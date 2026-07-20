@@ -40,8 +40,8 @@ describe("ADR-043 S13 — table turnaround (bus_table)", () => {
     expect(busModule).toContain("floor.bus_table.opened");
   });
 
-  it("tableTurnaround flag default off, pilot enables", () => {
-    expect(CONCIERGE_PLATFORM_DEFAULTS.ops.tableTurnaround.enabled).toBe(false);
+  it("tableTurnaround enabled by default, pilot matches", () => {
+    expect(CONCIERGE_PLATFORM_DEFAULTS.ops.tableTurnaround.enabled).toBe(true);
     expect(TABLE_OS_PILOT_CONFIG_PATCH.ops?.tableTurnaround?.enabled).toBe(true);
   });
 

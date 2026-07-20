@@ -189,10 +189,17 @@ describe("station stress M14", () => {
 
 describe("auto rush from floor M14", () => {
   it("does not merge when floor graph GA gate is off", () => {
+    const gateOffConfig = {
+      ...CONCIERGE_PLATFORM_DEFAULTS,
+      ops: {
+        ...CONCIERGE_PLATFORM_DEFAULTS.ops,
+        floorGraphEnabled: false,
+      },
+    };
     const effective = resolveEffectiveVenueOps(
       normalOps,
       floorWithBacklog(30),
-      CONCIERGE_PLATFORM_DEFAULTS
+      gateOffConfig
     );
     expect(effective.operatingMode).toBe("normal");
     expect(effective.kdsStress).toBe("normal");

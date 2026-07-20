@@ -38,9 +38,9 @@ describe("Denis M22 slot extract", () => {
     );
   });
 
-  it("defaults slot extract off", () => {
+  it("slot extract on by default, LLM slot extraction stays off", () => {
     expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.slotExtractEnabled).toBe(
-      false
+      true
     );
     expect(CONCIERGE_PLATFORM_DEFAULTS.llm.slotExtractWithLlm).toBe(false);
   });

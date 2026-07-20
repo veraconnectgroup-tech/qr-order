@@ -8,10 +8,10 @@ import { emptyCartState } from "@/lib/denis/kernel/cart-projection";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 
 describe("Denis M23 act + ACL", () => {
-  it("defaults act layer off and dry-run on", () => {
-    expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.actLayerEnabled).toBe(false);
-    expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.actDryRun).toBe(true);
-    expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.actSubmitEnabled).toBe(false);
+  it("act layer live by default — real submissions, not dry-run", () => {
+    expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.actLayerEnabled).toBe(true);
+    expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.actDryRun).toBe(false);
+    expect(CONCIERGE_PLATFORM_DEFAULTS.ordering.actSubmitEnabled).toBe(true);
   });
 
   it("builds DenisOrderCommand from cart draft", () => {

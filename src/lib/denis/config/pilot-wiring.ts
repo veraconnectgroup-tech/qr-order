@@ -66,6 +66,11 @@ export const TABLE_OS_PILOT_CONFIG_PATCH: PartialConciergeConfig = {
       legacySingleCallFallback: false,
       creditsPerExtraRound: 0,
     },
+    guestConduct: {
+      enabled: true,
+      shadowOnly: false,
+      canaryPercent: 100,
+    },
     lossPrevention: {
       enabled: true,
       voidLadderEnabled: true,

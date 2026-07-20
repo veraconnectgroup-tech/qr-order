@@ -8,18 +8,17 @@ import type { ActPhaseResult } from "@/lib/denis/runtime/act/act-types";
 
 describe("F8-3 act submit outcome", () => {
   it("isActSubmitLive requires act layer, submit flag, and no dry-run", () => {
-    expect(isActSubmitLive(CONCIERGE_PLATFORM_DEFAULTS)).toBe(false);
+    // Live by default now — act layer, submit, and no dry-run all ship on.
+    expect(isActSubmitLive(CONCIERGE_PLATFORM_DEFAULTS)).toBe(true);
 
-    const live = {
+    const dryRun = {
       ...CONCIERGE_PLATFORM_DEFAULTS,
       ordering: {
         ...CONCIERGE_PLATFORM_DEFAULTS.ordering,
-        actLayerEnabled: true,
-        actSubmitEnabled: true,
-        actDryRun: false,
+        actDryRun: true,
       },
     };
-    expect(isActSubmitLive(live)).toBe(true);
+    expect(isActSubmitLive(dryRun)).toBe(false);
   });
 
   it("resolveActSubmitOutcome ignores dry-run submit", () => {

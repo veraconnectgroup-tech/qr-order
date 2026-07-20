@@ -54,10 +54,10 @@ describe("buildNewOrderAnnouncement", () => {
 });
 
 describe("readBonsAloudEnabled config flag (ADR-053 M6)", () => {
-  it("ships dark — platform default is off", () => {
+  it("ships live — platform default is on", () => {
     expect(
       CONCIERGE_PLATFORM_DEFAULTS.ops.stationQuestions.readBonsAloudEnabled
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("a per-location override turns it on through the real merge path", () => {

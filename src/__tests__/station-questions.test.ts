@@ -55,7 +55,7 @@ describe("evaluateStationQuestionTriggers", () => {
   it("stays silent below the SLA — no small-delay spam", () => {
     const candidates = evaluateStationQuestionTriggers({
       orders: [order({ createdAt: minutesAgo(8) })],
-      config,
+      config: { ...config, slaPreWarnEnabled: false },
       now: NOW,
     });
 
@@ -203,10 +203,10 @@ describe("evaluateStationQuestionTriggers", () => {
 describe("evaluateStationQuestionTriggers — SLA pre-warn (ADR-053 M5)", () => {
   const preWarnConfig = { ...config, slaPreWarnEnabled: true };
 
-  it("stays silent inside the pre-warn window when the flag is off (default)", () => {
+  it("stays silent inside the pre-warn window when the flag is off", () => {
     const candidates = evaluateStationQuestionTriggers({
       orders: [order({ createdAt: minutesAgo(8) })],
-      config,
+      config: { ...config, slaPreWarnEnabled: false },
       now: NOW,
     });
 
