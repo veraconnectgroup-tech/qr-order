@@ -6,16 +6,19 @@ vi.mock("@/lib/guest/denis-guest-memory-store", () => ({
   deleteGuestMemory: vi.fn().mockResolvedValue(true),
 }));
 
-function buildForgetAdmin() {
-  const tables: Record<string, string[]> = {
-    denis_guest_memory: ["mem-1"],
-    guest_notification_preferences: ["pref-1"],
-    session_devices: [{ session_id: "sess-1" } as unknown as string],
-    table_sessions: [{ table_id: "table-1" } as unknown as string],
-    ai_sessions: [{ id: "ai-1" } as unknown as string],
-    denis_turn_traces: ["trace-1"],
-    denis_timeline: ["tl-1"],
-  };
+type TableSessionRow = { table_id: string; opened_at: string; closed_at: string | null };
+type AiSessionRow = { id: string; table_id: string; created_at: string };
+
+function buildForgetAdmin(options?: {
+  tableSessions?: TableSessionRow[];
+  aiSessions?: AiSessionRow[];
+}) {
+  const tableSessions: TableSessionRow[] = options?.tableSessions ?? [
+    { table_id: "table-1", opened_at: "2026-01-01T12:00:00Z", closed_at: "2026-01-01T13:00:00Z" },
+  ];
+  const aiSessions: AiSessionRow[] = options?.aiSessions ?? [
+    { id: "ai-1", table_id: "table-1", created_at: "2026-01-01T12:30:00Z" },
+  ];
 
   const from = (table: string) => {
     if (table === "denis_guest_memory") {
@@ -59,7 +62,7 @@ function buildForgetAdmin() {
         select: () => ({
           eq: () => ({
             in: async () => ({
-              data: [{ table_id: "table-1" }],
+              data: tableSessions,
               error: null,
             }),
           }),
@@ -68,13 +71,34 @@ function buildForgetAdmin() {
     }
 
     if (table === "ai_sessions") {
+      // Chainable filter mock: eq(location_id) -> eq(table_id) -> gte(created_at) -> [lte(created_at)]
       return {
         select: () => ({
           eq: () => ({
-            in: async () => ({
-              data: [{ id: "ai-1" }],
-              error: null,
-            }),
+            eq: (_col: string, tableId: string) => {
+              const withinTable = aiSessions.filter((row) => row.table_id === tableId);
+              const gteApi = {
+                gte: (_gteCol: string, opened: string) => {
+                  const afterOpen = withinTable.filter((row) => row.created_at >= opened);
+                  const resolved = Promise.resolve({
+                    data: afterOpen.map(({ id }) => ({ id })),
+                    error: null,
+                  });
+                  return {
+                    ...resolved,
+                    then: resolved.then.bind(resolved),
+                    lte: (_lteCol: string, closed: string) => {
+                      const windowed = afterOpen.filter((row) => row.created_at <= closed);
+                      return Promise.resolve({
+                        data: windowed.map(({ id }) => ({ id })),
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+              return gteApi;
+            },
           }),
         }),
       };
@@ -106,7 +130,6 @@ function buildForgetAdmin() {
 
   return {
     admin: { from } as unknown as SupabaseClient,
-    tables,
   };
 }
 
@@ -121,6 +144,30 @@ describe("forgetGuestCompletely", () => {
 
     expect(result.memoryDeleted).toBe(true);
     expect(result.notificationPrefsDeleted).toBe(1);
+    expect(result.turnTracesDeleted).toBe(1);
+    expect(result.timelineEventsDeleted).toBe(1);
+  });
+
+  it("does not sweep in a different guest's ai_session from an earlier visit at the same table", async () => {
+    // Same physical table, two unrelated visits. Only the ai_session that
+    // falls inside THIS guest's table_session window should be touched.
+    const { admin } = buildForgetAdmin({
+      tableSessions: [
+        { table_id: "table-1", opened_at: "2026-01-02T18:00:00Z", closed_at: "2026-01-02T19:00:00Z" },
+      ],
+      aiSessions: [
+        { id: "ai-earlier-guest", table_id: "table-1", created_at: "2026-01-01T12:30:00Z" },
+        { id: "ai-this-guest", table_id: "table-1", created_at: "2026-01-02T18:30:00Z" },
+      ],
+    });
+
+    const result = await forgetGuestCompletely(admin, {
+      locationId: "loc-1",
+      deviceFingerprint: "fingerprint-abc12345",
+    });
+
+    // Only one ai_session (this guest's) falls in the window, so only its
+    // trace/timeline rows are counted as deleted — not the earlier guest's.
     expect(result.turnTracesDeleted).toBe(1);
     expect(result.timelineEventsDeleted).toBe(1);
   });
