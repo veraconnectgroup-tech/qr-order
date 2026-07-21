@@ -183,11 +183,11 @@ const MEMORY_REGISTRY: readonly MemoryRegistryEntry[] = [
   {
     table: "denis_audit_entries",
     tier: "audit",
-    retentionDays: 365,
+    retentionDays: null,
     dayClose: "keep",
     pii: true,
     notes:
-      "Denis per-turn compliance audit journal — writer wired in run-denis-turn.ts via persistDenisAuditEntry(). Guest input is SHA-256 hashed; allergy rows retain 180d, others 30d per auditRetentionDays().",
+      "Denis per-turn compliance audit journal — writer wired in run-denis-turn.ts via persistDenisAuditEntry(). Guest input is SHA-256 hashed. Hard-exempt from the retention sweep like every other audit-tier table (GoBD, kept forever) — the per-row expires_at (30d default / 180d allergy, per auditRetentionDays()) is informational only and is never read by any cleanup job; do not mistake it for an enforced TTL.",
   },
   {
     table: "commerce_experience_events",
