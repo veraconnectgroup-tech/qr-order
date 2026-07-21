@@ -61,11 +61,6 @@ import {
 } from "@/lib/denis/stations/maybe-process-guest-status-for-turn";
 import { buildInterpretationTask } from "@/lib/denis/cognition/tde/build-interpretation-task";
 import { extractTurnInterpretation } from "@/lib/denis/cognition/tde/extract-turn-interpretation";
-import {
-  finalizeTurnMetering,
-  maybeEnqueueLowBalanceAlert,
-  refreshOrgAiOpsProjection,
-} from "@/lib/denis/commercial";
 import { planTurnWithReflex } from "@/lib/denis/kernel/reflex-plan";
 import { appendDenisTimelineEvent } from "@/lib/denis/platform/append-timeline-event";
 import { appendMindFoldCompleted } from "@/lib/denis/loop/append-fold-completed";
@@ -97,6 +92,7 @@ import {
   resolveGuestLegacyPath,
 } from "@/lib/denis/config/rollout";
 import { logShadowDiff } from "@/lib/denis/runtime/turn/log-shadow-diff";
+import { finalizeTurnCredits } from "@/lib/denis/runtime/turn/finalize-turn-credits";
 import {
   guestIntentTierFromReflex,
   resolveTurnIntent,
@@ -1814,44 +1810,19 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     timings.timelineMs = elapsedMs(timelineStarted);
   }
 
-  let creditsRemaining =
-    data.creditsRemaining ?? creditBalanceAfter;
   const creditsCharged = data.creditsCharged ?? 0;
-
-  if (timelineAiSessionId && creditsCharged > 0) {
-    const meteringStarted = performance.now();
-    const metering = await finalizeTurnMetering(admin, {
-      orgId: orgId,
-      aiSessionId: timelineAiSessionId,
-      traceId,
-    });
-
-    if (metering.ok) {
-      creditsRemaining = metering.balanceAfter;
-      await maybeEnqueueLowBalanceAlert(admin, {
-        orgId: orgId,
-        locationId: parsed.locationId,
-        balanceAfter: metering.balanceAfter,
-        traceId,
-      });
-      void refreshOrgAiOpsProjection(admin, orgId).catch(
-        (error) => {
-          logger.warn("Denis turn org_ai_ops refresh failed", {
-            orgId: orgId,
-            traceId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      );
-    } else {
-      logger.error("Denis turn metering finalize failed", {
-        traceId,
-        aiSessionId: timelineAiSessionId,
-        orgId: orgId,
-        code: metering.code,
-      });
-    }
-    timings.meteringMs = elapsedMs(meteringStarted);
+  const creditsFinalized = await finalizeTurnCredits({
+    admin,
+    orgId,
+    locationId: parsed.locationId,
+    timelineAiSessionId,
+    traceId,
+    creditsCharged,
+    creditsRemaining: data.creditsRemaining ?? creditBalanceAfter,
+  });
+  const creditsRemaining = creditsFinalized.creditsRemaining;
+  if (creditsFinalized.meteringMs > 0) {
+    timings.meteringMs = creditsFinalized.meteringMs;
   }
 
   timings.totalMs = elapsedMs(turnStarted);
