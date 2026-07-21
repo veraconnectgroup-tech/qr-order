@@ -7,10 +7,16 @@ import {
   type PolicyDecision,
 } from "@/lib/denis/cognition/policy/policy-decision-types";
 
-const WARN_1_MESSAGE = "Molim vas, ostanimo pristojni jedno prema drugom.";
-const WARN_2_MESSAGE =
+/**
+ * Exported (not just module-private) so the de-escalation tone eval
+ * (src/lib/denis/eval/run-deescalation-tone-eval.ts) can judge the exact
+ * production string guests receive, instead of a hand-copied duplicate
+ * that could silently drift from what's actually shipped.
+ */
+export const WARN_1_MESSAGE = "Molim vas, ostanimo pristojni jedno prema drugom.";
+export const WARN_2_MESSAGE =
   "Već sam vas zamolio da budemo pristojni — ako se ovo ponovi, zvaću kolegu da preuzme razgovor.";
-const HANDOFF_MESSAGE = "Zvaću kolegu da nastavi umesto mene.";
+export const HANDOFF_MESSAGE = "Zvaću kolegu da nastavi umesto mene.";
 
 function buildPolicyDecision(
   tier: ConductTier,
