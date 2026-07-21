@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toJson } from "@/lib/supabase/json";
+import { runAfterResponse } from "@/lib/runtime/run-after-response";
 import type { Json } from "@/types/database";
 
 export type BuildTurnTraceInput = {
@@ -146,7 +147,9 @@ export async function writeTurnTrace(trace: TurnTrace): Promise<void> {
 }
 
 export function scheduleTurnTraceWrite(trace: TurnTrace): void {
-  void writeTurnTrace(trace).catch(() => {
-    // Observability only — must not affect guest turns.
-  });
+  runAfterResponse(() =>
+    writeTurnTrace(trace).catch(() => {
+      // Observability only — must not affect guest turns.
+    })
+  );
 }

@@ -171,6 +171,7 @@ import { persistKernelOrderingDraft } from "@/lib/denis/runtime/act/apply-kernel
 import { aiOrderDraftToDenisCartState } from "@/lib/denis/runtime/adapters/map-legacy-draft";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { scheduleGuestSceneRefresh } from "@/lib/scene/enqueue-scene-refresh";
+import { runAfterResponse } from "@/lib/runtime/run-after-response";
 import { mapTurnToSceneOverrides } from "@/lib/scene/map-turn-to-scene-overrides";
 import {
   initDraftFromStorage,
@@ -799,56 +800,58 @@ async function runTdePerceive(input: {
     const agenticBrainContext = await assembleDenisBrainContext(
       input.body.locationId
     );
-    void runToolLoop({
-      messages: [
-        {
-          role: "system",
-          content: [
-            agenticBrainContext,
-            "",
-            "Use the available tools to check real venue state before answering. Answer briefly, in the guest's language.",
-          ].join("\n"),
-        },
-        { role: "user", content: input.body.message },
-      ],
-      executorInput: { admin, ctx: input.ctx, dryRun: true },
-      maxRounds: agenticConfig.maxRounds,
-    })
-      .then(async (result) => {
-        const toolsCalled = result.rounds.flatMap((round) =>
-          round.toolCalls.map((call) => call.name)
-        );
-        const toolErrors = result.rounds.flatMap((round) =>
-          round.toolCalls.flatMap((call) =>
-            call.error ? [{ tool: call.name, error: call.error }] : []
-          )
-        );
-        logger.info("agentic tool loop shadow trace", {
-          locationId: input.body.locationId,
-          rounds: result.rounds.length,
-          hitRoundCap: result.hitRoundCap,
-          toolsCalled,
-        });
-        if (input.ctx.aiSessionId) {
-          await appendDenisTimelineEvent(admin, {
-            aiSessionId: input.ctx.aiSessionId,
-            eventType: "agentic.shadow_trace",
-            payload: {
-              rounds: result.rounds.length,
-              hitRoundCap: result.hitRoundCap,
-              toolsCalled,
-              toolErrors,
-              finalContentChars: result.finalContent.length,
-            },
-          });
-        }
+    runAfterResponse(() =>
+      runToolLoop({
+        messages: [
+          {
+            role: "system",
+            content: [
+              agenticBrainContext,
+              "",
+              "Use the available tools to check real venue state before answering. Answer briefly, in the guest's language.",
+            ].join("\n"),
+          },
+          { role: "user", content: input.body.message },
+        ],
+        executorInput: { admin, ctx: input.ctx, dryRun: true },
+        maxRounds: agenticConfig.maxRounds,
       })
-      .catch((error) => {
-        logger.warn("agentic tool loop shadow failed", {
-          locationId: input.body.locationId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
+        .then(async (result) => {
+          const toolsCalled = result.rounds.flatMap((round) =>
+            round.toolCalls.map((call) => call.name)
+          );
+          const toolErrors = result.rounds.flatMap((round) =>
+            round.toolCalls.flatMap((call) =>
+              call.error ? [{ tool: call.name, error: call.error }] : []
+            )
+          );
+          logger.info("agentic tool loop shadow trace", {
+            locationId: input.body.locationId,
+            rounds: result.rounds.length,
+            hitRoundCap: result.hitRoundCap,
+            toolsCalled,
+          });
+          if (input.ctx.aiSessionId) {
+            await appendDenisTimelineEvent(admin, {
+              aiSessionId: input.ctx.aiSessionId,
+              eventType: "agentic.shadow_trace",
+              payload: {
+                rounds: result.rounds.length,
+                hitRoundCap: result.hitRoundCap,
+                toolsCalled,
+                toolErrors,
+                finalContentChars: result.finalContent.length,
+              },
+            });
+          }
+        })
+        .catch((error) => {
+          logger.warn("agentic tool loop shadow failed", {
+            locationId: input.body.locationId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        })
+    );
   }
 
   const evidence = planEvidence({
@@ -1797,13 +1800,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     };
 
     if (deferTimelineForReflexSubmit) {
-      void writeTurnTimeline().catch((error) => {
-        logger.warn("Denis reflex submit timeline write failed", {
-          traceId,
-          aiSessionId: timelineAiSessionId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
+      runAfterResponse(() =>
+        writeTurnTimeline().catch((error) => {
+          logger.warn("Denis reflex submit timeline write failed", {
+            traceId,
+            aiSessionId: timelineAiSessionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        })
+      );
     } else {
       await writeTurnTimeline();
     }
@@ -1857,38 +1862,49 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
     );
   }
 
-  void persistDenisAuditEntry(admin, {
-    orgId: orgId,
-    locationId: parsed.locationId,
-    tableSessionId: ctx.tableSessionState?.session.id ?? null,
-    guestTokenHash:
-      parsed.deviceFingerprint &&
-      parsed.deviceFingerprint.length >= 8
-        ? deriveGuestMemoryToken(
-            parsed.locationId,
-            parsed.deviceFingerprint
-          )
-        : null,
-    entry: buildAuditEntry({
-      traceId,
-      sessionId: timelineAiSessionId ?? parsed.sessionId ?? "unknown",
-      guestMessage: parsed.message,
-      denisResponse: guestMessage ?? "",
-      turnPlan: {
-        kind: perceiveResult.turnPlan.kind,
-        reason: perceiveResult.turnPlan.reason,
-      },
-      tier: perceiveResult.tier,
-      llmUsed: perceiveResult.llmUsed,
-      model: perceiveResult.model ?? perceiveResult.modelTier ?? "unknown",
-      latencyMs: Math.round(timings.totalMs ?? 0),
-      allergyGuard: null,
-      orderSubmitted: Boolean(turnSubmitOutcome.orderId),
-      creditsCost: creditsCharged,
-      guestMemoryUsed: Boolean(ctx.guestMemory?.hasMemoryConsent),
-      evidencePointers: perceiveResult.evidencePointers,
-    }),
-  }).catch(() => undefined);
+  runAfterResponse(() =>
+    persistDenisAuditEntry(admin, {
+      orgId: orgId,
+      locationId: parsed.locationId,
+      tableSessionId: ctx.tableSessionState?.session.id ?? null,
+      guestTokenHash:
+        parsed.deviceFingerprint &&
+        parsed.deviceFingerprint.length >= 8
+          ? deriveGuestMemoryToken(
+              parsed.locationId,
+              parsed.deviceFingerprint
+            )
+          : null,
+      entry: buildAuditEntry({
+        traceId,
+        sessionId: timelineAiSessionId ?? parsed.sessionId ?? "unknown",
+        guestMessage: parsed.message,
+        denisResponse: guestMessage ?? "",
+        turnPlan: {
+          kind: perceiveResult.turnPlan.kind,
+          reason: perceiveResult.turnPlan.reason,
+        },
+        tier: perceiveResult.tier,
+        llmUsed: perceiveResult.llmUsed,
+        model: perceiveResult.model ?? perceiveResult.modelTier ?? "unknown",
+        latencyMs: Math.round(timings.totalMs ?? 0),
+        allergyGuard: null,
+        orderSubmitted: Boolean(turnSubmitOutcome.orderId),
+        creditsCost: creditsCharged,
+        guestMemoryUsed: Boolean(ctx.guestMemory?.hasMemoryConsent),
+        evidencePointers: perceiveResult.evidencePointers,
+      }),
+    }).then(
+      () => undefined,
+      (error) => {
+        logger.warn("Denis turn audit entry persist failed", {
+          traceId,
+          locationId: parsed.locationId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    )
+  );
 
   logDenisTurnObservability({
     traceId,
@@ -1997,13 +2013,15 @@ export async function runDenisTurn(input: DenisTurnRunInput): Promise<Response> 
       };
     }
 
-    void scheduleGuestSceneRefresh(admin, sceneOverrides).catch((error) => {
-      logger.warn("Denis turn scene refresh failed", {
-        traceId,
-        tableSessionId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
+    runAfterResponse(() =>
+      scheduleGuestSceneRefresh(admin, sceneOverrides).catch((error) => {
+        logger.warn("Denis turn scene refresh failed", {
+          traceId,
+          tableSessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+    );
   }
 
   if (channel === "voice") {
