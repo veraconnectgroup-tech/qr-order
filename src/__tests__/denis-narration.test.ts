@@ -6,6 +6,7 @@ import {
   buildNarrationFacts,
   lintNarrationMessage,
   sanitizeNarrationOutput,
+  templateNarrationFallback,
 } from "@/lib/denis/runtime/narrate";
 
 function baseFacts() {
@@ -46,6 +47,106 @@ describe("narration facts M9", () => {
     const facts = baseFacts();
     expect(facts.committed.addedItems).toEqual(["Espresso"]);
     expect(facts.allowedMentions).toContain("Espresso");
+  });
+});
+
+function reflexTurnWithGoal(topGoal: unknown) {
+  return {
+    reflex: null,
+    correction: null,
+    conflict: null,
+    plan: { topGoal },
+    cartState: { draft: { items: [], cartRevision: 0 }, orders: [] },
+    usedT0: false,
+    handoffCommand: null,
+    handoffPaymentMethod: null,
+    pipelineHints: { reflexIntent: null },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+}
+
+describe("narration facts — pending-slot and handoff kind (quality-audit fix)", () => {
+  it("threads the real pending-slot kind into committed facts for CLARIFY_SLOT", () => {
+    const facts = buildNarrationFacts({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      language: "en",
+      reflexTurn: reflexTurnWithGoal({
+        type: "CLARIFY_SLOT",
+        slot: { kind: "serve_size" },
+        priority: 80,
+      }),
+    });
+    expect(facts.committed.pendingSlotKind).toBe("serve_size");
+  });
+
+  it("threads the real handoff kind into committed facts for HANDOFF", () => {
+    const facts = buildNarrationFacts({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      language: "en",
+      reflexTurn: reflexTurnWithGoal({
+        type: "HANDOFF",
+        kind: "payment",
+        priority: 96,
+      }),
+    });
+    expect(facts.committed.handoffKind).toBe("payment");
+  });
+
+  it("template fallback asks about the actual pending slot, not payment, when narration is unavailable", () => {
+    const facts = buildNarrationFacts({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      language: "en",
+      reflexTurn: reflexTurnWithGoal({
+        type: "CLARIFY_SLOT",
+        slot: { kind: "modifier" },
+        priority: 80,
+      }),
+    });
+    const fallback = templateNarrationFallback(facts);
+    expect(fallback).not.toMatch(/pay|cash|card/i);
+    expect(fallback).toMatch(/prepared/i);
+  });
+
+  it("template fallback still asks about payment when the pending slot really is payment_method (regression)", () => {
+    const facts = buildNarrationFacts({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      language: "en",
+      reflexTurn: reflexTurnWithGoal({
+        type: "CLARIFY_SLOT",
+        slot: { kind: "payment_method" },
+        priority: 80,
+      }),
+    });
+    expect(templateNarrationFallback(facts)).toBe(
+      "How would you like to pay — cash, card at the table, or online?"
+    );
+  });
+
+  it("template fallback differentiates payment handoff wording from the default waiter wording", () => {
+    const paymentFacts = buildNarrationFacts({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      language: "en",
+      reflexTurn: reflexTurnWithGoal({
+        type: "HANDOFF",
+        kind: "payment",
+        priority: 96,
+      }),
+    });
+    const waiterFacts = buildNarrationFacts({
+      config: CONCIERGE_PLATFORM_DEFAULTS,
+      language: "en",
+      reflexTurn: reflexTurnWithGoal({
+        type: "HANDOFF",
+        kind: "waiter",
+        priority: 96,
+      }),
+    });
+    expect(templateNarrationFallback(waiterFacts)).toBe(
+      "On my way — just a moment."
+    );
+    expect(templateNarrationFallback(paymentFacts)).not.toBe(
+      templateNarrationFallback(waiterFacts)
+    );
   });
 });
 

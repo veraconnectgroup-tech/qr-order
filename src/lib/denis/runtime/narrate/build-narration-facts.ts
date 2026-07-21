@@ -63,7 +63,8 @@ export type BuildNarrationFactsInput = {
 export function buildNarrationFacts(
   input: BuildNarrationFactsInput
 ): NarrationFacts {
-  const topGoal = input.reflexTurn.plan.topGoal?.type ?? "GUEST_SEATED";
+  const topGoalFull = input.reflexTurn.plan.topGoal;
+  const topGoal = topGoalFull?.type ?? "GUEST_SEATED";
   const addedItems = uniqueNames(
     (input.cartActions ?? []).map((action) => action.productName)
   );
@@ -99,6 +100,14 @@ export function buildNarrationFacts(
   if (input.handoffMessage) committed.handoffMessage = input.handoffMessage;
   if (input.orderNumber != null) committed.orderNumber = input.orderNumber;
   if (input.statusSummary) committed.statusSummary = input.statusSummary;
+  if (topGoalFull?.type === "CLARIFY_SLOT") {
+    committed.pendingSlotKind = topGoalFull.slot.kind;
+  }
+
+  if (topGoalFull?.type === "HANDOFF") {
+    committed.handoffKind = topGoalFull.kind;
+  }
+
   if (input.reflexTurn.conflict?.guestPrompt) {
     committed.conflictQuestion = input.reflexTurn.conflict.guestPrompt;
     allowedMentions.push(

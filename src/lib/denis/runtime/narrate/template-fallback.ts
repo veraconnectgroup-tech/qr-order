@@ -5,7 +5,7 @@ import type {
 import {
   cartAddedMessage,
   cartSummaryMessage,
-  clarifyPaymentMessage,
+  clarifySlotMessage,
   handoffWaitMessage,
   orderSentTemplateMessage,
   pairingSuggestionMessage,
@@ -66,11 +66,11 @@ export function templateNarrationFallback(facts: NarrationFacts): string {
   }
 
   if (goal === "HANDOFF") {
-    return handoffWaitMessage(language);
+    return handoffWaitMessage(language, committed.handoffKind);
   }
 
   if (goal === "CLARIFY_SLOT") {
-    return clarifyPaymentMessage(language);
+    return clarifySlotMessage(language, committed.pendingSlotKind);
   }
 
   return "";

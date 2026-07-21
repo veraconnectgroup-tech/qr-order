@@ -75,7 +75,27 @@ export function reconcileCartMessage(language: string): string {
   }
 }
 
-export function handoffWaitMessage(language: string): string {
+/**
+ * Deep last-resort fallback for HANDOFF goal (reached only when the handoff
+ * ACT hasn't produced a specific guestMessage yet — see
+ * resolve-act-handoff-outcome.ts, which normally supplies a situation-specific
+ * committed.handoffMessage instead). `kind` narrows wording when known; the
+ * "waiter"/undefined case keeps the exact original string (safety net).
+ */
+export function handoffWaitMessage(
+  language: string,
+  kind?: "waiter" | "payment"
+): string {
+  if (kind === "payment") {
+    switch (normalizeGuestChatLanguage(language)) {
+      case "de":
+        return "Ich kümmere mich um die Zahlung — einen Moment.";
+      case "en":
+        return "Getting your payment sorted — just a moment.";
+      default:
+        return "Sređujem plaćanje — samo trenutak.";
+    }
+  }
   switch (normalizeGuestChatLanguage(language)) {
     case "de":
       return "Bin gleich bei Ihnen — einen Moment.";
@@ -94,6 +114,61 @@ export function clarifyPaymentMessage(language: string): string {
       return "How would you like to pay — cash, card at the table, or online?";
     default:
       return "Kako plaćate — kes, kartica na stolu, ili online?";
+  }
+}
+
+export function clarifySizeMessage(language: string): string {
+  switch (normalizeGuestChatLanguage(language)) {
+    case "de":
+      return "Welche Größe darf's sein?";
+    case "en":
+      return "What size would you like?";
+    default:
+      return "Koja veličina vam odgovara?";
+  }
+}
+
+export function clarifyModifierMessage(language: string): string {
+  switch (normalizeGuestChatLanguage(language)) {
+    case "de":
+      return "Wie hätten Sie's gern zubereitet?";
+    case "en":
+      return "How would you like that prepared?";
+    default:
+      return "Kako da to pripremimo?";
+  }
+}
+
+export function clarifyProductMessage(language: string): string {
+  switch (normalizeGuestChatLanguage(language)) {
+    case "de":
+      return "Welches möchten Sie genau?";
+    case "en":
+      return "Which one would you like exactly?";
+    default:
+      return "Koje tačno želite?";
+  }
+}
+
+/**
+ * Slot-aware clarify fallback (CLARIFY_SLOT goal, last resort only — the
+ * narrator normally phrases this from committed.pendingSlotKind). Routes to
+ * the wording that matches what's actually pending instead of always asking
+ * about payment.
+ */
+export function clarifySlotMessage(
+  language: string,
+  slotKind?: "serve_size" | "modifier" | "product" | "payment_method" | string
+): string {
+  switch (slotKind) {
+    case "serve_size":
+      return clarifySizeMessage(language);
+    case "modifier":
+      return clarifyModifierMessage(language);
+    case "product":
+      return clarifyProductMessage(language);
+    default:
+      return clarifyPaymentMessage(language);
   }
 }
 

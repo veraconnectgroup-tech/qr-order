@@ -18,6 +18,13 @@ export const NarrationCommittedSchema = z.object({
   opsEmpathyNote: z.string().trim().max(300).optional(),
   returnGuestWelcome: z.string().trim().max(400).optional(),
   handoffMessage: z.string().trim().max(400).optional(),
+  /** Real, already-known pending-slot kind (CLARIFY_SLOT goal) — lets the
+   *  narrator/fallback ask about the actual thing pending, not always payment. */
+  pendingSlotKind: z
+    .enum(["serve_size", "modifier", "product", "payment_method"])
+    .optional(),
+  /** Real, already-known handoff kind (HANDOFF goal) — waiter vs payment. */
+  handoffKind: z.enum(["waiter", "payment"]).optional(),
 });
 
 export const NarrationFactsSchema = z.object({
